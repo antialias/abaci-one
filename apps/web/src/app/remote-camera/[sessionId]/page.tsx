@@ -94,9 +94,13 @@ export default function RemoteCameraPage() {
   // Validate session on mount
   useEffect(() => {
     async function validateSession() {
+      console.log('[RemoteCameraPage] Validating session:', sessionId)
       try {
         const response = await fetch(`/api/remote-camera?sessionId=${sessionId}`)
+        console.log('[RemoteCameraPage] Session validation response:', response.status)
         if (response.ok) {
+          const data = await response.json()
+          console.log('[RemoteCameraPage] Session valid:', data)
           setSessionStatus('connected')
         } else if (response.status === 404) {
           setSessionStatus('expired')
@@ -107,6 +111,7 @@ export default function RemoteCameraPage() {
           setSessionError(data.error || 'Failed to validate session')
         }
       } catch (err) {
+        console.error('[RemoteCameraPage] Session validation error:', err)
         setSessionStatus('error')
         setSessionError('Network error')
       }

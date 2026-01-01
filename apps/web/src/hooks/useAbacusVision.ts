@@ -8,6 +8,11 @@ import {
   isArucoAvailable,
   loadAruco,
 } from '@/lib/vision/arucoDetection'
+import {
+  analyzeColumns,
+  analysesToDigits,
+  digitsToNumber as cvDigitsToNumber,
+} from '@/lib/vision/beadDetector'
 import { digitsToNumber, getMinConfidence, processVideoFrame } from '@/lib/vision/frameProcessor'
 import type {
   CalibrationGrid,
@@ -83,9 +88,9 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
   // Track previous stable value to avoid duplicate callbacks
   const lastStableValueRef = useRef<number | null>(null)
 
-  // Throttle inference to 5fps for performance
+  // Throttle detection (CV is fast, 10fps is plenty)
   const lastInferenceTimeRef = useRef<number>(0)
-  const INFERENCE_INTERVAL_MS = 200 // 5fps
+  const INFERENCE_INTERVAL_MS = 100 // 10fps
 
   // Ref for calibration functions to avoid infinite loop in auto-calibration effect
   const calibrationRef = useRef(calibration)
@@ -275,10 +280,10 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
   }, [calibration])
 
   /**
-   * Process a video frame for detection using TensorFlow.js classifier
+   * Process a video frame for detection using CV-based bead detection
    */
   const processFrame = useCallback(async () => {
-    // Throttle inference for performance (5fps instead of 60fps)
+    // Throttle inference for performance (10fps)
     const now = performance.now()
     if (now - lastInferenceTimeRef.current < INFERENCE_INTERVAL_MS) {
       return
@@ -305,20 +310,31 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
     const columnImages = processVideoFrame(video, calibration.calibration)
     if (columnImages.length === 0) return
 
-    // Run classification
-    const result = await classifier.classifyColumns(columnImages)
-    if (!result) return
+    // Use CV-based bead detection instead of ML
+    const analyses = analyzeColumns(columnImages)
+    const { digits, confidences, minConfidence } = analysesToDigits(analyses)
+
+    // Log analysis for debugging
+    console.log(
+      '[CV] Bead analysis:',
+      analyses.map((a) => ({
+        digit: a.digit,
+        conf: a.confidence.toFixed(2),
+        heaven: a.heavenActive ? '5' : '0',
+        earth: a.earthActiveCount,
+        bar: a.reckoningBarPosition.toFixed(2),
+      }))
+    )
 
     // Update column confidences
-    setColumnConfidences(result.confidences)
+    setColumnConfidences(confidences)
 
     // Convert digits to number
-    const detectedValue = digitsToNumber(result.digits)
-    const minConfidence = getMinConfidence(result.confidences)
+    const detectedValue = cvDigitsToNumber(digits)
 
     // Push to stability buffer
     stability.pushFrame(detectedValue, minConfidence)
-  }, [camera.videoStream, calibration.isCalibrated, calibration.calibration, stability, classifier])
+  }, [camera.videoStream, calibration.isCalibrated, calibration.calibration, stability])
 
   /**
    * Detection loop

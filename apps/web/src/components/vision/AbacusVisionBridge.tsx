@@ -1,9 +1,13 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAbacusVision } from '@/hooks/useAbacusVision'
+import { useFrameStability } from '@/hooks/useFrameStability'
 import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
+import { analyzeColumns, analysesToDigits } from '@/lib/vision/beadDetector'
+import { processImageFrame } from '@/lib/vision/frameProcessor'
 import { isOpenCVReady, loadOpenCV, rectifyQuadrilateral } from '@/lib/vision/perspectiveTransform'
 import type { CalibrationGrid, QuadCorners } from '@/types/vision'
 import { DEFAULT_STABILITY_CONFIG } from '@/types/vision'
@@ -95,6 +99,16 @@ export function AbacusVisionBridge({
     clearCalibration: remoteClearCalibration,
     setRemoteTorch,
   } = useRemoteCameraDesktop()
+
+  // Stability tracking for remote frames
+  const remoteStability = useFrameStability()
+
+  // Track last stable value for remote camera to avoid duplicate callbacks
+  const lastRemoteStableValueRef = useRef<number | null>(null)
+
+  // Throttle remote frame processing
+  const lastRemoteInferenceTimeRef = useRef<number>(0)
+  const REMOTE_INFERENCE_INTERVAL_MS = 100 // 10fps
 
   // Handle switching to phone camera
   const handleCameraSourceChange = useCallback(
@@ -193,6 +207,88 @@ export function AbacusVisionBridge({
       onError(vision.cameraError)
     }
   }, [vision.cameraError, onError])
+
+  // Process remote camera frames through CV pipeline
+  useEffect(() => {
+    // Only process when using phone camera and connected
+    if (cameraSource !== 'phone' || !remoteIsPhoneConnected || !remoteLatestFrame) {
+      return
+    }
+
+    // Don't process during calibration
+    if (remoteIsCalibrating) {
+      return
+    }
+
+    // In manual mode, need calibration to process
+    if (remoteCalibrationMode === 'manual' && !remoteCalibration) {
+      return
+    }
+
+    // Throttle processing
+    const now = performance.now()
+    if (now - lastRemoteInferenceTimeRef.current < REMOTE_INFERENCE_INTERVAL_MS) {
+      return
+    }
+    lastRemoteInferenceTimeRef.current = now
+
+    // Get image element
+    const image = remoteImageRef.current
+    if (!image || !image.complete || image.naturalWidth === 0) {
+      return
+    }
+
+    // Determine calibration to use
+    // In auto mode (cropped frames), no calibration needed - phone already cropped
+    // In manual mode, use the desktop calibration
+    const calibration = remoteCalibrationMode === 'auto' ? null : remoteCalibration
+
+    // Process frame through CV pipeline
+    const columnImages = processImageFrame(image, calibration, columnCount)
+    if (columnImages.length === 0) return
+
+    // Run CV-based bead detection
+    const analyses = analyzeColumns(columnImages)
+    const { digits, minConfidence } = analysesToDigits(analyses)
+
+    // Convert digits to number
+    const detectedValue = digits.reduce((acc, d) => acc * 10 + d, 0)
+
+    // Log for debugging
+    console.log(
+      '[Remote CV] Bead analysis:',
+      analyses.map((a) => ({
+        digit: a.digit,
+        conf: a.confidence.toFixed(2),
+        heaven: a.heavenActive ? '5' : '0',
+        earth: a.earthActiveCount,
+      }))
+    )
+
+    // Push to stability buffer
+    remoteStability.pushFrame(detectedValue, minConfidence)
+  }, [
+    cameraSource,
+    remoteIsPhoneConnected,
+    remoteLatestFrame,
+    remoteIsCalibrating,
+    remoteCalibrationMode,
+    remoteCalibration,
+    columnCount,
+    remoteStability,
+  ])
+
+  // Notify when remote stable value changes
+  useEffect(() => {
+    if (
+      cameraSource === 'phone' &&
+      remoteStability.stableValue !== null &&
+      remoteStability.stableValue !== lastRemoteStableValueRef.current
+    ) {
+      lastRemoteStableValueRef.current = remoteStability.stableValue
+      onValueDetected(remoteStability.stableValue)
+    }
+  }, [cameraSource, remoteStability.stableValue, onValueDetected])
 
   // Load OpenCV when calibrating (local or remote)
   useEffect(() => {
@@ -302,9 +398,12 @@ export function AbacusVisionBridge({
   )
 
   return (
-    <div
+    <motion.div
       ref={containerRef}
       data-component="abacus-vision-bridge"
+      drag
+      dragMomentum={false}
+      dragElastic={0}
       className={css({
         display: 'flex',
         flexDirection: 'column',
@@ -314,6 +413,8 @@ export function AbacusVisionBridge({
         borderRadius: 'xl',
         maxWidth: '400px',
         width: '100%',
+        cursor: 'grab',
+        _active: { cursor: 'grabbing' },
       })}
     >
       {/* Header */}
@@ -418,95 +519,95 @@ export function AbacusVisionBridge({
       {/* Camera controls (local camera) - only show if there's something to display */}
       {cameraSource === 'local' &&
         (vision.availableDevices.length > 1 || vision.isTorchAvailable) && (
-        <div
-          data-element="camera-controls"
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            flexWrap: 'wrap',
-          })}
-        >
-          {/* Camera selector (if multiple cameras) */}
-          {vision.availableDevices.length > 1 && (
-            <select
-              data-element="camera-selector"
-              value={vision.selectedDeviceId ?? ''}
-              onChange={handleCameraSelect}
-              className={css({
-                flex: 1,
-                p: 2,
-                bg: 'gray.800',
-                color: 'white',
-                border: '1px solid',
-                borderColor: 'gray.600',
-                borderRadius: 'md',
-                fontSize: 'sm',
-                minWidth: '150px',
-              })}
-            >
-              {vision.availableDevices.map((device) => (
-                <option key={device.deviceId} value={device.deviceId}>
-                  {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
-                </option>
-              ))}
-            </select>
-          )}
+          <div
+            data-element="camera-controls"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              flexWrap: 'wrap',
+            })}
+          >
+            {/* Camera selector (if multiple cameras) */}
+            {vision.availableDevices.length > 1 && (
+              <select
+                data-element="camera-selector"
+                value={vision.selectedDeviceId ?? ''}
+                onChange={handleCameraSelect}
+                className={css({
+                  flex: 1,
+                  p: 2,
+                  bg: 'gray.800',
+                  color: 'white',
+                  border: '1px solid',
+                  borderColor: 'gray.600',
+                  borderRadius: 'md',
+                  fontSize: 'sm',
+                  minWidth: '150px',
+                })}
+              >
+                {vision.availableDevices.map((device) => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
+                  </option>
+                ))}
+              </select>
+            )}
 
-          {/* Flip camera button - only show if multiple cameras available */}
-          {vision.availableDevices.length > 1 && (
-            <button
-              type="button"
-              onClick={() => vision.flipCamera()}
-              data-action="flip-camera"
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '40px',
-                height: '40px',
-                bg: 'gray.700',
-                color: 'white',
-                border: 'none',
-                borderRadius: 'md',
-                cursor: 'pointer',
-                fontSize: 'lg',
-                _hover: { bg: 'gray.600' },
-              })}
-              title={`Switch to ${vision.facingMode === 'environment' ? 'front' : 'back'} camera`}
-            >
-              🔄
-            </button>
-          )}
+            {/* Flip camera button - only show if multiple cameras available */}
+            {vision.availableDevices.length > 1 && (
+              <button
+                type="button"
+                onClick={() => vision.flipCamera()}
+                data-action="flip-camera"
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '40px',
+                  height: '40px',
+                  bg: 'gray.700',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'md',
+                  cursor: 'pointer',
+                  fontSize: 'lg',
+                  _hover: { bg: 'gray.600' },
+                })}
+                title={`Switch to ${vision.facingMode === 'environment' ? 'front' : 'back'} camera`}
+              >
+                🔄
+              </button>
+            )}
 
-          {/* Torch toggle button (only if available) */}
-          {vision.isTorchAvailable && (
-            <button
-              type="button"
-              onClick={() => vision.toggleTorch()}
-              data-action="toggle-torch"
-              data-status={vision.isTorchOn ? 'on' : 'off'}
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '40px',
-                height: '40px',
-                bg: vision.isTorchOn ? 'yellow.600' : 'gray.700',
-                color: 'white',
-                border: 'none',
-                borderRadius: 'md',
-                cursor: 'pointer',
-                fontSize: 'lg',
-                _hover: { bg: vision.isTorchOn ? 'yellow.500' : 'gray.600' },
-              })}
-              title={vision.isTorchOn ? 'Turn off flash' : 'Turn on flash'}
-            >
-              {vision.isTorchOn ? '🔦' : '💡'}
-            </button>
-          )}
-        </div>
-      )}
+            {/* Torch toggle button (only if available) */}
+            {vision.isTorchAvailable && (
+              <button
+                type="button"
+                onClick={() => vision.toggleTorch()}
+                data-action="toggle-torch"
+                data-status={vision.isTorchOn ? 'on' : 'off'}
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '40px',
+                  height: '40px',
+                  bg: vision.isTorchOn ? 'yellow.600' : 'gray.700',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'md',
+                  cursor: 'pointer',
+                  fontSize: 'lg',
+                  _hover: { bg: vision.isTorchOn ? 'yellow.500' : 'gray.600' },
+                })}
+                title={vision.isTorchOn ? 'Turn off flash' : 'Turn on flash'}
+              >
+                {vision.isTorchOn ? '🔦' : '💡'}
+              </button>
+            )}
+          </div>
+        )}
 
       {/* Camera controls (phone camera) */}
       {cameraSource === 'phone' && remoteIsPhoneConnected && remoteIsTorchAvailable && (
@@ -829,6 +930,27 @@ export function AbacusVisionBridge({
                   />
                 )}
 
+                {/* Detection status indicator */}
+                {!remoteIsCalibrating && (
+                  <div
+                    className={css({
+                      position: 'absolute',
+                      top: 2,
+                      left: 2,
+                    })}
+                  >
+                    <VisionStatusIndicator
+                      isCalibrated={remoteCalibrationMode === 'auto' || remoteCalibration !== null}
+                      isDetecting={remoteLatestFrame !== null}
+                      confidence={remoteStability.currentConfidence}
+                      handDetected={remoteStability.isHandDetected}
+                      detectedValue={remoteStability.stableValue}
+                      consecutiveFrames={remoteStability.consecutiveFrames}
+                      minFrames={DEFAULT_STABILITY_CONFIG.minConsecutiveFrames}
+                    />
+                  </div>
+                )}
+
                 {/* Connection status */}
                 <div
                   className={css({
@@ -1074,7 +1196,7 @@ export function AbacusVisionBridge({
           {vision.cameraError}
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
 

@@ -68,8 +68,13 @@ interface UseRemoteCameraPhoneReturn {
 export function useRemoteCameraPhone(
   options: UseRemoteCameraPhoneOptions = {}
 ): UseRemoteCameraPhoneReturn {
-  const { targetFps = 10, jpegQuality = 0.8, targetWidth = 300, rawWidth = 640, onTorchRequest } =
-    options
+  const {
+    targetFps = 10,
+    jpegQuality = 0.8,
+    targetWidth = 300,
+    rawWidth = 640,
+    onTorchRequest,
+  } = options
 
   // Keep onTorchRequest in a ref to avoid stale closures
   const onTorchRequestRef = useRef(onTorchRequest)
@@ -115,16 +120,23 @@ export function useRemoteCameraPhone(
 
   // Initialize socket connection
   useEffect(() => {
+    console.log('[RemoteCameraPhone] Initializing socket connection...')
     const socketInstance = io({
       path: '/api/socket',
       autoConnect: true,
     })
 
     socketInstance.on('connect', () => {
+      console.log('[RemoteCameraPhone] Socket connected! ID:', socketInstance.id)
       setIsSocketConnected(true)
     })
 
-    socketInstance.on('disconnect', () => {
+    socketInstance.on('connect_error', (error) => {
+      console.error('[RemoteCameraPhone] Socket connect error:', error)
+    })
+
+    socketInstance.on('disconnect', (reason) => {
+      console.log('[RemoteCameraPhone] Socket disconnected:', reason)
       setIsSocketConnected(false)
       setIsConnected(false)
       isConnectedRef.current = false
@@ -314,7 +326,9 @@ export function useRemoteCameraPhone(
   const connect = useCallback(
     (sessionId: string) => {
       const socket = socketRef.current
+      console.log('[RemoteCameraPhone] Connecting to session:', sessionId, 'socket:', !!socket, 'connected:', isSocketConnected)
       if (!socket || !isSocketConnected) {
+        console.error('[RemoteCameraPhone] Socket not connected!')
         setError('Socket not connected')
         return
       }
@@ -322,6 +336,7 @@ export function useRemoteCameraPhone(
       sessionIdRef.current = sessionId
       setError(null)
 
+      console.log('[RemoteCameraPhone] Emitting remote-camera:join')
       socket.emit('remote-camera:join', { sessionId })
       setIsConnected(true)
       isConnectedRef.current = true

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AbacusQRCode } from '@/components/common/AbacusQRCode'
 import { useRemoteCameraSession } from '@/hooks/useRemoteCameraSession'
 import { css } from '../../../styled-system/css'
@@ -32,6 +32,10 @@ export function RemoteCameraQRCode({
   const { session, isCreating, error, createSession, setExistingSession, getPhoneUrl } =
     useRemoteCameraSession()
 
+  // Ref to track if we've already initiated session creation
+  // This prevents React 18 Strict Mode from creating duplicate sessions
+  const creationInitiatedRef = useRef(false)
+
   // If we have an existing session ID, use it instead of creating a new one
   useEffect(() => {
     if (existingSessionId && !session) {
@@ -40,8 +44,10 @@ export function RemoteCameraQRCode({
   }, [existingSessionId, session, setExistingSession])
 
   // Create session on mount only if no existing session
+  // Use ref to prevent duplicate creation in React 18 Strict Mode
   useEffect(() => {
-    if (!session && !isCreating && !existingSessionId) {
+    if (!session && !isCreating && !existingSessionId && !creationInitiatedRef.current) {
+      creationInitiatedRef.current = true
       createSession().then((newSession) => {
         if (newSession && onSessionCreated) {
           onSessionCreated(newSession.sessionId)

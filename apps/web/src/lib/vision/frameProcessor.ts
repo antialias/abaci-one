@@ -214,3 +214,59 @@ export function getMinConfidence(confidences: number[]): number {
   if (confidences.length === 0) return 0
   return Math.min(...confidences)
 }
+
+/**
+ * Process an image frame for classification (for remote camera frames)
+ *
+ * @param image - Image element with the frame
+ * @param calibration - Calibration grid (if null, assumes entire image is the abacus)
+ * @param columnCount - Number of columns to slice into
+ * @param columnWidth - Target column width for model input
+ * @param columnHeight - Target column height for model input
+ * @returns Array of preprocessed column ImageData ready for classification
+ */
+export function processImageFrame(
+  image: HTMLImageElement,
+  calibration: CalibrationGrid | null,
+  columnCount: number,
+  columnWidth: number = 64,
+  columnHeight: number = 128
+): ImageData[] {
+  // Create canvas for image frame
+  const canvas = document.createElement('canvas')
+  canvas.width = image.naturalWidth || image.width
+  canvas.height = image.naturalHeight || image.height
+  const ctx = canvas.getContext('2d')!
+
+  // Draw image frame
+  ctx.drawImage(image, 0, 0)
+
+  let roiData: ImageData
+
+  if (calibration) {
+    // Extract ROI using calibration
+    roiData = extractROI(ctx, calibration.roi)
+  } else {
+    // No calibration - use entire image as ROI (already cropped by phone)
+    roiData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  }
+
+  // Create a synthetic calibration for slicing if none provided
+  const sliceCalibration: CalibrationGrid = calibration ?? {
+    roi: { x: 0, y: 0, width: canvas.width, height: canvas.height },
+    columnCount,
+    columnDividers: Array.from({ length: columnCount - 1 }, (_, i) => (i + 1) / columnCount),
+    rotation: 0,
+  }
+
+  // Slice into columns
+  const columns = sliceIntoColumns(roiData, sliceCalibration)
+
+  // Preprocess each column
+  return columns.map((col) => {
+    // Convert to grayscale
+    const gray = toGrayscale(col)
+    // Resize to model input size
+    return resizeImageData(gray, columnWidth, columnHeight)
+  })
+}

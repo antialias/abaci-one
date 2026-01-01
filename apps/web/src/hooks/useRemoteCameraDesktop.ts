@@ -73,16 +73,23 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
 
   // Initialize socket connection
   useEffect(() => {
+    console.log('[RemoteCameraDesktop] Initializing socket connection...')
     const socketInstance = io({
       path: '/api/socket',
       autoConnect: true,
     })
 
     socketInstance.on('connect', () => {
+      console.log('[RemoteCameraDesktop] Socket connected! ID:', socketInstance.id)
       setIsConnected(true)
     })
 
-    socketInstance.on('disconnect', () => {
+    socketInstance.on('connect_error', (error) => {
+      console.error('[RemoteCameraDesktop] Socket connect error:', error)
+    })
+
+    socketInstance.on('disconnect', (reason) => {
+      console.log('[RemoteCameraDesktop] Socket disconnected:', reason)
       setIsConnected(false)
     })
 
@@ -105,17 +112,20 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     if (!socket) return
 
     const handleConnected = ({ phoneConnected }: { phoneConnected: boolean }) => {
+      console.log('[RemoteCameraDesktop] Phone connected event:', phoneConnected)
       setIsPhoneConnected(phoneConnected)
       setError(null)
     }
 
     const handleDisconnected = ({ phoneConnected }: { phoneConnected: boolean }) => {
+      console.log('[RemoteCameraDesktop] Phone disconnected event:', phoneConnected)
       setIsPhoneConnected(phoneConnected)
       setLatestFrame(null)
       setFrameRate(0)
     }
 
     const handleStatus = ({ phoneConnected }: { phoneConnected: boolean }) => {
+      console.log('[RemoteCameraDesktop] Status event:', phoneConnected)
       setIsPhoneConnected(phoneConnected)
     }
 
@@ -174,13 +184,16 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
 
   const subscribe = useCallback(
     (sessionId: string) => {
+      console.log('[RemoteCameraDesktop] Subscribing to session:', sessionId, 'socket:', !!socket, 'connected:', isConnected)
       if (!socket || !isConnected) {
+        console.error('[RemoteCameraDesktop] Socket not connected!')
         setError('Socket not connected')
         return
       }
 
       currentSessionId.current = sessionId
       setError(null)
+      console.log('[RemoteCameraDesktop] Emitting remote-camera:subscribe')
       socket.emit('remote-camera:subscribe', { sessionId })
     },
     [socket, isConnected]
