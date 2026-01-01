@@ -86,7 +86,6 @@ export function useColumnClassifier(): UseColumnClassifierReturn {
         setIsModelLoaded(true)
         return true
       } else {
-        // Model doesn't exist - not an error, just unavailable
         setIsModelUnavailable(true)
         return false
       }

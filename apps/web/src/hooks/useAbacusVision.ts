@@ -83,6 +83,10 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
   // Track previous stable value to avoid duplicate callbacks
   const lastStableValueRef = useRef<number | null>(null)
 
+  // Throttle inference to 5fps for performance
+  const lastInferenceTimeRef = useRef<number>(0)
+  const INFERENCE_INTERVAL_MS = 200 // 5fps
+
   // Ref for calibration functions to avoid infinite loop in auto-calibration effect
   const calibrationRef = useRef(calibration)
   calibrationRef.current = calibration
@@ -274,6 +278,13 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
    * Process a video frame for detection using TensorFlow.js classifier
    */
   const processFrame = useCallback(async () => {
+    // Throttle inference for performance (5fps instead of 60fps)
+    const now = performance.now()
+    if (now - lastInferenceTimeRef.current < INFERENCE_INTERVAL_MS) {
+      return
+    }
+    lastInferenceTimeRef.current = now
+
     // Get video element from camera stream
     const videoElements = document.querySelectorAll('video')
     let video: HTMLVideoElement | null = null
@@ -292,12 +303,10 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
 
     // Process video frame into column strips
     const columnImages = processVideoFrame(video, calibration.calibration)
-
     if (columnImages.length === 0) return
 
     // Run classification
     const result = await classifier.classifyColumns(columnImages)
-
     if (!result) return
 
     // Update column confidences

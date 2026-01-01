@@ -187,8 +187,8 @@ export interface FrameStabilityConfig {
  * Default stability configuration
  */
 export const DEFAULT_STABILITY_CONFIG: FrameStabilityConfig = {
-  minConsecutiveFrames: 10, // ~300ms at 30fps
-  minConfidence: 0.7,
+  minConsecutiveFrames: 3, // 600ms at 5fps inference rate
+  minConfidence: 0.5, // Lower threshold - model confidence is often 60-80%
   handMotionThreshold: 0.3,
 }
 
