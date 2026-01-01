@@ -22,7 +22,10 @@ export function LinkChildForm({ isOpen, onClose, onSuccess }: LinkChildFormProps
   const isDark = resolvedTheme === 'dark'
 
   const [familyCode, setFamilyCode] = useState('')
-  const [linkedPlayer, setLinkedPlayer] = useState<{ name: string; emoji: string } | null>(null)
+  const [linkedPlayer, setLinkedPlayer] = useState<{
+    name: string
+    emoji: string
+  } | null>(null)
 
   // React Query mutation
   const linkChild = useLinkChild()
@@ -47,7 +50,10 @@ export function LinkChildForm({ isOpen, onClose, onSuccess }: LinkChildFormProps
       linkChild.mutate(familyCode.trim(), {
         onSuccess: (data) => {
           if (data.success && data.player) {
-            setLinkedPlayer({ name: data.player.name, emoji: data.player.emoji })
+            setLinkedPlayer({
+              name: data.player.name,
+              emoji: data.player.emoji,
+            })
             onSuccess?.()
           }
         },

@@ -218,9 +218,21 @@ describe('Entry Prompts', () => {
     it('filters out expired prompts', () => {
       const now = new Date('2025-01-01T12:00:00Z')
       const prompts = [
-        { id: 'prompt-1', expiresAt: new Date('2025-01-01T11:00:00Z'), status: 'pending' }, // expired
-        { id: 'prompt-2', expiresAt: new Date('2025-01-01T13:00:00Z'), status: 'pending' }, // active
-        { id: 'prompt-3', expiresAt: new Date('2025-01-01T12:30:00Z'), status: 'pending' }, // active
+        {
+          id: 'prompt-1',
+          expiresAt: new Date('2025-01-01T11:00:00Z'),
+          status: 'pending',
+        }, // expired
+        {
+          id: 'prompt-2',
+          expiresAt: new Date('2025-01-01T13:00:00Z'),
+          status: 'pending',
+        }, // active
+        {
+          id: 'prompt-3',
+          expiresAt: new Date('2025-01-01T12:30:00Z'),
+          status: 'pending',
+        }, // active
       ]
 
       const activePrompts = prompts.filter((p) => p.expiresAt > now)

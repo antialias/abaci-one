@@ -97,7 +97,13 @@ export function PendingApprovalsSection() {
         A teacher has requested to enroll your child in their classroom.
       </p>
 
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+        })}
+      >
         {requests.map((request) => (
           <PendingApprovalCard
             key={request.id}

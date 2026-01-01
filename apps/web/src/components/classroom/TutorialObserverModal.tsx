@@ -95,7 +95,13 @@ export function TutorialObserverModal({
             flexShrink: 0,
           })}
         >
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '12px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+            })}
+          >
             <span
               className={css({
                 width: '36px',
@@ -120,7 +126,13 @@ export function TutorialObserverModal({
               >
                 Observing {student.name}
               </h2>
-              <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                })}
+              >
                 <span
                   className={css({
                     fontSize: '0.75rem',
@@ -206,14 +218,22 @@ export function TutorialObserverModal({
           })}
         >
           {/* Connection status */}
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '6px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            })}
+          >
             <span
               className={css({
                 width: '8px',
                 height: '8px',
                 borderRadius: '50%',
               })}
-              style={{ backgroundColor: isControlConnected ? '#10b981' : '#ef4444' }}
+              style={{
+                backgroundColor: isControlConnected ? '#10b981' : '#ef4444',
+              }}
             />
             <span
               className={css({
@@ -244,7 +264,9 @@ export function TutorialObserverModal({
                     fontSize: '0.8125rem',
                     fontWeight: 'medium',
                     cursor: 'pointer',
-                    _hover: { backgroundColor: isDark ? 'blue.500' : 'blue.600' },
+                    _hover: {
+                      backgroundColor: isDark ? 'blue.500' : 'blue.600',
+                    },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                   })}
                 >
@@ -264,7 +286,9 @@ export function TutorialObserverModal({
                     fontSize: '0.8125rem',
                     fontWeight: 'medium',
                     cursor: 'pointer',
-                    _hover: { backgroundColor: isDark ? 'gray.600' : 'gray.300' },
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                    },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                   })}
                 >
@@ -292,7 +316,9 @@ export function TutorialObserverModal({
                     fontSize: '0.8125rem',
                     fontWeight: 'medium',
                     cursor: 'pointer',
-                    _hover: { backgroundColor: isDark ? 'gray.600' : 'gray.300' },
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                    },
                     _disabled: { opacity: 0.4, cursor: 'not-allowed' },
                   })}
                 >
@@ -316,7 +342,9 @@ export function TutorialObserverModal({
                     fontSize: '0.8125rem',
                     fontWeight: 'medium',
                     cursor: 'pointer',
-                    _hover: { backgroundColor: isDark ? 'gray.600' : 'gray.300' },
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                    },
                     _disabled: { opacity: 0.4, cursor: 'not-allowed' },
                   })}
                 >
@@ -345,7 +373,9 @@ export function TutorialObserverModal({
                     fontSize: '0.8125rem',
                     fontWeight: 'medium',
                     cursor: 'pointer',
-                    _hover: { backgroundColor: isDark ? 'green.600' : 'green.200' },
+                    _hover: {
+                      backgroundColor: isDark ? 'green.600' : 'green.200',
+                    },
                     _disabled: { opacity: 0.4, cursor: 'not-allowed' },
                   })}
                 >

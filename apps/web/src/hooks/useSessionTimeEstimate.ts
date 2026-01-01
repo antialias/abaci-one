@@ -52,7 +52,11 @@ export interface SessionTimeEstimate {
 /**
  * Calculate mean and standard deviation from an array of numbers
  */
-function calculateStats(times: number[]): { mean: number; stdDev: number; count: number } {
+function calculateStats(times: number[]): {
+  mean: number
+  stdDev: number
+  count: number
+} {
   const count = times.length
   if (count === 0) return { mean: 0, stdDev: 0, count: 0 }
 

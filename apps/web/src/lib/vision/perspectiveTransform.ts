@@ -120,6 +120,11 @@ export interface RectifyOptions {
   outputWidth?: number
   /** Output height (default: calculated from quad aspect ratio) */
   outputHeight?: number
+  /**
+   * Apply 180° rotation to output (default: true for backwards compatibility)
+   * Set to false for phone cameras where no rotation is needed
+   */
+  rotate180?: boolean
 }
 
 /**
@@ -142,6 +147,7 @@ export function rectifyQuadrilateral(
   }
 
   const cv = window.cv
+  const rotate180 = options.rotate180 ?? true // Default true for backwards compatibility
 
   // Calculate default output dimensions based on quad size
   const topWidth = Math.hypot(
@@ -193,22 +199,37 @@ export function rectifyQuadrilateral(
     // Source image
     srcMat = cv.matFromImageData(imageData)
 
-    // Source points - swap diagonally for webcam orientation
-    // Screen topLeft → physical bottomRight, etc.
-    // Order matches destination: TL, TR, BR, BL (physical/output positions)
-    srcPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
-      corners.bottomRight.x,
-      corners.bottomRight.y, // screen BR → output TL
-      corners.bottomLeft.x,
-      corners.bottomLeft.y, // screen BL → output TR
-      corners.topLeft.x,
-      corners.topLeft.y, // screen TL → output BR
-      corners.topRight.x,
-      corners.topRight.y, // screen TR → output BL
-    ])
+    // Source points mapping
+    // When rotate180=true (Desk View): swap diagonally so output is 180° rotated
+    // When rotate180=false (normal phone): direct mapping, no rotation
+    const srcPointsData = rotate180
+      ? [
+          // Desk View: swap diagonally for camera pointing down
+          corners.bottomRight.x,
+          corners.bottomRight.y, // screen BR → output TL
+          corners.bottomLeft.x,
+          corners.bottomLeft.y, // screen BL → output TR
+          corners.topLeft.x,
+          corners.topLeft.y, // screen TL → output BR
+          corners.topRight.x,
+          corners.topRight.y, // screen TR → output BL
+        ]
+      : [
+          // Phone camera: direct mapping, no rotation
+          corners.topLeft.x,
+          corners.topLeft.y, // TL → output TL
+          corners.topRight.x,
+          corners.topRight.y, // TR → output TR
+          corners.bottomRight.x,
+          corners.bottomRight.y, // BR → output BR
+          corners.bottomLeft.x,
+          corners.bottomLeft.y, // BL → output BL
+        ]
+
+    srcPoints = cv.matFromArray(4, 1, cv.CV_32FC2, srcPointsData)
 
     // Destination points (rectangle corners) - map to standard rectangle
-    // Order: TL, TR, BR, BL (matching source points order)
+    // Order: TL, TR, BR, BL
     dstPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
       0,
       0, // TL → top-left of output

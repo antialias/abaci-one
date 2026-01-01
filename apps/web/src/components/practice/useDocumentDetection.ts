@@ -1074,7 +1074,10 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
     bestQuad && bestQuad.frameCount >= LOCKED_FRAME_COUNT && bestQuad.stabilityScore > 0.5
 
   // Get current best quad corners
-  const getBestQuadCorners = useCallback((): Array<{ x: number; y: number }> | null => {
+  const getBestQuadCorners = useCallback((): Array<{
+    x: number
+    y: number
+  }> | null => {
     const quad = bestQuadRef.current
     if (!quad) return null
     return [...quad.corners]

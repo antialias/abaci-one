@@ -113,6 +113,11 @@ export interface AbacusVisionState {
   confidence: number
   columnConfidences: number[]
 
+  // Classifier state
+  isClassifierLoading: boolean
+  isClassifierReady: boolean
+  classifierError: string | null
+
   // Camera state
   isCameraLoading: boolean
   videoStream: MediaStream | null

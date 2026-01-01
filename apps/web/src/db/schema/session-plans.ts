@@ -429,7 +429,9 @@ export const sessionPlans = sqliteTable(
     // ---- Retry State ----
 
     /** Retry state per part - tracks problems that need retrying */
-    retryState: text('retry_state', { mode: 'json' }).$type<SessionRetryState>(),
+    retryState: text('retry_state', {
+      mode: 'json',
+    }).$type<SessionRetryState>(),
 
     // ---- Pause State (for teacher observation control) ----
 
@@ -734,7 +736,12 @@ export function getSlotRetryStatus(
   // Find all results for this slot
   const partNumber = plan.parts[partIndex]?.partNumber
   if (!partNumber) {
-    return { hasBeenAttempted: false, isCorrect: null, attemptCount: 0, finalMasteryWeight: null }
+    return {
+      hasBeenAttempted: false,
+      isCorrect: null,
+      attemptCount: 0,
+      finalMasteryWeight: null,
+    }
   }
 
   const slotResults = plan.results.filter(
@@ -742,7 +749,12 @@ export function getSlotRetryStatus(
   )
 
   if (slotResults.length === 0) {
-    return { hasBeenAttempted: false, isCorrect: null, attemptCount: 0, finalMasteryWeight: null }
+    return {
+      hasBeenAttempted: false,
+      isCorrect: null,
+      attemptCount: 0,
+      finalMasteryWeight: null,
+    }
   }
 
   // Get the latest result for this slot

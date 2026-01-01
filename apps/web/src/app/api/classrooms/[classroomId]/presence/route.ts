@@ -88,7 +88,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     if (!isTeacher && !parentCheck) {
       return NextResponse.json(
-        { success: false, error: 'Must be the classroom teacher or a parent of the student' },
+        {
+          success: false,
+          error: 'Must be the classroom teacher or a parent of the student',
+        },
         { status: 403 }
       )
     }

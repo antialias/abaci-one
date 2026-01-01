@@ -73,7 +73,10 @@ export async function createClassroom(
   }
 
   if (attempts >= maxAttempts) {
-    return { success: false, error: 'Failed to generate unique classroom code' }
+    return {
+      success: false,
+      error: 'Failed to generate unique classroom code',
+    }
   }
 
   // Create classroom

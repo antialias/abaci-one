@@ -28,6 +28,7 @@ The current ProblemToReview component has redundant information - the collapsed 
 ```
 
 **Elements:**
+
 - Problem number + part type (🧮 Abacus, 🧠 Visualize, 💭 Mental)
 - Problem in vertical format (even for linear problems)
 - Wrong answer indicator: `[said 8]`
@@ -60,6 +61,7 @@ The current ProblemToReview component has redundant information - the collapsed 
 ```
 
 **Elements:**
+
 - Same header as collapsed
 - Problem with skill annotations next to each term
 - Weak skills marked with ⚠️ and "← likely cause" indicator
@@ -72,41 +74,49 @@ The current ProblemToReview component has redundant information - the collapsed 
 ## Implementation Steps
 
 ### Step 1: Add BKT data to ProblemToReview props
+
 - Add `skillMasteries: Record<string, number>` prop (skillId → mastery 0-1)
 - Pass from SessionSummary which can compute from session or fetch from API
 
 ### Step 2: Create weak skill detection utility
+
 - `getWeakSkillsForProblem(skillsExercised: string[], masteries: Record<string, number>)`
 - Returns skills sorted by mastery (lowest first)
 - Include mastery percentage for display
 
 ### Step 3: Create AnnotatedProblem component
+
 - Single component that handles both collapsed and expanded states
 - Vertical format for all problems (linear and vertical parts)
 - In expanded mode: shows skill annotation next to each term
 - Highlights weak skills with ⚠️ indicator
 
 ### Step 4: Create WeakSkillsSummary component
+
 - Shows up to 3 weak skills, ordered by severity
 - "+N more" indicator if truncated
 - In expanded mode: includes mastery percentages
 
 ### Step 5: Create PurposeExplanation component
+
 - Maps purpose (focus/reinforce/review/challenge) to explanation text
 - Reuse or extract from existing purpose tooltip logic
 
 ### Step 6: Refactor ProblemToReview
+
 - Remove DetailedProblemCard usage
 - Use new AnnotatedProblem component
 - Add WeakSkillsSummary to both views
 - Add timing and purpose sections to expanded view
 
 ### Step 7: Update SessionSummary to pass BKT data
+
 - Compute skill masteries from session results OR
 - Fetch from /api/curriculum/[playerId]/skills endpoint
 - Pass to ProblemToReview components
 
 ### Step 8: Hide costs in session summary context
+
 - Add `showCosts` prop to any shared components
 - Default false for session summary, true for plan review
 
@@ -114,13 +124,13 @@ The current ProblemToReview component has redundant information - the collapsed 
 
 ## Files to Modify/Create
 
-| File | Action |
-|------|--------|
-| `src/components/practice/ProblemToReview.tsx` | Major refactor |
-| `src/components/practice/AnnotatedProblem.tsx` | New component |
-| `src/components/practice/WeakSkillsSummary.tsx` | New component |
-| `src/components/practice/weakSkillUtils.ts` | New utility |
-| `src/components/practice/SessionSummary.tsx` | Pass BKT data |
+| File                                             | Action                  |
+| ------------------------------------------------ | ----------------------- |
+| `src/components/practice/ProblemToReview.tsx`    | Major refactor          |
+| `src/components/practice/AnnotatedProblem.tsx`   | New component           |
+| `src/components/practice/WeakSkillsSummary.tsx`  | New component           |
+| `src/components/practice/weakSkillUtils.ts`      | New utility             |
+| `src/components/practice/SessionSummary.tsx`     | Pass BKT data           |
 | `src/components/practice/purposeExplanations.ts` | New or extract existing |
 
 ---

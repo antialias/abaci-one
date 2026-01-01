@@ -9,7 +9,12 @@ const ReactECharts = dynamic(() => import('echarts-for-react'), {
   ssr: false,
   loading: () => (
     <div
-      style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      style={{
+        height: '300px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
     >
       Loading chart...
     </div>

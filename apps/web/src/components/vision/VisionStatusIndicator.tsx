@@ -96,7 +96,9 @@ export function VisionStatusIndicator({
             borderRadius: 'full',
             animation: status === 'detecting' ? 'pulse 1s infinite' : 'none',
           })}
-          style={{ backgroundColor: `var(--colors-${statusColor.replace('.', '-')})` }}
+          style={{
+            backgroundColor: `var(--colors-${statusColor.replace('.', '-')})`,
+          }}
         />
         <span
           className={css({

@@ -197,7 +197,13 @@ export function SessionPhotoGallery({
           >
             Practice Photos
             {attachments.length > 0 && (
-              <span className={css({ fontWeight: 'normal', color: 'gray.500', ml: 2 })}>
+              <span
+                className={css({
+                  fontWeight: 'normal',
+                  color: 'gray.500',
+                  ml: 2,
+                })}
+              >
                 ({attachments.length})
               </span>
             )}

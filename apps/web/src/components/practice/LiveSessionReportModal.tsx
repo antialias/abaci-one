@@ -61,13 +61,33 @@ function getPurposeInfo(purpose: ObservedResult['purpose']): {
 } {
   switch (purpose) {
     case 'focus':
-      return { label: 'Focus', emoji: '🎯', colorLight: 'blue', colorDark: 'blue' }
+      return {
+        label: 'Focus',
+        emoji: '🎯',
+        colorLight: 'blue',
+        colorDark: 'blue',
+      }
     case 'reinforce':
-      return { label: 'Reinforce', emoji: '💪', colorLight: 'green', colorDark: 'green' }
+      return {
+        label: 'Reinforce',
+        emoji: '💪',
+        colorLight: 'green',
+        colorDark: 'green',
+      }
     case 'review':
-      return { label: 'Review', emoji: '📝', colorLight: 'purple', colorDark: 'purple' }
+      return {
+        label: 'Review',
+        emoji: '📝',
+        colorLight: 'purple',
+        colorDark: 'purple',
+      }
     case 'challenge':
-      return { label: 'Challenge', emoji: '⭐', colorLight: 'orange', colorDark: 'orange' }
+      return {
+        label: 'Challenge',
+        emoji: '⭐',
+        colorLight: 'orange',
+        colorDark: 'orange',
+      }
   }
 }
 

@@ -71,7 +71,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const alreadyEnrolled = await isEnrolled(classroomId, player.id)
     if (alreadyEnrolled) {
       return NextResponse.json(
-        { success: false, error: 'This student is already enrolled in your classroom' },
+        {
+          success: false,
+          error: 'This student is already enrolled in your classroom',
+        },
         { status: 400 }
       )
     }

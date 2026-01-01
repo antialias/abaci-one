@@ -53,7 +53,11 @@ export async function GET(_request: Request, { params }: RouteParams) {
     for (const result of sessionResults) {
       for (const skillId of result.skillsExercised) {
         if (!skillStats.has(skillId)) {
-          skillStats.set(skillId, { attempts: 0, correct: 0, responseTimes: [] })
+          skillStats.set(skillId, {
+            attempts: 0,
+            correct: 0,
+            responseTimes: [],
+          })
         }
         const stats = skillStats.get(skillId)!
         stats.attempts++

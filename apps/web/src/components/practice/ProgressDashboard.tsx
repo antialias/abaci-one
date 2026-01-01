@@ -239,7 +239,13 @@ function SkillDistributionDisplay({ distribution, isDark }: SkillDistributionDis
           >
             Mastered
           </span>
-          <div className={css({ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' })}>
+          <div
+            className={css({
+              display: 'flex',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+            })}
+          >
             {renderBadge('strong', distribution.strong)}
             {renderBadge('stale', distribution.stale)}
           </div>
@@ -267,7 +273,13 @@ function SkillDistributionDisplay({ distribution, isDark }: SkillDistributionDis
           >
             In Progress
           </span>
-          <div className={css({ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' })}>
+          <div
+            className={css({
+              display: 'flex',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+            })}
+          >
             {renderBadge('developing', distribution.developing)}
             {renderBadge('weak', distribution.weak)}
           </div>
@@ -295,7 +307,13 @@ function SkillDistributionDisplay({ distribution, isDark }: SkillDistributionDis
           >
             Not Started
           </span>
-          <div className={css({ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' })}>
+          <div
+            className={css({
+              display: 'flex',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+            })}
+          >
             {renderBadge('unassessed', distribution.unassessed)}
           </div>
         </div>

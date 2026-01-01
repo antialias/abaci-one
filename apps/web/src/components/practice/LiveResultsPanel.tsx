@@ -390,7 +390,13 @@ export function LiveResultsPanel({
           backgroundColor: isDark ? 'gray.850' : 'gray.50',
         })}
       >
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '0.75rem' })}>
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+          })}
+        >
           {/* Progress */}
           <span
             className={css({

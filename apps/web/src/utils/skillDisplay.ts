@@ -64,7 +64,10 @@ export function getCategoryDisplayName(categoryId: string): string {
  * parseSkillId("fiveComplements.4=5-1") // { category: "fiveComplements", shortKey: "4=5-1" }
  * parseSkillId("noCategory")             // { category: "", shortKey: "noCategory" }
  */
-export function parseSkillId(fullSkillId: string): { category: string; shortKey: string } {
+export function parseSkillId(fullSkillId: string): {
+  category: string
+  shortKey: string
+} {
   const dotIndex = fullSkillId.indexOf('.')
   if (dotIndex === -1) {
     return { category: '', shortKey: fullSkillId }

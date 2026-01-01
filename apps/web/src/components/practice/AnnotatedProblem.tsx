@@ -192,7 +192,13 @@ function CollapsedProblemDisplay({
           marginY: '0.125rem',
         })}
       />
-      <div className={css({ display: 'flex', alignItems: 'center', gap: '0.25rem' })}>
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+        })}
+      >
         <span
           className={css({
             color: isCorrect

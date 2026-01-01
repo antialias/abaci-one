@@ -819,7 +819,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             const validation = await validateSessionShare(shareToken)
             if (!validation.valid) {
               console.log(`⚠️ Share token validation failed: ${validation.error}`)
-              socket.emit('observe-error', { error: validation.error || 'Invalid share link' })
+              socket.emit('observe-error', {
+                error: validation.error || 'Invalid share link',
+              })
               return
             }
 
@@ -856,7 +858,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               console.log(
                 `⚠️ Observation denied - ${observerId} not authorized for player ${playerId}`
               )
-              socket.emit('observe-error', { error: 'Not authorized to observe this session' })
+              socket.emit('observe-error', {
+                error: 'Not authorized to observe this session',
+              })
               return
             }
           }
@@ -871,7 +875,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           socket.to(`session:${sessionId}`).emit('observer-joined', { observerId })
         } catch (error) {
           console.error('Error starting session observation:', error)
-          socket.emit('observe-error', { error: 'Failed to start observation' })
+          socket.emit('observe-error', {
+            error: 'Failed to start observation',
+          })
         }
       }
     )
@@ -1083,7 +1089,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       try {
         const session = getRemoteCameraSession(sessionId)
         if (!session) {
-          socket.emit('remote-camera:error', { error: 'Invalid or expired session' })
+          socket.emit('remote-camera:error', {
+            error: 'Invalid or expired session',
+          })
           return
         }
 
@@ -1104,7 +1112,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         })
       } catch (error) {
         console.error('Error joining remote camera session:', error)
-        socket.emit('remote-camera:error', { error: 'Failed to join session' })
+        socket.emit('remote-camera:error', {
+          error: 'Failed to join session',
+        })
       }
     })
 
@@ -1113,7 +1123,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       try {
         const session = getRemoteCameraSession(sessionId)
         if (!session) {
-          socket.emit('remote-camera:error', { error: 'Invalid or expired session' })
+          socket.emit('remote-camera:error', {
+            error: 'Invalid or expired session',
+          })
           return
         }
 
@@ -1130,22 +1142,28 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
-    // Remote Camera: Phone sends cropped frame to desktop
+    // Remote Camera: Phone sends frame to desktop (raw or cropped)
     socket.on(
       'remote-camera:frame',
       ({
         sessionId,
         imageData,
         timestamp,
+        mode,
+        videoDimensions,
       }: {
         sessionId: string
         imageData: string // Base64 JPEG
         timestamp: number
+        mode?: 'raw' | 'cropped'
+        videoDimensions?: { width: number; height: number }
       }) => {
         // Forward frame to desktop (all other sockets in the room)
         socket.to(`remote-camera:${sessionId}`).emit('remote-camera:frame', {
           imageData,
           timestamp,
+          mode,
+          videoDimensions,
         })
       }
     )
@@ -1159,7 +1177,12 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         columnCount,
       }: {
         sessionId: string
-        corners: { topLeft: { x: number; y: number }; topRight: { x: number; y: number }; bottomRight: { x: number; y: number }; bottomLeft: { x: number; y: number } }
+        corners: {
+          topLeft: { x: number; y: number }
+          topRight: { x: number; y: number }
+          bottomRight: { x: number; y: number }
+          bottomLeft: { x: number; y: number }
+        }
         columnCount: number
       }) => {
         // Forward calibration data to desktop
@@ -1167,6 +1190,41 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           corners,
           columnCount,
         })
+      }
+    )
+
+    // Remote Camera: Desktop sets frame mode (raw = uncropped, cropped = use calibration)
+    socket.on(
+      'remote-camera:set-mode',
+      ({ sessionId, mode }: { sessionId: string; mode: 'raw' | 'cropped' }) => {
+        // Forward mode change to phone
+        socket.to(`remote-camera:${sessionId}`).emit('remote-camera:set-mode', {
+          mode,
+        })
+        console.log(`🖥️ Desktop set remote camera mode to: ${mode}`)
+      }
+    )
+
+    // Remote Camera: Desktop sends calibration corners to phone
+    socket.on(
+      'remote-camera:set-calibration',
+      ({
+        sessionId,
+        corners,
+      }: {
+        sessionId: string
+        corners: {
+          topLeft: { x: number; y: number }
+          topRight: { x: number; y: number }
+          bottomRight: { x: number; y: number }
+          bottomLeft: { x: number; y: number }
+        }
+      }) => {
+        // Forward calibration to phone
+        socket.to(`remote-camera:${sessionId}`).emit('remote-camera:set-calibration', {
+          corners,
+        })
+        console.log(`🖥️ Desktop set remote camera calibration`)
       }
     )
 

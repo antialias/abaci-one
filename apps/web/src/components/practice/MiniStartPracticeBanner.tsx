@@ -196,7 +196,9 @@ export function MiniStartPracticeBanner({
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           })}
-          style={{ color: isDark ? config.textColor.dark : config.textColor.light }}
+          style={{
+            color: isDark ? config.textColor.dark : config.textColor.light,
+          }}
         >
           {config.label}
         </div>

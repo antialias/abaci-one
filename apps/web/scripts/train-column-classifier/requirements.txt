@@ -1,0 +1,15 @@
+# Python dependencies for training the abacus column classifier
+#
+# Install with:
+#   pip install -r scripts/train-column-classifier/requirements.txt
+#
+# Or create a virtual environment:
+#   python -m venv .venv
+#   source .venv/bin/activate
+#   pip install -r scripts/train-column-classifier/requirements.txt
+
+tensorflow>=2.15.0
+tensorflowjs>=4.0.0
+numpy>=1.24.0
+Pillow>=10.0.0
+scikit-learn>=1.3.0

@@ -296,7 +296,13 @@ function ProblemDetailPopover({
             borderColor: isDark ? 'gray.700' : 'gray.200',
           })}
         >
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            })}
+          >
             <span
               className={css({
                 fontWeight: 'bold',
@@ -421,16 +427,31 @@ function ProblemDetailPopover({
           })}
         >
           {/* Part type */}
-          <div className={css({ display: 'flex', justifyContent: 'space-between' })}>
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'space-between',
+            })}
+          >
             <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>Part type:</span>
-            <span className={css({ fontWeight: 'bold', color: isDark ? 'gray.200' : 'gray.800' })}>
+            <span
+              className={css({
+                fontWeight: 'bold',
+                color: isDark ? 'gray.200' : 'gray.800',
+              })}
+            >
               {getPartTypeLabel(part.type)}
             </span>
           </div>
 
           {/* Response time */}
           {result && (
-            <div className={css({ display: 'flex', justifyContent: 'space-between' })}>
+            <div
+              className={css({
+                display: 'flex',
+                justifyContent: 'space-between',
+              })}
+            >
               <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
                 Response time:
               </span>
@@ -454,21 +475,39 @@ function ProblemDetailPopover({
           )}
 
           {/* Auto-pause threshold */}
-          <div className={css({ display: 'flex', justifyContent: 'space-between' })}>
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'space-between',
+            })}
+          >
             <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
               Pause threshold:
             </span>
-            <span className={css({ fontWeight: 'bold', color: isDark ? 'gray.200' : 'gray.800' })}>
+            <span
+              className={css({
+                fontWeight: 'bold',
+                color: isDark ? 'gray.200' : 'gray.800',
+              })}
+            >
               {formatMs(autoPauseInfo.threshold)}
             </span>
           </div>
 
           {/* Help used */}
           {result?.hadHelp && (
-            <div className={css({ display: 'flex', justifyContent: 'space-between' })}>
+            <div
+              className={css({
+                display: 'flex',
+                justifyContent: 'space-between',
+              })}
+            >
               <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>Help used:</span>
               <span
-                className={css({ fontWeight: 'bold', color: isDark ? 'orange.300' : 'orange.600' })}
+                className={css({
+                  fontWeight: 'bold',
+                  color: isDark ? 'orange.300' : 'orange.600',
+                })}
               >
                 Yes
               </span>
@@ -477,12 +516,20 @@ function ProblemDetailPopover({
 
           {/* Abacus used */}
           {result?.usedOnScreenAbacus && (
-            <div className={css({ display: 'flex', justifyContent: 'space-between' })}>
+            <div
+              className={css({
+                display: 'flex',
+                justifyContent: 'space-between',
+              })}
+            >
               <span className={css({ color: isDark ? 'gray.400' : 'gray.600' })}>
                 On-screen abacus:
               </span>
               <span
-                className={css({ fontWeight: 'bold', color: isDark ? 'blue.300' : 'blue.600' })}
+                className={css({
+                  fontWeight: 'bold',
+                  color: isDark ? 'blue.300' : 'blue.600',
+                })}
               >
                 Used
               </span>
@@ -501,7 +548,13 @@ function ProblemDetailPopover({
               >
                 Skills:
               </span>
-              <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.25rem',
+                })}
+              >
                 {result.skillsExercised.map((skill) => (
                   <span
                     key={skill}

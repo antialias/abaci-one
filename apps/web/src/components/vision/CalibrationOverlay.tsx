@@ -119,10 +119,22 @@ export function CalibrationOverlay({
     const sideMargin = 0.15
     const topInset = 0.03 // Make top slightly narrower than bottom for perspective
     return {
-      topLeft: { x: videoWidth * (sideMargin + topInset), y: videoHeight * topMargin },
-      topRight: { x: videoWidth * (1 - sideMargin - topInset), y: videoHeight * topMargin },
-      bottomLeft: { x: videoWidth * sideMargin, y: videoHeight * (1 - bottomMargin) },
-      bottomRight: { x: videoWidth * (1 - sideMargin), y: videoHeight * (1 - bottomMargin) },
+      topLeft: {
+        x: videoWidth * (sideMargin + topInset),
+        y: videoHeight * topMargin,
+      },
+      topRight: {
+        x: videoWidth * (1 - sideMargin - topInset),
+        y: videoHeight * topMargin,
+      },
+      bottomLeft: {
+        x: videoWidth * sideMargin,
+        y: videoHeight * (1 - bottomMargin),
+      },
+      bottomRight: {
+        x: videoWidth * (1 - sideMargin),
+        y: videoHeight * (1 - bottomMargin),
+      },
     }
   }
 
@@ -212,7 +224,10 @@ export function CalibrationOverlay({
         const clampedDy = Math.max(-minY, Math.min(videoHeight - maxY, dy))
 
         setCorners({
-          topLeft: { x: startCorners.topLeft.x + clampedDx, y: startCorners.topLeft.y + clampedDy },
+          topLeft: {
+            x: startCorners.topLeft.x + clampedDx,
+            y: startCorners.topLeft.y + clampedDy,
+          },
           topRight: {
             x: startCorners.topRight.x + clampedDx,
             y: startCorners.topRight.y + clampedDy,
@@ -433,7 +448,10 @@ export function CalibrationOverlay({
             borderRadius: 'full',
             cursor: 'move',
             transform: 'translate(-50%, -50%)',
-            _hover: { bg: 'green.300', transform: 'translate(-50%, -50%) scale(1.2)' },
+            _hover: {
+              bg: 'green.300',
+              transform: 'translate(-50%, -50%) scale(1.2)',
+            },
           })}
           style={{
             left: point.x,

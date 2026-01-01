@@ -336,7 +336,12 @@ function processSkills(
   for (const problem of problemHistory) {
     for (const skillId of problem.skillsExercised) {
       if (!skillStats.has(skillId)) {
-        skillStats.set(skillId, { problems: [], attempts: 0, correct: 0, responseTimes: [] })
+        skillStats.set(skillId, {
+          problems: [],
+          attempts: 0,
+          correct: 0,
+          responseTimes: [],
+        })
       }
       const stats = skillStats.get(skillId)!
       stats.problems.push(problem)
@@ -1688,13 +1693,19 @@ function SkillsTab({
     const byCategory = new Map<string, { attention: number; assessment: number }>()
     for (const { skill } of skillsNeedingAttention) {
       const category = getCategoryFromSkillId(skill.skillId)
-      const current = byCategory.get(category.id) ?? { attention: 0, assessment: 0 }
+      const current = byCategory.get(category.id) ?? {
+        attention: 0,
+        assessment: 0,
+      }
       current.attention++
       byCategory.set(category.id, current)
     }
     for (const skill of needsAssessment) {
       const category = getCategoryFromSkillId(skill.skillId)
-      const current = byCategory.get(category.id) ?? { attention: 0, assessment: 0 }
+      const current = byCategory.get(category.id) ?? {
+        attention: 0,
+        assessment: 0,
+      }
       current.assessment++
       byCategory.set(category.id, current)
     }

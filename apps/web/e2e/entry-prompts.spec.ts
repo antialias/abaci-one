@@ -21,7 +21,11 @@ import { expect, test, type APIRequestContext } from '@playwright/test'
 async function getOrCreateClassroom(
   request: APIRequestContext,
   name: string
-): Promise<{ id: string; code: string; entryPromptExpiryMinutes: number | null }> {
+): Promise<{
+  id: string
+  code: string
+  entryPromptExpiryMinutes: number | null
+}> {
   // First try to get existing classroom
   const getRes = await request.get('/api/classrooms/mine')
   if (getRes.ok()) {

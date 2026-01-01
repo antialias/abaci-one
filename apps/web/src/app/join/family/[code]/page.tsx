@@ -149,7 +149,12 @@ export default function JoinFamilyPage({ params }: { params: { code: string } })
                 textAlign: 'center',
               })}
             >
-              <span className={css({ color: isDark ? 'gray.400' : 'gray.500', fontSize: '14px' })}>
+              <span
+                className={css({
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  fontSize: '14px',
+                })}
+              >
                 Family Code:
               </span>
               <div
@@ -178,7 +183,12 @@ export default function JoinFamilyPage({ params }: { params: { code: string } })
                   marginBottom: '16px',
                 })}
               >
-                <p className={css({ color: isDark ? 'red.300' : 'red.600', fontSize: '14px' })}>
+                <p
+                  className={css({
+                    color: isDark ? 'red.300' : 'red.600',
+                    fontSize: '14px',
+                  })}
+                >
                   {error}
                 </p>
               </div>

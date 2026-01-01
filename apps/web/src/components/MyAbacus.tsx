@@ -196,8 +196,13 @@ export function MyAbacus() {
     }
 
     const calculateScale = () => {
-      const scale = calculateEffectiveScaleFactor(dock.element, dock.columns ?? 5)
-      setAutoScaleFactor(scale)
+      // Use queueMicrotask to defer flushSync call outside React's render cycle
+      // This avoids the "flushSync was called from inside a lifecycle method" warning
+      queueMicrotask(() => {
+        if (!dock?.element) return
+        const scale = calculateEffectiveScaleFactor(dock.element, dock.columns ?? 5)
+        setAutoScaleFactor(scale)
+      })
     }
 
     // Initial calculation

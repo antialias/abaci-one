@@ -38,7 +38,10 @@ const START_TO_ABACUS_MESSAGES: TransitionMessage[] = [
 
 const ABACUS_TO_VISUALIZATION_MESSAGES: TransitionMessage[] = [
   { headline: 'Mental Math Time!', subtitle: 'Put your abacus aside' },
-  { headline: 'Visualization Mode', subtitle: 'Picture the beads in your mind' },
+  {
+    headline: 'Visualization Mode',
+    subtitle: 'Picture the beads in your mind',
+  },
   { headline: 'Abacus Break', subtitle: 'Set it down gently' },
   { headline: 'Mind Over Beads', subtitle: 'Time to imagine' },
   { headline: 'Close Your Eyes...', subtitle: 'See the beads in your head' },

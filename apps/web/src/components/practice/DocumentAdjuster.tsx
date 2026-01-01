@@ -412,7 +412,13 @@ export function DocumentAdjuster({
           overflow: 'auto',
         })}
       >
-        <div className={css({ color: 'gray.400', fontSize: 'sm', textAlign: 'center' })}>
+        <div
+          className={css({
+            color: 'gray.400',
+            fontSize: 'sm',
+            textAlign: 'center',
+          })}
+        >
           Drag corners to adjust crop area
         </div>
 

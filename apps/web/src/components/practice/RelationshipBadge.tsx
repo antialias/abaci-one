@@ -71,7 +71,11 @@ const RELATIONSHIP_CONFIGS: Record<ViewerRelationType, RelationshipConfig> = {
     description: 'Present in your classroom',
     color: {
       light: { bg: 'emerald.100', border: 'emerald.300', icon: 'emerald.600' },
-      dark: { bg: 'emerald.900/60', border: 'emerald.700', icon: 'emerald.400' },
+      dark: {
+        bg: 'emerald.900/60',
+        border: 'emerald.700',
+        icon: 'emerald.400',
+      },
     },
   },
   none: {

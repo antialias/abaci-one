@@ -288,7 +288,13 @@ export default function JoinClassroomPage({ params }: { params: { code: string }
                   marginBottom: '24px',
                 })}
               >
-                <div className={css({ display: 'flex', alignItems: 'center', gap: '12px' })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                  })}
+                >
                   <span className={css({ fontSize: '32px' })}>🏫</span>
                   <div>
                     <p
@@ -328,7 +334,13 @@ export default function JoinClassroomPage({ params }: { params: { code: string }
                 >
                   Select a child to enroll:
                 </label>
-                <div className={css({ display: 'flex', flexDirection: 'column', gap: '8px' })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                  })}
+                >
                   {children.map((child) => (
                     <button
                       key={child.id}
@@ -386,12 +398,18 @@ export default function JoinClassroomPage({ params }: { params: { code: string }
                 })}
               >
                 <span
-                  className={css({ color: isDark ? 'gray.400' : 'gray.600', fontSize: '14px' })}
+                  className={css({
+                    color: isDark ? 'gray.400' : 'gray.600',
+                    fontSize: '14px',
+                  })}
                 >
                   Enrolling:
                 </span>{' '}
                 <span
-                  className={css({ fontWeight: 'medium', color: isDark ? 'white' : 'gray.900' })}
+                  className={css({
+                    fontWeight: 'medium',
+                    color: isDark ? 'white' : 'gray.900',
+                  })}
                 >
                   {children[0].name}
                 </span>

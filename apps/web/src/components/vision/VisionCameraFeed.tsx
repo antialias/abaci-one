@@ -190,10 +190,22 @@ export function VisionCameraFeed({
 
       // Scale corners to display coordinates
       const displayCorners = {
-        topLeft: { x: corners.topLeft.x * scaleX, y: corners.topLeft.y * scaleY },
-        topRight: { x: corners.topRight.x * scaleX, y: corners.topRight.y * scaleY },
-        bottomLeft: { x: corners.bottomLeft.x * scaleX, y: corners.bottomLeft.y * scaleY },
-        bottomRight: { x: corners.bottomRight.x * scaleX, y: corners.bottomRight.y * scaleY },
+        topLeft: {
+          x: corners.topLeft.x * scaleX,
+          y: corners.topLeft.y * scaleY,
+        },
+        topRight: {
+          x: corners.topRight.x * scaleX,
+          y: corners.topRight.y * scaleY,
+        },
+        bottomLeft: {
+          x: corners.bottomLeft.x * scaleX,
+          y: corners.bottomLeft.y * scaleY,
+        },
+        bottomRight: {
+          x: corners.bottomRight.x * scaleX,
+          y: corners.bottomRight.y * scaleY,
+        },
       }
 
       // Draw quadrilateral border

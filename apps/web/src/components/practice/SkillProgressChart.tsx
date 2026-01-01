@@ -8,7 +8,12 @@ const ReactECharts = dynamic(() => import('echarts-for-react'), {
   ssr: false,
   loading: () => (
     <div
-      style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      style={{
+        height: '200px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
     >
       Loading chart...
     </div>
@@ -471,7 +476,10 @@ function formatWindowScope(ctx: WindowContext, snapshots: SessionSnapshot[]): st
       return 'since you started'
     }
     // Otherwise reference the start date
-    const startStr = firstDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    const startStr = firstDate.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    })
     return `since ${startStr}`
   }
 
@@ -937,7 +945,10 @@ export function SkillProgressChart({
     const dates = snapshots.map((s) =>
       s.sessionId === 'current'
         ? 'Today'
-        : s.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        : s.date.toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+          })
     )
 
     // Convert to percentages for 100% stacked
@@ -1008,7 +1019,12 @@ export function SkillProgressChart({
           color: isDark ? '#e5e7eb' : '#1f2937',
         },
         formatter: (
-          params: Array<{ seriesName: string; value: number; color: string; marker: string }>
+          params: Array<{
+            seriesName: string
+            value: number
+            color: string
+            marker: string
+          }>
         ) => {
           const idx = (params[0] as unknown as { dataIndex: number }).dataIndex
           const snapshot = snapshots[idx]
@@ -1089,7 +1105,9 @@ export function SkillProgressChart({
           formatter: '{value}%',
         },
         axisLine: { show: false },
-        splitLine: { lineStyle: { color: isDark ? '#374151' : '#e5e7eb', type: 'dashed' } },
+        splitLine: {
+          lineStyle: { color: isDark ? '#374151' : '#e5e7eb', type: 'dashed' },
+        },
       },
       series,
     }

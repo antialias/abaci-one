@@ -332,7 +332,14 @@ export function SessionObserverView({
           gap: '12px',
         })}
       >
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 })}>
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            minWidth: 0,
+          })}
+        >
           <span
             className={css({
               width: '40px',
@@ -406,7 +413,14 @@ export function SessionObserverView({
           </div>
         </div>
 
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 })}>
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexShrink: 0,
+          })}
+        >
           {onRequestFullscreen && (
             <button
               type="button"
@@ -822,7 +836,13 @@ export function SessionObserverView({
 
         {/* Teacher controls: pause/resume and dock abaci (hidden for view-only observers) */}
         {!isViewOnly && (
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            })}
+          >
             {/* Pause/Resume button */}
             {isObserving && (
               <button

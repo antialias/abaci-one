@@ -1658,7 +1658,11 @@ export function ActiveSession({
         {currentSlot && (
           <div
             data-element="purpose-retry-container"
-            className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            })}
           >
             {/* Retry indicator badge */}
             {inRetryEpoch && (

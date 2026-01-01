@@ -539,7 +539,10 @@ CV.approxPolyDP = (contour, epsilon) => {
       right_slice.end_index += len
     }
 
-    stack.push({ start_index: right_slice.start_index, end_index: right_slice.end_index })
+    stack.push({
+      start_index: right_slice.start_index,
+      end_index: right_slice.end_index,
+    })
     stack.push({ start_index: slice.start_index, end_index: slice.end_index })
   }
 
@@ -583,8 +586,14 @@ CV.approxPolyDP = (contour, epsilon) => {
       right_slice.end_index = slice.end_index
       slice.end_index = right_slice.start_index
 
-      stack.push({ start_index: right_slice.start_index, end_index: right_slice.end_index })
-      stack.push({ start_index: slice.start_index, end_index: slice.end_index })
+      stack.push({
+        start_index: right_slice.start_index,
+        end_index: right_slice.end_index,
+      })
+      stack.push({
+        start_index: slice.start_index,
+        end_index: slice.end_index,
+      })
     }
   }
 

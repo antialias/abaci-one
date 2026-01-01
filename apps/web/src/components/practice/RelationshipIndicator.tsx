@@ -49,7 +49,11 @@ const RELATIONSHIP_BADGES: Record<string, RelationshipBadge> = {
     label: 'In Class',
     color: {
       light: { bg: 'emerald.50', text: 'emerald.700', border: 'emerald.200' },
-      dark: { bg: 'emerald.900/40', text: 'emerald.300', border: 'emerald.700' },
+      dark: {
+        bg: 'emerald.900/40',
+        text: 'emerald.300',
+        border: 'emerald.700',
+      },
     },
     pulse: true,
   },

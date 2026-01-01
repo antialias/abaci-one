@@ -225,7 +225,13 @@ export function EnterClassroomButton({ playerId, playerName }: EnterClassroomBut
                         marginBottom: '8px',
                       })}
                     >
-                      <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
+                      <div
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        })}
+                      >
                         <span
                           className={css({
                             width: '8px',
@@ -257,7 +263,9 @@ export function EnterClassroomButton({ playerId, playerName }: EnterClassroomBut
                           borderRadius: '6px',
                           fontSize: '0.75rem',
                           cursor: 'pointer',
-                          _hover: { backgroundColor: isDark ? 'gray.600' : 'gray.300' },
+                          _hover: {
+                            backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                          },
                           _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                         })}
                       >

@@ -169,7 +169,9 @@ export function AddStudentByFamilyCodeModal({
                   fontSize: '1rem',
                   fontWeight: 'medium',
                   cursor: 'pointer',
-                  _hover: { backgroundColor: isDark ? 'green.600' : 'green.600' },
+                  _hover: {
+                    backgroundColor: isDark ? 'green.600' : 'green.600',
+                  },
                 })}
               >
                 Done
@@ -286,7 +288,9 @@ export function AddStudentByFamilyCodeModal({
                       fontSize: '1rem',
                       fontWeight: 'medium',
                       cursor: 'pointer',
-                      _hover: { backgroundColor: isDark ? 'gray.600' : 'gray.300' },
+                      _hover: {
+                        backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                      },
                       _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                     })}
                   >
@@ -308,7 +312,9 @@ export function AddStudentByFamilyCodeModal({
                     fontSize: '1rem',
                     fontWeight: 'medium',
                     cursor: 'pointer',
-                    _hover: { backgroundColor: isDark ? 'blue.600' : 'blue.600' },
+                    _hover: {
+                      backgroundColor: isDark ? 'blue.600' : 'blue.600',
+                    },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                   })}
                 >

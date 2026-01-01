@@ -220,7 +220,13 @@ export function OfflineSessionModal({
             >
               What types of practice were done?
             </label>
-            <div className={css({ display: 'flex', flexDirection: 'column', gap: 2 })}>
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              })}
+            >
               {PRACTICE_TYPES.map((type) => {
                 const isSelected = selectedTypes.has(type.id)
                 return (

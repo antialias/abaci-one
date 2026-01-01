@@ -9,6 +9,9 @@ import {
 } from '@/lib/vision/perspectiveTransform'
 import type { QuadCorners } from '@/types/vision'
 
+/** Frame mode: raw sends uncropped frames, cropped applies calibration */
+export type FrameMode = 'raw' | 'cropped'
+
 interface UseRemoteCameraPhoneOptions {
   /** Target frame rate (default 10) */
   targetFps?: number
@@ -16,6 +19,8 @@ interface UseRemoteCameraPhoneOptions {
   jpegQuality?: number
   /** Target width for cropped image (default 400) */
   targetWidth?: number
+  /** Target width for raw frames (default 640) */
+  rawWidth?: number
 }
 
 interface UseRemoteCameraPhoneReturn {
@@ -23,18 +28,24 @@ interface UseRemoteCameraPhoneReturn {
   isConnected: boolean
   /** Whether currently sending frames */
   isSending: boolean
+  /** Current frame mode (raw or cropped) */
+  frameMode: FrameMode
+  /** Current calibration from desktop (if any) */
+  desktopCalibration: QuadCorners | null
   /** Error message if any */
   error: string | null
   /** Connect to a session */
   connect: (sessionId: string) => void
   /** Disconnect from session */
   disconnect: () => void
-  /** Start sending frames with current calibration */
-  startSending: (video: HTMLVideoElement, calibration: QuadCorners) => void
+  /** Start sending frames */
+  startSending: (video: HTMLVideoElement, calibration?: QuadCorners) => void
   /** Stop sending frames */
   stopSending: () => void
-  /** Update calibration while sending */
+  /** Update calibration while sending (from phone UI) */
   updateCalibration: (calibration: QuadCorners) => void
+  /** Set frame mode locally */
+  setFrameMode: (mode: FrameMode) => void
 }
 
 /**
@@ -42,17 +53,20 @@ interface UseRemoteCameraPhoneReturn {
  *
  * Handles connecting to a session, capturing video frames,
  * applying perspective crop, and sending to the desktop.
+ * Supports receiving calibration commands from the desktop.
  */
 export function useRemoteCameraPhone(
   options: UseRemoteCameraPhoneOptions = {}
 ): UseRemoteCameraPhoneReturn {
-  const { targetFps = 10, jpegQuality = 0.8, targetWidth = 400 } = options
+  const { targetFps = 10, jpegQuality = 0.8, targetWidth = 400, rawWidth = 640 } = options
 
   const [isSocketConnected, setIsSocketConnected] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [opencvReady, setOpencvReady] = useState(false)
+  const [frameMode, setFrameModeState] = useState<FrameMode>('raw')
+  const [desktopCalibration, setDesktopCalibration] = useState<QuadCorners | null>(null)
 
   // Use refs for values that need to be accessed in animation loop
   // to avoid stale closure issues
@@ -64,6 +78,7 @@ export function useRemoteCameraPhone(
   const calibrationRef = useRef<QuadCorners | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const lastFrameTimeRef = useRef(0)
+  const frameModeRef = useRef<FrameMode>('raw')
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -73,6 +88,10 @@ export function useRemoteCameraPhone(
   useEffect(() => {
     opencvReadyRef.current = opencvReady
   }, [opencvReady])
+
+  useEffect(() => {
+    frameModeRef.current = frameMode
+  }, [frameMode])
 
   // Initialize socket connection
   useEffect(() => {
@@ -121,10 +140,31 @@ export function useRemoteCameraPhone(
       isConnectedRef.current = false
     }
 
+    // Handle mode change from desktop
+    const handleSetMode = ({ mode }: { mode: FrameMode }) => {
+      console.log('[RemoteCameraPhone] Desktop set mode to:', mode)
+      setFrameModeState(mode)
+      frameModeRef.current = mode
+    }
+
+    // Handle calibration from desktop
+    const handleSetCalibration = ({ corners }: { corners: QuadCorners }) => {
+      console.log('[RemoteCameraPhone] Received calibration from desktop')
+      setDesktopCalibration(corners)
+      calibrationRef.current = corners
+      // Auto-switch to cropped mode when calibration is received
+      setFrameModeState('cropped')
+      frameModeRef.current = 'cropped'
+    }
+
     socket.on('remote-camera:error', handleError)
+    socket.on('remote-camera:set-mode', handleSetMode)
+    socket.on('remote-camera:set-calibration', handleSetCalibration)
 
     return () => {
       socket.off('remote-camera:error', handleError)
+      socket.off('remote-camera:set-mode', handleSetMode)
+      socket.off('remote-camera:set-calibration', handleSetCalibration)
     }
   }, [isSocketConnected]) // Re-run when socket connects
 
@@ -142,9 +182,37 @@ export function useRemoteCameraPhone(
       return rectifyQuadrilateralToBase64(video, quad, {
         outputWidth: targetWidth,
         jpegQuality,
+        rotate180: false, // Phone camera: no rotation needed, direct mapping
       })
     },
     [targetWidth, jpegQuality]
+  )
+
+  /**
+   * Capture raw (uncropped) frame as base64 JPEG
+   */
+  const captureRawFrame = useCallback(
+    (video: HTMLVideoElement): string | null => {
+      try {
+        const canvas = document.createElement('canvas')
+        // Scale down to target width while maintaining aspect ratio
+        const scale = rawWidth / video.videoWidth
+        canvas.width = rawWidth
+        canvas.height = Math.round(video.videoHeight * scale)
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return null
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality)
+        // Remove the data:image/jpeg;base64, prefix
+        return dataUrl.split(',')[1]
+      } catch (err) {
+        console.error('[RemoteCameraPhone] Failed to capture raw frame:', err)
+        return null
+      }
+    },
+    [rawWidth, jpegQuality]
   )
 
   /**
@@ -157,8 +225,16 @@ export function useRemoteCameraPhone(
     const socket = socketRef.current
     const isConnected = isConnectedRef.current
     const cvReady = opencvReadyRef.current
+    const mode = frameModeRef.current
 
-    if (!video || !calibration || !sessionId || !socket || !isConnected || !cvReady) {
+    // For raw mode, we don't need calibration or OpenCV
+    if (!video || !sessionId || !socket || !isConnected) {
+      animationFrameRef.current = requestAnimationFrame(captureFrame)
+      return
+    }
+
+    // For cropped mode, we need calibration and OpenCV
+    if (mode === 'cropped' && (!calibration || !cvReady)) {
       animationFrameRef.current = requestAnimationFrame(captureFrame)
       return
     }
@@ -173,18 +249,27 @@ export function useRemoteCameraPhone(
 
     lastFrameTimeRef.current = now
 
-    // Crop and encode frame
-    const imageData = cropToQuad(video, calibration)
+    // Capture frame based on mode
+    let imageData: string | null = null
+    if (mode === 'raw') {
+      imageData = captureRawFrame(video)
+    } else if (calibration) {
+      imageData = cropToQuad(video, calibration)
+    }
+
     if (imageData) {
       socket.emit('remote-camera:frame', {
         sessionId,
         imageData,
         timestamp: Date.now(),
+        mode, // Include mode so desktop knows what it's receiving
+        videoDimensions:
+          mode === 'raw' ? { width: video.videoWidth, height: video.videoHeight } : undefined,
       })
     }
 
     animationFrameRef.current = requestAnimationFrame(captureFrame)
-  }, [targetFps, cropToQuad])
+  }, [targetFps, cropToQuad, captureRawFrame])
 
   const connect = useCallback(
     (sessionId: string) => {
@@ -224,14 +309,16 @@ export function useRemoteCameraPhone(
   }, [])
 
   const startSending = useCallback(
-    (video: HTMLVideoElement, calibration: QuadCorners) => {
+    (video: HTMLVideoElement, calibration?: QuadCorners) => {
       if (!isConnected) {
         setError('Not connected to session')
         return
       }
 
       videoRef.current = video
-      calibrationRef.current = calibration
+      if (calibration) {
+        calibrationRef.current = calibration
+      }
       setIsSending(true)
 
       // Start capture loop
@@ -239,6 +326,11 @@ export function useRemoteCameraPhone(
     },
     [isConnected, captureFrame]
   )
+
+  const setFrameMode = useCallback((mode: FrameMode) => {
+    setFrameModeState(mode)
+    frameModeRef.current = mode
+  }, [])
 
   const stopSending = useCallback(() => {
     if (animationFrameRef.current) {
@@ -268,11 +360,14 @@ export function useRemoteCameraPhone(
   return {
     isConnected,
     isSending,
+    frameMode,
+    desktopCalibration,
     error,
     connect,
     disconnect,
     startSending,
     stopSending,
     updateCalibration,
+    setFrameMode,
   }
 }

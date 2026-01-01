@@ -49,7 +49,9 @@ export async function POST(request: Request) {
       const canRecord = await canPerformAction(userId, playerResult.playerId, 'start-session')
       if (!canRecord) {
         return NextResponse.json(
-          { error: `Not authorized to record stats for player ${playerResult.playerId}` },
+          {
+            error: `Not authorized to record stats for player ${playerResult.playerId}`,
+          },
           { status: 403 }
         )
       }

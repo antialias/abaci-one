@@ -88,7 +88,14 @@ export async function getPlayerAccess(viewerId: string, playerId: string): Promi
     accessLevel = 'teacher-enrolled'
   }
 
-  return { playerId, accessLevel, isParent, isTeacher, isPresent, classroomId: classroom?.id }
+  return {
+    playerId,
+    accessLevel,
+    isParent,
+    isTeacher,
+    isPresent,
+    classroomId: classroom?.id,
+  }
 }
 
 /**

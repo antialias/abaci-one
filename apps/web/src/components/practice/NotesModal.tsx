@@ -1080,7 +1080,13 @@ function NotesTab({
               },
             })}
           />
-          <div className={css({ display: 'flex', gap: '8px', justifyContent: 'flex-end' })}>
+          <div
+            className={css({
+              display: 'flex',
+              gap: '8px',
+              justifyContent: 'flex-end',
+            })}
+          >
             <button
               type="button"
               onClick={onCancel}

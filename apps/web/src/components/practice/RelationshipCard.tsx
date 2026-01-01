@@ -124,7 +124,13 @@ export function RelationshipCard({ playerId, className, compact = false }: Relat
         {/* Classrooms Section */}
         {stakeholders.enrolledClassrooms.length > 0 && (
           <StakeholderSection title="Classrooms" icon="🏫" isDark={isDark} compact={compact}>
-            <div className={css({ display: 'flex', flexDirection: 'column', gap: '6px' })}>
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+              })}
+            >
               {stakeholders.enrolledClassrooms.map((classroom) => (
                 <ClassroomRow
                   key={classroom.id}
@@ -141,7 +147,13 @@ export function RelationshipCard({ playerId, className, compact = false }: Relat
         {/* Pending Enrollments */}
         {stakeholders.pendingEnrollments.length > 0 && (
           <StakeholderSection title="Pending" icon="⌛" isDark={isDark} compact={compact}>
-            <div className={css({ display: 'flex', flexDirection: 'column', gap: '6px' })}>
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+              })}
+            >
               {stakeholders.pendingEnrollments.map((pending) => (
                 <PendingRow key={pending.id} pending={pending} isDark={isDark} compact={compact} />
               ))}
@@ -178,7 +190,12 @@ function ViewerRelationshipSection({
           title: 'Your Child',
           subtitle: 'You have full access to this student',
           color: {
-            light: { bg: 'blue.50', border: 'blue.200', text: 'blue.700', accent: 'blue.600' },
+            light: {
+              bg: 'blue.50',
+              border: 'blue.200',
+              text: 'blue.700',
+              accent: 'blue.600',
+            },
             dark: {
               bg: 'blue.900/40',
               border: 'blue.700',
@@ -235,8 +252,18 @@ function ViewerRelationshipSection({
           title: 'Student',
           subtitle: 'No direct relationship',
           color: {
-            light: { bg: 'gray.50', border: 'gray.200', text: 'gray.600', accent: 'gray.500' },
-            dark: { bg: 'gray.800', border: 'gray.700', text: 'gray.400', accent: 'gray.500' },
+            light: {
+              bg: 'gray.50',
+              border: 'gray.200',
+              text: 'gray.600',
+              accent: 'gray.500',
+            },
+            dark: {
+              bg: 'gray.800',
+              border: 'gray.700',
+              text: 'gray.400',
+              accent: 'gray.500',
+            },
           },
         }
     }
@@ -287,7 +314,9 @@ function ViewerRelationshipSection({
             fontSize: compact ? '0.9375rem' : '1rem',
             fontWeight: 'semibold',
           })}
-          style={{ color: `var(--colors-${colors.text.replace(/[./]/g, '-')})` }}
+          style={{
+            color: `var(--colors-${colors.text.replace(/[./]/g, '-')})`,
+          }}
         >
           {config.title}
         </div>
@@ -296,7 +325,10 @@ function ViewerRelationshipSection({
             fontSize: compact ? '0.75rem' : '0.8125rem',
             marginTop: '2px',
           })}
-          style={{ color: `var(--colors-${colors.text.replace(/[./]/g, '-')})`, opacity: 0.8 }}
+          style={{
+            color: `var(--colors-${colors.text.replace(/[./]/g, '-')})`,
+            opacity: 0.8,
+          }}
         >
           {config.subtitle}
         </div>
@@ -523,7 +555,13 @@ function ClassroomRow({ classroom, isPresent, isDark, compact }: ClassroomRowPro
             : 'var(--colors-gray-200)',
       }}
     >
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '2px' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '2px',
+        })}
+      >
         <div
           className={css({
             fontSize: compact ? '0.75rem' : '0.8125rem',
@@ -607,7 +645,13 @@ function PendingRow({ pending, isDark, compact }: PendingRowProps) {
         borderColor: isDark ? 'amber.800' : 'amber.200',
       })}
     >
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '2px' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '2px',
+        })}
+      >
         <div
           className={css({
             fontSize: compact ? '0.75rem' : '0.8125rem',

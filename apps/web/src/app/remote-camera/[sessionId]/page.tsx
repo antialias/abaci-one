@@ -3,27 +3,20 @@
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { VisionCameraFeed } from '@/components/vision/VisionCameraFeed'
-import { CalibrationOverlay } from '@/components/vision/CalibrationOverlay'
-import { useDeskViewCamera } from '@/hooks/useDeskViewCamera'
+import { usePhoneCamera } from '@/hooks/usePhoneCamera'
 import { useRemoteCameraPhone } from '@/hooks/useRemoteCameraPhone'
-import {
-  detectMarkers,
-  initArucoDetector,
-  loadAruco,
-  MARKER_IDS,
-} from '@/lib/vision/arucoDetection'
-import type { CalibrationGrid, QuadCorners } from '@/types/vision'
+import { detectMarkers, initArucoDetector, loadAruco } from '@/lib/vision/arucoDetection'
+import type { CalibrationGrid } from '@/types/vision'
 import { css } from '../../../../styled-system/css'
 
-type CalibrationMode = 'auto' | 'manual'
 type ConnectionStatus = 'connecting' | 'connected' | 'error' | 'expired'
 
 /**
  * Phone Camera Page
  *
  * Accessed by scanning QR code on desktop.
- * Captures video, performs calibration (auto or manual),
- * and sends cropped abacus frames to the desktop.
+ * Starts streaming immediately, auto-detects ArUco markers for cropping.
+ * Desktop can override with manual calibration.
  */
 export default function RemoteCameraPage() {
   const params = useParams<{ sessionId: string }>()
@@ -33,40 +26,66 @@ export default function RemoteCameraPage() {
   const [sessionStatus, setSessionStatus] = useState<ConnectionStatus>('connecting')
   const [sessionError, setSessionError] = useState<string | null>(null)
 
-  // Camera state
+  // Camera state - defaults to back camera (environment)
   const {
     isLoading: isCameraLoading,
     error: cameraError,
-    videoStream,
-    currentDevice,
-    requestCamera,
-    stopCamera,
-  } = useDeskViewCamera()
+    stream: videoStream,
+    facingMode,
+    isTorchOn,
+    isTorchAvailable,
+    availableDevices,
+    start: startCamera,
+    stop: stopCamera,
+    flipCamera,
+    toggleTorch,
+  } = usePhoneCamera({ initialFacingMode: 'environment' })
 
   // Remote camera connection
   const {
     isConnected,
     isSending,
+    frameMode,
+    desktopCalibration,
     error: connectionError,
     connect,
     disconnect,
     startSending,
     stopSending,
     updateCalibration,
+    setFrameMode,
   } = useRemoteCameraPhone()
 
-  // Calibration state
-  const [calibrationMode, setCalibrationMode] = useState<CalibrationMode>('auto')
+  // Auto-detection state
   const [calibration, setCalibration] = useState<CalibrationGrid | null>(null)
-  const [isCalibrating, setIsCalibrating] = useState(false)
   const [markersDetected, setMarkersDetected] = useState(0)
   const [arucoReady, setArucoReady] = useState(false)
+  const [isVideoReady, setIsVideoReady] = useState(false)
+
+  // Track if we're using desktop calibration (to show in UI)
+  const [usingDesktopCalibration, setUsingDesktopCalibration] = useState(false)
+
+  // Track if desktop is actively calibrating (has requested raw mode)
+  // When true, we don't auto-switch to cropped even if markers are detected
+  const [desktopIsCalibrating, setDesktopIsCalibrating] = useState(false)
+
+  // Track previous frame mode to detect changes (not just initial state)
+  const prevFrameModeRef = useRef<typeof frameMode | null>(null)
 
   // Video element ref
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 })
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 })
+
+  // Refs for cleanup functions (to avoid stale closures in unmount effect)
+  const stopSendingRef = useRef(stopSending)
+  const disconnectRef = useRef(disconnect)
+  const stopCameraRef = useRef(stopCamera)
+
+  // Keep refs in sync
+  useEffect(() => {
+    stopSendingRef.current = stopSending
+    disconnectRef.current = disconnect
+    stopCameraRef.current = stopCamera
+  }, [stopSending, disconnect, stopCamera])
 
   // Validate session on mount
   useEffect(() => {
@@ -114,40 +133,63 @@ export default function RemoteCameraPage() {
   // Request camera when connected
   useEffect(() => {
     if (isConnected && !videoStream && !isCameraLoading) {
-      requestCamera()
+      startCamera()
     }
-  }, [isConnected, videoStream, isCameraLoading, requestCamera])
+  }, [isConnected, videoStream, isCameraLoading, startCamera])
 
-  // Update container dimensions - run when isCalibrating changes too
+  // Handle video ready - start sending immediately
+  const handleVideoReady = useCallback(
+    (width: number, height: number) => {
+      setIsVideoReady(true)
+      // Start sending as soon as video is ready
+      if (isConnected && videoRef.current && !isSending) {
+        startSending(videoRef.current)
+      }
+    },
+    [isConnected, isSending, startSending]
+  )
+
+  // Also try to start sending when connection is established (if video already ready)
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+    if (isConnected && isVideoReady && videoRef.current && !isSending) {
+      startSending(videoRef.current)
+    }
+  }, [isConnected, isVideoReady, isSending, startSending])
 
-    const updateDimensions = () => {
-      const rect = container.getBoundingClientRect()
-      if (rect.width > 0 && rect.height > 0) {
-        setContainerDimensions({ width: rect.width, height: rect.height })
+  // Sync desktop calibration to local state
+  useEffect(() => {
+    if (desktopCalibration) {
+      const grid: CalibrationGrid = {
+        roi: {
+          x: Math.min(desktopCalibration.topLeft.x, desktopCalibration.bottomLeft.x),
+          y: Math.min(desktopCalibration.topLeft.y, desktopCalibration.topRight.y),
+          width:
+            Math.max(desktopCalibration.topRight.x, desktopCalibration.bottomRight.x) -
+            Math.min(desktopCalibration.topLeft.x, desktopCalibration.bottomLeft.x),
+          height:
+            Math.max(desktopCalibration.bottomLeft.y, desktopCalibration.bottomRight.y) -
+            Math.min(desktopCalibration.topLeft.y, desktopCalibration.topRight.y),
+        },
+        corners: desktopCalibration,
+        columnCount: 13,
+        columnDividers: Array.from({ length: 12 }, (_, i) => (i + 1) / 13),
+        rotation: 0,
+      }
+      setCalibration(grid)
+      setUsingDesktopCalibration(true)
+      setDesktopIsCalibrating(false) // Desktop finished calibrating
+      // Update the calibration for the sending loop
+      if (isSending) {
+        updateCalibration(desktopCalibration)
       }
     }
+  }, [desktopCalibration, isSending, updateCalibration])
 
-    // Initial update
-    updateDimensions()
-
-    // Also update after a short delay to handle layout settling
-    const timeoutId = setTimeout(updateDimensions, 100)
-
-    const resizeObserver = new ResizeObserver(updateDimensions)
-    resizeObserver.observe(container)
-
-    return () => {
-      clearTimeout(timeoutId)
-      resizeObserver.disconnect()
-    }
-  }, [isCalibrating]) // Re-run when calibration starts to ensure dimensions are fresh
-
-  // Auto-detect markers
+  // Auto-detect markers (always runs unless using desktop calibration)
   useEffect(() => {
-    if (calibrationMode !== 'auto' || !videoStream || !arucoReady || !videoRef.current) return
+    // Don't run auto-detection if using desktop calibration
+    if (usingDesktopCalibration) return
+    if (!videoStream || !arucoReady || !videoRef.current) return
 
     const video = videoRef.current
     let animationId: number
@@ -171,12 +213,23 @@ export default function RemoteCameraPage() {
                 Math.min(result.quadCorners.topLeft.y, result.quadCorners.topRight.y),
             },
             corners: result.quadCorners,
-            columnCount: 13, // Default column count
+            columnCount: 13,
             columnDividers: Array.from({ length: 12 }, (_, i) => (i + 1) / 13),
             rotation: 0,
           }
           setCalibration(grid)
+          // Update the calibration for the sending loop and switch to cropped mode
+          // BUT: don't switch to cropped if desktop is actively calibrating (they need raw frames)
+          if (isSending && !desktopIsCalibrating) {
+            updateCalibration(result.quadCorners)
+            setFrameMode('cropped')
+          }
         }
+        // Note: We intentionally do NOT clear calibration when markers are lost.
+        // Once calibration is set, it persists until:
+        // 1. New markers are detected (updates calibration)
+        // 2. Desktop sends a new calibration (override)
+        // 3. Desktop requests raw mode (for manual recalibration)
       }
 
       animationId = requestAnimationFrame(detectLoop)
@@ -187,49 +240,42 @@ export default function RemoteCameraPage() {
     return () => {
       if (animationId) cancelAnimationFrame(animationId)
     }
-  }, [calibrationMode, videoStream, arucoReady])
+  }, [
+    videoStream,
+    arucoReady,
+    isSending,
+    updateCalibration,
+    setFrameMode,
+    usingDesktopCalibration,
+    desktopIsCalibrating,
+  ])
 
-  // Start/stop sending based on calibration
+  // When frameMode CHANGES to 'raw' from 'cropped', mark desktop as calibrating
+  // This prevents auto-switching back to cropped when markers are detected
+  // We check prevFrameModeRef to avoid triggering on initial render
   useEffect(() => {
-    if (calibration && isConnected && videoRef.current && calibration.corners) {
-      startSending(videoRef.current, calibration.corners)
-    }
-  }, [calibration, isConnected, startSending])
+    const prevMode = prevFrameModeRef.current
+    prevFrameModeRef.current = frameMode
 
-  // Update calibration when corners change
-  const handleCornersChange = useCallback(
-    (corners: QuadCorners) => {
-      if (isSending) {
-        updateCalibration(corners)
+    // Only trigger when changing from cropped to raw (not on initial load)
+    if (frameMode === 'raw' && prevMode === 'cropped') {
+      // Desktop requested raw mode - they're calibrating
+      setDesktopIsCalibrating(true)
+      if (usingDesktopCalibration) {
+        setUsingDesktopCalibration(false)
+        setCalibration(null)
       }
-    },
-    [isSending, updateCalibration]
-  )
+    }
+  }, [frameMode, usingDesktopCalibration])
 
-  // Handle manual calibration complete
-  const handleCalibrationComplete = useCallback((grid: CalibrationGrid) => {
-    setCalibration(grid)
-    setIsCalibrating(false)
-  }, [])
-
-  // Handle calibration cancel
-  const handleCalibrationCancel = useCallback(() => {
-    setIsCalibrating(false)
-  }, [])
-
-  // Handle video ready
-  const handleVideoReady = useCallback((width: number, height: number) => {
-    setVideoDimensions({ width, height })
-  }, [])
-
-  // Cleanup on unmount
+  // Cleanup on unmount only (use refs to avoid stale closures)
   useEffect(() => {
     return () => {
-      stopSending()
-      disconnect()
-      stopCamera()
+      stopSendingRef.current()
+      disconnectRef.current()
+      stopCameraRef.current()
     }
-  }, [stopSending, disconnect, stopCamera])
+  }, [])
 
   // Render based on session status
   if (sessionStatus === 'connecting') {
@@ -321,27 +367,125 @@ export default function RemoteCameraPage() {
           className={css({
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
-            fontSize: 'sm',
+            gap: 3,
           })}
         >
-          <span
+          {/* Camera controls */}
+          {videoStream && (
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+              })}
+            >
+              {/* Flip camera button - only show if multiple cameras available */}
+              {availableDevices.length > 1 && (
+                <button
+                  type="button"
+                  onClick={flipCamera}
+                  className={css({
+                    p: 2,
+                    bg: 'gray.700',
+                    borderRadius: 'full',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    _hover: { bg: 'gray.600' },
+                  })}
+                  title={`Switch to ${facingMode === 'environment' ? 'front' : 'back'} camera`}
+                  data-action="flip-camera"
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" />
+                    <path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5" />
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="m18 22-3-3 3-3" />
+                    <path d="m6 2 3 3-3 3" />
+                  </svg>
+                </button>
+              )}
+
+              {/* Torch button - only show if available */}
+              {isTorchAvailable && (
+                <button
+                  type="button"
+                  onClick={toggleTorch}
+                  className={css({
+                    p: 2,
+                    bg: isTorchOn ? 'yellow.500' : 'gray.700',
+                    borderRadius: 'full',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: isTorchOn ? 'gray.900' : 'white',
+                    _hover: { bg: isTorchOn ? 'yellow.400' : 'gray.600' },
+                  })}
+                  title={isTorchOn ? 'Turn off flash' : 'Turn on flash'}
+                  data-action="toggle-torch"
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill={isTorchOn ? 'currentColor' : 'none'}
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Status indicator */}
+          <div
             className={css({
-              width: 2,
-              height: 2,
-              borderRadius: 'full',
-              bg: isConnected ? 'green.500' : 'yellow.500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              fontSize: 'sm',
             })}
-          />
-          <span className={css({ color: 'gray.400' })}>
-            {isConnected ? (isSending ? 'Streaming' : 'Connected') : 'Connecting...'}
-          </span>
+          >
+            <span
+              className={css({
+                width: 2,
+                height: 2,
+                borderRadius: 'full',
+                bg: isConnected ? (isSending ? 'green.500' : 'yellow.500') : 'red.500',
+              })}
+            />
+            <span className={css({ color: 'gray.400' })}>
+              {isConnected
+                ? isSending
+                  ? frameMode === 'raw'
+                    ? 'Streaming (Raw)'
+                    : 'Streaming (Cropped)'
+                  : 'Connected'
+                : 'Connecting...'}
+            </span>
+          </div>
         </div>
       </header>
 
       {/* Camera Feed */}
       <div
-        ref={containerRef}
         className={css({
           flex: 1,
           position: 'relative',
@@ -352,32 +496,12 @@ export default function RemoteCameraPage() {
           videoStream={videoStream}
           isLoading={isCameraLoading}
           calibration={calibration}
-          showCalibrationGrid={!!calibration && !isCalibrating}
+          showCalibrationGrid={!!calibration}
           videoRef={(el) => {
             videoRef.current = el
           }}
           onVideoReady={handleVideoReady}
-        >
-          {/* Manual calibration overlay */}
-          {isCalibrating &&
-            videoDimensions.width > 0 &&
-            videoDimensions.height > 0 &&
-            containerDimensions.width > 0 &&
-            containerDimensions.height > 0 && (
-              <CalibrationOverlay
-                columnCount={13}
-                videoWidth={videoDimensions.width}
-                videoHeight={videoDimensions.height}
-                containerWidth={containerDimensions.width}
-                containerHeight={containerDimensions.height}
-                initialCalibration={calibration}
-                onComplete={handleCalibrationComplete}
-                onCancel={handleCalibrationCancel}
-                videoElement={videoRef.current}
-                onCornersChange={handleCornersChange}
-              />
-            )}
-        </VisionCameraFeed>
+        />
 
         {/* Camera error overlay */}
         {cameraError && (
@@ -396,7 +520,7 @@ export default function RemoteCameraPage() {
               <p className={css({ color: 'red.400', mb: 4 })}>{cameraError}</p>
               <button
                 type="button"
-                onClick={() => requestCamera()}
+                onClick={() => startCamera()}
                 className={css({
                   px: 4,
                   py: 2,
@@ -415,7 +539,7 @@ export default function RemoteCameraPage() {
         )}
       </div>
 
-      {/* Controls */}
+      {/* Status Footer */}
       <div
         className={css({
           px: 4,
@@ -424,101 +548,39 @@ export default function RemoteCameraPage() {
           borderColor: 'gray.800',
         })}
       >
-        {/* Mode selector */}
-        <div className={css({ display: 'flex', gap: 2, mb: 3 })}>
-          <button
-            type="button"
-            onClick={() => setCalibrationMode('auto')}
-            className={css({
-              flex: 1,
-              px: 3,
-              py: 2,
-              borderRadius: 'lg',
-              fontWeight: 'medium',
-              border: 'none',
-              cursor: 'pointer',
-              bg: calibrationMode === 'auto' ? 'blue.600' : 'gray.700',
-              color: 'white',
-            })}
-          >
-            Auto (Markers)
-          </button>
-          <button
-            type="button"
-            onClick={() => setCalibrationMode('manual')}
-            className={css({
-              flex: 1,
-              px: 3,
-              py: 2,
-              borderRadius: 'lg',
-              fontWeight: 'medium',
-              border: 'none',
-              cursor: 'pointer',
-              bg: calibrationMode === 'manual' ? 'blue.600' : 'gray.700',
-              color: 'white',
-            })}
-          >
-            Manual
-          </button>
-        </div>
-
-        {/* Status */}
-        {calibrationMode === 'auto' && (
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              mb: 3,
-              p: 3,
-              bg: 'gray.800',
-              borderRadius: 'lg',
-            })}
-          >
-            <span className={css({ fontSize: 'lg' })}>
-              {markersDetected === 4 ? '✅' : '🔍'}
-            </span>
-            <div>
-              <p className={css({ fontWeight: 'medium' })}>
-                {markersDetected}/4 Markers Detected
-              </p>
-              <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
-                {calibration
-                  ? 'Calibrated - Streaming'
+        {/* Marker detection status */}
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            p: 3,
+            bg: 'gray.800',
+            borderRadius: 'lg',
+          })}
+        >
+          <span className={css({ fontSize: 'lg' })}>
+            {usingDesktopCalibration ? '🎯' : markersDetected === 4 ? '✅' : '🔍'}
+          </span>
+          <div>
+            <p className={css({ fontWeight: 'medium' })}>
+              {usingDesktopCalibration
+                ? 'Using Desktop Calibration'
+                : `${markersDetected}/4 Markers Detected`}
+            </p>
+            <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
+              {usingDesktopCalibration
+                ? 'Cropping set by desktop'
+                : calibration
+                  ? 'Auto-cropping active'
                   : 'Point camera at abacus markers'}
-              </p>
-            </div>
+            </p>
           </div>
-        )}
-
-        {calibrationMode === 'manual' && !isCalibrating && (
-          <button
-            type="button"
-            onClick={() => setIsCalibrating(true)}
-            disabled={!videoStream}
-            className={css({
-              width: '100%',
-              px: 4,
-              py: 3,
-              bg: 'green.600',
-              color: 'white',
-              borderRadius: 'lg',
-              fontWeight: 'medium',
-              fontSize: 'lg',
-              border: 'none',
-              cursor: 'pointer',
-              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-            })}
-          >
-            {calibration ? 'Recalibrate' : 'Start Calibration'}
-          </button>
-        )}
+        </div>
 
         {/* Connection error */}
         {connectionError && (
-          <p className={css({ color: 'red.400', fontSize: 'sm', mt: 2 })}>
-            {connectionError}
-          </p>
+          <p className={css({ color: 'red.400', fontSize: 'sm', mt: 2 })}>{connectionError}</p>
         )}
       </div>
     </div>

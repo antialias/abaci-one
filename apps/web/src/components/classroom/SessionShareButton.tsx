@@ -176,7 +176,13 @@ export function SessionShareButton({ sessionId, isDark }: SessionShareButtonProp
             zIndex: Z_INDEX.DROPDOWN,
           })}
         >
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            })}
+          >
             <h3
               className={css({
                 fontSize: '0.9375rem',
@@ -365,14 +371,22 @@ export function SessionShareButton({ sessionId, isDark }: SessionShareButtonProp
                     fontSize: '0.8125rem',
                     fontWeight: 'medium',
                     cursor: 'pointer',
-                    _hover: { backgroundColor: isDark ? 'purple.500' : 'purple.600' },
+                    _hover: {
+                      backgroundColor: isDark ? 'purple.500' : 'purple.600',
+                    },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                   })}
                 >
                   {isGenerating ? 'Generating...' : 'Generate'}
                 </button>
                 {error && (
-                  <div className={css({ fontSize: '0.75rem', color: 'red.500', width: '100%' })}>
+                  <div
+                    className={css({
+                      fontSize: '0.75rem',
+                      color: 'red.500',
+                      width: '100%',
+                    })}
+                  >
                     {error}
                   </div>
                 )}
@@ -461,7 +475,13 @@ export function SessionShareButton({ sessionId, isDark }: SessionShareButtonProp
                       </div>
 
                       {/* Actions - inline */}
-                      <div className={css({ display: 'flex', gap: '4px', flexShrink: 0 })}>
+                      <div
+                        className={css({
+                          display: 'flex',
+                          gap: '4px',
+                          flexShrink: 0,
+                        })}
+                      >
                         <button
                           type="button"
                           onClick={() => navigator.clipboard.writeText(share.url)}

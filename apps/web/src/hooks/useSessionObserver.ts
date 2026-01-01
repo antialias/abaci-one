@@ -241,7 +241,10 @@ export function useSessionObserver(
         problemNumber: data.currentProblemNumber,
       })
 
-      const currentProblem = data.currentProblem as { terms: number[]; answer: number }
+      const currentProblem = data.currentProblem as {
+        terms: number[]
+        answer: number
+      }
       const sessionParts = data.sessionParts as SessionPart[] | undefined
       const slotResults = data.slotResults as SlotResult[] | undefined
 

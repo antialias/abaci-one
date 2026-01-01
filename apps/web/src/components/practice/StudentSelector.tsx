@@ -53,7 +53,11 @@ function findNextStudent(
   const currentCenterX = currentRect.left + currentRect.width / 2
   const currentCenterY = currentRect.top + currentRect.height / 2
 
-  let bestCandidate: { studentId: string; bounds: DOMRect; distance: number } | null = null
+  let bestCandidate: {
+    studentId: string
+    bounds: DOMRect
+    distance: number
+  } | null = null
 
   for (const [studentId, ref] of cardRefs) {
     if (studentId === currentId) continue

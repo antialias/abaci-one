@@ -2,10 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
+import type { QuadCorners } from '@/types/vision'
+
+/** Frame mode: raw sends uncropped frames, cropped applies calibration */
+export type FrameMode = 'raw' | 'cropped'
 
 interface RemoteCameraFrame {
   imageData: string // Base64 JPEG
   timestamp: number
+  mode?: FrameMode // What mode the frame was captured in
+  videoDimensions?: { width: number; height: number } // Original video dimensions (for raw mode)
 }
 
 interface UseRemoteCameraDesktopReturn {
@@ -15,12 +21,20 @@ interface UseRemoteCameraDesktopReturn {
   latestFrame: RemoteCameraFrame | null
   /** Frame rate (frames per second) */
   frameRate: number
+  /** Current frame mode */
+  frameMode: FrameMode
+  /** Video dimensions from the phone (only available in raw mode) */
+  videoDimensions: { width: number; height: number } | null
   /** Error message if connection failed */
   error: string | null
   /** Subscribe to receive frames for a session */
   subscribe: (sessionId: string) => void
   /** Unsubscribe from the session */
   unsubscribe: () => void
+  /** Set the phone's frame mode (raw = uncropped for calibration, cropped = use calibration) */
+  setPhoneFrameMode: (mode: FrameMode) => void
+  /** Send calibration to the phone */
+  sendCalibration: (corners: QuadCorners) => void
 }
 
 /**
@@ -28,6 +42,7 @@ interface UseRemoteCameraDesktopReturn {
  *
  * Subscribes to a remote camera session via Socket.IO and receives
  * cropped abacus images from the connected phone.
+ * Supports sending calibration commands to the phone.
  */
 export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
   const [socket, setSocket] = useState<Socket | null>(null)
@@ -35,6 +50,11 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
   const [isPhoneConnected, setIsPhoneConnected] = useState(false)
   const [latestFrame, setLatestFrame] = useState<RemoteCameraFrame | null>(null)
   const [frameRate, setFrameRate] = useState(0)
+  const [frameMode, setFrameMode] = useState<FrameMode>('raw')
+  const [videoDimensions, setVideoDimensions] = useState<{
+    width: number
+    height: number
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const currentSessionId = useRef<string | null>(null)
 
@@ -93,6 +113,15 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
       setLatestFrame(frame)
       frameTimestamps.current.push(Date.now())
       calculateFrameRate()
+
+      // Track video dimensions from raw frames
+      if (frame.mode === 'raw' && frame.videoDimensions) {
+        setVideoDimensions(frame.videoDimensions)
+      }
+      // Track frame mode
+      if (frame.mode) {
+        setFrameMode(frame.mode)
+      }
     }
 
     const handleError = ({ error: errorMsg }: { error: string }) => {
@@ -143,13 +172,53 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     setLatestFrame(null)
     setFrameRate(0)
     setError(null)
+    setVideoDimensions(null)
+    setFrameMode('raw')
   }, [socket])
+
+  /**
+   * Set the phone's frame mode
+   * - raw: Phone sends uncropped frames (for calibration)
+   * - cropped: Phone applies calibration and sends cropped frames
+   */
+  const setPhoneFrameMode = useCallback(
+    (mode: FrameMode) => {
+      if (!socket || !currentSessionId.current) return
+
+      socket.emit('remote-camera:set-mode', {
+        sessionId: currentSessionId.current,
+        mode,
+      })
+      setFrameMode(mode)
+    },
+    [socket]
+  )
+
+  /**
+   * Send calibration corners to the phone
+   * This will also automatically switch the phone to cropped mode
+   */
+  const sendCalibration = useCallback(
+    (corners: QuadCorners) => {
+      if (!socket || !currentSessionId.current) return
+
+      socket.emit('remote-camera:set-calibration', {
+        sessionId: currentSessionId.current,
+        corners,
+      })
+      // Phone will automatically switch to cropped mode when it receives calibration
+      setFrameMode('cropped')
+    },
+    [socket]
+  )
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (socket && currentSessionId.current) {
-        socket.emit('remote-camera:leave', { sessionId: currentSessionId.current })
+        socket.emit('remote-camera:leave', {
+          sessionId: currentSessionId.current,
+        })
       }
     }
   }, [socket])
@@ -158,8 +227,12 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     isPhoneConnected,
     latestFrame,
     frameRate,
+    frameMode,
+    videoDimensions,
     error,
     subscribe,
     unsubscribe,
+    setPhoneFrameMode,
+    sendCalibration,
   }
 }

@@ -139,7 +139,12 @@ export function EnrollChildFlow({ children, onSuccess, onCancel }: EnrollChildFl
         {code.length >= 4 && (
           <div className={css({ marginTop: '12px' })}>
             {lookingUp && (
-              <p className={css({ fontSize: '0.875rem', color: isDark ? 'gray.400' : 'gray.500' })}>
+              <p
+                className={css({
+                  fontSize: '0.875rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                })}
+              >
                 Looking up classroom...
               </p>
             )}
@@ -166,7 +171,13 @@ export function EnrollChildFlow({ children, onSuccess, onCancel }: EnrollChildFl
             marginBottom: '20px',
           })}
         >
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            })}
+          >
             <span className={css({ fontSize: '1.25rem' })}>🏫</span>
             <div>
               <p
@@ -205,7 +216,13 @@ export function EnrollChildFlow({ children, onSuccess, onCancel }: EnrollChildFl
             Select child to enroll
           </label>
 
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '8px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            })}
+          >
             {children.map((child) => (
               <button
                 key={child.id}

@@ -20,7 +20,9 @@ import type {
  * @param playerId - The player to subscribe to
  * @returns Whether the socket is connected
  */
-export function usePlayerPresenceSocket(playerId: string | undefined): { connected: boolean } {
+export function usePlayerPresenceSocket(playerId: string | undefined): {
+  connected: boolean
+} {
   const [connected, setConnected] = useState(false)
   const socketRef = useRef<Socket | null>(null)
   const queryClient = useQueryClient()

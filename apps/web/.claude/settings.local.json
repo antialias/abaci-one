@@ -67,7 +67,10 @@
       "WebSearch",
       "Bash(npm run format:check:*)",
       "Bash(ping:*)",
-      "Bash(dig:*)"
+      "Bash(dig:*)",
+      "Bash(pnpm why:*)",
+      "Bash(npm view:*)",
+      "Bash(pnpm install:*)"
     ],
     "deny": [],
     "ask": []

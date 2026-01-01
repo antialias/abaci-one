@@ -518,8 +518,8 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
             >
               <span>👁‍🗨</span>
               <span>
-                {hiddenArchivedCount} archived student{hiddenArchivedCount !== 1 ? 's' : ''} not
-                shown
+                {hiddenArchivedCount} archived student
+                {hiddenArchivedCount !== 1 ? 's' : ''} not shown
               </span>
               <span
                 className={css({

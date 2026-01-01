@@ -3,12 +3,13 @@
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAbacusVision } from '@/hooks/useAbacusVision'
+import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
 import { isOpenCVReady, loadOpenCV, rectifyQuadrilateral } from '@/lib/vision/perspectiveTransform'
-import type { QuadCorners } from '@/types/vision'
+import type { CalibrationGrid, QuadCorners } from '@/types/vision'
 import { DEFAULT_STABILITY_CONFIG } from '@/types/vision'
 import { css } from '../../../styled-system/css'
 import { CalibrationOverlay } from './CalibrationOverlay'
-import { RemoteCameraReceiver } from './RemoteCameraReceiver'
+import { RemoteCameraQRCode } from './RemoteCameraQRCode'
 import { VisionCameraFeed } from './VisionCameraFeed'
 import { VisionStatusIndicator } from './VisionStatusIndicator'
 
@@ -49,8 +50,16 @@ export function AbacusVisionBridge({
 
   const containerRef = useRef<HTMLDivElement>(null)
   const cameraFeedContainerRef = useRef<HTMLDivElement>(null)
+  const remoteFeedContainerRef = useRef<HTMLDivElement>(null)
+  const remoteImageRef = useRef<HTMLImageElement>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const previewCanvasRef = useRef<HTMLCanvasElement>(null)
+
+  // Track remote image container dimensions for calibration
+  const [remoteContainerDimensions, setRemoteContainerDimensions] = useState<{
+    width: number
+    height: number
+  } | null>(null)
 
   const [calibrationCorners, setCalibrationCorners] = useState<QuadCorners | null>(null)
   const [opencvReady, setOpencvReady] = useState(false)
@@ -59,10 +68,29 @@ export function AbacusVisionBridge({
   const [cameraSource, setCameraSource] = useState<CameraSource>('local')
   const [remoteCameraSessionId, setRemoteCameraSessionId] = useState<string | null>(null)
 
+  // Remote camera state
+  const [remoteCalibrationMode, setRemoteCalibrationMode] = useState<'auto' | 'manual'>('auto')
+  const [remoteIsCalibrating, setRemoteIsCalibrating] = useState(false)
+  const [remoteCalibration, setRemoteCalibration] = useState<CalibrationGrid | null>(null)
+
   const vision = useAbacusVision({
     columnCount,
     onValueDetected,
   })
+
+  // Remote camera hook - destructure to get stable function references
+  const {
+    isPhoneConnected: remoteIsPhoneConnected,
+    latestFrame: remoteLatestFrame,
+    frameRate: remoteFrameRate,
+    frameMode: remoteFrameMode,
+    videoDimensions: remoteVideoDimensions,
+    error: remoteError,
+    subscribe: remoteSubscribe,
+    unsubscribe: remoteUnsubscribe,
+    setPhoneFrameMode: remoteSetPhoneFrameMode,
+    sendCalibration: remoteSendCalibration,
+  } = useRemoteCameraDesktop()
 
   // Handle switching to phone camera
   const handleCameraSourceChange = useCallback(
@@ -85,15 +113,63 @@ export function AbacusVisionBridge({
     setRemoteCameraSessionId(sessionId)
   }, [])
 
-  // Handle receiving frame from phone (for future processing)
-  const handleRemoteFrame = useCallback(
-    (imageData: string, timestamp: number) => {
-      // TODO: Process the frame for bead detection
-      // For now, the phone does the calibration and just sends cropped frames
-      console.log('[VisionBridge] Received frame from phone', timestamp)
+  // Subscribe to remote camera session when sessionId changes
+  useEffect(() => {
+    if (remoteCameraSessionId && cameraSource === 'phone') {
+      remoteSubscribe(remoteCameraSessionId)
+      return () => remoteUnsubscribe()
+    }
+  }, [remoteCameraSessionId, cameraSource, remoteSubscribe, remoteUnsubscribe])
+
+  // Handle remote camera mode change
+  const handleRemoteModeChange = useCallback(
+    (mode: 'auto' | 'manual') => {
+      setRemoteCalibrationMode(mode)
+      if (mode === 'auto') {
+        // Tell phone to use its auto-calibration (cropped frames)
+        remoteSetPhoneFrameMode('cropped')
+        setRemoteIsCalibrating(false)
+      } else {
+        // Tell phone to send raw frames for desktop calibration
+        remoteSetPhoneFrameMode('raw')
+      }
     },
-    []
+    [remoteSetPhoneFrameMode]
   )
+
+  // Start remote camera calibration
+  const handleRemoteStartCalibration = useCallback(() => {
+    remoteSetPhoneFrameMode('raw')
+    setRemoteIsCalibrating(true)
+  }, [remoteSetPhoneFrameMode])
+
+  // Complete remote camera calibration
+  const handleRemoteCalibrationComplete = useCallback(
+    (grid: CalibrationGrid) => {
+      setRemoteCalibration(grid)
+      setRemoteIsCalibrating(false)
+      // Send calibration to phone
+      if (grid.corners) {
+        remoteSendCalibration(grid.corners)
+      }
+    },
+    [remoteSendCalibration]
+  )
+
+  // Cancel remote camera calibration
+  const handleRemoteCancelCalibration = useCallback(() => {
+    setRemoteIsCalibrating(false)
+    // Go back to previous mode
+    if (remoteCalibrationMode === 'auto') {
+      remoteSetPhoneFrameMode('cropped')
+    }
+  }, [remoteCalibrationMode, remoteSetPhoneFrameMode])
+
+  // Reset remote calibration
+  const handleRemoteResetCalibration = useCallback(() => {
+    setRemoteCalibration(null)
+    remoteSetPhoneFrameMode('cropped')
+  }, [remoteSetPhoneFrameMode])
 
   // Start camera on mount (only for local source)
   useEffect(() => {
@@ -111,14 +187,37 @@ export function AbacusVisionBridge({
     }
   }, [vision.cameraError, onError])
 
-  // Load OpenCV when calibrating
+  // Load OpenCV when calibrating (local or remote)
   useEffect(() => {
-    if (vision.isCalibrating && !opencvReady) {
+    const isCalibrating = vision.isCalibrating || remoteIsCalibrating
+    if (isCalibrating && !opencvReady) {
       loadOpenCV()
         .then(() => setOpencvReady(true))
         .catch((err) => console.error('Failed to load OpenCV:', err))
     }
-  }, [vision.isCalibrating, opencvReady])
+  }, [vision.isCalibrating, remoteIsCalibrating, opencvReady])
+
+  // Track remote image container dimensions for calibration overlay
+  useEffect(() => {
+    const container = remoteFeedContainerRef.current
+    if (!container || !remoteIsCalibrating) return
+
+    const updateDimensions = () => {
+      const rect = container.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) {
+        setRemoteContainerDimensions({ width: rect.width, height: rect.height })
+      }
+    }
+
+    // Update immediately
+    updateDimensions()
+
+    // Also update on resize
+    const resizeObserver = new ResizeObserver(updateDimensions)
+    resizeObserver.observe(container)
+
+    return () => resizeObserver.disconnect()
+  }, [remoteIsCalibrating, remoteLatestFrame])
 
   // Render preview when calibrating
   useEffect(() => {
@@ -333,59 +432,85 @@ export function AbacusVisionBridge({
         </select>
       )}
 
-      {/* Calibration mode toggle (local camera only) */}
-      {cameraSource === 'local' && (
-        <div
-          data-element="calibration-mode"
+      {/* Calibration mode toggle (both local and phone camera) */}
+      <div
+        data-element="calibration-mode"
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          p: 2,
+          bg: 'gray.800',
+          borderRadius: 'md',
+        })}
+      >
+        <span className={css({ color: 'gray.400', fontSize: 'sm' })}>Mode:</span>
+        <button
+          type="button"
+          onClick={() =>
+            cameraSource === 'local'
+              ? vision.setCalibrationMode('auto')
+              : handleRemoteModeChange('auto')
+          }
           className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            p: 2,
-            bg: 'gray.800',
+            px: 3,
+            py: 1,
+            fontSize: 'sm',
+            border: 'none',
             borderRadius: 'md',
+            cursor: 'pointer',
+            bg:
+              (cameraSource === 'local' ? vision.calibrationMode : remoteCalibrationMode) === 'auto'
+                ? 'blue.600'
+                : 'gray.700',
+            color: 'white',
+            _hover: {
+              bg:
+                (cameraSource === 'local' ? vision.calibrationMode : remoteCalibrationMode) ===
+                'auto'
+                  ? 'blue.500'
+                  : 'gray.600',
+            },
           })}
         >
-          <span className={css({ color: 'gray.400', fontSize: 'sm' })}>Mode:</span>
-          <button
-            type="button"
-            onClick={() => vision.setCalibrationMode('auto')}
-            className={css({
-              px: 3,
-              py: 1,
-              fontSize: 'sm',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              bg: vision.calibrationMode === 'auto' ? 'blue.600' : 'gray.700',
-              color: 'white',
-              _hover: { bg: vision.calibrationMode === 'auto' ? 'blue.500' : 'gray.600' },
-            })}
-          >
-            Auto (Markers)
-          </button>
-          <button
-            type="button"
-            onClick={() => vision.setCalibrationMode('manual')}
-            className={css({
-              px: 3,
-              py: 1,
-              fontSize: 'sm',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              bg: vision.calibrationMode === 'manual' ? 'blue.600' : 'gray.700',
-              color: 'white',
-              _hover: { bg: vision.calibrationMode === 'manual' ? 'blue.500' : 'gray.600' },
-            })}
-          >
-            Manual
-          </button>
-        </div>
-      )}
+          Auto (Markers)
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            cameraSource === 'local'
+              ? vision.setCalibrationMode('manual')
+              : handleRemoteModeChange('manual')
+          }
+          className={css({
+            px: 3,
+            py: 1,
+            fontSize: 'sm',
+            border: 'none',
+            borderRadius: 'md',
+            cursor: 'pointer',
+            bg:
+              (cameraSource === 'local' ? vision.calibrationMode : remoteCalibrationMode) ===
+              'manual'
+                ? 'blue.600'
+                : 'gray.700',
+            color: 'white',
+            _hover: {
+              bg:
+                (cameraSource === 'local' ? vision.calibrationMode : remoteCalibrationMode) ===
+                'manual'
+                  ? 'blue.500'
+                  : 'gray.600',
+            },
+          })}
+        >
+          Manual
+        </button>
+      </div>
 
-      {/* Marker detection status (in auto mode, local camera only) */}
-      {cameraSource === 'local' && vision.calibrationMode === 'auto' && (
+      {/* Marker detection status (in auto mode) */}
+      {((cameraSource === 'local' && vision.calibrationMode === 'auto') ||
+        (cameraSource === 'phone' && remoteCalibrationMode === 'auto')) && (
         <div
           data-element="marker-status"
           className={css({
@@ -393,7 +518,14 @@ export function AbacusVisionBridge({
             alignItems: 'center',
             justifyContent: 'space-between',
             p: 2,
-            bg: vision.markerDetection.allMarkersFound ? 'green.900' : 'gray.800',
+            bg:
+              cameraSource === 'local'
+                ? vision.markerDetection.allMarkersFound
+                  ? 'green.900'
+                  : 'gray.800'
+                : remoteFrameMode === 'cropped'
+                  ? 'green.900'
+                  : 'gray.800',
             borderRadius: 'md',
             transition: 'background-color 0.2s',
           })}
@@ -404,13 +536,24 @@ export function AbacusVisionBridge({
                 width: '8px',
                 height: '8px',
                 borderRadius: 'full',
-                bg: vision.markerDetection.allMarkersFound ? 'green.400' : 'yellow.400',
+                bg:
+                  cameraSource === 'local'
+                    ? vision.markerDetection.allMarkersFound
+                      ? 'green.400'
+                      : 'yellow.400'
+                    : remoteFrameMode === 'cropped'
+                      ? 'green.400'
+                      : 'yellow.400',
               })}
             />
             <span className={css({ color: 'white', fontSize: 'sm' })}>
-              {vision.markerDetection.allMarkersFound
-                ? 'All markers detected'
-                : `Markers: ${vision.markerDetection.markersFound}/4`}
+              {cameraSource === 'local'
+                ? vision.markerDetection.allMarkersFound
+                  ? 'All markers detected'
+                  : `Markers: ${vision.markerDetection.markersFound}/4`
+                : remoteFrameMode === 'cropped'
+                  ? 'Phone auto-cropping active'
+                  : 'Waiting for phone markers...'}
             </span>
           </div>
           <a
@@ -483,12 +626,120 @@ export function AbacusVisionBridge({
             )}
           </>
         ) : (
-          /* Phone camera - show QR code and receive frames */
-          <RemoteCameraReceiver
-            sessionId={remoteCameraSessionId}
-            onFrame={handleRemoteFrame}
-            onSessionCreated={handleRemoteSessionCreated}
-          />
+          /* Phone camera - unified UI matching local camera */
+          <div
+            data-element="phone-camera-feed"
+            className={css({
+              position: 'relative',
+              width: '100%',
+              bg: 'gray.800',
+              borderRadius: 'lg',
+              overflow: 'hidden',
+              minHeight: '200px',
+            })}
+          >
+            {!remoteCameraSessionId ? (
+              /* Show QR code to connect phone */
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 6,
+                })}
+              >
+                <RemoteCameraQRCode onSessionCreated={handleRemoteSessionCreated} size={180} />
+              </div>
+            ) : !remoteIsPhoneConnected ? (
+              /* Waiting for phone to connect */
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 6,
+                  color: 'gray.400',
+                })}
+              >
+                <p className={css({ mb: 4 })}>Waiting for phone to connect...</p>
+                <RemoteCameraQRCode onSessionCreated={handleRemoteSessionCreated} size={150} />
+              </div>
+            ) : (
+              /* Show camera frames */
+              <div ref={remoteFeedContainerRef} className={css({ position: 'relative' })}>
+                {remoteLatestFrame ? (
+                  <img
+                    ref={remoteImageRef}
+                    src={`data:image/jpeg;base64,${remoteLatestFrame.imageData}`}
+                    alt="Remote camera view"
+                    className={css({
+                      width: '100%',
+                      height: 'auto',
+                      display: 'block',
+                    })}
+                  />
+                ) : (
+                  <div
+                    className={css({
+                      width: '100%',
+                      aspectRatio: '2/1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'gray.400',
+                    })}
+                  >
+                    Waiting for frames...
+                  </div>
+                )}
+
+                {/* Calibration overlay when calibrating */}
+                {remoteIsCalibrating && remoteVideoDimensions && remoteContainerDimensions && (
+                  <CalibrationOverlay
+                    columnCount={columnCount}
+                    videoWidth={remoteVideoDimensions.width}
+                    videoHeight={remoteVideoDimensions.height}
+                    containerWidth={remoteContainerDimensions.width}
+                    containerHeight={remoteContainerDimensions.height}
+                    initialCalibration={remoteCalibration}
+                    onComplete={handleRemoteCalibrationComplete}
+                    onCancel={handleRemoteCancelCalibration}
+                    onCornersChange={setCalibrationCorners}
+                  />
+                )}
+
+                {/* Connection status */}
+                <div
+                  className={css({
+                    position: 'absolute',
+                    bottom: 2,
+                    right: 2,
+                    px: 2,
+                    py: 1,
+                    bg: 'rgba(0, 0, 0, 0.6)',
+                    borderRadius: 'md',
+                    fontSize: 'xs',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                  })}
+                >
+                  <span
+                    className={css({
+                      width: 2,
+                      height: 2,
+                      borderRadius: 'full',
+                      bg: 'green.500',
+                    })}
+                  />
+                  {remoteFrameRate} fps
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -518,8 +769,9 @@ export function AbacusVisionBridge({
         </div>
       )}
 
-      {/* Actions (manual mode, local camera only) */}
-      {cameraSource === 'local' && vision.calibrationMode === 'manual' && (
+      {/* Actions (manual mode - both local and phone camera) */}
+      {((cameraSource === 'local' && vision.calibrationMode === 'manual') ||
+        (cameraSource === 'phone' && remoteCalibrationMode === 'manual')) && (
         <div
           data-element="actions"
           className={css({
@@ -527,11 +779,70 @@ export function AbacusVisionBridge({
             gap: 2,
           })}
         >
-          {!vision.isCalibrated ? (
+          {cameraSource === 'local' ? (
+            /* Local camera actions */
+            !vision.isCalibrated ? (
+              <button
+                type="button"
+                onClick={vision.startCalibration}
+                disabled={!videoDimensions}
+                className={css({
+                  flex: 1,
+                  py: 2,
+                  bg: 'blue.600',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'md',
+                  fontWeight: 'medium',
+                  cursor: 'pointer',
+                  _hover: { bg: 'blue.500' },
+                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                Calibrate
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={vision.startCalibration}
+                  className={css({
+                    flex: 1,
+                    py: 2,
+                    bg: 'gray.700',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 'md',
+                    cursor: 'pointer',
+                    _hover: { bg: 'gray.600' },
+                  })}
+                >
+                  Recalibrate
+                </button>
+                <button
+                  type="button"
+                  onClick={vision.resetCalibration}
+                  className={css({
+                    py: 2,
+                    px: 3,
+                    bg: 'red.700',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 'md',
+                    cursor: 'pointer',
+                    _hover: { bg: 'red.600' },
+                  })}
+                >
+                  Reset
+                </button>
+              </>
+            )
+          ) : /* Phone camera actions */
+          !remoteCalibration ? (
             <button
               type="button"
-              onClick={vision.startCalibration}
-              disabled={!videoDimensions}
+              onClick={handleRemoteStartCalibration}
+              disabled={!remoteIsPhoneConnected}
               className={css({
                 flex: 1,
                 py: 2,
@@ -551,7 +862,7 @@ export function AbacusVisionBridge({
             <>
               <button
                 type="button"
-                onClick={vision.startCalibration}
+                onClick={handleRemoteStartCalibration}
                 className={css({
                   flex: 1,
                   py: 2,
@@ -567,7 +878,7 @@ export function AbacusVisionBridge({
               </button>
               <button
                 type="button"
-                onClick={vision.resetCalibration}
+                onClick={handleRemoteResetCalibration}
                 className={css({
                   py: 2,
                   px: 3,
@@ -612,6 +923,23 @@ export function AbacusVisionBridge({
           Scan the QR code with your phone to use it as a remote camera
         </p>
       )}
+
+      {cameraSource === 'phone' &&
+        remoteIsPhoneConnected &&
+        !remoteCalibration &&
+        !remoteIsCalibrating && (
+          <p
+            className={css({
+              color: 'gray.400',
+              fontSize: 'sm',
+              textAlign: 'center',
+            })}
+          >
+            {remoteCalibrationMode === 'auto'
+              ? 'Place ArUco markers on your abacus corners for automatic detection'
+              : 'Point your phone camera at a soroban and click Calibrate to set up detection'}
+          </p>
+        )}
 
       {/* Error display */}
       {cameraSource === 'local' && vision.cameraError && (

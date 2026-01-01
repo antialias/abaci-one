@@ -455,7 +455,9 @@ async function fetchPendingApprovalsForParent(): Promise<EnrollmentRequestWithRe
 async function approveRequestAsParent(
   requestId: string
 ): Promise<{ request: EnrollmentRequest; enrolled: boolean }> {
-  const res = await api(`enrollment-requests/${requestId}/approve`, { method: 'POST' })
+  const res = await api(`enrollment-requests/${requestId}/approve`, {
+    method: 'POST',
+  })
   if (!res.ok) {
     const data = await res.json()
     throw new Error(data.error || 'Failed to approve request')
@@ -467,7 +469,9 @@ async function approveRequestAsParent(
  * Deny enrollment request as parent
  */
 async function denyRequestAsParent(requestId: string): Promise<EnrollmentRequest> {
-  const res = await api(`enrollment-requests/${requestId}/deny`, { method: 'POST' })
+  const res = await api(`enrollment-requests/${requestId}/deny`, {
+    method: 'POST',
+  })
   if (!res.ok) {
     const data = await res.json()
     throw new Error(data.error || 'Failed to deny request')

@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createRemoteCameraSession, getRemoteCameraSession } from '@/lib/remote-camera/session-manager'
+import {
+  createRemoteCameraSession,
+  getRemoteCameraSession,
+} from '@/lib/remote-camera/session-manager'
 
 /**
  * POST /api/remote-camera
@@ -15,10 +18,7 @@ export async function POST() {
     })
   } catch (error) {
     console.error('Failed to create remote camera session:', error)
-    return NextResponse.json(
-      { error: 'Failed to create session' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to create session' }, { status: 500 })
   }
 }
 
@@ -32,19 +32,13 @@ export async function GET(request: Request) {
     const sessionId = url.searchParams.get('sessionId')
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: 'Session ID required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Session ID required' }, { status: 400 })
     }
 
     const session = getRemoteCameraSession(sessionId)
 
     if (!session) {
-      return NextResponse.json(
-        { error: 'Session not found or expired' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Session not found or expired' }, { status: 404 })
     }
 
     return NextResponse.json({
@@ -54,9 +48,6 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error('Failed to get remote camera session:', error)
-    return NextResponse.json(
-      { error: 'Failed to get session' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to get session' }, { status: 500 })
   }
 }

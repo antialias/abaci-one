@@ -190,12 +190,18 @@ export function useChildSessionsSocket(userId: string | undefined, childIds: str
     const toUnsubscribe = Array.from(subscribedIds).filter((id) => !currentIds.has(id))
 
     if (toSubscribe.length > 0) {
-      socket.emit('subscribe-child-sessions', { userId, childIds: toSubscribe })
+      socket.emit('subscribe-child-sessions', {
+        userId,
+        childIds: toSubscribe,
+      })
       toSubscribe.forEach((id) => subscribedIds.add(id))
     }
 
     if (toUnsubscribe.length > 0) {
-      socket.emit('unsubscribe-child-sessions', { userId, childIds: toUnsubscribe })
+      socket.emit('unsubscribe-child-sessions', {
+        userId,
+        childIds: toUnsubscribe,
+      })
       toUnsubscribe.forEach((id) => subscribedIds.delete(id))
 
       // Remove sessions for unsubscribed children

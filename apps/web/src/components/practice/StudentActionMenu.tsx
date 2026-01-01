@@ -40,7 +40,9 @@ export function StudentActionMenu({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  const { actions, handlers, modals, classrooms } = useStudentActions(student, { onObserveSession })
+  const { actions, handlers, modals, classrooms } = useStudentActions(student, {
+    onObserveSession,
+  })
 
   // If no actions are available, don't render the menu
   const hasAnyAction =

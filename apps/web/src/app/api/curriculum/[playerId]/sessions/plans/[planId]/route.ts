@@ -153,7 +153,12 @@ async function emitSessionEvents(
       await emitSessionStartedToPlayer({ sessionId, playerId, playerName })
     } else {
       const reason = action === 'end_early' ? 'ended_early' : 'abandoned'
-      await emitSessionEndedToPlayer({ sessionId, playerId, playerName, reason })
+      await emitSessionEndedToPlayer({
+        sessionId,
+        playerId,
+        playerName,
+        reason,
+      })
     }
 
     // Also emit to classroom channel if student is present

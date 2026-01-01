@@ -146,7 +146,10 @@ function formatSkillName(skillId: string): string {
  * Note: BKT provides fine-grained mastery (pKnown). The isPracticing flag here
  * is a simplified fallback indicating whether the skill is in the active practice rotation.
  */
-function getRotationLabel(isPracticing: boolean): { label: string; color: string } {
+function getRotationLabel(isPracticing: boolean): {
+  label: string
+  color: string
+} {
   return isPracticing
     ? { label: 'Practicing', color: 'blue' }
     : { label: 'Not in rotation', color: 'gray' }

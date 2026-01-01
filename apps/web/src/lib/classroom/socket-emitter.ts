@@ -151,7 +151,9 @@ export async function emitEnrollmentCompleted(
  * This also implies their presence was removed if they were in the classroom.
  */
 export async function emitStudentUnenrolled(
-  payload: Omit<EnrollmentEventPayload, 'requestId'> & { unenrolledBy: 'teacher' | 'parent' },
+  payload: Omit<EnrollmentEventPayload, 'requestId'> & {
+    unenrolledBy: 'teacher' | 'parent'
+  },
   recipients: SocketRecipients
 ): Promise<void> {
   const io = await getSocketIO()
@@ -254,7 +256,9 @@ export async function emitSessionStarted(
  * while they are present in a classroom.
  */
 export async function emitSessionEnded(
-  payload: SessionEventPayload & { reason: 'completed' | 'ended_early' | 'abandoned' },
+  payload: SessionEventPayload & {
+    reason: 'completed' | 'ended_early' | 'abandoned'
+  },
   classroomId: string
 ): Promise<void> {
   const io = await getSocketIO()
@@ -306,7 +310,9 @@ export async function emitSessionStartedToPlayer(payload: SessionEventPayload): 
  * This notifies parents who are subscribed to their child's player channel.
  */
 export async function emitSessionEndedToPlayer(
-  payload: SessionEventPayload & { reason: 'completed' | 'ended_early' | 'abandoned' }
+  payload: SessionEventPayload & {
+    reason: 'completed' | 'ended_early' | 'abandoned'
+  }
 ): Promise<void> {
   const io = await getSocketIO()
   if (!io) return
@@ -418,7 +424,9 @@ export async function emitEntryPromptAccepted(
  * This only notifies the teacher (no need to update classroom).
  */
 export async function emitEntryPromptDeclined(
-  payload: Omit<EntryPromptPayload, 'playerEmoji' | 'classroomName'> & { declinedBy: string },
+  payload: Omit<EntryPromptPayload, 'playerEmoji' | 'classroomName'> & {
+    declinedBy: string
+  },
   teacherId: string
 ): Promise<void> {
   const io = await getSocketIO()

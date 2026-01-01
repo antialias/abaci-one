@@ -122,7 +122,11 @@ export const ACTION_DEFINITIONS = {
   removeFromClassroom: { icon: '🚪', label: 'Remove from Classroom' },
   promptToEnter: { icon: '📣', label: 'Prompt to Enter' },
   enrollInClassroom: { icon: '➕', label: 'Enroll in Classroom' },
-  unenrollStudent: { icon: '📋', label: 'Unenroll Student', variant: 'danger' as const },
+  unenrollStudent: {
+    icon: '📋',
+    label: 'Unenroll Student',
+    variant: 'danger' as const,
+  },
   shareAccess: { icon: '🔗', label: 'Share Access' },
   archive: { icon: '📦', label: 'Archive' },
   unarchive: { icon: '📤', label: 'Unarchive' },

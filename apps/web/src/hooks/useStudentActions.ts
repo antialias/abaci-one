@@ -239,7 +239,10 @@ export function useStudentActions(
       enrolled: enrolledClassrooms,
       // Only set current if both presence and classroom are defined
       current: currentPresence?.classroom
-        ? { classroomId: currentPresence.classroomId, classroom: currentPresence.classroom }
+        ? {
+            classroomId: currentPresence.classroomId,
+            classroom: currentPresence.classroom,
+          }
         : null,
       isLoading: loadingEnrollments || loadingPresence,
     }),

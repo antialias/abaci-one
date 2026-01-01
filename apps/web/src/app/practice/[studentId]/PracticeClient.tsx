@@ -108,7 +108,9 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
 
         // If session just completed, redirect to summary with completed flag
         if (updatedPlan.completedAt) {
-          router.push(`/practice/${studentId}/summary?completed=1`, { scroll: false })
+          router.push(`/practice/${studentId}/summary?completed=1`, {
+            scroll: false,
+          })
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
@@ -135,7 +137,9 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
           reason,
         })
         // Redirect to summary after ending early with completed flag
-        router.push(`/practice/${studentId}/summary?completed=1`, { scroll: false })
+        router.push(`/practice/${studentId}/summary?completed=1`, {
+          scroll: false,
+        })
       } catch (err) {
         // Check if it's an authorization error
         const message = err instanceof Error ? err.message : 'Unknown error'
@@ -155,7 +159,9 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   // Handle session completion (called by ActiveSession when all problems done)
   const handleSessionComplete = useCallback(() => {
     // Redirect to summary with completed flag
-    router.push(`/practice/${studentId}/summary?completed=1`, { scroll: false })
+    router.push(`/practice/${studentId}/summary?completed=1`, {
+      scroll: false,
+    })
   }, [studentId, router])
 
   // Broadcast session state if student is in a classroom

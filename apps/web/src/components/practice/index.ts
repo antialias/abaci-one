@@ -8,7 +8,11 @@
  * - SessionSummary: Results after completing session
  */
 
-export type { AttemptTimingData, BroadcastState, StudentInfo } from './ActiveSession'
+export type {
+  AttemptTimingData,
+  BroadcastState,
+  StudentInfo,
+} from './ActiveSession'
 export { ActiveSession } from './ActiveSession'
 export { AllProblemsSection } from './AllProblemsSection'
 export { ContinueSessionCard } from './ContinueSessionCard'
@@ -18,13 +22,19 @@ export {
   useIsTouchDevice,
 } from './hooks/useDeviceDetection'
 export { LiveResultsPanel } from './LiveResultsPanel'
-export { LiveSessionReportInline, LiveSessionReportModal } from './LiveSessionReportModal'
+export {
+  LiveSessionReportInline,
+  LiveSessionReportModal,
+} from './LiveSessionReportModal'
 export { MiniStartPracticeBanner } from './MiniStartPracticeBanner'
 export { NotesModal } from './NotesModal'
 // StudentQuickLook is an alias for NotesModal (which was enhanced to serve as the QuickLook modal)
 export { NotesModal as StudentQuickLook } from './NotesModal'
 export { OfflineSessionModal } from './OfflineSessionModal'
-export type { OfflineWorkSectionProps, OfflineAttachment } from './OfflineWorkSection'
+export type {
+  OfflineWorkSectionProps,
+  OfflineAttachment,
+} from './OfflineWorkSection'
 export { OfflineWorkSection } from './OfflineWorkSection'
 export type { PhotoLightboxPhoto } from './PhotoLightbox'
 export { PhotoLightbox } from './PhotoLightbox'
@@ -34,7 +44,10 @@ export { SessionPhotoGallery } from './SessionPhotoGallery'
 export { NumericKeypad } from './NumericKeypad'
 export { PracticeErrorBoundary } from './PracticeErrorBoundary'
 export { PracticeFeedback } from './PracticeFeedback'
-export type { RelationshipBadgeProps, RelationshipConfig } from './RelationshipBadge'
+export type {
+  RelationshipBadgeProps,
+  RelationshipConfig,
+} from './RelationshipBadge'
 export {
   RelationshipBadge,
   RelationshipSummary,
@@ -84,11 +97,18 @@ export type {
   SkillDistribution,
 } from '@/contexts/BktContext'
 // Re-export classification function (uses shared getExtendedClassification internally)
-export { getSkillClassification, SkillProgressChart } from './SkillProgressChart'
+export {
+  getSkillClassification,
+  SkillProgressChart,
+} from './SkillProgressChart'
 export type { SpeedMeterProps } from './SpeedMeter'
 export { SpeedMeter } from './SpeedMeter'
 export { StartPracticeModal } from './StartPracticeModal'
-export type { EnrollmentActions, StudentIntervention, StudentWithProgress } from './StudentSelector'
+export type {
+  EnrollmentActions,
+  StudentIntervention,
+  StudentWithProgress,
+} from './StudentSelector'
 export { StudentSelector } from './StudentSelector'
 export { StudentActionMenu } from './StudentActionMenu'
 export { StudentFilterBar } from './StudentFilterBar'
@@ -104,7 +124,10 @@ export {
 export { VirtualizedSessionList } from './VirtualizedSessionList'
 // Part transition components
 export type { PartTransitionScreenProps } from './PartTransitionScreen'
-export { PartTransitionScreen, TRANSITION_COUNTDOWN_MS } from './PartTransitionScreen'
+export {
+  PartTransitionScreen,
+  TRANSITION_COUNTDOWN_MS,
+} from './PartTransitionScreen'
 export type { ObserverTransitionViewProps } from './ObserverTransitionView'
 export { ObserverTransitionView } from './ObserverTransitionView'
 export {

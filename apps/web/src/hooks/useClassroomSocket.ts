@@ -25,7 +25,9 @@ import type {
  * @param classroomId - The classroom to subscribe to
  * @returns Whether the socket is connected
  */
-export function useClassroomSocket(classroomId: string | undefined): { connected: boolean } {
+export function useClassroomSocket(classroomId: string | undefined): {
+  connected: boolean
+} {
   const [connected, setConnected] = useState(false)
   const socketRef = useRef<Socket | null>(null)
   const queryClient = useQueryClient()

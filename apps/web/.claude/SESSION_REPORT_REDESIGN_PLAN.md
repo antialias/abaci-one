@@ -35,13 +35,13 @@ The session report page (`/practice/[studentId]/summary`) displays results after
 
 ## Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
+| Decision                | Choice                                                                         | Rationale                                                       |
+| ----------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
 | Small screen navigation | **Scrollspy nav** - fixed element showing current section, clickable to scroll | Not tabs - scrolling is sufficient, just need section awareness |
-| Photo AI processing | **Build placeholders now**, actual implementation later | Pipeline not ready, but UI should hint at future capability |
-| Teacher mode toggle | **No** - single design for everyone | Avoid complexity, make design work universally |
-| Historical trends | **Use all sessions** (not limited to recent N) | More data = better trends |
-| Skill name mapping | **Yes** - use `SKILL_CATEGORIES` from `src/constants/skillCategories.ts` | Single source of truth exists |
+| Photo AI processing     | **Build placeholders now**, actual implementation later                        | Pipeline not ready, but UI should hint at future capability     |
+| Teacher mode toggle     | **No** - single design for everyone                                            | Avoid complexity, make design work universally                  |
+| Historical trends       | **Use all sessions** (not limited to recent N)                                 | More data = better trends                                       |
+| Skill name mapping      | **Yes** - use `SKILL_CATEGORIES` from `src/constants/skillCategories.ts`       | Single source of truth exists                                   |
 
 ---
 
@@ -194,6 +194,7 @@ SummaryPage (Server Component)
 ```
 
 **Grid specification**:
+
 - Left column: ~45% width, contains Hero + Evidence
 - Right column: ~55% width, contains Skills + Review
 - Gap: 1.5rem
@@ -258,16 +259,18 @@ SummaryPage (Server Component)
 **Purpose**: Fixed navigation element on mobile showing current section
 
 **Props**:
+
 ```typescript
 interface ScrollspyNavProps {
   sections: Array<{
-    id: string      // e.g., "overview"
-    label: string   // e.g., "Overview"
-  }>
+    id: string; // e.g., "overview"
+    label: string; // e.g., "Overview"
+  }>;
 }
 ```
 
 **Behavior**:
+
 - Fixed to bottom of viewport (above any existing bottom nav)
 - Uses `IntersectionObserver` to detect current section
 - Dot indicator under current section label
@@ -276,6 +279,7 @@ interface ScrollspyNavProps {
 - z-index: use `Z_INDEX.FLOATING_UI` from constants
 
 **Visual**:
+
 ```
 ┌────────────────────────────────────────────────────┐
 │  Overview    Skills    Review    Evidence          │
@@ -294,23 +298,26 @@ Height: 48px, background: white/gray.900 (theme-aware), subtle top shadow
 **Purpose**: Top section with celebration (if just completed) + key stats
 
 **Props**:
+
 ```typescript
 interface SessionHeroProps {
-  session: SessionPlan
-  studentName: string
-  justCompleted: boolean
-  trends: SessionTrends | null
-  isDark: boolean
+  session: SessionPlan;
+  studentName: string;
+  justCompleted: boolean;
+  trends: SessionTrends | null;
+  isDark: boolean;
 }
 ```
 
 **Contents**:
+
 1. **Header**: Either celebration (when `justCompleted`) or session date
 2. **Stats Row**: Three stat cards (Accuracy, Score, Duration)
 3. **Practice Type Badges**: Icons + labels for session types
 4. **Trend Indicator**: "↑ 5% from last session" (when trends available)
 
 **Celebration Header** (when `justCompleted`):
+
 ```
 ┌─────────────────────────────────────────────┐
 │               🌟                            │
@@ -318,10 +325,12 @@ interface SessionHeroProps {
 │     Outstanding! You are a math champion!   │
 └─────────────────────────────────────────────┘
 ```
+
 - Background color based on accuracy (green/yellow/orange)
 - Emoji based on accuracy (🌟 ≥90%, 🎉 ≥80%, 👍 ≥60%, 💪 <60%)
 
 **Date Header** (when not `justCompleted`):
+
 ```
 ┌─────────────────────────────────────────────┐
 │     Tuesday, December 31, 2024              │
@@ -329,25 +338,31 @@ interface SessionHeroProps {
 ```
 
 **Stats Row**:
+
 ```
 ┌───────────┬───────────┬───────────┐
 │    85%    │   12/14   │   8 min   │
 │  Accuracy │  Correct  │  Duration │
 └───────────┴───────────┴───────────┘
 ```
+
 - Accuracy: Color-coded (green ≥80%, yellow ≥60%, orange <60%)
 - Duration: Show "< 1 min" instead of "0 min" for short sessions
 
 **Practice Type Badges**:
+
 ```
 🧮 Abacus    🧠 Visualize
 ```
+
 - Use `PRACTICE_TYPES` from `src/constants/practiceTypes.ts`
 
 **Trend Indicator**:
+
 ```
 ↑ 5% from last session
 ```
+
 - Green arrow up / red arrow down
 - Only show if previous session exists
 - Show delta as percentage points
@@ -361,16 +376,18 @@ interface SessionHeroProps {
 **Purpose**: Small component showing comparison to previous session
 
 **Props**:
+
 ```typescript
 interface TrendIndicatorProps {
-  current: number       // Current accuracy (0-1)
-  previous: number | null  // Previous accuracy (0-1), null if no previous
-  label?: string        // Default: "from last session"
-  isDark: boolean
+  current: number; // Current accuracy (0-1)
+  previous: number | null; // Previous accuracy (0-1), null if no previous
+  label?: string; // Default: "from last session"
+  isDark: boolean;
 }
 ```
 
 **Display**:
+
 - `↑ 5%` (green) when improved
 - `↓ 3%` (red) when declined
 - `→ Same` (gray) when within 1%
@@ -385,20 +402,23 @@ interface TrendIndicatorProps {
 **Purpose**: Skills breakdown by category with human-readable names
 
 **Props**:
+
 ```typescript
 interface SkillsPanelProps {
-  results: SlotResult[]
-  isDark: boolean
+  results: SlotResult[];
+  isDark: boolean;
 }
 ```
 
 **Key changes from current implementation**:
+
 1. Use `getCategoryDisplayName()` instead of hardcoded `SKILL_CATEGORY_NAMES`
 2. Use `getSkillDisplayName()` for individual skills
 3. Keep collapsible categories (using `<details>`)
 4. Remove BKT mastery percentages (internal metric)
 
 **Display**:
+
 ```
 Skills Practiced
 ────────────────────────────────────────────
@@ -423,29 +443,33 @@ Skills Practiced
 **Purpose**: List of problems needing attention with annotations
 
 **Props**:
+
 ```typescript
 interface ProblemsToReviewPanelProps {
-  problems: ProblemNeedingAttention[]
-  results: SlotResult[]  // For auto-pause calculation
-  skillMasteries: Record<string, SkillBktResult>
-  totalProblems: number
-  isDark: boolean
+  problems: ProblemNeedingAttention[];
+  results: SlotResult[]; // For auto-pause calculation
+  skillMasteries: Record<string, SkillBktResult>;
+  totalProblems: number;
+  isDark: boolean;
 }
 ```
 
 **Key changes from current implementation**:
+
 1. **Keep** auto-pause timing section (Response Timing)
 2. **Keep** annotated ProblemToReview component (with skill breakdown per term)
 3. **Show ALL problems needing attention** - no arbitrary limit (wrong, slow, help-used)
 4. **Use human-readable skill names** when showing weak skills (via getSkillDisplayName)
 
 **Distinction from AllProblemsSection**:
+
 - **ProblemsToReviewPanel**: Problems needing attention (flagged for review)
 - **AllProblemsSection**: Every problem in the session (complete list, collapsed by default)
 
 **Note**: The existing ProblemToReview component with its progressive disclosure, part type indicators, purpose explanations, and timing details is preserved.
 
 **All correct state**:
+
 ```
 ┌─────────────────────────────────────────────┐
 │               🎉                            │
@@ -462,17 +486,19 @@ interface ProblemsToReviewPanelProps {
 **Purpose**: Photos of offline practice work + upload zone
 
 **Props**:
+
 ```typescript
 interface OfflineWorkSectionProps {
-  sessionId: string | null
-  playerId: string
-  photos: SessionAttachment[]
-  onPhotosChange: () => void  // Trigger refetch
-  isDark: boolean
+  sessionId: string | null;
+  playerId: string;
+  photos: SessionAttachment[];
+  onPhotosChange: () => void; // Trigger refetch
+  isDark: boolean;
 }
 ```
 
 **Layout**:
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │  📝 Offline Practice                                │
@@ -495,18 +521,21 @@ interface OfflineWorkSectionProps {
 ```
 
 **Photo thumbnails**:
+
 - Size: 150px × 150px (larger than current 100px)
 - Clickable → opens PhotoLightbox
 - Delete button on hover (× in corner)
 - Border radius: 8px
 
 **Upload zone**:
+
 - Dashed border when empty
 - Drag & drop support
 - Camera button for mobile
 - "Tap to upload photos of work"
 
 **Coming Soon placeholder**:
+
 - Subtle background (gray.50 / gray.800)
 - 🔮 emoji
 - Brief explanation of future AI feature
@@ -521,16 +550,18 @@ interface OfflineWorkSectionProps {
 **Purpose**: Full-screen photo viewer with navigation
 
 **Props**:
+
 ```typescript
 interface PhotoLightboxProps {
-  photos: SessionAttachment[]
-  initialIndex: number
-  isOpen: boolean
-  onClose: () => void
+  photos: SessionAttachment[];
+  initialIndex: number;
+  isOpen: boolean;
+  onClose: () => void;
 }
 ```
 
 **Features**:
+
 - Full-screen overlay (z-index: modal level)
 - Image centered and scaled to fit
 - Left/right arrows for navigation (keyboard too)
@@ -539,6 +570,7 @@ interface PhotoLightboxProps {
 - Pinch-to-zoom on mobile (optional, can skip for MVP)
 
 **Layout**:
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │                                              [×]    │
@@ -559,15 +591,18 @@ interface PhotoLightboxProps {
 **File**: `src/lib/curriculum/server.ts`
 
 Add:
+
 ```typescript
-export async function getAllCompletedSessions(playerId: string): Promise<SessionPlan[]> {
+export async function getAllCompletedSessions(
+  playerId: string,
+): Promise<SessionPlan[]> {
   return db.query.sessionPlans.findMany({
     where: and(
       eq(schema.sessionPlans.playerId, playerId),
-      eq(schema.sessionPlans.status, 'completed')
+      eq(schema.sessionPlans.status, "completed"),
     ),
     orderBy: (plans, { desc }) => [desc(plans.completedAt)],
-  })
+  });
 }
 ```
 
@@ -577,17 +612,23 @@ export async function getAllCompletedSessions(playerId: string): Promise<Session
 const [player, activeSession, allSessions, problemHistory] = await Promise.all([
   getPlayer(studentId),
   getActiveSessionPlan(studentId),
-  getAllCompletedSessions(studentId),  // Changed from getMostRecentCompletedSession
+  getAllCompletedSessions(studentId), // Changed from getMostRecentCompletedSession
   getRecentSessionResults(studentId, 100),
-])
+]);
 
 // Derive what we need
-const completedSession = allSessions[0] ?? null
-const previousSession = allSessions[1] ?? null
-const sessionToShow = activeSession?.startedAt ? activeSession : completedSession
+const completedSession = allSessions[0] ?? null;
+const previousSession = allSessions[1] ?? null;
+const sessionToShow = activeSession?.startedAt
+  ? activeSession
+  : completedSession;
 
 // Calculate trends
-const trends = calculateSessionTrends(sessionToShow, previousSession, allSessions)
+const trends = calculateSessionTrends(
+  sessionToShow,
+  previousSession,
+  allSessions,
+);
 ```
 
 ### Trend Calculation Types
@@ -597,28 +638,28 @@ const trends = calculateSessionTrends(sessionToShow, previousSession, allSession
 ```typescript
 export interface SessionTrends {
   // Comparison to last session
-  accuracyDelta: number | null        // e.g., 0.05 for +5%
-  previousAccuracy: number | null
+  accuracyDelta: number | null; // e.g., 0.05 for +5%
+  previousAccuracy: number | null;
 
   // This week stats
-  weekSessions: number
-  weekProblems: number
-  weekAccuracy: number
+  weekSessions: number;
+  weekProblems: number;
+  weekAccuracy: number;
 
   // All-time stats
-  totalSessions: number
-  totalProblems: number
-  avgAccuracy: number
+  totalSessions: number;
+  totalProblems: number;
+  avgAccuracy: number;
 
   // Streak (consecutive days with practice)
-  currentStreak: number
+  currentStreak: number;
 }
 
 export function calculateSessionTrends(
   current: SessionPlan | null,
   previous: SessionPlan | null,
-  allSessions: SessionPlan[]
-): SessionTrends | null
+  allSessions: SessionPlan[],
+): SessionTrends | null;
 ```
 
 ---
@@ -630,7 +671,10 @@ export function calculateSessionTrends(
 **File**: `src/utils/skillDisplay.ts`
 
 ```typescript
-import { SKILL_CATEGORIES, type SkillCategoryKey } from '@/constants/skillCategories'
+import {
+  SKILL_CATEGORIES,
+  type SkillCategoryKey,
+} from "@/constants/skillCategories";
 
 /**
  * Get human-readable display name for a full skill ID
@@ -640,17 +684,17 @@ import { SKILL_CATEGORIES, type SkillCategoryKey } from '@/constants/skillCatego
  * getSkillDisplayName("basic.directAddition")  // "Direct Addition (1-4)"
  */
 export function getSkillDisplayName(fullSkillId: string): string {
-  const dotIndex = fullSkillId.indexOf('.')
-  if (dotIndex === -1) return fullSkillId
+  const dotIndex = fullSkillId.indexOf(".");
+  if (dotIndex === -1) return fullSkillId;
 
-  const category = fullSkillId.slice(0, dotIndex)
-  const shortKey = fullSkillId.slice(dotIndex + 1)
+  const category = fullSkillId.slice(0, dotIndex);
+  const shortKey = fullSkillId.slice(dotIndex + 1);
 
-  const categoryData = SKILL_CATEGORIES[category as SkillCategoryKey]
-  if (!categoryData) return shortKey || fullSkillId
+  const categoryData = SKILL_CATEGORIES[category as SkillCategoryKey];
+  if (!categoryData) return shortKey || fullSkillId;
 
-  const skills = categoryData.skills as Record<string, string>
-  return skills[shortKey] || shortKey || fullSkillId
+  const skills = categoryData.skills as Record<string, string>;
+  return skills[shortKey] || shortKey || fullSkillId;
 }
 
 /**
@@ -661,22 +705,25 @@ export function getSkillDisplayName(fullSkillId: string): string {
  * getCategoryDisplayName("tenComplementsSub") // "Ten Complements (Subtraction)"
  */
 export function getCategoryDisplayName(categoryId: string): string {
-  const categoryData = SKILL_CATEGORIES[categoryId as SkillCategoryKey]
-  return categoryData?.name || categoryId
+  const categoryData = SKILL_CATEGORIES[categoryId as SkillCategoryKey];
+  return categoryData?.name || categoryId;
 }
 
 /**
  * Parse a full skill ID into category and short key
  */
-export function parseSkillId(fullSkillId: string): { category: string; shortKey: string } {
-  const dotIndex = fullSkillId.indexOf('.')
+export function parseSkillId(fullSkillId: string): {
+  category: string;
+  shortKey: string;
+} {
+  const dotIndex = fullSkillId.indexOf(".");
   if (dotIndex === -1) {
-    return { category: '', shortKey: fullSkillId }
+    return { category: "", shortKey: fullSkillId };
   }
   return {
     category: fullSkillId.slice(0, dotIndex),
     shortKey: fullSkillId.slice(dotIndex + 1),
-  }
+  };
 }
 ```
 
@@ -686,19 +733,19 @@ The canonical skill names are in `src/constants/skillCategories.ts`:
 
 ```typescript
 // Category names
-SKILL_CATEGORIES.basic.name = 'Basic Skills'
-SKILL_CATEGORIES.fiveComplements.name = 'Five Complements (Addition)'
-SKILL_CATEGORIES.tenComplements.name = 'Ten Complements (Addition)'
-SKILL_CATEGORIES.fiveComplementsSub.name = 'Five Complements (Subtraction)'
-SKILL_CATEGORIES.tenComplementsSub.name = 'Ten Complements (Subtraction)'
-SKILL_CATEGORIES.advanced.name = 'Advanced Multi-Column Operations'
+SKILL_CATEGORIES.basic.name = "Basic Skills";
+SKILL_CATEGORIES.fiveComplements.name = "Five Complements (Addition)";
+SKILL_CATEGORIES.tenComplements.name = "Ten Complements (Addition)";
+SKILL_CATEGORIES.fiveComplementsSub.name = "Five Complements (Subtraction)";
+SKILL_CATEGORIES.tenComplementsSub.name = "Ten Complements (Subtraction)";
+SKILL_CATEGORIES.advanced.name = "Advanced Multi-Column Operations";
 
 // Individual skill names (examples)
-SKILL_CATEGORIES.basic.skills.directAddition = 'Direct Addition (1-4)'
-SKILL_CATEGORIES.basic.skills.heavenBead = 'Heaven Bead (5)'
-SKILL_CATEGORIES.fiveComplements.skills['4=5-1'] = '+4 = +5 - 1'
-SKILL_CATEGORIES.tenComplements.skills['9=10-1'] = '+9 = +10 - 1'
-SKILL_CATEGORIES.tenComplementsSub.skills['-9=+1-10'] = '-9 = +1 - 10'
+SKILL_CATEGORIES.basic.skills.directAddition = "Direct Addition (1-4)";
+SKILL_CATEGORIES.basic.skills.heavenBead = "Heaven Bead (5)";
+SKILL_CATEGORIES.fiveComplements.skills["4=5-1"] = "+4 = +5 - 1";
+SKILL_CATEGORIES.tenComplements.skills["9=10-1"] = "+9 = +10 - 1";
+SKILL_CATEGORIES.tenComplementsSub.skills["-9=+1-10"] = "-9 = +1 - 10";
 ```
 
 ---
@@ -710,6 +757,7 @@ SKILL_CATEGORIES.tenComplementsSub.skills['-9=+1-10'] = '-9 = +1 - 10'
 Photos are uploaded and displayed as evidence of offline practice.
 
 **UI includes**:
+
 1. Larger thumbnails (150px)
 2. Click to view full-size (PhotoLightbox)
 3. Delete functionality
@@ -726,6 +774,7 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 ```
 
 **Photo states** (data model for future):
+
 - `uploaded` - Photo saved, not yet analyzed
 - `processing` - AI analyzing (show spinner)
 - `processed` - Analysis complete (show ✓, link to results)
@@ -742,16 +791,19 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 **Goal**: Create utility functions and see skill names update across the app
 
 **Deliverables**:
+
 1. `src/utils/skillDisplay.ts` - skill name resolution utilities
 2. Update `SessionSummary.tsx` to use new utilities instead of hardcoded names
 3. Update `SkillsPanel` section in SessionSummary to show human-readable names
 
 **Testable outcome**:
+
 - Visit `/practice/[studentId]/summary`
 - Skills section shows "Five Complements (Addition)" instead of "fiveComplements"
 - Individual skills show "+4 = +5 - 1" instead of "4=5-1"
 
 **Files to create/modify**:
+
 - CREATE: `src/utils/skillDisplay.ts`
 - MODIFY: `src/components/practice/SessionSummary.tsx`
 
@@ -762,12 +814,14 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 **Goal**: Photos are viewable full-size and deletable
 
 **Deliverables**:
+
 1. `src/components/practice/PhotoLightbox.tsx`
 2. Add delete button to photo thumbnails
 3. Add click-to-expand to photo thumbnails
 4. Larger thumbnails (150px)
 
 **Testable outcome**:
+
 - Visit summary page with photos
 - Click photo → opens full-size lightbox
 - Navigate between photos with arrows
@@ -776,6 +830,7 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 - Delete photo → removes it
 
 **Files to create/modify**:
+
 - CREATE: `src/components/practice/PhotoLightbox.tsx`
 - MODIFY: `src/app/practice/[studentId]/summary/SummaryClient.tsx` (photos section)
 
@@ -786,10 +841,12 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 **Goal**: Ensure clear distinction between "Problems to Review" and "All Problems"
 
 **Two distinct sections**:
+
 1. **Problems to Review** - Shows ALL problems needing attention (wrong, slow, help-used). No limit - if there are 15 wrong problems, show all 15. These are the ones the student/teacher needs to focus on.
 2. **All Problems** (AllProblemsSection) - Shows every problem in the session, typically collapsed. Useful for reviewing the complete session.
 
 **Deliverables**:
+
 1. Verify "Problems to Review" shows all flagged problems (no arbitrary limit)
 2. Ensure "All Problems" section is clearly labeled and collapsible
 3. Human-readable skill names throughout (already done in Phase 1)
@@ -797,6 +854,7 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 **Note**: Auto-pause timing section and annotated ProblemToReview are kept as-is (user preference).
 
 **Testable outcome**:
+
 - Visit summary page after completing session with many mistakes
 - "Problems to Review" shows ALL wrong/slow/help-used problems (no limit)
 - "All Problems" section shows complete session (collapsed by default)
@@ -804,6 +862,7 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 - Skill names are human-readable ("+9 = +10 - 1")
 
 **Files to modify**:
+
 - `src/components/practice/SessionSummary.tsx` (verify no limits, clarify labels)
 
 ---
@@ -813,6 +872,7 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 **Goal**: Top section is extracted and shows historical comparison
 
 **Deliverables**:
+
 1. `src/components/practice/SessionHero.tsx`
 2. `src/components/practice/TrendIndicator.tsx`
 3. `src/lib/curriculum/trends.ts` - trend calculation
@@ -820,6 +880,7 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 5. Fix "0 minutes" bug (show "< 1 min")
 
 **Testable outcome**:
+
 - Visit summary page
 - Stats section is visually the same but code is cleaner
 - Duration shows "< 1 min" for short sessions
@@ -827,6 +888,7 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 - Works correctly for first-ever session (no trend shown)
 
 **Files to create/modify**:
+
 - CREATE: `src/components/practice/SessionHero.tsx`
 - CREATE: `src/components/practice/TrendIndicator.tsx`
 - CREATE: `src/lib/curriculum/trends.ts`
@@ -840,17 +902,20 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 **Goal**: Skills and problems sections are separate components
 
 **Deliverables**:
+
 1. `src/components/practice/SkillsPanel.tsx`
 2. `src/components/practice/ProblemsToReviewPanel.tsx`
 3. Update SummaryClient to use new components
 
 **Testable outcome**:
+
 - Visit summary page
 - Skills section works exactly as before (but cleaner code)
 - Problems section works exactly as before (but cleaner code)
 - No visual changes, just code organization
 
 **Files to create/modify**:
+
 - CREATE: `src/components/practice/SkillsPanel.tsx`
 - CREATE: `src/components/practice/ProblemsToReviewPanel.tsx`
 - MODIFY: `src/app/practice/[studentId]/summary/SummaryClient.tsx`
@@ -862,17 +927,20 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 **Goal**: Photos section is extracted with future pipeline placeholder
 
 **Deliverables**:
+
 1. `src/components/practice/OfflineWorkSection.tsx`
 2. "Coming Soon" placeholder UI
 3. Integrate PhotoLightbox
 
 **Testable outcome**:
+
 - Visit summary page
 - Photos section has new title "Offline Practice"
 - "Coming Soon" box visible explaining future AI analysis
 - Photos still uploadable/viewable/deletable
 
 **Files to create/modify**:
+
 - CREATE: `src/components/practice/OfflineWorkSection.tsx`
 - MODIFY: `src/app/practice/[studentId]/summary/SummaryClient.tsx`
 
@@ -883,17 +951,20 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 **Goal**: Desktop uses horizontal space properly
 
 **Deliverables**:
+
 1. Two-column grid layout for desktop (≥1200px)
 2. Adjusted tablet layout (768-1199px)
 3. Mobile stays single column
 
 **Testable outcome**:
+
 - Desktop: Hero + Evidence on left, Skills + Review on right
 - Tablet: Full-width hero, then 2-col skills/review, then evidence
 - Mobile: Single column (no change)
 - Resize browser to test breakpoints
 
 **Files to modify**:
+
 - `src/app/practice/[studentId]/summary/SummaryClient.tsx`
 
 ---
@@ -903,11 +974,13 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 **Goal**: Mobile users can navigate between sections
 
 **Deliverables**:
+
 1. `src/components/practice/ScrollspyNav.tsx`
 2. Add `data-section` attributes to sections
 3. Integrate scrollspy on mobile only
 
 **Testable outcome**:
+
 - Mobile viewport: fixed nav bar at bottom
 - Shows "Overview | Skills | Review | Evidence"
 - Dot indicator shows current section on scroll
@@ -915,6 +988,7 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 - Desktop: scrollspy nav is hidden
 
 **Files to create/modify**:
+
 - CREATE: `src/components/practice/ScrollspyNav.tsx`
 - MODIFY: `src/app/practice/[studentId]/summary/SummaryClient.tsx`
 
@@ -925,6 +999,7 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 **Goal**: Remove old monolithic component, final polish
 
 **Deliverables**:
+
 1. Delete `src/components/practice/SessionSummary.tsx`
 2. Delete unused `onPracticeAgain` references (already removed)
 3. Update component index exports
@@ -932,12 +1007,14 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 5. Run pre-commit
 
 **Testable outcome**:
+
 - All functionality works as before
 - Codebase is cleaner (no 890-line monolith)
 - Types check, lint passes
 - Mobile, tablet, desktop all work
 
 **Files to modify**:
+
 - DELETE: `src/components/practice/SessionSummary.tsx`
 - MODIFY: `src/components/practice/index.ts` (exports)
 
@@ -947,32 +1024,32 @@ Photos → AI Processing → Problem Extraction → Results Generation → BKT I
 
 ### Files to Create
 
-| File | Phase | Purpose |
-|------|-------|---------|
-| `src/utils/skillDisplay.ts` | 1 | Skill name resolution |
-| `src/components/practice/PhotoLightbox.tsx` | 2 | Full-size photo viewer |
-| `src/components/practice/SessionHero.tsx` | 4 | Top stats section |
-| `src/components/practice/TrendIndicator.tsx` | 4 | Historical comparison |
-| `src/lib/curriculum/trends.ts` | 4 | Trend calculations |
-| `src/components/practice/SkillsPanel.tsx` | 5 | Skills breakdown |
-| `src/components/practice/ProblemsToReviewPanel.tsx` | 5 | Review section |
-| `src/components/practice/OfflineWorkSection.tsx` | 6 | Photos + upload |
-| `src/components/practice/ScrollspyNav.tsx` | 8 | Mobile section nav |
+| File                                                | Phase | Purpose                |
+| --------------------------------------------------- | ----- | ---------------------- |
+| `src/utils/skillDisplay.ts`                         | 1     | Skill name resolution  |
+| `src/components/practice/PhotoLightbox.tsx`         | 2     | Full-size photo viewer |
+| `src/components/practice/SessionHero.tsx`           | 4     | Top stats section      |
+| `src/components/practice/TrendIndicator.tsx`        | 4     | Historical comparison  |
+| `src/lib/curriculum/trends.ts`                      | 4     | Trend calculations     |
+| `src/components/practice/SkillsPanel.tsx`           | 5     | Skills breakdown       |
+| `src/components/practice/ProblemsToReviewPanel.tsx` | 5     | Review section         |
+| `src/components/practice/OfflineWorkSection.tsx`    | 6     | Photos + upload        |
+| `src/components/practice/ScrollspyNav.tsx`          | 8     | Mobile section nav     |
 
 ### Files to Modify
 
-| File | Phases | Changes |
-|------|--------|---------|
-| `src/components/practice/SessionSummary.tsx` | 1, 3 | Use skill utilities, add problem limiting |
-| `src/app/practice/[studentId]/summary/page.tsx` | 4 | Load all sessions |
-| `src/app/practice/[studentId]/summary/SummaryClient.tsx` | 2, 4-8 | New layout, components |
-| `src/components/practice/index.ts` | 9 | Update exports |
+| File                                                     | Phases | Changes                                   |
+| -------------------------------------------------------- | ------ | ----------------------------------------- |
+| `src/components/practice/SessionSummary.tsx`             | 1, 3   | Use skill utilities, add problem limiting |
+| `src/app/practice/[studentId]/summary/page.tsx`          | 4      | Load all sessions                         |
+| `src/app/practice/[studentId]/summary/SummaryClient.tsx` | 2, 4-8 | New layout, components                    |
+| `src/components/practice/index.ts`                       | 9      | Update exports                            |
 
 ### Files to Delete
 
-| File | Phase | Reason |
-|------|-------|--------|
-| `src/components/practice/SessionSummary.tsx` | 9 | Replaced by smaller components |
+| File                                         | Phase | Reason                         |
+| -------------------------------------------- | ----- | ------------------------------ |
+| `src/components/practice/SessionSummary.tsx` | 9     | Replaced by smaller components |
 
 ---
 

@@ -260,7 +260,12 @@ function MeasuredGroupedStudentsDemo({
             })}
           >
             <span>⚠️</span>
-            <span className={css({ textTransform: 'uppercase', letterSpacing: '0.03em' })}>
+            <span
+              className={css({
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+              })}
+            >
               Needs Attention
             </span>
           </span>
@@ -397,7 +402,13 @@ function MeasuredGroupedStudentsDemo({
           >
             {bucket.bucketName}
           </h2>
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '16px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            })}
+          >
             {bucket.categories.map((category) => (
               <div key={category.category ?? 'null'} data-category={category.category ?? 'new'}>
                 <h3
@@ -412,7 +423,13 @@ function MeasuredGroupedStudentsDemo({
                 >
                   {category.categoryName}
                 </h3>
-                <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '8px' })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                  })}
+                >
                   <StudentSelector
                     students={category.students}
                     onSelectStudent={() => {}}
@@ -631,7 +648,11 @@ function InteractiveWidthDemo() {
                 categoryName: 'Ten Comp (Add)',
                 students: [students.alex],
               },
-              { category: 'basic-add', categoryName: 'Basic Addition', students: [students.maya] },
+              {
+                category: 'basic-add',
+                categoryName: 'Basic Addition',
+                students: [students.maya],
+              },
               {
                 category: 'basic-sub',
                 categoryName: 'Basic Subtraction',
@@ -678,8 +699,16 @@ export const WideContainer: Story = {
               categoryName: 'Five Comp (Add)',
               students: [students.marcus],
             },
-            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
-            { category: 'ten-comp-add', categoryName: 'Ten Comp (Add)', students: [students.alex] },
+            {
+              category: 'ten-comp-sub',
+              categoryName: 'Ten Comp (Sub)',
+              students: [students.luna],
+            },
+            {
+              category: 'ten-comp-add',
+              categoryName: 'Ten Comp (Add)',
+              students: [students.alex],
+            },
           ],
         },
       ]}
@@ -709,8 +738,16 @@ export const NarrowContainer: Story = {
               categoryName: 'Five Comp (Add)',
               students: [students.marcus],
             },
-            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
-            { category: 'ten-comp-add', categoryName: 'Ten Comp (Add)', students: [students.alex] },
+            {
+              category: 'ten-comp-sub',
+              categoryName: 'Ten Comp (Sub)',
+              students: [students.luna],
+            },
+            {
+              category: 'ten-comp-add',
+              categoryName: 'Ten Comp (Add)',
+              students: [students.alex],
+            },
           ],
         },
       ]}
@@ -740,7 +777,11 @@ export const VeryNarrowContainer: Story = {
               categoryName: 'Five Comp (Add)',
               students: [students.marcus],
             },
-            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
+            {
+              category: 'ten-comp-sub',
+              categoryName: 'Ten Comp (Sub)',
+              students: [students.luna],
+            },
           ],
         },
       ]}
@@ -799,13 +840,21 @@ export const MixedNameLengths: Story = {
           bucket: 'older',
           bucketName: 'Older',
           categories: [
-            { category: 'cat-1', categoryName: 'Category A', students: [students.kai] },
+            {
+              category: 'cat-1',
+              categoryName: 'Category A',
+              students: [students.kai],
+            },
             {
               category: 'cat-2',
               categoryName: 'Category B',
               students: [students.alexanderTheGreat],
             },
-            { category: 'cat-3', categoryName: 'Category C', students: [students.luna] },
+            {
+              category: 'cat-3',
+              categoryName: 'Category C',
+              students: [students.luna],
+            },
             {
               category: 'cat-4',
               categoryName: 'Category D',
@@ -841,8 +890,16 @@ export const MultiStudentCategory: Story = {
           bucket: 'older',
           bucketName: 'Older',
           categories: [
-            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.alex] },
-            { category: 'ten-comp-add', categoryName: 'Ten Comp (Add)', students: [students.maya] },
+            {
+              category: 'ten-comp-sub',
+              categoryName: 'Ten Comp (Sub)',
+              students: [students.alex],
+            },
+            {
+              category: 'ten-comp-add',
+              categoryName: 'Ten Comp (Add)',
+              students: [students.maya],
+            },
           ],
         },
       ]}
@@ -862,8 +919,16 @@ export const MixedCompactAndFull: Story = {
           bucket: 'today',
           bucketName: 'Today',
           categories: [
-            { category: 'cat-1', categoryName: 'Single A', students: [students.sonia] },
-            { category: 'cat-2', categoryName: 'Single B', students: [students.marcus] },
+            {
+              category: 'cat-1',
+              categoryName: 'Single A',
+              students: [students.sonia],
+            },
+            {
+              category: 'cat-2',
+              categoryName: 'Single B',
+              students: [students.marcus],
+            },
           ],
         },
         {
@@ -880,7 +945,13 @@ export const MixedCompactAndFull: Story = {
         {
           bucket: 'older',
           bucketName: 'Older',
-          categories: [{ category: 'cat-4', categoryName: 'Single C', students: [students.kai] }],
+          categories: [
+            {
+              category: 'cat-4',
+              categoryName: 'Single C',
+              students: [students.kai],
+            },
+          ],
         },
       ]}
     />
@@ -905,7 +976,11 @@ export const NeedsAttentionSingleCompact: Story = {
               categoryName: 'Five Comp (Add)',
               students: [students.marcus],
             },
-            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
+            {
+              category: 'ten-comp-sub',
+              categoryName: 'Ten Comp (Sub)',
+              students: [students.luna],
+            },
           ],
         },
       ]}
@@ -931,7 +1006,11 @@ export const NeedsAttentionMultipleFull: Story = {
               categoryName: 'Five Comp (Add)',
               students: [students.alex],
             },
-            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.maya] },
+            {
+              category: 'ten-comp-sub',
+              categoryName: 'Ten Comp (Sub)',
+              students: [students.maya],
+            },
           ],
         },
       ]}
@@ -951,14 +1030,22 @@ export const CategoryWithAttentionPlaceholder: Story = {
           bucket: 'older',
           bucketName: 'Older',
           categories: [
-            { category: 'cat-1', categoryName: 'Compact', students: [students.sonia] },
+            {
+              category: 'cat-1',
+              categoryName: 'Compact',
+              students: [students.sonia],
+            },
             {
               category: 'cat-2',
               categoryName: 'Has Placeholder',
               students: [students.marcus],
               attentionCount: 3,
             },
-            { category: 'cat-3', categoryName: 'Compact', students: [students.luna] },
+            {
+              category: 'cat-3',
+              categoryName: 'Compact',
+              students: [students.luna],
+            },
           ],
         },
       ]}
@@ -990,15 +1077,27 @@ export const MultipleBucketsComplex: Story = {
           bucket: 'thisWeek',
           bucketName: 'This Week',
           categories: [
-            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
-            { category: 'ten-comp-add', categoryName: 'Ten Comp (Add)', students: [students.alex] },
+            {
+              category: 'ten-comp-sub',
+              categoryName: 'Ten Comp (Sub)',
+              students: [students.luna],
+            },
+            {
+              category: 'ten-comp-add',
+              categoryName: 'Ten Comp (Add)',
+              students: [students.alex],
+            },
           ],
         },
         {
           bucket: 'older',
           bucketName: 'Older',
           categories: [
-            { category: 'basic-add', categoryName: 'Basic Addition', students: [students.maya] },
+            {
+              category: 'basic-add',
+              categoryName: 'Basic Addition',
+              students: [students.maya],
+            },
           ],
         },
       ]}
@@ -1025,8 +1124,16 @@ export const DarkMode: Story = {
               categoryName: 'Five Comp (Add)',
               students: [students.marcus],
             },
-            { category: 'ten-comp-sub', categoryName: 'Ten Comp (Sub)', students: [students.luna] },
-            { category: 'ten-comp-add', categoryName: 'Ten Comp (Add)', students: [students.alex] },
+            {
+              category: 'ten-comp-sub',
+              categoryName: 'Ten Comp (Sub)',
+              students: [students.luna],
+            },
+            {
+              category: 'ten-comp-add',
+              categoryName: 'Ten Comp (Add)',
+              students: [students.alex],
+            },
           ],
         },
       ]}
@@ -1069,8 +1176,16 @@ export const AllCompact: Story = {
               categoryName: 'Ten Complements (Addition)',
               students: [students.alex],
             },
-            { category: 'cat-5', categoryName: 'Basic Addition', students: [students.maya] },
-            { category: 'cat-6', categoryName: 'Basic Subtraction', students: [students.kai] },
+            {
+              category: 'cat-5',
+              categoryName: 'Basic Addition',
+              students: [students.maya],
+            },
+            {
+              category: 'cat-6',
+              categoryName: 'Basic Subtraction',
+              students: [students.kai],
+            },
           ],
         },
       ]}

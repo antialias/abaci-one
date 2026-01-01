@@ -25,7 +25,9 @@ import type {
  * @param userId - The parent's user ID to subscribe to notifications for
  * @returns Whether the socket is connected
  */
-export function useParentSocket(userId: string | undefined): { connected: boolean } {
+export function useParentSocket(userId: string | undefined): {
+  connected: boolean
+} {
   const [connected, setConnected] = useState(false)
   const socketRef = useRef<Socket | null>(null)
   const queryClient = useQueryClient()

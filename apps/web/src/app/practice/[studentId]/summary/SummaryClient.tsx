@@ -173,7 +173,11 @@ export function SummaryClient({
 
   // Calculate auto-pause info for determining slow problems
   const autoPauseInfo = useMemo(() => {
-    if (!hasProblems) return { threshold: 0, stats: { sampleCount: 0, meanMs: 0, stdDevMs: 0 } }
+    if (!hasProblems)
+      return {
+        threshold: 0,
+        stats: { sampleCount: 0, meanMs: 0, stdDevMs: 0 },
+      }
     return calculateAutoPauseInfo(sessionResults)
   }, [hasProblems, sessionResults])
 
@@ -1158,7 +1162,14 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
             p: 6,
           })}
         >
-          <div className={css({ color: 'red.400', fontSize: 'lg', textAlign: 'center', mb: 4 })}>
+          <div
+            className={css({
+              color: 'red.400',
+              fontSize: 'lg',
+              textAlign: 'center',
+              mb: 4,
+            })}
+          >
             {error}
           </div>
           <button
@@ -1225,19 +1236,39 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
               zIndex: 10,
             })}
           >
-            <div className={css({ fontWeight: 'bold', mb: 2, color: 'yellow.400' })}>
+            <div
+              className={css({
+                fontWeight: 'bold',
+                mb: 2,
+                color: 'yellow.400',
+              })}
+            >
               Document Scanner Debug
             </div>
-            <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+              })}
+            >
               <div>
                 Scanner:{' '}
-                <span className={css({ color: isScannerReady ? 'green.400' : 'orange.400' })}>
+                <span
+                  className={css({
+                    color: isScannerReady ? 'green.400' : 'orange.400',
+                  })}
+                >
                   {isScannerLoading ? 'Loading...' : isScannerReady ? 'Ready' : 'Failed'}
                 </span>
               </div>
               <div>
                 Camera:{' '}
-                <span className={css({ color: isReady ? 'green.400' : 'orange.400' })}>
+                <span
+                  className={css({
+                    color: isReady ? 'green.400' : 'orange.400',
+                  })}
+                >
                   {isReady ? 'Ready' : 'Starting...'}
                 </span>
               </div>

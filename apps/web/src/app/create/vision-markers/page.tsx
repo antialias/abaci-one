@@ -18,7 +18,12 @@ const PAPER_SIZES = {
     label: 'US Letter (8.5" × 11")',
     format: 'letter' as const,
   },
-  a4: { width: 210, height: 297, label: 'A4 (210mm × 297mm)', format: 'a4' as const },
+  a4: {
+    width: 210,
+    height: 297,
+    label: 'A4 (210mm × 297mm)',
+    format: 'a4' as const,
+  },
 } as const
 
 type PaperSize = keyof typeof PAPER_SIZES
@@ -78,7 +83,9 @@ export default function VisionMarkersPage() {
       // Title
       pdf.setFontSize(20)
       pdf.setFont('helvetica', 'bold')
-      pdf.text('Abacus Vision Calibration Markers', pageWidth / 2, margin, { align: 'center' })
+      pdf.text('Abacus Vision Calibration Markers', pageWidth / 2, margin, {
+        align: 'center',
+      })
 
       pdf.setFontSize(10)
       pdf.setFont('helvetica', 'normal')
@@ -97,8 +104,16 @@ export default function VisionMarkersPage() {
 
       const markerPositions = [
         { id: MARKER_IDS.TOP_LEFT, x: startX, y: startY },
-        { id: MARKER_IDS.TOP_RIGHT, x: startX + markerSize + spacing, y: startY },
-        { id: MARKER_IDS.BOTTOM_LEFT, x: startX, y: startY + markerSize + spacing + 15 },
+        {
+          id: MARKER_IDS.TOP_RIGHT,
+          x: startX + markerSize + spacing,
+          y: startY,
+        },
+        {
+          id: MARKER_IDS.BOTTOM_LEFT,
+          x: startX,
+          y: startY + markerSize + spacing + 15,
+        },
         {
           id: MARKER_IDS.BOTTOM_RIGHT,
           x: startX + markerSize + spacing,
@@ -120,7 +135,9 @@ export default function VisionMarkersPage() {
         })
         pdf.setFontSize(7)
         pdf.setFont('helvetica', 'normal')
-        pdf.text(`ID: ${id}`, x + markerSize / 2, y + markerSize + 9, { align: 'center' })
+        pdf.text(`ID: ${id}`, x + markerSize / 2, y + markerSize + 9, {
+          align: 'center',
+        })
       }
 
       // Instructions
@@ -214,7 +231,13 @@ export default function VisionMarkersPage() {
           >
             Abacus Vision Calibration Markers
           </h1>
-          <p className={css({ color: 'gray.600', maxWidth: '600px', mx: 'auto' })}>
+          <p
+            className={css({
+              color: 'gray.600',
+              maxWidth: '600px',
+              mx: 'auto',
+            })}
+          >
             Download ArUco markers for automatic calibration. Place these markers on the four
             corners of your abacus for instant camera calibration.
           </p>
@@ -264,7 +287,9 @@ export default function VisionMarkersPage() {
                   })}
                 >
                   <div
-                    dangerouslySetInnerHTML={{ __html: generateMarkerSVG(id, 80) }}
+                    dangerouslySetInnerHTML={{
+                      __html: generateMarkerSVG(id, 80),
+                    }}
                     className={css({ mb: 2 })}
                   />
                   <span className={css({ fontSize: 'sm', fontWeight: 'medium' })}>
@@ -296,7 +321,14 @@ export default function VisionMarkersPage() {
           </p>
 
           {/* Size selector */}
-          <div className={css({ display: 'flex', alignItems: 'center', gap: 4, mb: 4 })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              mb: 4,
+            })}
+          >
             <label className={css({ fontSize: 'sm', color: 'gray.700' })}>
               Marker size:
               <input
@@ -426,7 +458,14 @@ export default function VisionMarkersPage() {
             borderColor: 'blue.200',
           })}
         >
-          <h2 className={css({ fontSize: 'lg', fontWeight: 'semibold', mb: 4, color: 'blue.900' })}>
+          <h2
+            className={css({
+              fontSize: 'lg',
+              fontWeight: 'semibold',
+              mb: 4,
+              color: 'blue.900',
+            })}
+          >
             Placement Instructions
           </h2>
           <ol

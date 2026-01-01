@@ -16,7 +16,9 @@ import type { EnrollmentApprovedEvent } from '@/lib/classroom/socket-events'
  * @param playerId - The player ID to subscribe to enrollment notifications for
  * @returns Whether the socket is connected
  */
-export function usePlayerEnrollmentSocket(playerId: string | undefined): { connected: boolean } {
+export function usePlayerEnrollmentSocket(playerId: string | undefined): {
+  connected: boolean
+} {
   const [connected, setConnected] = useState(false)
   const socketRef = useRef<Socket | null>(null)
   const queryClient = useQueryClient()

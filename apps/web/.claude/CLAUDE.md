@@ -161,6 +161,7 @@ Drizzle tracks migrations by name/tag, not by content. Once a migration is recor
 6. Required emergency migration to fix
 
 **This exact pattern has caused THREE production outages:**
+
 - Migration 0043 (December 2025): `is_paused` column missing
 - Migration 0047 (December 2025): `entry_prompts` table missing
 - Migration 0048 (December 2025): `entry_prompt_expiry_minutes` column missing
@@ -214,6 +215,7 @@ CREATE TABLE IF NOT EXISTS `entry_prompts` (...);
 ### Red Flags
 
 If you find yourself:
+
 - Editing a migration file that's already been committed
 - Thinking "I'll just update this migration with the correct SQL"
 - Seeing "migration already applied" but schema is wrong
@@ -1081,16 +1083,20 @@ When modifying data that's fetched via React Query, you MUST use React Query mut
 
 ```typescript
 // ❌ WRONG - This causes stale UI!
-const handleRefreshSkill = useCallback(async (skillId: string) => {
-  const response = await fetch(`/api/curriculum/${studentId}/skills`, {
-    method: 'PATCH',
-    body: JSON.stringify({ skillId }),
-  })
-  router.refresh() // Does NOT invalidate React Query cache!
-}, [studentId, router])
+const handleRefreshSkill = useCallback(
+  async (skillId: string) => {
+    const response = await fetch(`/api/curriculum/${studentId}/skills`, {
+      method: "PATCH",
+      body: JSON.stringify({ skillId }),
+    });
+    router.refresh(); // Does NOT invalidate React Query cache!
+  },
+  [studentId, router],
+);
 ```
 
 **Why this fails:**
+
 - `router.refresh()` triggers a Next.js server re-render
 - But React Query maintains its own cache on the client
 - The cached data stays stale until the query naturally refetches
@@ -1101,6 +1107,7 @@ const handleRefreshSkill = useCallback(async (skillId: string) => {
 **Step 1: Check if a mutation hook already exists**
 
 Look in `src/hooks/` for existing mutation hooks:
+
 - `usePlayerCurriculum.ts` - curriculum mutations (`useRefreshSkillRecency`, `useSetMasteredSkills`)
 - `useSessionPlan.ts` - session plan mutations
 - `useRoomData.ts` - arcade room mutations
@@ -1109,19 +1116,22 @@ Look in `src/hooks/` for existing mutation hooks:
 
 ```typescript
 // ✅ CORRECT - Use the mutation hook
-import { useRefreshSkillRecency } from '@/hooks/usePlayerCurriculum'
+import { useRefreshSkillRecency } from "@/hooks/usePlayerCurriculum";
 
 function MyComponent({ studentId }) {
-  const refreshSkillRecency = useRefreshSkillRecency()
+  const refreshSkillRecency = useRefreshSkillRecency();
 
-  const handleRefreshSkill = useCallback(async (skillId: string) => {
-    await refreshSkillRecency.mutateAsync({ playerId: studentId, skillId })
-  }, [studentId, refreshSkillRecency])
+  const handleRefreshSkill = useCallback(
+    async (skillId: string) => {
+      await refreshSkillRecency.mutateAsync({ playerId: studentId, skillId });
+    },
+    [studentId, refreshSkillRecency],
+  );
 
   // Use mutation state for loading indicators
   const isRefreshing = refreshSkillRecency.isPending
     ? refreshSkillRecency.variables?.skillId
-    : null
+    : null;
 }
 ```
 
@@ -1130,24 +1140,30 @@ function MyComponent({ studentId }) {
 ```typescript
 // In src/hooks/usePlayerCurriculum.ts
 export function useRefreshSkillRecency() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ playerId, skillId }: { playerId: string; skillId: string }) => {
+    mutationFn: async ({
+      playerId,
+      skillId,
+    }: {
+      playerId: string;
+      skillId: string;
+    }) => {
       const response = await api(`curriculum/${playerId}/skills`, {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify({ skillId }),
-      })
-      if (!response.ok) throw new Error('Failed to refresh skill')
-      return response.json()
+      });
+      if (!response.ok) throw new Error("Failed to refresh skill");
+      return response.json();
     },
     // THIS IS THE CRITICAL PART - invalidate affected queries!
     onSuccess: (_, { playerId }) => {
       queryClient.invalidateQueries({
         queryKey: curriculumKeys.detail(playerId),
-      })
+      });
     },
-  })
+  });
 }
 ```
 
@@ -1155,18 +1171,19 @@ export function useRefreshSkillRecency() {
 
 **Always ensure mutations invalidate the right query keys:**
 
-| Mutation | Must Invalidate |
-|----------|-----------------|
-| Skill mastery changes | `curriculumKeys.detail(playerId)` |
-| Session plan updates | `sessionPlanKeys.active(playerId)` |
-| Player settings | `curriculumKeys.detail(playerId)` |
-| Room settings | `roomKeys.detail(roomId)` |
+| Mutation              | Must Invalidate                    |
+| --------------------- | ---------------------------------- |
+| Skill mastery changes | `curriculumKeys.detail(playerId)`  |
+| Session plan updates  | `sessionPlanKeys.active(playerId)` |
+| Player settings       | `curriculumKeys.detail(playerId)`  |
+| Room settings         | `roomKeys.detail(roomId)`          |
 
 **Query keys are defined in:** `src/lib/queryKeys.ts`
 
 ### Red Flags
 
 If you find yourself:
+
 - Using `fetch()` directly in a component for mutations
 - Calling `router.refresh()` after a data mutation
 - Creating `useState` for loading states instead of using `mutation.isPending`

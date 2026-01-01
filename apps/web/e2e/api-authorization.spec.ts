@@ -106,7 +106,9 @@ test.describe('API Authorization', () => {
 
         // Enable skills (required before creating session plan)
         const enableSkillsRes = await userARequest.put(`/api/curriculum/${playerId}/skills`, {
-          data: { masteredSkillIds: ['1a-direct-addition', '1b-heaven-bead'] },
+          data: {
+            masteredSkillIds: ['1a-direct-addition', '1b-heaven-bead'],
+          },
         })
         expect(enableSkillsRes.ok()).toBeTruthy()
 
@@ -211,7 +213,9 @@ test.describe('API Authorization', () => {
 
         // User B: Try PUT (set mastered skills) - should fail
         const putAttackRes = await userBRequest.put(`/api/curriculum/${playerId}/skills`, {
-          data: { masteredSkillIds: ['1a-direct-addition', '1b-heaven-bead'] },
+          data: {
+            masteredSkillIds: ['1a-direct-addition', '1b-heaven-bead'],
+          },
         })
         expect(putAttackRes.status()).toBe(403)
         expect((await putAttackRes.json()).error).toBe('Not authorized')

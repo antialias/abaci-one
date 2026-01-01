@@ -715,7 +715,7 @@ When a teacher clicks "Mark Current" for a skill:
 **SlotResult schema** (`session-plans.ts`):
 
 ```typescript
-export type SlotResultSource = 'practice' | 'recency-refresh'
+export type SlotResultSource = "practice" | "recency-refresh";
 
 export interface SlotResult {
   // ... other fields ...
@@ -727,7 +727,7 @@ export interface SlotResult {
    * "Mark Current" to indicate offline practice. BKT uses these for
    * lastPracticedAt but skips them for pKnown calculation (zero-weight).
    */
-  source?: SlotResultSource
+  source?: SlotResultSource;
 }
 ```
 
@@ -735,29 +735,29 @@ export interface SlotResult {
 
 ```typescript
 export type SessionStatus =
-  | 'draft'
-  | 'approved'
-  | 'in_progress'
-  | 'completed'
-  | 'abandoned'
-  | 'recency-refresh'  // Sessions containing only sentinel records
+  | "draft"
+  | "approved"
+  | "in_progress"
+  | "completed"
+  | "abandoned"
+  | "recency-refresh"; // Sessions containing only sentinel records
 ```
 
 **BKT handling** (`compute-bkt.ts`):
 
 ```typescript
 // Check if this is a recency-refresh sentinel record
-const isRecencyRefresh = result.source === 'recency-refresh'
+const isRecencyRefresh = result.source === "recency-refresh";
 
 if (isRecencyRefresh) {
   // Only update lastPracticedAt - skip pKnown calculation
   for (const skillId of skillIds) {
-    const state = skillStates.get(skillId)!
+    const state = skillStates.get(skillId)!;
     if (!state.lastPracticedAt || timestamp > state.lastPracticedAt) {
-      state.lastPracticedAt = timestamp
+      state.lastPracticedAt = timestamp;
     }
   }
-  continue // Skip BKT updates for sentinel records
+  continue; // Skip BKT updates for sentinel records
 }
 ```
 
@@ -767,10 +767,10 @@ if (isRecencyRefresh) {
 const sessions = await db.query.sessionPlans.findMany({
   where: and(
     eq(schema.sessionPlans.playerId, playerId),
-    inArray(schema.sessionPlans.status, ['completed', 'recency-refresh'])
+    inArray(schema.sessionPlans.status, ["completed", "recency-refresh"]),
   ),
   // ...
-})
+});
 ```
 
 ### 8.4 API Usage

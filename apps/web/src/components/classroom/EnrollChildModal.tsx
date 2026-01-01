@@ -346,7 +346,12 @@ export function EnrollChildModal({ isOpen, onClose, playerId, playerName }: Enro
                     )}
 
                     {!lookingUp && !classroom && code.length >= 6 && (
-                      <p className={css({ fontSize: '0.875rem', color: 'red.500' })}>
+                      <p
+                        className={css({
+                          fontSize: '0.875rem',
+                          color: 'red.500',
+                        })}
+                      >
                         No classroom found with this code
                       </p>
                     )}
@@ -367,7 +372,13 @@ export function EnrollChildModal({ isOpen, onClose, playerId, playerName }: Enro
                     marginBottom: '20px',
                   })}
                 >
-                  <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
+                  <div
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    })}
+                  >
                     <span className={css({ fontSize: '1.25rem' })}>🏫</span>
                     <div>
                       <p

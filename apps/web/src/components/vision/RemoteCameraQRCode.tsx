@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AbacusQRCode } from '@/components/common/AbacusQRCode'
 import { useRemoteCameraSession } from '@/hooks/useRemoteCameraSession'
 import { css } from '../../../styled-system/css'
@@ -146,9 +146,7 @@ export function RemoteCameraQRCode({ onSessionCreated, size = 200 }: RemoteCamer
         <p className={css({ fontSize: 'sm', color: 'gray.600', mb: 1 })}>
           Scan with your phone to use it as a camera
         </p>
-        <p className={css({ fontSize: 'xs', color: 'gray.400' })}>
-          Session expires in 10 minutes
-        </p>
+        <p className={css({ fontSize: 'xs', color: 'gray.400' })}>Session expires in 10 minutes</p>
       </div>
 
       {/* URL for manual entry */}

@@ -33,7 +33,10 @@ export const practiceAttachments = sqliteTable('practice_attachments', {
 
   // Crop corners (JSON array of 4 {x, y} points in original image coordinates)
   // Used to restore crop position when re-editing
-  corners: text('corners', { mode: 'json' }).$type<Array<{ x: number; y: number }> | null>(),
+  corners: text('corners', { mode: 'json' }).$type<Array<{
+    x: number
+    y: number
+  }> | null>(),
 
   // Rotation in degrees (0, 90, 180, or 270) - applied after cropping
   rotation: integer('rotation').$type<0 | 90 | 180 | 270>().default(0),

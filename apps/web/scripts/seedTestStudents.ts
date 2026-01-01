@@ -681,8 +681,16 @@ This profile represents a student who:
 Use this student to test how the UI handles intervention alerts for foundational skill deficits.`,
     skillHistory: [
       // Weak in basics - this is concerning at this stage
-      { skillId: 'basic.directAddition', targetClassification: 'weak', problems: 15 },
-      { skillId: 'basic.heavenBead', targetClassification: 'weak', problems: 12 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'weak',
+        problems: 15,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'weak',
+        problems: 12,
+      },
     ],
     // Tuning: Need at least 2 weak skills
     successCriteria: { minWeak: 2 },
@@ -714,17 +722,33 @@ This profile represents a student who:
 Use this student to test targeted intervention recommendations.`,
     skillHistory: [
       // Strong basics
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 20 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 18 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 20,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 18,
+      },
       {
         skillId: 'basic.simpleCombinations',
         targetClassification: 'strong',
         problems: 15,
       },
       // Strong in first five complement
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 16 },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
+        problems: 16,
+      },
       // THE BLOCKER - weak despite practice
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 18 },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
+        problems: 18,
+      },
     ],
   },
   {
@@ -754,17 +778,33 @@ Use this student to verify:
 • Typical student who is making good progress`,
     skillHistory: [
       // Strong basics (mastered)
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 25 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 22 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 25,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 22,
+      },
       // Developing - in the middle zone
       {
         skillId: 'basic.simpleCombinations',
         targetClassification: 'developing',
         problems: 12,
       },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'developing', problems: 10 },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'developing',
+        problems: 10,
+      },
       // Just started (expected to be weak)
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 8 },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
+        problems: 8,
+      },
     ],
     // Success criteria: Need at least 1 developing to prove the system works
     successCriteria: { minDeveloping: 1 },
@@ -796,17 +836,41 @@ Use this student to test:
 - Session planning when all skills are strong`,
     skillHistory: [
       // All strong
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 25 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 25 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 25,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 25,
+      },
       {
         skillId: 'basic.simpleCombinations',
         targetClassification: 'strong',
         problems: 22,
       },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 20 },
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 20 },
-      { skillId: 'fiveComplements.2=5-3', targetClassification: 'strong', problems: 18 },
-      { skillId: 'fiveComplements.1=5-4', targetClassification: 'strong', problems: 18 },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
+        problems: 20,
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
+        problems: 20,
+      },
+      {
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
+        problems: 18,
+      },
+      {
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'strong',
+        problems: 18,
+      },
     ],
   },
   {
@@ -838,8 +902,16 @@ Use this student to test:
 - Over-mastery warnings`,
     skillHistory: [
       // Extremely strong basics
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 35 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 35 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 35,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 35,
+      },
       {
         skillId: 'basic.simpleCombinations',
         targetClassification: 'strong',
@@ -861,10 +933,26 @@ Use this student to test:
         problems: 28,
       },
       // All five complements mastered
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 30 },
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 30 },
-      { skillId: 'fiveComplements.2=5-3', targetClassification: 'strong', problems: 28 },
-      { skillId: 'fiveComplements.1=5-4', targetClassification: 'strong', problems: 28 },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
+        problems: 30,
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
+        problems: 30,
+      },
+      {
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
+        problems: 28,
+      },
+      {
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'strong',
+        problems: 28,
+      },
       // Subtraction five complements too
       {
         skillId: 'fiveComplementsSub.-4=-5+1',
@@ -887,10 +975,26 @@ Use this student to test:
         problems: 22,
       },
       // Even L2 ten complements
-      { skillId: 'tenComplements.9=10-1', targetClassification: 'strong', problems: 20 },
-      { skillId: 'tenComplements.8=10-2', targetClassification: 'strong', problems: 20 },
-      { skillId: 'tenComplements.7=10-3', targetClassification: 'strong', problems: 18 },
-      { skillId: 'tenComplements.6=10-4', targetClassification: 'strong', problems: 18 },
+      {
+        skillId: 'tenComplements.9=10-1',
+        targetClassification: 'strong',
+        problems: 20,
+      },
+      {
+        skillId: 'tenComplements.8=10-2',
+        targetClassification: 'strong',
+        problems: 20,
+      },
+      {
+        skillId: 'tenComplements.7=10-3',
+        targetClassification: 'strong',
+        problems: 18,
+      },
+      {
+        skillId: 'tenComplements.6=10-4',
+        targetClassification: 'strong',
+        problems: 18,
+      },
     ],
   },
 
@@ -937,15 +1041,27 @@ Use this to test the remediation UI in dashboard and modal.`,
     ],
     skillHistory: [
       // Strong skills
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 20 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 18 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 20,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 18,
+      },
       // WEAK skills - will trigger remediation
       {
         skillId: 'basic.simpleCombinations',
         targetClassification: 'weak',
         problems: 15,
       },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'weak', problems: 18 },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'weak',
+        problems: 18,
+      },
     ],
   },
   {
@@ -989,14 +1105,26 @@ Use this to test the progression UI and tutorial gate flow.`,
     ],
     skillHistory: [
       // All skills STRONG
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 25 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 22 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 25,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 22,
+      },
       {
         skillId: 'basic.simpleCombinations',
         targetClassification: 'strong',
         problems: 20,
       },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 20 },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
+        problems: 20,
+      },
     ],
   },
   {
@@ -1040,14 +1168,26 @@ Use this to test the progression UI when tutorial is already satisfied.`,
     ],
     skillHistory: [
       // All skills STRONG
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 25 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 22 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 25,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 22,
+      },
       {
         skillId: 'basic.simpleCombinations',
         targetClassification: 'strong',
         problems: 20,
       },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 20 },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
+        problems: 20,
+      },
     ],
   },
   {
@@ -1100,17 +1240,41 @@ Use this to test the maintenance mode UI in dashboard and modal.`,
     ],
     skillHistory: [
       // All L1 addition skills STRONG with high confidence
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 30 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 28 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 30,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 28,
+      },
       {
         skillId: 'basic.simpleCombinations',
         targetClassification: 'strong',
         problems: 25,
       },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 25 },
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 22 },
-      { skillId: 'fiveComplements.2=5-3', targetClassification: 'strong', problems: 22 },
-      { skillId: 'fiveComplements.1=5-4', targetClassification: 'strong', problems: 20 },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
+        problems: 25,
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
+        problems: 22,
+      },
+      {
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
+        problems: 22,
+      },
+      {
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'strong',
+        problems: 20,
+      },
     ],
   },
 
@@ -1160,7 +1324,11 @@ What you should see:
 
 Use this to verify the dashboard handles single-skill students correctly.`,
     skillHistory: [
-      { skillId: 'basic.directAddition', targetClassification: 'developing', problems: 12 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'developing',
+        problems: 12,
+      },
     ],
   },
   {
@@ -1209,16 +1377,52 @@ Use this to verify:
 • Progress calculations with extensive history`,
     skillHistory: [
       // All L1 addition - strong
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 40 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 35 },
-      { skillId: 'basic.simpleCombinations', targetClassification: 'strong', problems: 30 },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 28 },
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 25 },
-      { skillId: 'fiveComplements.2=5-3', targetClassification: 'strong', problems: 25 },
-      { skillId: 'fiveComplements.1=5-4', targetClassification: 'strong', problems: 22 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 40,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 35,
+      },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
+        problems: 30,
+      },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
+        problems: 28,
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
+        problems: 25,
+      },
+      {
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
+        problems: 25,
+      },
+      {
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'strong',
+        problems: 22,
+      },
       // Subtraction - developing
-      { skillId: 'basic.directSubtraction', targetClassification: 'developing', problems: 15 },
-      { skillId: 'basic.heavenBeadSubtraction', targetClassification: 'developing', problems: 12 },
+      {
+        skillId: 'basic.directSubtraction',
+        targetClassification: 'developing',
+        problems: 15,
+      },
+      {
+        skillId: 'basic.heavenBeadSubtraction',
+        targetClassification: 'developing',
+        problems: 12,
+      },
     ],
   },
   {
@@ -1261,18 +1465,38 @@ Use this to verify UI handles many weak skills gracefully.
 Complements 🔴 Multi-Skill Deficient (which has only 2 weak).`,
     skillHistory: [
       // 2 Strong
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 25 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 22 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 25,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 22,
+      },
       // 2 Developing
       {
         skillId: 'basic.simpleCombinations',
         targetClassification: 'developing',
         problems: 15,
       },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'developing', problems: 14 },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'developing',
+        problems: 14,
+      },
       // 2 Weak
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 18 },
-      { skillId: 'fiveComplements.2=5-3', targetClassification: 'weak', problems: 16 },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
+        problems: 18,
+      },
+      {
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'weak',
+        problems: 16,
+      },
     ],
     // Need at least 2 weak for remediation testing
     successCriteria: { minWeak: 2 },
@@ -1319,8 +1543,18 @@ Use this to test:
 • BKT decay effects on old skills`,
     skillHistory: [
       // Recent skills (1 day ago) - NOT stale
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 20, ageDays: 1 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 18, ageDays: 1 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 20,
+        ageDays: 1,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 18,
+        ageDays: 1,
+      },
       // "Not practiced recently" (7-14 days)
       {
         skillId: 'basic.simpleCombinations',
@@ -1419,11 +1653,23 @@ Use this profile to verify:
         simulateLegacyData: true,
       },
       // STRONG with many problems
-      { skillId: 'basic.simpleCombinations', targetClassification: 'strong', problems: 100 },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
+        problems: 100,
+      },
       // WEAK with many problems
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'weak', problems: 100 },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'weak',
+        problems: 100,
+      },
       // DEVELOPING
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'developing', problems: 50 },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'developing',
+        problems: 50,
+      },
       // Very old skill with legacy data (tests decay + legacy handling)
       {
         skillId: 'fiveComplements.2=5-3',
@@ -1482,9 +1728,19 @@ are rusty from neglect (stale), others they just can't get (weak), and some
 are both - the forgotten weaknesses that need urgent attention.`,
     skillHistory: [
       // STRONG + recent (healthy baseline)
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 20, ageDays: 1 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 20,
+        ageDays: 1,
+      },
       // STRONG + stale 20 days (stale-only - "Getting rusty" but should be fine)
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 18, ageDays: 20 },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 18,
+        ageDays: 20,
+      },
       // WEAK + recent (weak-only - actively struggling with this)
       {
         skillId: 'basic.simpleCombinations',
@@ -1493,9 +1749,19 @@ are both - the forgotten weaknesses that need urgent attention.`,
         ageDays: 2,
       },
       // WEAK + stale 14 days (overlap: weak AND "Not practiced recently")
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'weak', problems: 14, ageDays: 14 },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'weak',
+        problems: 14,
+        ageDays: 14,
+      },
       // WEAK + stale 35 days (overlap: urgent - weak AND "Very stale")
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 18, ageDays: 35 },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
+        problems: 18,
+        ageDays: 35,
+      },
       // DEVELOPING + stale 25 days (borderline - needs practice)
       {
         skillId: 'fiveComplements.2=5-3',
@@ -1536,11 +1802,31 @@ What you should see:
 
 Use this to verify the chart gracefully handles the minimum history case.`,
     skillHistory: [
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 8 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 6 },
-      { skillId: 'basic.simpleCombinations', targetClassification: 'developing', problems: 5 },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'developing', problems: 4 },
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 3 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 8,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 6,
+      },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'developing',
+        problems: 5,
+      },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'developing',
+        problems: 4,
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
+        problems: 3,
+      },
     ],
   },
   {
@@ -1566,11 +1852,31 @@ What you should see:
 
 Use this to verify the chart renders correctly at the minimum viable history.`,
     skillHistory: [
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 12 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 10 },
-      { skillId: 'basic.simpleCombinations', targetClassification: 'developing', problems: 8 },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'developing', problems: 6 },
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'weak', problems: 5 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 12,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 10,
+      },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'developing',
+        problems: 8,
+      },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'developing',
+        problems: 6,
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
+        problems: 5,
+      },
     ],
   },
   {
@@ -1603,13 +1909,41 @@ Use this to verify:
 • Date labels are readable and not overcrowded`,
     skillHistory: [
       // Higher problem counts to distribute across 25 sessions
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 50 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 45 },
-      { skillId: 'basic.simpleCombinations', targetClassification: 'strong', problems: 40 },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 35 },
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 30 },
-      { skillId: 'fiveComplements.2=5-3', targetClassification: 'developing', problems: 25 },
-      { skillId: 'fiveComplements.1=5-4', targetClassification: 'developing', problems: 20 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 50,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 45,
+      },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
+        problems: 40,
+      },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
+        problems: 35,
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
+        problems: 30,
+      },
+      {
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'developing',
+        problems: 25,
+      },
+      {
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'developing',
+        problems: 20,
+      },
     ],
   },
   {
@@ -1644,24 +1978,96 @@ Use this to verify:
     skillHistory: [
       // Very high problem counts for 150 sessions
       // Total ~2000 problems across all skills
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 150 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 140 },
-      { skillId: 'basic.simpleCombinations', targetClassification: 'strong', problems: 130 },
-      { skillId: 'basic.directSubtraction', targetClassification: 'strong', problems: 120 },
-      { skillId: 'basic.heavenBeadSubtraction', targetClassification: 'strong', problems: 110 },
-      { skillId: 'basic.simpleCombinationsSub', targetClassification: 'strong', problems: 100 },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 90 },
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'strong', problems: 85 },
-      { skillId: 'fiveComplements.2=5-3', targetClassification: 'strong', problems: 80 },
-      { skillId: 'fiveComplements.1=5-4', targetClassification: 'strong', problems: 75 },
-      { skillId: 'fiveComplementsSub.-4=-5+1', targetClassification: 'strong', problems: 70 },
-      { skillId: 'fiveComplementsSub.-3=-5+2', targetClassification: 'strong', problems: 65 },
-      { skillId: 'fiveComplementsSub.-2=-5+3', targetClassification: 'strong', problems: 60 },
-      { skillId: 'fiveComplementsSub.-1=-5+4', targetClassification: 'strong', problems: 55 },
-      { skillId: 'tenComplements.9=10-1', targetClassification: 'strong', problems: 50 },
-      { skillId: 'tenComplements.8=10-2', targetClassification: 'strong', problems: 45 },
-      { skillId: 'tenComplements.7=10-3', targetClassification: 'strong', problems: 40 },
-      { skillId: 'tenComplements.6=10-4', targetClassification: 'strong', problems: 35 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 150,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 140,
+      },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
+        problems: 130,
+      },
+      {
+        skillId: 'basic.directSubtraction',
+        targetClassification: 'strong',
+        problems: 120,
+      },
+      {
+        skillId: 'basic.heavenBeadSubtraction',
+        targetClassification: 'strong',
+        problems: 110,
+      },
+      {
+        skillId: 'basic.simpleCombinationsSub',
+        targetClassification: 'strong',
+        problems: 100,
+      },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
+        problems: 90,
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
+        problems: 85,
+      },
+      {
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
+        problems: 80,
+      },
+      {
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'strong',
+        problems: 75,
+      },
+      {
+        skillId: 'fiveComplementsSub.-4=-5+1',
+        targetClassification: 'strong',
+        problems: 70,
+      },
+      {
+        skillId: 'fiveComplementsSub.-3=-5+2',
+        targetClassification: 'strong',
+        problems: 65,
+      },
+      {
+        skillId: 'fiveComplementsSub.-2=-5+3',
+        targetClassification: 'strong',
+        problems: 60,
+      },
+      {
+        skillId: 'fiveComplementsSub.-1=-5+4',
+        targetClassification: 'strong',
+        problems: 55,
+      },
+      {
+        skillId: 'tenComplements.9=10-1',
+        targetClassification: 'strong',
+        problems: 50,
+      },
+      {
+        skillId: 'tenComplements.8=10-2',
+        targetClassification: 'strong',
+        problems: 45,
+      },
+      {
+        skillId: 'tenComplements.7=10-3',
+        targetClassification: 'strong',
+        problems: 40,
+      },
+      {
+        skillId: 'tenComplements.6=10-4',
+        targetClassification: 'strong',
+        problems: 35,
+      },
     ],
   },
   {
@@ -1694,13 +2100,41 @@ Use this to verify:
 • Motivational message correctly detects improvement`,
     skillHistory: [
       // Mix that should show progression when computed at each session point
-      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 35 },
-      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 32 },
-      { skillId: 'basic.simpleCombinations', targetClassification: 'strong', problems: 28 },
-      { skillId: 'fiveComplements.4=5-1', targetClassification: 'strong', problems: 25 },
-      { skillId: 'fiveComplements.3=5-2', targetClassification: 'developing', problems: 18 },
-      { skillId: 'fiveComplements.2=5-3', targetClassification: 'developing', problems: 15 },
-      { skillId: 'fiveComplements.1=5-4', targetClassification: 'weak', problems: 10 },
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 35,
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 32,
+      },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
+        problems: 28,
+      },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
+        problems: 25,
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'developing',
+        problems: 18,
+      },
+      {
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'developing',
+        problems: 15,
+      },
+      {
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'weak',
+        problems: 10,
+      },
     ],
   },
 ]
