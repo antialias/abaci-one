@@ -431,6 +431,9 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
     selectedDeviceId: camera.currentDevice?.deviceId ?? null,
     availableDevices: camera.availableDevices,
     isDeskViewDetected: camera.isDeskViewDetected,
+    facingMode: camera.facingMode,
+    isTorchOn: camera.isTorchOn,
+    isTorchAvailable: camera.isTorchAvailable,
 
     // Calibration state
     calibrationGrid: calibration.calibration,
@@ -451,5 +454,7 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
     selectCamera,
     resetCalibration,
     setCalibrationMode,
+    flipCamera: camera.flipCamera,
+    toggleTorch: camera.toggleTorch,
   }
 }

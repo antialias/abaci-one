@@ -182,8 +182,12 @@ export default function RemoteCameraPage() {
       if (isSending) {
         updateCalibration(desktopCalibration)
       }
+    } else if (usingDesktopCalibration) {
+      // Desktop cleared calibration - go back to auto-detection
+      setUsingDesktopCalibration(false)
+      setCalibration(null)
     }
-  }, [desktopCalibration, isSending, updateCalibration])
+  }, [desktopCalibration, isSending, updateCalibration, usingDesktopCalibration])
 
   // Auto-detect markers (always runs unless using desktop calibration)
   useEffect(() => {
@@ -201,18 +205,28 @@ export default function RemoteCameraPage() {
 
         if (result.allMarkersFound && result.quadCorners) {
           // Auto-calibration successful!
+          // NOTE: detectMarkers() returns corners swapped for Desk View camera (180° rotated).
+          // Phone camera is NOT Desk View, so we need to swap corners back to get correct orientation.
+          // detectMarkers maps: marker 2 (physical BR) → topLeft, marker 0 (physical TL) → bottomRight
+          // For phone camera we need: marker 0 (physical TL) → topLeft, marker 2 (physical BR) → bottomRight
+          const phoneCorners = {
+            topLeft: result.quadCorners.bottomRight, // marker 0 (physical TL)
+            topRight: result.quadCorners.bottomLeft, // marker 1 (physical TR)
+            bottomRight: result.quadCorners.topLeft, // marker 2 (physical BR)
+            bottomLeft: result.quadCorners.topRight, // marker 3 (physical BL)
+          }
           const grid: CalibrationGrid = {
             roi: {
-              x: Math.min(result.quadCorners.topLeft.x, result.quadCorners.bottomLeft.x),
-              y: Math.min(result.quadCorners.topLeft.y, result.quadCorners.topRight.y),
+              x: Math.min(phoneCorners.topLeft.x, phoneCorners.bottomLeft.x),
+              y: Math.min(phoneCorners.topLeft.y, phoneCorners.topRight.y),
               width:
-                Math.max(result.quadCorners.topRight.x, result.quadCorners.bottomRight.x) -
-                Math.min(result.quadCorners.topLeft.x, result.quadCorners.bottomLeft.x),
+                Math.max(phoneCorners.topRight.x, phoneCorners.bottomRight.x) -
+                Math.min(phoneCorners.topLeft.x, phoneCorners.bottomLeft.x),
               height:
-                Math.max(result.quadCorners.bottomLeft.y, result.quadCorners.bottomRight.y) -
-                Math.min(result.quadCorners.topLeft.y, result.quadCorners.topRight.y),
+                Math.max(phoneCorners.bottomLeft.y, phoneCorners.bottomRight.y) -
+                Math.min(phoneCorners.topLeft.y, phoneCorners.topRight.y),
             },
-            corners: result.quadCorners,
+            corners: phoneCorners,
             columnCount: 13,
             columnDividers: Array.from({ length: 12 }, (_, i) => (i + 1) / 13),
             rotation: 0,
@@ -221,7 +235,7 @@ export default function RemoteCameraPage() {
           // Update the calibration for the sending loop and switch to cropped mode
           // BUT: don't switch to cropped if desktop is actively calibrating (they need raw frames)
           if (isSending && !desktopIsCalibrating) {
-            updateCalibration(result.quadCorners)
+            updateCalibration(phoneCorners)
             setFrameMode('cropped')
           }
         }

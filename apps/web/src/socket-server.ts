@@ -1228,6 +1228,13 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
+    // Remote Camera: Desktop clears calibration (tell phone to go back to auto-detection)
+    socket.on('remote-camera:clear-calibration', ({ sessionId }: { sessionId: string }) => {
+      // Forward clear calibration to phone
+      socket.to(`remote-camera:${sessionId}`).emit('remote-camera:clear-calibration', {})
+      console.log(`🖥️ Desktop cleared remote camera calibration`)
+    })
+
     // Remote Camera: Leave session
     socket.on('remote-camera:leave', async ({ sessionId }: { sessionId: string }) => {
       try {

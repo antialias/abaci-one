@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AbacusQRCode } from '@/components/common/AbacusQRCode'
 import { useRemoteCameraSession } from '@/hooks/useRemoteCameraSession'
 import { css } from '../../../styled-system/css'
@@ -10,6 +10,8 @@ export interface RemoteCameraQRCodeProps {
   onSessionCreated?: (sessionId: string) => void
   /** Size of the QR code in pixels */
   size?: number
+  /** Existing session ID to reuse (for reconnection scenarios) */
+  existingSessionId?: string | null
 }
 
 /**
@@ -17,20 +19,36 @@ export interface RemoteCameraQRCodeProps {
  *
  * Automatically creates a remote camera session and shows a QR code
  * that phones can scan to connect as a remote camera source.
+ *
+ * If an existing session ID is provided, it will reuse that session
+ * instead of creating a new one. This allows the phone to reconnect
+ * after a page reload.
  */
-export function RemoteCameraQRCode({ onSessionCreated, size = 200 }: RemoteCameraQRCodeProps) {
-  const { session, isCreating, error, createSession, getPhoneUrl } = useRemoteCameraSession()
+export function RemoteCameraQRCode({
+  onSessionCreated,
+  size = 200,
+  existingSessionId,
+}: RemoteCameraQRCodeProps) {
+  const { session, isCreating, error, createSession, setExistingSession, getPhoneUrl } =
+    useRemoteCameraSession()
 
-  // Create session on mount
+  // If we have an existing session ID, use it instead of creating a new one
   useEffect(() => {
-    if (!session && !isCreating) {
+    if (existingSessionId && !session) {
+      setExistingSession(existingSessionId)
+    }
+  }, [existingSessionId, session, setExistingSession])
+
+  // Create session on mount only if no existing session
+  useEffect(() => {
+    if (!session && !isCreating && !existingSessionId) {
       createSession().then((newSession) => {
         if (newSession && onSessionCreated) {
           onSessionCreated(newSession.sessionId)
         }
       })
     }
-  }, [session, isCreating, createSession, onSessionCreated])
+  }, [session, isCreating, existingSessionId, createSession, onSessionCreated])
 
   const phoneUrl = getPhoneUrl()
 
@@ -149,23 +167,75 @@ export function RemoteCameraQRCode({ onSessionCreated, size = 200 }: RemoteCamer
         <p className={css({ fontSize: 'xs', color: 'gray.400' })}>Session expires in 10 minutes</p>
       </div>
 
-      {/* URL for manual entry */}
-      <div
+      {/* URL for manual entry with copy button */}
+      <UrlWithCopyButton url={phoneUrl} />
+    </div>
+  )
+}
+
+/**
+ * URL display with copy button
+ */
+function UrlWithCopyButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy URL:', err)
+    }
+  }
+
+  return (
+    <div
+      data-element="url-copy-container"
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        bg: 'gray.100',
+        px: 3,
+        py: 2,
+        borderRadius: 'md',
+        maxWidth: '280px',
+      })}
+    >
+      <span
         className={css({
           fontSize: 'xs',
           color: 'gray.500',
-          bg: 'gray.100',
-          px: 3,
-          py: 2,
-          borderRadius: 'md',
           fontFamily: 'mono',
           wordBreak: 'break-all',
-          maxWidth: '280px',
-          textAlign: 'center',
+          flex: 1,
+          userSelect: 'text',
         })}
       >
-        {phoneUrl}
-      </div>
+        {url}
+      </span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        data-action="copy-url"
+        className={css({
+          flexShrink: 0,
+          px: 2,
+          py: 1,
+          bg: copied ? 'green.600' : 'gray.600',
+          color: 'white',
+          border: 'none',
+          borderRadius: 'md',
+          fontSize: 'xs',
+          cursor: 'pointer',
+          transition: 'background-color 0.2s',
+          _hover: { bg: copied ? 'green.700' : 'gray.700' },
+        })}
+        title="Copy URL to clipboard"
+      >
+        {copied ? '✓' : '📋'}
+      </button>
     </div>
   )
 }

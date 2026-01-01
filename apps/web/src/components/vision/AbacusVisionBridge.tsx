@@ -90,6 +90,7 @@ export function AbacusVisionBridge({
     unsubscribe: remoteUnsubscribe,
     setPhoneFrameMode: remoteSetPhoneFrameMode,
     sendCalibration: remoteSendCalibration,
+    clearCalibration: remoteClearCalibration,
   } = useRemoteCameraDesktop()
 
   // Handle switching to phone camera
@@ -129,12 +130,15 @@ export function AbacusVisionBridge({
         // Tell phone to use its auto-calibration (cropped frames)
         remoteSetPhoneFrameMode('cropped')
         setRemoteIsCalibrating(false)
+        // Clear desktop calibration on phone so it goes back to auto-detection
+        remoteClearCalibration()
+        setRemoteCalibration(null)
       } else {
         // Tell phone to send raw frames for desktop calibration
         remoteSetPhoneFrameMode('raw')
       }
     },
-    [remoteSetPhoneFrameMode]
+    [remoteSetPhoneFrameMode, remoteClearCalibration]
   )
 
   // Start remote camera calibration
@@ -408,28 +412,94 @@ export function AbacusVisionBridge({
         </button>
       </div>
 
-      {/* Camera selector (if multiple cameras and using local) */}
-      {cameraSource === 'local' && vision.availableDevices.length > 1 && (
-        <select
-          data-element="camera-selector"
-          value={vision.selectedDeviceId ?? ''}
-          onChange={handleCameraSelect}
+      {/* Camera controls (local camera only) */}
+      {cameraSource === 'local' && (
+        <div
+          data-element="camera-controls"
           className={css({
-            p: 2,
-            bg: 'gray.800',
-            color: 'white',
-            border: '1px solid',
-            borderColor: 'gray.600',
-            borderRadius: 'md',
-            fontSize: 'sm',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            flexWrap: 'wrap',
           })}
         >
-          {vision.availableDevices.map((device) => (
-            <option key={device.deviceId} value={device.deviceId}>
-              {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
-            </option>
-          ))}
-        </select>
+          {/* Camera selector (if multiple cameras) */}
+          {vision.availableDevices.length > 1 && (
+            <select
+              data-element="camera-selector"
+              value={vision.selectedDeviceId ?? ''}
+              onChange={handleCameraSelect}
+              className={css({
+                flex: 1,
+                p: 2,
+                bg: 'gray.800',
+                color: 'white',
+                border: '1px solid',
+                borderColor: 'gray.600',
+                borderRadius: 'md',
+                fontSize: 'sm',
+                minWidth: '150px',
+              })}
+            >
+              {vision.availableDevices.map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* Flip camera button */}
+          <button
+            type="button"
+            onClick={() => vision.flipCamera()}
+            data-action="flip-camera"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px',
+              bg: 'gray.700',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'md',
+              cursor: 'pointer',
+              fontSize: 'lg',
+              _hover: { bg: 'gray.600' },
+            })}
+            title={`Switch to ${vision.facingMode === 'environment' ? 'front' : 'back'} camera`}
+          >
+            🔄
+          </button>
+
+          {/* Torch toggle button (only if available) */}
+          {vision.isTorchAvailable && (
+            <button
+              type="button"
+              onClick={() => vision.toggleTorch()}
+              data-action="toggle-torch"
+              data-status={vision.isTorchOn ? 'on' : 'off'}
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '40px',
+                bg: vision.isTorchOn ? 'yellow.600' : 'gray.700',
+                color: 'white',
+                border: 'none',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                fontSize: 'lg',
+                _hover: { bg: vision.isTorchOn ? 'yellow.500' : 'gray.600' },
+              })}
+              title={vision.isTorchOn ? 'Turn off flash' : 'Turn on flash'}
+            >
+              {vision.isTorchOn ? '🔦' : '💡'}
+            </button>
+          )}
+        </div>
       )}
 
       {/* Calibration mode toggle (both local and phone camera) */}
@@ -636,6 +706,7 @@ export function AbacusVisionBridge({
               borderRadius: 'lg',
               overflow: 'hidden',
               minHeight: '200px',
+              userSelect: 'none', // Prevent text selection from spanning into video feed
             })}
           >
             {!remoteCameraSessionId ? (
@@ -652,7 +723,7 @@ export function AbacusVisionBridge({
                 <RemoteCameraQRCode onSessionCreated={handleRemoteSessionCreated} size={180} />
               </div>
             ) : !remoteIsPhoneConnected ? (
-              /* Waiting for phone to connect */
+              /* Waiting for phone to connect/reconnect - reuse existing session */
               <div
                 className={css({
                   display: 'flex',
@@ -664,7 +735,11 @@ export function AbacusVisionBridge({
                 })}
               >
                 <p className={css({ mb: 4 })}>Waiting for phone to connect...</p>
-                <RemoteCameraQRCode onSessionCreated={handleRemoteSessionCreated} size={150} />
+                <RemoteCameraQRCode
+                  onSessionCreated={handleRemoteSessionCreated}
+                  existingSessionId={remoteCameraSessionId}
+                  size={150}
+                />
               </div>
             ) : (
               /* Show camera frames */

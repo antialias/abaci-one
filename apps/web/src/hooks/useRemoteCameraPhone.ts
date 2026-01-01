@@ -17,11 +17,17 @@ interface UseRemoteCameraPhoneOptions {
   targetFps?: number
   /** JPEG quality (0-1, default 0.8) */
   jpegQuality?: number
-  /** Target width for cropped image (default 400) */
+  /** Target width for cropped image (default 300) */
   targetWidth?: number
   /** Target width for raw frames (default 640) */
   rawWidth?: number
 }
+
+/**
+ * Fixed aspect ratio for cropped abacus images.
+ * Abacus is 4 units high by 3 units wide, giving a 4:3 height:width ratio.
+ */
+const ABACUS_ASPECT_RATIO = 4 / 3
 
 interface UseRemoteCameraPhoneReturn {
   /** Whether connected to the session */
@@ -58,7 +64,10 @@ interface UseRemoteCameraPhoneReturn {
 export function useRemoteCameraPhone(
   options: UseRemoteCameraPhoneOptions = {}
 ): UseRemoteCameraPhoneReturn {
-  const { targetFps = 10, jpegQuality = 0.8, targetWidth = 400, rawWidth = 640 } = options
+  const { targetFps = 10, jpegQuality = 0.8, targetWidth = 300, rawWidth = 640 } = options
+
+  // Calculate fixed output height based on aspect ratio (4 units tall by 3 units wide)
+  const targetHeight = Math.round(targetWidth * ABACUS_ASPECT_RATIO)
 
   const [isSocketConnected, setIsSocketConnected] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
@@ -157,20 +166,31 @@ export function useRemoteCameraPhone(
       frameModeRef.current = 'cropped'
     }
 
+    // Handle clear calibration from desktop (go back to auto-detection)
+    const handleClearCalibration = () => {
+      console.log('[RemoteCameraPhone] Desktop cleared calibration - returning to auto-detection')
+      setDesktopCalibration(null)
+      calibrationRef.current = null
+    }
+
     socket.on('remote-camera:error', handleError)
     socket.on('remote-camera:set-mode', handleSetMode)
     socket.on('remote-camera:set-calibration', handleSetCalibration)
+    socket.on('remote-camera:clear-calibration', handleClearCalibration)
 
     return () => {
       socket.off('remote-camera:error', handleError)
       socket.off('remote-camera:set-mode', handleSetMode)
       socket.off('remote-camera:set-calibration', handleSetCalibration)
+      socket.off('remote-camera:clear-calibration', handleClearCalibration)
     }
   }, [isSocketConnected]) // Re-run when socket connects
 
   /**
    * Apply perspective transform and extract the quadrilateral region
    * Uses OpenCV for proper perspective correction
+   *
+   * Output is fixed at 4:3 height:width aspect ratio (abacus is 4 units tall by 3 units wide)
    */
   const cropToQuad = useCallback(
     (video: HTMLVideoElement, quad: QuadCorners): string | null => {
@@ -181,11 +201,12 @@ export function useRemoteCameraPhone(
 
       return rectifyQuadrilateralToBase64(video, quad, {
         outputWidth: targetWidth,
+        outputHeight: targetHeight, // Fixed 4:3 aspect ratio
         jpegQuality,
         rotate180: false, // Phone camera: no rotation needed, direct mapping
       })
     },
-    [targetWidth, jpegQuality]
+    [targetWidth, targetHeight, jpegQuality]
   )
 
   /**

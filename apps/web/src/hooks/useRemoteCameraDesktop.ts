@@ -35,6 +35,8 @@ interface UseRemoteCameraDesktopReturn {
   setPhoneFrameMode: (mode: FrameMode) => void
   /** Send calibration to the phone */
   sendCalibration: (corners: QuadCorners) => void
+  /** Clear desktop calibration on phone (go back to auto-detection) */
+  clearCalibration: () => void
 }
 
 /**
@@ -212,6 +214,18 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     [socket]
   )
 
+  /**
+   * Clear desktop calibration on phone
+   * This tells the phone to forget the desktop calibration and go back to auto-detection
+   */
+  const clearCalibration = useCallback(() => {
+    if (!socket || !currentSessionId.current) return
+
+    socket.emit('remote-camera:clear-calibration', {
+      sessionId: currentSessionId.current,
+    })
+  }, [socket])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -234,5 +248,6 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     unsubscribe,
     setPhoneFrameMode,
     sendCalibration,
+    clearCalibration,
   }
 }

@@ -17,6 +17,8 @@ interface UseRemoteCameraSessionReturn {
   error: string | null
   /** Create a new remote camera session */
   createSession: () => Promise<RemoteCameraSession | null>
+  /** Set an existing session ID (for reconnection scenarios) */
+  setExistingSession: (sessionId: string) => void
   /** Clear the current session */
   clearSession: () => void
   /** Get the URL for the phone to scan */
@@ -67,6 +69,17 @@ export function useRemoteCameraSession(): UseRemoteCameraSessionReturn {
     }
   }, [])
 
+  const setExistingSession = useCallback((sessionId: string) => {
+    // Use existing session ID without creating a new one on the server
+    // This is used for reconnection when the phone reloads
+    setSession({
+      sessionId,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // Assume 10 min remaining
+      phoneConnected: false,
+    })
+    setError(null)
+  }, [])
+
   const clearSession = useCallback(() => {
     setSession(null)
     setError(null)
@@ -112,6 +125,7 @@ export function useRemoteCameraSession(): UseRemoteCameraSessionReturn {
     isCreating,
     error,
     createSession,
+    setExistingSession,
     clearSession,
     getPhoneUrl,
   }

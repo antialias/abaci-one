@@ -125,6 +125,9 @@ export interface AbacusVisionState {
   selectedDeviceId: string | null
   availableDevices: MediaDeviceInfo[]
   isDeskViewDetected: boolean
+  facingMode: 'user' | 'environment'
+  isTorchOn: boolean
+  isTorchAvailable: boolean
 
   // Calibration state
   calibrationGrid: CalibrationGrid | null
@@ -157,6 +160,10 @@ export interface AbacusVisionActions {
   resetCalibration: () => void
   /** Set calibration mode (auto uses ArUco markers, manual uses drag handles) */
   setCalibrationMode: (mode: CalibrationMode) => void
+  /** Flip between front and back camera */
+  flipCamera: () => Promise<void>
+  /** Toggle torch on/off */
+  toggleTorch: () => Promise<void>
 }
 
 /**

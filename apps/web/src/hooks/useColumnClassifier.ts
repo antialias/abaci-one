@@ -144,6 +144,9 @@ export function useColumnClassifier(): UseColumnClassifierReturn {
 
         const results = await classifier.classifyColumns(columnImages)
 
+        // Model unavailable
+        if (!results) return null
+
         return {
           digits: results.map((r) => r.digit),
           confidences: results.map((r) => r.confidence),

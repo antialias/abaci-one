@@ -284,6 +284,32 @@ export function CalibrationOverlay({
     dragStartRef.current = null
   }, [])
 
+  /**
+   * Rotate corners 90° clockwise or counter-clockwise around the quad center
+   * This reassigns corner labels, not their positions
+   */
+  const handleRotate = useCallback((direction: 'left' | 'right') => {
+    setCorners((prev) => {
+      if (direction === 'right') {
+        // Rotate 90° clockwise: TL→TR, TR→BR, BR→BL, BL→TL
+        return {
+          topLeft: prev.bottomLeft,
+          topRight: prev.topLeft,
+          bottomRight: prev.topRight,
+          bottomLeft: prev.bottomRight,
+        }
+      } else {
+        // Rotate 90° counter-clockwise: TL→BL, BL→BR, BR→TR, TR→TL
+        return {
+          topLeft: prev.topRight,
+          topRight: prev.bottomRight,
+          bottomRight: prev.bottomLeft,
+          bottomLeft: prev.topLeft,
+        }
+      }
+    })
+  }, [])
+
   // Handle complete
   const handleComplete = useCallback(() => {
     const grid: CalibrationGrid = {
@@ -547,6 +573,51 @@ export function CalibrationOverlay({
           gap: 2,
         })}
       >
+        {/* Rotation buttons */}
+        <button
+          type="button"
+          onClick={() => handleRotate('left')}
+          data-action="rotate-left"
+          className={css({
+            px: 2,
+            py: 1.5,
+            bg: 'blue.600',
+            color: 'white',
+            borderRadius: 'md',
+            fontSize: 'sm',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            _hover: { bg: 'blue.500' },
+          })}
+          title="Rotate 90° left"
+        >
+          ↺
+        </button>
+        <button
+          type="button"
+          onClick={() => handleRotate('right')}
+          data-action="rotate-right"
+          className={css({
+            px: 2,
+            py: 1.5,
+            bg: 'blue.600',
+            color: 'white',
+            borderRadius: 'md',
+            fontSize: 'sm',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            _hover: { bg: 'blue.500' },
+          })}
+          title="Rotate 90° right"
+        >
+          ↻
+        </button>
         <button
           type="button"
           onClick={onCancel}

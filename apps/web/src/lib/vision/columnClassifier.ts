@@ -7,7 +7,7 @@
 
 // TensorFlow.js types (dynamically imported)
 type TFLite = typeof import('@tensorflow/tfjs')
-type GraphModel = import('@tensorflow/tfjs').GraphModel
+type LayersModel = import('@tensorflow/tfjs').LayersModel
 
 // Model configuration
 const MODEL_PATH = '/models/abacus-column-classifier/model.json'
@@ -17,8 +17,8 @@ const NUM_CLASSES = 10
 
 // Cached model and TensorFlow instance
 let tfInstance: TFLite | null = null
-let modelInstance: GraphModel | null = null
-let modelLoadPromise: Promise<GraphModel | null> | null = null
+let modelInstance: LayersModel | null = null
+let modelLoadPromise: Promise<LayersModel | null> | null = null
 let modelCheckFailed = false // Track if model doesn't exist
 
 /**
@@ -61,7 +61,7 @@ async function checkModelExists(): Promise<boolean> {
  * Lazy load the classification model
  * Returns null if model doesn't exist (not yet trained)
  */
-async function loadModel(): Promise<GraphModel | null> {
+async function loadModel(): Promise<LayersModel | null> {
   if (modelInstance) return modelInstance
   if (modelCheckFailed) return null
 
@@ -86,8 +86,8 @@ async function loadModel(): Promise<GraphModel | null> {
     const startTime = performance.now()
 
     try {
-      // Load as GraphModel for optimized inference
-      const model = await tf.loadGraphModel(MODEL_PATH)
+      // Load as LayersModel (exported from Keras)
+      const model = await tf.loadLayersModel(MODEL_PATH)
 
       const loadTime = performance.now() - startTime
       console.log(`[ColumnClassifier] Model loaded in ${loadTime.toFixed(0)}ms`)

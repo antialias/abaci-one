@@ -305,14 +305,16 @@ def main():
         print("Install with: pip install tensorflow")
         sys.exit(1)
 
-    # Check tensorflowjs is available
+    # Check tensorflowjs is available (optional - can convert later)
+    tfjs_available = False
     try:
         import tensorflowjs
         print(f"TensorFlow.js converter version: {tensorflowjs.__version__}")
-    except ImportError:
-        print("Error: tensorflowjs not installed")
-        print("Install with: pip install tensorflowjs")
-        sys.exit(1)
+        tfjs_available = True
+    except (ImportError, AttributeError) as e:
+        print(f"Note: tensorflowjs not available ({type(e).__name__})")
+        print("Model will be saved as Keras format. Convert later with:")
+        print("  tensorflowjs_converter --input_format=keras model.keras output_dir/")
 
     print()
 
@@ -352,9 +354,14 @@ def main():
     # Save Keras model
     save_keras_model(model, args.output_dir)
 
-    # Export to TensorFlow.js
-    print("\nExporting to TensorFlow.js format...")
-    export_to_tfjs(model, args.output_dir)
+    # Export to TensorFlow.js (if available)
+    if tfjs_available:
+        print("\nExporting to TensorFlow.js format...")
+        export_to_tfjs(model, args.output_dir)
+    else:
+        print("\nSkipping TensorFlow.js export (tensorflowjs not available)")
+        print("Convert later with:")
+        print(f"  tensorflowjs_converter --input_format=keras {args.output_dir}/column-classifier.keras {args.output_dir}")
 
     print("\nTraining complete!")
     print(f"Model files saved to: {args.output_dir}")

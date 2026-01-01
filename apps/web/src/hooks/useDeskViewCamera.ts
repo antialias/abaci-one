@@ -16,6 +16,12 @@ export interface UseDeskViewCameraReturn {
   availableDevices: MediaDeviceInfo[]
   /** Whether Desk View camera was auto-detected */
   isDeskViewDetected: boolean
+  /** Current facing mode */
+  facingMode: 'user' | 'environment'
+  /** Whether torch is currently on */
+  isTorchOn: boolean
+  /** Whether torch is available on current device */
+  isTorchAvailable: boolean
 
   /** Request camera access, optionally specifying device ID */
   requestCamera: (deviceId?: string) => Promise<void>
@@ -23,6 +29,10 @@ export interface UseDeskViewCameraReturn {
   stopCamera: () => void
   /** Refresh device list */
   enumerateDevices: () => Promise<MediaDeviceInfo[]>
+  /** Flip between front and back camera */
+  flipCamera: () => Promise<void>
+  /** Toggle torch on/off */
+  toggleTorch: () => Promise<void>
 }
 
 /**
@@ -38,9 +48,13 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
   const [currentDevice, setCurrentDevice] = useState<MediaDeviceInfo | null>(null)
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([])
   const [isDeskViewDetected, setIsDeskViewDetected] = useState(false)
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment')
+  const [isTorchOn, setIsTorchOn] = useState(false)
+  const [isTorchAvailable, setIsTorchAvailable] = useState(false)
 
   const streamRef = useRef<MediaStream | null>(null)
   const requestIdRef = useRef(0) // Track request ID to ignore stale completions
+  const facingModeRef = useRef<'user' | 'environment'>('environment')
 
   /**
    * Enumerate available video input devices
@@ -79,6 +93,35 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
     },
     [isDeskViewDevice]
   )
+
+  /**
+   * Check if torch is available on a video track
+   */
+  const checkTorchAvailability = useCallback((track: MediaStreamTrack): boolean => {
+    try {
+      const capabilities = track.getCapabilities() as MediaTrackCapabilities & {
+        torch?: boolean
+      }
+      return capabilities.torch === true
+    } catch {
+      return false
+    }
+  }, [])
+
+  /**
+   * Apply torch setting to track
+   */
+  const applyTorch = useCallback(async (track: MediaStreamTrack, on: boolean): Promise<boolean> => {
+    try {
+      await track.applyConstraints({
+        advanced: [{ torch: on } as MediaTrackConstraintSet],
+      })
+      return true
+    } catch (err) {
+      console.warn('[DeskViewCamera] Failed to apply torch:', err)
+      return false
+    }
+  }, [])
 
   /**
    * Request camera access
@@ -122,7 +165,9 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
             // Try to disable face-tracking auto-focus (not all cameras support this)
             // @ts-expect-error - focusMode is valid but not in TS types
             focusMode: 'continuous',
-            ...(targetDeviceId ? { deviceId: { exact: targetDeviceId } } : {}),
+            ...(targetDeviceId
+              ? { deviceId: { exact: targetDeviceId } }
+              : { facingMode: { ideal: facingModeRef.current } }),
           },
           audio: false,
         }
@@ -140,7 +185,7 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
         streamRef.current = stream
         setVideoStream(stream)
 
-        // Find which device we got
+        // Find which device we got and check torch availability
         const videoTrack = stream.getVideoTracks()[0]
         if (videoTrack) {
           const settings = videoTrack.getSettings()
@@ -149,6 +194,11 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
             setCurrentDevice(matchingDevice)
             setIsDeskViewDetected(isDeskViewDevice(matchingDevice))
           }
+
+          // Check torch availability
+          const torchAvailable = checkTorchAvailability(videoTrack)
+          setIsTorchAvailable(torchAvailable)
+          setIsTorchOn(false)
         }
 
         setIsLoading(false)
@@ -158,7 +208,7 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
         setIsLoading(false)
       }
     },
-    [enumerateDevices, findDeskViewCamera, isDeskViewDevice]
+    [enumerateDevices, findDeskViewCamera, isDeskViewDevice, checkTorchAvailability]
   )
 
   /**
@@ -176,6 +226,8 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
     setVideoStream(null)
     setCurrentDevice(null)
     setError(null)
+    setIsTorchOn(false)
+    setIsTorchAvailable(false)
   }, [])
 
   // Cleanup on unmount
@@ -206,6 +258,33 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
     }
   }, [enumerateDevices])
 
+  /**
+   * Flip between front and back camera
+   */
+  const flipCamera = useCallback(async () => {
+    const newFacingMode = facingMode === 'user' ? 'environment' : 'user'
+    facingModeRef.current = newFacingMode
+    setFacingMode(newFacingMode)
+    // Re-request camera with new facing mode (don't pass device ID to use facingMode)
+    await requestCamera()
+  }, [facingMode, requestCamera])
+
+  /**
+   * Toggle torch on/off
+   */
+  const toggleTorch = useCallback(async () => {
+    if (!streamRef.current || !isTorchAvailable) return
+
+    const videoTrack = streamRef.current.getVideoTracks()[0]
+    if (!videoTrack) return
+
+    const newState = !isTorchOn
+    const success = await applyTorch(videoTrack, newState)
+    if (success) {
+      setIsTorchOn(newState)
+    }
+  }, [isTorchAvailable, isTorchOn, applyTorch])
+
   return {
     isLoading,
     error,
@@ -213,8 +292,13 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
     currentDevice,
     availableDevices,
     isDeskViewDetected,
+    facingMode,
+    isTorchOn,
+    isTorchAvailable,
     requestCamera,
     stopCamera,
     enumerateDevices,
+    flipCamera,
+    toggleTorch,
   }
 }
