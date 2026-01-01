@@ -415,8 +415,9 @@ export function AbacusVisionBridge({
         </button>
       </div>
 
-      {/* Camera controls (local camera) */}
-      {cameraSource === 'local' && vision.availableDevices.length > 0 && (
+      {/* Camera controls (local camera) - only show if there's something to display */}
+      {cameraSource === 'local' &&
+        (vision.availableDevices.length > 1 || vision.isTorchAvailable) && (
         <div
           data-element="camera-controls"
           className={css({
@@ -452,29 +453,31 @@ export function AbacusVisionBridge({
             </select>
           )}
 
-          {/* Flip camera button */}
-          <button
-            type="button"
-            onClick={() => vision.flipCamera()}
-            data-action="flip-camera"
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '40px',
-              bg: 'gray.700',
-              color: 'white',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              fontSize: 'lg',
-              _hover: { bg: 'gray.600' },
-            })}
-            title={`Switch to ${vision.facingMode === 'environment' ? 'front' : 'back'} camera`}
-          >
-            🔄
-          </button>
+          {/* Flip camera button - only show if multiple cameras available */}
+          {vision.availableDevices.length > 1 && (
+            <button
+              type="button"
+              onClick={() => vision.flipCamera()}
+              data-action="flip-camera"
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '40px',
+                bg: 'gray.700',
+                color: 'white',
+                border: 'none',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                fontSize: 'lg',
+                _hover: { bg: 'gray.600' },
+              })}
+              title={`Switch to ${vision.facingMode === 'environment' ? 'front' : 'back'} camera`}
+            >
+              🔄
+            </button>
+          )}
 
           {/* Torch toggle button (only if available) */}
           {vision.isTorchAvailable && (
