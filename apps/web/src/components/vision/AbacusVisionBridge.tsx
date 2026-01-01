@@ -44,6 +44,16 @@ export interface AbacusVisionBridgeProps {
   onConfigurationChange?: (config: VisionConfigurationChange) => void
   /** Initial camera source to show (defaults to 'local', but should be 'phone' if remote session is active) */
   initialCameraSource?: CameraSource
+  /** Whether to show vision control buttons (enable/disable, clear settings) */
+  showVisionControls?: boolean
+  /** Whether vision is currently enabled (for showVisionControls) */
+  isVisionEnabled?: boolean
+  /** Whether vision setup is complete (for showVisionControls) */
+  isVisionSetupComplete?: boolean
+  /** Called when user toggles vision on/off */
+  onToggleVision?: () => void
+  /** Called when user clicks clear settings */
+  onClearSettings?: () => void
 }
 
 /**
@@ -62,6 +72,11 @@ export function AbacusVisionBridge({
   onError,
   onConfigurationChange,
   initialCameraSource = 'local',
+  showVisionControls = false,
+  isVisionEnabled = false,
+  isVisionSetupComplete = false,
+  onToggleVision,
+  onClearSettings,
 }: AbacusVisionBridgeProps): ReactNode {
   const [videoDimensions, setVideoDimensions] = useState<{
     width: number
@@ -1337,6 +1352,72 @@ export function AbacusVisionBridge({
           })}
         >
           {vision.cameraError}
+        </div>
+      )}
+
+      {/* Vision control buttons (when embedded in modal) */}
+      {showVisionControls && (
+        <div
+          data-element="vision-controls"
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            mt: 2,
+            pt: 3,
+            borderTop: '1px solid',
+            borderColor: 'gray.700',
+          })}
+        >
+          {isVisionSetupComplete && (
+            <button
+              type="button"
+              onClick={onToggleVision}
+              className={css({
+                px: 4,
+                py: 3,
+                bg: isVisionEnabled ? 'red.600' : 'green.600',
+                color: 'white',
+                borderRadius: 'lg',
+                fontWeight: 'semibold',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                _hover: {
+                  bg: isVisionEnabled ? 'red.700' : 'green.700',
+                  transform: 'scale(1.02)',
+                },
+              })}
+            >
+              {isVisionEnabled ? 'Disable Vision' : 'Enable Vision'}
+            </button>
+          )}
+
+          {isVisionSetupComplete && (
+            <button
+              type="button"
+              data-action="clear-settings"
+              onClick={onClearSettings}
+              className={css({
+                px: 4,
+                py: 2,
+                bg: 'transparent',
+                color: 'gray.400',
+                borderRadius: 'lg',
+                fontWeight: 'medium',
+                border: '1px solid',
+                borderColor: 'gray.600',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                _hover: {
+                  borderColor: 'gray.500',
+                  color: 'gray.300',
+                },
+              })}
+            >
+              Clear All Settings
+            </button>
+          )}
         </div>
       )}
     </motion.div>
