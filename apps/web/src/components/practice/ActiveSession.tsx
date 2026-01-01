@@ -49,6 +49,8 @@ import { PracticeHelpOverlay } from './PracticeHelpOverlay'
 import { ProblemDebugPanel } from './ProblemDebugPanel'
 import { VerticalProblem } from './VerticalProblem'
 import type { ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
+import { AbacusVisionBridge } from '../vision'
+import { Z_INDEX } from '@/constants/zIndex'
 
 /**
  * Timing data for the current problem attempt
@@ -989,6 +991,9 @@ export function ActiveSession({
   // Track previous epoch to detect epoch changes
   const prevEpochRef = useRef<number>(0)
 
+  // Vision mode state - for physical abacus camera detection
+  const [isVisionEnabled, setIsVisionEnabled] = useState(false)
+
   // Browse mode state - isBrowseMode is controlled via props
   // browseIndex can be controlled (browseIndexProp + onBrowseIndexChange) or internal
   const [internalBrowseIndex, setInternalBrowseIndex] = useState(0)
@@ -1312,6 +1317,17 @@ export function ActiveSession({
       setAnswer(String(newValue))
     },
     [setAnswer]
+  )
+
+  // Handle value detected from vision (physical abacus camera)
+  const handleVisionValueDetected = useCallback(
+    (value: number) => {
+      // Update the docked abacus to show the detected value
+      setDockedValue(value)
+      // Also set the answer input
+      setAnswer(String(value))
+    },
+    [setDockedValue, setAnswer]
   )
 
   // Handle submit
@@ -1972,22 +1988,56 @@ export function ActiveSession({
               {/* Abacus dock - positioned absolutely so it doesn't affect problem centering */}
               {/* Width 100% matches problem width, height matches problem height */}
               {currentPart.type === 'abacus' && !showHelpOverlay && (problemHeight ?? 0) > 0 && (
-                <AbacusDock
-                  id="practice-abacus"
-                  columns={calculateAbacusColumns(attempt.problem.terms)}
-                  interactive={true}
-                  showNumbers={false}
-                  animated={true}
-                  onValueChange={handleAbacusDockValueChange}
-                  className={css({
-                    position: 'absolute',
-                    left: '100%',
-                    top: 0,
-                    width: '100%',
-                    marginLeft: '1.5rem',
-                  })}
-                  style={{ height: problemHeight }}
-                />
+                <>
+                  <AbacusDock
+                    id="practice-abacus"
+                    columns={calculateAbacusColumns(attempt.problem.terms)}
+                    interactive={true}
+                    showNumbers={false}
+                    animated={true}
+                    onValueChange={handleAbacusDockValueChange}
+                    className={css({
+                      position: 'absolute',
+                      left: '100%',
+                      top: 0,
+                      width: '100%',
+                      marginLeft: '1.5rem',
+                    })}
+                    style={{ height: problemHeight }}
+                  />
+                  {/* Vision mode toggle button */}
+                  <button
+                    type="button"
+                    data-action="toggle-vision"
+                    data-enabled={isVisionEnabled}
+                    onClick={() => setIsVisionEnabled((prev) => !prev)}
+                    className={css({
+                      position: 'absolute',
+                      left: '100%',
+                      bottom: 0,
+                      marginLeft: '1.5rem',
+                      px: 2,
+                      py: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      fontSize: 'xs',
+                      bg: isVisionEnabled ? 'green.600' : isDark ? 'gray.700' : 'gray.200',
+                      color: isVisionEnabled ? 'white' : isDark ? 'gray.300' : 'gray.700',
+                      border: 'none',
+                      borderRadius: 'md',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      _hover: {
+                        bg: isVisionEnabled ? 'green.500' : isDark ? 'gray.600' : 'gray.300',
+                      },
+                    })}
+                    title="Use camera to detect physical abacus"
+                  >
+                    <span>📷</span>
+                    <span>Vision</span>
+                  </button>
+                </>
               )}
             </animated.div>
           </animated.div>
@@ -2070,6 +2120,27 @@ export function ActiveSession({
           userInput={attempt.userAnswer}
           phaseName={phase.phase}
         />
+      )}
+
+      {/* Abacus Vision Bridge - floating camera panel for physical abacus detection */}
+      {isVisionEnabled && currentPart.type === 'abacus' && attempt && (
+        <div
+          data-component="vision-panel"
+          className={css({
+            position: 'fixed',
+            top: '200px', // Below main nav (80px) + sub nav (~56px) + mini sub-nav (~60px)
+            right: '1rem',
+            zIndex: Z_INDEX.DROPDOWN, // Above content but below modals
+            boxShadow: 'xl',
+            borderRadius: 'xl',
+          })}
+        >
+          <AbacusVisionBridge
+            columnCount={calculateAbacusColumns(attempt.problem.terms)}
+            onValueDetected={handleVisionValueDetected}
+            onClose={() => setIsVisionEnabled(false)}
+          />
+        </div>
       )}
 
       {/* Session Paused Modal - rendered here as single source of truth */}

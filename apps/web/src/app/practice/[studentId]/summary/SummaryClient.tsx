@@ -294,7 +294,11 @@ export function SummaryClient({
 
   // Handle adjustment confirm - upload cropped + original with corners and rotation, process next
   const handleUploadAdjustmentConfirm = useCallback(
-    async (croppedFile: File, corners: Array<{ x: number; y: number }>, rotation: 0 | 90 | 180 | 270) => {
+    async (
+      croppedFile: File,
+      corners: Array<{ x: number; y: number }>,
+      rotation: 0 | 90 | 180 | 270
+    ) => {
       if (!uploadAdjustmentState) return
 
       // Upload both cropped and original, with corners and rotation for later re-editing
@@ -768,7 +772,6 @@ export function SummaryClient({
             </Dialog.Portal>
           </Dialog.Root>
         )}
-
       </PageWithNav>
     </SessionModeBannerProvider>
   )
@@ -1028,7 +1031,11 @@ function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
 
   // Handle adjustment confirm - pass cropped file, original file, corners, and rotation for later re-editing
   const handleAdjustmentConfirm = useCallback(
-    async (croppedFile: File, corners: Array<{ x: number; y: number }>, rotation: 0 | 90 | 180 | 270) => {
+    async (
+      croppedFile: File,
+      corners: Array<{ x: number; y: number }>,
+      rotation: 0 | 90 | 180 | 270
+    ) => {
       if (!adjustmentMode) return
 
       // Convert source canvas to file for original preservation

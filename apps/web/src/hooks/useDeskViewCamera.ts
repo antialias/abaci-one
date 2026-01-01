@@ -119,6 +119,9 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
           video: {
             width: { ideal: 1920 },
             height: { ideal: 1440 },
+            // Try to disable face-tracking auto-focus (not all cameras support this)
+            // @ts-expect-error - focusMode is valid but not in TS types
+            focusMode: 'continuous',
             ...(targetDeviceId ? { deviceId: { exact: targetDeviceId } } : {}),
           },
           audio: false,
@@ -188,6 +191,11 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
 
   // Listen for device changes (e.g., iPhone connected/disconnected)
   useEffect(() => {
+    // Guard against SSR or unsupported environments
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+      return
+    }
+
     const handleDeviceChange = () => {
       enumerateDevices()
     }

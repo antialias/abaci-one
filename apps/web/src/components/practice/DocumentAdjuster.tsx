@@ -72,11 +72,14 @@ export function DocumentAdjuster({
   }, [detectQuadsInImage, sourceCanvas])
 
   // Check if current corners match detected corners
-  const cornersMatchDetected = !!(detectedCorners && corners.length === 4 && detectedCorners.length === 4 &&
-    corners.every((c, i) =>
-      Math.abs(c.x - detectedCorners[i].x) < 1 &&
-      Math.abs(c.y - detectedCorners[i].y) < 1
-    ))
+  const cornersMatchDetected = !!(
+    detectedCorners &&
+    corners.length === 4 &&
+    detectedCorners.length === 4 &&
+    corners.every(
+      (c, i) => Math.abs(c.x - detectedCorners[i].x) < 1 && Math.abs(c.y - detectedCorners[i].y) < 1
+    )
+  )
 
   // Calculate display scale to fit source image in container
   useEffect(() => {

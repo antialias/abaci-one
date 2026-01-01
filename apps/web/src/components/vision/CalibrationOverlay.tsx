@@ -283,10 +283,22 @@ export function CalibrationOverlay({
 
   // Convert corners to display coordinates (accounting for letterbox offset)
   const displayCorners: QuadCorners = {
-    topLeft: { x: corners.topLeft.x * scale + videoOffsetX, y: corners.topLeft.y * scale + videoOffsetY },
-    topRight: { x: corners.topRight.x * scale + videoOffsetX, y: corners.topRight.y * scale + videoOffsetY },
-    bottomLeft: { x: corners.bottomLeft.x * scale + videoOffsetX, y: corners.bottomLeft.y * scale + videoOffsetY },
-    bottomRight: { x: corners.bottomRight.x * scale + videoOffsetX, y: corners.bottomRight.y * scale + videoOffsetY },
+    topLeft: {
+      x: corners.topLeft.x * scale + videoOffsetX,
+      y: corners.topLeft.y * scale + videoOffsetY,
+    },
+    topRight: {
+      x: corners.topRight.x * scale + videoOffsetX,
+      y: corners.topRight.y * scale + videoOffsetY,
+    },
+    bottomLeft: {
+      x: corners.bottomLeft.x * scale + videoOffsetX,
+      y: corners.bottomLeft.y * scale + videoOffsetY,
+    },
+    bottomRight: {
+      x: corners.bottomRight.x * scale + videoOffsetX,
+      y: corners.bottomRight.y * scale + videoOffsetY,
+    },
   }
 
   // Create SVG path for the quadrilateral

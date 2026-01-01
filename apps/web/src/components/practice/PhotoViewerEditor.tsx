@@ -63,7 +63,12 @@ export function PhotoViewerEditor({
   // Flag to prevent auto-reload after saving (which clears editState)
   const [editCompleted, setEditCompleted] = useState(false)
 
-  const { isReady: isDetectionReady, detectQuadsInImage, loadImageToCanvas, cv: opencvRef } = useDocumentDetection()
+  const {
+    isReady: isDetectionReady,
+    detectQuadsInImage,
+    loadImageToCanvas,
+    cv: opencvRef,
+  } = useDocumentDetection()
 
   // Reset state when opening
   useEffect(() => {
@@ -151,7 +156,11 @@ export function PhotoViewerEditor({
 
   // Handle edit confirm
   const handleEditConfirm = useCallback(
-    async (croppedFile: File, corners: Array<{ x: number; y: number }>, rotation: 0 | 90 | 180 | 270) => {
+    async (
+      croppedFile: File,
+      corners: Array<{ x: number; y: number }>,
+      rotation: 0 | 90 | 180 | 270
+    ) => {
       if (!currentPhoto) return
 
       setIsSaving(true)
