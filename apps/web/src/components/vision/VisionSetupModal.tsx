@@ -200,9 +200,8 @@ export function VisionSetupModal() {
         >
           <AbacusVisionBridge
             columnCount={dock?.columns ?? 5}
-            onValueDetected={(value) => {
+            onValueDetected={() => {
               // Value detected - configuration is working
-              console.log('[VisionSetupModal] Value detected:', value)
             }}
             onClose={() => setIsConfiguring(false)}
             onConfigurationChange={(config) => {

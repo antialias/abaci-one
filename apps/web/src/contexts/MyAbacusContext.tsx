@@ -346,11 +346,9 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const openVisionSetup = useCallback(() => {
-    console.log('[MyAbacusContext] openVisionSetup called')
     setIsVisionSetupOpen(true)
   }, [])
   const closeVisionSetup = useCallback(() => {
-    console.log('[MyAbacusContext] closeVisionSetup called')
     setIsVisionSetupOpen(false)
   }, [])
 

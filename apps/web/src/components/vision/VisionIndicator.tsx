@@ -27,12 +27,8 @@ export function VisionIndicator({ size = 'medium', position = 'bottom-right' }: 
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    console.log('[VisionIndicator] Click detected, isVisionSetupComplete:', isVisionSetupComplete)
-
     // Always open setup modal on click for now
     // This gives users easy access to vision settings
-    // In the future, we could add quick-toggle behavior
-    console.log('[VisionIndicator] Opening setup modal...')
     openVisionSetup()
   }
 
