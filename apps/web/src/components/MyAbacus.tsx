@@ -9,6 +9,9 @@ import { createRoot } from 'react-dom/client'
 import { HomeHeroContext } from '@/contexts/HomeHeroContext'
 import { type DockAnimationState, useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { DockedVisionFeed } from '@/components/vision/DockedVisionFeed'
+import { VisionIndicator } from '@/components/vision/VisionIndicator'
+import { VisionSetupModal } from '@/components/vision/VisionSetupModal'
 import { css } from '../../styled-system/css'
 
 /**
@@ -85,6 +88,8 @@ export function MyAbacus() {
     clearDockRequest,
     abacusValue: contextAbacusValue,
     setDockedValue,
+    visionConfig,
+    isVisionSetupComplete,
   } = useMyAbacus()
   const appConfig = useAbacusConfig()
   const pathname = usePathname()
@@ -493,6 +498,9 @@ export function MyAbacus() {
               position: 'relative',
             })}
           >
+            {/* Vision indicator - positioned at top-right, before undock button */}
+            <VisionIndicator size="small" position="top-left" />
+
             {/* Undock button - positioned at top-right of dock container */}
             <button
               data-action="undock-abacus"
@@ -536,44 +544,67 @@ export function MyAbacus() {
               data-element="abacus-display"
               className={css({
                 filter: 'drop-shadow(0 4px 12px rgba(251, 191, 36, 0.2))',
+                width: '100%',
+                height: '100%',
               })}
             >
-              <AbacusReact
-                key="docked"
-                value={dock.value ?? abacusValue}
-                defaultValue={dock.defaultValue}
-                columns={dock.columns ?? 5}
-                scaleFactor={effectiveScaleFactor}
-                beadShape={appConfig.beadShape}
-                showNumbers={dock.showNumbers ?? true}
-                interactive={dock.interactive ?? true}
-                animated={dock.animated ?? true}
-                customStyles={structuralStyles}
-                onValueChange={(newValue: number | bigint) => {
-                  const numValue = Number(newValue)
-                  // Update the appropriate state based on dock mode
-                  // (unless dock provides its own value prop for full control)
-                  if (dock.value === undefined) {
-                    // When docked by user, update context value; otherwise update local/hero
-                    if (isDockedByUser) {
-                      setDockedValue(numValue)
-                    } else {
-                      setAbacusValue(numValue)
+              {/* Show vision feed when enabled, otherwise show digital abacus */}
+              {visionConfig.enabled && isVisionSetupComplete ? (
+                <DockedVisionFeed
+                  columnCount={dock.columns ?? 5}
+                  onValueDetected={(value) => {
+                    // Update the appropriate state based on dock mode
+                    if (dock.value === undefined) {
+                      if (isDockedByUser) {
+                        setDockedValue(value)
+                      } else {
+                        setAbacusValue(value)
+                      }
                     }
-                  }
-                  // Also call dock's callback if provided
-                  if (dock.onValueChange) {
-                    dock.onValueChange(numValue)
-                  }
-                }}
-                enhanced3d="realistic"
-                material3d={{
-                  heavenBeads: 'glossy',
-                  earthBeads: 'satin',
-                  lighting: 'dramatic',
-                  woodGrain: true,
-                }}
-              />
+                    // Also call dock's callback if provided
+                    if (dock.onValueChange) {
+                      dock.onValueChange(value)
+                    }
+                  }}
+                />
+              ) : (
+                <AbacusReact
+                  key="docked"
+                  value={dock.value ?? abacusValue}
+                  defaultValue={dock.defaultValue}
+                  columns={dock.columns ?? 5}
+                  scaleFactor={effectiveScaleFactor}
+                  beadShape={appConfig.beadShape}
+                  showNumbers={dock.showNumbers ?? true}
+                  interactive={dock.interactive ?? true}
+                  animated={dock.animated ?? true}
+                  customStyles={structuralStyles}
+                  onValueChange={(newValue: number | bigint) => {
+                    const numValue = Number(newValue)
+                    // Update the appropriate state based on dock mode
+                    // (unless dock provides its own value prop for full control)
+                    if (dock.value === undefined) {
+                      // When docked by user, update context value; otherwise update local/hero
+                      if (isDockedByUser) {
+                        setDockedValue(numValue)
+                      } else {
+                        setAbacusValue(numValue)
+                      }
+                    }
+                    // Also call dock's callback if provided
+                    if (dock.onValueChange) {
+                      dock.onValueChange(numValue)
+                    }
+                  }}
+                  enhanced3d="realistic"
+                  material3d={{
+                    heavenBeads: 'glossy',
+                    earthBeads: 'satin',
+                    lighting: 'dramatic',
+                    woodGrain: true,
+                  }}
+                />
+              )}
             </div>
           </div>,
           dock.element
@@ -820,6 +851,9 @@ export function MyAbacus() {
           `,
         }}
       />
+
+      {/* Vision setup modal - controlled by context state */}
+      <VisionSetupModal />
     </>
   )
 }

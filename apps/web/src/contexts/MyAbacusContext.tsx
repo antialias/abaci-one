@@ -6,9 +6,68 @@ import {
   type MutableRefObject,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from 'react'
+import type { CalibrationGrid } from '@/types/vision'
+
+/**
+ * Configuration for abacus vision (camera-based input)
+ */
+export interface VisionConfig {
+  /** Whether vision mode is enabled */
+  enabled: boolean
+  /** Selected camera device ID */
+  cameraDeviceId: string | null
+  /** Saved calibration grid for cropping */
+  calibration: CalibrationGrid | null
+  /** Remote phone camera session ID (for phone-as-camera mode) */
+  remoteCameraSessionId: string | null
+}
+
+const DEFAULT_VISION_CONFIG: VisionConfig = {
+  enabled: false,
+  cameraDeviceId: null,
+  calibration: null,
+  remoteCameraSessionId: null,
+}
+
+const VISION_CONFIG_STORAGE_KEY = 'abacus-vision-config'
+
+/**
+ * Load vision config from localStorage
+ */
+function loadVisionConfig(): VisionConfig {
+  if (typeof window === 'undefined') return DEFAULT_VISION_CONFIG
+  try {
+    const stored = localStorage.getItem(VISION_CONFIG_STORAGE_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return {
+        ...DEFAULT_VISION_CONFIG,
+        ...parsed,
+        // Always start with vision disabled - user must re-enable
+        enabled: false,
+      }
+    }
+  } catch (e) {
+    console.error('[MyAbacusContext] Failed to load vision config:', e)
+  }
+  return DEFAULT_VISION_CONFIG
+}
+
+/**
+ * Save vision config to localStorage
+ */
+function saveVisionConfig(config: VisionConfig): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(VISION_CONFIG_STORAGE_KEY, JSON.stringify(config))
+  } catch (e) {
+    console.error('[MyAbacusContext] Failed to save vision config:', e)
+  }
+}
 
 /**
  * Configuration for a docked abacus
@@ -107,6 +166,25 @@ interface MyAbacusContextValue {
   setDockedValue: (value: number) => void
   /** Current abacus value (for reading) */
   abacusValue: number
+  // Vision-related state
+  /** Current vision configuration */
+  visionConfig: VisionConfig
+  /** Whether vision setup is complete (has camera and calibration) */
+  isVisionSetupComplete: boolean
+  /** Set whether vision is enabled */
+  setVisionEnabled: (enabled: boolean) => void
+  /** Set the selected camera device ID */
+  setVisionCamera: (deviceId: string | null) => void
+  /** Set the calibration grid */
+  setVisionCalibration: (calibration: CalibrationGrid | null) => void
+  /** Set the remote camera session ID */
+  setVisionRemoteSession: (sessionId: string | null) => void
+  /** Whether the vision setup modal is open */
+  isVisionSetupOpen: boolean
+  /** Open the vision setup modal */
+  openVisionSetup: () => void
+  /** Close the vision setup modal */
+  closeVisionSetup: () => void
 }
 
 const MyAbacusContext = createContext<MyAbacusContextValue | undefined>(undefined)
@@ -123,6 +201,16 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   const buttonRef = useRef<HTMLDivElement | null>(null)
   const [pendingDockRequest, setPendingDockRequest] = useState(false)
   const [abacusValue, setAbacusValue] = useState(0)
+
+  // Vision state
+  const [visionConfig, setVisionConfig] = useState<VisionConfig>(DEFAULT_VISION_CONFIG)
+  const [isVisionSetupOpen, setIsVisionSetupOpen] = useState(false)
+
+  // Load vision config from localStorage on mount
+  useEffect(() => {
+    const loaded = loadVisionConfig()
+    setVisionConfig(loaded)
+  }, [])
 
   const open = useCallback(() => setIsOpen(true), [])
   const close = useCallback(() => setIsOpen(false), [])
@@ -200,6 +288,51 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
     setAbacusValue(value)
   }, [])
 
+  // Vision callbacks
+  const isVisionSetupComplete =
+    visionConfig.cameraDeviceId !== null && visionConfig.calibration !== null
+
+  const setVisionEnabled = useCallback((enabled: boolean) => {
+    setVisionConfig((prev) => {
+      const updated = { ...prev, enabled }
+      saveVisionConfig(updated)
+      return updated
+    })
+  }, [])
+
+  const setVisionCamera = useCallback((deviceId: string | null) => {
+    setVisionConfig((prev) => {
+      const updated = { ...prev, cameraDeviceId: deviceId }
+      saveVisionConfig(updated)
+      return updated
+    })
+  }, [])
+
+  const setVisionCalibration = useCallback((calibration: CalibrationGrid | null) => {
+    setVisionConfig((prev) => {
+      const updated = { ...prev, calibration }
+      saveVisionConfig(updated)
+      return updated
+    })
+  }, [])
+
+  const setVisionRemoteSession = useCallback((sessionId: string | null) => {
+    setVisionConfig((prev) => {
+      const updated = { ...prev, remoteCameraSessionId: sessionId }
+      saveVisionConfig(updated)
+      return updated
+    })
+  }, [])
+
+  const openVisionSetup = useCallback(() => {
+    console.log('[MyAbacusContext] openVisionSetup called')
+    setIsVisionSetupOpen(true)
+  }, [])
+  const closeVisionSetup = useCallback(() => {
+    console.log('[MyAbacusContext] closeVisionSetup called')
+    setIsVisionSetupOpen(false)
+  }, [])
+
   return (
     <MyAbacusContext.Provider
       value={{
@@ -233,6 +366,16 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
         clearDockRequest,
         setDockedValue,
         abacusValue,
+        // Vision
+        visionConfig,
+        isVisionSetupComplete,
+        setVisionEnabled,
+        setVisionCamera,
+        setVisionCalibration,
+        setVisionRemoteSession,
+        isVisionSetupOpen,
+        openVisionSetup,
+        closeVisionSetup,
       }}
     >
       {children}

@@ -19,6 +19,18 @@ import { VisionStatusIndicator } from './VisionStatusIndicator'
 
 type CameraSource = 'local' | 'phone'
 
+/**
+ * Configuration change payload for onConfigurationChange callback
+ */
+export interface VisionConfigurationChange {
+  /** Camera device ID (for local camera) */
+  cameraDeviceId?: string | null
+  /** Calibration grid */
+  calibration?: import('@/types/vision').CalibrationGrid | null
+  /** Remote camera session ID (for phone camera) */
+  remoteCameraSessionId?: string | null
+}
+
 export interface AbacusVisionBridgeProps {
   /** Number of abacus columns to detect */
   columnCount: number
@@ -28,6 +40,8 @@ export interface AbacusVisionBridgeProps {
   onClose: () => void
   /** Called on error */
   onError?: (error: string) => void
+  /** Called when configuration changes (camera, calibration, or remote session) */
+  onConfigurationChange?: (config: VisionConfigurationChange) => void
 }
 
 /**
@@ -44,6 +58,7 @@ export function AbacusVisionBridge({
   onValueDetected,
   onClose,
   onError,
+  onConfigurationChange,
 }: AbacusVisionBridgeProps): ReactNode {
   const [videoDimensions, setVideoDimensions] = useState<{
     width: number
@@ -109,6 +124,11 @@ export function AbacusVisionBridge({
   // Throttle remote frame processing
   const lastRemoteInferenceTimeRef = useRef<number>(0)
   const REMOTE_INFERENCE_INTERVAL_MS = 100 // 10fps
+
+  // Track last reported configuration to avoid redundant callbacks
+  const lastReportedCameraRef = useRef<string | null>(null)
+  const lastReportedCalibrationRef = useRef<CalibrationGrid | null>(null)
+  const lastReportedRemoteSessionRef = useRef<string | null>(null)
 
   // Handle switching to phone camera
   const handleCameraSourceChange = useCallback(
@@ -207,6 +227,54 @@ export function AbacusVisionBridge({
       onError(vision.cameraError)
     }
   }, [vision.cameraError, onError])
+
+  // Notify about local camera device changes
+  useEffect(() => {
+    if (
+      cameraSource === 'local' &&
+      vision.selectedDeviceId &&
+      vision.selectedDeviceId !== lastReportedCameraRef.current
+    ) {
+      lastReportedCameraRef.current = vision.selectedDeviceId
+      onConfigurationChange?.({ cameraDeviceId: vision.selectedDeviceId })
+    }
+  }, [cameraSource, vision.selectedDeviceId, onConfigurationChange])
+
+  // Notify about local calibration changes
+  useEffect(() => {
+    if (
+      cameraSource === 'local' &&
+      vision.calibrationGrid &&
+      vision.calibrationGrid !== lastReportedCalibrationRef.current
+    ) {
+      lastReportedCalibrationRef.current = vision.calibrationGrid
+      onConfigurationChange?.({ calibration: vision.calibrationGrid })
+    }
+  }, [cameraSource, vision.calibrationGrid, onConfigurationChange])
+
+  // Notify about remote camera session changes
+  useEffect(() => {
+    if (
+      cameraSource === 'phone' &&
+      remoteCameraSessionId &&
+      remoteCameraSessionId !== lastReportedRemoteSessionRef.current
+    ) {
+      lastReportedRemoteSessionRef.current = remoteCameraSessionId
+      onConfigurationChange?.({ remoteCameraSessionId })
+    }
+  }, [cameraSource, remoteCameraSessionId, onConfigurationChange])
+
+  // Notify about remote calibration changes (manual mode)
+  useEffect(() => {
+    if (
+      cameraSource === 'phone' &&
+      remoteCalibration &&
+      remoteCalibration !== lastReportedCalibrationRef.current
+    ) {
+      lastReportedCalibrationRef.current = remoteCalibration
+      onConfigurationChange?.({ calibration: remoteCalibration })
+    }
+  }, [cameraSource, remoteCalibration, onConfigurationChange])
 
   // Process remote camera frames through CV pipeline
   useEffect(() => {
