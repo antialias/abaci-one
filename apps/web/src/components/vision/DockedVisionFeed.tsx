@@ -33,13 +33,15 @@ interface DockedVisionFeedProps {
  * - Shows the video feed with detection overlay
  */
 export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVisionFeedProps) {
-  const { visionConfig, setDockedValue, setVisionEnabled, setVisionCalibration } = useMyAbacus()
+  const { visionConfig, setDockedValue, setVisionEnabled, setVisionCalibration, emitVisionFrame } = useMyAbacus()
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const remoteImageRef = useRef<HTMLImageElement>(null)
+  const rectifiedCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const markerDetectionFrameRef = useRef<number | null>(null)
   const lastInferenceTimeRef = useRef<number>(0)
+  const lastBroadcastTimeRef = useRef<number>(0)
 
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -336,6 +338,61 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
     }
   }, [stability.stableValue, stability.currentConfidence, detectedValue, setDockedValue, onValueDetected])
 
+  // Broadcast vision frames to observers (5fps to save bandwidth)
+  const BROADCAST_INTERVAL_MS = 200
+  useEffect(() => {
+    if (!visionConfig.enabled) return
+
+    let running = true
+
+    const broadcastLoop = () => {
+      if (!running) return
+
+      const now = performance.now()
+      if (now - lastBroadcastTimeRef.current >= BROADCAST_INTERVAL_MS) {
+        lastBroadcastTimeRef.current = now
+
+        // Capture from rectified canvas (local camera) or remote image
+        let imageData: string | null = null
+
+        if (isLocalCamera && rectifiedCanvasRef.current) {
+          const canvas = rectifiedCanvasRef.current
+          if (canvas.width > 0 && canvas.height > 0) {
+            // Convert canvas to JPEG (quality 0.7 for bandwidth)
+            imageData = canvas.toDataURL('image/jpeg', 0.7).replace('data:image/jpeg;base64,', '')
+          }
+        } else if (isRemoteCamera && remoteLatestFrame) {
+          // Remote camera already sends base64 JPEG
+          imageData = remoteLatestFrame.imageData
+        }
+
+        if (imageData) {
+          emitVisionFrame({
+            imageData,
+            detectedValue,
+            confidence,
+          })
+        }
+      }
+
+      requestAnimationFrame(broadcastLoop)
+    }
+
+    broadcastLoop()
+
+    return () => {
+      running = false
+    }
+  }, [
+    visionConfig.enabled,
+    isLocalCamera,
+    isRemoteCamera,
+    remoteLatestFrame,
+    detectedValue,
+    confidence,
+    emitVisionFrame,
+  ])
+
   const handleDisableVision = (e: React.MouseEvent) => {
     e.stopPropagation()
     setVisionEnabled(false)
@@ -435,6 +492,9 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
           showRectifiedView={true}
           videoRef={(el) => {
             videoRef.current = el
+          }}
+          rectifiedCanvasRef={(el) => {
+            rectifiedCanvasRef.current = el
           }}
         />
       )}

@@ -11,6 +11,7 @@ import type {
   PracticeStateEvent,
   SessionPausedEvent,
   SessionResumedEvent,
+  VisionFrameEvent,
 } from '@/lib/classroom/socket-events'
 
 /**
@@ -64,6 +65,12 @@ export interface UseSessionBroadcastResult {
   ) => void
   /** Send part transition complete event to observers */
   sendPartTransitionComplete: () => void
+  /** Send vision frame to observers (when student has vision mode enabled) */
+  sendVisionFrame: (
+    imageData: string,
+    detectedValue: number | null,
+    confidence: number
+  ) => void
 }
 
 export function useSessionBroadcast(
@@ -271,10 +278,31 @@ export function useSessionBroadcast(
     console.log('[SessionBroadcast] Emitted part-transition-complete')
   }, [sessionId])
 
+  // Broadcast vision frame to observers
+  const sendVisionFrame = useCallback(
+    (imageData: string, detectedValue: number | null, confidence: number) => {
+      if (!socketRef.current || !isConnectedRef.current || !sessionId) {
+        return
+      }
+
+      const event: VisionFrameEvent = {
+        sessionId,
+        imageData,
+        detectedValue,
+        confidence,
+        timestamp: Date.now(),
+      }
+
+      socketRef.current.emit('vision-frame', event)
+    },
+    [sessionId]
+  )
+
   return {
     isConnected: isConnectedRef.current,
     isBroadcasting: isConnectedRef.current && !!state,
     sendPartTransition,
     sendPartTransitionComplete,
+    sendVisionFrame,
   }
 }

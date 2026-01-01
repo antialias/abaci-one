@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useToast } from '@/components/common/ToastContext'
+import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   ActiveSession,
@@ -43,6 +44,7 @@ interface PracticeClientProps {
 export function PracticeClient({ studentId, player, initialSession }: PracticeClientProps) {
   const router = useRouter()
   const { showError } = useToast()
+  const { setVisionFrameCallback } = useMyAbacus()
 
   // Track pause state for HUD display (ActiveSession owns the modal and actual pause logic)
   const [isPaused, setIsPaused] = useState(false)
@@ -168,7 +170,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
   // onAbacusControl receives control events from observing teacher
   // onTeacherPause/onTeacherResume receive pause/resume commands from teacher
-  const { sendPartTransition, sendPartTransitionComplete } = useSessionBroadcast(
+  const { sendPartTransition, sendPartTransitionComplete, sendVisionFrame } = useSessionBroadcast(
     currentPlan.id,
     studentId,
     broadcastState,
@@ -178,6 +180,17 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
       onTeacherResume: () => setTeacherResumeRequest(true),
     }
   )
+
+  // Wire vision frame callback to broadcast vision frames to observers
+  useEffect(() => {
+    setVisionFrameCallback((frame) => {
+      sendVisionFrame(frame.imageData, frame.detectedValue, frame.confidence)
+    })
+
+    return () => {
+      setVisionFrameCallback(null)
+    }
+  }, [setVisionFrameCallback, sendVisionFrame])
 
   // Build session HUD data for PracticeSubNav
   const sessionHud: SessionHudData | undefined = currentPart

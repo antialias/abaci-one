@@ -113,6 +113,23 @@ export interface DockAnimationState {
   toScale: number
 }
 
+/**
+ * Vision frame data for broadcasting
+ */
+export interface VisionFrameData {
+  /** Base64-encoded JPEG image data */
+  imageData: string
+  /** Detected abacus value (null if not yet detected) */
+  detectedValue: number | null
+  /** Detection confidence (0-1) */
+  confidence: number
+}
+
+/**
+ * Callback type for vision frame broadcasting
+ */
+export type VisionFrameCallback = (frame: VisionFrameData) => void
+
 interface MyAbacusContextValue {
   isOpen: boolean
   open: () => void
@@ -185,6 +202,10 @@ interface MyAbacusContextValue {
   openVisionSetup: () => void
   /** Close the vision setup modal */
   closeVisionSetup: () => void
+  /** Set a callback for receiving vision frames (for broadcasting to observers) */
+  setVisionFrameCallback: (callback: VisionFrameCallback | null) => void
+  /** Emit a vision frame (called by DockedVisionFeed) */
+  emitVisionFrame: (frame: VisionFrameData) => void
 }
 
 const MyAbacusContext = createContext<MyAbacusContextValue | undefined>(undefined)
@@ -333,6 +354,17 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
     setIsVisionSetupOpen(false)
   }, [])
 
+  // Vision frame broadcasting
+  const visionFrameCallbackRef = useRef<VisionFrameCallback | null>(null)
+
+  const setVisionFrameCallback = useCallback((callback: VisionFrameCallback | null) => {
+    visionFrameCallbackRef.current = callback
+  }, [])
+
+  const emitVisionFrame = useCallback((frame: VisionFrameData) => {
+    visionFrameCallbackRef.current?.(frame)
+  }, [])
+
   return (
     <MyAbacusContext.Provider
       value={{
@@ -376,6 +408,8 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
         isVisionSetupOpen,
         openVisionSetup,
         closeVisionSetup,
+        setVisionFrameCallback,
+        emitVisionFrame,
       }}
     >
       {children}

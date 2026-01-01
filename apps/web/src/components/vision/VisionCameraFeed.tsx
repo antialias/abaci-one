@@ -19,6 +19,8 @@ export interface VisionCameraFeedProps {
   showRectifiedView?: boolean
   /** Video element ref callback for external access */
   videoRef?: (el: HTMLVideoElement | null) => void
+  /** Rectified canvas ref callback for external access (only when showRectifiedView=true) */
+  rectifiedCanvasRef?: (el: HTMLCanvasElement | null) => void
   /** Called when video metadata is loaded (provides dimensions) */
   onVideoReady?: (width: number, height: number) => void
   /** Children rendered over the video (e.g., CalibrationOverlay) */
@@ -55,6 +57,7 @@ export function VisionCameraFeed({
   showCalibrationGrid = false,
   showRectifiedView = false,
   videoRef: externalVideoRef,
+  rectifiedCanvasRef: externalCanvasRef,
   onVideoReady,
   children,
 }: VisionCameraFeedProps): ReactNode {
@@ -81,6 +84,13 @@ export function VisionCameraFeed({
       externalVideoRef(internalVideoRef.current)
     }
   }, [externalVideoRef])
+
+  // Set canvas ref for external access (when rectified view is active)
+  useEffect(() => {
+    if (externalCanvasRef && showRectifiedView) {
+      externalCanvasRef(rectifiedCanvasRef.current)
+    }
+  }, [externalCanvasRef, showRectifiedView])
 
   // Attach stream to video element
   useEffect(() => {

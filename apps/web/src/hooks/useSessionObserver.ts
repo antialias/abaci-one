@@ -10,6 +10,7 @@ import type {
   PracticeStateEvent,
   SessionPausedEvent,
   SessionResumedEvent,
+  VisionFrameEvent,
 } from '@/lib/classroom/socket-events'
 
 /**
@@ -110,6 +111,20 @@ export interface ObservedResult {
   recordedAt: number
 }
 
+/**
+ * Vision frame received from student's abacus camera
+ */
+export interface ObservedVisionFrame {
+  /** Base64-encoded JPEG image data */
+  imageData: string
+  /** Detected abacus value (null if not yet detected) */
+  detectedValue: number | null
+  /** Detection confidence (0-1) */
+  confidence: number
+  /** When this frame was received by observer */
+  receivedAt: number
+}
+
 interface UseSessionObserverResult {
   /** Current observed state (null if not yet received) */
   state: ObservedSessionState | null
@@ -117,6 +132,8 @@ interface UseSessionObserverResult {
   results: ObservedResult[]
   /** Current part transition state (null if not in transition) */
   transitionState: ObservedTransitionState | null
+  /** Latest vision frame from student's camera (null if vision not enabled) */
+  visionFrame: ObservedVisionFrame | null
   /** Whether connected to the session channel */
   isConnected: boolean
   /** Whether actively observing (connected and joined session) */
@@ -155,6 +172,7 @@ export function useSessionObserver(
   const [state, setState] = useState<ObservedSessionState | null>(null)
   const [results, setResults] = useState<ObservedResult[]>([])
   const [transitionState, setTransitionState] = useState<ObservedTransitionState | null>(null)
+  const [visionFrame, setVisionFrame] = useState<ObservedVisionFrame | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isObserving, setIsObserving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -354,6 +372,16 @@ export function useSessionObserver(
       setTransitionState(null)
     })
 
+    // Listen for vision frames from student's camera
+    socket.on('vision-frame', (data: VisionFrameEvent) => {
+      setVisionFrame({
+        imageData: data.imageData,
+        detectedValue: data.detectedValue,
+        confidence: data.confidence,
+        receivedAt: Date.now(),
+      })
+    })
+
     // Listen for session ended event
     socket.on('session-ended', () => {
       console.log('[SessionObserver] Session ended')
@@ -445,6 +473,7 @@ export function useSessionObserver(
     state,
     results,
     transitionState,
+    visionFrame,
     isConnected,
     isObserving,
     error,

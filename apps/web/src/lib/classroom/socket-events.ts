@@ -269,6 +269,22 @@ export interface PartTransitionCompleteEvent {
 }
 
 /**
+ * Vision frame from student's abacus camera.
+ * Sent when student has vision mode enabled during practice.
+ */
+export interface VisionFrameEvent {
+  sessionId: string
+  /** Base64-encoded JPEG image data */
+  imageData: string
+  /** Detected abacus value (null if not yet detected) */
+  detectedValue: number | null
+  /** Detection confidence (0-1) */
+  confidence: number
+  /** Timestamp when frame was captured */
+  timestamp: number
+}
+
+/**
  * Sent when a student starts a practice session while present in a classroom.
  * Allows teacher to see session status update in real-time.
  */
@@ -401,6 +417,7 @@ export interface ClassroomServerToClientEvents {
   'session-resumed': (data: SessionResumedEvent) => void
   'part-transition': (data: PartTransitionEvent) => void
   'part-transition-complete': (data: PartTransitionCompleteEvent) => void
+  'vision-frame': (data: VisionFrameEvent) => void
 
   // Session status events (classroom channel - for teacher's active sessions view)
   'session-started': (data: SessionStartedEvent) => void
@@ -427,6 +444,7 @@ export interface ClassroomClientToServerEvents {
   // Session state broadcasts (from student client)
   'practice-state': (data: PracticeStateEvent) => void
   'tutorial-state': (data: TutorialStateEvent) => void
+  'vision-frame': (data: VisionFrameEvent) => void
 
   // Observer controls
   'tutorial-control': (data: TutorialControlEvent) => void

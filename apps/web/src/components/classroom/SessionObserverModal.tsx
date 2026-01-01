@@ -21,6 +21,7 @@ import { PracticeFeedback } from '../practice/PracticeFeedback'
 import { PurposeBadge } from '../practice/PurposeBadge'
 import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
 import { VerticalProblem } from '../practice/VerticalProblem'
+import { ObserverVisionFeed } from '../vision/ObserverVisionFeed'
 
 interface SessionObserverModalProps {
   /** Whether the modal is open */
@@ -162,6 +163,7 @@ export function SessionObserverView({
     state,
     results,
     transitionState,
+    visionFrame,
     isConnected,
     isObserving,
     error,
@@ -756,15 +758,9 @@ export function SessionObserverView({
                   />
                 </div>
 
-                {/* AbacusDock - positioned exactly like ActiveSession */}
+                {/* Vision feed or AbacusDock - positioned exactly like ActiveSession */}
                 {state.phase === 'problem' && (problemHeight ?? 0) > 0 && (
-                  <AbacusDock
-                    id="teacher-observer-dock"
-                    columns={abacusColumns}
-                    interactive={true}
-                    showNumbers={false}
-                    animated={true}
-                    onValueChange={handleTeacherAbacusChange}
+                  <div
                     className={css({
                       position: 'absolute',
                       left: '100%',
@@ -773,7 +769,22 @@ export function SessionObserverView({
                       marginLeft: '1.5rem',
                     })}
                     style={{ height: problemHeight ?? undefined }}
-                  />
+                  >
+                    {/* Show vision feed if available, otherwise show teacher's abacus dock */}
+                    {visionFrame ? (
+                      <ObserverVisionFeed frame={visionFrame} />
+                    ) : (
+                      <AbacusDock
+                        id="teacher-observer-dock"
+                        columns={abacusColumns}
+                        interactive={true}
+                        showNumbers={false}
+                        animated={true}
+                        onValueChange={handleTeacherAbacusChange}
+                        style={{ height: '100%' }}
+                      />
+                    )}
+                  </div>
                 )}
               </div>
 

@@ -978,6 +978,21 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       io!.to(`session:${data.sessionId}`).emit('session-resumed', data)
     })
 
+    // Session Observation: Broadcast vision frame from student's abacus camera
+    socket.on(
+      'vision-frame',
+      (data: {
+        sessionId: string
+        imageData: string
+        detectedValue: number | null
+        confidence: number
+        timestamp: number
+      }) => {
+        // Broadcast to all observers in the session channel
+        socket.to(`session:${data.sessionId}`).emit('vision-frame', data)
+      }
+    )
+
     // Skill Tutorial: Broadcast state from student to classroom (for teacher observation)
     // The student joins the classroom channel and emits their tutorial state
     socket.on(
