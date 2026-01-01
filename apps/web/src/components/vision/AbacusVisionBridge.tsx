@@ -42,6 +42,8 @@ export interface AbacusVisionBridgeProps {
   onError?: (error: string) => void
   /** Called when configuration changes (camera, calibration, or remote session) */
   onConfigurationChange?: (config: VisionConfigurationChange) => void
+  /** Initial camera source to show (defaults to 'local', but should be 'phone' if remote session is active) */
+  initialCameraSource?: CameraSource
 }
 
 /**
@@ -59,6 +61,7 @@ export function AbacusVisionBridge({
   onClose,
   onError,
   onConfigurationChange,
+  initialCameraSource = 'local',
 }: AbacusVisionBridgeProps): ReactNode {
   const [videoDimensions, setVideoDimensions] = useState<{
     width: number
@@ -84,7 +87,7 @@ export function AbacusVisionBridge({
   const [opencvReady, setOpencvReady] = useState(false)
 
   // Camera source selection
-  const [cameraSource, setCameraSource] = useState<CameraSource>('local')
+  const [cameraSource, setCameraSource] = useState<CameraSource>(initialCameraSource)
   const [remoteCameraSessionId, setRemoteCameraSessionId] = useState<string | null>(null)
 
   // Remote camera state
@@ -107,12 +110,16 @@ export function AbacusVisionBridge({
     isTorchOn: remoteIsTorchOn,
     isTorchAvailable: remoteIsTorchAvailable,
     error: remoteError,
+    currentSessionId: remoteCurrentSessionId,
+    isReconnecting: remoteIsReconnecting,
     subscribe: remoteSubscribe,
     unsubscribe: remoteUnsubscribe,
     setPhoneFrameMode: remoteSetPhoneFrameMode,
     sendCalibration: remoteSendCalibration,
     clearCalibration: remoteClearCalibration,
     setRemoteTorch,
+    getPersistedSessionId: remoteGetPersistedSessionId,
+    clearSession: remoteClearSession,
   } = useRemoteCameraDesktop()
 
   // Stability tracking for remote frames
@@ -130,25 +137,55 @@ export function AbacusVisionBridge({
   const lastReportedCalibrationRef = useRef<CalibrationGrid | null>(null)
   const lastReportedRemoteSessionRef = useRef<string | null>(null)
 
+  // Initialize remote camera session from localStorage on mount
+  useEffect(() => {
+    const persistedSessionId = remoteGetPersistedSessionId()
+    if (persistedSessionId) {
+      console.log('[AbacusVisionBridge] Found persisted remote session:', persistedSessionId)
+      setRemoteCameraSessionId(persistedSessionId)
+      // Also notify parent about the persisted session
+      // This ensures the parent context stays in sync with localStorage
+      onConfigurationChange?.({ remoteCameraSessionId: persistedSessionId })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remoteGetPersistedSessionId]) // onConfigurationChange is intentionally omitted - only run on mount
+
   // Handle switching to phone camera
   const handleCameraSourceChange = useCallback(
     (source: CameraSource) => {
       setCameraSource(source)
       if (source === 'phone') {
-        // Stop local camera - session will be created by RemoteCameraQRCode
+        // Stop local camera
         vision.disable()
         // Clear local camera config in parent context
         onConfigurationChange?.({ cameraDeviceId: null, calibration: null })
+        // Check for persisted session and reuse it
+        const persistedSessionId = remoteGetPersistedSessionId()
+        if (persistedSessionId) {
+          console.log('[AbacusVisionBridge] Reusing persisted remote session:', persistedSessionId)
+          setRemoteCameraSessionId(persistedSessionId)
+          // Notify parent about the reused session
+          onConfigurationChange?.({ remoteCameraSessionId: persistedSessionId })
+        }
+        // If no persisted session, RemoteCameraQRCode will create one
       } else {
-        // Stop remote session and start local camera
+        // Switching to local camera
+        // Clear remote session in context so DockedVisionFeed uses local camera
+        // The session still persists in localStorage (via useRemoteCameraDesktop) for when we switch back
         setRemoteCameraSessionId(null)
-        vision.enable()
-        // Clear remote session config in parent context
         onConfigurationChange?.({ remoteCameraSessionId: null })
+        vision.enable()
       }
     },
-    [vision, onConfigurationChange]
+    [vision, onConfigurationChange, remoteGetPersistedSessionId]
   )
+
+  // Handle starting a fresh session (clear persisted and create new)
+  const handleStartFreshSession = useCallback(() => {
+    console.log('[AbacusVisionBridge] Starting fresh session')
+    remoteClearSession()
+    setRemoteCameraSessionId(null)
+  }, [remoteClearSession])
 
   // Handle session created by QR code component
   const handleRemoteSessionCreated = useCallback((sessionId: string) => {
@@ -257,9 +294,14 @@ export function AbacusVisionBridge({
   }, [cameraSource, vision.calibrationGrid, onConfigurationChange])
 
   // Notify about remote camera session changes
+  // Reset the lastReportedRemoteSessionRef when switching away from phone camera
+  // so that the next time we switch to phone, we'll notify the parent again
   useEffect(() => {
-    if (
-      cameraSource === 'phone' &&
+    if (cameraSource !== 'phone') {
+      // When switching away from phone camera, reset the ref
+      // This ensures we'll notify the parent again when switching back
+      lastReportedRemoteSessionRef.current = null
+    } else if (
       remoteCameraSessionId &&
       remoteCameraSessionId !== lastReportedRemoteSessionRef.current
     ) {
@@ -469,11 +511,14 @@ export function AbacusVisionBridge({
     [vision]
   )
 
+  // Determine if any calibration is active (disable drag during calibration)
+  const isCalibrating = vision.isCalibrating || remoteIsCalibrating
+
   return (
     <motion.div
       ref={containerRef}
       data-component="abacus-vision-bridge"
-      drag
+      drag={!isCalibrating}
       dragMomentum={false}
       dragElastic={0}
       className={css({
@@ -485,8 +530,8 @@ export function AbacusVisionBridge({
         borderRadius: 'xl',
         maxWidth: '400px',
         width: '100%',
-        cursor: 'grab',
-        _active: { cursor: 'grabbing' },
+        cursor: isCalibrating ? 'default' : 'grab',
+        _active: { cursor: isCalibrating ? 'default' : 'grabbing' },
       })}
     >
       {/* Header */}
@@ -588,136 +633,114 @@ export function AbacusVisionBridge({
         </button>
       </div>
 
-      {/* Camera controls (local camera) - only show if there's something to display */}
-      {cameraSource === 'local' &&
-        (vision.availableDevices.length > 1 || vision.isTorchAvailable) && (
-          <div
-            data-element="camera-controls"
+      {/* Camera controls - unified for both local and phone cameras */}
+      <div
+        data-element="camera-controls"
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          flexWrap: 'wrap',
+        })}
+      >
+        {/* Camera selector - always show for local camera */}
+        {cameraSource === 'local' && vision.availableDevices.length > 0 && (
+          <select
+            data-element="camera-selector"
+            value={vision.selectedDeviceId ?? ''}
+            onChange={handleCameraSelect}
             className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              flexWrap: 'wrap',
+              flex: 1,
+              p: 2,
+              bg: 'gray.800',
+              color: 'white',
+              border: '1px solid',
+              borderColor: 'gray.600',
+              borderRadius: 'md',
+              fontSize: 'sm',
+              minWidth: '150px',
             })}
           >
-            {/* Camera selector (if multiple cameras) */}
-            {vision.availableDevices.length > 1 && (
-              <select
-                data-element="camera-selector"
-                value={vision.selectedDeviceId ?? ''}
-                onChange={handleCameraSelect}
-                className={css({
-                  flex: 1,
-                  p: 2,
-                  bg: 'gray.800',
-                  color: 'white',
-                  border: '1px solid',
-                  borderColor: 'gray.600',
-                  borderRadius: 'md',
-                  fontSize: 'sm',
-                  minWidth: '150px',
-                })}
-              >
-                {vision.availableDevices.map((device) => (
-                  <option key={device.deviceId} value={device.deviceId}>
-                    {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {/* Flip camera button - only show if multiple cameras available */}
-            {vision.availableDevices.length > 1 && (
-              <button
-                type="button"
-                onClick={() => vision.flipCamera()}
-                data-action="flip-camera"
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '40px',
-                  height: '40px',
-                  bg: 'gray.700',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 'md',
-                  cursor: 'pointer',
-                  fontSize: 'lg',
-                  _hover: { bg: 'gray.600' },
-                })}
-                title={`Switch to ${vision.facingMode === 'environment' ? 'front' : 'back'} camera`}
-              >
-                🔄
-              </button>
-            )}
-
-            {/* Torch toggle button (only if available) */}
-            {vision.isTorchAvailable && (
-              <button
-                type="button"
-                onClick={() => vision.toggleTorch()}
-                data-action="toggle-torch"
-                data-status={vision.isTorchOn ? 'on' : 'off'}
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '40px',
-                  height: '40px',
-                  bg: vision.isTorchOn ? 'yellow.600' : 'gray.700',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 'md',
-                  cursor: 'pointer',
-                  fontSize: 'lg',
-                  _hover: { bg: vision.isTorchOn ? 'yellow.500' : 'gray.600' },
-                })}
-                title={vision.isTorchOn ? 'Turn off flash' : 'Turn on flash'}
-              >
-                {vision.isTorchOn ? '🔦' : '💡'}
-              </button>
-            )}
-          </div>
+            {vision.availableDevices.map((device) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
+              </option>
+            ))}
+          </select>
         )}
 
-      {/* Camera controls (phone camera) */}
-      {cameraSource === 'phone' && remoteIsPhoneConnected && remoteIsTorchAvailable && (
-        <div
-          data-element="phone-camera-controls"
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-          })}
-        >
-          {/* Remote torch toggle button */}
+        {/* Flip camera button - only show if multiple cameras available */}
+        {cameraSource === 'local' && vision.availableDevices.length > 1 && (
           <button
             type="button"
-            onClick={() => setRemoteTorch(!remoteIsTorchOn)}
-            data-action="toggle-remote-torch"
-            data-status={remoteIsTorchOn ? 'on' : 'off'}
+            onClick={() => vision.flipCamera()}
+            data-action="flip-camera"
             className={css({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               width: '40px',
               height: '40px',
-              bg: remoteIsTorchOn ? 'yellow.600' : 'gray.700',
+              bg: 'gray.700',
               color: 'white',
               border: 'none',
               borderRadius: 'md',
               cursor: 'pointer',
               fontSize: 'lg',
-              _hover: { bg: remoteIsTorchOn ? 'yellow.500' : 'gray.600' },
+              _hover: { bg: 'gray.600' },
             })}
-            title={remoteIsTorchOn ? 'Turn off phone flash' : 'Turn on phone flash'}
+            title={`Switch to ${vision.facingMode === 'environment' ? 'front' : 'back'} camera`}
           >
-            {remoteIsTorchOn ? '🔦' : '💡'}
+            🔄
           </button>
-          <span className={css({ color: 'gray.400', fontSize: 'sm' })}>Phone Flash</span>
-        </div>
-      )}
+        )}
+
+        {/* Torch toggle button - unified for both local and remote */}
+        {((cameraSource === 'local' && vision.isTorchAvailable) ||
+          (cameraSource === 'phone' && remoteIsPhoneConnected && remoteIsTorchAvailable)) && (
+          <button
+            type="button"
+            onClick={() => {
+              if (cameraSource === 'local') {
+                vision.toggleTorch()
+              } else {
+                setRemoteTorch(!remoteIsTorchOn)
+              }
+            }}
+            data-action="toggle-torch"
+            data-status={
+              (cameraSource === 'local' ? vision.isTorchOn : remoteIsTorchOn) ? 'on' : 'off'
+            }
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px',
+              bg: (cameraSource === 'local' ? vision.isTorchOn : remoteIsTorchOn)
+                ? 'yellow.600'
+                : 'gray.700',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'md',
+              cursor: 'pointer',
+              fontSize: 'lg',
+              _hover: {
+                bg: (cameraSource === 'local' ? vision.isTorchOn : remoteIsTorchOn)
+                  ? 'yellow.500'
+                  : 'gray.600',
+              },
+            })}
+            title={
+              (cameraSource === 'local' ? vision.isTorchOn : remoteIsTorchOn)
+                ? 'Turn off flash'
+                : 'Turn on flash'
+            }
+          >
+            {(cameraSource === 'local' ? vision.isTorchOn : remoteIsTorchOn) ? '🔦' : '💡'}
+          </button>
+        )}
+      </div>
 
       {/* Calibration mode toggle (both local and phone camera) */}
       <div
@@ -951,12 +974,60 @@ export function AbacusVisionBridge({
                   color: 'gray.400',
                 })}
               >
-                <p className={css({ mb: 4 })}>Waiting for phone to connect...</p>
+                {remoteIsReconnecting ? (
+                  <>
+                    <div
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        mb: 2,
+                        color: 'blue.300',
+                      })}
+                    >
+                      <span
+                        className={css({
+                          width: 3,
+                          height: 3,
+                          borderRadius: 'full',
+                          bg: 'blue.400',
+                          animation: 'pulse 1.5s infinite',
+                        })}
+                      />
+                      Reconnecting to session...
+                    </div>
+                    <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
+                  </>
+                ) : (
+                  <p className={css({ mb: 2 })}>Waiting for phone to connect...</p>
+                )}
+                <p className={css({ fontSize: 'xs', color: 'gray.500', mb: 4 })}>
+                  Session: {remoteCameraSessionId.slice(0, 8)}...
+                </p>
                 <RemoteCameraQRCode
                   onSessionCreated={handleRemoteSessionCreated}
                   existingSessionId={remoteCameraSessionId}
                   size={150}
                 />
+                <button
+                  type="button"
+                  onClick={handleStartFreshSession}
+                  className={css({
+                    mt: 4,
+                    px: 3,
+                    py: 1.5,
+                    fontSize: 'xs',
+                    color: 'gray.400',
+                    bg: 'transparent',
+                    border: '1px solid',
+                    borderColor: 'gray.600',
+                    borderRadius: 'md',
+                    cursor: 'pointer',
+                    _hover: { bg: 'gray.700', color: 'white' },
+                  })}
+                >
+                  Start Fresh Session
+                </button>
               </div>
             ) : (
               /* Show camera frames */

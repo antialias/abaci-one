@@ -118,17 +118,30 @@ export function useRemoteCameraPhone(
     frameModeRef.current = frameMode
   }, [frameMode])
 
-  // Initialize socket connection
+  // Initialize socket connection with reconnection support
   useEffect(() => {
     console.log('[RemoteCameraPhone] Initializing socket connection...')
     const socketInstance = io({
       path: '/api/socket',
       autoConnect: true,
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 10,
     })
 
     socketInstance.on('connect', () => {
       console.log('[RemoteCameraPhone] Socket connected! ID:', socketInstance.id)
       setIsSocketConnected(true)
+
+      // Auto-reconnect to session if we have one
+      const sessionId = sessionIdRef.current
+      if (sessionId) {
+        console.log('[RemoteCameraPhone] Auto-reconnecting to session after socket reconnect:', sessionId)
+        socketInstance.emit('remote-camera:join', { sessionId })
+        setIsConnected(true)
+        isConnectedRef.current = true
+      }
     })
 
     socketInstance.on('connect_error', (error) => {
@@ -138,8 +151,12 @@ export function useRemoteCameraPhone(
     socketInstance.on('disconnect', (reason) => {
       console.log('[RemoteCameraPhone] Socket disconnected:', reason)
       setIsSocketConnected(false)
-      setIsConnected(false)
-      isConnectedRef.current = false
+      // Don't clear isConnected or sessionIdRef - we want to auto-reconnect
+      // Only clear if server explicitly disconnected us
+      if (reason === 'io server disconnect') {
+        setIsConnected(false)
+        isConnectedRef.current = false
+      }
     })
 
     socketRef.current = socketInstance

@@ -117,11 +117,14 @@ export function usePhoneCamera(options: UsePhoneCameraOptions = {}): UsePhoneCam
         }
 
         // Request camera with specified facing mode
+        // Prefer widest angle lens (zoom: 1 = no zoom = widest)
         const constraints: MediaStreamConstraints = {
           video: {
             facingMode: { ideal: targetFacingMode },
             width: { ideal: 1280 },
             height: { ideal: 720 },
+            // @ts-expect-error - zoom is valid but not in TS types
+            zoom: { ideal: 1 },
           },
           audio: false,
         }

@@ -7,6 +7,9 @@ import type { QuadCorners } from '@/types/vision'
 /** Frame mode: raw sends uncropped frames, cropped applies calibration */
 export type FrameMode = 'raw' | 'cropped'
 
+/** LocalStorage key for persisting session ID */
+const STORAGE_KEY = 'remote-camera-session-id'
+
 interface RemoteCameraFrame {
   imageData: string // Base64 JPEG
   timestamp: number
@@ -31,6 +34,10 @@ interface UseRemoteCameraDesktopReturn {
   isTorchAvailable: boolean
   /** Error message if connection failed */
   error: string | null
+  /** Current session ID (null if not subscribed) */
+  currentSessionId: string | null
+  /** Whether actively trying to reconnect */
+  isReconnecting: boolean
   /** Subscribe to receive frames for a session */
   subscribe: (sessionId: string) => void
   /** Unsubscribe from the session */
@@ -43,6 +50,10 @@ interface UseRemoteCameraDesktopReturn {
   clearCalibration: () => void
   /** Set phone's torch state */
   setRemoteTorch: (on: boolean) => void
+  /** Get the persisted session ID (if any) */
+  getPersistedSessionId: () => string | null
+  /** Clear persisted session and disconnect */
+  clearSession: () => void
 }
 
 /**
@@ -66,22 +77,55 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
   const [isTorchOn, setIsTorchOn] = useState(false)
   const [isTorchAvailable, setIsTorchAvailable] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const currentSessionId = useRef<string | null>(null)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [isReconnecting, setIsReconnecting] = useState(false)
+
+  // Refs for values needed in callbacks
+  const currentSessionIdRef = useRef<string | null>(null)
+  const reconnectAttemptRef = useRef(0)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Frame rate calculation
   const frameTimestamps = useRef<number[]>([])
 
-  // Initialize socket connection
+  // Helper to persist session ID
+  const persistSessionId = useCallback((sessionId: string | null) => {
+    if (sessionId) {
+      localStorage.setItem(STORAGE_KEY, sessionId)
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  }, [])
+
+  // Helper to get persisted session ID
+  const getPersistedSessionId = useCallback((): string | null => {
+    if (typeof window === 'undefined') return null
+    return localStorage.getItem(STORAGE_KEY)
+  }, [])
+
+  // Initialize socket connection with reconnection support
   useEffect(() => {
     console.log('[RemoteCameraDesktop] Initializing socket connection...')
     const socketInstance = io({
       path: '/api/socket',
       autoConnect: true,
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 10,
     })
 
     socketInstance.on('connect', () => {
       console.log('[RemoteCameraDesktop] Socket connected! ID:', socketInstance.id)
       setIsConnected(true)
+
+      // If we have a session ID (either from state or localStorage), re-subscribe
+      const sessionId = currentSessionIdRef.current || getPersistedSessionId()
+      if (sessionId) {
+        console.log('[RemoteCameraDesktop] Re-subscribing to session after reconnect:', sessionId)
+        setIsReconnecting(true)
+        socketInstance.emit('remote-camera:subscribe', { sessionId })
+      }
     })
 
     socketInstance.on('connect_error', (error) => {
@@ -91,6 +135,11 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     socketInstance.on('disconnect', (reason) => {
       console.log('[RemoteCameraDesktop] Socket disconnected:', reason)
       setIsConnected(false)
+      // Don't clear phone connected state immediately - might reconnect
+      if (reason === 'io server disconnect') {
+        // Server forced disconnect - clear state
+        setIsPhoneConnected(false)
+      }
     })
 
     setSocket(socketInstance)
@@ -98,7 +147,7 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     return () => {
       socketInstance.disconnect()
     }
-  }, [])
+  }, [getPersistedSessionId])
 
   const calculateFrameRate = useCallback(() => {
     const now = Date.now()
@@ -114,19 +163,23 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     const handleConnected = ({ phoneConnected }: { phoneConnected: boolean }) => {
       console.log('[RemoteCameraDesktop] Phone connected event:', phoneConnected)
       setIsPhoneConnected(phoneConnected)
+      setIsReconnecting(false)
       setError(null)
+      reconnectAttemptRef.current = 0
     }
 
     const handleDisconnected = ({ phoneConnected }: { phoneConnected: boolean }) => {
       console.log('[RemoteCameraDesktop] Phone disconnected event:', phoneConnected)
       setIsPhoneConnected(phoneConnected)
-      setLatestFrame(null)
-      setFrameRate(0)
+      // Don't clear frame/framerate - keep last state for visual continuity
+      // Phone might reconnect quickly
     }
 
     const handleStatus = ({ phoneConnected }: { phoneConnected: boolean }) => {
       console.log('[RemoteCameraDesktop] Status event:', phoneConnected)
       setIsPhoneConnected(phoneConnected)
+      setIsReconnecting(false)
+      reconnectAttemptRef.current = 0
     }
 
     const handleFrame = (frame: RemoteCameraFrame) => {
@@ -145,7 +198,16 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     }
 
     const handleError = ({ error: errorMsg }: { error: string }) => {
+      console.log('[RemoteCameraDesktop] Error event:', errorMsg)
+      // If session is invalid/expired, clear the persisted session
+      if (errorMsg.includes('Invalid') || errorMsg.includes('expired')) {
+        console.log('[RemoteCameraDesktop] Session invalid, clearing persisted session')
+        persistSessionId(null)
+        setCurrentSessionId(null)
+        currentSessionIdRef.current = null
+      }
       setError(errorMsg)
+      setIsReconnecting(false)
     }
 
     const handleTorchState = ({
@@ -174,7 +236,7 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
       socket.off('remote-camera:error', handleError)
       socket.off('remote-camera:torch-state', handleTorchState)
     }
-  }, [socket, calculateFrameRate])
+  }, [socket, calculateFrameRate, persistSessionId])
 
   // Frame rate update interval
   useEffect(() => {
@@ -198,19 +260,23 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
         return
       }
 
-      currentSessionId.current = sessionId
+      currentSessionIdRef.current = sessionId
+      setCurrentSessionId(sessionId)
+      persistSessionId(sessionId)
       setError(null)
       console.log('[RemoteCameraDesktop] Emitting remote-camera:subscribe')
       socket.emit('remote-camera:subscribe', { sessionId })
     },
-    [socket, isConnected]
+    [socket, isConnected, persistSessionId]
   )
 
   const unsubscribe = useCallback(() => {
-    if (!socket || !currentSessionId.current) return
+    if (!socket || !currentSessionIdRef.current) return
 
-    socket.emit('remote-camera:leave', { sessionId: currentSessionId.current })
-    currentSessionId.current = null
+    socket.emit('remote-camera:leave', { sessionId: currentSessionIdRef.current })
+    currentSessionIdRef.current = null
+    setCurrentSessionId(null)
+    // Don't clear persisted session - unsubscribe is for temporary disconnect
     setIsPhoneConnected(false)
     setLatestFrame(null)
     setFrameRate(0)
@@ -222,16 +288,38 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
   }, [socket])
 
   /**
+   * Clear session completely (forget persisted session)
+   * Use when user explicitly wants to start fresh
+   */
+  const clearSession = useCallback(() => {
+    if (socket && currentSessionIdRef.current) {
+      socket.emit('remote-camera:leave', { sessionId: currentSessionIdRef.current })
+    }
+    currentSessionIdRef.current = null
+    setCurrentSessionId(null)
+    persistSessionId(null)
+    setIsPhoneConnected(false)
+    setLatestFrame(null)
+    setFrameRate(0)
+    setError(null)
+    setVideoDimensions(null)
+    setFrameMode('raw')
+    setIsTorchOn(false)
+    setIsTorchAvailable(false)
+    setIsReconnecting(false)
+  }, [socket, persistSessionId])
+
+  /**
    * Set the phone's frame mode
    * - raw: Phone sends uncropped frames (for calibration)
    * - cropped: Phone applies calibration and sends cropped frames
    */
   const setPhoneFrameMode = useCallback(
     (mode: FrameMode) => {
-      if (!socket || !currentSessionId.current) return
+      if (!socket || !currentSessionIdRef.current) return
 
       socket.emit('remote-camera:set-mode', {
-        sessionId: currentSessionId.current,
+        sessionId: currentSessionIdRef.current,
         mode,
       })
       setFrameMode(mode)
@@ -245,10 +333,10 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
    */
   const sendCalibration = useCallback(
     (corners: QuadCorners) => {
-      if (!socket || !currentSessionId.current) return
+      if (!socket || !currentSessionIdRef.current) return
 
       socket.emit('remote-camera:set-calibration', {
-        sessionId: currentSessionId.current,
+        sessionId: currentSessionIdRef.current,
         corners,
       })
       // Phone will automatically switch to cropped mode when it receives calibration
@@ -262,10 +350,10 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
    * This tells the phone to forget the desktop calibration and go back to auto-detection
    */
   const clearCalibration = useCallback(() => {
-    if (!socket || !currentSessionId.current) return
+    if (!socket || !currentSessionIdRef.current) return
 
     socket.emit('remote-camera:clear-calibration', {
-      sessionId: currentSessionId.current,
+      sessionId: currentSessionIdRef.current,
     })
   }, [socket])
 
@@ -274,10 +362,10 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
    */
   const setRemoteTorch = useCallback(
     (on: boolean) => {
-      if (!socket || !currentSessionId.current) return
+      if (!socket || !currentSessionIdRef.current) return
 
       socket.emit('remote-camera:set-torch', {
-        sessionId: currentSessionId.current,
+        sessionId: currentSessionIdRef.current,
         on,
       })
       // Optimistically update local state
@@ -289,9 +377,9 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (socket && currentSessionId.current) {
+      if (socket && currentSessionIdRef.current) {
         socket.emit('remote-camera:leave', {
-          sessionId: currentSessionId.current,
+          sessionId: currentSessionIdRef.current,
         })
       }
     }
@@ -306,11 +394,15 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     isTorchOn,
     isTorchAvailable,
     error,
+    currentSessionId,
+    isReconnecting,
     subscribe,
     unsubscribe,
     setPhoneFrameMode,
     sendCalibration,
     clearCalibration,
     setRemoteTorch,
+    getPersistedSessionId,
+    clearSession,
   }
 }

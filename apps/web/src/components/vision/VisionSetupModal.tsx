@@ -215,6 +215,10 @@ export function VisionSetupModal() {
                 setVisionRemoteSession(config.remoteCameraSessionId)
               }
             }}
+            // Start with phone camera selected if remote session is configured but no local camera
+            initialCameraSource={
+              visionConfig.remoteCameraSessionId && !visionConfig.cameraDeviceId ? 'phone' : 'local'
+            }
           />
         </div>
       )}

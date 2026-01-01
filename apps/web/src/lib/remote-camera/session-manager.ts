@@ -2,7 +2,8 @@
  * Remote Camera Session Manager
  *
  * Manages in-memory sessions for phone-to-desktop camera streaming.
- * Sessions are short-lived (10 minute TTL) and stored in memory.
+ * Sessions have a 60-minute TTL but are renewed on activity.
+ * Sessions persist across page reloads via session ID stored client-side.
  */
 
 import { createId } from '@paralleldrive/cuid2'
@@ -11,7 +12,12 @@ export interface RemoteCameraSession {
   id: string
   createdAt: Date
   expiresAt: Date
+  lastActivityAt: Date
   phoneConnected: boolean
+  /** Calibration data sent from desktop (persists for reconnects) */
+  calibration?: {
+    corners: { topLeft: { x: number; y: number }; topRight: { x: number; y: number }; bottomLeft: { x: number; y: number }; bottomRight: { x: number; y: number } }
+  }
 }
 
 // In-memory session storage
@@ -21,7 +27,7 @@ declare global {
   var __remoteCameraSessions: Map<string, RemoteCameraSession> | undefined
 }
 
-const SESSION_TTL_MS = 10 * 60 * 1000 // 10 minutes
+const SESSION_TTL_MS = 60 * 60 * 1000 // 60 minutes
 const CLEANUP_INTERVAL_MS = 60 * 1000 // 1 minute
 
 function getSessions(): Map<string, RemoteCameraSession> {
@@ -44,11 +50,88 @@ export function createRemoteCameraSession(): RemoteCameraSession {
     id: createId(),
     createdAt: now,
     expiresAt: new Date(now.getTime() + SESSION_TTL_MS),
+    lastActivityAt: now,
     phoneConnected: false,
   }
 
   sessions.set(session.id, session)
   return session
+}
+
+/**
+ * Get or create a session by ID
+ * If the session exists and isn't expired, returns it (renewed)
+ * If the session doesn't exist, creates a new one with the given ID
+ */
+export function getOrCreateSession(sessionId: string): RemoteCameraSession {
+  const sessions = getSessions()
+  const existing = sessions.get(sessionId)
+  const now = new Date()
+
+  if (existing && now <= existing.expiresAt) {
+    // Renew TTL on access
+    existing.expiresAt = new Date(now.getTime() + SESSION_TTL_MS)
+    existing.lastActivityAt = now
+    return existing
+  }
+
+  // Create new session with provided ID
+  const session: RemoteCameraSession = {
+    id: sessionId,
+    createdAt: now,
+    expiresAt: new Date(now.getTime() + SESSION_TTL_MS),
+    lastActivityAt: now,
+    phoneConnected: false,
+  }
+
+  sessions.set(session.id, session)
+  return session
+}
+
+/**
+ * Renew session TTL (call on activity to keep session alive)
+ */
+export function renewSessionTTL(sessionId: string): boolean {
+  const sessions = getSessions()
+  const session = sessions.get(sessionId)
+
+  if (!session) return false
+
+  const now = new Date()
+  session.expiresAt = new Date(now.getTime() + SESSION_TTL_MS)
+  session.lastActivityAt = now
+  return true
+}
+
+/**
+ * Store calibration data in session (persists for reconnects)
+ */
+export function setSessionCalibration(
+  sessionId: string,
+  calibration: RemoteCameraSession['calibration']
+): boolean {
+  const sessions = getSessions()
+  const session = sessions.get(sessionId)
+
+  if (!session) return false
+
+  session.calibration = calibration
+  // Also renew TTL
+  const now = new Date()
+  session.expiresAt = new Date(now.getTime() + SESSION_TTL_MS)
+  session.lastActivityAt = now
+  return true
+}
+
+/**
+ * Get calibration data from session
+ */
+export function getSessionCalibration(sessionId: string): RemoteCameraSession['calibration'] | null {
+  const sessions = getSessions()
+  const session = sessions.get(sessionId)
+
+  if (!session) return null
+  return session.calibration || null
 }
 
 /**

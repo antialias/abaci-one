@@ -162,6 +162,9 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
           video: {
             width: { ideal: 1920 },
             height: { ideal: 1440 },
+            // Prefer widest angle lens (zoom: 1 = no zoom = widest)
+            // @ts-expect-error - zoom is valid but not in TS types
+            zoom: { ideal: 1 },
             // Try to disable face-tracking auto-focus (not all cameras support this)
             // @ts-expect-error - focusMode is valid but not in TS types
             focusMode: 'continuous',
