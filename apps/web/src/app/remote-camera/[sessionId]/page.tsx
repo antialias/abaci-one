@@ -39,9 +39,10 @@ export default function RemoteCameraPage() {
     stop: stopCamera,
     flipCamera,
     toggleTorch,
+    setTorch,
   } = usePhoneCamera({ initialFacingMode: 'environment' })
 
-  // Remote camera connection
+  // Remote camera connection - pass setTorch for desktop control
   const {
     isConnected,
     isSending,
@@ -54,7 +55,10 @@ export default function RemoteCameraPage() {
     stopSending,
     updateCalibration,
     setFrameMode,
-  } = useRemoteCameraPhone()
+    emitTorchState,
+  } = useRemoteCameraPhone({
+    onTorchRequest: setTorch,
+  })
 
   // Auto-detection state
   const [calibration, setCalibration] = useState<CalibrationGrid | null>(null)
@@ -136,6 +140,13 @@ export default function RemoteCameraPage() {
       startCamera()
     }
   }, [isConnected, videoStream, isCameraLoading, startCamera])
+
+  // Emit torch state to desktop when it changes or when connected
+  useEffect(() => {
+    if (isConnected) {
+      emitTorchState(isTorchOn, isTorchAvailable)
+    }
+  }, [isConnected, isTorchOn, isTorchAvailable, emitTorchState])
 
   // Handle video ready - start sending immediately
   const handleVideoReady = useCallback(

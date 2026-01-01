@@ -65,6 +65,9 @@ export const abacusSettings = sqliteTable('abacus_settings', {
   nativeAbacusNumbers: integer('native_abacus_numbers', { mode: 'boolean' })
     .notNull()
     .default(false),
+
+  /** Number of columns on the user's physical abacus (for vision detection) */
+  physicalAbacusColumns: integer('physical_abacus_columns').notNull().default(4),
 })
 
 export type AbacusSettings = typeof abacusSettings.$inferSelect

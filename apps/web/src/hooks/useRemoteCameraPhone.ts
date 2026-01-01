@@ -21,6 +21,8 @@ interface UseRemoteCameraPhoneOptions {
   targetWidth?: number
   /** Target width for raw frames (default 640) */
   rawWidth?: number
+  /** Callback when desktop requests torch change */
+  onTorchRequest?: (on: boolean) => void
 }
 
 /**
@@ -52,6 +54,8 @@ interface UseRemoteCameraPhoneReturn {
   updateCalibration: (calibration: QuadCorners) => void
   /** Set frame mode locally */
   setFrameMode: (mode: FrameMode) => void
+  /** Emit torch state to desktop */
+  emitTorchState: (isTorchOn: boolean, isTorchAvailable: boolean) => void
 }
 
 /**
@@ -64,7 +68,14 @@ interface UseRemoteCameraPhoneReturn {
 export function useRemoteCameraPhone(
   options: UseRemoteCameraPhoneOptions = {}
 ): UseRemoteCameraPhoneReturn {
-  const { targetFps = 10, jpegQuality = 0.8, targetWidth = 300, rawWidth = 640 } = options
+  const { targetFps = 10, jpegQuality = 0.8, targetWidth = 300, rawWidth = 640, onTorchRequest } =
+    options
+
+  // Keep onTorchRequest in a ref to avoid stale closures
+  const onTorchRequestRef = useRef(onTorchRequest)
+  useEffect(() => {
+    onTorchRequestRef.current = onTorchRequest
+  }, [onTorchRequest])
 
   // Calculate fixed output height based on aspect ratio (4 units tall by 3 units wide)
   const targetHeight = Math.round(targetWidth * ABACUS_ASPECT_RATIO)
@@ -173,16 +184,24 @@ export function useRemoteCameraPhone(
       calibrationRef.current = null
     }
 
+    // Handle torch command from desktop
+    const handleSetTorch = ({ on }: { on: boolean }) => {
+      console.log('[RemoteCameraPhone] Desktop requested torch:', on)
+      onTorchRequestRef.current?.(on)
+    }
+
     socket.on('remote-camera:error', handleError)
     socket.on('remote-camera:set-mode', handleSetMode)
     socket.on('remote-camera:set-calibration', handleSetCalibration)
     socket.on('remote-camera:clear-calibration', handleClearCalibration)
+    socket.on('remote-camera:set-torch', handleSetTorch)
 
     return () => {
       socket.off('remote-camera:error', handleError)
       socket.off('remote-camera:set-mode', handleSetMode)
       socket.off('remote-camera:set-calibration', handleSetCalibration)
       socket.off('remote-camera:clear-calibration', handleClearCalibration)
+      socket.off('remote-camera:set-torch', handleSetTorch)
     }
   }, [isSocketConnected]) // Re-run when socket connects
 
@@ -365,6 +384,21 @@ export function useRemoteCameraPhone(
     calibrationRef.current = calibration
   }, [])
 
+  /**
+   * Emit torch state to desktop
+   */
+  const emitTorchState = useCallback((isTorchOn: boolean, isTorchAvailable: boolean) => {
+    const socket = socketRef.current
+    const sessionId = sessionIdRef.current
+    if (!socket || !sessionId) return
+
+    socket.emit('remote-camera:torch-state', {
+      sessionId,
+      isTorchOn,
+      isTorchAvailable,
+    })
+  }, [])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -390,5 +424,6 @@ export function useRemoteCameraPhone(
     stopSending,
     updateCalibration,
     setFrameMode,
+    emitTorchState,
   }
 }

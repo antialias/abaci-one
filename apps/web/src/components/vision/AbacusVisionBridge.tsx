@@ -85,12 +85,15 @@ export function AbacusVisionBridge({
     frameRate: remoteFrameRate,
     frameMode: remoteFrameMode,
     videoDimensions: remoteVideoDimensions,
+    isTorchOn: remoteIsTorchOn,
+    isTorchAvailable: remoteIsTorchAvailable,
     error: remoteError,
     subscribe: remoteSubscribe,
     unsubscribe: remoteUnsubscribe,
     setPhoneFrameMode: remoteSetPhoneFrameMode,
     sendCalibration: remoteSendCalibration,
     clearCalibration: remoteClearCalibration,
+    setRemoteTorch,
   } = useRemoteCameraDesktop()
 
   // Handle switching to phone camera
@@ -412,8 +415,8 @@ export function AbacusVisionBridge({
         </button>
       </div>
 
-      {/* Camera controls (local camera only) */}
-      {cameraSource === 'local' && (
+      {/* Camera controls (local camera) */}
+      {cameraSource === 'local' && vision.availableDevices.length > 0 && (
         <div
           data-element="camera-controls"
           className={css({
@@ -499,6 +502,44 @@ export function AbacusVisionBridge({
               {vision.isTorchOn ? '🔦' : '💡'}
             </button>
           )}
+        </div>
+      )}
+
+      {/* Camera controls (phone camera) */}
+      {cameraSource === 'phone' && remoteIsPhoneConnected && remoteIsTorchAvailable && (
+        <div
+          data-element="phone-camera-controls"
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+          })}
+        >
+          {/* Remote torch toggle button */}
+          <button
+            type="button"
+            onClick={() => setRemoteTorch(!remoteIsTorchOn)}
+            data-action="toggle-remote-torch"
+            data-status={remoteIsTorchOn ? 'on' : 'off'}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px',
+              bg: remoteIsTorchOn ? 'yellow.600' : 'gray.700',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'md',
+              cursor: 'pointer',
+              fontSize: 'lg',
+              _hover: { bg: remoteIsTorchOn ? 'yellow.500' : 'gray.600' },
+            })}
+            title={remoteIsTorchOn ? 'Turn off phone flash' : 'Turn on phone flash'}
+          >
+            {remoteIsTorchOn ? '🔦' : '💡'}
+          </button>
+          <span className={css({ color: 'gray.400', fontSize: 'sm' })}>Phone Flash</span>
         </div>
       )}
 

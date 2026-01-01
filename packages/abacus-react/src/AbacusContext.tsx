@@ -68,6 +68,8 @@ export interface AbacusDisplayConfig {
   gestures: boolean;
   soundEnabled: boolean;
   soundVolume: number;
+  /** Number of columns on the user's physical abacus (for vision detection) */
+  physicalAbacusColumns: number;
 }
 
 export interface AbacusDisplayContextType {
@@ -90,6 +92,7 @@ const DEFAULT_CONFIG: AbacusDisplayConfig = {
   gestures: false,
   soundEnabled: true,
   soundVolume: 0.8,
+  physicalAbacusColumns: 4,
 };
 
 const STORAGE_KEY = "soroban-abacus-display-config";
@@ -165,6 +168,12 @@ function loadConfigFromStorage(): AbacusDisplayConfig {
           parsed.soundVolume <= 1
             ? parsed.soundVolume
             : DEFAULT_CONFIG.soundVolume,
+        physicalAbacusColumns:
+          typeof parsed.physicalAbacusColumns === "number" &&
+          parsed.physicalAbacusColumns >= 1 &&
+          parsed.physicalAbacusColumns <= 21
+            ? parsed.physicalAbacusColumns
+            : DEFAULT_CONFIG.physicalAbacusColumns,
       };
     }
   } catch (error) {

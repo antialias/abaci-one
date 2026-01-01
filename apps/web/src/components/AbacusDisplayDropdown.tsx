@@ -287,6 +287,84 @@ export function AbacusDisplayDropdown({
                   isDark={isDark}
                 />
               </FormField>
+
+              <FormField
+                label={`Physical Abacus Columns: ${config.physicalAbacusColumns}`}
+                isFullscreen={isFullscreen}
+                isDark={isDark}
+              >
+                <div className={hstack({ gap: '2', alignItems: 'center' })}>
+                  <input
+                    type="range"
+                    min="1"
+                    max="21"
+                    step="1"
+                    value={config.physicalAbacusColumns}
+                    onChange={(e) =>
+                      updateConfig({ physicalAbacusColumns: parseInt(e.target.value, 10) })
+                    }
+                    className={css({
+                      flex: 1,
+                      h: '2',
+                      bg: isFullscreen
+                        ? 'rgba(255, 255, 255, 0.2)'
+                        : isDark
+                          ? 'gray.700'
+                          : 'gray.200',
+                      rounded: 'full',
+                      appearance: 'none',
+                      cursor: 'pointer',
+                      _focusVisible: {
+                        outline: 'none',
+                        ring: '2px',
+                        ringColor: isFullscreen ? 'blue.400' : 'brand.500',
+                      },
+                      '&::-webkit-slider-thumb': {
+                        appearance: 'none',
+                        w: '4',
+                        h: '4',
+                        bg: isFullscreen ? 'blue.400' : 'brand.600',
+                        rounded: 'full',
+                        cursor: 'pointer',
+                        transition: 'all',
+                        _hover: {
+                          bg: isFullscreen ? 'blue.500' : 'brand.700',
+                          transform: 'scale(1.1)',
+                        },
+                      },
+                      '&::-moz-range-thumb': {
+                        w: '4',
+                        h: '4',
+                        bg: isFullscreen ? 'blue.400' : 'brand.600',
+                        rounded: 'full',
+                        border: 'none',
+                        cursor: 'pointer',
+                      },
+                    })}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <span
+                    className={css({
+                      fontSize: 'sm',
+                      fontWeight: 'medium',
+                      color: isFullscreen ? 'white' : isDark ? 'gray.200' : 'gray.700',
+                      minW: '6',
+                      textAlign: 'right',
+                    })}
+                  >
+                    {config.physicalAbacusColumns}
+                  </span>
+                </div>
+                <p
+                  className={css({
+                    fontSize: 'xs',
+                    color: isFullscreen ? 'gray.400' : isDark ? 'gray.500' : 'gray.500',
+                    mt: '1',
+                  })}
+                >
+                  For camera vision detection
+                </p>
+              </FormField>
             </div>
           </div>
         </DropdownMenu.Content>

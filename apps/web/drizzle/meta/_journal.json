@@ -379,6 +379,13 @@
       "when": 1767208127241,
       "tag": "0053_premium_expediter",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "6",
+      "when": 1767240895813,
+      "tag": "0054_new_mathemanic",
+      "breakpoints": true
     }
   ]
 }

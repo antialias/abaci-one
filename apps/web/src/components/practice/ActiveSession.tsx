@@ -36,6 +36,7 @@ export interface StudentInfo {
   color: string
 }
 
+import { useAbacusDisplay } from '@soroban/abacus-react'
 import { AbacusDock } from '../AbacusDock'
 import { DecompositionProvider, DecompositionSection } from '../decomposition'
 import { Tooltip, TooltipProvider } from '../ui/Tooltip'
@@ -632,6 +633,9 @@ export function ActiveSession({
 
   // Check if abacus is docked (to force show submit button)
   const { isDockedByUser, requestDock, undock, dock, setDockedValue } = useMyAbacus()
+
+  // Get abacus display config (for physical abacus column count in vision mode)
+  const { config: abacusDisplayConfig } = useAbacusDisplay()
 
   // Sound effects
   const { playSound } = usePracticeSoundEffects()
@@ -2140,7 +2144,7 @@ export function ActiveSession({
           })}
         >
           <AbacusVisionBridge
-            columnCount={calculateAbacusColumns(attempt.problem.terms)}
+            columnCount={abacusDisplayConfig.physicalAbacusColumns}
             onValueDetected={handleVisionValueDetected}
             onClose={() => setIsVisionEnabled(false)}
           />

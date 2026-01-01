@@ -25,6 +25,10 @@ interface UseRemoteCameraDesktopReturn {
   frameMode: FrameMode
   /** Video dimensions from the phone (only available in raw mode) */
   videoDimensions: { width: number; height: number } | null
+  /** Whether the phone's torch is on */
+  isTorchOn: boolean
+  /** Whether the phone has torch available */
+  isTorchAvailable: boolean
   /** Error message if connection failed */
   error: string | null
   /** Subscribe to receive frames for a session */
@@ -37,6 +41,8 @@ interface UseRemoteCameraDesktopReturn {
   sendCalibration: (corners: QuadCorners) => void
   /** Clear desktop calibration on phone (go back to auto-detection) */
   clearCalibration: () => void
+  /** Set phone's torch state */
+  setRemoteTorch: (on: boolean) => void
 }
 
 /**
@@ -57,6 +63,8 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     width: number
     height: number
   } | null>(null)
+  const [isTorchOn, setIsTorchOn] = useState(false)
+  const [isTorchAvailable, setIsTorchAvailable] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const currentSessionId = useRef<string | null>(null)
 
@@ -130,11 +138,23 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
       setError(errorMsg)
     }
 
+    const handleTorchState = ({
+      isTorchOn: torchOn,
+      isTorchAvailable: torchAvailable,
+    }: {
+      isTorchOn: boolean
+      isTorchAvailable: boolean
+    }) => {
+      setIsTorchOn(torchOn)
+      setIsTorchAvailable(torchAvailable)
+    }
+
     socket.on('remote-camera:connected', handleConnected)
     socket.on('remote-camera:disconnected', handleDisconnected)
     socket.on('remote-camera:status', handleStatus)
     socket.on('remote-camera:frame', handleFrame)
     socket.on('remote-camera:error', handleError)
+    socket.on('remote-camera:torch-state', handleTorchState)
 
     return () => {
       socket.off('remote-camera:connected', handleConnected)
@@ -142,6 +162,7 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
       socket.off('remote-camera:status', handleStatus)
       socket.off('remote-camera:frame', handleFrame)
       socket.off('remote-camera:error', handleError)
+      socket.off('remote-camera:torch-state', handleTorchState)
     }
   }, [socket, calculateFrameRate])
 
@@ -176,6 +197,8 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     setError(null)
     setVideoDimensions(null)
     setFrameMode('raw')
+    setIsTorchOn(false)
+    setIsTorchAvailable(false)
   }, [socket])
 
   /**
@@ -226,6 +249,23 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     })
   }, [socket])
 
+  /**
+   * Set phone's torch state
+   */
+  const setRemoteTorch = useCallback(
+    (on: boolean) => {
+      if (!socket || !currentSessionId.current) return
+
+      socket.emit('remote-camera:set-torch', {
+        sessionId: currentSessionId.current,
+        on,
+      })
+      // Optimistically update local state
+      setIsTorchOn(on)
+    },
+    [socket]
+  )
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -243,11 +283,14 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     frameRate,
     frameMode,
     videoDimensions,
+    isTorchOn,
+    isTorchAvailable,
     error,
     subscribe,
     unsubscribe,
     setPhoneFrameMode,
     sendCalibration,
     clearCalibration,
+    setRemoteTorch,
   }
 }

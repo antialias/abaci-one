@@ -1235,6 +1235,36 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       console.log(`🖥️ Desktop cleared remote camera calibration`)
     })
 
+    // Remote Camera: Desktop commands phone to toggle torch
+    socket.on(
+      'remote-camera:set-torch',
+      ({ sessionId, on }: { sessionId: string; on: boolean }) => {
+        // Forward torch command to phone
+        socket.to(`remote-camera:${sessionId}`).emit('remote-camera:set-torch', { on })
+        console.log(`🖥️ Desktop set remote camera torch: ${on}`)
+      }
+    )
+
+    // Remote Camera: Phone reports torch state to desktop
+    socket.on(
+      'remote-camera:torch-state',
+      ({
+        sessionId,
+        isTorchOn,
+        isTorchAvailable,
+      }: {
+        sessionId: string
+        isTorchOn: boolean
+        isTorchAvailable: boolean
+      }) => {
+        // Forward torch state to desktop
+        socket.to(`remote-camera:${sessionId}`).emit('remote-camera:torch-state', {
+          isTorchOn,
+          isTorchAvailable,
+        })
+      }
+    )
+
     // Remote Camera: Leave session
     socket.on('remote-camera:leave', async ({ sessionId }: { sessionId: string }) => {
       try {
