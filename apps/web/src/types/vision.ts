@@ -83,6 +83,25 @@ export interface FrameClassificationResult {
 }
 
 /**
+ * Calibration mode options
+ */
+export type CalibrationMode = 'manual' | 'auto'
+
+/**
+ * ArUco marker detection status
+ */
+export interface MarkerDetectionStatus {
+  /** Whether ArUco detection is available */
+  isAvailable: boolean
+  /** Whether all 4 markers are currently detected */
+  allMarkersFound: boolean
+  /** Number of markers currently detected (0-4) */
+  markersFound: number
+  /** Which marker IDs are currently detected */
+  detectedIds: number[]
+}
+
+/**
  * State returned by useAbacusVision hook
  */
 export interface AbacusVisionState {
@@ -105,6 +124,8 @@ export interface AbacusVisionState {
   // Calibration state
   calibrationGrid: CalibrationGrid | null
   isCalibrating: boolean
+  calibrationMode: CalibrationMode
+  markerDetection: MarkerDetectionStatus
 
   // Stability state
   isHandDetected: boolean
@@ -119,7 +140,7 @@ export interface AbacusVisionActions {
   enable: () => Promise<void>
   /** Stop the camera and vision processing */
   disable: () => void
-  /** Enter calibration mode */
+  /** Enter manual calibration mode */
   startCalibration: () => void
   /** Save calibration and exit calibration mode */
   finishCalibration: (grid: CalibrationGrid) => void
@@ -129,6 +150,8 @@ export interface AbacusVisionActions {
   selectCamera: (deviceId: string) => void
   /** Clear saved calibration */
   resetCalibration: () => void
+  /** Set calibration mode (auto uses ArUco markers, manual uses drag handles) */
+  setCalibrationMode: (mode: CalibrationMode) => void
 }
 
 /**

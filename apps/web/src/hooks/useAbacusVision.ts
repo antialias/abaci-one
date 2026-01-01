@@ -1,7 +1,19 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { CalibrationGrid, UseAbacusVisionReturn } from '@/types/vision'
+import {
+  cleanupArucoDetector,
+  detectMarkers,
+  initArucoDetector,
+  isArucoAvailable,
+  loadAruco,
+} from '@/lib/vision/arucoDetection'
+import type {
+  CalibrationGrid,
+  CalibrationMode,
+  MarkerDetectionStatus,
+  UseAbacusVisionReturn,
+} from '@/types/vision'
 import { useCameraCalibration } from './useCameraCalibration'
 import { useDeskViewCamera } from './useDeskViewCamera'
 import { useFrameStability } from './useFrameStability'
@@ -11,6 +23,8 @@ export interface UseAbacusVisionOptions {
   columnCount?: number
   /** Called when a stable value is detected */
   onValueDetected?: (value: number) => void
+  /** Initial calibration mode (default: 'auto') */
+  initialCalibrationMode?: CalibrationMode
 }
 
 /**
@@ -35,11 +49,18 @@ export interface UseAbacusVisionOptions {
  * ```
  */
 export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacusVisionReturn {
-  const { columnCount = 5, onValueDetected } = options
+  const { columnCount = 5, onValueDetected, initialCalibrationMode = 'auto' } = options
 
   // State
   const [isEnabled, setIsEnabled] = useState(false)
   const [isDetecting, setIsDetecting] = useState(false)
+  const [calibrationMode, setCalibrationMode] = useState<CalibrationMode>(initialCalibrationMode)
+  const [markerDetection, setMarkerDetection] = useState<MarkerDetectionStatus>({
+    isAvailable: false,
+    allMarkersFound: false,
+    markersFound: 0,
+    detectedIds: [],
+  })
 
   // Sub-hooks
   const camera = useDeskViewCamera()
@@ -50,9 +71,14 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const markerDetectionFrameRef = useRef<number | null>(null)
 
   // Track previous stable value to avoid duplicate callbacks
   const lastStableValueRef = useRef<number | null>(null)
+
+  // Ref for calibration functions to avoid infinite loop in auto-calibration effect
+  const calibrationRef = useRef(calibration)
+  calibrationRef.current = calibration
 
   // Sync device ID to calibration hook when camera device changes
   useEffect(() => {
@@ -60,6 +86,117 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
       calibration.setDeviceId(camera.currentDevice.deviceId)
     }
   }, [camera.currentDevice?.deviceId, calibration])
+
+  // Load and initialize ArUco on mount
+  useEffect(() => {
+    let cancelled = false
+
+    const initAruco = async () => {
+      try {
+        await loadAruco()
+        if (cancelled) return
+
+        const available = isArucoAvailable()
+        setMarkerDetection((prev) => ({ ...prev, isAvailable: available }))
+        if (available) {
+          initArucoDetector()
+        }
+      } catch (err) {
+        console.error('[ArUco] Failed to load:', err)
+      }
+    }
+
+    initAruco()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Cleanup ArUco detector on unmount
+  useEffect(() => {
+    return () => {
+      cleanupArucoDetector()
+    }
+  }, [])
+
+  // Auto-calibration loop using ArUco markers
+  useEffect(() => {
+    if (!isEnabled || !camera.videoStream || calibrationMode !== 'auto') {
+      if (markerDetectionFrameRef.current) {
+        cancelAnimationFrame(markerDetectionFrameRef.current)
+        markerDetectionFrameRef.current = null
+      }
+      return
+    }
+
+    // Get video element from stream
+    const videoElements = document.querySelectorAll('video')
+    let video: HTMLVideoElement | null = null
+    for (const el of videoElements) {
+      if (el.srcObject === camera.videoStream) {
+        video = el
+        break
+      }
+    }
+
+    if (!video) return
+
+    let running = true
+
+    const detectLoop = () => {
+      if (!running || !video || video.readyState < 2) {
+        if (running) {
+          markerDetectionFrameRef.current = requestAnimationFrame(detectLoop)
+        }
+        return
+      }
+
+      const result = detectMarkers(video)
+
+      setMarkerDetection({
+        isAvailable: true,
+        allMarkersFound: result.allMarkersFound,
+        markersFound: result.markersFound,
+        detectedIds: Array.from(result.markers.keys()),
+      })
+
+      // Auto-update calibration when all markers found
+      if (result.allMarkersFound && result.quadCorners) {
+        const grid: CalibrationGrid = {
+          roi: {
+            x: Math.min(result.quadCorners.topLeft.x, result.quadCorners.bottomLeft.x),
+            y: Math.min(result.quadCorners.topLeft.y, result.quadCorners.topRight.y),
+            width:
+              Math.max(result.quadCorners.topRight.x, result.quadCorners.bottomRight.x) -
+              Math.min(result.quadCorners.topLeft.x, result.quadCorners.bottomLeft.x),
+            height:
+              Math.max(result.quadCorners.bottomLeft.y, result.quadCorners.bottomRight.y) -
+              Math.min(result.quadCorners.topLeft.y, result.quadCorners.topRight.y),
+          },
+          corners: result.quadCorners,
+          columnCount,
+          columnDividers: Array.from({ length: columnCount - 1 }, (_, i) => (i + 1) / columnCount),
+          rotation: 0,
+        }
+        calibrationRef.current.updateCalibration(grid)
+        if (!calibrationRef.current.isCalibrated) {
+          calibrationRef.current.finishCalibration()
+        }
+      }
+
+      markerDetectionFrameRef.current = requestAnimationFrame(detectLoop)
+    }
+
+    detectLoop()
+
+    return () => {
+      running = false
+      if (markerDetectionFrameRef.current) {
+        cancelAnimationFrame(markerDetectionFrameRef.current)
+        markerDetectionFrameRef.current = null
+      }
+    }
+  }, [isEnabled, camera.videoStream, calibrationMode, columnCount])
 
   /**
    * Enable vision mode - start camera and detection
@@ -245,6 +382,8 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
     // Calibration state
     calibrationGrid: calibration.calibration,
     isCalibrating: calibration.isCalibrating,
+    calibrationMode,
+    markerDetection,
 
     // Stability state
     isHandDetected: stability.isHandDetected,
@@ -258,5 +397,6 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
     cancelCalibration,
     selectCamera,
     resetCalibration,
+    setCalibrationMode,
   }
 }

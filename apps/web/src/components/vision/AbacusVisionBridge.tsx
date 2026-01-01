@@ -2,11 +2,11 @@
 
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { css } from '../../../styled-system/css'
 import { useAbacusVision } from '@/hooks/useAbacusVision'
+import { isOpenCVReady, loadOpenCV, rectifyQuadrilateral } from '@/lib/vision/perspectiveTransform'
 import type { QuadCorners } from '@/types/vision'
 import { DEFAULT_STABILITY_CONFIG } from '@/types/vision'
-import { isOpenCVReady, loadOpenCV, rectifyQuadrilateral } from '@/lib/vision/perspectiveTransform'
+import { css } from '../../../styled-system/css'
 import { CalibrationOverlay } from './CalibrationOverlay'
 import { VisionCameraFeed } from './VisionCameraFeed'
 import { VisionStatusIndicator } from './VisionStatusIndicator'
@@ -82,7 +82,12 @@ export function AbacusVisionBridge({
 
   // Render preview when calibrating
   useEffect(() => {
-    if (!vision.isCalibrating || !calibrationCorners || !videoRef.current || !previewCanvasRef.current) {
+    if (
+      !vision.isCalibrating ||
+      !calibrationCorners ||
+      !videoRef.current ||
+      !previewCanvasRef.current
+    ) {
       return
     }
 
@@ -107,7 +112,9 @@ export function AbacusVisionBridge({
     }
 
     drawPreview()
-    return () => { running = false }
+    return () => {
+      running = false
+    }
   }, [vision.isCalibrating, calibrationCorners, opencvReady])
 
   // Handle video ready - get dimensions
@@ -237,6 +244,100 @@ export function AbacusVisionBridge({
         </select>
       )}
 
+      {/* Calibration mode toggle */}
+      <div
+        data-element="calibration-mode"
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          p: 2,
+          bg: 'gray.800',
+          borderRadius: 'md',
+        })}
+      >
+        <span className={css({ color: 'gray.400', fontSize: 'sm' })}>Mode:</span>
+        <button
+          type="button"
+          onClick={() => vision.setCalibrationMode('auto')}
+          className={css({
+            px: 3,
+            py: 1,
+            fontSize: 'sm',
+            border: 'none',
+            borderRadius: 'md',
+            cursor: 'pointer',
+            bg: vision.calibrationMode === 'auto' ? 'blue.600' : 'gray.700',
+            color: 'white',
+            _hover: { bg: vision.calibrationMode === 'auto' ? 'blue.500' : 'gray.600' },
+          })}
+        >
+          Auto (Markers)
+        </button>
+        <button
+          type="button"
+          onClick={() => vision.setCalibrationMode('manual')}
+          className={css({
+            px: 3,
+            py: 1,
+            fontSize: 'sm',
+            border: 'none',
+            borderRadius: 'md',
+            cursor: 'pointer',
+            bg: vision.calibrationMode === 'manual' ? 'blue.600' : 'gray.700',
+            color: 'white',
+            _hover: { bg: vision.calibrationMode === 'manual' ? 'blue.500' : 'gray.600' },
+          })}
+        >
+          Manual
+        </button>
+      </div>
+
+      {/* Marker detection status (in auto mode) */}
+      {vision.calibrationMode === 'auto' && (
+        <div
+          data-element="marker-status"
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: 2,
+            bg: vision.markerDetection.allMarkersFound ? 'green.900' : 'gray.800',
+            borderRadius: 'md',
+            transition: 'background-color 0.2s',
+          })}
+        >
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+            <span
+              className={css({
+                width: '8px',
+                height: '8px',
+                borderRadius: 'full',
+                bg: vision.markerDetection.allMarkersFound ? 'green.400' : 'yellow.400',
+              })}
+            />
+            <span className={css({ color: 'white', fontSize: 'sm' })}>
+              {vision.markerDetection.allMarkersFound
+                ? 'All markers detected'
+                : `Markers: ${vision.markerDetection.markersFound}/4`}
+            </span>
+          </div>
+          <a
+            href="/create/vision-markers"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={css({
+              color: 'blue.300',
+              fontSize: 'xs',
+              textDecoration: 'underline',
+              _hover: { color: 'blue.200' },
+            })}
+          >
+            Get markers
+          </a>
+        </div>
+      )}
+
       {/* Camera feed */}
       <div ref={cameraFeedContainerRef} className={css({ position: 'relative' })}>
         <VisionCameraFeed
@@ -300,9 +401,7 @@ export function AbacusVisionBridge({
             gap: 1,
           })}
         >
-          <span className={css({ color: 'gray.400', fontSize: 'xs' })}>
-            Rectified Preview
-          </span>
+          <span className={css({ color: 'gray.400', fontSize: 'xs' })}>Rectified Preview</span>
           <canvas
             ref={previewCanvasRef}
             className={css({
@@ -317,71 +416,73 @@ export function AbacusVisionBridge({
         </div>
       )}
 
-      {/* Actions */}
-      <div
-        data-element="actions"
-        className={css({
-          display: 'flex',
-          gap: 2,
-        })}
-      >
-        {!vision.isCalibrated ? (
-          <button
-            type="button"
-            onClick={vision.startCalibration}
-            disabled={!videoDimensions}
-            className={css({
-              flex: 1,
-              py: 2,
-              bg: 'blue.600',
-              color: 'white',
-              border: 'none',
-              borderRadius: 'md',
-              fontWeight: 'medium',
-              cursor: 'pointer',
-              _hover: { bg: 'blue.500' },
-              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-            })}
-          >
-            Calibrate
-          </button>
-        ) : (
-          <>
+      {/* Actions (manual mode only) */}
+      {vision.calibrationMode === 'manual' && (
+        <div
+          data-element="actions"
+          className={css({
+            display: 'flex',
+            gap: 2,
+          })}
+        >
+          {!vision.isCalibrated ? (
             <button
               type="button"
               onClick={vision.startCalibration}
+              disabled={!videoDimensions}
               className={css({
                 flex: 1,
                 py: 2,
-                bg: 'gray.700',
+                bg: 'blue.600',
                 color: 'white',
                 border: 'none',
                 borderRadius: 'md',
+                fontWeight: 'medium',
                 cursor: 'pointer',
-                _hover: { bg: 'gray.600' },
+                _hover: { bg: 'blue.500' },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >
-              Recalibrate
+              Calibrate
             </button>
-            <button
-              type="button"
-              onClick={vision.resetCalibration}
-              className={css({
-                py: 2,
-                px: 3,
-                bg: 'red.700',
-                color: 'white',
-                border: 'none',
-                borderRadius: 'md',
-                cursor: 'pointer',
-                _hover: { bg: 'red.600' },
-              })}
-            >
-              Reset
-            </button>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={vision.startCalibration}
+                className={css({
+                  flex: 1,
+                  py: 2,
+                  bg: 'gray.700',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'md',
+                  cursor: 'pointer',
+                  _hover: { bg: 'gray.600' },
+                })}
+              >
+                Recalibrate
+              </button>
+              <button
+                type="button"
+                onClick={vision.resetCalibration}
+                className={css({
+                  py: 2,
+                  px: 3,
+                  bg: 'red.700',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'md',
+                  cursor: 'pointer',
+                  _hover: { bg: 'red.600' },
+                })}
+              >
+                Reset
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Instructions */}
       {!vision.isCalibrated && !vision.isCalibrating && (
@@ -392,7 +493,9 @@ export function AbacusVisionBridge({
             textAlign: 'center',
           })}
         >
-          Point your camera at a soroban and click Calibrate to set up detection
+          {vision.calibrationMode === 'auto'
+            ? 'Place ArUco markers on your abacus corners for automatic detection'
+            : 'Point your camera at a soroban and click Calibrate to set up detection'}
         </p>
       )}
 
