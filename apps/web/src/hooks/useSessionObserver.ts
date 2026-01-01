@@ -192,6 +192,8 @@ export function useSessionObserver(
       setIsObserving(false)
       setState(null)
       setResults([])
+      setTransitionState(null)
+      setVisionFrame(null)
       recordedProblemsRef.current.clear()
       hasSeededHistoryRef.current = false
     }
