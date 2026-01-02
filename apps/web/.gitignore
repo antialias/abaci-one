@@ -54,3 +54,12 @@ src/generated/build-info.json
 
 # biome
 .biome
+
+# Python virtual environments
+.venv*/
+
+# User uploads
+data/uploads/
+
+# ML training data
+training-data/
