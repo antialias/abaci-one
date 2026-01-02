@@ -3,6 +3,12 @@
 import type { ObservedVisionFrame } from '@/hooks/useSessionObserver'
 import { css } from '../../../styled-system/css'
 
+/**
+ * Feature flag to control auto-detection display
+ * When false, hides the detection overlay since auto-detection is disabled globally
+ */
+const ENABLE_AUTO_DETECTION = false
+
 interface ObserverVisionFeedProps {
   /** The latest vision frame from the observed student */
   frame: ObservedVisionFrame
@@ -45,62 +51,64 @@ export function ObserverVisionFeed({ frame }: ObserverVisionFeedProps) {
         })}
       />
 
-      {/* Detection overlay */}
-      <div
-        data-element="detection-overlay"
-        className={css({
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          p: 2,
-          bg: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(4px)',
-        })}
-      >
-        {/* Detected value */}
-        <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
-          <span
-            className={css({
-              fontSize: 'lg',
-              fontWeight: 'bold',
-              color: 'white',
-              fontFamily: 'mono',
-            })}
-          >
-            {frame.detectedValue !== null ? frame.detectedValue : '---'}
-          </span>
-          {frame.detectedValue !== null && (
-            <span className={css({ fontSize: 'xs', color: 'gray.400' })}>
-              {Math.round(frame.confidence * 100)}%
+      {/* Detection overlay - only shown when auto-detection is enabled */}
+      {ENABLE_AUTO_DETECTION && (
+        <div
+          data-element="detection-overlay"
+          className={css({
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            p: 2,
+            bg: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(4px)',
+          })}
+        >
+          {/* Detected value */}
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+            <span
+              className={css({
+                fontSize: 'lg',
+                fontWeight: 'bold',
+                color: 'white',
+                fontFamily: 'mono',
+              })}
+            >
+              {frame.detectedValue !== null ? frame.detectedValue : '---'}
             </span>
-          )}
-        </div>
+            {frame.detectedValue !== null && (
+              <span className={css({ fontSize: 'xs', color: 'gray.400' })}>
+                {Math.round(frame.confidence * 100)}%
+              </span>
+            )}
+          </div>
 
-        {/* Live indicator */}
-        <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
-          <div
-            className={css({
-              w: '8px',
-              h: '8px',
-              borderRadius: 'full',
-              bg: isStale ? 'gray.500' : 'green.500',
-              animation: isStale ? 'none' : 'pulse 2s infinite',
-            })}
-          />
-          <span
-            className={css({
-              fontSize: 'xs',
-              color: isStale ? 'gray.500' : 'green.400',
-            })}
-          >
-            {isStale ? 'Stale' : 'Live'}
-          </span>
+          {/* Live indicator */}
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
+            <div
+              className={css({
+                w: '8px',
+                h: '8px',
+                borderRadius: 'full',
+                bg: isStale ? 'gray.500' : 'green.500',
+                animation: isStale ? 'none' : 'pulse 2s infinite',
+              })}
+            />
+            <span
+              className={css({
+                fontSize: 'xs',
+                color: isStale ? 'gray.500' : 'green.400',
+              })}
+            >
+              {isStale ? 'Stale' : 'Live'}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Vision mode badge */}
       <div

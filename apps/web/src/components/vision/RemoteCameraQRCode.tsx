@@ -32,8 +32,15 @@ export function RemoteCameraQRCode({
   existingSessionId,
   compact = false,
 }: RemoteCameraQRCodeProps) {
-  const { session, isCreating, error, createSession, setExistingSession, clearSession, getPhoneUrl } =
-    useRemoteCameraSession()
+  const {
+    session,
+    isCreating,
+    error,
+    createSession,
+    setExistingSession,
+    clearSession,
+    getPhoneUrl,
+  } = useRemoteCameraSession()
 
   // Ref to track if we've already initiated session creation
   // This prevents React 18 Strict Mode from creating duplicate sessions

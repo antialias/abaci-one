@@ -614,7 +614,11 @@ export function AbacusVisionBridge({
       </div>
 
       {/* Camera feed - HERO ELEMENT */}
-      <div ref={cameraFeedContainerRef} data-element="camera-feed-container" className={css({ position: 'relative' })}>
+      <div
+        ref={cameraFeedContainerRef}
+        data-element="camera-feed-container"
+        className={css({ position: 'relative' })}
+      >
         {cameraSource === 'local' ? (
           <>
             <VisionCameraFeed
@@ -759,7 +763,9 @@ export function AbacusVisionBridge({
                         borderRadius: 'md',
                         cursor: 'pointer',
                         fontSize: 'md',
-                        _hover: { bg: vision.isTorchOn ? 'yellow.500' : 'rgba(255, 255, 255, 0.25)' },
+                        _hover: {
+                          bg: vision.isTorchOn ? 'yellow.500' : 'rgba(255, 255, 255, 0.25)',
+                        },
                       })}
                       title={vision.isTorchOn ? 'Turn off flash' : 'Turn on flash'}
                     >
@@ -988,7 +994,9 @@ export function AbacusVisionBridge({
                             borderRadius: 'md',
                             cursor: 'pointer',
                             fontSize: 'md',
-                            _hover: { bg: remoteIsTorchOn ? 'yellow.500' : 'rgba(255, 255, 255, 0.25)' },
+                            _hover: {
+                              bg: remoteIsTorchOn ? 'yellow.500' : 'rgba(255, 255, 255, 0.25)',
+                            },
                           })}
                           title={remoteIsTorchOn ? 'Turn off flash' : 'Turn on flash'}
                         >
@@ -1144,8 +1152,8 @@ export function AbacusVisionBridge({
             <span className={css({ fontSize: 'sm', fontWeight: 'medium' })}>Crop</span>
             <span className={css({ color: 'gray.400', fontSize: 'sm' })}>·</span>
             {/* Status summary */}
-            {((cameraSource === 'local' && vision.isCalibrated) ||
-              (cameraSource === 'phone' && remoteCalibration)) ? (
+            {(cameraSource === 'local' && vision.isCalibrated) ||
+            (cameraSource === 'phone' && remoteCalibration) ? (
               <span className={css({ color: 'blue.300', fontSize: 'sm' })}>Manual</span>
             ) : (
               <span
@@ -1310,7 +1318,9 @@ export function AbacusVisionBridge({
                         handleRemoteStartCalibration()
                       }
                     }}
-                    disabled={cameraSource === 'local' ? !vision.videoStream : !remoteIsPhoneConnected}
+                    disabled={
+                      cameraSource === 'local' ? !vision.videoStream : !remoteIsPhoneConnected
+                    }
                     className={css({
                       px: 3,
                       py: 1.5,
