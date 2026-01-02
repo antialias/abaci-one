@@ -22,6 +22,7 @@ export {
   useIsTouchDevice,
 } from './hooks/useDeviceDetection'
 export { LiveResultsPanel } from './LiveResultsPanel'
+export { MobileResultsSummary } from './MobileResultsSummary'
 export {
   LiveSessionReportInline,
   LiveSessionReportModal,

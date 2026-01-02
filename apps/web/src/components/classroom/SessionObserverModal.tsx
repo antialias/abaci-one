@@ -1,27 +1,28 @@
 'use client'
 
 import * as Dialog from '@radix-ui/react-dialog'
-import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
+import { type ReactElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useToast } from '@/components/common/ToastContext'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useToast } from '@/components/common/ToastContext'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { useSessionObserver } from '@/hooks/useSessionObserver'
 import { api } from '@/lib/queryClient'
 import { css } from '../../../styled-system/css'
 import { AbacusDock } from '../AbacusDock'
-import { SessionShareButton } from './SessionShareButton'
 import { LiveResultsPanel } from '../practice/LiveResultsPanel'
 import { LiveSessionReportInline } from '../practice/LiveSessionReportModal'
+import { MobileResultsSummary } from '../practice/MobileResultsSummary'
 import { ObserverTransitionView } from '../practice/ObserverTransitionView'
 import { PracticeFeedback } from '../practice/PracticeFeedback'
 import { PurposeBadge } from '../practice/PurposeBadge'
 import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
 import { VerticalProblem } from '../practice/VerticalProblem'
 import { ObserverVisionFeed } from '../vision/ObserverVisionFeed'
+import { SessionShareButton } from './SessionShareButton'
 
 interface SessionObserverModalProps {
   /** Whether the modal is open */
@@ -107,14 +108,15 @@ export function SessionObserverModal({
           data-component="session-observer-modal"
           className={css({
             position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '90vw',
-            maxWidth: '800px',
-            maxHeight: '85vh',
+            top: { base: 0, md: '50%' },
+            left: { base: 0, md: '50%' },
+            transform: { base: 'none', md: 'translate(-50%, -50%)' },
+            width: { base: '100vw', md: '95vw', lg: '90vw' },
+            maxWidth: { base: 'none', md: '900px', lg: '1000px' },
+            height: { base: '100vh', md: 'auto' },
+            maxHeight: { base: '100vh', md: '90vh' },
             backgroundColor: isDark ? 'gray.900' : 'white',
-            borderRadius: '16px',
+            borderRadius: { base: 0, md: '16px' },
             boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
             zIndex: Z_INDEX.NESTED_MODAL,
             overflow: 'hidden',
@@ -328,29 +330,29 @@ export function SessionObserverView({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '16px 20px',
+          padding: { base: '10px 16px', md: '16px 20px' },
           borderBottom: '1px solid',
           borderColor: isDark ? 'gray.700' : 'gray.200',
-          gap: '12px',
+          gap: { base: '8px', md: '12px' },
         })}
       >
         <div
           className={css({
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
+            gap: { base: '8px', md: '12px' },
             minWidth: 0,
           })}
         >
           <span
             className={css({
-              width: '40px',
-              height: '40px',
+              width: { base: '32px', md: '40px' },
+              height: { base: '32px', md: '40px' },
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '1.25rem',
+              fontSize: { base: '1rem', md: '1.25rem' },
               flexShrink: 0,
             })}
             style={{ backgroundColor: student.color }}
@@ -462,7 +464,7 @@ export function SessionObserverView({
           <div
             data-element="progress-indicator"
             className={css({
-              padding: '0 20px 12px',
+              padding: { base: '0 16px 8px', md: '0 20px 12px' },
               borderBottom: '1px solid',
               borderColor: isDark ? 'gray.700' : 'gray.200',
             })}
@@ -483,13 +485,16 @@ export function SessionObserverView({
       <div
         className={css({
           flex: 1,
-          padding: variant === 'page' ? '28px' : '24px',
+          padding:
+            variant === 'page'
+              ? { base: '12px', md: '28px' }
+              : { base: '12px', md: '24px' },
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '20px',
+          gap: { base: '12px', md: '20px' },
           backgroundColor: variant === 'page' ? (isDark ? 'gray.900' : 'white') : undefined,
         })}
       >
@@ -703,16 +708,19 @@ export function SessionObserverView({
             data-element="observer-main-content"
             className={css({
               display: 'flex',
-              alignItems: 'flex-start',
-              gap: '24px',
+              flexDirection: { base: 'column', lg: 'row' },
+              alignItems: { base: 'center', lg: 'flex-start' },
+              gap: { base: '16px', md: '24px' },
               width: '100%',
               justifyContent: 'center',
             })}
           >
-            {/* Live results panel - left side */}
+            {/* Live results panel - hidden on small/medium, shown on large */}
             <div
+              data-element="results-panel-desktop"
               className={css({
-                width: '220px',
+                display: { base: 'none', lg: 'block' },
+                width: '200px',
                 flexShrink: 0,
               })}
             >
@@ -724,30 +732,35 @@ export function SessionObserverView({
               />
             </div>
 
-            {/* Problem area - center/right */}
+            {/* Problem area - center */}
             <div
               data-element="observer-content"
               className={css({
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '16px',
+                gap: { base: '8px', md: '16px' },
+                width: '100%',
+                maxWidth: { base: '100%', md: '500px' },
               })}
             >
               {/* Purpose badge with tooltip - matches student's view */}
               <PurposeBadge purpose={state.purpose} complexity={state.complexity} />
 
-              {/* Problem container with absolutely positioned AbacusDock */}
+              {/* Problem container with AbacusDock - responsive flex layout */}
               <div
                 data-element="problem-with-dock"
                 className={css({
-                  position: 'relative',
                   display: 'flex',
-                  alignItems: 'flex-start',
+                  flexDirection: { base: 'column', sm: 'row' },
+                  alignItems: { base: 'center', sm: 'flex-start' },
+                  justifyContent: 'center',
+                  gap: { base: '12px', sm: '24px' },
+                  width: '100%',
                 })}
               >
                 {/* Problem - ref for height measurement */}
-                <div ref={problemRef}>
+                <div ref={problemRef} className={css({ flexShrink: 0 })}>
                   <VerticalProblem
                     terms={state.currentProblem.terms}
                     userAnswer={state.studentAnswer}
@@ -758,17 +771,20 @@ export function SessionObserverView({
                   />
                 </div>
 
-                {/* Vision feed or AbacusDock - positioned exactly like ActiveSession */}
-                {state.phase === 'problem' && (problemHeight ?? 0) > 0 && (
+                {/* Vision feed or AbacusDock - flex layout instead of absolute */}
+                {state.phase === 'problem' && (
                   <div
+                    data-element="abacus-container"
                     className={css({
-                      position: 'absolute',
-                      left: '100%',
-                      top: 0,
-                      width: '100%',
-                      marginLeft: '1.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: { base: '140px', sm: '120px', md: '140px' },
+                      height: { base: '160px', sm: 'auto' },
+                      minHeight: { sm: '160px' },
+                      flexShrink: 0,
                     })}
-                    style={{ height: problemHeight ?? undefined }}
+                    style={{ height: problemHeight ? `${problemHeight}px` : undefined }}
                   >
                     {/* Show vision feed if available, otherwise show teacher's abacus dock */}
                     {visionFrame ? (
@@ -781,7 +797,7 @@ export function SessionObserverView({
                         showNumbers={false}
                         animated={true}
                         onValueChange={handleTeacherAbacusChange}
-                        style={{ height: '100%' }}
+                        style={{ height: '100%', width: '100%' }}
                       />
                     )}
                   </div>
@@ -795,6 +811,23 @@ export function SessionObserverView({
                   correctAnswer={state.currentProblem.answer}
                 />
               )}
+
+              {/* Mobile results summary - shown on small/medium, hidden on large */}
+              <div
+                data-element="results-panel-mobile"
+                className={css({
+                  display: { base: 'flex', lg: 'none' },
+                  width: '100%',
+                  justifyContent: 'center',
+                })}
+              >
+                <MobileResultsSummary
+                  results={results}
+                  totalProblems={state.totalProblems}
+                  isDark={isDark}
+                  onExpand={() => setShowFullReport(true)}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -814,7 +847,7 @@ export function SessionObserverView({
       {/* Footer with connection status and controls */}
       <div
         className={css({
-          padding: '12px 20px',
+          padding: { base: '8px 12px', md: '12px 20px' },
           borderTop: '1px solid',
           borderColor: isDark ? 'gray.700' : 'gray.200',
           display: 'flex',
