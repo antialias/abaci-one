@@ -94,7 +94,10 @@ export function OfflineWorkSection({
   // Also only show if user can upload
   const showAddTile = photoCount < 8 && canUpload
   // Show remediation when user can't upload but is a teacher with enrolled student
-  const showRemediation = !canUpload && classroomId && studentId
+  const showTeacherRemediation = !canUpload && classroomId && studentId
+  // Show generic access denied message when canUpload is false for unknown reasons
+  // (catches bugs like parent-child link not being recognized)
+  const showGenericAccessDenied = !canUpload && !classroomId
 
   // Entry prompt state (for teachers who need student to enter classroom)
   const [promptSent, setPromptSent] = useState(false)
@@ -602,7 +605,7 @@ export function OfflineWorkSection({
       </div>
 
       {/* Remediation banner - shown when teacher can't upload because student isn't present */}
-      {showRemediation && (
+      {showTeacherRemediation && (
         <div
           data-element="upload-remediation"
           className={css({
@@ -691,6 +694,42 @@ export function OfflineWorkSection({
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Generic access denied banner - shown when upload is blocked for unknown reasons */}
+      {showGenericAccessDenied && (
+        <div
+          data-element="upload-access-denied"
+          className={css({
+            marginTop: '1rem',
+            padding: '1rem',
+            backgroundColor: isDark ? 'red.900/30' : 'red.50',
+            border: '2px solid',
+            borderColor: isDark ? 'red.700' : 'red.300',
+            borderRadius: '12px',
+          })}
+        >
+          <h4
+            className={css({
+              fontSize: '0.9375rem',
+              fontWeight: '600',
+              color: isDark ? 'red.300' : 'red.700',
+              marginBottom: '0.5rem',
+            })}
+          >
+            Unable to upload photos
+          </h4>
+          <p
+            className={css({
+              fontSize: '0.875rem',
+              color: isDark ? 'gray.300' : 'gray.600',
+              lineHeight: '1.5',
+            })}
+          >
+            Your account doesn&apos;t have permission to upload photos for this student. If you
+            believe this is an error, try refreshing the page or logging out and back in.
+          </p>
         </div>
       )}
 
