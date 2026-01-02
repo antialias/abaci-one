@@ -354,14 +354,16 @@ export function useRemoteCameraPhone(
         'connected:',
         isSocketConnected
       )
-      if (!socket || !isSocketConnected) {
-        console.error('[RemoteCameraPhone] Socket not connected!')
-        setError('Socket not connected')
-        return
-      }
 
+      // Save session ID FIRST, so auto-connect handler can use it
+      // even if socket isn't connected yet
       sessionIdRef.current = sessionId
       setError(null)
+
+      if (!socket || !isSocketConnected) {
+        console.log('[RemoteCameraPhone] Socket not connected yet, will join on connect')
+        return
+      }
 
       console.log('[RemoteCameraPhone] Emitting remote-camera:join')
       socket.emit('remote-camera:join', { sessionId })

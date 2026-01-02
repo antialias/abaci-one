@@ -12,6 +12,8 @@ export interface RemoteCameraQRCodeProps {
   size?: number
   /** Existing session ID to reuse (for reconnection scenarios) */
   existingSessionId?: string | null
+  /** Compact mode - just the QR code, no instructions or URL */
+  compact?: boolean
 }
 
 /**
@@ -28,13 +30,17 @@ export function RemoteCameraQRCode({
   onSessionCreated,
   size = 200,
   existingSessionId,
+  compact = false,
 }: RemoteCameraQRCodeProps) {
-  const { session, isCreating, error, createSession, setExistingSession, getPhoneUrl } =
+  const { session, isCreating, error, createSession, setExistingSession, clearSession, getPhoneUrl } =
     useRemoteCameraSession()
 
   // Ref to track if we've already initiated session creation
   // This prevents React 18 Strict Mode from creating duplicate sessions
   const creationInitiatedRef = useRef(false)
+
+  // Track previous existingSessionId to detect when it changes TO null
+  const prevExistingSessionIdRef = useRef<string | null | undefined>(existingSessionId)
 
   // If we have an existing session ID, use it instead of creating a new one
   useEffect(() => {
@@ -42,6 +48,19 @@ export function RemoteCameraQRCode({
       setExistingSession(existingSessionId)
     }
   }, [existingSessionId, session, setExistingSession])
+
+  // Reset when existingSessionId CHANGES from truthy to null (user wants fresh session)
+  // This prevents clearing sessions that we just created ourselves
+  useEffect(() => {
+    const prevId = prevExistingSessionIdRef.current
+    prevExistingSessionIdRef.current = existingSessionId
+
+    // Only clear if existingSessionId changed FROM something TO null
+    if (prevId && !existingSessionId) {
+      clearSession()
+      creationInitiatedRef.current = false
+    }
+  }, [existingSessionId, clearSession])
 
   // Create session on mount only if no existing session
   // Use ref to prevent duplicate creation in React 18 Strict Mode
@@ -141,6 +160,22 @@ export function RemoteCameraQRCode({
 
   if (!session || !phoneUrl) {
     return null
+  }
+
+  // Compact mode - just the QR code in a minimal container
+  if (compact) {
+    return (
+      <div
+        className={css({
+          bg: 'white',
+          p: 2,
+          borderRadius: 'lg',
+        })}
+        data-component="remote-camera-qr-compact"
+      >
+        <AbacusQRCode value={phoneUrl} size={size} />
+      </div>
+    )
   }
 
   return (

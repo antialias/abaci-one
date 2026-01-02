@@ -112,6 +112,9 @@ export function AbacusVisionBridge({
   const [remoteIsCalibrating, setRemoteIsCalibrating] = useState(false)
   const [remoteCalibration, setRemoteCalibration] = useState<CalibrationGrid | null>(null)
 
+  // Crop settings expansion state
+  const [isCropSettingsExpanded, setIsCropSettingsExpanded] = useState(false)
+
   const vision = useAbacusVision({
     columnCount,
     onValueDetected,
@@ -202,7 +205,6 @@ export function AbacusVisionBridge({
 
   // Handle starting a fresh session (clear persisted and create new)
   const handleStartFreshSession = useCallback(() => {
-    console.log('[AbacusVisionBridge] Starting fresh session')
     remoteClearSession()
     setRemoteCameraSessionId(null)
   }, [remoteClearSession])
@@ -611,331 +613,8 @@ export function AbacusVisionBridge({
         </button>
       </div>
 
-      {/* Camera source selector */}
-      <div
-        data-element="camera-source"
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          p: 2,
-          bg: 'gray.800',
-          borderRadius: 'md',
-        })}
-      >
-        <span className={css({ color: 'gray.400', fontSize: 'sm' })}>Source:</span>
-        <button
-          type="button"
-          onClick={() => handleCameraSourceChange('local')}
-          className={css({
-            px: 3,
-            py: 1,
-            fontSize: 'sm',
-            border: 'none',
-            borderRadius: 'md',
-            cursor: 'pointer',
-            bg: cameraSource === 'local' ? 'blue.600' : 'gray.700',
-            color: 'white',
-            _hover: { bg: cameraSource === 'local' ? 'blue.500' : 'gray.600' },
-          })}
-        >
-          Local Camera
-        </button>
-        <button
-          type="button"
-          onClick={() => handleCameraSourceChange('phone')}
-          className={css({
-            px: 3,
-            py: 1,
-            fontSize: 'sm',
-            border: 'none',
-            borderRadius: 'md',
-            cursor: 'pointer',
-            bg: cameraSource === 'phone' ? 'blue.600' : 'gray.700',
-            color: 'white',
-            _hover: { bg: cameraSource === 'phone' ? 'blue.500' : 'gray.600' },
-          })}
-        >
-          Phone Camera
-        </button>
-      </div>
-
-      {/* Camera controls - unified for both local and phone cameras */}
-      <div
-        data-element="camera-controls"
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          flexWrap: 'wrap',
-        })}
-      >
-        {/* Camera selector - always show for local camera */}
-        {cameraSource === 'local' && vision.availableDevices.length > 0 && (
-          <select
-            data-element="camera-selector"
-            value={vision.selectedDeviceId ?? ''}
-            onChange={handleCameraSelect}
-            className={css({
-              flex: 1,
-              p: 2,
-              bg: 'gray.800',
-              color: 'white',
-              border: '1px solid',
-              borderColor: 'gray.600',
-              borderRadius: 'md',
-              fontSize: 'sm',
-              minWidth: '150px',
-            })}
-          >
-            {vision.availableDevices.map((device) => (
-              <option key={device.deviceId} value={device.deviceId}>
-                {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {/* Flip camera button - only show if multiple cameras available */}
-        {cameraSource === 'local' && vision.availableDevices.length > 1 && (
-          <button
-            type="button"
-            onClick={() => vision.flipCamera()}
-            data-action="flip-camera"
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '40px',
-              bg: 'gray.700',
-              color: 'white',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              fontSize: 'lg',
-              _hover: { bg: 'gray.600' },
-            })}
-            title={`Switch to ${vision.facingMode === 'environment' ? 'front' : 'back'} camera`}
-          >
-            🔄
-          </button>
-        )}
-
-        {/* Torch toggle button - unified for both local and remote */}
-        {((cameraSource === 'local' && vision.isTorchAvailable) ||
-          (cameraSource === 'phone' && remoteIsPhoneConnected && remoteIsTorchAvailable)) && (
-          <button
-            type="button"
-            onClick={() => {
-              if (cameraSource === 'local') {
-                vision.toggleTorch()
-              } else {
-                setRemoteTorch(!remoteIsTorchOn)
-              }
-            }}
-            data-action="toggle-torch"
-            data-status={
-              (cameraSource === 'local' ? vision.isTorchOn : remoteIsTorchOn) ? 'on' : 'off'
-            }
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '40px',
-              bg: (cameraSource === 'local' ? vision.isTorchOn : remoteIsTorchOn)
-                ? 'yellow.600'
-                : 'gray.700',
-              color: 'white',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              fontSize: 'lg',
-              _hover: {
-                bg: (cameraSource === 'local' ? vision.isTorchOn : remoteIsTorchOn)
-                  ? 'yellow.500'
-                  : 'gray.600',
-              },
-            })}
-            title={
-              (cameraSource === 'local' ? vision.isTorchOn : remoteIsTorchOn)
-                ? 'Turn off flash'
-                : 'Turn on flash'
-            }
-          >
-            {(cameraSource === 'local' ? vision.isTorchOn : remoteIsTorchOn) ? '🔦' : '💡'}
-          </button>
-        )}
-      </div>
-
-      {/* Crop status - shows either marker detection or manual crop status */}
-      <div
-        data-element="crop-status"
-        className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          p: 2,
-          bg: 'gray.800',
-          borderRadius: 'md',
-        })}
-      >
-        {/* Manual crop indicator (if set) */}
-        {((cameraSource === 'local' && vision.isCalibrated) ||
-          (cameraSource === 'phone' && remoteCalibration)) && (
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            })}
-          >
-            <div
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-              })}
-            >
-              <span
-                className={css({
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: 'full',
-                  bg: 'blue.400',
-                })}
-              />
-              <span className={css({ color: 'white', fontSize: 'sm' })}>Using manual crop</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (cameraSource === 'local') {
-                  vision.resetCalibration()
-                } else {
-                  handleRemoteResetCalibration()
-                }
-              }}
-              className={css({
-                px: 2,
-                py: 1,
-                fontSize: 'xs',
-                bg: 'transparent',
-                color: 'gray.400',
-                border: '1px solid',
-                borderColor: 'gray.600',
-                borderRadius: 'md',
-                cursor: 'pointer',
-                _hover: { borderColor: 'gray.500', color: 'gray.300' },
-              })}
-            >
-              Reset
-            </button>
-          </div>
-        )}
-
-        {/* Marker detection status (always shown when no manual crop) */}
-        {!(
-          (cameraSource === 'local' && vision.isCalibrated) ||
-          (cameraSource === 'phone' && remoteCalibration)
-        ) && (
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            })}
-          >
-            <div
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-              })}
-            >
-              <span
-                className={css({
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: 'full',
-                  bg:
-                    cameraSource === 'local'
-                      ? vision.markerDetection.allMarkersFound
-                        ? 'green.400'
-                        : 'yellow.400'
-                      : remoteFrameMode === 'cropped'
-                        ? 'green.400'
-                        : 'yellow.400',
-                })}
-              />
-              <span className={css({ color: 'white', fontSize: 'sm' })}>
-                {cameraSource === 'local'
-                  ? vision.markerDetection.allMarkersFound
-                    ? 'Auto-crop active'
-                    : `Markers: ${vision.markerDetection.markersFound}/4`
-                  : remoteFrameMode === 'cropped'
-                    ? 'Phone auto-cropping'
-                    : 'Waiting for markers...'}
-              </span>
-            </div>
-            <div className={css({ display: 'flex', gap: 2 })}>
-              <a
-                href="/create/vision-markers"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={css({
-                  color: 'blue.300',
-                  fontSize: 'xs',
-                  textDecoration: 'underline',
-                  _hover: { color: 'blue.200' },
-                })}
-              >
-                Get markers
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* Manual crop button - only show when not calibrating and no manual calibration */}
-        {!(
-          (cameraSource === 'local' && vision.isCalibrated) ||
-          (cameraSource === 'phone' && remoteCalibration)
-        ) &&
-          !(cameraSource === 'local' ? vision.isCalibrating : remoteIsCalibrating) && (
-            <button
-              type="button"
-              onClick={() => {
-                if (cameraSource === 'local') {
-                  vision.setCalibrationMode('manual')
-                  vision.startCalibration()
-                } else {
-                  handleRemoteModeChange('manual')
-                  handleRemoteStartCalibration()
-                }
-              }}
-              disabled={cameraSource === 'local' ? !vision.videoStream : !remoteIsPhoneConnected}
-              className={css({
-                px: 3,
-                py: 1.5,
-                fontSize: 'sm',
-                bg: 'transparent',
-                color: 'gray.300',
-                border: '1px solid',
-                borderColor: 'gray.600',
-                borderRadius: 'md',
-                cursor: 'pointer',
-                _hover: { borderColor: 'gray.500', bg: 'gray.700' },
-                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-              })}
-            >
-              Set crop manually
-            </button>
-          )}
-      </div>
-
-      {/* Camera feed */}
-      <div ref={cameraFeedContainerRef} className={css({ position: 'relative' })}>
+      {/* Camera feed - HERO ELEMENT */}
+      <div ref={cameraFeedContainerRef} data-element="camera-feed-container" className={css({ position: 'relative' })}>
         {cameraSource === 'local' ? (
           <>
             <VisionCameraFeed
@@ -986,9 +665,113 @@ export function AbacusVisionBridge({
                 />
               </div>
             )}
+
+            {/* Toolbar docked to feed - local camera */}
+            {!vision.isCalibrating && (
+              <div
+                data-element="feed-toolbar"
+                className={css({
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  p: 2,
+                  bg: 'rgba(0, 0, 0, 0.6)',
+                  backdropFilter: 'blur(4px)',
+                })}
+              >
+                {/* Camera selector - compact */}
+                {vision.availableDevices.length > 0 && (
+                  <select
+                    data-element="camera-selector"
+                    value={vision.selectedDeviceId ?? ''}
+                    onChange={handleCameraSelect}
+                    className={css({
+                      flex: 1,
+                      py: 1.5,
+                      px: 2,
+                      bg: 'rgba(255, 255, 255, 0.1)',
+                      color: 'white',
+                      border: '1px solid',
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
+                      borderRadius: 'md',
+                      fontSize: 'xs',
+                      maxWidth: '180px',
+                      cursor: 'pointer',
+                    })}
+                  >
+                    {vision.availableDevices.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* Toolbar buttons */}
+                <div className={css({ display: 'flex', gap: 1 })}>
+                  {/* Flip camera */}
+                  {vision.availableDevices.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => vision.flipCamera()}
+                      data-action="flip-camera"
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '36px',
+                        height: '36px',
+                        bg: 'rgba(255, 255, 255, 0.15)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 'md',
+                        cursor: 'pointer',
+                        fontSize: 'md',
+                        _hover: { bg: 'rgba(255, 255, 255, 0.25)' },
+                      })}
+                      title={`Switch to ${vision.facingMode === 'environment' ? 'front' : 'back'} camera`}
+                    >
+                      🔄
+                    </button>
+                  )}
+
+                  {/* Torch toggle */}
+                  {vision.isTorchAvailable && (
+                    <button
+                      type="button"
+                      onClick={() => vision.toggleTorch()}
+                      data-action="toggle-torch"
+                      data-status={vision.isTorchOn ? 'on' : 'off'}
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '36px',
+                        height: '36px',
+                        bg: vision.isTorchOn ? 'yellow.600' : 'rgba(255, 255, 255, 0.15)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 'md',
+                        cursor: 'pointer',
+                        fontSize: 'md',
+                        _hover: { bg: vision.isTorchOn ? 'yellow.500' : 'rgba(255, 255, 255, 0.25)' },
+                      })}
+                      title={vision.isTorchOn ? 'Turn off flash' : 'Turn on flash'}
+                    >
+                      {vision.isTorchOn ? '🔦' : '💡'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </>
         ) : (
-          /* Phone camera - unified UI matching local camera */
+          /* Phone camera feed */
           <div
             data-element="phone-camera-feed"
             className={css({
@@ -998,7 +781,7 @@ export function AbacusVisionBridge({
               borderRadius: 'lg',
               overflow: 'hidden',
               minHeight: '200px',
-              userSelect: 'none', // Prevent text selection from spanning into video feed
+              userSelect: 'none',
             })}
           >
             {!remoteCameraSessionId ? (
@@ -1013,73 +796,72 @@ export function AbacusVisionBridge({
                 })}
               >
                 <RemoteCameraQRCode onSessionCreated={handleRemoteSessionCreated} size={180} />
+                <p
+                  className={css({
+                    color: 'gray.400',
+                    fontSize: 'sm',
+                    textAlign: 'center',
+                    mt: 3,
+                  })}
+                >
+                  Scan with your phone to use it as a camera
+                </p>
               </div>
             ) : !remoteIsPhoneConnected ? (
-              /* Waiting for phone to connect/reconnect - reuse existing session */
+              /* Waiting for phone - 4:3 aspect ratio to match camera feed */
               <div
                 className={css({
+                  aspectRatio: '4/3',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  p: 6,
-                  color: 'gray.400',
+                  gap: 3,
+                  p: 4,
                 })}
               >
-                {remoteIsReconnecting ? (
-                  <>
-                    <div
-                      className={css({
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        mb: 2,
-                        color: 'blue.300',
-                      })}
-                    >
-                      <span
-                        className={css({
-                          width: 3,
-                          height: 3,
-                          borderRadius: 'full',
-                          bg: 'blue.400',
-                          animation: 'pulse 1.5s infinite',
-                        })}
-                      />
-                      Reconnecting to session...
-                    </div>
-                    <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
-                  </>
-                ) : (
-                  <p className={css({ mb: 2 })}>Waiting for phone to connect...</p>
-                )}
-                <p className={css({ fontSize: 'xs', color: 'gray.500', mb: 4 })}>
-                  Session: {remoteCameraSessionId.slice(0, 8)}...
-                </p>
                 <RemoteCameraQRCode
                   onSessionCreated={handleRemoteSessionCreated}
                   existingSessionId={remoteCameraSessionId}
                   size={150}
                 />
-                <button
-                  type="button"
-                  onClick={handleStartFreshSession}
+                <div
                   className={css({
-                    mt: 4,
-                    px: 3,
-                    py: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    color: remoteIsReconnecting ? 'blue.300' : 'gray.400',
                     fontSize: 'xs',
-                    color: 'gray.400',
-                    bg: 'transparent',
-                    border: '1px solid',
-                    borderColor: 'gray.600',
-                    borderRadius: 'md',
-                    cursor: 'pointer',
-                    _hover: { bg: 'gray.700', color: 'white' },
                   })}
                 >
-                  Start Fresh Session
-                </button>
+                  <span
+                    className={css({
+                      width: 1.5,
+                      height: 1.5,
+                      borderRadius: 'full',
+                      bg: remoteIsReconnecting ? 'blue.400' : 'gray.500',
+                      animation: 'pulse 1.5s infinite',
+                    })}
+                  />
+                  {remoteIsReconnecting ? 'Reconnecting...' : 'Waiting for phone'}
+                  <span className={css({ color: 'gray.600' })}>·</span>
+                  <button
+                    type="button"
+                    onClick={handleStartFreshSession}
+                    className={css({
+                      color: 'gray.500',
+                      bg: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 'xs',
+                      textDecoration: 'underline',
+                      _hover: { color: 'gray.300' },
+                    })}
+                  >
+                    new session
+                  </button>
+                  <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
+                </div>
               </div>
             ) : (
               /* Show camera frames */
@@ -1146,33 +928,76 @@ export function AbacusVisionBridge({
                   </div>
                 )}
 
-                {/* Connection status */}
-                <div
-                  className={css({
-                    position: 'absolute',
-                    bottom: 2,
-                    right: 2,
-                    px: 2,
-                    py: 1,
-                    bg: 'rgba(0, 0, 0, 0.6)',
-                    borderRadius: 'md',
-                    fontSize: 'xs',
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                  })}
-                >
-                  <span
+                {/* Toolbar docked to feed - phone camera */}
+                {!remoteIsCalibrating && (
+                  <div
+                    data-element="feed-toolbar"
                     className={css({
-                      width: 2,
-                      height: 2,
-                      borderRadius: 'full',
-                      bg: 'green.500',
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 2,
+                      p: 2,
+                      bg: 'rgba(0, 0, 0, 0.6)',
+                      backdropFilter: 'blur(4px)',
                     })}
-                  />
-                  {remoteFrameRate} fps
-                </div>
+                  >
+                    {/* Connection status */}
+                    <div
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        fontSize: 'xs',
+                        color: 'white',
+                      })}
+                    >
+                      <span
+                        className={css({
+                          width: 2,
+                          height: 2,
+                          borderRadius: 'full',
+                          bg: 'green.500',
+                        })}
+                      />
+                      {remoteFrameRate} fps
+                    </div>
+
+                    {/* Toolbar buttons */}
+                    <div className={css({ display: 'flex', gap: 1 })}>
+                      {/* Torch toggle - if available on phone */}
+                      {remoteIsTorchAvailable && (
+                        <button
+                          type="button"
+                          onClick={() => setRemoteTorch(!remoteIsTorchOn)}
+                          data-action="toggle-torch"
+                          data-status={remoteIsTorchOn ? 'on' : 'off'}
+                          className={css({
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '36px',
+                            height: '36px',
+                            bg: remoteIsTorchOn ? 'yellow.600' : 'rgba(255, 255, 255, 0.15)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 'md',
+                            cursor: 'pointer',
+                            fontSize: 'md',
+                            _hover: { bg: remoteIsTorchOn ? 'yellow.500' : 'rgba(255, 255, 255, 0.25)' },
+                          })}
+                          title={remoteIsTorchOn ? 'Turn off flash' : 'Turn on flash'}
+                        >
+                          {remoteIsTorchOn ? '🔦' : '💡'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1205,45 +1030,338 @@ export function AbacusVisionBridge({
         </div>
       )}
 
-      {/* Instructions */}
-      {cameraSource === 'local' && !vision.isCalibrated && !vision.isCalibrating && (
-        <p
+      {/* Camera source selector - segmented tabs */}
+      <div
+        data-element="source-selector"
+        className={css({
+          display: 'flex',
+          gap: 0,
+          bg: 'gray.800',
+          borderRadius: 'lg',
+          p: 1,
+        })}
+      >
+        <button
+          type="button"
+          data-source="local"
+          data-active={cameraSource === 'local' ? 'true' : 'false'}
+          onClick={() => handleCameraSourceChange('local')}
           className={css({
-            color: 'gray.400',
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            py: 2,
+            px: 3,
+            bg: cameraSource === 'local' ? 'gray.700' : 'transparent',
+            color: cameraSource === 'local' ? 'white' : 'gray.400',
+            border: 'none',
+            borderRadius: 'md',
+            cursor: 'pointer',
             fontSize: 'sm',
-            textAlign: 'center',
+            fontWeight: cameraSource === 'local' ? 'medium' : 'normal',
+            transition: 'all 0.15s',
+            _hover: {
+              color: 'white',
+              bg: cameraSource === 'local' ? 'gray.700' : 'gray.750',
+            },
           })}
         >
-          Place ArUco markers on your abacus corners, or set the crop manually
-        </p>
-      )}
-
-      {cameraSource === 'phone' && !remoteCameraSessionId && (
-        <p
+          <span>💻</span>
+          <span>This Device</span>
+        </button>
+        <button
+          type="button"
+          data-source="phone"
+          data-active={cameraSource === 'phone' ? 'true' : 'false'}
+          onClick={() => handleCameraSourceChange('phone')}
           className={css({
-            color: 'gray.400',
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            py: 2,
+            px: 3,
+            bg: cameraSource === 'phone' ? 'gray.700' : 'transparent',
+            color: cameraSource === 'phone' ? 'white' : 'gray.400',
+            border: 'none',
+            borderRadius: 'md',
+            cursor: 'pointer',
             fontSize: 'sm',
-            textAlign: 'center',
+            fontWeight: cameraSource === 'phone' ? 'medium' : 'normal',
+            transition: 'all 0.15s',
+            _hover: {
+              color: 'white',
+              bg: cameraSource === 'phone' ? 'gray.700' : 'gray.750',
+            },
           })}
         >
-          Scan the QR code with your phone to use it as a remote camera
-        </p>
-      )}
+          <span>📱</span>
+          <span>Phone Camera</span>
+        </button>
+      </div>
 
-      {cameraSource === 'phone' &&
-        remoteIsPhoneConnected &&
-        !remoteCalibration &&
-        !remoteIsCalibrating && (
-          <p
+      {/* Crop settings - collapsible */}
+      <div
+        data-element="crop-settings"
+        className={css({
+          bg: 'gray.800',
+          borderRadius: 'md',
+          overflow: 'hidden',
+        })}
+      >
+        {/* Collapsible header - shows summary */}
+        <button
+          type="button"
+          onClick={() => setIsCropSettingsExpanded(!isCropSettingsExpanded)}
+          data-element="crop-settings-header"
+          className={css({
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: 2,
+            bg: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'white',
+            _hover: { bg: 'gray.750' },
+          })}
+        >
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+            <span
+              className={css({
+                fontSize: 'xs',
+                color: 'gray.400',
+                transition: 'transform 0.15s',
+                transform: isCropSettingsExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+              })}
+            >
+              ▶
+            </span>
+            <span className={css({ fontSize: 'sm', fontWeight: 'medium' })}>Crop</span>
+            <span className={css({ color: 'gray.400', fontSize: 'sm' })}>·</span>
+            {/* Status summary */}
+            {((cameraSource === 'local' && vision.isCalibrated) ||
+              (cameraSource === 'phone' && remoteCalibration)) ? (
+              <span className={css({ color: 'blue.300', fontSize: 'sm' })}>Manual</span>
+            ) : (
+              <span
+                className={css({
+                  color:
+                    cameraSource === 'local'
+                      ? vision.markerDetection.allMarkersFound
+                        ? 'green.300'
+                        : 'yellow.300'
+                      : remoteFrameMode === 'cropped'
+                        ? 'green.300'
+                        : 'yellow.300',
+                  fontSize: 'sm',
+                })}
+              >
+                {cameraSource === 'local'
+                  ? vision.markerDetection.allMarkersFound
+                    ? 'Auto'
+                    : `${vision.markerDetection.markersFound}/4 markers`
+                  : remoteFrameMode === 'cropped'
+                    ? 'Auto'
+                    : 'Detecting...'}
+              </span>
+            )}
+          </div>
+        </button>
+
+        {/* Expanded content */}
+        {isCropSettingsExpanded && (
+          <div
+            data-element="crop-settings-content"
             className={css({
-              color: 'gray.400',
-              fontSize: 'sm',
-              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              px: 2,
+              pb: 2,
+              borderTop: '1px solid',
+              borderColor: 'gray.700',
             })}
           >
-            Phone auto-detects ArUco markers, or set the crop manually
-          </p>
+            {/* Manual crop indicator (if set) */}
+            {((cameraSource === 'local' && vision.isCalibrated) ||
+              (cameraSource === 'phone' && remoteCalibration)) && (
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  pt: 2,
+                })}
+              >
+                <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                  <span
+                    className={css({
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: 'full',
+                      bg: 'blue.400',
+                    })}
+                  />
+                  <span className={css({ color: 'white', fontSize: 'sm' })}>
+                    Using manual crop region
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (cameraSource === 'local') {
+                      vision.resetCalibration()
+                    } else {
+                      handleRemoteResetCalibration()
+                    }
+                  }}
+                  className={css({
+                    px: 2,
+                    py: 1,
+                    fontSize: 'xs',
+                    bg: 'transparent',
+                    color: 'gray.400',
+                    border: '1px solid',
+                    borderColor: 'gray.600',
+                    borderRadius: 'md',
+                    cursor: 'pointer',
+                    _hover: { borderColor: 'gray.500', color: 'gray.300' },
+                  })}
+                >
+                  Reset to auto
+                </button>
+              </div>
+            )}
+
+            {/* Auto crop status (when no manual crop) */}
+            {!(
+              (cameraSource === 'local' && vision.isCalibrated) ||
+              (cameraSource === 'phone' && remoteCalibration)
+            ) && (
+              <>
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    pt: 2,
+                  })}
+                >
+                  <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                    <span
+                      className={css({
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: 'full',
+                        bg:
+                          cameraSource === 'local'
+                            ? vision.markerDetection.allMarkersFound
+                              ? 'green.400'
+                              : 'yellow.400'
+                            : remoteFrameMode === 'cropped'
+                              ? 'green.400'
+                              : 'yellow.400',
+                      })}
+                    />
+                    <span className={css({ color: 'white', fontSize: 'sm' })}>
+                      {cameraSource === 'local'
+                        ? vision.markerDetection.allMarkersFound
+                          ? 'Auto-crop using markers'
+                          : `Looking for markers (${vision.markerDetection.markersFound}/4 found)`
+                        : remoteFrameMode === 'cropped'
+                          ? 'Phone auto-cropping'
+                          : 'Looking for markers...'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Get markers link */}
+                <div className={css({ display: 'flex', alignItems: 'center', gap: 3 })}>
+                  <a
+                    href="/create/vision-markers"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={css({
+                      color: 'blue.300',
+                      fontSize: 'sm',
+                      textDecoration: 'underline',
+                      _hover: { color: 'blue.200' },
+                    })}
+                  >
+                    Print markers →
+                  </a>
+                </div>
+
+                {/* Manual crop button */}
+                {!(cameraSource === 'local' ? vision.isCalibrating : remoteIsCalibrating) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (cameraSource === 'local') {
+                        vision.setCalibrationMode('manual')
+                        vision.startCalibration()
+                      } else {
+                        handleRemoteModeChange('manual')
+                        handleRemoteStartCalibration()
+                      }
+                    }}
+                    disabled={cameraSource === 'local' ? !vision.videoStream : !remoteIsPhoneConnected}
+                    className={css({
+                      px: 3,
+                      py: 1.5,
+                      fontSize: 'sm',
+                      bg: 'transparent',
+                      color: 'gray.300',
+                      border: '1px solid',
+                      borderColor: 'gray.600',
+                      borderRadius: 'md',
+                      cursor: 'pointer',
+                      _hover: { borderColor: 'gray.500', bg: 'gray.700' },
+                      _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                    })}
+                  >
+                    Set crop manually instead
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Troubleshooting - clear all settings */}
+            {showVisionControls && isVisionSetupComplete && (
+              <div
+                className={css({
+                  pt: 2,
+                  mt: 2,
+                  borderTop: '1px solid',
+                  borderColor: 'gray.700',
+                })}
+              >
+                <button
+                  type="button"
+                  data-action="clear-settings"
+                  onClick={onClearSettings}
+                  className={css({
+                    fontSize: 'xs',
+                    color: 'gray.500',
+                    bg: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    _hover: { color: 'gray.300' },
+                  })}
+                >
+                  Clear all settings
+                </button>
+              </div>
+            )}
+          </div>
         )}
+      </div>
 
       {/* Error display */}
       {cameraSource === 'local' && vision.cameraError && (
@@ -1295,32 +1413,6 @@ export function AbacusVisionBridge({
               })}
             >
               {isVisionEnabled ? 'Disable Vision' : 'Enable Vision'}
-            </button>
-          )}
-
-          {isVisionSetupComplete && (
-            <button
-              type="button"
-              data-action="clear-settings"
-              onClick={onClearSettings}
-              className={css({
-                px: 4,
-                py: 2,
-                bg: 'transparent',
-                color: 'gray.400',
-                borderRadius: 'lg',
-                fontWeight: 'medium',
-                border: '1px solid',
-                borderColor: 'gray.600',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                _hover: {
-                  borderColor: 'gray.500',
-                  color: 'gray.300',
-                },
-              })}
-            >
-              Clear All Settings
             </button>
           )}
         </div>

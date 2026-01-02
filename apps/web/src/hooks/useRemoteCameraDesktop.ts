@@ -254,16 +254,19 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
         'connected:',
         isConnected
       )
-      if (!socket || !isConnected) {
-        console.error('[RemoteCameraDesktop] Socket not connected!')
-        setError('Socket not connected')
-        return
-      }
 
+      // Save session ID FIRST, so auto-connect handler can use it
+      // even if socket isn't connected yet
       currentSessionIdRef.current = sessionId
       setCurrentSessionId(sessionId)
       persistSessionId(sessionId)
       setError(null)
+
+      if (!socket || !isConnected) {
+        console.log('[RemoteCameraDesktop] Socket not connected yet, will subscribe on connect')
+        return
+      }
+
       console.log('[RemoteCameraDesktop] Emitting remote-camera:subscribe')
       socket.emit('remote-camera:subscribe', { sessionId })
     },
