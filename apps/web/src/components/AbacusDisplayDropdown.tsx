@@ -301,7 +301,9 @@ export function AbacusDisplayDropdown({
                     step="1"
                     value={config.physicalAbacusColumns}
                     onChange={(e) =>
-                      updateConfig({ physicalAbacusColumns: parseInt(e.target.value, 10) })
+                      updateConfig({
+                        physicalAbacusColumns: parseInt(e.target.value, 10),
+                      })
                     }
                     className={css({
                       flex: 1,

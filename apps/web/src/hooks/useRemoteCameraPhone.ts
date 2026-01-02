@@ -137,7 +137,10 @@ export function useRemoteCameraPhone(
       // Auto-reconnect to session if we have one
       const sessionId = sessionIdRef.current
       if (sessionId) {
-        console.log('[RemoteCameraPhone] Auto-reconnecting to session after socket reconnect:', sessionId)
+        console.log(
+          '[RemoteCameraPhone] Auto-reconnecting to session after socket reconnect:',
+          sessionId
+        )
         socketInstance.emit('remote-camera:join', { sessionId })
         setIsConnected(true)
         isConnectedRef.current = true

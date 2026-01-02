@@ -16,7 +16,12 @@ export interface RemoteCameraSession {
   phoneConnected: boolean
   /** Calibration data sent from desktop (persists for reconnects) */
   calibration?: {
-    corners: { topLeft: { x: number; y: number }; topRight: { x: number; y: number }; bottomLeft: { x: number; y: number }; bottomRight: { x: number; y: number } }
+    corners: {
+      topLeft: { x: number; y: number }
+      topRight: { x: number; y: number }
+      bottomLeft: { x: number; y: number }
+      bottomRight: { x: number; y: number }
+    }
   }
 }
 
@@ -126,7 +131,9 @@ export function setSessionCalibration(
 /**
  * Get calibration data from session
  */
-export function getSessionCalibration(sessionId: string): RemoteCameraSession['calibration'] | null {
+export function getSessionCalibration(
+  sessionId: string
+): RemoteCameraSession['calibration'] | null {
   const sessions = getSessions()
   const session = sessions.get(sessionId)
 

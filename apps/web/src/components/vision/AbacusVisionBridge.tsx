@@ -29,6 +29,8 @@ export interface VisionConfigurationChange {
   calibration?: import('@/types/vision').CalibrationGrid | null
   /** Remote camera session ID (for phone camera) */
   remoteCameraSessionId?: string | null
+  /** Active camera source (tracks which camera is in use) */
+  activeCameraSource?: CameraSource | null
 }
 
 export interface AbacusVisionBridgeProps {
@@ -172,23 +174,26 @@ export function AbacusVisionBridge({
       if (source === 'phone') {
         // Stop local camera
         vision.disable()
-        // Clear local camera config in parent context
-        onConfigurationChange?.({ cameraDeviceId: null, calibration: null })
+        // Set active camera source to phone and clear local camera config
+        // (but keep local config in storage for when we switch back)
+        onConfigurationChange?.({ activeCameraSource: 'phone' })
         // Check for persisted session and reuse it
         const persistedSessionId = remoteGetPersistedSessionId()
         if (persistedSessionId) {
           console.log('[AbacusVisionBridge] Reusing persisted remote session:', persistedSessionId)
           setRemoteCameraSessionId(persistedSessionId)
           // Notify parent about the reused session
-          onConfigurationChange?.({ remoteCameraSessionId: persistedSessionId })
+          onConfigurationChange?.({
+            remoteCameraSessionId: persistedSessionId,
+          })
         }
         // If no persisted session, RemoteCameraQRCode will create one
       } else {
         // Switching to local camera
-        // Clear remote session in context so DockedVisionFeed uses local camera
-        // The session still persists in localStorage (via useRemoteCameraDesktop) for when we switch back
+        // Set active camera source to local
+        // The remote session still persists in localStorage (via useRemoteCameraDesktop) for when we switch back
         setRemoteCameraSessionId(null)
-        onConfigurationChange?.({ remoteCameraSessionId: null })
+        onConfigurationChange?.({ activeCameraSource: 'local' })
         vision.enable()
       }
     },
@@ -284,7 +289,7 @@ export function AbacusVisionBridge({
     }
   }, [vision.cameraError, onError])
 
-  // Notify about local camera device changes
+  // Notify about local camera device changes and ensure activeCameraSource is set
   useEffect(() => {
     if (
       cameraSource === 'local' &&
@@ -292,7 +297,11 @@ export function AbacusVisionBridge({
       vision.selectedDeviceId !== lastReportedCameraRef.current
     ) {
       lastReportedCameraRef.current = vision.selectedDeviceId
-      onConfigurationChange?.({ cameraDeviceId: vision.selectedDeviceId })
+      // Set both the camera device ID and the active camera source
+      onConfigurationChange?.({
+        cameraDeviceId: vision.selectedDeviceId,
+        activeCameraSource: 'local',
+      })
     }
   }, [cameraSource, vision.selectedDeviceId, onConfigurationChange])
 
@@ -437,7 +446,10 @@ export function AbacusVisionBridge({
     const updateDimensions = () => {
       const rect = container.getBoundingClientRect()
       if (rect.width > 0 && rect.height > 0) {
-        setRemoteContainerDimensions({ width: rect.width, height: rect.height })
+        setRemoteContainerDimensions({
+          width: rect.width,
+          height: rect.height,
+        })
       }
     }
 
@@ -757,145 +769,170 @@ export function AbacusVisionBridge({
         )}
       </div>
 
-      {/* Calibration mode toggle (both local and phone camera) */}
+      {/* Crop status - shows either marker detection or manual crop status */}
       <div
-        data-element="calibration-mode"
+        data-element="crop-status"
         className={css({
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: 'column',
           gap: 2,
           p: 2,
           bg: 'gray.800',
           borderRadius: 'md',
         })}
       >
-        <span className={css({ color: 'gray.400', fontSize: 'sm' })}>Mode:</span>
-        <button
-          type="button"
-          onClick={() =>
-            cameraSource === 'local'
-              ? vision.setCalibrationMode('auto')
-              : handleRemoteModeChange('auto')
-          }
-          className={css({
-            px: 3,
-            py: 1,
-            fontSize: 'sm',
-            border: 'none',
-            borderRadius: 'md',
-            cursor: 'pointer',
-            bg:
-              (cameraSource === 'local' ? vision.calibrationMode : remoteCalibrationMode) === 'auto'
-                ? 'blue.600'
-                : 'gray.700',
-            color: 'white',
-            _hover: {
-              bg:
-                (cameraSource === 'local' ? vision.calibrationMode : remoteCalibrationMode) ===
-                'auto'
-                  ? 'blue.500'
-                  : 'gray.600',
-            },
-          })}
-        >
-          Auto (Markers)
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            cameraSource === 'local'
-              ? vision.setCalibrationMode('manual')
-              : handleRemoteModeChange('manual')
-          }
-          className={css({
-            px: 3,
-            py: 1,
-            fontSize: 'sm',
-            border: 'none',
-            borderRadius: 'md',
-            cursor: 'pointer',
-            bg:
-              (cameraSource === 'local' ? vision.calibrationMode : remoteCalibrationMode) ===
-              'manual'
-                ? 'blue.600'
-                : 'gray.700',
-            color: 'white',
-            _hover: {
-              bg:
-                (cameraSource === 'local' ? vision.calibrationMode : remoteCalibrationMode) ===
-                'manual'
-                  ? 'blue.500'
-                  : 'gray.600',
-            },
-          })}
-        >
-          Manual
-        </button>
-      </div>
-
-      {/* Marker detection status (in auto mode) */}
-      {((cameraSource === 'local' && vision.calibrationMode === 'auto') ||
-        (cameraSource === 'phone' && remoteCalibrationMode === 'auto')) && (
-        <div
-          data-element="marker-status"
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            p: 2,
-            bg:
-              cameraSource === 'local'
-                ? vision.markerDetection.allMarkersFound
-                  ? 'green.900'
-                  : 'gray.800'
-                : remoteFrameMode === 'cropped'
-                  ? 'green.900'
-                  : 'gray.800',
-            borderRadius: 'md',
-            transition: 'background-color 0.2s',
-          })}
-        >
-          <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
-            <span
-              className={css({
-                width: '8px',
-                height: '8px',
-                borderRadius: 'full',
-                bg:
-                  cameraSource === 'local'
-                    ? vision.markerDetection.allMarkersFound
-                      ? 'green.400'
-                      : 'yellow.400'
-                    : remoteFrameMode === 'cropped'
-                      ? 'green.400'
-                      : 'yellow.400',
-              })}
-            />
-            <span className={css({ color: 'white', fontSize: 'sm' })}>
-              {cameraSource === 'local'
-                ? vision.markerDetection.allMarkersFound
-                  ? 'All markers detected'
-                  : `Markers: ${vision.markerDetection.markersFound}/4`
-                : remoteFrameMode === 'cropped'
-                  ? 'Phone auto-cropping active'
-                  : 'Waiting for phone markers...'}
-            </span>
-          </div>
-          <a
-            href="/create/vision-markers"
-            target="_blank"
-            rel="noopener noreferrer"
+        {/* Manual crop indicator (if set) */}
+        {((cameraSource === 'local' && vision.isCalibrated) ||
+          (cameraSource === 'phone' && remoteCalibration)) && (
+          <div
             className={css({
-              color: 'blue.300',
-              fontSize: 'xs',
-              textDecoration: 'underline',
-              _hover: { color: 'blue.200' },
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             })}
           >
-            Get markers
-          </a>
-        </div>
-      )}
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+              })}
+            >
+              <span
+                className={css({
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: 'full',
+                  bg: 'blue.400',
+                })}
+              />
+              <span className={css({ color: 'white', fontSize: 'sm' })}>Using manual crop</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (cameraSource === 'local') {
+                  vision.resetCalibration()
+                } else {
+                  handleRemoteResetCalibration()
+                }
+              }}
+              className={css({
+                px: 2,
+                py: 1,
+                fontSize: 'xs',
+                bg: 'transparent',
+                color: 'gray.400',
+                border: '1px solid',
+                borderColor: 'gray.600',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                _hover: { borderColor: 'gray.500', color: 'gray.300' },
+              })}
+            >
+              Reset
+            </button>
+          </div>
+        )}
+
+        {/* Marker detection status (always shown when no manual crop) */}
+        {!(
+          (cameraSource === 'local' && vision.isCalibrated) ||
+          (cameraSource === 'phone' && remoteCalibration)
+        ) && (
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            })}
+          >
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+              })}
+            >
+              <span
+                className={css({
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: 'full',
+                  bg:
+                    cameraSource === 'local'
+                      ? vision.markerDetection.allMarkersFound
+                        ? 'green.400'
+                        : 'yellow.400'
+                      : remoteFrameMode === 'cropped'
+                        ? 'green.400'
+                        : 'yellow.400',
+                })}
+              />
+              <span className={css({ color: 'white', fontSize: 'sm' })}>
+                {cameraSource === 'local'
+                  ? vision.markerDetection.allMarkersFound
+                    ? 'Auto-crop active'
+                    : `Markers: ${vision.markerDetection.markersFound}/4`
+                  : remoteFrameMode === 'cropped'
+                    ? 'Phone auto-cropping'
+                    : 'Waiting for markers...'}
+              </span>
+            </div>
+            <div className={css({ display: 'flex', gap: 2 })}>
+              <a
+                href="/create/vision-markers"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={css({
+                  color: 'blue.300',
+                  fontSize: 'xs',
+                  textDecoration: 'underline',
+                  _hover: { color: 'blue.200' },
+                })}
+              >
+                Get markers
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Manual crop button - only show when not calibrating and no manual calibration */}
+        {!(
+          (cameraSource === 'local' && vision.isCalibrated) ||
+          (cameraSource === 'phone' && remoteCalibration)
+        ) &&
+          !(cameraSource === 'local' ? vision.isCalibrating : remoteIsCalibrating) && (
+            <button
+              type="button"
+              onClick={() => {
+                if (cameraSource === 'local') {
+                  vision.setCalibrationMode('manual')
+                  vision.startCalibration()
+                } else {
+                  handleRemoteModeChange('manual')
+                  handleRemoteStartCalibration()
+                }
+              }}
+              disabled={cameraSource === 'local' ? !vision.videoStream : !remoteIsPhoneConnected}
+              className={css({
+                px: 3,
+                py: 1.5,
+                fontSize: 'sm',
+                bg: 'transparent',
+                color: 'gray.300',
+                border: '1px solid',
+                borderColor: 'gray.600',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                _hover: { borderColor: 'gray.500', bg: 'gray.700' },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+              })}
+            >
+              Set crop manually
+            </button>
+          )}
+      </div>
 
       {/* Camera feed */}
       <div ref={cameraFeedContainerRef} className={css({ position: 'relative' })}>
@@ -1168,134 +1205,6 @@ export function AbacusVisionBridge({
         </div>
       )}
 
-      {/* Actions (manual mode - both local and phone camera) */}
-      {((cameraSource === 'local' && vision.calibrationMode === 'manual') ||
-        (cameraSource === 'phone' && remoteCalibrationMode === 'manual')) && (
-        <div
-          data-element="actions"
-          className={css({
-            display: 'flex',
-            gap: 2,
-          })}
-        >
-          {cameraSource === 'local' ? (
-            /* Local camera actions */
-            !vision.isCalibrated ? (
-              <button
-                type="button"
-                onClick={vision.startCalibration}
-                disabled={!videoDimensions}
-                className={css({
-                  flex: 1,
-                  py: 2,
-                  bg: 'blue.600',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 'md',
-                  fontWeight: 'medium',
-                  cursor: 'pointer',
-                  _hover: { bg: 'blue.500' },
-                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-                })}
-              >
-                Calibrate
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={vision.startCalibration}
-                  className={css({
-                    flex: 1,
-                    py: 2,
-                    bg: 'gray.700',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 'md',
-                    cursor: 'pointer',
-                    _hover: { bg: 'gray.600' },
-                  })}
-                >
-                  Recalibrate
-                </button>
-                <button
-                  type="button"
-                  onClick={vision.resetCalibration}
-                  className={css({
-                    py: 2,
-                    px: 3,
-                    bg: 'red.700',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 'md',
-                    cursor: 'pointer',
-                    _hover: { bg: 'red.600' },
-                  })}
-                >
-                  Reset
-                </button>
-              </>
-            )
-          ) : /* Phone camera actions */
-          !remoteCalibration ? (
-            <button
-              type="button"
-              onClick={handleRemoteStartCalibration}
-              disabled={!remoteIsPhoneConnected}
-              className={css({
-                flex: 1,
-                py: 2,
-                bg: 'blue.600',
-                color: 'white',
-                border: 'none',
-                borderRadius: 'md',
-                fontWeight: 'medium',
-                cursor: 'pointer',
-                _hover: { bg: 'blue.500' },
-                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-              })}
-            >
-              Calibrate
-            </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={handleRemoteStartCalibration}
-                className={css({
-                  flex: 1,
-                  py: 2,
-                  bg: 'gray.700',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 'md',
-                  cursor: 'pointer',
-                  _hover: { bg: 'gray.600' },
-                })}
-              >
-                Recalibrate
-              </button>
-              <button
-                type="button"
-                onClick={handleRemoteResetCalibration}
-                className={css({
-                  py: 2,
-                  px: 3,
-                  bg: 'red.700',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 'md',
-                  cursor: 'pointer',
-                  _hover: { bg: 'red.600' },
-                })}
-              >
-                Reset
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
       {/* Instructions */}
       {cameraSource === 'local' && !vision.isCalibrated && !vision.isCalibrating && (
         <p
@@ -1305,9 +1214,7 @@ export function AbacusVisionBridge({
             textAlign: 'center',
           })}
         >
-          {vision.calibrationMode === 'auto'
-            ? 'Place ArUco markers on your abacus corners for automatic detection'
-            : 'Point your camera at a soroban and click Calibrate to set up detection'}
+          Place ArUco markers on your abacus corners, or set the crop manually
         </p>
       )}
 
@@ -1334,9 +1241,7 @@ export function AbacusVisionBridge({
               textAlign: 'center',
             })}
           >
-            {remoteCalibrationMode === 'auto'
-              ? 'Place ArUco markers on your abacus corners for automatic detection'
-              : 'Point your phone camera at a soroban and click Calibrate to set up detection'}
+            Phone auto-detects ArUco markers, or set the crop manually
           </p>
         )}
 

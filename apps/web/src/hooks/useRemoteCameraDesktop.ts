@@ -273,7 +273,9 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
   const unsubscribe = useCallback(() => {
     if (!socket || !currentSessionIdRef.current) return
 
-    socket.emit('remote-camera:leave', { sessionId: currentSessionIdRef.current })
+    socket.emit('remote-camera:leave', {
+      sessionId: currentSessionIdRef.current,
+    })
     currentSessionIdRef.current = null
     setCurrentSessionId(null)
     // Don't clear persisted session - unsubscribe is for temporary disconnect
@@ -293,7 +295,9 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
    */
   const clearSession = useCallback(() => {
     if (socket && currentSessionIdRef.current) {
-      socket.emit('remote-camera:leave', { sessionId: currentSessionIdRef.current })
+      socket.emit('remote-camera:leave', {
+        sessionId: currentSessionIdRef.current,
+      })
     }
     currentSessionIdRef.current = null
     setCurrentSessionId(null)

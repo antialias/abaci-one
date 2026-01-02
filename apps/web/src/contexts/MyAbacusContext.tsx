@@ -13,6 +13,11 @@ import {
 import type { CalibrationGrid } from '@/types/vision'
 
 /**
+ * Camera source type for vision
+ */
+export type CameraSourceType = 'local' | 'phone'
+
+/**
  * Configuration for abacus vision (camera-based input)
  */
 export interface VisionConfig {
@@ -24,6 +29,8 @@ export interface VisionConfig {
   calibration: CalibrationGrid | null
   /** Remote phone camera session ID (for phone-as-camera mode) */
   remoteCameraSessionId: string | null
+  /** Currently active camera source - tracks which camera is in use */
+  activeCameraSource: CameraSourceType | null
 }
 
 const DEFAULT_VISION_CONFIG: VisionConfig = {
@@ -31,6 +38,7 @@ const DEFAULT_VISION_CONFIG: VisionConfig = {
   cameraDeviceId: null,
   calibration: null,
   remoteCameraSessionId: null,
+  activeCameraSource: null,
 }
 
 const VISION_CONFIG_STORAGE_KEY = 'abacus-vision-config'
@@ -196,6 +204,8 @@ interface MyAbacusContextValue {
   setVisionCalibration: (calibration: CalibrationGrid | null) => void
   /** Set the remote camera session ID */
   setVisionRemoteSession: (sessionId: string | null) => void
+  /** Set the active camera source */
+  setVisionCameraSource: (source: CameraSourceType | null) => void
   /** Whether the vision setup modal is open */
   isVisionSetupOpen: boolean
   /** Open the vision setup modal */
@@ -310,12 +320,13 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // Vision callbacks
-  // Setup is complete if either:
-  // - Local camera: has camera device AND calibration
+  // Setup is complete if an active camera source is set and configured:
+  // - Local camera: has camera device (calibration is optional - auto-crop works without it)
   // - Remote camera: has remote session ID (phone handles calibration)
   const isVisionSetupComplete =
-    (visionConfig.cameraDeviceId !== null && visionConfig.calibration !== null) ||
-    visionConfig.remoteCameraSessionId !== null
+    visionConfig.activeCameraSource !== null &&
+    ((visionConfig.activeCameraSource === 'local' && visionConfig.cameraDeviceId !== null) ||
+      (visionConfig.activeCameraSource === 'phone' && visionConfig.remoteCameraSessionId !== null))
 
   const setVisionEnabled = useCallback((enabled: boolean) => {
     setVisionConfig((prev) => {
@@ -344,6 +355,14 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   const setVisionRemoteSession = useCallback((sessionId: string | null) => {
     setVisionConfig((prev) => {
       const updated = { ...prev, remoteCameraSessionId: sessionId }
+      saveVisionConfig(updated)
+      return updated
+    })
+  }, [])
+
+  const setVisionCameraSource = useCallback((source: CameraSourceType | null) => {
+    setVisionConfig((prev) => {
+      const updated = { ...prev, activeCameraSource: source }
       saveVisionConfig(updated)
       return updated
     })
@@ -407,6 +426,7 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
         setVisionCamera,
         setVisionCalibration,
         setVisionRemoteSession,
+        setVisionCameraSource,
         isVisionSetupOpen,
         openVisionSetup,
         closeVisionSetup,

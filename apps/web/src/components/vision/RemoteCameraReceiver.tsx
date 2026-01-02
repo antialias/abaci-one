@@ -58,8 +58,14 @@ export function RemoteCameraReceiver({
   const [calibration, setCalibration] = useState<CalibrationGrid | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
-  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 })
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 })
+  const [containerDimensions, setContainerDimensions] = useState({
+    width: 0,
+    height: 0,
+  })
+  const [imageDimensions, setImageDimensions] = useState({
+    width: 0,
+    height: 0,
+  })
 
   // Subscribe when sessionId changes
   useEffect(() => {
@@ -100,7 +106,10 @@ export function RemoteCameraReceiver({
   // Track image dimensions when it loads
   const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget
-    setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight })
+    setImageDimensions({
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+    })
   }, [])
 
   // Create image src from base64 data

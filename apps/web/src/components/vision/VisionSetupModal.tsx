@@ -20,6 +20,7 @@ export function VisionSetupModal() {
     setVisionCamera,
     setVisionCalibration,
     setVisionRemoteSession,
+    setVisionCameraSource,
     dock,
   } = useMyAbacus()
 
@@ -27,6 +28,7 @@ export function VisionSetupModal() {
     setVisionCamera(null)
     setVisionCalibration(null)
     setVisionRemoteSession(null)
+    setVisionCameraSource(null)
     setVisionEnabled(false)
   }
 
@@ -75,10 +77,14 @@ export function VisionSetupModal() {
             if (config.remoteCameraSessionId !== undefined) {
               setVisionRemoteSession(config.remoteCameraSessionId)
             }
+            if (config.activeCameraSource !== undefined) {
+              setVisionCameraSource(config.activeCameraSource)
+            }
           }}
-          // Start with phone camera selected if remote session is configured but no local camera
+          // Use saved activeCameraSource if available, otherwise infer from configs
           initialCameraSource={
-            visionConfig.remoteCameraSessionId && !visionConfig.cameraDeviceId ? 'phone' : 'local'
+            visionConfig.activeCameraSource ??
+            (visionConfig.remoteCameraSessionId && !visionConfig.cameraDeviceId ? 'phone' : 'local')
           }
           // Show enable/disable and clear buttons
           showVisionControls={true}

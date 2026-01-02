@@ -167,10 +167,7 @@ describe('useRemoteCameraDesktop', () => {
       })
 
       // Should not emit subscribe
-      expect(mockSocket.emit).not.toHaveBeenCalledWith(
-        'remote-camera:subscribe',
-        expect.anything()
-      )
+      expect(mockSocket.emit).not.toHaveBeenCalledWith('remote-camera:subscribe', expect.anything())
     })
   })
 

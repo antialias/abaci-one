@@ -449,7 +449,20 @@
       "Bash(apps/web/src/lib/vision/frameProcessor.ts )",
       "Bash(apps/web/src/lib/vision/beadDetector.ts )",
       "Bash(apps/web/public/models/abacus-column-classifier/model.json )",
-      "Bash(.claude/settings.local.json)"
+      "Bash(.claude/settings.local.json)",
+      "Bash(apps/web/src/components/MyAbacus.tsx )",
+      "Bash(apps/web/src/contexts/MyAbacusContext.tsx )",
+      "Bash(apps/web/src/components/vision/DockedVisionFeed.tsx )",
+      "Bash(apps/web/src/components/vision/VisionIndicator.tsx )",
+      "Bash(apps/web/src/components/vision/VisionSetupModal.tsx)",
+      "Bash(npx storybook:*)",
+      "Bash(apps/web/src/hooks/usePhoneCamera.ts )",
+      "Bash(apps/web/src/lib/remote-camera/session-manager.ts )",
+      "Bash(apps/web/src/test/setup.ts )",
+      "Bash(apps/web/src/hooks/__tests__/useRemoteCameraDesktop.test.ts )",
+      "Bash(apps/web/src/hooks/__tests__/useRemoteCameraPhone.test.ts )",
+      "Bash(apps/web/src/lib/remote-camera/__tests__/)",
+      "Bash(packages/abacus-react/CHANGELOG.md )"
     ],
     "deny": [],
     "ask": []

@@ -90,10 +90,9 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
   // Stability tracking for detected values (hook must be called unconditionally)
   const stability = useFrameStability()
 
-  // Determine camera source (must be before effects that use these)
-  // Prioritize local camera if configured - remote camera only if no local camera
-  const isLocalCamera = visionConfig.cameraDeviceId !== null
-  const isRemoteCamera = !isLocalCamera && visionConfig.remoteCameraSessionId !== null
+  // Determine camera source from explicit activeCameraSource field
+  const isLocalCamera = visionConfig.activeCameraSource === 'local'
+  const isRemoteCamera = visionConfig.activeCameraSource === 'phone'
 
   // Load and initialize ArUco on mount (for local camera auto-calibration)
   useEffect(() => {
