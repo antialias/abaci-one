@@ -1,0 +1,3 @@
+{
+  "note": "Placeholder - model needs to be trained. Run: npx tsx scripts/train-column-classifier/generateTrainingData.ts and then the Python training script."
+}

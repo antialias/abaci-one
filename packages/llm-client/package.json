@@ -1,0 +1,60 @@
+{
+  "name": "@soroban/llm-client",
+  "version": "1.0.0",
+  "description": "Type-safe LLM client with multi-provider support, Zod schema validation, and retry logic",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "src/**/*",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "keywords": [
+    "llm",
+    "openai",
+    "anthropic",
+    "claude",
+    "gpt",
+    "ai",
+    "typescript",
+    "zod",
+    "schema",
+    "validation"
+  ],
+  "dependencies": {},
+  "peerDependencies": {
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0",
+    "zod": "^4.1.12"
+  },
+  "author": "Soroban Flashcards Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/antialias/soroban-abacus-flashcards",
+    "directory": "packages/llm-client"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

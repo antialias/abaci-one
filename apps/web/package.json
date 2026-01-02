@@ -54,6 +54,7 @@
     "@react-three/fiber": "^8.17.0",
     "@soroban/abacus-react": "workspace:*",
     "@soroban/core": "workspace:*",
+    "@soroban/llm-client": "workspace:*",
     "@soroban/templates": "workspace:*",
     "@strudel/soundfonts": "^1.2.6",
     "@strudel/web": "^1.2.6",

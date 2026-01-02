@@ -1,14 +1,23 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
 import { createId } from '@paralleldrive/cuid2'
 import { players } from './players'
 import { sessionPlans } from './session-plans'
 import { users } from './users'
+import type { WorksheetParsingResult } from '@/lib/worksheet-parsing'
+
+/**
+ * Parsing workflow status
+ */
+export type ParsingStatus = 'pending' | 'processing' | 'needs_review' | 'approved' | 'failed'
 
 /**
  * Practice attachments - photos of student work
  *
  * Used primarily for offline practice sessions where parents/teachers
  * upload photos of the student's physical abacus work.
+ *
+ * Now also supports LLM-powered parsing of worksheet images to extract
+ * problems and student answers automatically.
  */
 export const practiceAttachments = sqliteTable('practice_attachments', {
   id: text('id')
@@ -40,6 +49,29 @@ export const practiceAttachments = sqliteTable('practice_attachments', {
 
   // Rotation in degrees (0, 90, 180, or 270) - applied after cropping
   rotation: integer('rotation').$type<0 | 90 | 180 | 270>().default(0),
+
+  // ============================================================================
+  // LLM Parsing Workflow
+  // ============================================================================
+
+  // Parsing status
+  parsingStatus: text('parsing_status').$type<ParsingStatus>(),
+  parsedAt: text('parsed_at'), // ISO timestamp when parsing completed
+  parsingError: text('parsing_error'), // Error message if parsing failed
+
+  // LLM parsing results (raw from LLM, before user corrections)
+  rawParsingResult: text('raw_parsing_result', { mode: 'json' }).$type<WorksheetParsingResult | null>(),
+
+  // Approved results (after user corrections)
+  approvedResult: text('approved_result', { mode: 'json' }).$type<WorksheetParsingResult | null>(),
+
+  // Confidence and review indicators
+  confidenceScore: real('confidence_score'), // 0-1, from LLM
+  needsReview: integer('needs_review', { mode: 'boolean' }), // True if any problems need manual review
+
+  // Session linkage (for parsed worksheets that created sessions)
+  sessionCreated: integer('session_created', { mode: 'boolean' }), // True if session was created from this parsing
+  createdSessionId: text('created_session_id').references(() => sessionPlans.id, { onDelete: 'set null' }),
 
   // Audit
   uploadedBy: text('uploaded_by')

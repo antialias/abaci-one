@@ -462,7 +462,9 @@
       "Bash(apps/web/src/hooks/__tests__/useRemoteCameraDesktop.test.ts )",
       "Bash(apps/web/src/hooks/__tests__/useRemoteCameraPhone.test.ts )",
       "Bash(apps/web/src/lib/remote-camera/__tests__/)",
-      "Bash(packages/abacus-react/CHANGELOG.md )"
+      "Bash(packages/abacus-react/CHANGELOG.md )",
+      "WebFetch(domain:zod.dev)",
+      "Bash(npm view:*)"
     ],
     "deny": [],
     "ask": []
