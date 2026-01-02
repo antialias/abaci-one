@@ -366,7 +366,7 @@ export function getPhaseSkillConstraints(phaseId: string): PhaseSkillConstraints
       if (phase.usesFiveComplement && phase.targetNumber <= 4) {
         // Target the specific five-complement skill
         const skill = FIVE_COMPLEMENT_ADD[phase.targetNumber]
-        target.fiveComplements = { [skill]: true } as Partial<SkillSet['fiveComplements']>
+        target.fiveComplements = { [skill]: true } as SkillSet['fiveComplements']
         required.fiveComplements = {
           [skill]: true,
         } as SkillSet['fiveComplements']
@@ -386,7 +386,7 @@ export function getPhaseSkillConstraints(phaseId: string): PhaseSkillConstraints
 
       if (phase.usesFiveComplement && Math.abs(phase.targetNumber) <= 4) {
         const skill = FIVE_COMPLEMENT_SUB[Math.abs(phase.targetNumber)]
-        target.fiveComplementsSub = { [skill]: true } as Partial<SkillSet['fiveComplementsSub']>
+        target.fiveComplementsSub = { [skill]: true } as SkillSet['fiveComplementsSub']
         required.fiveComplementsSub = {
           [skill]: true,
         } as SkillSet['fiveComplementsSub']
@@ -405,7 +405,7 @@ export function getPhaseSkillConstraints(phaseId: string): PhaseSkillConstraints
     required.basic.heavenBead = true
 
     const skill = TEN_COMPLEMENT_ADD[phase.targetNumber]
-    target.tenComplements = { [skill]: true } as Partial<SkillSet['tenComplements']>
+    target.tenComplements = { [skill]: true } as SkillSet['tenComplements']
     required.tenComplements = { [skill]: true } as SkillSet['tenComplements']
 
     if (!phase.usesFiveComplement) {
@@ -423,7 +423,7 @@ export function getPhaseSkillConstraints(phaseId: string): PhaseSkillConstraints
     required.basic.heavenBeadSubtraction = true
 
     const skill = TEN_COMPLEMENT_SUB[Math.abs(phase.targetNumber)]
-    target.tenComplementsSub = { [skill]: true } as Partial<SkillSet['tenComplementsSub']>
+    target.tenComplementsSub = { [skill]: true } as SkillSet['tenComplementsSub']
     required.tenComplementsSub = {
       [skill]: true,
     } as SkillSet['tenComplementsSub']
@@ -528,6 +528,10 @@ function createFullSkillSet(): SkillSet {
       '-3=+7-10': true,
       '-2=+8-10': true,
       '-1=+9-10': true,
+    },
+    advanced: {
+      cascadingCarry: true,
+      cascadingBorrow: true,
     },
   }
 }

@@ -58,3 +58,21 @@ export const entryPromptKeys = {
   all: ['entry-prompts'] as const,
   pending: () => [...entryPromptKeys.all, 'pending'] as const,
 }
+
+// Attachment query keys (for practice photos and worksheet parsing)
+export const attachmentKeys = {
+  // All attachments for a player
+  all: (playerId: string) => ['attachments', playerId] as const,
+
+  // Attachments for a specific session
+  session: (playerId: string, sessionId: string) =>
+    [...attachmentKeys.all(playerId), 'session', sessionId] as const,
+
+  // Single attachment detail (includes parsing data)
+  detail: (playerId: string, attachmentId: string) =>
+    [...attachmentKeys.all(playerId), attachmentId] as const,
+
+  // Parsing-specific data for an attachment
+  parsing: (playerId: string, attachmentId: string) =>
+    [...attachmentKeys.detail(playerId, attachmentId), 'parsing'] as const,
+}

@@ -156,9 +156,10 @@ export function convertToSlotResults(
  *
  * Returns warnings for any issues found.
  */
-export function validateParsedProblems(
-  problems: ParsedProblem[]
-): { valid: boolean; warnings: string[] } {
+export function validateParsedProblems(problems: ParsedProblem[]): {
+  valid: boolean
+  warnings: string[]
+} {
   const warnings: string[] = []
 
   for (const problem of problems) {

@@ -1,12 +1,23 @@
 'use client'
 
+import { useCallback, useState } from 'react'
 import type { RefObject } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import type { ParsingStatus } from '@/db/schema/practice-attachments'
+import type { WorksheetParsingResult } from '@/lib/worksheet-parsing'
+import { api } from '@/lib/queryClient'
 import { css } from '../../../styled-system/css'
+import { ParsedProblemsList } from '../worksheet-parsing'
 
 export interface OfflineAttachment {
   id: string
   url: string
   filename?: string
+  // Parsing fields
+  parsingStatus?: ParsingStatus | null
+  rawParsingResult?: WorksheetParsingResult | null
+  needsReview?: boolean
+  sessionCreated?: boolean
 }
 
 export interface OfflineWorkSectionProps {
@@ -20,10 +31,20 @@ export interface OfflineWorkSectionProps {
   uploadError: string | null
   /** ID of photo being deleted */
   deletingId: string | null
+  /** ID of photo currently being parsed */
+  parsingId: string | null
   /** Whether drag is over the drop zone */
   dragOver: boolean
   /** Dark mode */
   isDark: boolean
+  /** Whether the user can upload photos (pre-flight auth check) */
+  canUpload?: boolean
+  /** Student ID for entry prompt */
+  studentId?: string
+  /** Student name for remediation message */
+  studentName?: string
+  /** Classroom ID for entry prompt (when canUpload is false) */
+  classroomId?: string
   /** Handlers */
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
   onDrop: (e: React.DragEvent) => void
@@ -33,6 +54,8 @@ export interface OfflineWorkSectionProps {
   /** Open photo viewer/editor at index with specified mode */
   onOpenViewer: (index: number, mode: 'view' | 'edit') => void
   onDeletePhoto: (id: string) => void
+  /** Start parsing a worksheet photo */
+  onParse?: (id: string) => void
 }
 
 /**
@@ -50,8 +73,13 @@ export function OfflineWorkSection({
   isUploading,
   uploadError,
   deletingId,
+  parsingId,
   dragOver,
   isDark,
+  canUpload = true,
+  studentId,
+  studentName,
+  classroomId,
   onFileSelect,
   onDrop,
   onDragOver,
@@ -59,10 +87,57 @@ export function OfflineWorkSection({
   onOpenCamera,
   onOpenViewer,
   onDeletePhoto,
+  onParse,
 }: OfflineWorkSectionProps) {
   const photoCount = attachments.length
   // Show add tile unless we have 8+ photos (max reasonable gallery size)
-  const showAddTile = photoCount < 8
+  // Also only show if user can upload
+  const showAddTile = photoCount < 8 && canUpload
+  // Show remediation when user can't upload but is a teacher with enrolled student
+  const showRemediation = !canUpload && classroomId && studentId
+
+  // Entry prompt state (for teachers who need student to enter classroom)
+  const [promptSent, setPromptSent] = useState(false)
+
+  // Mutation for sending entry prompt
+  const sendEntryPrompt = useMutation({
+    mutationFn: async (playerId: string) => {
+      if (!classroomId) throw new Error('No classroom ID')
+      const response = await api(`classrooms/${classroomId}/entry-prompts`, {
+        method: 'POST',
+        body: JSON.stringify({ playerIds: [playerId] }),
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to send prompt')
+      }
+      return response.json()
+    },
+    onSuccess: (data) => {
+      if (data.created > 0) {
+        setPromptSent(true)
+      }
+    },
+  })
+
+  const handleSendEntryPrompt = useCallback(() => {
+    if (studentId) {
+      sendEntryPrompt.mutate(studentId)
+    }
+  }, [sendEntryPrompt, studentId])
+
+  // Find all attachments with parsing results
+  const parsedAttachments = attachments.filter(
+    (att) =>
+      att.rawParsingResult?.problems &&
+      att.rawParsingResult.problems.length > 0 &&
+      (att.parsingStatus === 'needs_review' || att.parsingStatus === 'approved')
+  )
+
+  // Track which parsed result is currently expanded (default to first one)
+  const [expandedResultId, setExpandedResultId] = useState<string | null>(
+    parsedAttachments[0]?.id ?? null
+  )
 
   return (
     <div
@@ -294,6 +369,115 @@ export function OfflineWorkSection({
             >
               {index + 1}
             </div>
+
+            {/* Parse button - show if not parsed yet OR if failed (to allow retry) */}
+            {onParse &&
+              (!att.parsingStatus || att.parsingStatus === 'failed') &&
+              !att.sessionCreated && (
+                <button
+                  type="button"
+                  data-action="parse-worksheet"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onParse(att.id)
+                  }}
+                  disabled={parsingId === att.id}
+                  className={css({
+                    position: 'absolute',
+                    bottom: '0.5rem',
+                    right: '0.5rem',
+                    height: '24px',
+                    paddingX: '0.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.25rem',
+                    backgroundColor: att.parsingStatus === 'failed' ? 'orange.500' : 'blue.500',
+                    color: 'white',
+                    borderRadius: 'full',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '0.6875rem',
+                    fontWeight: '600',
+                    transition: 'background-color 0.2s',
+                    _hover: {
+                      backgroundColor: att.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
+                    },
+                    _disabled: {
+                      backgroundColor: 'gray.400',
+                      cursor: 'wait',
+                    },
+                  })}
+                  aria-label={att.parsingStatus === 'failed' ? 'Retry parsing' : 'Parse worksheet'}
+                >
+                  {parsingId === att.id ? '⏳' : att.parsingStatus === 'failed' ? '🔄' : '🔍'}{' '}
+                  {att.parsingStatus === 'failed' ? 'Retry' : 'Parse'}
+                </button>
+              )}
+
+            {/* Parsing status badge - don't show for 'failed' since retry button is shown instead */}
+            {att.parsingStatus && att.parsingStatus !== 'failed' && (
+              <div
+                data-element="parsing-status"
+                className={css({
+                  position: 'absolute',
+                  bottom: '0.5rem',
+                  right: '0.5rem',
+                  height: '24px',
+                  paddingX: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  borderRadius: 'full',
+                  fontSize: '0.6875rem',
+                  fontWeight: '600',
+                  backgroundColor:
+                    att.parsingStatus === 'processing'
+                      ? 'blue.500'
+                      : att.parsingStatus === 'needs_review'
+                        ? 'yellow.500'
+                        : att.parsingStatus === 'approved'
+                          ? 'green.500'
+                          : 'gray.500',
+                  color: att.parsingStatus === 'needs_review' ? 'yellow.900' : 'white',
+                })}
+              >
+                {att.parsingStatus === 'processing' && '⏳'}
+                {att.parsingStatus === 'needs_review' && '⚠️'}
+                {att.parsingStatus === 'approved' && '✓'}
+                {att.parsingStatus === 'processing'
+                  ? 'Analyzing...'
+                  : att.parsingStatus === 'needs_review'
+                    ? `${att.rawParsingResult?.problems?.length ?? '?'} problems`
+                    : att.parsingStatus === 'approved'
+                      ? `${att.rawParsingResult?.problems?.length ?? '?'} problems`
+                      : att.parsingStatus}
+              </div>
+            )}
+
+            {/* Session created indicator */}
+            {att.sessionCreated && (
+              <div
+                data-element="session-created"
+                className={css({
+                  position: 'absolute',
+                  bottom: '0.5rem',
+                  right: '0.5rem',
+                  height: '24px',
+                  paddingX: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  borderRadius: 'full',
+                  fontSize: '0.6875rem',
+                  fontWeight: '600',
+                  backgroundColor: 'green.600',
+                  color: 'white',
+                })}
+              >
+                ✓ Session Created
+              </div>
+            )}
           </div>
         ))}
 
@@ -417,24 +601,219 @@ export function OfflineWorkSection({
         )}
       </div>
 
-      {/* Coming Soon footer - subtle, integrated */}
-      <div
-        data-element="coming-soon-hint"
-        className={css({
-          marginTop: '1rem',
-          paddingTop: '0.75rem',
-          borderTop: '1px solid',
-          borderColor: isDark ? 'gray.700' : 'gray.200',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          color: isDark ? 'gray.500' : 'gray.500',
-          fontSize: '0.8125rem',
-        })}
-      >
-        <span>🔮</span>
-        <span>Coming soon: Auto-analyze worksheets to track progress</span>
-      </div>
+      {/* Remediation banner - shown when teacher can't upload because student isn't present */}
+      {showRemediation && (
+        <div
+          data-element="upload-remediation"
+          className={css({
+            marginTop: '1rem',
+            padding: '1rem',
+            backgroundColor: isDark ? 'orange.900/30' : 'orange.50',
+            border: '2px solid',
+            borderColor: isDark ? 'orange.700' : 'orange.300',
+            borderRadius: '12px',
+          })}
+        >
+          {!promptSent ? (
+            <>
+              <h4
+                className={css({
+                  fontSize: '0.9375rem',
+                  fontWeight: '600',
+                  color: isDark ? 'orange.300' : 'orange.700',
+                  marginBottom: '0.5rem',
+                })}
+              >
+                {studentName || 'This student'} is not in your classroom
+              </h4>
+              <p
+                className={css({
+                  fontSize: '0.875rem',
+                  color: isDark ? 'gray.300' : 'gray.600',
+                  marginBottom: '1rem',
+                  lineHeight: '1.5',
+                })}
+              >
+                To upload photos for {studentName || 'this student'}, they need to enter your
+                classroom first. Send a notification to their parent to have them join.
+              </p>
+              <button
+                type="button"
+                onClick={handleSendEntryPrompt}
+                disabled={sendEntryPrompt.isPending}
+                data-action="send-entry-prompt"
+                className={css({
+                  padding: '0.625rem 1rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: 'white',
+                  backgroundColor: isDark ? 'orange.600' : 'orange.500',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: sendEntryPrompt.isPending ? 'wait' : 'pointer',
+                  opacity: sendEntryPrompt.isPending ? 0.7 : 1,
+                  transition: 'all 0.15s ease',
+                  _hover: {
+                    backgroundColor: isDark ? 'orange.500' : 'orange.600',
+                  },
+                  _disabled: {
+                    cursor: 'wait',
+                    opacity: 0.7,
+                  },
+                })}
+              >
+                {sendEntryPrompt.isPending ? 'Sending...' : 'Send Entry Prompt'}
+              </button>
+            </>
+          ) : (
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              })}
+            >
+              <span
+                className={css({
+                  fontSize: '1.25rem',
+                })}
+              >
+                ✓
+              </span>
+              <p
+                className={css({
+                  fontSize: '0.9375rem',
+                  fontWeight: '500',
+                  color: isDark ? 'green.300' : 'green.700',
+                })}
+              >
+                Entry prompt sent to {studentName || 'the student'}&apos;s parent
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Parsing hint footer - only show if no parsed results yet */}
+      {onParse && parsedAttachments.length === 0 && (
+        <div
+          data-element="parsing-hint"
+          className={css({
+            marginTop: '1rem',
+            paddingTop: '0.75rem',
+            borderTop: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            color: isDark ? 'gray.400' : 'gray.600',
+            fontSize: '0.8125rem',
+          })}
+        >
+          <span>✨</span>
+          <span>
+            Click &ldquo;Parse&rdquo; on any photo to auto-extract problems from worksheets
+          </span>
+        </div>
+      )}
+
+      {/* Parsed Results Section - show when any photo has parsing results */}
+      {parsedAttachments.length > 0 && (
+        <div
+          data-element="parsed-results-section"
+          className={css({
+            marginTop: '1rem',
+            paddingTop: '1rem',
+            borderTop: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+          })}
+        >
+          {/* Section header with photo selector if multiple parsed photos */}
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '0.75rem',
+            })}
+          >
+            <h4
+              className={css({
+                fontSize: '0.875rem',
+                fontWeight: 'bold',
+                color: isDark ? 'white' : 'gray.800',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              })}
+            >
+              <span>📊</span>
+              Extracted Problems
+            </h4>
+
+            {/* Photo selector tabs when multiple parsed photos */}
+            {parsedAttachments.length > 1 && (
+              <div
+                className={css({
+                  display: 'flex',
+                  gap: '0.25rem',
+                })}
+              >
+                {parsedAttachments.map((att, index) => {
+                  const photoIndex = attachments.findIndex((a) => a.id === att.id)
+                  return (
+                    <button
+                      key={att.id}
+                      type="button"
+                      onClick={() => setExpandedResultId(att.id)}
+                      className={css({
+                        px: 2,
+                        py: 1,
+                        fontSize: '0.75rem',
+                        fontWeight: '500',
+                        borderRadius: 'md',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        backgroundColor:
+                          expandedResultId === att.id
+                            ? isDark
+                              ? 'blue.600'
+                              : 'blue.500'
+                            : isDark
+                              ? 'gray.700'
+                              : 'gray.100',
+                        color:
+                          expandedResultId === att.id ? 'white' : isDark ? 'gray.300' : 'gray.700',
+                        _hover: {
+                          backgroundColor:
+                            expandedResultId === att.id
+                              ? isDark
+                                ? 'blue.500'
+                                : 'blue.600'
+                              : isDark
+                                ? 'gray.600'
+                                : 'gray.200',
+                        },
+                      })}
+                    >
+                      Photo {photoIndex + 1}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Show the selected parsed result */}
+          {parsedAttachments.map((att) => {
+            if (att.id !== expandedResultId) return null
+            if (!att.rawParsingResult) return null
+
+            return <ParsedProblemsList key={att.id} result={att.rawParsingResult} isDark={isDark} />
+          })}
+        </div>
+      )}
     </div>
   )
 }

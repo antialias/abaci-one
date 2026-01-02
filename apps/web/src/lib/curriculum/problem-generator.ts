@@ -43,10 +43,10 @@ function formatDiagnosticsMessage(diagnostics: GenerationDiagnostics): string {
     lines.push(
       'This means no valid sequence of terms could be built with the given skill/budget constraints.'
     )
-    if (diagnostics.enabledRequiredSkills.length === 0) {
-      lines.push('FIX: No required skills are enabled - enable at least some basic skills.')
+    if (diagnostics.enabledAllowedSkills.length === 0) {
+      lines.push('FIX: No allowed skills are enabled - enable at least some basic skills.')
     } else {
-      lines.push(`Enabled skills: ${diagnostics.enabledRequiredSkills.slice(0, 5).join(', ')}...`)
+      lines.push(`Enabled skills: ${diagnostics.enabledAllowedSkills.slice(0, 5).join(', ')}...`)
     }
   } else if (diagnostics.skillMatchFailures > 0) {
     lines.push(

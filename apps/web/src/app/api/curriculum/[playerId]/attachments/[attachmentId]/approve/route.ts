@@ -21,10 +21,7 @@ import {
 } from '@/db/schema/session-plans'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-import {
-  convertToSlotResults,
-  computeParsingStats,
-} from '@/lib/worksheet-parsing'
+import { convertToSlotResults, computeParsingStats } from '@/lib/worksheet-parsing'
 
 interface RouteParams {
   params: Promise<{ playerId: string; attachmentId: string }>
@@ -65,18 +62,24 @@ export async function POST(_request: Request, { params }: RouteParams) {
 
     // Check if already created a session
     if (attachment.sessionCreated) {
-      return NextResponse.json({
-        error: 'Session already created from this attachment',
-        sessionId: attachment.createdSessionId,
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'Session already created from this attachment',
+          sessionId: attachment.createdSessionId,
+        },
+        { status: 400 }
+      )
     }
 
     // Get the parsing result to convert (prefer approved result, fall back to raw)
     const parsingResult = attachment.approvedResult ?? attachment.rawParsingResult
     if (!parsingResult) {
-      return NextResponse.json({
-        error: 'No parsing results available. Parse the worksheet first.',
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'No parsing results available. Parse the worksheet first.',
+        },
+        { status: 400 }
+      )
     }
 
     // Convert to slot results
@@ -86,9 +89,12 @@ export async function POST(_request: Request, { params }: RouteParams) {
     })
 
     if (conversionResult.slotResults.length === 0) {
-      return NextResponse.json({
-        error: 'No valid problems to create session from',
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'No valid problems to create session from',
+        },
+        { status: 400 }
+      )
     }
 
     // Create the session with completed status

@@ -119,7 +119,8 @@ export async function POST(_request: Request, { params }: RouteParams) {
         usage: result.usage,
       })
     } catch (parseError) {
-      const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parsing error'
+      const errorMessage =
+        parseError instanceof Error ? parseError.message : 'Unknown parsing error'
       console.error('Worksheet parsing error:', parseError)
 
       // Update status to failed
@@ -131,11 +132,14 @@ export async function POST(_request: Request, { params }: RouteParams) {
         })
         .where(eq(practiceAttachments.id, attachmentId))
 
-      return NextResponse.json({
-        success: false,
-        status: 'failed',
-        error: errorMessage,
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          status: 'failed',
+          error: errorMessage,
+        },
+        { status: 500 }
+      )
     }
   } catch (error) {
     console.error('Error starting parse:', error)

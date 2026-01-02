@@ -17,11 +17,14 @@ export {
   type PlayerAccess,
   type PlayerAction,
   type AccessiblePlayers,
+  type RemediationType,
+  type AuthorizationError,
   getPlayerAccess,
   canPerformAction,
   getAccessiblePlayers,
   isParentOf,
   isTeacherOf,
+  generateAuthorizationError,
 } from './access-control'
 
 // Family Management

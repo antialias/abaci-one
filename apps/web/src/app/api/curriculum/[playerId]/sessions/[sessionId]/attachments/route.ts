@@ -18,7 +18,7 @@ import { join } from 'path'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { practiceAttachments, sessionPlans } from '@/db/schema'
-import { canPerformAction } from '@/lib/classroom'
+import { getPlayerAccess, generateAuthorizationError } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 import { createId } from '@paralleldrive/cuid2'
 
@@ -37,6 +37,16 @@ export interface SessionAttachment {
   originalUrl: string | null
   corners: Array<{ x: number; y: number }> | null
   rotation: 0 | 90 | 180 | 270
+  // Parsing fields
+  parsingStatus: string | null
+  parsedAt: string | null
+  parsingError: string | null
+  rawParsingResult: unknown | null
+  approvedResult: unknown | null
+  confidenceScore: number | null
+  needsReview: boolean
+  sessionCreated: boolean
+  createdSessionId: string | null
 }
 
 /**
@@ -52,9 +62,12 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
     // Authorization check
     const userId = await getDbUserId()
-    const canView = await canPerformAction(userId, playerId, 'view')
-    if (!canView) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    const access = await getPlayerAccess(userId, playerId)
+    if (access.accessLevel === 'none') {
+      const authError = generateAuthorizationError(access, 'view', {
+        actionDescription: 'view attachments for this student',
+      })
+      return NextResponse.json(authError, { status: 403 })
     }
 
     // Get attachments for this session
@@ -84,6 +97,16 @@ export async function GET(_request: Request, { params }: RouteParams) {
         : null,
       corners: att.corners ?? null,
       rotation: (att.rotation ?? 0) as 0 | 90 | 180 | 270,
+      // Parsing fields
+      parsingStatus: att.parsingStatus ?? null,
+      parsedAt: att.parsedAt ?? null,
+      parsingError: att.parsingError ?? null,
+      rawParsingResult: att.rawParsingResult ?? null,
+      approvedResult: att.approvedResult ?? null,
+      confidenceScore: att.confidenceScore ?? null,
+      needsReview: att.needsReview === true,
+      sessionCreated: att.sessionCreated === true,
+      createdSessionId: att.createdSessionId ?? null,
     }))
 
     return NextResponse.json({ attachments: result })
@@ -104,11 +127,18 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Player ID and Session ID required' }, { status: 400 })
     }
 
-    // Authorization check - require 'start-session' permission (parent or present teacher)
+    // Authorization check - require 'view' permission (parent, teacher-enrolled, or teacher-present)
+    // Adding photos to an existing session is less sensitive than starting a new session
     const userId = await getDbUserId()
-    const canAdd = await canPerformAction(userId, playerId, 'start-session')
-    if (!canAdd) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    const access = await getPlayerAccess(userId, playerId)
+    if (access.accessLevel === 'none') {
+      console.error(
+        `[attachments POST] Authorization failed: userId=${userId} has no access to playerId=${playerId}`
+      )
+      const authError = generateAuthorizationError(access, 'view', {
+        actionDescription: 'add photos for this student',
+      })
+      return NextResponse.json(authError, { status: 403 })
     }
 
     // Verify session exists and belongs to player
@@ -257,6 +287,16 @@ export async function POST(request: Request, { params }: RouteParams) {
           : null,
         corners,
         rotation,
+        // New attachments have no parsing data yet
+        parsingStatus: null,
+        parsedAt: null,
+        parsingError: null,
+        rawParsingResult: null,
+        approvedResult: null,
+        confidenceScore: null,
+        needsReview: false,
+        sessionCreated: false,
+        createdSessionId: null,
       })
     }
 

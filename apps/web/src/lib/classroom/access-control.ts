@@ -15,7 +15,6 @@ import {
   classrooms,
   parentChild,
   type Player,
-  players,
 } from '@/db/schema'
 
 /**
@@ -235,4 +234,108 @@ export async function isTeacherOf(userId: string, playerId: string): Promise<boo
   })
 
   return !!enrollment
+}
+
+/**
+ * Remediation types for authorization errors
+ */
+export type RemediationType =
+  | 'send-entry-prompt' // Teacher needs student to enter classroom
+  | 'enroll-student' // Teacher needs to enroll student first
+  | 'link-via-family-code' // User can link via family code
+  | 'create-classroom' // User needs to create a classroom to be a teacher
+  | 'no-access' // No remediation available
+
+/**
+ * Structured authorization error for API responses
+ */
+export interface AuthorizationError {
+  error: string
+  message: string
+  accessLevel: AccessLevel
+  remediation: {
+    type: RemediationType
+    description: string
+    /** For send-entry-prompt: the classroom to send the prompt from */
+    classroomId?: string
+    /** For send-entry-prompt/enroll-student: the player to act on */
+    playerId?: string
+    /** Label for the action button in the UI */
+    actionLabel?: string
+  }
+}
+
+/**
+ * Generate a personalized authorization error based on the user's relationship
+ * with the student and the action they're trying to perform.
+ */
+export function generateAuthorizationError(
+  access: PlayerAccess,
+  action: PlayerAction,
+  context?: { actionDescription?: string }
+): AuthorizationError {
+  const actionDesc = context?.actionDescription ?? action
+
+  // Case 1: Teacher with enrolled student, but student not present
+  // This is the most common case - teacher needs student to enter classroom
+  if (access.accessLevel === 'teacher-enrolled' && !access.isPresent) {
+    return {
+      error: 'Student not in classroom',
+      message: `This student is enrolled in your classroom but not currently present. To ${actionDesc}, they need to enter your classroom first.`,
+      accessLevel: access.accessLevel,
+      remediation: {
+        type: 'send-entry-prompt',
+        description:
+          "Send a notification to the student's parent to have them enter your classroom.",
+        classroomId: access.classroomId,
+        playerId: access.playerId,
+        actionLabel: 'Send Entry Prompt',
+      },
+    }
+  }
+
+  // Case 2: User has a classroom but student is not enrolled
+  if (access.accessLevel === 'none' && access.classroomId) {
+    return {
+      error: 'Student not enrolled',
+      message: 'This student is not enrolled in your classroom.',
+      accessLevel: access.accessLevel,
+      remediation: {
+        type: 'enroll-student',
+        description:
+          'You need to enroll this student in your classroom first. Ask their parent for their family code to send an enrollment request.',
+        classroomId: access.classroomId,
+        playerId: access.playerId,
+        actionLabel: 'Enroll Student',
+      },
+    }
+  }
+
+  // Case 3: User has no classroom and no parent relationship
+  if (access.accessLevel === 'none') {
+    return {
+      error: 'No access to this student',
+      message: 'Your account is not linked to this student.',
+      accessLevel: access.accessLevel,
+      remediation: {
+        type: 'link-via-family-code',
+        description:
+          "To access this student, you need their Family Code. Ask their parent to share it with you from the student's profile page.",
+        playerId: access.playerId,
+        actionLabel: 'Enter Family Code',
+      },
+    }
+  }
+
+  // Fallback for any other case
+  return {
+    error: 'Not authorized',
+    message: `You do not have permission to ${actionDesc} for this student.`,
+    accessLevel: access.accessLevel,
+    remediation: {
+      type: 'no-access',
+      description: "Contact the student's parent or your administrator for access.",
+      playerId: access.playerId,
+    },
+  }
 }

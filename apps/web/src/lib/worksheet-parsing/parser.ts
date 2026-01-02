@@ -138,9 +138,7 @@ export function computeParsingStats(result: WorksheetParsingResult) {
   const answeredProblems = problems.filter((p) => p.studentAnswer !== null)
 
   // Compute accuracy if answers are present
-  const correctAnswers = answeredProblems.filter(
-    (p) => p.studentAnswer === p.correctAnswer
-  )
+  const correctAnswers = answeredProblems.filter((p) => p.studentAnswer === p.correctAnswer)
 
   return {
     totalProblems: problems.length,
@@ -190,9 +188,7 @@ export function applyCorrections(
         // Boost confidence since user verified
         termsConfidence: correction.correctedTerms ? 1.0 : problem.termsConfidence,
         studentAnswerConfidence:
-          correction.correctedStudentAnswer !== undefined
-            ? 1.0
-            : problem.studentAnswerConfidence,
+          correction.correctedStudentAnswer !== undefined ? 1.0 : problem.studentAnswerConfidence,
       }
     })
     .filter((p): p is NonNullable<typeof p> => p !== null)

@@ -53,10 +53,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const body = await request.json()
     const parseResult = ReviewRequestSchema.safeParse(body)
     if (!parseResult.success) {
-      return NextResponse.json({
-        error: 'Invalid request body',
-        details: parseResult.error.issues,
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'Invalid request body',
+          details: parseResult.error.issues,
+        },
+        { status: 400 }
+      )
     }
 
     const { corrections, markAsReviewed } = parseResult.data
@@ -78,9 +81,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     // Check if we have parsing results to correct
     if (!attachment.rawParsingResult) {
-      return NextResponse.json({
-        error: 'No parsing results to correct. Parse the worksheet first.',
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'No parsing results to correct. Parse the worksheet first.',
+        },
+        { status: 400 }
+      )
     }
 
     // Apply corrections to the raw result

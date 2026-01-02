@@ -8,6 +8,7 @@ import {
   AllProblemsSection,
   ContentBannerSlot,
   OfflineWorkSection,
+  type OfflineAttachment,
   PhotoViewerEditor,
   type PhotoViewerEditorPhoto,
   PracticeSubNav,
@@ -19,6 +20,7 @@ import {
   SkillsPanel,
   StartPracticeModal,
 } from '@/components/practice'
+import type { ParsingStatus } from '@/db/schema/practice-attachments'
 import { calculateAutoPauseInfo } from '@/components/practice/autoPauseCalculator'
 import { DocumentAdjuster } from '@/components/practice/DocumentAdjuster'
 import { useDocumentDetection } from '@/components/practice/useDocumentDetection'
@@ -36,9 +38,12 @@ import { VisualDebugProvider } from '@/contexts/VisualDebugContext'
 import type { Player } from '@/db/schema/players'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { useSessionMode } from '@/hooks/useSessionMode'
+import { usePlayerAccess, canUploadPhotos } from '@/hooks/usePlayerAccess'
+import { useStartParsing } from '@/hooks/useWorksheetParsing'
 import { computeBktFromHistory, type SkillBktResult } from '@/lib/curriculum/bkt'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { api } from '@/lib/queryClient'
+import { attachmentKeys } from '@/lib/queryKeys'
 import { css } from '../../../../../styled-system/css'
 
 // Combined height of sticky elements above content area
@@ -130,29 +135,55 @@ export function SummaryClient({
   // Session mode - single source of truth for session planning decisions
   const { data: sessionMode, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
 
+  // Player access - pre-flight authorization check for upload capability
+  const { data: playerAccess } = usePlayerAccess(studentId)
+  const canUpload = canUploadPhotos(playerAccess)
+
   const queryClient = useQueryClient()
 
-  // Fetch attachments for this session
+  // Type for session attachment from API
+  interface SessionAttachmentResponse {
+    id: string
+    url: string
+    originalUrl: string | null
+    corners: Array<{ x: number; y: number }> | null
+    rotation: 0 | 90 | 180 | 270
+    // Parsing fields
+    parsingStatus: string | null
+    parsedAt: string | null
+    parsingError: string | null
+    rawParsingResult: object | null
+    approvedResult: object | null
+    confidenceScore: number | null
+    needsReview: boolean
+    sessionCreated: boolean
+    createdSessionId: string | null
+  }
+
+  // Fetch attachments for this session (includes parsing data)
   const { data: attachmentsData } = useQuery({
-    queryKey: ['session-attachments', studentId, session?.id],
-    queryFn: async () => {
+    queryKey: session?.id ? attachmentKeys.session(studentId, session.id) : ['no-session'],
+    queryFn: async (): Promise<{ attachments: SessionAttachmentResponse[] }> => {
       if (!session?.id) return { attachments: [] }
       const res = await api(`curriculum/${studentId}/sessions/${session.id}/attachments`)
       if (!res.ok) return { attachments: [] }
-      return res.json() as Promise<{
-        attachments: Array<{
-          id: string
-          url: string
-          originalUrl: string | null
-          corners: Array<{ x: number; y: number }> | null
-          rotation: 0 | 90 | 180 | 270
-        }>
-      }>
+      return res.json() as Promise<{ attachments: SessionAttachmentResponse[] }>
     },
     enabled: !!session?.id,
   })
 
-  const attachments = attachmentsData?.attachments ?? []
+  // Map API response to OfflineAttachment type (cast parsingStatus and rawParsingResult)
+  const attachments: OfflineAttachment[] = (attachmentsData?.attachments ?? []).map((att) => ({
+    id: att.id,
+    url: att.url,
+    parsingStatus: att.parsingStatus as ParsingStatus | null,
+    rawParsingResult: att.rawParsingResult as OfflineAttachment['rawParsingResult'],
+    needsReview: att.needsReview,
+    sessionCreated: att.sessionCreated,
+  }))
+
+  // Worksheet parsing mutation
+  const startParsing = useStartParsing(studentId, session?.id ?? '')
   const hasPhotos = attachments.length > 0
 
   const isInProgress = session?.startedAt && !session?.completedAt
@@ -595,8 +626,13 @@ export function SummaryClient({
                         isUploading={isUploading}
                         uploadError={uploadError}
                         deletingId={deletingId}
+                        parsingId={startParsing.isPending ? (startParsing.variables ?? null) : null}
                         dragOver={dragOver}
                         isDark={isDark}
+                        canUpload={canUpload}
+                        studentId={studentId}
+                        studentName={player.name}
+                        classroomId={playerAccess?.classroomId}
                         onFileSelect={handleFileSelect}
                         onDrop={handleDrop}
                         onDragOver={handleDragOver}
@@ -604,6 +640,7 @@ export function SummaryClient({
                         onOpenCamera={() => setShowCamera(true)}
                         onOpenViewer={openViewer}
                         onDeletePhoto={deletePhoto}
+                        onParse={(attachmentId) => startParsing.mutate(attachmentId)}
                       />
                       {/* All Problems - complete session listing */}
                       {hasProblems && (
@@ -690,18 +727,24 @@ export function SummaryClient({
 
         {/* Photo Viewer/Editor */}
         <PhotoViewerEditor
-          photos={attachments.map((att) => ({
+          photos={(attachmentsData?.attachments ?? []).map((att) => ({
             id: att.id,
             url: att.url,
             originalUrl: att.originalUrl,
             corners: att.corners,
             rotation: att.rotation,
+            parsingStatus: att.parsingStatus as PhotoViewerEditorPhoto['parsingStatus'],
+            problemCount: (att.rawParsingResult as { problems?: unknown[] } | null)?.problems
+              ?.length,
+            sessionCreated: att.sessionCreated,
           }))}
           initialIndex={viewerIndex}
           initialMode={viewerMode}
           isOpen={viewerOpen}
           onClose={() => setViewerOpen(false)}
           onEditConfirm={handlePhotoEditConfirm}
+          onParse={(attachmentId) => startParsing.mutate(attachmentId)}
+          parsingPhotoId={startParsing.isPending ? (startParsing.variables ?? null) : null}
         />
 
         {/* Fullscreen Camera Modal */}

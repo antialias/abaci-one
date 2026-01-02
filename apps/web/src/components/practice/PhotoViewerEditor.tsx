@@ -13,6 +13,12 @@ export interface PhotoViewerEditorPhoto {
   originalUrl: string | null
   corners: Array<{ x: number; y: number }> | null
   rotation: 0 | 90 | 180 | 270
+  /** Parsing status for this photo */
+  parsingStatus?: 'pending' | 'processing' | 'needs_review' | 'approved' | 'failed' | null
+  /** Number of problems found (if parsed) */
+  problemCount?: number
+  /** Whether a session was created from this photo */
+  sessionCreated?: boolean
 }
 
 interface PhotoViewerEditorProps {
@@ -33,6 +39,10 @@ interface PhotoViewerEditorProps {
     corners: Array<{ x: number; y: number }>,
     rotation: 0 | 90 | 180 | 270
   ) => Promise<void>
+  /** Callback to parse worksheet (optional - if not provided, no parse button shown) */
+  onParse?: (photoId: string) => void
+  /** ID of the photo currently being parsed (null if none) */
+  parsingPhotoId?: string | null
 }
 
 /**
@@ -50,6 +60,8 @@ export function PhotoViewerEditor({
   isOpen,
   onClose,
   onEditConfirm,
+  onParse,
+  parsingPhotoId = null,
 }: PhotoViewerEditorProps): ReactNode {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [mode, setMode] = useState<'view' | 'edit'>(initialMode)
@@ -359,51 +371,172 @@ export function PhotoViewerEditor({
         ×
       </button>
 
-      {/* Edit button */}
-      <button
-        type="button"
-        data-action="enter-edit-mode"
-        onClick={(e) => {
-          e.stopPropagation()
-          handleEnterEditMode()
-        }}
-        disabled={isLoadingOriginal || !isDetectionReady}
+      {/* Toolbar - Edit and Parse buttons */}
+      <div
+        data-element="viewer-toolbar"
         className={css({
           position: 'absolute',
           top: '1rem',
           left: '1rem',
-          px: 4,
-          py: 2,
           display: 'flex',
-          alignItems: 'center',
           gap: 2,
-          fontSize: 'sm',
-          fontWeight: 'medium',
-          color: 'white',
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          border: 'none',
-          borderRadius: 'lg',
-          cursor: 'pointer',
-          transition: 'background-color 0.2s',
-          _hover: {
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-          },
-          _disabled: {
-            opacity: 0.5,
-            cursor: 'not-allowed',
-          },
         })}
-        aria-label="Edit photo"
+        onClick={(e) => e.stopPropagation()}
       >
-        {isLoadingOriginal ? (
-          'Loading...'
-        ) : (
-          <>
-            <span>✏️</span>
-            <span>Edit</span>
-          </>
+        {/* Edit button */}
+        <button
+          type="button"
+          data-action="enter-edit-mode"
+          onClick={handleEnterEditMode}
+          disabled={isLoadingOriginal || !isDetectionReady}
+          className={css({
+            px: 4,
+            py: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            fontSize: 'sm',
+            fontWeight: 'medium',
+            color: 'white',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            border: 'none',
+            borderRadius: 'lg',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s',
+            _hover: {
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            },
+            _disabled: {
+              opacity: 0.5,
+              cursor: 'not-allowed',
+            },
+          })}
+          aria-label="Edit photo"
+        >
+          {isLoadingOriginal ? (
+            'Loading...'
+          ) : (
+            <>
+              <span>✏️</span>
+              <span>Edit</span>
+            </>
+          )}
+        </button>
+
+        {/* Parse button - show if not parsed OR if failed (to allow retry) */}
+        {onParse &&
+          (!currentPhoto.parsingStatus || currentPhoto.parsingStatus === 'failed') &&
+          !currentPhoto.sessionCreated && (
+            <button
+              type="button"
+              data-action="parse-worksheet"
+              onClick={() => onParse(currentPhoto.id)}
+              disabled={parsingPhotoId === currentPhoto.id}
+              className={css({
+                px: 4,
+                py: 2,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: 'white',
+                backgroundColor:
+                  currentPhoto.parsingStatus === 'failed' ? 'orange.500' : 'blue.500',
+                border: 'none',
+                borderRadius: 'lg',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+                _hover: {
+                  backgroundColor:
+                    currentPhoto.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
+                },
+                _disabled: {
+                  backgroundColor: 'gray.500',
+                  cursor: 'wait',
+                },
+              })}
+              aria-label={
+                currentPhoto.parsingStatus === 'failed' ? 'Retry parsing' : 'Parse worksheet'
+              }
+            >
+              {parsingPhotoId === currentPhoto.id ? (
+                <>
+                  <span>⏳</span>
+                  <span>Analyzing...</span>
+                </>
+              ) : currentPhoto.parsingStatus === 'failed' ? (
+                <>
+                  <span>🔄</span>
+                  <span>Retry Parse</span>
+                </>
+              ) : (
+                <>
+                  <span>🔍</span>
+                  <span>Parse Worksheet</span>
+                </>
+              )}
+            </button>
+          )}
+
+        {/* Parsing status badge - don't show for 'failed' since retry button is shown instead */}
+        {currentPhoto.parsingStatus && currentPhoto.parsingStatus !== 'failed' && (
+          <div
+            data-element="parsing-status-badge"
+            className={css({
+              px: 4,
+              py: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              borderRadius: 'lg',
+              backgroundColor:
+                currentPhoto.parsingStatus === 'processing'
+                  ? 'blue.500'
+                  : currentPhoto.parsingStatus === 'needs_review'
+                    ? 'yellow.500'
+                    : currentPhoto.parsingStatus === 'approved'
+                      ? 'green.500'
+                      : 'gray.500',
+              color: currentPhoto.parsingStatus === 'needs_review' ? 'yellow.900' : 'white',
+            })}
+          >
+            {currentPhoto.parsingStatus === 'processing' && '⏳'}
+            {currentPhoto.parsingStatus === 'needs_review' && '⚠️'}
+            {currentPhoto.parsingStatus === 'approved' && '✓'}
+            {currentPhoto.parsingStatus === 'processing'
+              ? 'Analyzing...'
+              : currentPhoto.parsingStatus === 'needs_review'
+                ? `${currentPhoto.problemCount ?? '?'} problems (needs review)`
+                : currentPhoto.parsingStatus === 'approved'
+                  ? `${currentPhoto.problemCount ?? '?'} problems`
+                  : currentPhoto.parsingStatus}
+          </div>
         )}
-      </button>
+
+        {/* Session created badge */}
+        {currentPhoto.sessionCreated && (
+          <div
+            data-element="session-created-badge"
+            className={css({
+              px: 4,
+              py: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              borderRadius: 'lg',
+              backgroundColor: 'green.600',
+              color: 'white',
+            })}
+          >
+            ✓ Session Created
+          </div>
+        )}
+      </div>
 
       {/* Previous button */}
       {hasMultiple && (

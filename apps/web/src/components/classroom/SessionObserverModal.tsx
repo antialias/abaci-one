@@ -485,10 +485,7 @@ export function SessionObserverView({
       <div
         className={css({
           flex: 1,
-          padding:
-            variant === 'page'
-              ? { base: '12px', md: '28px' }
-              : { base: '12px', md: '24px' },
+          padding: variant === 'page' ? { base: '12px', md: '28px' } : { base: '12px', md: '24px' },
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',

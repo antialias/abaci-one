@@ -60,7 +60,9 @@ export const practiceAttachments = sqliteTable('practice_attachments', {
   parsingError: text('parsing_error'), // Error message if parsing failed
 
   // LLM parsing results (raw from LLM, before user corrections)
-  rawParsingResult: text('raw_parsing_result', { mode: 'json' }).$type<WorksheetParsingResult | null>(),
+  rawParsingResult: text('raw_parsing_result', {
+    mode: 'json',
+  }).$type<WorksheetParsingResult | null>(),
 
   // Approved results (after user corrections)
   approvedResult: text('approved_result', { mode: 'json' }).$type<WorksheetParsingResult | null>(),
@@ -71,7 +73,9 @@ export const practiceAttachments = sqliteTable('practice_attachments', {
 
   // Session linkage (for parsed worksheets that created sessions)
   sessionCreated: integer('session_created', { mode: 'boolean' }), // True if session was created from this parsing
-  createdSessionId: text('created_session_id').references(() => sessionPlans.id, { onDelete: 'set null' }),
+  createdSessionId: text('created_session_id').references(() => sessionPlans.id, {
+    onDelete: 'set null',
+  }),
 
   // Audit
   uploadedBy: text('uploaded_by')

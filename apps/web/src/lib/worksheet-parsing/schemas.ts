@@ -17,22 +17,18 @@ export const BoundingBoxSchema = z
       .number()
       .min(0)
       .max(1)
-      .describe('Left edge of the box as a fraction of image width (0 = left edge, 1 = right edge)'),
+      .describe(
+        'Left edge of the box as a fraction of image width (0 = left edge, 1 = right edge)'
+      ),
     y: z
       .number()
       .min(0)
       .max(1)
-      .describe('Top edge of the box as a fraction of image height (0 = top edge, 1 = bottom edge)'),
-    width: z
-      .number()
-      .min(0)
-      .max(1)
-      .describe('Width of the box as a fraction of image width'),
-    height: z
-      .number()
-      .min(0)
-      .max(1)
-      .describe('Height of the box as a fraction of image height'),
+      .describe(
+        'Top edge of the box as a fraction of image height (0 = top edge, 1 = bottom edge)'
+      ),
+    width: z.number().min(0).max(1).describe('Width of the box as a fraction of image width'),
+    height: z.number().min(0).max(1).describe('Height of the box as a fraction of image height'),
   })
   .describe('Rectangular region on the worksheet image, in normalized 0-1 coordinates')
 
@@ -95,10 +91,7 @@ export const ParsedProblemSchema = z
           'Subsequent terms are positive for addition, negative for subtraction. ' +
           'Example: "45 - 17 + 8" → [45, -17, 8]'
       ),
-    correctAnswer: z
-      .number()
-      .int()
-      .describe('The mathematically correct answer to this problem'),
+    correctAnswer: z.number().int().describe('The mathematically correct answer to this problem'),
 
     // Student work
     studentAnswer: z
@@ -107,14 +100,14 @@ export const ParsedProblemSchema = z
       .nullable()
       .describe(
         'The answer the student wrote, if readable. Null if the answer box is empty, ' +
-          'illegible, or you cannot confidently read the student\'s handwriting'
+          "illegible, or you cannot confidently read the student's handwriting"
       ),
     studentAnswerConfidence: z
       .number()
       .min(0)
       .max(1)
       .describe(
-        'Confidence in reading the student\'s answer (0 = not readable/empty, 1 = perfectly clear). ' +
+        "Confidence in reading the student's answer (0 = not readable/empty, 1 = perfectly clear). " +
           'Use 0.5-0.7 for somewhat legible, 0.8-0.9 for mostly clear, 1.0 for crystal clear'
       ),
 
@@ -133,7 +126,7 @@ export const ParsedProblemSchema = z
       'Bounding box around the entire problem (including all terms and answer area)'
     ),
     answerBoundingBox: BoundingBoxSchema.nullable().describe(
-      'Bounding box around just the student\'s answer area. Null if no answer area is visible'
+      "Bounding box around just the student's answer area. Null if no answer area is visible"
     ),
   })
   .describe('A single arithmetic problem extracted from the worksheet')
@@ -175,9 +168,7 @@ export const PageMetadataSchema = z
       .number()
       .int()
       .nullable()
-      .describe(
-        'Page number if printed on the page. Null if no page number is visible'
-      ),
+      .describe('Page number if printed on the page. Null if no page number is visible'),
     detectedFormat: WorksheetFormatSchema,
     totalRows: z
       .number()
@@ -240,11 +231,7 @@ export type WorksheetParsingResult = z.infer<typeof WorksheetParsingResultSchema
  */
 export const ProblemCorrectionSchema = z
   .object({
-    problemNumber: z
-      .number()
-      .int()
-      .min(1)
-      .describe('The problem number being corrected'),
+    problemNumber: z.number().int().min(1).describe('The problem number being corrected'),
     correctedTerms: z
       .array(ProblemTermSchema)
       .nullable()
@@ -257,10 +244,7 @@ export const ProblemCorrectionSchema = z
     shouldExclude: z
       .boolean()
       .describe('True to exclude this problem from the session (e.g., illegible)'),
-    note: z
-      .string()
-      .nullable()
-      .describe('Optional note explaining the correction'),
+    note: z.string().nullable().describe('Optional note explaining the correction'),
   })
   .describe('User correction to a single parsed problem')
 
@@ -271,9 +255,7 @@ export type ProblemCorrection = z.infer<typeof ProblemCorrectionSchema>
  */
 export const ReparseRequestSchema = z
   .object({
-    problemNumbers: z
-      .array(z.number().int().min(1))
-      .describe('Which problems to re-parse'),
+    problemNumbers: z.array(z.number().int().min(1)).describe('Which problems to re-parse'),
     additionalContext: z
       .string()
       .describe(

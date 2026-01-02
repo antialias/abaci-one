@@ -57,10 +57,7 @@ interface LLMVisionRequest extends LLMCallRequest {
  */
 export function useLLMCall<T extends z.ZodType>(
   schema: T,
-  options?: Omit<
-    UseMutationOptions<LLMResponse<z.infer<T>>, Error, LLMCallRequest>,
-    'mutationFn'
-  >
+  options?: Omit<UseMutationOptions<LLMResponse<z.infer<T>>, Error, LLMCallRequest>, 'mutationFn'>
 ) {
   const [progress, setProgress] = useState<LLMProgress | null>(null)
 
@@ -103,10 +100,7 @@ export function useLLMCall<T extends z.ZodType>(
  */
 export function useLLMVision<T extends z.ZodType>(
   schema: T,
-  options?: Omit<
-    UseMutationOptions<LLMResponse<z.infer<T>>, Error, LLMVisionRequest>,
-    'mutationFn'
-  >
+  options?: Omit<UseMutationOptions<LLMResponse<z.infer<T>>, Error, LLMVisionRequest>, 'mutationFn'>
 ) {
   const [progress, setProgress] = useState<LLMProgress | null>(null)
 
