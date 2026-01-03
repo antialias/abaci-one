@@ -11,13 +11,13 @@
  */
 export interface PromptOptions {
   /** Additional context from a previous parse attempt (for re-parsing) */
-  additionalContext?: string
+  additionalContext?: string;
   /** Specific problem numbers to focus on (for re-parsing) */
-  focusProblemNumbers?: number[]
+  focusProblemNumbers?: number[];
   /** Hint about expected format if known */
-  expectedFormat?: 'vertical' | 'linear' | 'mixed'
+  expectedFormat?: "vertical" | "linear" | "mixed";
   /** Expected number of problems (if known from worksheet metadata) */
-  expectedProblemCount?: number
+  expectedProblemCount?: number;
 }
 
 /**
@@ -26,8 +26,10 @@ export interface PromptOptions {
  * This prompt is designed to guide the LLM in extracting
  * structured data from abacus workbook page images.
  */
-export function buildWorksheetParsingPrompt(options: PromptOptions = {}): string {
-  const parts: string[] = []
+export function buildWorksheetParsingPrompt(
+  options: PromptOptions = {},
+): string {
+  const parts: string[] = [];
 
   // Main task description with strong anti-sycophancy framing
   parts.push(`You are a precise OCR system analyzing an image of an abacus workbook page. Your task is pure TRANSCRIPTION - you must extract exactly what is printed and written on the page, with no interpretation or correction.
@@ -136,14 +138,14 @@ Provide bounding boxes in normalized coordinates where (0,0) is the TOP-LEFT cor
 The problemBoundingBox should encompass the entire problem including all terms and the answer area.
 The answerBoundingBox should tightly surround just the answer box/area.
 
-**Be precise with coordinates** - they are used to highlight problems in the UI for human review.`)
+**Be precise with coordinates** - they are used to highlight problems in the UI for human review.`);
 
   // Add expected format hint if provided
   if (options.expectedFormat) {
     parts.push(`
 
 ## Format Hint
-The problems on this page are expected to be in ${options.expectedFormat.toUpperCase()} format.`)
+The problems on this page are expected to be in ${options.expectedFormat.toUpperCase()} format.`);
   }
 
   // Add expected count if provided
@@ -151,7 +153,7 @@ The problems on this page are expected to be in ${options.expectedFormat.toUpper
     parts.push(`
 
 ## Expected Problem Count
-This worksheet should contain approximately ${options.expectedProblemCount} problems. If you detect significantly more or fewer, double-check for missed or duplicate problems.`)
+This worksheet should contain approximately ${options.expectedProblemCount} problems. If you detect significantly more or fewer, double-check for missed or duplicate problems.`);
   }
 
   // Add focus problems for re-parsing
@@ -159,7 +161,7 @@ This worksheet should contain approximately ${options.expectedProblemCount} prob
     parts.push(`
 
 ## Focus Problems
-Pay special attention to problems: ${options.focusProblemNumbers.join(', ')}. The previous parsing attempt had issues with these problems.`)
+Pay special attention to problems: ${options.focusProblemNumbers.join(", ")}. The previous parsing attempt had issues with these problems.`);
   }
 
   // Add additional context from user
@@ -167,7 +169,7 @@ Pay special attention to problems: ${options.focusProblemNumbers.join(', ')}. Th
     parts.push(`
 
 ## Additional Context from User
-${options.additionalContext}`)
+${options.additionalContext}`);
   }
 
   // Final instructions
@@ -183,9 +185,9 @@ ${options.additionalContext}`)
 6. **Warnings**: Include any issues you notice (cropped problems, smudges, unclear digits)
 7. **needsReview**: Set to true if any problem has confidence below 0.7 or significant warnings
 
-Now analyze the worksheet image and extract all problems.`)
+Now analyze the worksheet image and extract all problems.`);
 
-  return parts.join('')
+  return parts.join("");
 }
 
 /**
@@ -194,13 +196,13 @@ Now analyze the worksheet image and extract all problems.`)
 export function buildReparsePrompt(
   problemNumbers: number[],
   additionalContext: string,
-  originalWarnings: string[]
+  originalWarnings: string[],
 ): string {
   return buildWorksheetParsingPrompt({
     focusProblemNumbers: problemNumbers,
     additionalContext: `${additionalContext}
 
 Previous warnings for these problems:
-${originalWarnings.map((w) => `- ${w}`).join('\n')}`,
-  })
+${originalWarnings.map((w) => `- ${w}`).join("\n")}`,
+  });
 }

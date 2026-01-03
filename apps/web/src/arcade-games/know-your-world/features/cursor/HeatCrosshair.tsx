@@ -5,17 +5,17 @@
  * Features rotating outer ring with fixed north indicator.
  */
 
-'use client'
+"use client";
 
-import { animated, type SpringValue } from '@react-spring/web'
-import { memo } from 'react'
-import type { HeatCrosshairStyle } from '../../utils/heatStyles'
+import { animated, type SpringValue } from "@react-spring/web";
+import { memo } from "react";
+import type { HeatCrosshairStyle } from "../../utils/heatStyles";
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const COMPASS_ANGLES = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]
+const COMPASS_ANGLES = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
 
 // ============================================================================
 // Types
@@ -23,13 +23,13 @@ const COMPASS_ANGLES = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]
 
 export interface HeatCrosshairProps {
   /** Size of the crosshair in pixels */
-  size: number
+  size: number;
   /** Rotation angle spring value (degrees) */
-  rotationAngle: SpringValue<number>
+  rotationAngle: SpringValue<number>;
   /** Heat-based styling for crosshair */
-  heatStyle: HeatCrosshairStyle
+  heatStyle: HeatCrosshairStyle;
   /** Drop shadow intensity (0-1), default 0.5 */
-  shadowIntensity?: number
+  shadowIntensity?: number;
 }
 
 // ============================================================================
@@ -63,16 +63,16 @@ export const HeatCrosshair = memo(function HeatCrosshair({
   shadowIntensity = 0.5,
 }: HeatCrosshairProps) {
   // Calculate proportional dimensions based on size
-  const center = size / 2
-  const ringRadius = size * 0.40625 // 13/32 or 16/40
-  const cardinalInnerR = ringRadius * 0.69 // 9/13 or 10/16
-  const minorInnerR = ringRadius * 0.846 // 11/13 or 14/16
-  const centerDotRadius = size * 0.047 // 1.5/32 or ~1.9/40
-  const northTriangleSize = size * 0.125 // 4/32 or 5/40
+  const center = size / 2;
+  const ringRadius = size * 0.40625; // 13/32 or 16/40
+  const cardinalInnerR = ringRadius * 0.69; // 9/13 or 10/16
+  const minorInnerR = ringRadius * 0.846; // 11/13 or 14/16
+  const centerDotRadius = size * 0.047; // 1.5/32 or ~1.9/40
+  const northTriangleSize = size * 0.125; // 4/32 or 5/40
 
   // Cardinal tick stroke width scales with size
-  const cardinalStrokeWidth = size > 36 ? 2.5 : 2
-  const shadowBlur = size > 36 ? 3 : 2
+  const cardinalStrokeWidth = size > 36 ? 2.5 : 2;
+  const shadowBlur = size > 36 ? 3 : 2;
 
   return (
     <animated.svg
@@ -97,10 +97,10 @@ export const HeatCrosshair = memo(function HeatCrosshair({
 
       {/* Compass tick marks - 12 ticks around the ring */}
       {COMPASS_ANGLES.map((angle) => {
-        const isCardinal = angle % 90 === 0
-        const rad = (angle * Math.PI) / 180
-        const innerR = isCardinal ? cardinalInnerR : minorInnerR
-        const outerR = ringRadius
+        const isCardinal = angle % 90 === 0;
+        const rad = (angle * Math.PI) / 180;
+        const innerR = isCardinal ? cardinalInnerR : minorInnerR;
+        const outerR = ringRadius;
         return (
           <line
             key={angle}
@@ -108,12 +108,12 @@ export const HeatCrosshair = memo(function HeatCrosshair({
             y1={center - innerR * Math.cos(rad)}
             x2={center + outerR * Math.sin(rad)}
             y2={center - outerR * Math.cos(rad)}
-            stroke={isCardinal ? 'white' : heatStyle.color}
+            stroke={isCardinal ? "white" : heatStyle.color}
             strokeWidth={isCardinal ? cardinalStrokeWidth : 1}
             strokeLinecap="round"
             opacity={heatStyle.opacity}
           />
-        )
+        );
       })}
 
       {/* Center dot */}
@@ -140,5 +140,5 @@ export const HeatCrosshair = memo(function HeatCrosshair({
         />
       </animated.g>
     </animated.svg>
-  )
-})
+  );
+});

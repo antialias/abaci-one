@@ -5,40 +5,43 @@
  * Uses pure CSS animations for performance - no canvas or heavy libraries.
  */
 
-import { css } from '@styled/css'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CelebrationType } from '../Provider'
-import { CELEBRATION_TIMING, CONFETTI_CONFIG } from '../utils/celebration'
+import { css } from "@styled/css";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { CelebrationType } from "../Provider";
+import { CELEBRATION_TIMING, CONFETTI_CONFIG } from "../utils/celebration";
 
 interface ConfettiProps {
-  type: CelebrationType
-  origin: { x: number; y: number }
-  onComplete: () => void
+  type: CelebrationType;
+  origin: { x: number; y: number };
+  onComplete: () => void;
 }
 
 interface Particle {
-  id: number
-  x: number
-  y: number
-  color: string
-  size: number
-  angle: number // Direction in degrees
-  distance: number // How far to travel
-  rotation: number // Initial rotation
-  rotationSpeed: number // Rotation during animation
-  delay: number // Stagger start
+  id: number;
+  x: number;
+  y: number;
+  color: string;
+  size: number;
+  angle: number; // Direction in degrees
+  distance: number; // How far to travel
+  rotation: number; // Initial rotation
+  rotationSpeed: number; // Rotation during animation
+  delay: number; // Stagger start
 }
 
 // Generate random particles based on config
-function generateParticles(type: CelebrationType, origin: { x: number; y: number }): Particle[] {
-  const config = CONFETTI_CONFIG[type]
-  const particles: Particle[] = []
+function generateParticles(
+  type: CelebrationType,
+  origin: { x: number; y: number },
+): Particle[] {
+  const config = CONFETTI_CONFIG[type];
+  const particles: Particle[] = [];
 
   for (let i = 0; i < config.count; i++) {
     // Random angle within spread, centered upward (-90 deg)
-    const spreadRad = (config.spread * Math.PI) / 180
-    const baseAngle = -Math.PI / 2 // Upward
-    const angle = baseAngle + (Math.random() - 0.5) * spreadRad
+    const spreadRad = (config.spread * Math.PI) / 180;
+    const baseAngle = -Math.PI / 2; // Upward
+    const angle = baseAngle + (Math.random() - 0.5) * spreadRad;
 
     particles.push({
       id: i,
@@ -51,42 +54,45 @@ function generateParticles(type: CelebrationType, origin: { x: number; y: number
       rotation: Math.random() * 360,
       rotationSpeed: (Math.random() - 0.5) * 720, // -360 to +360 deg
       delay: Math.random() * 50, // 0-50ms stagger
-    })
+    });
   }
 
-  return particles
+  return particles;
 }
 
 export function Confetti({ type, origin, onComplete }: ConfettiProps) {
-  const [isComplete, setIsComplete] = useState(false)
-  const particles = useMemo(() => generateParticles(type, origin), [type, origin])
-  const timing = CELEBRATION_TIMING[type]
+  const [isComplete, setIsComplete] = useState(false);
+  const particles = useMemo(
+    () => generateParticles(type, origin),
+    [type, origin],
+  );
+  const timing = CELEBRATION_TIMING[type];
 
   // Store onComplete in a ref so the timer doesn't restart when the callback changes
-  const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   // Call onComplete when animation finishes
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsComplete(true)
-      onCompleteRef.current()
-    }, timing.confettiDuration)
+      setIsComplete(true);
+      onCompleteRef.current();
+    }, timing.confettiDuration);
 
-    return () => clearTimeout(timer)
-  }, [timing.confettiDuration])
+    return () => clearTimeout(timer);
+  }, [timing.confettiDuration]);
 
-  if (isComplete) return null
+  if (isComplete) return null;
 
   return (
     <div
       data-component="confetti"
       className={css({
-        position: 'fixed',
+        position: "fixed",
         inset: 0,
-        pointerEvents: 'none',
+        pointerEvents: "none",
         zIndex: 10000,
-        overflow: 'hidden',
+        overflow: "hidden",
       })}
     >
       <style>
@@ -111,8 +117,8 @@ export function Confetti({ type, origin, onComplete }: ConfettiProps) {
         <div
           key={particle.id}
           className={css({
-            position: 'absolute',
-            borderRadius: '2px',
+            position: "absolute",
+            borderRadius: "2px",
           })}
           style={{
             left: particle.x,
@@ -127,40 +133,43 @@ export function Confetti({ type, origin, onComplete }: ConfettiProps) {
         />
       ))}
     </div>
-  )
+  );
 }
 
 // Alternative implementation with proper burst effect
 export function ConfettiBurst({ type, origin, onComplete }: ConfettiProps) {
-  const [isComplete, setIsComplete] = useState(false)
-  const particles = useMemo(() => generateParticles(type, origin), [type, origin])
-  const timing = CELEBRATION_TIMING[type]
+  const [isComplete, setIsComplete] = useState(false);
+  const particles = useMemo(
+    () => generateParticles(type, origin),
+    [type, origin],
+  );
+  const timing = CELEBRATION_TIMING[type];
 
   // Store onComplete in a ref so the timer doesn't restart when the callback changes
   // This fixes a bug where mouse movement during celebration would restart the timer
-  const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsComplete(true)
-      onCompleteRef.current()
-    }, timing.confettiDuration)
+      setIsComplete(true);
+      onCompleteRef.current();
+    }, timing.confettiDuration);
 
-    return () => clearTimeout(timer)
-  }, [timing.confettiDuration])
+    return () => clearTimeout(timer);
+  }, [timing.confettiDuration]);
 
-  if (isComplete) return null
+  if (isComplete) return null;
 
   return (
     <div
       data-component="confetti-burst"
       className={css({
-        position: 'fixed',
+        position: "fixed",
         inset: 0,
-        pointerEvents: 'none',
+        pointerEvents: "none",
         zIndex: 10000,
-        overflow: 'hidden',
+        overflow: "hidden",
       })}
     >
       <style>
@@ -181,15 +190,17 @@ export function ConfettiBurst({ type, origin, onComplete }: ConfettiProps) {
         `}
       </style>
       {particles.map((particle) => {
-        const offsetX = Math.cos((particle.angle * Math.PI) / 180) * particle.distance
-        const offsetY = Math.sin((particle.angle * Math.PI) / 180) * particle.distance
+        const offsetX =
+          Math.cos((particle.angle * Math.PI) / 180) * particle.distance;
+        const offsetY =
+          Math.sin((particle.angle * Math.PI) / 180) * particle.distance;
 
         return (
           <div
             key={particle.id}
             className={css({
-              position: 'absolute',
-              borderRadius: '2px',
+              position: "absolute",
+              borderRadius: "2px",
             })}
             style={
               {
@@ -198,14 +209,14 @@ export function ConfettiBurst({ type, origin, onComplete }: ConfettiProps) {
                 width: particle.size,
                 height: particle.size * 0.6,
                 backgroundColor: particle.color,
-                '--offset-x': `${offsetX}px`,
-                '--offset-y': `${offsetY}px`,
+                "--offset-x": `${offsetX}px`,
+                "--offset-y": `${offsetY}px`,
                 animation: `confettiMotion ${timing.confettiDuration}ms ease-out ${particle.delay}ms forwards`,
               } as React.CSSProperties
             }
           />
-        )
+        );
       })}
     </div>
-  )
+  );
 }

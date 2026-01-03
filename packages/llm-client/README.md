@@ -41,31 +41,40 @@ LLM_ANTHROPIC_BASE_URL=https://api.anthropic.com/v1  # optional
 ### Basic Usage
 
 ```typescript
-import { LLMClient } from '@soroban/llm-client'
-import { z } from 'zod'
+import { LLMClient } from "@soroban/llm-client";
+import { z } from "zod";
 
-const llm = new LLMClient()
+const llm = new LLMClient();
 
 // Define your response schema with descriptions
 // IMPORTANT: Use .describe() on every field - these are sent to the LLM!
-const SentimentSchema = z.object({
-  sentiment: z.enum(['positive', 'negative', 'neutral'])
-    .describe('The overall sentiment detected in the text'),
-  confidence: z.number().min(0).max(1)
-    .describe('How confident the analysis is, from 0 (uncertain) to 1 (certain)'),
-  reasoning: z.string()
-    .describe('Brief explanation of why this sentiment was detected'),
-}).describe('Sentiment analysis result')
+const SentimentSchema = z
+  .object({
+    sentiment: z
+      .enum(["positive", "negative", "neutral"])
+      .describe("The overall sentiment detected in the text"),
+    confidence: z
+      .number()
+      .min(0)
+      .max(1)
+      .describe(
+        "How confident the analysis is, from 0 (uncertain) to 1 (certain)",
+      ),
+    reasoning: z
+      .string()
+      .describe("Brief explanation of why this sentiment was detected"),
+  })
+  .describe("Sentiment analysis result");
 
 // Make a type-safe call
 const response = await llm.call({
   prompt: 'Analyze the sentiment of: "I love this product!"',
   schema: SentimentSchema,
-})
+});
 
 // response.data is fully typed
-console.log(response.data.sentiment) // 'positive'
-console.log(response.data.confidence) // 0.95
+console.log(response.data.sentiment); // 'positive'
+console.log(response.data.confidence); // 0.95
 ```
 
 ### Schema Descriptions (Critical!)
@@ -77,16 +86,19 @@ console.log(response.data.confidence) // 0.95
 const BadSchema = z.object({
   value: z.number(),
   items: z.array(z.string()),
-})
+});
 
 // ✅ Good: Rich context guides LLM responses
-const GoodSchema = z.object({
-  value: z.number()
-    .describe('The total price in USD, with up to 2 decimal places'),
-  items: z.array(
-    z.string().describe('Product name exactly as shown on receipt')
-  ).describe('All line items from the receipt'),
-}).describe('Parsed receipt data')
+const GoodSchema = z
+  .object({
+    value: z
+      .number()
+      .describe("The total price in USD, with up to 2 decimal places"),
+    items: z
+      .array(z.string().describe("Product name exactly as shown on receipt"))
+      .describe("All line items from the receipt"),
+  })
+  .describe("Parsed receipt data");
 ```
 
 When you call `llm.call()`, the prompt sent to the LLM includes:
@@ -109,6 +121,7 @@ Respond with JSON matching the following structure:
 ```
 
 This ensures the LLM understands:
+
 1. What each field represents semantically
 2. What format/constraints to follow
 3. How nested structures should be filled
@@ -116,33 +129,37 @@ This ensures the LLM understands:
 ### Vision Requests
 
 ```typescript
-const ImageAnalysisSchema = z.object({
-  description: z.string()
-    .describe('A detailed description of the main subject'),
-  objects: z.array(z.string().describe('Name of an object visible in the image'))
-    .describe('All distinct objects identified in the image'),
-}).describe('Image analysis result')
+const ImageAnalysisSchema = z
+  .object({
+    description: z
+      .string()
+      .describe("A detailed description of the main subject"),
+    objects: z
+      .array(z.string().describe("Name of an object visible in the image"))
+      .describe("All distinct objects identified in the image"),
+  })
+  .describe("Image analysis result");
 
 const response = await llm.vision({
-  prompt: 'Describe what you see in this image',
-  images: ['data:image/jpeg;base64,...'],
+  prompt: "Describe what you see in this image",
+  images: ["data:image/jpeg;base64,..."],
   schema: ImageAnalysisSchema,
-})
+});
 ```
 
 ### Progress Tracking
 
 ```typescript
 const response = await llm.call({
-  prompt: 'Complex analysis...',
+  prompt: "Complex analysis...",
   schema: MySchema,
   onProgress: (progress) => {
-    console.log(`${progress.stage}: ${progress.message}`)
+    console.log(`${progress.stage}: ${progress.message}`);
     // 'calling: Calling LLM...'
     // 'validating: Validating response...'
     // 'retrying: Retry 1/2: fixing sentiment'
   },
-})
+});
 ```
 
 ### Provider Selection
@@ -150,25 +167,25 @@ const response = await llm.call({
 ```typescript
 // Use a specific provider
 const response = await llm.call({
-  prompt: 'Hello!',
+  prompt: "Hello!",
   schema: ResponseSchema,
-  provider: 'anthropic',
-  model: 'claude-sonnet-4-20250514',
-})
+  provider: "anthropic",
+  model: "claude-sonnet-4-20250514",
+});
 
 // Check available providers
-console.log(llm.getProviders()) // ['openai', 'anthropic']
-console.log(llm.isProviderAvailable('openai')) // true
+console.log(llm.getProviders()); // ['openai', 'anthropic']
+console.log(llm.isProviderAvailable("openai")); // true
 ```
 
 ### Retry Configuration
 
 ```typescript
 const response = await llm.call({
-  prompt: 'Extract data...',
+  prompt: "Extract data...",
   schema: StrictSchema,
   maxRetries: 3, // Default is 2
-})
+});
 
 // If validation fails, the LLM receives feedback like:
 // "PREVIOUS ATTEMPT HAD VALIDATION ERROR:
@@ -202,29 +219,33 @@ new LLMClient(configOverrides?: Partial<LLMClientConfig>, env?: Record<string, s
 
 ```typescript
 interface LLMRequest<T extends z.ZodType> {
-  prompt: string
-  images?: string[]
-  schema: T
-  provider?: string
-  model?: string
-  maxRetries?: number
-  onProgress?: (progress: LLMProgress) => void
+  prompt: string;
+  images?: string[];
+  schema: T;
+  provider?: string;
+  model?: string;
+  maxRetries?: number;
+  onProgress?: (progress: LLMProgress) => void;
 }
 
 interface LLMResponse<T> {
-  data: T
-  usage: { promptTokens: number; completionTokens: number; totalTokens: number }
-  attempts: number
-  provider: string
-  model: string
+  data: T;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  attempts: number;
+  provider: string;
+  model: string;
 }
 
 interface LLMProgress {
-  stage: 'preparing' | 'calling' | 'validating' | 'retrying'
-  attempt: number
-  maxAttempts: number
-  message: string
-  validationError?: ValidationFeedback
+  stage: "preparing" | "calling" | "validating" | "retrying";
+  attempt: number;
+  maxAttempts: number;
+  message: string;
+  validationError?: ValidationFeedback;
 }
 ```
 
@@ -233,21 +254,26 @@ interface LLMProgress {
 You can extend the `BaseProvider` class to add support for additional LLM providers:
 
 ```typescript
-import { BaseProvider, ProviderConfig, ProviderRequest, ProviderResponse } from '@soroban/llm-client'
+import {
+  BaseProvider,
+  ProviderConfig,
+  ProviderRequest,
+  ProviderResponse,
+} from "@soroban/llm-client";
 
 class MyProvider extends BaseProvider {
   constructor(config: ProviderConfig) {
-    super(config)
+    super(config);
   }
 
   async call(request: ProviderRequest): Promise<ProviderResponse> {
-    const prompt = this.buildPrompt(request) // Includes validation feedback
+    const prompt = this.buildPrompt(request); // Includes validation feedback
     // ... make API call
     return {
       content: parsedResponse,
       usage: { promptTokens: 100, completionTokens: 50 },
-      finishReason: 'stop',
-    }
+      finishReason: "stop",
+    };
   }
 }
 ```

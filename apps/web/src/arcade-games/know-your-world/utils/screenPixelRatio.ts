@@ -10,13 +10,13 @@
 
 export interface ZoomContext {
   /** Width of the magnifier in screen pixels */
-  magnifierWidth: number
+  magnifierWidth: number;
   /** Width of the SVG viewBox */
-  viewBoxWidth: number
+  viewBoxWidth: number;
   /** Width of the SVG element in screen pixels */
-  svgWidth: number
+  svgWidth: number;
   /** Current zoom level */
-  zoom: number
+  zoom: number;
 }
 
 /**
@@ -42,19 +42,20 @@ export interface ZoomContext {
  * @returns The screen pixel ratio
  */
 export function calculateScreenPixelRatio(context: ZoomContext): number {
-  const { magnifierWidth, viewBoxWidth, svgWidth, zoom } = context
+  const { magnifierWidth, viewBoxWidth, svgWidth, zoom } = context;
 
   // Step 1: How much of the viewBox is visible in the magnifier at this zoom
-  const magnifiedViewBoxWidth = viewBoxWidth / zoom
+  const magnifiedViewBoxWidth = viewBoxWidth / zoom;
 
   // Step 2: Screen pixels per SVG unit in the magnifier
-  const magnifierScreenPixelsPerSvgUnit = magnifierWidth / magnifiedViewBoxWidth
+  const magnifierScreenPixelsPerSvgUnit =
+    magnifierWidth / magnifiedViewBoxWidth;
 
   // Step 3: SVG units per screen pixel on the main map
-  const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgWidth
+  const mainMapSvgUnitsPerScreenPixel = viewBoxWidth / svgWidth;
 
   // Step 4: Screen pixels the magnifier jumps per main map screen pixel
-  return mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit
+  return mainMapSvgUnitsPerScreenPixel * magnifierScreenPixelsPerSvgUnit;
 }
 
 /**
@@ -65,7 +66,7 @@ export function calculateScreenPixelRatio(context: ZoomContext): number {
  * @returns True if ratio >= threshold
  */
 export function isAboveThreshold(ratio: number, threshold: number): boolean {
-  return ratio >= threshold
+  return ratio >= threshold;
 }
 
 /**
@@ -86,9 +87,9 @@ export function isAboveThreshold(ratio: number, threshold: number): boolean {
 export function calculateMaxZoomAtThreshold(
   threshold: number,
   magnifierWidth: number,
-  svgWidth: number
+  svgWidth: number,
 ): number {
-  return threshold / (magnifierWidth / svgWidth)
+  return threshold / (magnifierWidth / svgWidth);
 }
 
 /**
@@ -104,20 +105,20 @@ export function createZoomContext(
   containerElement: HTMLElement | null,
   svgElement: SVGSVGElement | null,
   viewBoxWidth: number,
-  zoom: number
+  zoom: number,
 ): ZoomContext | null {
   if (!containerElement || !svgElement) {
-    return null
+    return null;
   }
 
-  const containerRect = containerElement.getBoundingClientRect()
-  const svgRect = svgElement.getBoundingClientRect()
-  const magnifierWidth = containerRect.width * 0.5
+  const containerRect = containerElement.getBoundingClientRect();
+  const svgRect = svgElement.getBoundingClientRect();
+  const magnifierWidth = containerRect.width * 0.5;
 
   return {
     magnifierWidth,
     viewBoxWidth,
     svgWidth: svgRect.width,
     zoom,
-  }
+  };
 }

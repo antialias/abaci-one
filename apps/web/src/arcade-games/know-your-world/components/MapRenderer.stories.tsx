@@ -1,110 +1,114 @@
-import type { Meta, StoryObj } from '@storybook/react'
-import { MapRenderer } from './MapRenderer'
-import { getFilteredMapDataSync } from '../maps'
-import type { ContinentId } from '../continents'
+import type { Meta, StoryObj } from "@storybook/react";
+import { MapRenderer } from "./MapRenderer";
+import { getFilteredMapDataSync } from "../maps";
+import type { ContinentId } from "../continents";
 
 // Custom args type for stories (not actual component props)
 type StoryArgs = {
-  continent: ContinentId | 'all'
-  difficulty: 'easy' | 'hard'
-  showArrows: boolean
-  centeringStrength: number
-  collisionPadding: number
-  simulationIterations: number
-  useObstacles: boolean
-  obstaclePadding: number
-}
+  continent: ContinentId | "all";
+  difficulty: "easy" | "hard";
+  showArrows: boolean;
+  centeringStrength: number;
+  collisionPadding: number;
+  simulationIterations: number;
+  useObstacles: boolean;
+  obstaclePadding: number;
+};
 
 const meta: Meta<StoryArgs> = {
-  title: 'Arcade/KnowYourWorld/MapRenderer',
+  title: "Arcade/KnowYourWorld/MapRenderer",
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
   },
   argTypes: {
     continent: {
-      control: 'select',
+      control: "select",
       options: [
-        'all',
-        'africa',
-        'asia',
-        'europe',
-        'north-america',
-        'south-america',
-        'oceania',
-        'antarctica',
+        "all",
+        "africa",
+        "asia",
+        "europe",
+        "north-america",
+        "south-america",
+        "oceania",
+        "antarctica",
       ],
-      description: 'Select a continent to filter the map',
+      description: "Select a continent to filter the map",
     },
     difficulty: {
-      control: 'select',
-      options: ['easy', 'hard'],
-      description: 'Game difficulty',
+      control: "select",
+      options: ["easy", "hard"],
+      description: "Game difficulty",
     },
     showArrows: {
-      control: 'boolean',
-      description: 'Show arrow labels for small regions (experimental feature)',
+      control: "boolean",
+      description: "Show arrow labels for small regions (experimental feature)",
     },
     centeringStrength: {
-      control: { type: 'range', min: 0.1, max: 10, step: 0.1 },
-      description: 'Force pulling labels back to regions (higher = stronger)',
+      control: { type: "range", min: 0.1, max: 10, step: 0.1 },
+      description: "Force pulling labels back to regions (higher = stronger)",
     },
     collisionPadding: {
-      control: { type: 'range', min: 0, max: 50, step: 1 },
-      description: 'Extra padding around labels for collision detection',
+      control: { type: "range", min: 0, max: 50, step: 1 },
+      description: "Extra padding around labels for collision detection",
     },
     simulationIterations: {
-      control: { type: 'range', min: 0, max: 500, step: 10 },
-      description: 'Number of simulation iterations (more = more settled)',
+      control: { type: "range", min: 0, max: 500, step: 10 },
+      description: "Number of simulation iterations (more = more settled)",
     },
     useObstacles: {
-      control: 'boolean',
-      description: 'Use region obstacles to push labels away from map',
+      control: "boolean",
+      description: "Use region obstacles to push labels away from map",
     },
     obstaclePadding: {
-      control: { type: 'range', min: 0, max: 50, step: 1 },
-      description: 'Extra padding around region obstacles',
+      control: { type: "range", min: 0, max: 50, step: 1 },
+      description: "Extra padding around region obstacles",
     },
   },
-}
+};
 
-export default meta
-type Story = StoryObj<StoryArgs>
+export default meta;
+type Story = StoryObj<StoryArgs>;
 
 // Mock data
 const mockPlayerMetadata = {
-  'player-1': {
-    id: 'player-1',
-    name: 'Player 1',
-    emoji: '😊',
-    color: '#3b82f6',
+  "player-1": {
+    id: "player-1",
+    name: "Player 1",
+    emoji: "😊",
+    color: "#3b82f6",
   },
-  'player-2': {
-    id: 'player-2',
-    name: 'Player 2',
-    emoji: '🎮',
-    color: '#ef4444',
+  "player-2": {
+    id: "player-2",
+    name: "Player 2",
+    emoji: "🎮",
+    color: "#ef4444",
   },
-}
+};
 
 // Story template
 const Template = (args: StoryArgs) => {
-  const mapData = getFilteredMapDataSync('world', args.continent, args.difficulty)
+  const mapData = getFilteredMapDataSync(
+    "world",
+    args.continent,
+    args.difficulty,
+  );
 
   // Simulate some found regions (first 5 regions)
-  const regionsFound = mapData.regions.slice(0, 5).map((r) => r.id)
+  const regionsFound = mapData.regions.slice(0, 5).map((r) => r.id);
 
   // Mock guess history
   const guessHistory = regionsFound.map((regionId, index) => ({
-    playerId: index % 2 === 0 ? 'player-1' : 'player-2',
+    playerId: index % 2 === 0 ? "player-1" : "player-2",
     regionId,
     correct: true,
-  }))
+  }));
 
   // Map difficulty to assistance level for rendering
-  const assistanceLevel = args.difficulty === 'easy' ? 'helpful' : 'standard'
+  const assistanceLevel = args.difficulty === "easy" ? "helpful" : "standard";
 
   return (
-    <div style={{ padding: '20px', minHeight: '100vh', background: '#111827' }}>
+    <div style={{ padding: "20px", minHeight: "100vh", background: "#111827" }}>
       <MapRenderer
         mapData={mapData}
         regionsFound={regionsFound}
@@ -112,12 +116,12 @@ const Template = (args: StoryArgs) => {
         assistanceLevel={assistanceLevel}
         selectedMap="world"
         selectedContinent={args.continent}
-        onRegionClick={(id, name) => console.log('Clicked:', id, name)}
+        onRegionClick={(id, name) => console.log("Clicked:", id, name)}
         guessHistory={guessHistory}
         playerMetadata={mockPlayerMetadata}
         giveUpReveal={null}
         hintActive={null}
-        onGiveUp={() => console.log('Give Up clicked')}
+        onGiveUp={() => console.log("Give Up clicked")}
         forceTuning={{
           showArrows: args.showArrows,
           centeringStrength: args.centeringStrength,
@@ -128,14 +132,14 @@ const Template = (args: StoryArgs) => {
         }}
       />
     </div>
-  )
-}
+  );
+};
 
 export const Oceania: Story = {
   render: Template,
   args: {
-    continent: 'oceania',
-    difficulty: 'easy',
+    continent: "oceania",
+    difficulty: "easy",
     showArrows: false,
     centeringStrength: 2.0,
     collisionPadding: 5,
@@ -143,13 +147,13 @@ export const Oceania: Story = {
     useObstacles: true,
     obstaclePadding: 10,
   },
-}
+};
 
 export const Europe: Story = {
   render: Template,
   args: {
-    continent: 'europe',
-    difficulty: 'easy',
+    continent: "europe",
+    difficulty: "easy",
     showArrows: false,
     centeringStrength: 2.0,
     collisionPadding: 5,
@@ -157,13 +161,13 @@ export const Europe: Story = {
     useObstacles: true,
     obstaclePadding: 10,
   },
-}
+};
 
 export const Africa: Story = {
   render: Template,
   args: {
-    continent: 'africa',
-    difficulty: 'easy',
+    continent: "africa",
+    difficulty: "easy",
     showArrows: false,
     centeringStrength: 2.0,
     collisionPadding: 5,
@@ -171,13 +175,13 @@ export const Africa: Story = {
     useObstacles: true,
     obstaclePadding: 10,
   },
-}
+};
 
 export const AllWorld: Story = {
   render: Template,
   args: {
-    continent: 'all',
-    difficulty: 'easy',
+    continent: "all",
+    difficulty: "easy",
     showArrows: false,
     centeringStrength: 2.0,
     collisionPadding: 5,
@@ -185,4 +189,4 @@ export const AllWorld: Story = {
     useObstacles: true,
     obstaclePadding: 10,
   },
-}
+};

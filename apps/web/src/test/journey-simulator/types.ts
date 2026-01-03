@@ -4,8 +4,8 @@
  * Type definitions for the BKT validation test infrastructure.
  */
 
-import type { BlameMethod } from '@/lib/curriculum/bkt'
-import type { ProblemGenerationMode } from '@/lib/curriculum/config/bkt-integration'
+import type { BlameMethod } from "@/lib/curriculum/bkt";
+import type { ProblemGenerationMode } from "@/lib/curriculum/config/bkt-integration";
 
 // ============================================================================
 // Student Model Types
@@ -26,16 +26,16 @@ import type { ProblemGenerationMode } from '@/lib/curriculum/config/bkt-integrat
  */
 export interface StudentProfile {
   /** Human-readable name for the profile */
-  name: string
+  name: string;
   /** Description of this student type */
-  description: string
+  description: string;
 
   /**
    * K in Hill function: exposure count where P(correct) = 0.5
    * Lower = faster learner (reaches 50% mastery with fewer exposures)
    * Typical range: 5-25
    */
-  halfMaxExposure: number
+  halfMaxExposure: number;
 
   /**
    * n in Hill function: controls curve steepness
@@ -44,33 +44,33 @@ export interface StudentProfile {
    * - n=3+: Very delayed onset, then rapid learning
    * Typical range: 1-3
    */
-  hillCoefficient: number
+  hillCoefficient: number;
 
   /**
    * Pre-seeded exposure counts per skill (simulates prior learning).
    * Skills not in this map start at 0 exposures.
    * Example: { 'basic.directAddition': 20 } means student has 20 prior exposures
    */
-  initialExposures: Record<string, number>
+  initialExposures: Record<string, number>;
 
   /**
    * Probability of using help: [P(no help), P(help)]
    * Must sum to 1.0
    * Example: [0.7, 0.3] means 70% no help, 30% uses help
    */
-  helpUsageProbabilities: [number, number]
+  helpUsageProbabilities: [number, number];
 
   /**
    * Additive bonus to P(correct) when help is used: [no help bonus, help bonus]
    * Example: [0, 0.15] means using help adds 15% to success chance
    */
-  helpBonuses: [number, number]
+  helpBonuses: [number, number];
 
   /** Base response time in milliseconds */
-  baseResponseTimeMs: number
+  baseResponseTimeMs: number;
 
   /** Response time variance factor (0 = no variance, 1 = high variance) */
-  responseTimeVariance: number
+  responseTimeVariance: number;
 }
 
 // ============================================================================
@@ -82,23 +82,23 @@ export interface StudentProfile {
  */
 export interface JourneyConfig {
   /** Student profile to use */
-  profile: StudentProfile
+  profile: StudentProfile;
   /** Number of sessions to simulate */
-  sessionCount: number
+  sessionCount: number;
   /** Duration of each session in minutes */
-  sessionDurationMinutes: number
+  sessionDurationMinutes: number;
   /** Problem generation mode to test */
-  mode: ProblemGenerationMode
+  mode: ProblemGenerationMode;
   /** Random seed for reproducibility */
-  seed: number
+  seed: number;
   /** Which skills to enable for practice */
-  practicingSkills: string[]
+  practicingSkills: string[];
   /**
    * Blame attribution method for multi-skill incorrect answers.
    * - 'heuristic': blame ∝ (1 - P(known)) - fast, approximate (default)
    * - 'bayesian': proper P(~known | fail) via marginalization - exact
    */
-  blameMethod?: BlameMethod
+  blameMethod?: BlameMethod;
 }
 
 // ============================================================================
@@ -110,19 +110,19 @@ export interface JourneyConfig {
  */
 export interface SimulatedAnswer {
   /** Whether the student answered correctly */
-  isCorrect: boolean
+  isCorrect: boolean;
   /** Time taken to answer in milliseconds */
-  responseTimeMs: number
+  responseTimeMs: number;
   /** Whether help was used during this problem */
-  hadHelp: boolean
+  hadHelp: boolean;
   /** Skills that were actually challenged by this problem */
-  skillsChallenged: string[]
+  skillsChallenged: string[];
   /**
    * Cognitive fatigue contribution of this problem.
    * Sum of getTrueMultiplier(trueP) for each skill, calculated BEFORE exposure increment.
    * This is the "ground truth" fatigue based on actual skill mastery at the moment.
    */
-  fatigue: number
+  fatigue: number;
 }
 
 /**
@@ -130,61 +130,61 @@ export interface SimulatedAnswer {
  */
 export interface SessionSnapshot {
   /** Session number (1-indexed) */
-  sessionNumber: number
+  sessionNumber: number;
   /** BKT estimates at end of session */
-  bktEstimates: Map<string, BktEstimate>
+  bktEstimates: Map<string, BktEstimate>;
   /** Cumulative skill exposure counts (total across all sessions so far) */
-  cumulativeExposures: Map<string, number>
+  cumulativeExposures: Map<string, number>;
   /** Skill exposure counts in THIS session only */
-  sessionExposures: Map<string, number>
+  sessionExposures: Map<string, number>;
   /** Computed P(correct) per skill based on Hill function (ground truth) */
-  trueSkillProbabilities: Map<string, number>
+  trueSkillProbabilities: Map<string, number>;
   /** Accuracy in this session (0-1) */
-  accuracy: number
+  accuracy: number;
   /** Total problems attempted in this session */
-  problemsAttempted: number
+  problemsAttempted: number;
   /** Session plan ID for reference */
-  sessionPlanId: string
+  sessionPlanId: string;
   /**
    * Total cognitive fatigue for this session.
    * Sum of fatigue for all problems in the session.
    * Lower is better (less cognitive strain).
    */
-  sessionFatigue: number
+  sessionFatigue: number;
 }
 
 /**
  * BKT estimate for a single skill
  */
 export interface BktEstimate {
-  pKnown: number
-  confidence: number
+  pKnown: number;
+  confidence: number;
 }
 
 /**
  * Trajectory of a single skill across the journey
  */
 export interface SkillTrajectory {
-  skillId: string
+  skillId: string;
   /** Per-session data points */
-  dataPoints: SkillDataPoint[]
+  dataPoints: SkillDataPoint[];
 }
 
 /**
  * Single data point in a skill trajectory
  */
 export interface SkillDataPoint {
-  session: number
+  session: number;
   /** P(correct) for this skill based on Hill function (ground truth) */
-  trueProbability: number
+  trueProbability: number;
   /** Cumulative exposure count for this skill */
-  cumulativeExposures: number
+  cumulativeExposures: number;
   /** BKT's estimate of P(known) */
-  bktPKnown: number
+  bktPKnown: number;
   /** BKT's confidence in the estimate */
-  bktConfidence: number
+  bktConfidence: number;
   /** Accuracy on problems involving this skill in this session */
-  accuracy: number
+  accuracy: number;
 }
 
 /**
@@ -192,24 +192,24 @@ export interface SkillDataPoint {
  */
 export interface JourneyMetrics {
   /** Pearson correlation between BKT pKnown and true mastery */
-  bktCorrelation: number
+  bktCorrelation: number;
   /** Ratio of weak skill exposure to baseline expectation (>1 = surfacing weak skills more) */
-  weakSkillSurfacing: number
+  weakSkillSurfacing: number;
   /** Accuracy improvement from first to last session */
-  accuracyImprovement: number
+  accuracyImprovement: number;
   /** Per-skill trajectory data */
-  skillTrajectories: Map<string, SkillTrajectory>
+  skillTrajectories: Map<string, SkillTrajectory>;
   /**
    * Total cognitive fatigue across all sessions.
    * Sum of sessionFatigue for all sessions.
    * Lower is better (less cognitive strain for the same learning).
    */
-  totalFatigue: number
+  totalFatigue: number;
   /**
    * Average cognitive fatigue per session.
    * totalFatigue / sessionCount.
    */
-  avgFatiguePerSession: number
+  avgFatiguePerSession: number;
 }
 
 /**
@@ -217,13 +217,13 @@ export interface JourneyMetrics {
  */
 export interface JourneyResult {
   /** Configuration used for this journey */
-  config: JourneyConfig
+  config: JourneyConfig;
   /** Snapshots from each session */
-  snapshots: SessionSnapshot[]
+  snapshots: SessionSnapshot[];
   /** Final computed metrics */
-  finalMetrics: JourneyMetrics
+  finalMetrics: JourneyMetrics;
   /** Total runtime in milliseconds */
-  runtimeMs: number
+  runtimeMs: number;
 }
 
 // ============================================================================
@@ -234,14 +234,14 @@ export interface JourneyResult {
  * Result of an A/B comparison between two modes
  */
 export interface ComparisonResult {
-  adaptiveResult: JourneyResult
-  classicResult: JourneyResult
+  adaptiveResult: JourneyResult;
+  classicResult: JourneyResult;
   /** Difference in BKT correlation (adaptive - classic) */
-  correlationDelta: number
+  correlationDelta: number;
   /** Difference in weak skill surfacing (adaptive - classic) */
-  weakSkillSurfacingDelta: number
+  weakSkillSurfacingDelta: number;
   /** Difference in accuracy improvement (adaptive - classic) */
-  accuracyImprovementDelta: number
+  accuracyImprovementDelta: number;
 }
 
 // ============================================================================
@@ -253,26 +253,26 @@ export interface ComparisonResult {
  */
 export interface JourneyResultJson {
   config: {
-    profileName: string
-    mode: ProblemGenerationMode
-    sessionCount: number
-    sessionDurationMinutes: number
-    seed: number
-    practicingSkills: string[]
-  }
+    profileName: string;
+    mode: ProblemGenerationMode;
+    sessionCount: number;
+    sessionDurationMinutes: number;
+    seed: number;
+    practicingSkills: string[];
+  };
   metrics: {
-    bktCorrelation: number
-    weakSkillSurfacing: number
-    accuracyImprovement: number
-  }
-  trajectories: Record<string, SkillTrajectory>
+    bktCorrelation: number;
+    weakSkillSurfacing: number;
+    accuracyImprovement: number;
+  };
+  trajectories: Record<string, SkillTrajectory>;
   snapshots: Array<{
-    session: number
-    accuracy: number
-    problemsAttempted: number
-    bktEstimates: Record<string, BktEstimate>
-    trueSkillProbabilities: Record<string, number>
-    cumulativeExposures: Record<string, number>
-    sessionExposures: Record<string, number>
-  }>
+    session: number;
+    accuracy: number;
+    problemsAttempted: number;
+    bktEstimates: Record<string, BktEstimate>;
+    trueSkillProbabilities: Record<string, number>;
+    cumulativeExposures: Record<string, number>;
+    sessionExposures: Record<string, number>;
+  }>;
 }

@@ -13,8 +13,8 @@
  * A student can only be present in one classroom at a time.
  */
 
-import { and, eq } from 'drizzle-orm'
-import { db } from '@/db'
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
 import {
   classroomEnrollments,
   classroomPresence,
@@ -23,23 +23,23 @@ import {
   type ClassroomPresence,
   type Classroom,
   type Player,
-} from '@/db/schema'
-import { getSocketIO } from '@/lib/socket-io'
+} from "@/db/schema";
+import { getSocketIO } from "@/lib/socket-io";
 
 // ============================================================================
 // Enter/Leave Classroom
 // ============================================================================
 
 export interface EnterClassroomParams {
-  playerId: string
-  classroomId: string
-  enteredBy: string
+  playerId: string;
+  classroomId: string;
+  enteredBy: string;
 }
 
 export interface EnterClassroomResult {
-  success: boolean
-  presence?: ClassroomPresence
-  error?: string
+  success: boolean;
+  presence?: ClassroomPresence;
+  error?: string;
 }
 
 /**
@@ -51,31 +51,33 @@ export interface EnterClassroomResult {
  *
  * If student is already in this classroom, the timestamp is updated.
  */
-export async function enterClassroom(params: EnterClassroomParams): Promise<EnterClassroomResult> {
-  const { playerId, classroomId, enteredBy } = params
+export async function enterClassroom(
+  params: EnterClassroomParams,
+): Promise<EnterClassroomResult> {
+  const { playerId, classroomId, enteredBy } = params;
 
   // Check if student is enrolled
   const enrollment = await db.query.classroomEnrollments.findFirst({
     where: and(
       eq(classroomEnrollments.classroomId, classroomId),
-      eq(classroomEnrollments.playerId, playerId)
+      eq(classroomEnrollments.playerId, playerId),
     ),
-  })
+  });
 
   if (!enrollment) {
-    return { success: false, error: 'Student not enrolled in this classroom' }
+    return { success: false, error: "Student not enrolled in this classroom" };
   }
 
   // Check if already in another classroom
   const currentPresence = await db.query.classroomPresence.findFirst({
     where: eq(classroomPresence.playerId, playerId),
-  })
+  });
 
   if (currentPresence && currentPresence.classroomId !== classroomId) {
     return {
       success: false,
-      error: 'Student is in another classroom. Must leave first.',
-    }
+      error: "Student is in another classroom. Must leave first.",
+    };
   }
 
   // Upsert presence
@@ -85,8 +87,8 @@ export async function enterClassroom(params: EnterClassroomParams): Promise<Ente
       .update(classroomPresence)
       .set({ enteredAt: new Date(), enteredBy })
       .where(eq(classroomPresence.playerId, playerId))
-      .returning()
-    return { success: true, presence: updated }
+      .returning();
+    return { success: true, presence: updated };
   }
 
   // Insert new presence
@@ -97,23 +99,23 @@ export async function enterClassroom(params: EnterClassroomParams): Promise<Ente
       classroomId,
       enteredBy,
     })
-    .returning()
+    .returning();
 
   // Emit socket event for real-time updates to teacher
-  const io = await getSocketIO()
+  const io = await getSocketIO();
   if (io) {
     // Get player name for the event
     const player = await db.query.players.findFirst({
       where: eq(players.id, playerId),
-    })
-    io.to(`classroom:${classroomId}`).emit('student-entered', {
+    });
+    io.to(`classroom:${classroomId}`).emit("student-entered", {
       playerId,
-      playerName: player?.name ?? 'Unknown',
+      playerName: player?.name ?? "Unknown",
       enteredBy,
-    })
+    });
   }
 
-  return { success: true, presence: inserted }
+  return { success: true, presence: inserted };
 }
 
 /**
@@ -123,22 +125,24 @@ export async function leaveClassroom(playerId: string): Promise<void> {
   // Get current presence before deleting (need classroomId for socket event)
   const presence = await db.query.classroomPresence.findFirst({
     where: eq(classroomPresence.playerId, playerId),
-  })
+  });
 
-  if (!presence) return
+  if (!presence) return;
 
-  await db.delete(classroomPresence).where(eq(classroomPresence.playerId, playerId))
+  await db
+    .delete(classroomPresence)
+    .where(eq(classroomPresence.playerId, playerId));
 
   // Emit socket event for real-time updates to teacher
-  const io = await getSocketIO()
+  const io = await getSocketIO();
   if (io) {
     const player = await db.query.players.findFirst({
       where: eq(players.id, playerId),
-    })
-    io.to(`classroom:${presence.classroomId}`).emit('student-left', {
+    });
+    io.to(`classroom:${presence.classroomId}`).emit("student-left", {
       playerId,
-      playerName: player?.name ?? 'Unknown',
-    })
+      playerName: player?.name ?? "Unknown",
+    });
   }
 }
 
@@ -150,32 +154,35 @@ export async function leaveClassroom(playerId: string): Promise<void> {
 export async function leaveSpecificClassroom(
   playerId: string,
   classroomId: string,
-  removedBy: 'teacher' | 'self' = 'self'
+  removedBy: "teacher" | "self" = "self",
 ): Promise<void> {
   const deleted = await db
     .delete(classroomPresence)
     .where(
-      and(eq(classroomPresence.playerId, playerId), eq(classroomPresence.classroomId, classroomId))
+      and(
+        eq(classroomPresence.playerId, playerId),
+        eq(classroomPresence.classroomId, classroomId),
+      ),
     )
-    .returning()
+    .returning();
 
   // Only emit if something was actually deleted
   if (deleted.length > 0) {
-    const io = await getSocketIO()
+    const io = await getSocketIO();
     if (io) {
       const player = await db.query.players.findFirst({
         where: eq(players.id, playerId),
-      })
+      });
       // Notify the classroom (for teacher's view)
-      io.to(`classroom:${classroomId}`).emit('student-left', {
+      io.to(`classroom:${classroomId}`).emit("student-left", {
         playerId,
-        playerName: player?.name ?? 'Unknown',
-      })
+        playerName: player?.name ?? "Unknown",
+      });
       // Notify the player (for student's view)
-      io.to(`player:${playerId}`).emit('presence-removed', {
+      io.to(`player:${playerId}`).emit("presence-removed", {
         classroomId,
         removedBy,
-      })
+      });
     }
   }
 }
@@ -185,13 +192,15 @@ export async function leaveSpecificClassroom(
  *
  * Useful for "end class" functionality.
  */
-export async function clearClassroomPresence(classroomId: string): Promise<number> {
+export async function clearClassroomPresence(
+  classroomId: string,
+): Promise<number> {
   const result = await db
     .delete(classroomPresence)
     .where(eq(classroomPresence.classroomId, classroomId))
-    .returning()
+    .returning();
 
-  return result.length
+  return result.length;
 }
 
 // ============================================================================
@@ -199,28 +208,30 @@ export async function clearClassroomPresence(classroomId: string): Promise<numbe
 // ============================================================================
 
 export interface PresenceWithClassroom extends ClassroomPresence {
-  classroom?: Classroom
+  classroom?: Classroom;
 }
 
 export interface PresenceWithPlayer extends ClassroomPresence {
-  player?: Player
+  player?: Player;
 }
 
 /**
  * Get a student's current presence (which classroom they're in)
  */
-export async function getStudentPresence(playerId: string): Promise<PresenceWithClassroom | null> {
+export async function getStudentPresence(
+  playerId: string,
+): Promise<PresenceWithClassroom | null> {
   const presence = await db.query.classroomPresence.findFirst({
     where: eq(classroomPresence.playerId, playerId),
-  })
+  });
 
-  if (!presence) return null
+  if (!presence) return null;
 
   const classroom = await db.query.classrooms.findFirst({
     where: eq(classrooms.id, presence.classroomId),
-  })
+  });
 
-  return { ...presence, classroom }
+  return { ...presence, classroom };
 }
 
 /**
@@ -229,43 +240,48 @@ export async function getStudentPresence(playerId: string): Promise<PresenceWith
 export async function isStudentPresent(playerId: string): Promise<boolean> {
   const presence = await db.query.classroomPresence.findFirst({
     where: eq(classroomPresence.playerId, playerId),
-  })
-  return !!presence
+  });
+  return !!presence;
 }
 
 /**
  * Check if a student is present in a specific classroom
  */
-export async function isStudentPresentIn(playerId: string, classroomId: string): Promise<boolean> {
+export async function isStudentPresentIn(
+  playerId: string,
+  classroomId: string,
+): Promise<boolean> {
   const presence = await db.query.classroomPresence.findFirst({
     where: and(
       eq(classroomPresence.playerId, playerId),
-      eq(classroomPresence.classroomId, classroomId)
+      eq(classroomPresence.classroomId, classroomId),
     ),
-  })
-  return !!presence
+  });
+  return !!presence;
 }
 
 /**
  * Get all students currently present in a classroom
  */
-export async function getClassroomPresence(classroomId: string): Promise<PresenceWithPlayer[]> {
+export async function getClassroomPresence(
+  classroomId: string,
+): Promise<PresenceWithPlayer[]> {
   const presences = await db.query.classroomPresence.findMany({
     where: eq(classroomPresence.classroomId, classroomId),
-  })
+  });
 
-  if (presences.length === 0) return []
+  if (presences.length === 0) return [];
 
-  const playerIds = presences.map((p) => p.playerId)
+  const playerIds = presences.map((p) => p.playerId);
   const players = await db.query.players.findMany({
     where: (players, { inArray }) => inArray(players.id, playerIds),
-  })
-  const playerMap = new Map(players.map((p) => [p.id, p]))
+  });
+  const playerMap = new Map(players.map((p) => [p.id, p]));
 
   return presences.map((p) => ({
     ...p,
     player: playerMap.get(p.playerId),
-  }))
+  }));
 }
 
 /**
@@ -274,16 +290,18 @@ export async function getClassroomPresence(classroomId: string): Promise<Presenc
 export async function getPresenceCount(classroomId: string): Promise<number> {
   const presences = await db.query.classroomPresence.findMany({
     where: eq(classroomPresence.classroomId, classroomId),
-  })
-  return presences.length
+  });
+  return presences.length;
 }
 
 /**
  * Get all player IDs present in a classroom
  */
-export async function getPresentPlayerIds(classroomId: string): Promise<string[]> {
+export async function getPresentPlayerIds(
+  classroomId: string,
+): Promise<string[]> {
   const presences = await db.query.classroomPresence.findMany({
     where: eq(classroomPresence.classroomId, classroomId),
-  })
-  return presences.map((p) => p.playerId)
+  });
+  return presences.map((p) => p.playerId);
 }

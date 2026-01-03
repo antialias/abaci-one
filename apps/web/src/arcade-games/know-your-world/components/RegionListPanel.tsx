@@ -1,12 +1,12 @@
-'use client'
+"use client";
 
-import { memo } from 'react'
-import { css } from '@styled/css'
+import { memo } from "react";
+import { css } from "@styled/css";
 
 interface RegionListItemProps {
-  name: string
-  onHover?: (name: string | null) => void
-  isDark?: boolean
+  name: string;
+  onHover?: (name: string | null) => void;
+  isDark?: boolean;
 }
 
 /**
@@ -23,35 +23,35 @@ const RegionListItem = memo(function RegionListItem({
       onMouseEnter={() => onHover?.(name)}
       onMouseLeave={() => onHover?.(null)}
       className={css({
-        px: '2',
-        py: '1',
-        fontSize: 'xs',
-        color: isDark ? 'gray.300' : 'gray.600',
-        cursor: onHover ? 'pointer' : 'default',
-        rounded: 'md',
-        overflowWrap: 'break-word',
+        px: "2",
+        py: "1",
+        fontSize: "xs",
+        color: isDark ? "gray.300" : "gray.600",
+        cursor: onHover ? "pointer" : "default",
+        rounded: "md",
+        overflowWrap: "break-word",
         _hover: {
-          bg: isDark ? 'gray.700' : 'gray.200',
-          color: isDark ? 'gray.100' : 'gray.900',
+          bg: isDark ? "gray.700" : "gray.200",
+          color: isDark ? "gray.100" : "gray.900",
         },
       })}
     >
       {name}
     </div>
-  )
-})
+  );
+});
 
 interface RegionListPanelProps {
   /** List of region names to display */
-  regions: string[]
+  regions: string[];
   /** Callback when hovering over a region name (for map preview) */
-  onRegionHover?: (name: string | null) => void
+  onRegionHover?: (name: string | null) => void;
   /** Maximum height of the scrollable list */
-  maxHeight?: string
+  maxHeight?: string;
   /** Dark mode styling */
-  isDark?: boolean
+  isDark?: boolean;
   /** Sort regions alphabetically (default: true) */
-  sortAlphabetically?: boolean
+  sortAlphabetically?: boolean;
 }
 
 /**
@@ -61,35 +61,40 @@ interface RegionListPanelProps {
 export function RegionListPanel({
   regions,
   onRegionHover,
-  maxHeight = '200px',
+  maxHeight = "200px",
   isDark = false,
   sortAlphabetically = true,
 }: RegionListPanelProps) {
   const displayRegions = sortAlphabetically
     ? [...regions].sort((a, b) => a.localeCompare(b))
-    : regions
+    : regions;
 
   return (
     <div
       data-element="region-list-panel"
       className={css({
-        display: 'flex',
-        flexDirection: 'column',
+        display: "flex",
+        flexDirection: "column",
         maxHeight,
-        overflow: 'hidden',
+        overflow: "hidden",
       })}
     >
       {/* Scrollable list */}
       <div
         className={css({
-          overflowY: 'auto',
+          overflowY: "auto",
           flex: 1,
         })}
       >
         {displayRegions.map((name) => (
-          <RegionListItem key={name} name={name} onHover={onRegionHover} isDark={isDark} />
+          <RegionListItem
+            key={name}
+            name={name}
+            onHover={onRegionHover}
+            isDark={isDark}
+          />
         ))}
       </div>
     </div>
-  )
+  );
 }

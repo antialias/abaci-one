@@ -49,44 +49,44 @@
 export type {
   EmpiricalScaleResult,
   UseEmpiricalScaleReturn,
-} from './useEmpiricalScale'
-export { useEmpiricalScale } from './useEmpiricalScale'
+} from "./useEmpiricalScale";
+export { useEmpiricalScale } from "./useEmpiricalScale";
 // Note: useMagnifierState has been removed - magnifier state is now managed by
 // the interaction state machine in features/interaction/useInteractionStateMachine.ts
 export type {
   MagnifierStyleInputs,
   MagnifierStyleResult,
-} from './useMagnifierStyle'
-export { useMagnifierStyle } from './useMagnifierStyle'
+} from "./useMagnifierStyle";
+export { useMagnifierStyle } from "./useMagnifierStyle";
 export type {
   UseMagnifierTouchHandlersOptions,
   UseMagnifierTouchHandlersReturn,
-} from './useMagnifierTouchHandlers'
-export { useMagnifierTouchHandlers } from './useMagnifierTouchHandlers'
+} from "./useMagnifierTouchHandlers";
+export { useMagnifierTouchHandlers } from "./useMagnifierTouchHandlers";
 
 // ============================================================================
 // Components
 // ============================================================================
 
-export type { MagnifierControlsProps } from './MagnifierControls'
-export { MagnifierControls } from './MagnifierControls'
-export type { MagnifierCrosshairProps } from './MagnifierCrosshair'
-export { MagnifierCrosshair } from './MagnifierCrosshair'
-export type { MagnifierOverlayProps } from './MagnifierOverlay'
-export { MagnifierOverlay } from './MagnifierOverlay'
-export type { MagnifierOverlayWithHandlersProps } from './MagnifierOverlayWithHandlers'
-export { MagnifierOverlayWithHandlers } from './MagnifierOverlayWithHandlers'
-export type { MagnifierPixelGridProps } from './MagnifierPixelGrid'
-export { MagnifierPixelGrid } from './MagnifierPixelGrid'
+export type { MagnifierControlsProps } from "./MagnifierControls";
+export { MagnifierControls } from "./MagnifierControls";
+export type { MagnifierCrosshairProps } from "./MagnifierCrosshair";
+export { MagnifierCrosshair } from "./MagnifierCrosshair";
+export type { MagnifierOverlayProps } from "./MagnifierOverlay";
+export { MagnifierOverlay } from "./MagnifierOverlay";
+export type { MagnifierOverlayWithHandlersProps } from "./MagnifierOverlayWithHandlers";
+export { MagnifierOverlayWithHandlers } from "./MagnifierOverlayWithHandlers";
+export type { MagnifierPixelGridProps } from "./MagnifierPixelGrid";
+export { MagnifierPixelGrid } from "./MagnifierPixelGrid";
 export type {
   FlashProgress,
   MagnifierRegionsProps,
   MapRegion,
   RegionState,
-} from './MagnifierRegions'
-export { MagnifierRegions } from './MagnifierRegions'
-export type { ZoomLinesOverlayProps } from './ZoomLinesOverlay'
-export { ZoomLinesOverlay } from './ZoomLinesOverlay'
+} from "./MagnifierRegions";
+export { MagnifierRegions } from "./MagnifierRegions";
+export type { ZoomLinesOverlayProps } from "./ZoomLinesOverlay";
+export { ZoomLinesOverlay } from "./ZoomLinesOverlay";
 
 // ============================================================================
 // Context
@@ -99,12 +99,12 @@ export type {
   ParsedViewBox,
   PrecisionCalculations,
   SafeZoneMargins,
-} from './MagnifierContext'
+} from "./MagnifierContext";
 export {
   MagnifierProvider,
   useMagnifierContext,
   useMagnifierContextSafe,
-} from './MagnifierContext'
+} from "./MagnifierContext";
 
 // ============================================================================
 // Types
@@ -116,7 +116,7 @@ export type {
   HeatColors,
   // MagnifierRegionsProps is exported from MagnifierRegions.tsx with improved structure
   ViewportInfo,
-} from './types'
+} from "./types";
 
 // ============================================================================
 // Panning Math Utilities
@@ -127,7 +127,7 @@ export type {
   RenderedViewport,
   TouchMultiplierResult,
   ViewportInfo as PanningViewportInfo,
-} from './panningMath'
+} from "./panningMath";
 export {
   applyPanDelta,
   calculateMagnifierScale,
@@ -136,7 +136,7 @@ export {
   clampToSvgBounds,
   cursorToSvgCoordinates,
   parseViewBoxDimensions,
-} from './panningMath'
+} from "./panningMath";
 
 // ============================================================================
 // Re-exports from Original Locations
@@ -145,10 +145,10 @@ export {
 export type {
   UseMagnifierZoomOptions,
   UseMagnifierZoomReturn,
-} from '../../hooks/useMagnifierZoom'
+} from "../../hooks/useMagnifierZoom";
 
 // Zoom hook (will eventually move into this module)
-export { useMagnifierZoom } from '../../hooks/useMagnifierZoom'
+export { useMagnifierZoom } from "../../hooks/useMagnifierZoom";
 // Utilities (backward compatibility)
 export {
   EXPANDED_MAGNIFIER_MARGIN,
@@ -157,4 +157,4 @@ export {
   getMagnifierDimensions,
   MAGNIFIER_SIZE_LARGE,
   MAGNIFIER_SIZE_SMALL,
-} from '../../utils/magnifierDimensions'
+} from "../../utils/magnifierDimensions";

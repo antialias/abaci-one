@@ -7,10 +7,10 @@
  * @example "November 7, 2025"
  */
 export function getDefaultDate(): string {
-  const now = new Date()
-  return now.toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  const now = new Date();
+  return now.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 }

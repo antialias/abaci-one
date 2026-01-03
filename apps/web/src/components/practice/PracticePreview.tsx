@@ -6,28 +6,28 @@
  * (problem, abacus, input) and lets you submit answers to see feedback.
  */
 
-'use client'
+"use client";
 
-import { useCallback, useEffect, useState } from 'react'
-import { useTheme } from '@/contexts/ThemeContext'
-import type { ProblemSlot, SessionPart } from '@/db/schema/session-plans'
-import { css } from '../../../styled-system/css'
-import { AbacusDock } from '../AbacusDock'
-import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
-import { NumericKeypad } from './NumericKeypad'
-import { VerticalProblem } from './VerticalProblem'
+import { useCallback, useEffect, useState } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ProblemSlot, SessionPart } from "@/db/schema/session-plans";
+import { css } from "../../../styled-system/css";
+import { AbacusDock } from "../AbacusDock";
+import { useHasPhysicalKeyboard } from "./hooks/useDeviceDetection";
+import { NumericKeypad } from "./NumericKeypad";
+import { VerticalProblem } from "./VerticalProblem";
 
 export interface PracticePreviewProps {
   /** The problem slot to practice */
-  slot: ProblemSlot
+  slot: ProblemSlot;
   /** The part this problem belongs to */
-  part: SessionPart
+  part: SessionPart;
   /** Problem number for display */
-  problemNumber: number
+  problemNumber: number;
   /** Called when user wants to exit practice preview */
-  onBack: () => void
+  onBack: () => void;
   /** If true, renders in a more compact inline style without header */
-  inline?: boolean
+  inline?: boolean;
 }
 
 export function PracticePreview({
@@ -37,88 +37,95 @@ export function PracticePreview({
   onBack,
   inline = false,
 }: PracticePreviewProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   // User's answer (as string for input)
-  const [userAnswer, setUserAnswer] = useState<string>('')
+  const [userAnswer, setUserAnswer] = useState<string>("");
   // Whether the answer has been submitted
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false);
   // Track if answer was correct
-  const [wasCorrect, setWasCorrect] = useState<boolean | null>(null)
+  const [wasCorrect, setWasCorrect] = useState<boolean | null>(null);
 
-  const problem = slot.problem
-  const correctAnswer = problem?.answer
+  const problem = slot.problem;
+  const correctAnswer = problem?.answer;
 
   // Handle digit input
   const handleDigit = useCallback(
     (digit: string) => {
-      if (isSubmitted || correctAnswer === undefined) return
+      if (isSubmitted || correctAnswer === undefined) return;
       setUserAnswer((prev) => {
         // Max digits based on correct answer length + 1
-        const maxDigits = String(correctAnswer).length + 1
-        if (prev.length >= maxDigits) return prev
-        return prev + digit
-      })
+        const maxDigits = String(correctAnswer).length + 1;
+        if (prev.length >= maxDigits) return prev;
+        return prev + digit;
+      });
     },
-    [isSubmitted, correctAnswer]
-  )
+    [isSubmitted, correctAnswer],
+  );
 
   // Handle backspace
   const handleBackspace = useCallback(() => {
-    if (isSubmitted) return
-    setUserAnswer((prev) => prev.slice(0, -1))
-  }, [isSubmitted])
+    if (isSubmitted) return;
+    setUserAnswer((prev) => prev.slice(0, -1));
+  }, [isSubmitted]);
 
   // Handle submit
   const handleSubmit = useCallback(() => {
-    if (!userAnswer || isSubmitted || correctAnswer === undefined) return
-    const numericAnswer = parseInt(userAnswer, 10)
-    const correct = numericAnswer === correctAnswer
-    setWasCorrect(correct)
-    setIsSubmitted(true)
-  }, [userAnswer, isSubmitted, correctAnswer])
+    if (!userAnswer || isSubmitted || correctAnswer === undefined) return;
+    const numericAnswer = parseInt(userAnswer, 10);
+    const correct = numericAnswer === correctAnswer;
+    setWasCorrect(correct);
+    setIsSubmitted(true);
+  }, [userAnswer, isSubmitted, correctAnswer]);
 
   // Handle retry (reset state)
   const handleRetry = useCallback(() => {
-    setUserAnswer('')
-    setIsSubmitted(false)
-    setWasCorrect(null)
-  }, [])
+    setUserAnswer("");
+    setIsSubmitted(false);
+    setWasCorrect(null);
+  }, []);
 
   // Physical keyboard support
-  const hasPhysicalKeyboard = useHasPhysicalKeyboard()
-  const canAcceptInput = !isSubmitted && correctAnswer !== undefined
+  const hasPhysicalKeyboard = useHasPhysicalKeyboard();
+  const canAcceptInput = !isSubmitted && correctAnswer !== undefined;
 
   useEffect(() => {
-    if (!hasPhysicalKeyboard || !canAcceptInput) return
+    if (!hasPhysicalKeyboard || !canAcceptInput) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Handle digit keys (0-9)
       if (/^[0-9]$/.test(e.key)) {
-        e.preventDefault()
-        handleDigit(e.key)
-        return
+        e.preventDefault();
+        handleDigit(e.key);
+        return;
       }
 
       // Handle backspace
-      if (e.key === 'Backspace') {
-        e.preventDefault()
-        handleBackspace()
-        return
+      if (e.key === "Backspace") {
+        e.preventDefault();
+        handleBackspace();
+        return;
       }
 
       // Handle enter for submit
-      if (e.key === 'Enter' && userAnswer) {
-        e.preventDefault()
-        handleSubmit()
-        return
+      if (e.key === "Enter" && userAnswer) {
+        e.preventDefault();
+        handleSubmit();
+        return;
       }
-    }
+    };
 
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [hasPhysicalKeyboard, canAcceptInput, handleDigit, handleBackspace, handleSubmit, userAnswer])
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [
+    hasPhysicalKeyboard,
+    canAcceptInput,
+    handleDigit,
+    handleBackspace,
+    handleSubmit,
+    userAnswer,
+  ]);
 
   // If no problem generated yet, show a message
   if (!problem) {
@@ -126,25 +133,25 @@ export function PracticePreview({
       <div
         data-component="practice-preview"
         className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1rem',
-          padding: '1rem',
-          maxWidth: '600px',
-          margin: '0 auto',
+          display: "flex",
+          flexDirection: "column",
+          gap: "1rem",
+          padding: "1rem",
+          maxWidth: "600px",
+          margin: "0 auto",
         })}
       >
         <div
           data-element="preview-header"
           className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
-            padding: '0.5rem',
-            backgroundColor: isDark ? 'blue.900' : 'blue.50',
-            borderRadius: '8px',
-            border: '1px solid',
-            borderColor: isDark ? 'blue.700' : 'blue.200',
+            display: "flex",
+            alignItems: "center",
+            gap: "1rem",
+            padding: "0.5rem",
+            backgroundColor: isDark ? "blue.900" : "blue.50",
+            borderRadius: "8px",
+            border: "1px solid",
+            borderColor: isDark ? "blue.700" : "blue.200",
           })}
         >
           <button
@@ -152,14 +159,14 @@ export function PracticePreview({
             data-action="back-to-browse"
             onClick={onBack}
             className={css({
-              padding: '0.5rem 1rem',
-              fontSize: '0.875rem',
-              fontWeight: 'bold',
-              borderRadius: '6px',
-              border: 'none',
-              cursor: 'pointer',
-              backgroundColor: isDark ? 'gray.600' : 'gray.300',
-              color: isDark ? 'white' : 'gray.800',
+              padding: "0.5rem 1rem",
+              fontSize: "0.875rem",
+              fontWeight: "bold",
+              borderRadius: "6px",
+              border: "none",
+              cursor: "pointer",
+              backgroundColor: isDark ? "gray.600" : "gray.300",
+              color: isDark ? "white" : "gray.800",
             })}
           >
             ← Back
@@ -167,9 +174,9 @@ export function PracticePreview({
           <div
             className={css({
               flex: 1,
-              fontSize: '0.875rem',
-              fontWeight: 'bold',
-              color: isDark ? 'blue.200' : 'blue.700',
+              fontSize: "0.875rem",
+              fontWeight: "bold",
+              color: isDark ? "blue.200" : "blue.700",
             })}
           >
             Practice Preview - Problem #{problemNumber}
@@ -177,11 +184,11 @@ export function PracticePreview({
         </div>
         <div
           className={css({
-            padding: '2rem',
-            textAlign: 'center',
-            color: isDark ? 'gray.400' : 'gray.600',
-            backgroundColor: isDark ? 'gray.800' : 'gray.100',
-            borderRadius: '8px',
+            padding: "2rem",
+            textAlign: "center",
+            color: isDark ? "gray.400" : "gray.600",
+            backgroundColor: isDark ? "gray.800" : "gray.100",
+            borderRadius: "8px",
           })}
         >
           This problem hasn't been generated yet.
@@ -189,19 +196,19 @@ export function PracticePreview({
           Problems are generated when reached in the session.
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div
       data-component="practice-preview"
       className={css({
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-        padding: '1rem',
-        maxWidth: '600px',
-        margin: '0 auto',
+        display: "flex",
+        flexDirection: "column",
+        gap: "1rem",
+        padding: "1rem",
+        maxWidth: "600px",
+        margin: "0 auto",
       })}
     >
       {/* Header with back button - hidden in inline mode */}
@@ -209,14 +216,14 @@ export function PracticePreview({
         <div
           data-element="preview-header"
           className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
-            padding: '0.5rem',
-            backgroundColor: isDark ? 'blue.900' : 'blue.50',
-            borderRadius: '8px',
-            border: '1px solid',
-            borderColor: isDark ? 'blue.700' : 'blue.200',
+            display: "flex",
+            alignItems: "center",
+            gap: "1rem",
+            padding: "0.5rem",
+            backgroundColor: isDark ? "blue.900" : "blue.50",
+            borderRadius: "8px",
+            border: "1px solid",
+            borderColor: isDark ? "blue.700" : "blue.200",
           })}
         >
           <button
@@ -224,17 +231,17 @@ export function PracticePreview({
             data-action="back-to-browse"
             onClick={onBack}
             className={css({
-              padding: '0.5rem 1rem',
-              fontSize: '0.875rem',
-              fontWeight: 'bold',
-              borderRadius: '6px',
-              border: 'none',
-              cursor: 'pointer',
-              backgroundColor: isDark ? 'gray.600' : 'gray.300',
-              color: isDark ? 'white' : 'gray.800',
-              transition: 'all 0.15s ease',
+              padding: "0.5rem 1rem",
+              fontSize: "0.875rem",
+              fontWeight: "bold",
+              borderRadius: "6px",
+              border: "none",
+              cursor: "pointer",
+              backgroundColor: isDark ? "gray.600" : "gray.300",
+              color: isDark ? "white" : "gray.800",
+              transition: "all 0.15s ease",
               _hover: {
-                backgroundColor: isDark ? 'gray.500' : 'gray.400',
+                backgroundColor: isDark ? "gray.500" : "gray.400",
               },
             })}
           >
@@ -243,20 +250,20 @@ export function PracticePreview({
           <div
             className={css({
               flex: 1,
-              fontSize: '0.875rem',
-              fontWeight: 'bold',
-              color: isDark ? 'blue.200' : 'blue.700',
+              fontSize: "0.875rem",
+              fontWeight: "bold",
+              color: isDark ? "blue.200" : "blue.700",
             })}
           >
             Practice Preview - Problem #{problemNumber}
           </div>
           <div
             className={css({
-              fontSize: '0.75rem',
-              color: isDark ? 'blue.300' : 'blue.600',
-              padding: '0.25rem 0.5rem',
-              backgroundColor: isDark ? 'blue.800' : 'blue.100',
-              borderRadius: '4px',
+              fontSize: "0.75rem",
+              color: isDark ? "blue.300" : "blue.600",
+              padding: "0.25rem 0.5rem",
+              backgroundColor: isDark ? "blue.800" : "blue.100",
+              borderRadius: "4px",
             })}
           >
             {part.type}
@@ -269,15 +276,16 @@ export function PracticePreview({
         <div
           data-element="debug-info"
           className={css({
-            fontSize: '0.75rem',
-            color: isDark ? 'gray.400' : 'gray.500',
-            padding: '0.5rem',
-            backgroundColor: isDark ? 'gray.800' : 'gray.100',
-            borderRadius: '4px',
-            fontFamily: 'monospace',
+            fontSize: "0.75rem",
+            color: isDark ? "gray.400" : "gray.500",
+            padding: "0.5rem",
+            backgroundColor: isDark ? "gray.800" : "gray.100",
+            borderRadius: "4px",
+            fontFamily: "monospace",
           })}
         >
-          Answer: {correctAnswer} | Format: {part.format} | Purpose: {slot.purpose}
+          Answer: {correctAnswer} | Format: {part.format} | Purpose:{" "}
+          {slot.purpose}
         </div>
       )}
 
@@ -285,15 +293,15 @@ export function PracticePreview({
       <div
         data-element="problem-area"
         className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '1.5rem',
-          padding: '2rem',
-          backgroundColor: isDark ? 'gray.800' : 'white',
-          borderRadius: '12px',
-          border: '1px solid',
-          borderColor: isDark ? 'gray.700' : 'gray.200',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "1.5rem",
+          padding: "2rem",
+          backgroundColor: isDark ? "gray.800" : "white",
+          borderRadius: "12px",
+          border: "1px solid",
+          borderColor: isDark ? "gray.700" : "gray.200",
         })}
       >
         <VerticalProblem
@@ -310,35 +318,37 @@ export function PracticePreview({
           <div
             data-element="feedback"
             className={css({
-              padding: '0.75rem 1.5rem',
-              borderRadius: '8px',
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
+              padding: "0.75rem 1.5rem",
+              borderRadius: "8px",
+              fontSize: "1.25rem",
+              fontWeight: "bold",
               backgroundColor: wasCorrect
                 ? isDark
-                  ? 'green.900'
-                  : 'green.100'
+                  ? "green.900"
+                  : "green.100"
                 : isDark
-                  ? 'red.900'
-                  : 'red.100',
+                  ? "red.900"
+                  : "red.100",
               color: wasCorrect
                 ? isDark
-                  ? 'green.200'
-                  : 'green.700'
+                  ? "green.200"
+                  : "green.700"
                 : isDark
-                  ? 'red.200'
-                  : 'red.700',
-              border: '2px solid',
+                  ? "red.200"
+                  : "red.700",
+              border: "2px solid",
               borderColor: wasCorrect
                 ? isDark
-                  ? 'green.700'
-                  : 'green.300'
+                  ? "green.700"
+                  : "green.300"
                 : isDark
-                  ? 'red.700'
-                  : 'red.300',
+                  ? "red.700"
+                  : "red.300",
             })}
           >
-            {wasCorrect ? '✓ Correct!' : `✗ Incorrect (answer: ${correctAnswer})`}
+            {wasCorrect
+              ? "✓ Correct!"
+              : `✗ Incorrect (answer: ${correctAnswer})`}
           </div>
         )}
       </div>
@@ -348,27 +358,27 @@ export function PracticePreview({
         <div
           data-element="input-area"
           className={css({
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem',
-            alignItems: 'center',
+            display: "flex",
+            flexDirection: "column",
+            gap: "1rem",
+            alignItems: "center",
           })}
         >
           {/* Current answer display */}
           <div
             className={css({
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              minHeight: '3rem',
-              padding: '0.5rem 1rem',
-              backgroundColor: isDark ? 'gray.700' : 'gray.100',
-              borderRadius: '8px',
-              minWidth: '120px',
-              textAlign: 'center',
-              color: isDark ? 'white' : 'gray.900',
+              fontSize: "2rem",
+              fontWeight: "bold",
+              minHeight: "3rem",
+              padding: "0.5rem 1rem",
+              backgroundColor: isDark ? "gray.700" : "gray.100",
+              borderRadius: "8px",
+              minWidth: "120px",
+              textAlign: "center",
+              color: isDark ? "white" : "gray.900",
             })}
           >
-            {userAnswer || '_'}
+            {userAnswer || "_"}
           </div>
 
           {/* Numpad */}
@@ -387,9 +397,9 @@ export function PracticePreview({
         <div
           data-element="retry-area"
           className={css({
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '1rem',
+            display: "flex",
+            justifyContent: "center",
+            gap: "1rem",
           })}
         >
           <button
@@ -397,17 +407,17 @@ export function PracticePreview({
             data-action="retry"
             onClick={handleRetry}
             className={css({
-              padding: '0.75rem 1.5rem',
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              backgroundColor: isDark ? 'blue.600' : 'blue.500',
-              color: 'white',
-              transition: 'all 0.15s ease',
+              padding: "0.75rem 1.5rem",
+              fontSize: "1rem",
+              fontWeight: "bold",
+              borderRadius: "8px",
+              border: "none",
+              cursor: "pointer",
+              backgroundColor: isDark ? "blue.600" : "blue.500",
+              color: "white",
+              transition: "all 0.15s ease",
               _hover: {
-                backgroundColor: isDark ? 'blue.500' : 'blue.600',
+                backgroundColor: isDark ? "blue.500" : "blue.600",
               },
             })}
           >
@@ -419,18 +429,18 @@ export function PracticePreview({
               data-action="back-after-submit"
               onClick={onBack}
               className={css({
-                padding: '0.75rem 1.5rem',
-                fontSize: '1rem',
-                fontWeight: 'bold',
-                borderRadius: '8px',
-                border: '2px solid',
-                borderColor: isDark ? 'gray.500' : 'gray.400',
-                cursor: 'pointer',
-                backgroundColor: 'transparent',
-                color: isDark ? 'gray.300' : 'gray.600',
-                transition: 'all 0.15s ease',
+                padding: "0.75rem 1.5rem",
+                fontSize: "1rem",
+                fontWeight: "bold",
+                borderRadius: "8px",
+                border: "2px solid",
+                borderColor: isDark ? "gray.500" : "gray.400",
+                cursor: "pointer",
+                backgroundColor: "transparent",
+                color: isDark ? "gray.300" : "gray.600",
+                transition: "all 0.15s ease",
                 _hover: {
-                  backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                  backgroundColor: isDark ? "gray.700" : "gray.100",
                 },
               })}
             >
@@ -443,5 +453,5 @@ export function PracticePreview({
       {/* Abacus dock - hidden in inline mode */}
       {!inline && <AbacusDock />}
     </div>
-  )
+  );
 }

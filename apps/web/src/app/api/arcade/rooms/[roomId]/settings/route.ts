@@ -1,19 +1,22 @@
-import bcrypt from 'bcryptjs'
-import { and, eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
-import { db, schema } from '@/db'
-import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
-import { recordRoomMemberHistory } from '@/lib/arcade/room-member-history'
-import { getRoomMembers } from '@/lib/arcade/room-membership'
-import { getSocketIO } from '@/lib/socket-io'
-import { getViewerId } from '@/lib/viewer'
-import { getAllGameConfigs, setGameConfig } from '@/lib/arcade/game-config-helpers'
-import { isValidGameName } from '@/lib/arcade/validators'
-import type { GameName } from '@/lib/arcade/validators'
+import bcrypt from "bcryptjs";
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { db, schema } from "@/db";
+import { getRoomActivePlayers } from "@/lib/arcade/player-manager";
+import { recordRoomMemberHistory } from "@/lib/arcade/room-member-history";
+import { getRoomMembers } from "@/lib/arcade/room-membership";
+import { getSocketIO } from "@/lib/socket-io";
+import { getViewerId } from "@/lib/viewer";
+import {
+  getAllGameConfigs,
+  setGameConfig,
+} from "@/lib/arcade/game-config-helpers";
+import { isValidGameName } from "@/lib/arcade/validators";
+import type { GameName } from "@/lib/arcade/validators";
 
 type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
+  params: Promise<{ roomId: string }>;
+};
 
 /**
  * PATCH /api/arcade/rooms/:roomId/settings
@@ -34,46 +37,49 @@ type RouteContext = {
  */
 export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
-    const { roomId } = await context.params
-    const viewerId = await getViewerId()
-    const body = await req.json()
+    const { roomId } = await context.params;
+    const viewerId = await getViewerId();
+    const body = await req.json();
 
     console.log(
-      '[Settings API] PATCH request received:',
+      "[Settings API] PATCH request received:",
       JSON.stringify(
         {
           roomId,
           body,
         },
         null,
-        2
-      )
-    )
+        2,
+      ),
+    );
 
     // Read current room state from database BEFORE any changes
     const [currentRoom] = await db
       .select()
       .from(schema.arcadeRooms)
-      .where(eq(schema.arcadeRooms.id, roomId))
+      .where(eq(schema.arcadeRooms.id, roomId));
 
     console.log(
-      '[Settings API] Current room state in database BEFORE update:',
+      "[Settings API] Current room state in database BEFORE update:",
       JSON.stringify(
         {
           gameName: currentRoom?.gameName,
           gameConfig: currentRoom?.gameConfig,
         },
         null,
-        2
-      )
-    )
+        2,
+      ),
+    );
 
     // Check if user is a room member
-    const members = await getRoomMembers(roomId)
-    const currentMember = members.find((m) => m.userId === viewerId)
+    const members = await getRoomMembers(roomId);
+    const currentMember = members.find((m) => m.userId === viewerId);
 
     if (!currentMember) {
-      return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })
+      return NextResponse.json(
+        { error: "You are not in this room" },
+        { status: 403 },
+      );
     }
 
     // Determine which settings are being changed
@@ -83,38 +89,42 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       body.gameName !== undefined ||
       body.name !== undefined ||
       body.description !== undefined
-    )
+    );
 
     // Only gameConfig can be changed by any member
     // All other settings require host privileges
     if (changingRoomSettings && !currentMember.isCreator) {
       return NextResponse.json(
         {
-          error: 'Only the host can change room settings (name, access mode, game selection, etc.)',
+          error:
+            "Only the host can change room settings (name, access mode, game selection, etc.)",
         },
-        { status: 403 }
-      )
+        { status: 403 },
+      );
     }
 
     // Validate accessMode if provided
     const validAccessModes = [
-      'open',
-      'locked',
-      'retired',
-      'password',
-      'restricted',
-      'approval-only',
-    ]
+      "open",
+      "locked",
+      "retired",
+      "password",
+      "restricted",
+      "approval-only",
+    ];
     if (body.accessMode && !validAccessModes.includes(body.accessMode)) {
-      return NextResponse.json({ error: 'Invalid access mode' }, { status: 400 })
+      return NextResponse.json(
+        { error: "Invalid access mode" },
+        { status: 400 },
+      );
     }
 
     // Validate password requirements
-    if (body.accessMode === 'password' && !body.password) {
+    if (body.accessMode === "password" && !body.password) {
       return NextResponse.json(
-        { error: 'Password is required for password-protected rooms' },
-        { status: 400 }
-      )
+        { error: "Password is required for password-protected rooms" },
+        { status: 400 },
+      );
     }
 
     // Validate gameName if provided - check against validator registry at runtime
@@ -124,33 +134,33 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
           {
             error: `Invalid game name: ${body.gameName}. Game must have a registered validator.`,
           },
-          { status: 400 }
-        )
+          { status: 400 },
+        );
       }
     }
 
     // Prepare update data
-    const updateData: Record<string, any> = {}
+    const updateData: Record<string, any> = {};
 
     if (body.accessMode !== undefined) {
-      updateData.accessMode = body.accessMode
+      updateData.accessMode = body.accessMode;
     }
 
     // Hash password if provided
     if (body.password !== undefined) {
-      if (body.password === null || body.password === '') {
-        updateData.password = null // Clear password
-        updateData.displayPassword = null // Also clear display password
+      if (body.password === null || body.password === "") {
+        updateData.password = null; // Clear password
+        updateData.displayPassword = null; // Also clear display password
       } else {
-        const hashedPassword = await bcrypt.hash(body.password, 10)
-        updateData.password = hashedPassword
-        updateData.displayPassword = body.password // Store plain text for display
+        const hashedPassword = await bcrypt.hash(body.password, 10);
+        updateData.password = hashedPassword;
+        updateData.displayPassword = body.password; // Store plain text for display
       }
     }
 
     // Update game selection if provided
     if (body.gameName !== undefined) {
-      updateData.gameName = body.gameName
+      updateData.gameName = body.gameName;
     }
 
     // Handle game config updates - write to new room_game_configs table
@@ -158,76 +168,87 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       // body.gameConfig is expected to be nested by game name: { matching: {...}, memory-quiz: {...} }
       // Extract each game's config and write to the new table
       for (const [gameName, config] of Object.entries(body.gameConfig)) {
-        if (config && typeof config === 'object') {
-          await setGameConfig(roomId, gameName as GameName, config)
-          console.log(`[Settings API] Wrote ${gameName} config to room_game_configs table`)
+        if (config && typeof config === "object") {
+          await setGameConfig(roomId, gameName as GameName, config);
+          console.log(
+            `[Settings API] Wrote ${gameName} config to room_game_configs table`,
+          );
         }
       }
     }
 
     console.log(
-      '[Settings API] Update data to be written to database:',
-      JSON.stringify(updateData, null, 2)
-    )
+      "[Settings API] Update data to be written to database:",
+      JSON.stringify(updateData, null, 2),
+    );
 
     // If game is being changed (or cleared), delete the existing arcade session
     // This ensures a fresh session will be created with the new game settings
     if (body.gameName !== undefined) {
-      console.log(`[Settings API] Deleting existing arcade session for room ${roomId}`)
-      await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.roomId, roomId))
+      console.log(
+        `[Settings API] Deleting existing arcade session for room ${roomId}`,
+      );
+      await db
+        .delete(schema.arcadeSessions)
+        .where(eq(schema.arcadeSessions.roomId, roomId));
     }
 
     // Update room settings (only if there's something to update)
-    let updatedRoom = currentRoom
+    let updatedRoom = currentRoom;
     if (Object.keys(updateData).length > 0) {
-      ;[updatedRoom] = await db
+      [updatedRoom] = await db
         .update(schema.arcadeRooms)
         .set(updateData)
         .where(eq(schema.arcadeRooms.id, roomId))
-        .returning()
+        .returning();
     }
 
     // Get aggregated game configs from new table
-    const gameConfig = await getAllGameConfigs(roomId)
+    const gameConfig = await getAllGameConfigs(roomId);
 
     console.log(
-      '[Settings API] Room state in database AFTER update:',
+      "[Settings API] Room state in database AFTER update:",
       JSON.stringify(
         {
           gameName: updatedRoom.gameName,
           gameConfig,
         },
         null,
-        2
-      )
-    )
+        2,
+      ),
+    );
 
     // Broadcast game change to all room members
     if (body.gameName !== undefined) {
-      const io = await getSocketIO()
+      const io = await getSocketIO();
       if (io) {
         try {
-          console.log(`[Settings API] Broadcasting game change to room ${roomId}: ${body.gameName}`)
+          console.log(
+            `[Settings API] Broadcasting game change to room ${roomId}: ${body.gameName}`,
+          );
           const broadcastData: {
-            roomId: string
-            gameName: string | null
-            gameConfig?: Record<string, unknown>
+            roomId: string;
+            gameName: string | null;
+            gameConfig?: Record<string, unknown>;
           } = {
             roomId,
             gameName: body.gameName,
             gameConfig, // Include aggregated configs from new table
-          }
+          };
 
-          io.to(`room:${roomId}`).emit('room-game-changed', broadcastData)
+          io.to(`room:${roomId}`).emit("room-game-changed", broadcastData);
         } catch (socketError) {
-          console.error('[Settings API] Failed to broadcast game change:', socketError)
+          console.error(
+            "[Settings API] Failed to broadcast game change:",
+            socketError,
+          );
         }
       }
     }
 
     // If setting to retired, expel all non-owner members
-    if (body.accessMode === 'retired') {
-      const nonOwnerMembers = members.filter((m) => !m.isCreator)
+    if (body.accessMode === "retired") {
+      const nonOwnerMembers = members.filter((m) => !m.isCreator);
 
       if (nonOwnerMembers.length > 0) {
         // Remove all non-owner members from the room
@@ -235,9 +256,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
           and(
             eq(schema.roomMembers.roomId, roomId),
             // Delete all members except the creator
-            eq(schema.roomMembers.isCreator, false)
-          )
-        )
+            eq(schema.roomMembers.isCreator, false),
+          ),
+        );
 
         // Record in history for each expelled member
         for (const member of nonOwnerMembers) {
@@ -245,47 +266,50 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
             roomId,
             userId: member.userId,
             displayName: member.displayName,
-            action: 'left',
-          })
+            action: "left",
+          });
         }
 
         // Broadcast updates via socket
-        const io = await getSocketIO()
+        const io = await getSocketIO();
         if (io) {
           try {
             // Get updated member list (should only be the owner now)
-            const updatedMembers = await getRoomMembers(roomId)
-            const memberPlayers = await getRoomActivePlayers(roomId)
+            const updatedMembers = await getRoomMembers(roomId);
+            const memberPlayers = await getRoomActivePlayers(roomId);
 
             // Convert memberPlayers Map to object for JSON serialization
-            const memberPlayersObj: Record<string, any[]> = {}
+            const memberPlayersObj: Record<string, any[]> = {};
             for (const [uid, players] of memberPlayers.entries()) {
-              memberPlayersObj[uid] = players
+              memberPlayersObj[uid] = players;
             }
 
             // Notify each expelled member
             for (const member of nonOwnerMembers) {
-              io.to(`user:${member.userId}`).emit('kicked-from-room', {
+              io.to(`user:${member.userId}`).emit("kicked-from-room", {
                 roomId,
                 kickedBy: currentMember.displayName,
-                reason: 'Room has been retired',
-              })
+                reason: "Room has been retired",
+              });
             }
 
             // Notify the owner that members were expelled
-            io.to(`room:${roomId}`).emit('member-left', {
+            io.to(`room:${roomId}`).emit("member-left", {
               roomId,
               userId: nonOwnerMembers.map((m) => m.userId),
               members: updatedMembers,
               memberPlayers: memberPlayersObj,
-              reason: 'room-retired',
-            })
+              reason: "room-retired",
+            });
 
             console.log(
-              `[Settings API] Expelled ${nonOwnerMembers.length} members from retired room ${roomId}`
-            )
+              `[Settings API] Expelled ${nonOwnerMembers.length} members from retired room ${roomId}`,
+            );
           } catch (socketError) {
-            console.error('[Settings API] Failed to broadcast member expulsion:', socketError)
+            console.error(
+              "[Settings API] Failed to broadcast member expulsion:",
+              socketError,
+            );
           }
         }
       }
@@ -298,10 +322,13 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
           gameConfig, // Include aggregated configs from new table
         },
       },
-      { status: 200 }
-    )
+      { status: 200 },
+    );
   } catch (error: any) {
-    console.error('Failed to update room settings:', error)
-    return NextResponse.json({ error: 'Failed to update room settings' }, { status: 500 })
+    console.error("Failed to update room settings:", error);
+    return NextResponse.json(
+      { error: "Failed to update room settings" },
+      { status: 500 },
+    );
   }
 }

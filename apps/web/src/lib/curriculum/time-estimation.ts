@@ -46,7 +46,7 @@
  * ```
  */
 
-import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPart, SlotResult } from "@/db/schema/session-plans";
 
 // ============================================================================
 // Constants and Configuration
@@ -70,7 +70,7 @@ export const TIME_ESTIMATION_DEFAULTS = {
 
   /** Minimum problems per part to ensure meaningful practice */
   minProblemsPerPart: 2,
-} as const
+} as const;
 
 /**
  * Part type time multipliers
@@ -80,11 +80,11 @@ export const TIME_ESTIMATION_DEFAULTS = {
  * - Visualization: Mental imagery requires more processing time
  * - Linear: No visual processing, fastest for practiced students
  */
-export const PART_TYPE_MULTIPLIERS: Record<SessionPart['type'], number> = {
+export const PART_TYPE_MULTIPLIERS: Record<SessionPart["type"], number> = {
   abacus: 1.0,
   visualization: 1.3,
   linear: 0.85,
-}
+};
 
 /**
  * Skill complexity weights
@@ -94,21 +94,21 @@ export const PART_TYPE_MULTIPLIERS: Record<SessionPart['type'], number> = {
  */
 export const SKILL_COMPLEXITY_WEIGHTS: Record<string, number> = {
   // Direct operations (simplest)
-  'add.direct': 1.0,
-  'sub.direct': 1.0,
+  "add.direct": 1.0,
+  "sub.direct": 1.0,
 
   // Five complement operations
-  'add.five': 1.5,
-  'sub.five': 1.5,
+  "add.five": 1.5,
+  "sub.five": 1.5,
 
   // Ten complement operations (most complex single-digit)
-  'add.ten': 2.0,
-  'sub.ten': 2.0,
+  "add.ten": 2.0,
+  "sub.ten": 2.0,
 
   // Multi-digit operations add complexity
   carry: 1.5,
   borrow: 1.5,
-}
+};
 
 // ============================================================================
 // Core Calculation Functions
@@ -129,50 +129,52 @@ export function calculateSecondsPerTerm(
   results: SlotResult[],
   options: {
     /** Minimum number of results needed for reliable estimate */
-    minResults?: number
+    minResults?: number;
     /** Whether to exclude outliers (>3 std dev from mean) */
-    excludeOutliers?: boolean
-  } = {}
+    excludeOutliers?: boolean;
+  } = {},
 ): number | null {
-  const { minResults = 5, excludeOutliers = true } = options
+  const { minResults = 5, excludeOutliers = true } = options;
 
   // Filter to results with valid timing and problem data
-  const validResults = results.filter((r) => r.responseTimeMs > 0 && r.problem?.terms?.length > 0)
+  const validResults = results.filter(
+    (r) => r.responseTimeMs > 0 && r.problem?.terms?.length > 0,
+  );
 
   if (validResults.length < minResults) {
-    return null
+    return null;
   }
 
   // Calculate seconds per term for each result
   let sptsRaw = validResults.map((r) => {
-    const termCount = r.problem.terms.length
-    const seconds = r.responseTimeMs / 1000
-    return seconds / termCount
-  })
+    const termCount = r.problem.terms.length;
+    const seconds = r.responseTimeMs / 1000;
+    return seconds / termCount;
+  });
 
   // Optionally exclude outliers
   if (excludeOutliers && sptsRaw.length >= 10) {
-    const mean = sptsRaw.reduce((a, b) => a + b, 0) / sptsRaw.length
+    const mean = sptsRaw.reduce((a, b) => a + b, 0) / sptsRaw.length;
     const stdDev = Math.sqrt(
-      sptsRaw.reduce((sum, spt) => sum + (spt - mean) ** 2, 0) / sptsRaw.length
-    )
-    const threshold = 3 * stdDev
-    sptsRaw = sptsRaw.filter((spt) => Math.abs(spt - mean) <= threshold)
+      sptsRaw.reduce((sum, spt) => sum + (spt - mean) ** 2, 0) / sptsRaw.length,
+    );
+    const threshold = 3 * stdDev;
+    sptsRaw = sptsRaw.filter((spt) => Math.abs(spt - mean) <= threshold);
   }
 
   if (sptsRaw.length === 0) {
-    return null
+    return null;
   }
 
   // Return weighted average (more recent results weighted slightly higher)
   // For simplicity, we just use arithmetic mean for now
-  const avgSpt = sptsRaw.reduce((a, b) => a + b, 0) / sptsRaw.length
+  const avgSpt = sptsRaw.reduce((a, b) => a + b, 0) / sptsRaw.length;
 
   // Clamp to reasonable bounds
   return Math.max(
     TIME_ESTIMATION_DEFAULTS.minSecondsPerTerm,
-    Math.min(TIME_ESTIMATION_DEFAULTS.maxSecondsPerTerm, avgSpt)
-  )
+    Math.min(TIME_ESTIMATION_DEFAULTS.maxSecondsPerTerm, avgSpt),
+  );
 }
 
 /**
@@ -184,10 +186,10 @@ export function calculateSecondsPerTerm(
  * @returns Seconds per term, or null if insufficient data
  */
 export function calculateSecondsPerTermFromSessions(
-  sessions: Array<{ results: SlotResult[] }>
+  sessions: Array<{ results: SlotResult[] }>,
 ): number | null {
-  const allResults = sessions.flatMap((s) => s.results)
-  return calculateSecondsPerTerm(allResults)
+  const allResults = sessions.flatMap((s) => s.results);
+  return calculateSecondsPerTerm(allResults);
 }
 
 /**
@@ -201,14 +203,16 @@ export function calculateSecondsPerTermFromSessions(
 export function estimateProblemTimeMs(
   problem: { terms: number[] },
   secondsPerTerm: number,
-  partType?: SessionPart['type']
+  partType?: SessionPart["type"],
 ): number {
-  const termCount = problem.terms.length
-  const baseSeconds = termCount * secondsPerTerm + TIME_ESTIMATION_DEFAULTS.problemOverheadSeconds
+  const termCount = problem.terms.length;
+  const baseSeconds =
+    termCount * secondsPerTerm +
+    TIME_ESTIMATION_DEFAULTS.problemOverheadSeconds;
 
-  const modifier = partType ? PART_TYPE_MULTIPLIERS[partType] : 1.0
+  const modifier = partType ? PART_TYPE_MULTIPLIERS[partType] : 1.0;
 
-  return Math.round(baseSeconds * modifier * 1000)
+  return Math.round(baseSeconds * modifier * 1000);
 }
 
 /**
@@ -222,9 +226,9 @@ export function estimateProblemTimeMs(
 export function estimateProblemTimeSeconds(
   problem: { terms: number[] },
   secondsPerTerm: number,
-  partType?: SessionPart['type']
+  partType?: SessionPart["type"],
 ): number {
-  return estimateProblemTimeMs(problem, secondsPerTerm, partType) / 1000
+  return estimateProblemTimeMs(problem, secondsPerTerm, partType) / 1000;
 }
 
 // ============================================================================
@@ -244,17 +248,18 @@ export function estimateSessionProblemCount(
   durationMinutes: number,
   avgTermsPerProblem: number = 3,
   secondsPerTerm: number = TIME_ESTIMATION_DEFAULTS.secondsPerTerm,
-  partType?: SessionPart['type']
+  partType?: SessionPart["type"],
 ): number {
-  const totalSeconds = durationMinutes * 60
-  const modifier = partType ? PART_TYPE_MULTIPLIERS[partType] : 1.0
+  const totalSeconds = durationMinutes * 60;
+  const modifier = partType ? PART_TYPE_MULTIPLIERS[partType] : 1.0;
 
   const secondsPerProblem =
-    (avgTermsPerProblem * secondsPerTerm + TIME_ESTIMATION_DEFAULTS.problemOverheadSeconds) *
-    modifier
+    (avgTermsPerProblem * secondsPerTerm +
+      TIME_ESTIMATION_DEFAULTS.problemOverheadSeconds) *
+    modifier;
 
-  const count = Math.floor(totalSeconds / secondsPerProblem)
-  return Math.max(TIME_ESTIMATION_DEFAULTS.minProblemsPerPart, count)
+  const count = Math.floor(totalSeconds / secondsPerProblem);
+  return Math.max(TIME_ESTIMATION_DEFAULTS.minProblemsPerPart, count);
 }
 
 /**
@@ -268,12 +273,13 @@ export function estimateSessionProblemCount(
 export function estimateSessionDurationMinutes(
   problemCount: number,
   avgTermsPerProblem: number = 3,
-  secondsPerTerm: number = TIME_ESTIMATION_DEFAULTS.secondsPerTerm
+  secondsPerTerm: number = TIME_ESTIMATION_DEFAULTS.secondsPerTerm,
 ): number {
   const secondsPerProblem =
-    avgTermsPerProblem * secondsPerTerm + TIME_ESTIMATION_DEFAULTS.problemOverheadSeconds
+    avgTermsPerProblem * secondsPerTerm +
+    TIME_ESTIMATION_DEFAULTS.problemOverheadSeconds;
 
-  return Math.round((problemCount * secondsPerProblem) / 60)
+  return Math.round((problemCount * secondsPerProblem) / 60);
 }
 
 /**
@@ -288,11 +294,12 @@ export function estimateSessionDurationMinutes(
  */
 export function convertSptToSecondsPerProblem(
   secondsPerTerm: number,
-  avgTermsPerProblem = 3
+  avgTermsPerProblem = 3,
 ): number {
   return Math.round(
-    avgTermsPerProblem * secondsPerTerm + TIME_ESTIMATION_DEFAULTS.problemOverheadSeconds
-  )
+    avgTermsPerProblem * secondsPerTerm +
+      TIME_ESTIMATION_DEFAULTS.problemOverheadSeconds,
+  );
 }
 
 /**
@@ -306,10 +313,13 @@ export function convertSptToSecondsPerProblem(
  */
 export function convertSecondsPerProblemToSpt(
   secondsPerProblem: number,
-  avgTermsPerProblem = 3
+  avgTermsPerProblem = 3,
 ): number {
-  const netTime = Math.max(0, secondsPerProblem - TIME_ESTIMATION_DEFAULTS.problemOverheadSeconds)
-  return netTime / avgTermsPerProblem
+  const netTime = Math.max(
+    0,
+    secondsPerProblem - TIME_ESTIMATION_DEFAULTS.problemOverheadSeconds,
+  );
+  return netTime / avgTermsPerProblem;
 }
 
 // ============================================================================
@@ -324,32 +334,34 @@ export function convertSecondsPerProblemToSpt(
  * @param skillsRequired - Array of skill IDs the problem exercises
  * @returns Total complexity units
  */
-export function calculateProblemComplexityUnits(skillsRequired: string[]): number {
-  if (skillsRequired.length === 0) return 1 // Minimum complexity
+export function calculateProblemComplexityUnits(
+  skillsRequired: string[],
+): number {
+  if (skillsRequired.length === 0) return 1; // Minimum complexity
 
-  let totalComplexity = 0
+  let totalComplexity = 0;
   for (const skill of skillsRequired) {
     // Check for exact match first
     if (SKILL_COMPLEXITY_WEIGHTS[skill]) {
-      totalComplexity += SKILL_COMPLEXITY_WEIGHTS[skill]
-      continue
+      totalComplexity += SKILL_COMPLEXITY_WEIGHTS[skill];
+      continue;
     }
 
     // Check for partial match (e.g., "add.+5.direct" matches "add.direct")
-    const parts = skill.split('.')
-    const operation = parts[0] // add, sub
-    const technique = parts[parts.length - 1] // direct, five, ten
+    const parts = skill.split(".");
+    const operation = parts[0]; // add, sub
+    const technique = parts[parts.length - 1]; // direct, five, ten
 
-    const partialKey = `${operation}.${technique}`
+    const partialKey = `${operation}.${technique}`;
     if (SKILL_COMPLEXITY_WEIGHTS[partialKey]) {
-      totalComplexity += SKILL_COMPLEXITY_WEIGHTS[partialKey]
+      totalComplexity += SKILL_COMPLEXITY_WEIGHTS[partialKey];
     } else {
       // Default complexity for unknown skills
-      totalComplexity += 1.0
+      totalComplexity += 1.0;
     }
   }
 
-  return totalComplexity
+  return totalComplexity;
 }
 
 /**
@@ -361,23 +373,27 @@ export function calculateProblemComplexityUnits(skillsRequired: string[]): numbe
  * @param results - Array of slot results
  * @returns Seconds per complexity unit, or null if insufficient data
  */
-export function calculateSecondsPerComplexityUnit(results: SlotResult[]): number | null {
+export function calculateSecondsPerComplexityUnit(
+  results: SlotResult[],
+): number | null {
   const validResults = results.filter(
-    (r) => r.responseTimeMs > 0 && r.problem?.skillsRequired?.length > 0
-  )
+    (r) => r.responseTimeMs > 0 && r.problem?.skillsRequired?.length > 0,
+  );
 
   if (validResults.length < 10) {
-    return null
+    return null;
   }
 
   const ratios = validResults.map((r) => {
-    const complexity = calculateProblemComplexityUnits(r.problem.skillsRequired)
-    const seconds = r.responseTimeMs / 1000
-    return seconds / complexity
-  })
+    const complexity = calculateProblemComplexityUnits(
+      r.problem.skillsRequired,
+    );
+    const seconds = r.responseTimeMs / 1000;
+    return seconds / complexity;
+  });
 
-  const avg = ratios.reduce((a, b) => a + b, 0) / ratios.length
-  return Math.max(2, Math.min(15, avg)) // Clamp to reasonable bounds
+  const avg = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+  return Math.max(2, Math.min(15, avg)); // Clamp to reasonable bounds
 }
 
 // ============================================================================
@@ -389,15 +405,15 @@ export function calculateSecondsPerComplexityUnit(results: SlotResult[]): number
  */
 export interface TimeEstimationProfile {
   /** Seconds per term (primary metric) */
-  secondsPerTerm: number
+  secondsPerTerm: number;
   /** Seconds per complexity unit (advanced metric, if available) */
-  secondsPerComplexityUnit: number | null
+  secondsPerComplexityUnit: number | null;
   /** Equivalent seconds per problem for UI display */
-  secondsPerProblem: number
+  secondsPerProblem: number;
   /** Number of results used to calculate these estimates */
-  sampleSize: number
+  sampleSize: number;
   /** Whether these are default values (no historical data) */
-  isDefault: boolean
+  isDefault: boolean;
 }
 
 /**
@@ -406,18 +422,22 @@ export interface TimeEstimationProfile {
  * @param results - Historical slot results
  * @returns Time estimation profile
  */
-export function getTimeEstimationProfile(results: SlotResult[]): TimeEstimationProfile {
-  const spt = calculateSecondsPerTerm(results)
-  const spcu = calculateSecondsPerComplexityUnit(results)
+export function getTimeEstimationProfile(
+  results: SlotResult[],
+): TimeEstimationProfile {
+  const spt = calculateSecondsPerTerm(results);
+  const spcu = calculateSecondsPerComplexityUnit(results);
 
   if (spt === null) {
     return {
       secondsPerTerm: TIME_ESTIMATION_DEFAULTS.secondsPerTerm,
       secondsPerComplexityUnit: null,
-      secondsPerProblem: convertSptToSecondsPerProblem(TIME_ESTIMATION_DEFAULTS.secondsPerTerm),
+      secondsPerProblem: convertSptToSecondsPerProblem(
+        TIME_ESTIMATION_DEFAULTS.secondsPerTerm,
+      ),
       sampleSize: 0,
       isDefault: true,
-    }
+    };
   }
 
   return {
@@ -426,5 +446,5 @@ export function getTimeEstimationProfile(results: SlotResult[]): TimeEstimationP
     secondsPerProblem: convertSptToSecondsPerProblem(spt),
     sampleSize: results.length,
     isDefault: false,
-  }
+  };
 }

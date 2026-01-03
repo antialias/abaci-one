@@ -3,24 +3,24 @@
 // Supports 1-5 digit problems (max sum: 99999 + 99999 = 199998)
 
 export type PlaceValue =
-  | 'ones'
-  | 'tens'
-  | 'hundreds'
-  | 'thousands'
-  | 'tenThousands'
-  | 'hundredThousands'
+  | "ones"
+  | "tens"
+  | "hundreds"
+  | "thousands"
+  | "tenThousands"
+  | "hundredThousands";
 
 export interface ProblemMeta {
-  a: number
-  b: number
-  digitsA: number
-  digitsB: number
-  maxDigits: number
-  sum: number
-  digitsSum: number
-  requiresRegrouping: boolean
-  regroupCount: number
-  regroupPlaces: PlaceValue[]
+  a: number;
+  b: number;
+  digitsA: number;
+  digitsB: number;
+  maxDigits: number;
+  sum: number;
+  digitsSum: number;
+  requiresRegrouping: boolean;
+  regroupCount: number;
+  regroupPlaces: PlaceValue[];
 }
 
 /**
@@ -30,37 +30,37 @@ export interface ProblemMeta {
  */
 export function analyzeProblem(a: number, b: number): ProblemMeta {
   // Basic properties
-  const digitsA = a.toString().length
-  const digitsB = b.toString().length
-  const maxDigits = Math.max(digitsA, digitsB)
-  const sum = a + b
-  const digitsSum = sum.toString().length
+  const digitsA = a.toString().length;
+  const digitsB = b.toString().length;
+  const maxDigits = Math.max(digitsA, digitsB);
+  const sum = a + b;
+  const digitsSum = sum.toString().length;
 
   // Analyze regrouping place by place
   // Pad to 6 digits for consistent indexing (supports up to 99999 + 99999 = 199998)
-  const aDigits = String(a).padStart(6, '0').split('').map(Number).reverse()
-  const bDigits = String(b).padStart(6, '0').split('').map(Number).reverse()
+  const aDigits = String(a).padStart(6, "0").split("").map(Number).reverse();
+  const bDigits = String(b).padStart(6, "0").split("").map(Number).reverse();
 
-  const regroupPlaces: PlaceValue[] = []
+  const regroupPlaces: PlaceValue[] = [];
   const places: PlaceValue[] = [
-    'ones',
-    'tens',
-    'hundreds',
-    'thousands',
-    'tenThousands',
-    'hundredThousands',
-  ]
+    "ones",
+    "tens",
+    "hundreds",
+    "thousands",
+    "tenThousands",
+    "hundredThousands",
+  ];
 
   // Check each place value for carrying
   // We need to track carries propagating through place values
-  let carry = 0
+  let carry = 0;
   for (let i = 0; i < 6; i++) {
-    const digitSum = aDigits[i] + bDigits[i] + carry
+    const digitSum = aDigits[i] + bDigits[i] + carry;
     if (digitSum >= 10) {
-      regroupPlaces.push(places[i])
-      carry = 1
+      regroupPlaces.push(places[i]);
+      carry = 1;
     } else {
-      carry = 0
+      carry = 0;
     }
   }
 
@@ -75,23 +75,23 @@ export function analyzeProblem(a: number, b: number): ProblemMeta {
     requiresRegrouping: regroupPlaces.length > 0,
     regroupCount: regroupPlaces.length,
     regroupPlaces,
-  }
+  };
 }
 
 /**
  * Metadata for a subtraction problem
  */
 export interface SubtractionProblemMeta {
-  minuend: number
-  subtrahend: number
-  digitsMinuend: number
-  digitsSubtrahend: number
-  maxDigits: number
-  difference: number
-  digitsDifference: number
-  requiresBorrowing: boolean
-  borrowCount: number
-  borrowPlaces: PlaceValue[]
+  minuend: number;
+  subtrahend: number;
+  digitsMinuend: number;
+  digitsSubtrahend: number;
+  maxDigits: number;
+  difference: number;
+  digitsDifference: number;
+  requiresBorrowing: boolean;
+  borrowCount: number;
+  borrowPlaces: PlaceValue[];
 }
 
 /**
@@ -101,42 +101,50 @@ export interface SubtractionProblemMeta {
  */
 export function analyzeSubtractionProblem(
   minuend: number,
-  subtrahend: number
+  subtrahend: number,
 ): SubtractionProblemMeta {
   // Basic properties
-  const digitsMinuend = minuend.toString().length
-  const digitsSubtrahend = subtrahend.toString().length
-  const maxDigits = Math.max(digitsMinuend, digitsSubtrahend)
-  const difference = minuend - subtrahend
-  const digitsDifference = difference === 0 ? 1 : difference.toString().length
+  const digitsMinuend = minuend.toString().length;
+  const digitsSubtrahend = subtrahend.toString().length;
+  const maxDigits = Math.max(digitsMinuend, digitsSubtrahend);
+  const difference = minuend - subtrahend;
+  const digitsDifference = difference === 0 ? 1 : difference.toString().length;
 
   // Analyze borrowing place by place
   // Pad to 6 digits for consistent indexing
-  const mDigits = String(minuend).padStart(6, '0').split('').map(Number).reverse()
-  const sDigits = String(subtrahend).padStart(6, '0').split('').map(Number).reverse()
+  const mDigits = String(minuend)
+    .padStart(6, "0")
+    .split("")
+    .map(Number)
+    .reverse();
+  const sDigits = String(subtrahend)
+    .padStart(6, "0")
+    .split("")
+    .map(Number)
+    .reverse();
 
-  const borrowPlaces: PlaceValue[] = []
+  const borrowPlaces: PlaceValue[] = [];
   const places: PlaceValue[] = [
-    'ones',
-    'tens',
-    'hundreds',
-    'thousands',
-    'tenThousands',
-    'hundredThousands',
-  ]
+    "ones",
+    "tens",
+    "hundreds",
+    "thousands",
+    "tenThousands",
+    "hundredThousands",
+  ];
 
   // Check each place value for borrowing
   // We need to track borrows propagating through place values
-  let borrow = 0
+  let borrow = 0;
   for (let i = 0; i < 6; i++) {
-    const mDigit = mDigits[i] - borrow
-    const sDigit = sDigits[i]
+    const mDigit = mDigits[i] - borrow;
+    const sDigit = sDigits[i];
 
     if (mDigit < sDigit) {
-      borrowPlaces.push(places[i])
-      borrow = 1 // Need to borrow from next higher place
+      borrowPlaces.push(places[i]);
+      borrow = 1; // Need to borrow from next higher place
     } else {
-      borrow = 0
+      borrow = 0;
     }
   }
 
@@ -151,5 +159,5 @@ export function analyzeSubtractionProblem(
     requiresBorrowing: borrowPlaces.length > 0,
     borrowCount: borrowPlaces.length,
     borrowPlaces,
-  }
+  };
 }

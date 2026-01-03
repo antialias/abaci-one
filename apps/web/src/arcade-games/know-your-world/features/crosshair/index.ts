@@ -8,4 +8,4 @@ export {
   useCrosshairRotation,
   type UseCrosshairRotationOptions,
   type UseCrosshairRotationReturn,
-} from './useCrosshairRotation'
+} from "./useCrosshairRotation";

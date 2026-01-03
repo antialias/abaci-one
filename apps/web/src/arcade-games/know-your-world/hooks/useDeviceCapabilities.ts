@@ -6,13 +6,13 @@
  * @see src/hooks/useDeviceCapabilities.ts for shared implementations
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
 // Re-export shared hooks for convenience
 export {
   useHasAnyFinePointer,
   useIsTouchDevice,
-} from '@/hooks/useDeviceCapabilities'
+} from "@/hooks/useDeviceCapabilities";
 
 /**
  * Hook to detect if the device supports precision mode (pointer lock).
@@ -28,25 +28,25 @@ export {
  * - Showing "click to activate precision mode" messages
  */
 export function useCanUsePrecisionMode(): boolean {
-  const [canUsePrecisionMode, setCanUsePrecisionMode] = useState(false)
+  const [canUsePrecisionMode, setCanUsePrecisionMode] = useState(false);
 
   useEffect(() => {
     const checkPrecisionMode = () => {
       // Check if Pointer Lock API is supported
-      const supportsPointerLock = 'pointerLockElement' in document
+      const supportsPointerLock = "pointerLockElement" in document;
 
       // Check if device has a fine pointer (mouse/trackpad)
-      const hasFinePointer = window.matchMedia('(pointer: fine)').matches
+      const hasFinePointer = window.matchMedia("(pointer: fine)").matches;
 
-      setCanUsePrecisionMode(supportsPointerLock && hasFinePointer)
-    }
+      setCanUsePrecisionMode(supportsPointerLock && hasFinePointer);
+    };
 
-    checkPrecisionMode()
+    checkPrecisionMode();
 
     // Re-check on resize (in case device mode changes)
-    window.addEventListener('resize', checkPrecisionMode)
-    return () => window.removeEventListener('resize', checkPrecisionMode)
-  }, [])
+    window.addEventListener("resize", checkPrecisionMode);
+    return () => window.removeEventListener("resize", checkPrecisionMode);
+  }, []);
 
-  return canUsePrecisionMode
+  return canUsePrecisionMode;
 }

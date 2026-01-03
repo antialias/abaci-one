@@ -1,24 +1,24 @@
-'use client'
+"use client";
 
-import { useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
-import { useTheme } from '@/contexts/ThemeContext'
+import { useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   usePendingEnrollmentRequests,
   useAwaitingParentApproval,
   useApproveEnrollmentRequest,
   useDenyEnrollmentRequest,
   type EnrollmentRequestWithRelations,
-} from '@/hooks/useClassroom'
+} from "@/hooks/useClassroom";
 import {
   StudentSelector,
   type EnrollmentActions,
   type StudentWithProgress,
-} from '@/components/practice'
-import { css } from '../../../styled-system/css'
+} from "@/components/practice";
+import { css } from "../../../styled-system/css";
 
 interface TeacherEnrollmentSectionProps {
-  classroomId: string
+  classroomId: string;
 }
 
 /**
@@ -26,9 +26,9 @@ interface TeacherEnrollmentSectionProps {
  */
 function requestToStudent(
   request: EnrollmentRequestWithRelations,
-  enrollmentStatus: 'pending_teacher' | 'pending_parent'
+  enrollmentStatus: "pending_teacher" | "pending_parent",
 ): StudentWithProgress | null {
-  if (!request.player) return null
+  if (!request.player) return null;
 
   return {
     id: request.player.id,
@@ -50,7 +50,7 @@ function requestToStudent(
       isPresent: false, // Not present in classroom
       enrollmentStatus, // Pending status disables most actions
     },
-  }
+  };
 }
 
 /**
@@ -62,79 +62,88 @@ function requestToStudent(
  *
  * Uses StudentSelector with student tiles for consistent UI.
  */
-export function TeacherEnrollmentSection({ classroomId }: TeacherEnrollmentSectionProps) {
-  const router = useRouter()
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
+export function TeacherEnrollmentSection({
+  classroomId,
+}: TeacherEnrollmentSectionProps) {
+  const router = useRouter();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   // Fetch enrollment requests
   const { data: pendingRequests = [], isLoading: loadingPending } =
-    usePendingEnrollmentRequests(classroomId)
+    usePendingEnrollmentRequests(classroomId);
   const { data: awaitingParent = [], isLoading: loadingAwaiting } =
-    useAwaitingParentApproval(classroomId)
+    useAwaitingParentApproval(classroomId);
 
   // Mutations
-  const approveRequest = useApproveEnrollmentRequest()
-  const denyRequest = useDenyEnrollmentRequest()
+  const approveRequest = useApproveEnrollmentRequest();
+  const denyRequest = useDenyEnrollmentRequest();
 
   // Convert pending requests to students (parent-initiated, awaiting teacher approval)
   const pendingStudents = useMemo(
     () =>
       pendingRequests
-        .map((r) => requestToStudent(r, 'pending_teacher'))
+        .map((r) => requestToStudent(r, "pending_teacher"))
         .filter((s): s is StudentWithProgress => s !== null),
-    [pendingRequests]
-  )
+    [pendingRequests],
+  );
 
   // Convert awaiting parent requests to students (teacher-initiated, awaiting parent approval)
   const awaitingStudents = useMemo(
     () =>
       awaitingParent
-        .map((r) => requestToStudent(r, 'pending_parent'))
+        .map((r) => requestToStudent(r, "pending_parent"))
         .filter((s): s is StudentWithProgress => s !== null),
-    [awaitingParent]
-  )
+    [awaitingParent],
+  );
 
   // Enrollment actions for approve/deny buttons
   const enrollmentActions: EnrollmentActions = useMemo(
     () => ({
       onApprove: (requestId: string) => {
-        approveRequest.mutate({ classroomId, requestId })
+        approveRequest.mutate({ classroomId, requestId });
       },
       onDeny: (requestId: string) => {
-        denyRequest.mutate({ classroomId, requestId })
+        denyRequest.mutate({ classroomId, requestId });
       },
-      approvingId: approveRequest.isPending ? (approveRequest.variables?.requestId ?? null) : null,
-      denyingId: denyRequest.isPending ? (denyRequest.variables?.requestId ?? null) : null,
+      approvingId: approveRequest.isPending
+        ? (approveRequest.variables?.requestId ?? null)
+        : null,
+      denyingId: denyRequest.isPending
+        ? (denyRequest.variables?.requestId ?? null)
+        : null,
     }),
-    [classroomId, approveRequest, denyRequest]
-  )
+    [classroomId, approveRequest, denyRequest],
+  );
 
   // Handle student selection - navigate to their dashboard
   const handleSelectStudent = useCallback(
     (student: StudentWithProgress) => {
-      router.push(`/practice/${student.id}/dashboard`, { scroll: false })
+      router.push(`/practice/${student.id}/dashboard`, { scroll: false });
     },
-    [router]
-  )
+    [router],
+  );
 
   // No-op for toggle selection (not used in this context)
-  const handleToggleSelection = useCallback(() => {}, [])
+  const handleToggleSelection = useCallback(() => {}, []);
 
   // Don't render if no requests
-  const isLoading = loadingPending || loadingAwaiting
-  if (isLoading || (pendingStudents.length === 0 && awaitingStudents.length === 0)) {
-    return null
+  const isLoading = loadingPending || loadingAwaiting;
+  if (
+    isLoading ||
+    (pendingStudents.length === 0 && awaitingStudents.length === 0)
+  ) {
+    return null;
   }
 
   return (
     <div
       data-component="teacher-enrollment-section"
       className={css({
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '24px',
-        marginBottom: '24px',
+        display: "flex",
+        flexDirection: "column",
+        gap: "24px",
+        marginBottom: "24px",
       })}
     >
       {/* Pending Enrollment Requests (parent-initiated, awaiting teacher) */}
@@ -142,39 +151,39 @@ export function TeacherEnrollmentSection({ classroomId }: TeacherEnrollmentSecti
         <section
           data-section="pending-teacher-approvals"
           className={css({
-            padding: '20px',
-            backgroundColor: isDark ? 'yellow.900/20' : 'yellow.50',
-            borderRadius: '16px',
-            border: '2px solid',
-            borderColor: isDark ? 'yellow.700' : 'yellow.200',
+            padding: "20px",
+            backgroundColor: isDark ? "yellow.900/20" : "yellow.50",
+            borderRadius: "16px",
+            border: "2px solid",
+            borderColor: isDark ? "yellow.700" : "yellow.200",
           })}
         >
           <h2
             className={css({
-              fontSize: '1.125rem',
-              fontWeight: 'bold',
-              color: isDark ? 'yellow.300' : 'yellow.700',
-              marginBottom: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
+              fontSize: "1.125rem",
+              fontWeight: "bold",
+              color: isDark ? "yellow.300" : "yellow.700",
+              marginBottom: "8px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
             })}
           >
             <span>📬</span>
             <span>Pending Enrollment Requests</span>
             <span
               className={css({
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '24px',
-                height: '24px',
-                padding: '0 8px',
-                borderRadius: '12px',
-                backgroundColor: isDark ? 'yellow.700' : 'yellow.500',
-                color: 'white',
-                fontSize: '0.8125rem',
-                fontWeight: 'bold',
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: "24px",
+                height: "24px",
+                padding: "0 8px",
+                borderRadius: "12px",
+                backgroundColor: isDark ? "yellow.700" : "yellow.500",
+                color: "white",
+                fontSize: "0.8125rem",
+                fontWeight: "bold",
               })}
             >
               {pendingStudents.length}
@@ -183,9 +192,9 @@ export function TeacherEnrollmentSection({ classroomId }: TeacherEnrollmentSecti
 
           <p
             className={css({
-              fontSize: '0.875rem',
-              color: isDark ? 'yellow.400' : 'yellow.700',
-              marginBottom: '8px',
+              fontSize: "0.875rem",
+              color: isDark ? "yellow.400" : "yellow.700",
+              marginBottom: "8px",
             })}
           >
             Parents have requested to enroll their children in your classroom.
@@ -207,39 +216,39 @@ export function TeacherEnrollmentSection({ classroomId }: TeacherEnrollmentSecti
         <section
           data-section="awaiting-parent-approval"
           className={css({
-            padding: '20px',
-            backgroundColor: isDark ? 'blue.900/20' : 'blue.50',
-            borderRadius: '16px',
-            border: '2px solid',
-            borderColor: isDark ? 'blue.700' : 'blue.200',
+            padding: "20px",
+            backgroundColor: isDark ? "blue.900/20" : "blue.50",
+            borderRadius: "16px",
+            border: "2px solid",
+            borderColor: isDark ? "blue.700" : "blue.200",
           })}
         >
           <h2
             className={css({
-              fontSize: '1.125rem',
-              fontWeight: 'bold',
-              color: isDark ? 'blue.300' : 'blue.700',
-              marginBottom: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
+              fontSize: "1.125rem",
+              fontWeight: "bold",
+              color: isDark ? "blue.300" : "blue.700",
+              marginBottom: "8px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
             })}
           >
             <span>⏳</span>
             <span>Awaiting Parent Approval</span>
             <span
               className={css({
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '24px',
-                height: '24px',
-                padding: '0 8px',
-                borderRadius: '12px',
-                backgroundColor: isDark ? 'blue.700' : 'blue.500',
-                color: 'white',
-                fontSize: '0.8125rem',
-                fontWeight: 'bold',
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: "24px",
+                height: "24px",
+                padding: "0 8px",
+                borderRadius: "12px",
+                backgroundColor: isDark ? "blue.700" : "blue.500",
+                color: "white",
+                fontSize: "0.8125rem",
+                fontWeight: "bold",
               })}
             >
               {awaitingStudents.length}
@@ -248,12 +257,13 @@ export function TeacherEnrollmentSection({ classroomId }: TeacherEnrollmentSecti
 
           <p
             className={css({
-              fontSize: '0.875rem',
-              color: isDark ? 'blue.400' : 'blue.700',
-              marginBottom: '8px',
+              fontSize: "0.875rem",
+              color: isDark ? "blue.400" : "blue.700",
+              marginBottom: "8px",
             })}
           >
-            You requested enrollment for these students. Waiting for parent approval.
+            You requested enrollment for these students. Waiting for parent
+            approval.
           </p>
 
           {/* No enrollmentActions - just show tiles without approve/deny buttons */}
@@ -267,5 +277,5 @@ export function TeacherEnrollmentSection({ classroomId }: TeacherEnrollmentSecti
         </section>
       )}
     </div>
-  )
+  );
 }

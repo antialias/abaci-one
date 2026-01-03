@@ -1,68 +1,76 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useAbacusSettings } from '@/hooks/useAbacusSettings'
-import { useCaptureContext } from '../../contexts/CaptureContext'
-import { getRelationColor, getRelationOperator } from '../../constants/captureRelations'
-import type { Piece } from '../../types'
-import { AnimatedHelperPiece } from './AnimatedHelperPiece'
+import { useState } from "react";
+import { useAbacusSettings } from "@/hooks/useAbacusSettings";
+import { useCaptureContext } from "../../contexts/CaptureContext";
+import {
+  getRelationColor,
+  getRelationOperator,
+} from "../../constants/captureRelations";
+import type { Piece } from "../../types";
+import { AnimatedHelperPiece } from "./AnimatedHelperPiece";
 
 interface HelperSelectionOptionsProps {
-  helpers: Array<{ piece: Piece; boardPos: { x: number; y: number } }>
+  helpers: Array<{ piece: Piece; boardPos: { x: number; y: number } }>;
 }
 
 /**
  * Helper piece selection - pieces fly from board to selection ring
  * Hovering over a helper shows a preview of the number bond
  */
-export function HelperSelectionOptions({ helpers }: HelperSelectionOptionsProps) {
-  const { layout, pieces, selectedRelation, closing, selectHelper } = useCaptureContext()
-  const { targetPos, cellSize, gap, padding } = layout
-  const { mover: moverPiece, target: targetPiece } = pieces
-  const relation = selectedRelation!
+export function HelperSelectionOptions({
+  helpers,
+}: HelperSelectionOptionsProps) {
+  const { layout, pieces, selectedRelation, closing, selectHelper } =
+    useCaptureContext();
+  const { targetPos, cellSize, gap, padding } = layout;
+  const { mover: moverPiece, target: targetPiece } = pieces;
+  const relation = selectedRelation!;
 
   // Get abacus settings
-  const { data: abacusSettings } = useAbacusSettings()
-  const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
-  const [hoveredHelperId, setHoveredHelperId] = useState<string | null>(null)
-  const maxRadius = cellSize * 1.2
-  const angleStep = helpers.length > 1 ? 360 / helpers.length : 0
+  const { data: abacusSettings } = useAbacusSettings();
+  const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false;
+  const [hoveredHelperId, setHoveredHelperId] = useState<string | null>(null);
+  const maxRadius = cellSize * 1.2;
+  const angleStep = helpers.length > 1 ? 360 / helpers.length : 0;
 
-  console.log('[HelperSelectionOptions] targetPos:', targetPos)
-  console.log('[HelperSelectionOptions] cellSize:', cellSize)
-  console.log('[HelperSelectionOptions] maxRadius:', maxRadius)
-  console.log('[HelperSelectionOptions] angleStep:', angleStep)
-  console.log('[HelperSelectionOptions] helpers.length:', helpers.length)
+  console.log("[HelperSelectionOptions] targetPos:", targetPos);
+  console.log("[HelperSelectionOptions] cellSize:", cellSize);
+  console.log("[HelperSelectionOptions] maxRadius:", maxRadius);
+  console.log("[HelperSelectionOptions] angleStep:", angleStep);
+  console.log("[HelperSelectionOptions] helpers.length:", helpers.length);
 
   // Find the hovered helper and its ring position
-  const hoveredHelperData = helpers.find((h) => h.piece.id === hoveredHelperId)
-  const hoveredHelperIndex = helpers.findIndex((h) => h.piece.id === hoveredHelperId)
-  let hoveredHelperRingPos = null
+  const hoveredHelperData = helpers.find((h) => h.piece.id === hoveredHelperId);
+  const hoveredHelperIndex = helpers.findIndex(
+    (h) => h.piece.id === hoveredHelperId,
+  );
+  let hoveredHelperRingPos = null;
   if (hoveredHelperIndex !== -1) {
-    const angle = hoveredHelperIndex * angleStep
-    const rad = (angle * Math.PI) / 180
+    const angle = hoveredHelperIndex * angleStep;
+    const rad = (angle * Math.PI) / 180;
     hoveredHelperRingPos = {
       x: targetPos.x + Math.cos(rad) * maxRadius,
       y: targetPos.y + Math.sin(rad) * maxRadius,
-    }
+    };
   }
 
-  const color = getRelationColor(relation)
-  const operator = getRelationOperator(relation)
+  const color = getRelationColor(relation);
+  const operator = getRelationOperator(relation);
 
   return (
     <g>
       {helpers.map(({ piece, boardPos }, index) => {
-        const angle = index * angleStep
-        const rad = (angle * Math.PI) / 180
+        const angle = index * angleStep;
+        const rad = (angle * Math.PI) / 180;
 
         // Target position in ring
-        const ringX = targetPos.x + Math.cos(rad) * maxRadius
-        const ringY = targetPos.y + Math.sin(rad) * maxRadius
+        const ringX = targetPos.x + Math.cos(rad) * maxRadius;
+        const ringY = targetPos.y + Math.sin(rad) * maxRadius;
 
         console.log(
-          `[HelperSelectionOptions] piece ${piece.id} (${piece.square}): index=${index}, angle=${angle}°, boardPos=(${boardPos.x}, ${boardPos.y}), ringPos=(${ringX}, ${ringY})`
-        )
+          `[HelperSelectionOptions] piece ${piece.id} (${piece.square}): index=${index}, angle=${angle}°, boardPos=(${boardPos.x}, ${boardPos.y}), ringPos=(${ringX}, ${ringY})`,
+        );
 
         return (
           <AnimatedHelperPiece
@@ -77,7 +85,7 @@ export function HelperSelectionOptions({ helpers }: HelperSelectionOptionsProps)
             useNativeAbacusNumbers={useNativeAbacusNumbers}
             onHover={setHoveredHelperId}
           />
-        )
+        );
       })}
 
       {/* Show number bond preview when hovering over a helper - draw triangle between actual pieces */}
@@ -85,26 +93,26 @@ export function HelperSelectionOptions({ helpers }: HelperSelectionOptionsProps)
         <g>
           {(() => {
             // Use actual positions of all three pieces
-            const helperPos = hoveredHelperRingPos // Helper is in the ring
-            const moverBoardPos = hoveredHelperData.boardPos // Mover is on the board at its current position
-            const targetBoardPos = targetPos // Target is on the board at capture position
+            const helperPos = hoveredHelperRingPos; // Helper is in the ring
+            const moverBoardPos = hoveredHelperData.boardPos; // Mover is on the board at its current position
+            const targetBoardPos = targetPos; // Target is on the board at capture position
 
             // Calculate positions from square coordinates
-            const file = moverPiece.square.charCodeAt(0) - 65
-            const rank = Number.parseInt(moverPiece.square.slice(1), 10)
-            const row = 8 - rank
+            const file = moverPiece.square.charCodeAt(0) - 65;
+            const rank = Number.parseInt(moverPiece.square.slice(1), 10);
+            const row = 8 - rank;
             const moverPos = {
               x: padding + file * (cellSize + gap) + cellSize / 2,
               y: padding + row * (cellSize + gap) + cellSize / 2,
-            }
+            };
 
-            const targetFile = targetPiece.square.charCodeAt(0) - 65
-            const targetRank = Number.parseInt(targetPiece.square.slice(1), 10)
-            const targetRow = 8 - targetRank
+            const targetFile = targetPiece.square.charCodeAt(0) - 65;
+            const targetRank = Number.parseInt(targetPiece.square.slice(1), 10);
+            const targetRow = 8 - targetRank;
             const targetBoardPosition = {
               x: padding + targetFile * (cellSize + gap) + cellSize / 2,
               y: padding + targetRow * (cellSize + gap) + cellSize / 2,
-            }
+            };
 
             return (
               <>
@@ -153,10 +161,10 @@ export function HelperSelectionOptions({ helpers }: HelperSelectionOptionsProps)
 
                 {/* No cloned pieces - using actual pieces already on board/ring */}
               </>
-            )
+            );
           })()}
         </g>
       )}
     </g>
-  )
+  );
 }

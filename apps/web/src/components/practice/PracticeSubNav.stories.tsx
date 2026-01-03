@@ -1,131 +1,148 @@
-import type { Meta, StoryObj } from '@storybook/react'
-import { ThemeProvider } from '@/contexts/ThemeContext'
-import type { ProblemSlot, SessionPart, SlotResult } from '@/db/schema/session-plans'
-import { css } from '../../../styled-system/css'
-import { PracticeSubNav, type SessionHudData, type TimingData } from './PracticeSubNav'
+import type { Meta, StoryObj } from "@storybook/react";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import type {
+  ProblemSlot,
+  SessionPart,
+  SlotResult,
+} from "@/db/schema/session-plans";
+import { css } from "../../../styled-system/css";
+import {
+  PracticeSubNav,
+  type SessionHudData,
+  type TimingData,
+} from "./PracticeSubNav";
 
 const meta: Meta<typeof PracticeSubNav> = {
-  title: 'Practice/PracticeSubNav',
+  title: "Practice/PracticeSubNav",
   component: PracticeSubNav,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
   },
-  tags: ['autodocs'],
-}
+  tags: ["autodocs"],
+};
 
-export default meta
-type Story = StoryObj<typeof PracticeSubNav>
+export default meta;
+type Story = StoryObj<typeof PracticeSubNav>;
 
 // =============================================================================
 // Mock Data Helpers
 // =============================================================================
 
 const mockStudent = {
-  id: 'student-1',
-  name: 'Sonia',
-  emoji: '🦄',
-  color: '#E879F9',
-}
+  id: "student-1",
+  name: "Sonia",
+  emoji: "🦄",
+  color: "#E879F9",
+};
 
 const mockStudentLongName = {
-  id: 'student-2',
-  name: 'Alexander the Great',
-  emoji: '👑',
-  color: '#60A5FA',
-}
+  id: "student-2",
+  name: "Alexander the Great",
+  emoji: "👑",
+  color: "#60A5FA",
+};
 
-function createMockSlots(count: number, purpose: ProblemSlot['purpose']): ProblemSlot[] {
+function createMockSlots(
+  count: number,
+  purpose: ProblemSlot["purpose"],
+): ProblemSlot[] {
   return Array.from({ length: count }, (_, i) => ({
     index: i,
     purpose,
     constraints: {},
-  }))
+  }));
 }
 
 function createMockParts(): SessionPart[] {
   return [
     {
       partNumber: 1,
-      type: 'abacus',
-      format: 'vertical',
+      type: "abacus",
+      format: "vertical",
       useAbacus: true,
-      slots: createMockSlots(5, 'focus'),
+      slots: createMockSlots(5, "focus"),
       estimatedMinutes: 5,
     },
     {
       partNumber: 2,
-      type: 'visualization',
-      format: 'vertical',
+      type: "visualization",
+      format: "vertical",
       useAbacus: false,
-      slots: createMockSlots(5, 'reinforce'),
+      slots: createMockSlots(5, "reinforce"),
       estimatedMinutes: 4,
     },
     {
       partNumber: 3,
-      type: 'linear',
-      format: 'linear',
+      type: "linear",
+      format: "linear",
       useAbacus: false,
-      slots: createMockSlots(5, 'review'),
+      slots: createMockSlots(5, "review"),
       estimatedMinutes: 3,
     },
-  ]
+  ];
 }
 
 function createMockResults(
   count: number,
-  partType: 'abacus' | 'visualization' | 'linear'
+  partType: "abacus" | "visualization" | "linear",
 ): SlotResult[] {
-  const partNumber = partType === 'abacus' ? 1 : partType === 'visualization' ? 2 : 3
+  const partNumber =
+    partType === "abacus" ? 1 : partType === "visualization" ? 2 : 3;
   return Array.from({ length: count }, (_, i) => ({
     partNumber: partNumber as 1 | 2 | 3,
     slotIndex: i % 5,
     problem: {
       terms: [3, 4, 2],
       answer: 9,
-      skillsRequired: ['basic.directAddition'],
+      skillsRequired: ["basic.directAddition"],
     },
     studentAnswer: 9,
     isCorrect: Math.random() > 0.15,
     responseTimeMs: 2500 + Math.random() * 3000,
-    skillsExercised: ['basic.directAddition'],
-    usedOnScreenAbacus: partType === 'abacus',
+    skillsExercised: ["basic.directAddition"],
+    usedOnScreenAbacus: partType === "abacus",
     timestamp: new Date(Date.now() - (count - i) * 30000),
     hadHelp: false,
     incorrectAttempts: 0,
-  }))
+  }));
 }
 
 function createTimingData(
   resultCount: number,
-  partType: 'abacus' | 'visualization' | 'linear'
+  partType: "abacus" | "visualization" | "linear",
 ): TimingData {
   return {
     startTime: Date.now() - 5000, // Started 5 seconds ago
     accumulatedPauseMs: 0,
     results: createMockResults(resultCount, partType),
     parts: createMockParts(),
-  }
+  };
 }
 
 function createSessionHud(config: {
-  isPaused?: boolean
-  partType: 'abacus' | 'visualization' | 'linear'
-  completedProblems: number
-  totalProblems: number
-  timing?: TimingData
-  health?: { overall: 'good' | 'warning' | 'struggling'; accuracy: number }
-  isBrowseMode?: boolean
+  isPaused?: boolean;
+  partType: "abacus" | "visualization" | "linear";
+  completedProblems: number;
+  totalProblems: number;
+  timing?: TimingData;
+  health?: { overall: "good" | "warning" | "struggling"; accuracy: number };
+  isBrowseMode?: boolean;
 }): SessionHudData {
-  const partNumber = config.partType === 'abacus' ? 1 : config.partType === 'visualization' ? 2 : 3
-  const parts = createMockParts()
-  const currentPartIndex = partNumber - 1
+  const partNumber =
+    config.partType === "abacus"
+      ? 1
+      : config.partType === "visualization"
+        ? 2
+        : 3;
+  const parts = createMockParts();
+  const currentPartIndex = partNumber - 1;
 
   // Create mock results based on completedProblems
-  const results: SlotResult[] = []
-  let remaining = config.completedProblems
+  const results: SlotResult[] = [];
+  let remaining = config.completedProblems;
   for (let pIdx = 0; pIdx < parts.length && remaining > 0; pIdx++) {
-    const part = parts[pIdx]
-    const slotsToFill = Math.min(remaining, part.slots.length)
+    const part = parts[pIdx];
+    const slotsToFill = Math.min(remaining, part.slots.length);
     for (let sIdx = 0; sIdx < slotsToFill; sIdx++) {
       results.push({
         partNumber: (pIdx + 1) as 1 | 2 | 3,
@@ -133,19 +150,19 @@ function createSessionHud(config: {
         problem: {
           terms: [3, 4],
           answer: 7,
-          skillsRequired: ['basic.directAddition'],
+          skillsRequired: ["basic.directAddition"],
         },
         studentAnswer: 7,
         isCorrect: Math.random() > 0.15,
         responseTimeMs: 2500 + Math.random() * 3000,
-        skillsExercised: ['basic.directAddition'],
+        skillsExercised: ["basic.directAddition"],
         usedOnScreenAbacus: pIdx === 0,
         timestamp: new Date(),
         hadHelp: false,
         incorrectAttempts: 0,
-      })
+      });
     }
-    remaining -= slotsToFill
+    remaining -= slotsToFill;
   }
 
   return {
@@ -164,12 +181,12 @@ function createSessionHud(config: {
     sessionHealth: config.health,
     timing: config.timing,
     isBrowseMode: config.isBrowseMode ?? false,
-    onPause: () => console.log('Pause clicked'),
-    onResume: () => console.log('Resume clicked'),
-    onEndEarly: () => console.log('End early clicked'),
-    onToggleBrowse: () => console.log('Toggle browse clicked'),
+    onPause: () => console.log("Pause clicked"),
+    onResume: () => console.log("Resume clicked"),
+    onEndEarly: () => console.log("End early clicked"),
+    onToggleBrowse: () => console.log("Toggle browse clicked"),
     onBrowseNavigate: (index) => console.log(`Navigate to problem ${index}`),
-  }
+  };
 }
 
 // =============================================================================
@@ -180,39 +197,39 @@ function NavWrapper({
   children,
   darkMode = false,
 }: {
-  children: React.ReactNode
-  darkMode?: boolean
+  children: React.ReactNode;
+  darkMode?: boolean;
 }) {
   return (
     <ThemeProvider>
       <div
         className={css({
-          minHeight: '300px',
-          backgroundColor: darkMode ? '#1a1a2e' : 'gray.50',
-          paddingTop: '80px', // Space for fake main nav
+          minHeight: "300px",
+          backgroundColor: darkMode ? "#1a1a2e" : "gray.50",
+          paddingTop: "80px", // Space for fake main nav
         })}
       >
         {/* Fake main nav placeholder */}
         <div
           className={css({
-            position: 'fixed',
+            position: "fixed",
             top: 0,
             left: 0,
             right: 0,
-            height: '80px',
-            backgroundColor: darkMode ? 'gray.900' : 'white',
-            borderBottom: '1px solid',
-            borderColor: darkMode ? 'gray.700' : 'gray.200',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            height: "80px",
+            backgroundColor: darkMode ? "gray.900" : "white",
+            borderBottom: "1px solid",
+            borderColor: darkMode ? "gray.700" : "gray.200",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             zIndex: 100,
           })}
         >
           <span
             className={css({
-              color: darkMode ? 'gray.400' : 'gray.500',
-              fontSize: '0.875rem',
+              color: darkMode ? "gray.400" : "gray.500",
+              fontSize: "0.875rem",
             })}
           >
             Main Navigation Bar
@@ -220,13 +237,13 @@ function NavWrapper({
         </div>
         {children}
         {/* Content placeholder */}
-        <div className={css({ padding: '2rem' })}>
+        <div className={css({ padding: "2rem" })}>
           <div
             className={css({
-              padding: '2rem',
-              backgroundColor: darkMode ? 'gray.800' : 'white',
-              borderRadius: '8px',
-              color: darkMode ? 'gray.300' : 'gray.600',
+              padding: "2rem",
+              backgroundColor: darkMode ? "gray.800" : "white",
+              borderRadius: "8px",
+              color: darkMode ? "gray.300" : "gray.600",
             })}
           >
             Page content goes here...
@@ -234,7 +251,7 @@ function NavWrapper({
         </div>
       </div>
     </ThemeProvider>
-  )
+  );
 }
 
 // =============================================================================
@@ -247,7 +264,7 @@ export const DashboardDefault: Story = {
       <PracticeSubNav student={mockStudent} pageContext="dashboard" />
     </NavWrapper>
   ),
-}
+};
 
 export const DashboardWithBannerSlot: Story = {
   render: () => (
@@ -255,7 +272,7 @@ export const DashboardWithBannerSlot: Story = {
       <PracticeSubNav student={mockStudent} pageContext="dashboard" />
     </NavWrapper>
   ),
-}
+};
 
 export const DashboardLongName: Story = {
   render: () => (
@@ -263,7 +280,7 @@ export const DashboardLongName: Story = {
       <PracticeSubNav student={mockStudentLongName} pageContext="dashboard" />
     </NavWrapper>
   ),
-}
+};
 
 export const ConfigurePage: Story = {
   render: () => (
@@ -271,7 +288,7 @@ export const ConfigurePage: Story = {
       <PracticeSubNav student={mockStudent} pageContext="configure" />
     </NavWrapper>
   ),
-}
+};
 
 export const SummaryPage: Story = {
   render: () => (
@@ -279,7 +296,7 @@ export const SummaryPage: Story = {
       <PracticeSubNav student={mockStudent} pageContext="summary" />
     </NavWrapper>
   ),
-}
+};
 
 // =============================================================================
 // Active Session - Part Types
@@ -292,15 +309,15 @@ export const SessionAbacusPart: Story = {
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'abacus',
+          partType: "abacus",
           completedProblems: 2,
           totalProblems: 15,
-          timing: createTimingData(2, 'abacus'),
+          timing: createTimingData(2, "abacus"),
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const SessionVisualizationPart: Story = {
   render: () => (
@@ -309,15 +326,15 @@ export const SessionVisualizationPart: Story = {
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'visualization',
+          partType: "visualization",
           completedProblems: 7,
           totalProblems: 15,
-          timing: createTimingData(7, 'visualization'),
+          timing: createTimingData(7, "visualization"),
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const SessionLinearPart: Story = {
   render: () => (
@@ -326,15 +343,15 @@ export const SessionLinearPart: Story = {
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'linear',
+          partType: "linear",
           completedProblems: 12,
           totalProblems: 15,
-          timing: createTimingData(12, 'linear'),
+          timing: createTimingData(12, "linear"),
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 // =============================================================================
 // Active Session - Progress States
@@ -347,15 +364,15 @@ export const SessionJustStarted: Story = {
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'abacus',
+          partType: "abacus",
           completedProblems: 0,
           totalProblems: 15,
-          timing: createTimingData(0, 'abacus'),
+          timing: createTimingData(0, "abacus"),
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const SessionMidway: Story = {
   render: () => (
@@ -364,16 +381,16 @@ export const SessionMidway: Story = {
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'visualization',
+          partType: "visualization",
           completedProblems: 8,
           totalProblems: 15,
-          timing: createTimingData(8, 'visualization'),
-          health: { overall: 'good', accuracy: 0.88 },
+          timing: createTimingData(8, "visualization"),
+          health: { overall: "good", accuracy: 0.88 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const SessionNearEnd: Story = {
   render: () => (
@@ -382,93 +399,93 @@ export const SessionNearEnd: Story = {
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'linear',
+          partType: "linear",
           completedProblems: 14,
           totalProblems: 15,
-          timing: createTimingData(14, 'linear'),
-          health: { overall: 'good', accuracy: 0.93 },
+          timing: createTimingData(14, "linear"),
+          health: { overall: "good", accuracy: 0.93 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 // =============================================================================
 // Active Session - Timing Display States
 // =============================================================================
 
 export const TimingNoData: Story = {
-  name: 'Timing: No Prior Data (First Problem)',
+  name: "Timing: No Prior Data (First Problem)",
   render: () => (
     <NavWrapper>
       <PracticeSubNav
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'abacus',
+          partType: "abacus",
           completedProblems: 0,
           totalProblems: 15,
-          timing: createTimingData(0, 'abacus'),
+          timing: createTimingData(0, "abacus"),
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const TimingFewSamples: Story = {
-  name: 'Timing: Few Samples (No SpeedMeter)',
+  name: "Timing: Few Samples (No SpeedMeter)",
   render: () => (
     <NavWrapper>
       <PracticeSubNav
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'abacus',
+          partType: "abacus",
           completedProblems: 2,
           totalProblems: 15,
-          timing: createTimingData(2, 'abacus'),
+          timing: createTimingData(2, "abacus"),
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const TimingWithSpeedMeter: Story = {
-  name: 'Timing: With SpeedMeter (3+ Samples)',
+  name: "Timing: With SpeedMeter (3+ Samples)",
   render: () => (
     <NavWrapper>
       <PracticeSubNav
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'abacus',
+          partType: "abacus",
           completedProblems: 5,
           totalProblems: 15,
-          timing: createTimingData(5, 'abacus'),
+          timing: createTimingData(5, "abacus"),
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const TimingManyDataPoints: Story = {
-  name: 'Timing: Many Data Points',
+  name: "Timing: Many Data Points",
   render: () => (
     <NavWrapper>
       <PracticeSubNav
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'visualization',
+          partType: "visualization",
           completedProblems: 10,
           totalProblems: 15,
-          timing: createTimingData(10, 'visualization'),
-          health: { overall: 'good', accuracy: 0.9 },
+          timing: createTimingData(10, "visualization"),
+          health: { overall: "good", accuracy: 0.9 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 // =============================================================================
 // Active Session - Health States
@@ -481,52 +498,52 @@ export const HealthGood: Story = {
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'abacus',
+          partType: "abacus",
           completedProblems: 6,
           totalProblems: 15,
-          timing: createTimingData(6, 'abacus'),
-          health: { overall: 'good', accuracy: 0.92 },
+          timing: createTimingData(6, "abacus"),
+          health: { overall: "good", accuracy: 0.92 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const HealthWarning: Story = {
   render: () => (
     <NavWrapper>
       <PracticeSubNav
-        student={{ ...mockStudent, emoji: '🤔', color: '#FBBF24' }}
+        student={{ ...mockStudent, emoji: "🤔", color: "#FBBF24" }}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'visualization',
+          partType: "visualization",
           completedProblems: 8,
           totalProblems: 15,
-          timing: createTimingData(8, 'visualization'),
-          health: { overall: 'warning', accuracy: 0.75 },
+          timing: createTimingData(8, "visualization"),
+          health: { overall: "warning", accuracy: 0.75 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const HealthStruggling: Story = {
   render: () => (
     <NavWrapper>
       <PracticeSubNav
-        student={{ ...mockStudent, emoji: '😅', color: '#F87171' }}
+        student={{ ...mockStudent, emoji: "😅", color: "#F87171" }}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'linear',
+          partType: "linear",
           completedProblems: 5,
           totalProblems: 15,
-          timing: createTimingData(5, 'linear'),
-          health: { overall: 'struggling', accuracy: 0.55 },
+          timing: createTimingData(5, "linear"),
+          health: { overall: "struggling", accuracy: 0.55 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 // =============================================================================
 // Paused State
@@ -540,16 +557,16 @@ export const SessionPaused: Story = {
         pageContext="session"
         sessionHud={createSessionHud({
           isPaused: true,
-          partType: 'abacus',
+          partType: "abacus",
           completedProblems: 4,
           totalProblems: 15,
-          timing: createTimingData(4, 'abacus'),
-          health: { overall: 'good', accuracy: 0.85 },
+          timing: createTimingData(4, "abacus"),
+          health: { overall: "good", accuracy: 0.85 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 // =============================================================================
 // Dark Mode Variants
@@ -561,7 +578,7 @@ export const DarkModeDashboard: Story = {
       <PracticeSubNav student={mockStudent} pageContext="dashboard" />
     </NavWrapper>
   ),
-}
+};
 
 export const DarkModeSession: Story = {
   render: () => (
@@ -570,34 +587,34 @@ export const DarkModeSession: Story = {
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'visualization',
+          partType: "visualization",
           completedProblems: 7,
           totalProblems: 15,
-          timing: createTimingData(7, 'visualization'),
-          health: { overall: 'good', accuracy: 0.88 },
+          timing: createTimingData(7, "visualization"),
+          health: { overall: "good", accuracy: 0.88 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const DarkModeWithWarning: Story = {
   render: () => (
     <NavWrapper darkMode>
       <PracticeSubNav
-        student={{ ...mockStudent, emoji: '🌙', color: '#818CF8' }}
+        student={{ ...mockStudent, emoji: "🌙", color: "#818CF8" }}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'linear',
+          partType: "linear",
           completedProblems: 10,
           totalProblems: 15,
-          timing: createTimingData(10, 'linear'),
-          health: { overall: 'warning', accuracy: 0.72 },
+          timing: createTimingData(10, "linear"),
+          health: { overall: "warning", accuracy: 0.72 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 // =============================================================================
 // Mobile Viewport Stories
@@ -606,7 +623,7 @@ export const DarkModeWithWarning: Story = {
 export const MobileSession: Story = {
   parameters: {
     viewport: {
-      defaultViewport: 'mobile1',
+      defaultViewport: "mobile1",
     },
   },
   render: () => (
@@ -615,21 +632,21 @@ export const MobileSession: Story = {
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'abacus',
+          partType: "abacus",
           completedProblems: 5,
           totalProblems: 15,
-          timing: createTimingData(5, 'abacus'),
-          health: { overall: 'good', accuracy: 0.9 },
+          timing: createTimingData(5, "abacus"),
+          health: { overall: "good", accuracy: 0.9 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const MobileSessionLongName: Story = {
   parameters: {
     viewport: {
-      defaultViewport: 'mobile1',
+      defaultViewport: "mobile1",
     },
   },
   render: () => (
@@ -638,21 +655,21 @@ export const MobileSessionLongName: Story = {
         student={mockStudentLongName}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'visualization',
+          partType: "visualization",
           completedProblems: 8,
           totalProblems: 15,
-          timing: createTimingData(8, 'visualization'),
-          health: { overall: 'warning', accuracy: 0.78 },
+          timing: createTimingData(8, "visualization"),
+          health: { overall: "warning", accuracy: 0.78 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const MobileDashboard: Story = {
   parameters: {
     viewport: {
-      defaultViewport: 'mobile1',
+      defaultViewport: "mobile1",
     },
   },
   render: () => (
@@ -660,12 +677,12 @@ export const MobileDashboard: Story = {
       <PracticeSubNav student={mockStudent} pageContext="dashboard" />
     </NavWrapper>
   ),
-}
+};
 
 export const MobileDarkMode: Story = {
   parameters: {
     viewport: {
-      defaultViewport: 'mobile1',
+      defaultViewport: "mobile1",
     },
   },
   render: () => (
@@ -674,16 +691,16 @@ export const MobileDarkMode: Story = {
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'linear',
+          partType: "linear",
           completedProblems: 12,
           totalProblems: 15,
-          timing: createTimingData(12, 'linear'),
-          health: { overall: 'good', accuracy: 0.92 },
+          timing: createTimingData(12, "linear"),
+          health: { overall: "good", accuracy: 0.92 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 // =============================================================================
 // Tablet Viewport Stories
@@ -692,7 +709,7 @@ export const MobileDarkMode: Story = {
 export const TabletSession: Story = {
   parameters: {
     viewport: {
-      defaultViewport: 'tablet',
+      defaultViewport: "tablet",
     },
   },
   render: () => (
@@ -701,16 +718,16 @@ export const TabletSession: Story = {
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'abacus',
+          partType: "abacus",
           completedProblems: 6,
           totalProblems: 15,
-          timing: createTimingData(6, 'abacus'),
-          health: { overall: 'good', accuracy: 0.88 },
+          timing: createTimingData(6, "abacus"),
+          health: { overall: "good", accuracy: 0.88 },
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 // =============================================================================
 // Different Students
@@ -719,29 +736,32 @@ export const TabletSession: Story = {
 export const DifferentStudents: Story = {
   render: () => {
     const students = [
-      { id: '1', name: 'Luna', emoji: '🌙', color: '#818CF8' },
-      { id: '2', name: 'Max', emoji: '🚀', color: '#60A5FA' },
-      { id: '3', name: 'Kai', emoji: '🌊', color: '#2DD4BF' },
-      { id: '4', name: 'Nova', emoji: '✨', color: '#FBBF24' },
-    ]
+      { id: "1", name: "Luna", emoji: "🌙", color: "#818CF8" },
+      { id: "2", name: "Max", emoji: "🚀", color: "#60A5FA" },
+      { id: "3", name: "Kai", emoji: "🌊", color: "#2DD4BF" },
+      { id: "4", name: "Nova", emoji: "✨", color: "#FBBF24" },
+    ];
 
     return (
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '0' })}>
+      <div
+        className={css({ display: "flex", flexDirection: "column", gap: "0" })}
+      >
         {students.map((student, i) => (
           <NavWrapper key={student.id}>
             <PracticeSubNav
               student={student}
               pageContext="session"
               sessionHud={createSessionHud({
-                partType: i === 0 ? 'abacus' : i === 1 ? 'visualization' : 'linear',
+                partType:
+                  i === 0 ? "abacus" : i === 1 ? "visualization" : "linear",
                 completedProblems: 3 + i * 3,
                 totalProblems: 15,
                 timing: createTimingData(
                   3 + i * 3,
-                  i === 0 ? 'abacus' : i === 1 ? 'visualization' : 'linear'
+                  i === 0 ? "abacus" : i === 1 ? "visualization" : "linear",
                 ),
                 health: {
-                  overall: i < 2 ? 'good' : i === 2 ? 'warning' : 'good',
+                  overall: i < 2 ? "good" : i === 2 ? "warning" : "good",
                   accuracy: 0.85 - i * 0.05,
                 },
               })}
@@ -749,23 +769,23 @@ export const DifferentStudents: Story = {
           </NavWrapper>
         ))}
       </div>
-    )
+    );
   },
-}
+};
 
 // =============================================================================
 // Edge Cases
 // =============================================================================
 
 export const NoTimingData: Story = {
-  name: 'Edge: No Timing Data',
+  name: "Edge: No Timing Data",
   render: () => (
     <NavWrapper>
       <PracticeSubNav
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'abacus',
+          partType: "abacus",
           completedProblems: 5,
           totalProblems: 15,
           // No timing data
@@ -773,42 +793,42 @@ export const NoTimingData: Story = {
       />
     </NavWrapper>
   ),
-}
+};
 
 export const NoHealthData: Story = {
-  name: 'Edge: No Health Data',
+  name: "Edge: No Health Data",
   render: () => (
     <NavWrapper>
       <PracticeSubNav
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'abacus',
+          partType: "abacus",
           completedProblems: 5,
           totalProblems: 15,
-          timing: createTimingData(5, 'abacus'),
+          timing: createTimingData(5, "abacus"),
           // No health data
         })}
       />
     </NavWrapper>
   ),
-}
+};
 
 export const LargeSessionCount: Story = {
-  name: 'Edge: Large Problem Count',
+  name: "Edge: Large Problem Count",
   render: () => (
     <NavWrapper>
       <PracticeSubNav
         student={mockStudent}
         pageContext="session"
         sessionHud={createSessionHud({
-          partType: 'visualization',
+          partType: "visualization",
           completedProblems: 47,
           totalProblems: 100,
-          timing: createTimingData(20, 'visualization'),
-          health: { overall: 'good', accuracy: 0.94 },
+          timing: createTimingData(20, "visualization"),
+          health: { overall: "good", accuracy: 0.94 },
         })}
       />
     </NavWrapper>
   ),
-}
+};

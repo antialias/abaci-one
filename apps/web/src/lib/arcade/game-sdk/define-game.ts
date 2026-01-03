@@ -11,8 +11,8 @@ import type {
   GameProviderComponent,
   GameState,
   GameValidator,
-} from './types'
-import type { GameManifest } from '../manifest-schema'
+} from "./types";
+import type { GameManifest } from "../manifest-schema";
 
 /**
  * Options for defining a game
@@ -23,22 +23,22 @@ export interface DefineGameOptions<
   TMove extends GameMove,
 > {
   /** Game manifest (loaded from game.yaml) */
-  manifest: GameManifest
+  manifest: GameManifest;
 
   /** React provider component */
-  Provider: GameProviderComponent
+  Provider: GameProviderComponent;
 
   /** Main game UI component */
-  GameComponent: GameComponent
+  GameComponent: GameComponent;
 
   /** Server-side validator */
-  validator: GameValidator<TState, TMove>
+  validator: GameValidator<TState, TMove>;
 
   /** Default configuration for the game */
-  defaultConfig: TConfig
+  defaultConfig: TConfig;
 
   /** Optional: Runtime config validation function */
-  validateConfig?: (config: unknown) => config is TConfig
+  validateConfig?: (config: unknown) => config is TConfig;
 }
 
 /**
@@ -65,12 +65,21 @@ export function defineGame<
   TConfig extends GameConfig,
   TState extends GameState,
   TMove extends GameMove,
->(options: DefineGameOptions<TConfig, TState, TMove>): GameDefinition<TConfig, TState, TMove> {
-  const { manifest, Provider, GameComponent, validator, defaultConfig, validateConfig } = options
+>(
+  options: DefineGameOptions<TConfig, TState, TMove>,
+): GameDefinition<TConfig, TState, TMove> {
+  const {
+    manifest,
+    Provider,
+    GameComponent,
+    validator,
+    defaultConfig,
+    validateConfig,
+  } = options;
 
   // Validate that manifest.name matches the game identifier
   if (!manifest.name) {
-    throw new Error('Game manifest must have a "name" field')
+    throw new Error('Game manifest must have a "name" field');
   }
 
   return {
@@ -80,5 +89,5 @@ export function defineGame<
     validator,
     defaultConfig,
     validateConfig,
-  }
+  };
 }

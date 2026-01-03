@@ -1,6 +1,6 @@
-import { db } from '@/db'
-import { players } from '@/db/schema'
-import { BktSettingsClient } from './BktSettingsClient'
+import { db } from "@/db";
+import { players } from "@/db/schema";
+import { BktSettingsClient } from "./BktSettingsClient";
 
 /**
  * Admin page for configuring BKT confidence threshold.
@@ -14,7 +14,7 @@ export default async function BktSettingsPage() {
   const allStudents = await db
     .select({ id: players.id, name: players.name })
     .from(players)
-    .orderBy(players.name)
+    .orderBy(players.name);
 
-  return <BktSettingsClient students={allStudents} />
+  return <BktSettingsClient students={allStudents} />;
 }

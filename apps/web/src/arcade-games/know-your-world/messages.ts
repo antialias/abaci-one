@@ -4,13 +4,13 @@
  */
 
 // Import existing locale files
-import en from './i18n/locales/en.json'
-import de from './i18n/locales/de.json'
-import es from './i18n/locales/es.json'
-import goh from './i18n/locales/goh.json'
-import hi from './i18n/locales/hi.json'
-import ja from './i18n/locales/ja.json'
-import la from './i18n/locales/la.json'
+import en from "./i18n/locales/en.json";
+import de from "./i18n/locales/de.json";
+import es from "./i18n/locales/es.json";
+import goh from "./i18n/locales/goh.json";
+import hi from "./i18n/locales/hi.json";
+import ja from "./i18n/locales/ja.json";
+import la from "./i18n/locales/la.json";
 
 export const knowYourWorldMessages = {
   en: { knowYourWorld: en },
@@ -20,20 +20,20 @@ export const knowYourWorldMessages = {
   hi: { knowYourWorld: hi },
   ja: { knowYourWorld: ja },
   la: { knowYourWorld: la },
-} as const
+} as const;
 
 /**
  * Type for hint lookup
  */
-export type HintMap = 'usa' | 'world' | 'europe' | 'africa'
+export type HintMap = "usa" | "world" | "europe" | "africa";
 export type HintsData = {
   hints: {
-    usa: Record<string, string[]>
-    world: Record<string, string[]>
-    europe: Record<string, string[]>
-    africa: Record<string, string[]>
-  }
-}
+    usa: Record<string, string[]>;
+    world: Record<string, string[]>;
+    europe: Record<string, string[]>;
+    africa: Record<string, string[]>;
+  };
+};
 
 /**
  * Get all hints for a region in the specified locale
@@ -42,12 +42,14 @@ export type HintsData = {
 export function getHints(
   locale: keyof typeof knowYourWorldMessages,
   map: HintMap,
-  regionId: string
+  regionId: string,
 ): string[] | undefined {
-  const localeData = knowYourWorldMessages[locale]?.knowYourWorld as HintsData | undefined
-  const hints = localeData?.hints?.[map]?.[regionId]
+  const localeData = knowYourWorldMessages[locale]?.knowYourWorld as
+    | HintsData
+    | undefined;
+  const hints = localeData?.hints?.[map]?.[regionId];
   // Return undefined if no hints or empty array
-  return hints && hints.length > 0 ? hints : undefined
+  return hints && hints.length > 0 ? hints : undefined;
 }
 
 /**
@@ -56,7 +58,7 @@ export function getHints(
 export function hasHints(
   locale: keyof typeof knowYourWorldMessages,
   map: HintMap,
-  regionId: string
+  regionId: string,
 ): boolean {
-  return getHints(locale, map, regionId) !== undefined
+  return getHints(locale, map, regionId) !== undefined;
 }

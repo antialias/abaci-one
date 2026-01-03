@@ -1,16 +1,16 @@
-import { useSpring, animated } from '@react-spring/web'
-import { AbacusReact, useAbacusDisplay } from '@soroban/abacus-react'
-import type { Color, PieceType } from '../types'
+import { useSpring, animated } from "@react-spring/web";
+import { AbacusReact, useAbacusDisplay } from "@soroban/abacus-react";
+import type { Color, PieceType } from "../types";
 
 interface PieceRendererProps {
-  type: PieceType
-  color: Color
-  value: number | string
-  size?: number
-  useNativeAbacusNumbers?: boolean
-  selected?: boolean
-  pyramidFaces?: number[]
-  shouldRotate?: boolean
+  type: PieceType;
+  color: Color;
+  value: number | string;
+  size?: number;
+  useNativeAbacusNumbers?: boolean;
+  selected?: boolean;
+  pyramidFaces?: number[];
+  shouldRotate?: boolean;
 }
 
 /**
@@ -28,42 +28,42 @@ export function PieceRenderer({
   pyramidFaces = [],
   shouldRotate = false,
 }: PieceRendererProps) {
-  const isDark = color === 'B'
-  const { config } = useAbacusDisplay()
+  const isDark = color === "B";
+  const { config } = useAbacusDisplay();
 
   // Subtle animation for pyramid face numbers
   const pyramidNumbersSpring = useSpring({
     from: { opacity: 0, scale: 0.8 },
     to: {
-      opacity: type === 'P' && selected && pyramidFaces.length === 4 ? 1 : 0,
-      scale: type === 'P' && selected && pyramidFaces.length === 4 ? 1 : 0.8,
+      opacity: type === "P" && selected && pyramidFaces.length === 4 ? 1 : 0,
+      scale: type === "P" && selected && pyramidFaces.length === 4 ? 1 : 0.8,
     },
     config: { tension: 200, friction: 20 },
-  })
+  });
 
   // Gradient IDs
-  const gradientId = `gradient-${type}-${color}-${size}`
-  const shadowId = `shadow-${type}-${color}-${size}`
+  const gradientId = `gradient-${type}-${color}-${size}`;
+  const shadowId = `shadow-${type}-${color}-${size}`;
 
   // Enhanced colors with gradients
-  const gradientStart = isDark ? '#2d2d2d' : '#ffffff'
-  const gradientEnd = isDark ? '#0a0a0a' : '#d0d0d0'
-  const strokeColor = isDark ? '#ffffff' : '#1a1a1a'
-  const textColor = isDark ? '#ffffff' : '#000000'
+  const gradientStart = isDark ? "#2d2d2d" : "#ffffff";
+  const gradientEnd = isDark ? "#0a0a0a" : "#d0d0d0";
+  const strokeColor = isDark ? "#ffffff" : "#1a1a1a";
+  const textColor = isDark ? "#ffffff" : "#000000";
 
   // Calculate responsive font size based on value length
-  const valueStr = value.toString()
-  const baseSize = type === 'P' ? size * 0.18 : size * 0.35
-  let fontSize = baseSize
+  const valueStr = value.toString();
+  const baseSize = type === "P" ? size * 0.18 : size * 0.35;
+  let fontSize = baseSize;
   if (valueStr.length >= 3) {
-    fontSize = baseSize * 0.65 // 3+ digits: smaller
+    fontSize = baseSize * 0.65; // 3+ digits: smaller
   } else if (valueStr.length === 2) {
-    fontSize = baseSize * 0.8 // 2 digits: slightly smaller
+    fontSize = baseSize * 0.8; // 2 digits: slightly smaller
   }
 
   const renderShape = () => {
     switch (type) {
-      case 'C': // Circle
+      case "C": // Circle
         return (
           <g>
             <circle
@@ -83,9 +83,9 @@ export function PieceRenderer({
               opacity={0.9}
             />
           </g>
-        )
+        );
 
-      case 'T': // Triangle - BLACK points RIGHT, WHITE points LEFT
+      case "T": // Triangle - BLACK points RIGHT, WHITE points LEFT
         if (isDark) {
           // Black triangle points RIGHT (towards white)
           return (
@@ -103,7 +103,7 @@ export function PieceRenderer({
                 opacity={0.9}
               />
             </g>
-          )
+          );
         } else {
           // White triangle points LEFT (towards black)
           return (
@@ -121,10 +121,10 @@ export function PieceRenderer({
                 opacity={0.9}
               />
             </g>
-          )
+          );
         }
 
-      case 'S': // Square
+      case "S": // Square
         return (
           <g>
             <rect
@@ -146,12 +146,12 @@ export function PieceRenderer({
               opacity={0.9}
             />
           </g>
-        )
+        );
 
-      case 'P': {
+      case "P": {
         // Pyramid - rotated 90° to point at opponent
         // Create centered pyramid, then rotate: BLACK→right (90°), WHITE→left (-90°)
-        const rotation = isDark ? 90 : -90
+        const rotation = isDark ? 90 : -90;
         return (
           <g transform={`rotate(${rotation}, ${size / 2}, ${size / 2})`}>
             {/* Top/smallest bar - centered */}
@@ -203,19 +203,19 @@ export function PieceRenderer({
               filter={`url(#${shadowId})`}
             />
           </g>
-        )
+        );
       }
 
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <defs>
         {/* Gradient definition */}
-        {type === 'C' ? (
+        {type === "C" ? (
           <radialGradient id={gradientId}>
             <stop offset="0%" stopColor={gradientStart} />
             <stop offset="100%" stopColor={gradientEnd} />
@@ -234,7 +234,13 @@ export function PieceRenderer({
 
         {/* Text shadow for dark pieces */}
         {isDark && (
-          <filter id={`text-shadow-${color}`} x="-50%" y="-50%" width="200%" height="200%">
+          <filter
+            id={`text-shadow-${color}`}
+            x="-50%"
+            y="-50%"
+            width="200%"
+            height="200%"
+          >
             <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.6" />
           </filter>
         )}
@@ -243,18 +249,28 @@ export function PieceRenderer({
       {renderShape()}
 
       {/* Pyramid face numbers - show when selected */}
-      {type === 'P' && selected && pyramidFaces.length === 4 && (
-        <g transform={shouldRotate ? `rotate(90, ${size / 2}, ${size / 2})` : undefined}>
+      {type === "P" && selected && pyramidFaces.length === 4 && (
+        <g
+          transform={
+            shouldRotate ? `rotate(90, ${size / 2}, ${size / 2})` : undefined
+          }
+        >
           <animated.g
             style={{
               opacity: pyramidNumbersSpring.opacity,
               transform: pyramidNumbersSpring.scale.to((s) => `scale(${s})`),
-              transformOrigin: 'center',
+              transformOrigin: "center",
             }}
           >
             {/* Filter for strong drop shadow */}
             <defs>
-              <filter id={`face-shadow-${color}`} x="-100%" y="-100%" width="300%" height="300%">
+              <filter
+                id={`face-shadow-${color}`}
+                x="-100%"
+                y="-100%"
+                width="300%"
+                height="300%"
+              >
                 <feDropShadow
                   dx="0"
                   dy="0"
@@ -273,7 +289,7 @@ export function PieceRenderer({
               textAnchor="middle"
               dominantBaseline="middle"
               fill="none"
-              stroke={isDark ? '#000000' : '#ffffff'}
+              stroke={isDark ? "#000000" : "#ffffff"}
               strokeWidth={size * 0.05}
               fontSize={size * 0.35}
               fontWeight="900"
@@ -287,12 +303,12 @@ export function PieceRenderer({
               y={size * 0.12}
               textAnchor="middle"
               dominantBaseline="middle"
-              fill={isDark ? '#fbbf24' : '#b45309'}
+              fill={isDark ? "#fbbf24" : "#b45309"}
               fontSize={size * 0.35}
               fontWeight="900"
               fontFamily="Arial Black, Arial, sans-serif"
               filter={`url(#face-shadow-${color})`}
-              style={{ transition: 'all 0.2s ease' }}
+              style={{ transition: "all 0.2s ease" }}
             >
               {pyramidFaces[0]}
             </text>
@@ -304,7 +320,7 @@ export function PieceRenderer({
               textAnchor="middle"
               dominantBaseline="middle"
               fill="none"
-              stroke={isDark ? '#000000' : '#ffffff'}
+              stroke={isDark ? "#000000" : "#ffffff"}
               strokeWidth={size * 0.05}
               fontSize={size * 0.35}
               fontWeight="900"
@@ -317,12 +333,12 @@ export function PieceRenderer({
               y={size / 2}
               textAnchor="middle"
               dominantBaseline="middle"
-              fill={isDark ? '#fbbf24' : '#b45309'}
+              fill={isDark ? "#fbbf24" : "#b45309"}
               fontSize={size * 0.35}
               fontWeight="900"
               fontFamily="Arial Black, Arial, sans-serif"
               filter={`url(#face-shadow-${color})`}
-              style={{ transition: 'all 0.2s ease' }}
+              style={{ transition: "all 0.2s ease" }}
             >
               {pyramidFaces[1]}
             </text>
@@ -334,7 +350,7 @@ export function PieceRenderer({
               textAnchor="middle"
               dominantBaseline="middle"
               fill="none"
-              stroke={isDark ? '#000000' : '#ffffff'}
+              stroke={isDark ? "#000000" : "#ffffff"}
               strokeWidth={size * 0.05}
               fontSize={size * 0.35}
               fontWeight="900"
@@ -347,12 +363,12 @@ export function PieceRenderer({
               y={size * 0.88}
               textAnchor="middle"
               dominantBaseline="middle"
-              fill={isDark ? '#fbbf24' : '#b45309'}
+              fill={isDark ? "#fbbf24" : "#b45309"}
               fontSize={size * 0.35}
               fontWeight="900"
               fontFamily="Arial Black, Arial, sans-serif"
               filter={`url(#face-shadow-${color})`}
-              style={{ transition: 'all 0.2s ease' }}
+              style={{ transition: "all 0.2s ease" }}
             >
               {pyramidFaces[2]}
             </text>
@@ -364,7 +380,7 @@ export function PieceRenderer({
               textAnchor="middle"
               dominantBaseline="middle"
               fill="none"
-              stroke={isDark ? '#000000' : '#ffffff'}
+              stroke={isDark ? "#000000" : "#ffffff"}
               strokeWidth={size * 0.05}
               fontSize={size * 0.35}
               fontWeight="900"
@@ -377,12 +393,12 @@ export function PieceRenderer({
               y={size / 2}
               textAnchor="middle"
               dominantBaseline="middle"
-              fill={isDark ? '#fbbf24' : '#b45309'}
+              fill={isDark ? "#fbbf24" : "#b45309"}
               fontSize={size * 0.35}
               fontWeight="900"
               fontFamily="Arial Black, Arial, sans-serif"
               filter={`url(#face-shadow-${color})`}
-              style={{ transition: 'all 0.2s ease' }}
+              style={{ transition: "all 0.2s ease" }}
             >
               {pyramidFaces[3]}
             </text>
@@ -391,24 +407,28 @@ export function PieceRenderer({
       )}
 
       {/* Other pieces show numbers normally */}
-      {type !== 'P' && (
-        <g transform={shouldRotate ? `rotate(90, ${size / 2}, ${size / 2})` : undefined}>
-          {useNativeAbacusNumbers && typeof value === 'number' ? (
+      {type !== "P" && (
+        <g
+          transform={
+            shouldRotate ? `rotate(90, ${size / 2}, ${size / 2})` : undefined
+          }
+        >
+          {useNativeAbacusNumbers && typeof value === "number" ? (
             // Render mini abacus
             <foreignObject
               x={size * 0.1}
               y={size * 0.1}
               width={size * 0.8}
               height={size * 0.8}
-              style={{ overflow: 'visible' }}
+              style={{ overflow: "visible" }}
             >
               <div
                 style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 <AbacusReact
@@ -421,13 +441,21 @@ export function PieceRenderer({
                   hideInactiveBeads={config.hideInactiveBeads}
                   customStyles={{
                     columnPosts: {
-                      fill: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)',
-                      stroke: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
+                      fill: isDark
+                        ? "rgba(255, 255, 255, 0.2)"
+                        : "rgba(0, 0, 0, 0.15)",
+                      stroke: isDark
+                        ? "rgba(255, 255, 255, 0.15)"
+                        : "rgba(0, 0, 0, 0.1)",
                       strokeWidth: 1,
                     },
                     reckoningBar: {
-                      fill: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.2)',
-                      stroke: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)',
+                      fill: isDark
+                        ? "rgba(255, 255, 255, 0.25)"
+                        : "rgba(0, 0, 0, 0.2)",
+                      stroke: isDark
+                        ? "rgba(255, 255, 255, 0.2)"
+                        : "rgba(0, 0, 0, 0.15)",
                       strokeWidth: 1,
                     },
                   }}
@@ -488,5 +516,5 @@ export function PieceRenderer({
         </g>
       )}
     </svg>
-  )
+  );
 }

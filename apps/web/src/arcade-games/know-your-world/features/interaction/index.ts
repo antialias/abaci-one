@@ -43,9 +43,9 @@ export type {
   Point,
   UseInteractionStateMachineOptions,
   UseInteractionStateMachineReturn,
-} from './useInteractionStateMachine'
+} from "./useInteractionStateMachine";
 
-export { useInteractionStateMachine } from './useInteractionStateMachine'
+export { useInteractionStateMachine } from "./useInteractionStateMachine";
 
 // ============================================================================
 // Pointer Lock Utilities
@@ -55,7 +55,7 @@ export type {
   PointerLockBounds,
   PointerLockMovementInput,
   PointerLockMovementResult,
-} from './pointerLockMovement'
+} from "./pointerLockMovement";
 
 export {
   calculatePointerLockMovement,
@@ -63,4 +63,4 @@ export {
   DAMPEN_ZONE,
   ESCAPE_THRESHOLD,
   SQUISH_ZONE,
-} from './pointerLockMovement'
+} from "./pointerLockMovement";

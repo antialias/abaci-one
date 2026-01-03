@@ -8,4 +8,4 @@ export {
   useGameSettings,
   type UseGameSettingsOptions,
   type UseGameSettingsReturn,
-} from './useGameSettings'
+} from "./useGameSettings";

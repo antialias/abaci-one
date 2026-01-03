@@ -8,8 +8,8 @@
  * Uses Strudel's pattern modifiers to adjust running patterns.
  */
 
-import type { FeedbackType } from '../../utils/hotColdPhrases'
-import type { CelebrationType } from '../../Provider'
+import type { FeedbackType } from "../../utils/hotColdPhrases";
+import type { CelebrationType } from "../../Provider";
 
 /**
  * Temperature effect settings.
@@ -17,13 +17,13 @@ import type { CelebrationType } from '../../Provider'
  */
 export interface TemperatureEffect {
   /** Low-pass filter cutoff (higher = brighter) */
-  lpfMultiplier: number
+  lpfMultiplier: number;
   /** Speed modifier (faster when hotter) */
-  speedMultiplier: number
+  speedMultiplier: number;
   /** Gain adjustment */
-  gainMultiplier: number
+  gainMultiplier: number;
   /** Room reverb adjustment */
-  roomMultiplier: number
+  roomMultiplier: number;
 }
 
 /**
@@ -31,100 +31,102 @@ export interface TemperatureEffect {
  * Hot = brighter, faster, more present
  * Cold = darker, slower, more distant
  */
-export function getTemperatureEffect(feedbackType: FeedbackType | null): TemperatureEffect {
+export function getTemperatureEffect(
+  feedbackType: FeedbackType | null,
+): TemperatureEffect {
   const neutral: TemperatureEffect = {
     lpfMultiplier: 1.0,
     speedMultiplier: 1.0,
     gainMultiplier: 1.0,
     roomMultiplier: 1.0,
-  }
+  };
 
-  if (!feedbackType) return neutral
+  if (!feedbackType) return neutral;
 
   switch (feedbackType) {
     // Very hot - brightest, most energetic
-    case 'on_fire':
+    case "on_fire":
       return {
         lpfMultiplier: 2.0,
         speedMultiplier: 1.3,
         gainMultiplier: 1.2,
         roomMultiplier: 0.6,
-      }
+      };
 
     // Hot - bright and lively
-    case 'hot':
+    case "hot":
       return {
         lpfMultiplier: 1.6,
         speedMultiplier: 1.15,
         gainMultiplier: 1.1,
         roomMultiplier: 0.75,
-      }
+      };
 
     // Getting warmer - subtle brightness
-    case 'warmer':
+    case "warmer":
       return {
         lpfMultiplier: 1.3,
         speedMultiplier: 1.05,
         gainMultiplier: 1.05,
         roomMultiplier: 0.9,
-      }
+      };
 
     // Found it - brief excitation
-    case 'found_it':
+    case "found_it":
       return {
         lpfMultiplier: 2.5,
         speedMultiplier: 1.4,
         gainMultiplier: 1.3,
         roomMultiplier: 0.5,
-      }
+      };
 
     // Getting colder - subtle darkness
-    case 'colder':
+    case "colder":
       return {
         lpfMultiplier: 0.8,
         speedMultiplier: 0.95,
         gainMultiplier: 0.95,
         roomMultiplier: 1.1,
-      }
+      };
 
     // Cold - darker, slower
-    case 'cold':
+    case "cold":
       return {
         lpfMultiplier: 0.6,
         speedMultiplier: 0.9,
         gainMultiplier: 0.85,
         roomMultiplier: 1.3,
-      }
+      };
 
     // Freezing - darkest, most distant
-    case 'freezing':
+    case "freezing":
       return {
         lpfMultiplier: 0.4,
         speedMultiplier: 0.8,
         gainMultiplier: 0.7,
         roomMultiplier: 1.5,
-      }
+      };
 
     // Overshot - slight confusion
-    case 'overshot':
+    case "overshot":
       return {
         lpfMultiplier: 0.7,
         speedMultiplier: 0.85,
         gainMultiplier: 0.9,
         roomMultiplier: 1.2,
-      }
+      };
 
     // Stuck - murky, uncertain
-    case 'stuck':
+    case "stuck":
       return {
         lpfMultiplier: 0.5,
         speedMultiplier: 0.85,
         gainMultiplier: 0.8,
         roomMultiplier: 1.4,
-      }
+      };
 
     default:
-      return neutral
+      return neutral;
   }
 }
 
@@ -132,7 +134,10 @@ export function getTemperatureEffect(feedbackType: FeedbackType | null): Tempera
  * Apply temperature effect modifiers to a pattern string.
  * Wraps the pattern with Strudel effects based on temperature.
  */
-export function applyTemperatureToPattern(pattern: string, effect: TemperatureEffect): string {
+export function applyTemperatureToPattern(
+  pattern: string,
+  effect: TemperatureEffect,
+): string {
   // Skip if neutral
   if (
     effect.lpfMultiplier === 1.0 &&
@@ -140,23 +145,23 @@ export function applyTemperatureToPattern(pattern: string, effect: TemperatureEf
     effect.gainMultiplier === 1.0 &&
     effect.roomMultiplier === 1.0
   ) {
-    return pattern
+    return pattern;
   }
 
   // Wrap the pattern with temperature modifiers
   // Note: We apply these as outer wrappers to affect the whole pattern
-  let modifiedPattern = pattern
+  let modifiedPattern = pattern;
 
   // Apply speed if not 1.0
   if (effect.speedMultiplier !== 1.0) {
     if (effect.speedMultiplier > 1.0) {
-      modifiedPattern = `(${modifiedPattern}).fast(${effect.speedMultiplier.toFixed(2)})`
+      modifiedPattern = `(${modifiedPattern}).fast(${effect.speedMultiplier.toFixed(2)})`;
     } else {
-      modifiedPattern = `(${modifiedPattern}).slow(${(1 / effect.speedMultiplier).toFixed(2)})`
+      modifiedPattern = `(${modifiedPattern}).slow(${(1 / effect.speedMultiplier).toFixed(2)})`;
     }
   }
 
-  return modifiedPattern
+  return modifiedPattern;
 }
 
 /**
@@ -166,9 +171,9 @@ export function applyTemperatureToPattern(pattern: string, effect: TemperatureEf
  */
 export interface CelebrationFlourish {
   /** Strudel pattern for the flourish */
-  pattern: string
+  pattern: string;
   /** Duration in milliseconds before restoring base pattern */
-  duration: number
+  duration: number;
 }
 
 /**
@@ -178,7 +183,7 @@ export interface CelebrationFlourish {
  */
 export function getCelebrationFlourish(
   type: CelebrationType,
-  continentId: string
+  continentId: string,
 ): CelebrationFlourish {
   // Base flourish patterns by celebration type
   // Designed to match the original Web Audio celebration sounds:
@@ -213,21 +218,21 @@ export function getCelebrationFlourish(
     },
 
     // Hard-earned - triumphant arpeggio then bright chord
-    'hard-earned': {
+    "hard-earned": {
       pattern: `stack(
         note("c5 e5 g5 ~").sound("triangle").decay(0.2).sustain(0.1).gain(7),
         note("~ ~ ~ [c6,e6,g6]").sound("triangle").decay(0.4).sustain(0.3).release(0.3).gain(6)
       ).room(0.3).slow(1.5)`,
       duration: 800,
     },
-  }
+  };
 
   // Get base flourish
-  const flourish = flourishes[type]
+  const flourish = flourishes[type];
 
   // For now, use the same pattern for all continents (simplified for debugging)
   // Continental flavor can be added back once basic celebrations work
-  return flourish
+  return flourish;
 }
 
 /**
@@ -237,11 +242,14 @@ export function getCelebrationFlourish(
  * This pattern bypasses the volume slider (evaluatePatternFullVolume).
  * A JavaScript timeout should be used to restore the base pattern after the flourish.
  */
-export function buildPatternWithFlourish(basePattern: string, flourishPattern: string): string {
+export function buildPatternWithFlourish(
+  basePattern: string,
+  flourishPattern: string,
+): string {
   // Stack the base pattern (ducked to 15% volume) with the flourish at high gain
   // Since this bypasses the volume slider, celebration at gain(5) is ~33x louder than base
   return `stack(
     (${basePattern}).gain(0.15),
     ${flourishPattern}
-  )`
+  )`;
 }

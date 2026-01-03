@@ -1,12 +1,12 @@
-import { notFound, redirect } from 'next/navigation'
-import { getActiveSessionPlan, getPlayer } from '@/lib/curriculum/server'
-import { PracticeClient } from './PracticeClient'
+import { notFound, redirect } from "next/navigation";
+import { getActiveSessionPlan, getPlayer } from "@/lib/curriculum/server";
+import { PracticeClient } from "./PracticeClient";
 
 // Disable caching for this page - session state must always be fresh
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 interface StudentPracticePageProps {
-  params: Promise<{ studentId: string }>
+  params: Promise<{ studentId: string }>;
 }
 
 /**
@@ -23,35 +23,43 @@ interface StudentPracticePageProps {
  *
  * URL: /practice/[studentId]
  */
-export default async function StudentPracticePage({ params }: StudentPracticePageProps) {
-  const { studentId } = await params
+export default async function StudentPracticePage({
+  params,
+}: StudentPracticePageProps) {
+  const { studentId } = await params;
 
   // Fetch player and active session in parallel
   const [player, activeSession] = await Promise.all([
     getPlayer(studentId),
     getActiveSessionPlan(studentId),
-  ])
+  ]);
 
   // 404 if player doesn't exist
   if (!player) {
-    notFound()
+    notFound();
   }
 
   // No active session → dashboard
   if (!activeSession) {
-    redirect(`/practice/${studentId}/dashboard`)
+    redirect(`/practice/${studentId}/dashboard`);
   }
 
   // Draft or approved but not started → dashboard (modal handles configuration)
   if (!activeSession.startedAt) {
-    redirect(`/practice/${studentId}/dashboard`)
+    redirect(`/practice/${studentId}/dashboard`);
   }
 
   // Session is completed → summary page
   if (activeSession.completedAt) {
-    redirect(`/practice/${studentId}/summary`)
+    redirect(`/practice/${studentId}/summary`);
   }
 
   // Only state left: in_progress session → show problem
-  return <PracticeClient studentId={studentId} player={player} initialSession={activeSession} />
+  return (
+    <PracticeClient
+      studentId={studentId}
+      player={player}
+      initialSession={activeSession}
+    />
+  );
 }

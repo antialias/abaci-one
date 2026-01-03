@@ -20,7 +20,7 @@
  * @see packages/llm-client/README.md for full documentation
  */
 
-import { LLMClient } from '@soroban/llm-client'
+import { LLMClient } from "@soroban/llm-client";
 
 // Create singleton instance
 // Configuration is automatically loaded from environment variables:
@@ -30,7 +30,7 @@ import { LLMClient } from '@soroban/llm-client'
 // - LLM_OPENAI_BASE_URL: OpenAI base URL (optional)
 // - LLM_ANTHROPIC_API_KEY: Anthropic API key
 // - LLM_ANTHROPIC_BASE_URL: Anthropic base URL (optional)
-export const llm = new LLMClient()
+export const llm = new LLMClient();
 
 // Re-export types and utilities for convenience
 export type {
@@ -44,10 +44,10 @@ export type {
   ProviderResponse,
   ValidationFeedback,
   ReasoningEffort,
-} from '@soroban/llm-client'
+} from "@soroban/llm-client";
 
 export {
   LLMValidationError,
   LLMApiError,
   ProviderNotConfiguredError,
-} from '@soroban/llm-client'
+} from "@soroban/llm-client";

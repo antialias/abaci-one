@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 /**
  * EditableProblemRow - Inline editor for parsed worksheet problems
@@ -9,87 +9,191 @@
  * - Mark problem for exclusion
  */
 
-import type { ReactNode } from 'react'
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { css } from '../../../styled-system/css'
-import type { ParsedProblem } from '@/lib/worksheet-parsing'
+import type { ReactNode } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { css } from "../../../styled-system/css";
+import type { ParsedProblem } from "@/lib/worksheet-parsing";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 export interface ProblemCorrection {
-  problemNumber: number
-  correctedTerms?: number[] | null
-  correctedStudentAnswer?: number | null
-  shouldExclude?: boolean
+  problemNumber: number;
+  correctedTerms?: number[] | null;
+  correctedStudentAnswer?: number | null;
+  shouldExclude?: boolean;
+  shouldRestore?: boolean;
 }
 
 export interface EditableProblemRowProps {
   /** The problem data */
-  problem: ParsedProblem
+  problem: ParsedProblem;
   /** The 0-based index of this problem in the list */
-  index: number
+  index: number;
   /** Whether this problem is currently selected (highlighted on image) */
-  isSelected: boolean
+  isSelected: boolean;
   /** Callback when this problem is clicked (for highlighting) */
-  onSelect: () => void
+  onSelect: () => void;
   /** Callback when corrections are submitted */
-  onSubmitCorrection: (correction: ProblemCorrection) => void
+  onSubmitCorrection: (correction: ProblemCorrection) => void;
   /** Whether a correction is currently being saved */
-  isSaving: boolean
+  isSaving: boolean;
   /** Dark mode styling */
-  isDark?: boolean
+  isDark?: boolean;
   /** Whether any problems are selected (shows all checkboxes when true) */
-  hasSelections?: boolean
+  hasSelections?: boolean;
   /** Whether this problem is checked for re-parsing */
-  isCheckedForReparse?: boolean
+  isCheckedForReparse?: boolean;
   /** Callback when checkbox is toggled */
-  onToggleReparse?: (index: number) => void
+  onToggleReparse?: (index: number) => void;
   /** Optional cropped thumbnail URL for this problem */
-  thumbnailUrl?: string
+  thumbnailUrl?: string;
 }
 
 /**
  * Parse a terms string like "45 + 27 - 12" into an array of numbers
  */
 function parseTermsString(input: string): number[] | null {
-  const cleaned = input.trim()
-  if (!cleaned) return null
+  const cleaned = input.trim();
+  if (!cleaned) return null;
 
   // Split by + or - while keeping the operator
-  const parts = cleaned.split(/([+-])/).filter((p) => p.trim())
+  const parts = cleaned.split(/([+-])/).filter((p) => p.trim());
 
-  const terms: number[] = []
-  let sign = 1
+  const terms: number[] = [];
+  let sign = 1;
 
   for (const part of parts) {
-    const trimmed = part.trim()
-    if (trimmed === '+') {
-      sign = 1
-    } else if (trimmed === '-') {
-      sign = -1
+    const trimmed = part.trim();
+    if (trimmed === "+") {
+      sign = 1;
+    } else if (trimmed === "-") {
+      sign = -1;
     } else {
-      const num = parseInt(trimmed, 10)
-      if (Number.isNaN(num)) return null
-      terms.push(sign * num)
-      sign = 1 // Reset sign after using
+      const num = parseInt(trimmed, 10);
+      if (Number.isNaN(num)) return null;
+      terms.push(sign * num);
+      sign = 1; // Reset sign after using
     }
   }
 
-  return terms.length > 0 ? terms : null
+  return terms.length > 0 ? terms : null;
 }
 
 /**
  * Format terms array into a string like "45 + 27 - 12"
  */
 function formatTerms(terms: number[]): string {
-  if (terms.length === 0) return ''
-  if (terms.length === 1) return terms[0].toString()
+  if (terms.length === 0) return "";
+  if (terms.length === 1) return terms[0].toString();
 
   return terms
     .map((term, i) => {
-      if (i === 0) return term.toString()
-      if (term >= 0) return `+ ${term}`
-      return `- ${Math.abs(term)}`
+      if (i === 0) return term.toString();
+      if (term >= 0) return `+ ${term}`;
+      return `- ${Math.abs(term)}`;
     })
-    .join(' ')
+    .join(" ");
+}
+
+/**
+ * Tooltip content showing confidence details and LLM notes
+ */
+function ConfidenceTooltipContent({
+  termsConfidence,
+  answerConfidence,
+  notes,
+}: {
+  termsConfidence: number;
+  answerConfidence: number;
+  notes?: string | null;
+}): ReactNode {
+  const minConfidence = Math.min(termsConfidence, answerConfidence);
+  const confidencePercent = Math.round(minConfidence * 100);
+
+  // Determine confidence level label and color
+  const getConfidenceLevel = (pct: number) => {
+    if (pct >= 80) return { label: "High confidence", color: "green.400" };
+    if (pct >= 50) return { label: "Uncertain", color: "yellow.400" };
+    return { label: "Low confidence", color: "red.400" };
+  };
+
+  const level = getConfidenceLevel(confidencePercent);
+
+  return (
+    <div
+      className={css({
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+        maxWidth: "280px",
+      })}
+    >
+      {/* Confidence percentage and label */}
+      <div className={css({ display: "flex", alignItems: "center", gap: 2 })}>
+        <span
+          className={css({
+            fontSize: "lg",
+            fontWeight: "bold",
+            color: level.color,
+          })}
+        >
+          {confidencePercent}%
+        </span>
+        <span className={css({ fontSize: "sm", color: level.color })}>
+          {level.label}
+        </span>
+      </div>
+
+      {/* LLM notes if present */}
+      {notes && (
+        <div
+          className={css({
+            fontSize: "sm",
+            color: "gray.300",
+            borderLeft: "2px solid token(colors.yellow.600)",
+            paddingLeft: 2,
+            fontStyle: "italic",
+          })}
+        >
+          "{notes}"
+        </div>
+      )}
+
+      {/* Confidence scale explanation */}
+      <div
+        className={css({
+          fontSize: "xs",
+          color: "gray.400",
+          borderTop: "1px solid token(colors.gray.700)",
+          paddingTop: 2,
+          marginTop: 1,
+        })}
+      >
+        <div className={css({ fontWeight: "medium", marginBottom: 1 })}>
+          What this means:
+        </div>
+        <div
+          className={css({
+            display: "flex",
+            flexDirection: "column",
+            gap: 0.5,
+          })}
+        >
+          <span>
+            <span className={css({ color: "green.400" })}>●</span> 80%+ =
+            Confident reading
+          </span>
+          <span>
+            <span className={css({ color: "yellow.400" })}>●</span> 50-79% =
+            Unsure, check this
+          </span>
+          <span>
+            <span className={css({ color: "red.400" })}>●</span> &lt;50% =
+            Likely wrong, verify
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function EditableProblemRow({
@@ -105,79 +209,95 @@ export function EditableProblemRow({
   onToggleReparse,
   thumbnailUrl,
 }: EditableProblemRowProps): ReactNode {
-  const [isEditing, setIsEditing] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
-  const [termsInput, setTermsInput] = useState(formatTerms(problem.terms))
+  const [isEditing, setIsEditing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [termsInput, setTermsInput] = useState(formatTerms(problem.terms));
   const [studentAnswerInput, setStudentAnswerInput] = useState(
-    problem.studentAnswer?.toString() ?? ''
-  )
-  const [termsError, setTermsError] = useState<string | null>(null)
-  const [answerError, setAnswerError] = useState<string | null>(null)
+    problem.studentAnswer?.toString() ?? "",
+  );
+  const [termsError, setTermsError] = useState<string | null>(null);
+  const [answerError, setAnswerError] = useState<string | null>(null);
 
-  const termsInputRef = useRef<HTMLInputElement>(null)
+  const termsInputRef = useRef<HTMLInputElement>(null);
 
   // Focus terms input when entering edit mode
   useEffect(() => {
     if (isEditing && termsInputRef.current) {
-      termsInputRef.current.focus()
-      termsInputRef.current.select()
+      termsInputRef.current.focus();
+      termsInputRef.current.select();
     }
-  }, [isEditing])
+  }, [isEditing]);
 
   // Reset form when problem changes
   useEffect(() => {
-    setTermsInput(formatTerms(problem.terms))
-    setStudentAnswerInput(problem.studentAnswer?.toString() ?? '')
-    setTermsError(null)
-    setAnswerError(null)
-  }, [problem])
+    setTermsInput(formatTerms(problem.terms));
+    setStudentAnswerInput(problem.studentAnswer?.toString() ?? "");
+    setTermsError(null);
+    setAnswerError(null);
+  }, [problem]);
+
+  // Check if form inputs are valid (for enabling Save button)
+  const isFormValid = useMemo(() => {
+    // Terms must parse and have at least 2 terms
+    const parsedTerms = parseTermsString(termsInput);
+    if (!parsedTerms || parsedTerms.length < 2) return false;
+
+    // Student answer must be empty or a valid number
+    if (studentAnswerInput.trim()) {
+      const parsed = parseInt(studentAnswerInput.trim(), 10);
+      if (Number.isNaN(parsed)) return false;
+    }
+
+    return true;
+  }, [termsInput, studentAnswerInput]);
 
   const handleEdit = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    setIsEditing(true)
-  }, [])
+    e.stopPropagation();
+    setIsEditing(true);
+  }, []);
 
   const handleCancel = useCallback(
     (e: React.MouseEvent) => {
-      e.stopPropagation()
-      setIsEditing(false)
-      setTermsInput(formatTerms(problem.terms))
-      setStudentAnswerInput(problem.studentAnswer?.toString() ?? '')
-      setTermsError(null)
-      setAnswerError(null)
+      e.stopPropagation();
+      setIsEditing(false);
+      setTermsInput(formatTerms(problem.terms));
+      setStudentAnswerInput(problem.studentAnswer?.toString() ?? "");
+      setTermsError(null);
+      setAnswerError(null);
     },
-    [problem]
-  )
+    [problem],
+  );
 
   const handleSave = useCallback(
     (e: React.MouseEvent) => {
-      e.stopPropagation()
+      e.stopPropagation();
 
       // Validate terms
-      const parsedTerms = parseTermsString(termsInput)
+      const parsedTerms = parseTermsString(termsInput);
       if (!parsedTerms || parsedTerms.length < 2) {
-        setTermsError('Enter at least 2 terms (e.g., "45 + 27")')
-        return
+        setTermsError('Enter at least 2 terms (e.g., "45 + 27")');
+        return;
       }
 
       // Validate student answer (can be empty for "no answer")
-      let parsedAnswer: number | null = null
+      let parsedAnswer: number | null = null;
       if (studentAnswerInput.trim()) {
-        parsedAnswer = parseInt(studentAnswerInput.trim(), 10)
+        parsedAnswer = parseInt(studentAnswerInput.trim(), 10);
         if (Number.isNaN(parsedAnswer)) {
-          setAnswerError('Enter a valid number or leave blank')
-          return
+          setAnswerError("Enter a valid number or leave blank");
+          return;
         }
       }
 
       // Check if anything actually changed
-      const termsChanged = JSON.stringify(parsedTerms) !== JSON.stringify(problem.terms)
-      const answerChanged = parsedAnswer !== problem.studentAnswer
+      const termsChanged =
+        JSON.stringify(parsedTerms) !== JSON.stringify(problem.terms);
+      const answerChanged = parsedAnswer !== problem.studentAnswer;
 
       if (!termsChanged && !answerChanged) {
         // Nothing changed, just exit edit mode
-        setIsEditing(false)
-        return
+        setIsEditing(false);
+        return;
       }
 
       // Submit correction
@@ -185,48 +305,41 @@ export function EditableProblemRow({
         problemNumber: problem.problemNumber,
         correctedTerms: termsChanged ? parsedTerms : undefined,
         correctedStudentAnswer: answerChanged ? parsedAnswer : undefined,
-      })
+      });
 
-      setIsEditing(false)
+      setIsEditing(false);
     },
-    [termsInput, studentAnswerInput, problem, onSubmitCorrection]
-  )
-
-  const handleExclude = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      onSubmitCorrection({
-        problemNumber: problem.problemNumber,
-        shouldExclude: true,
-      })
-    },
-    [problem.problemNumber, onSubmitCorrection]
-  )
+    [termsInput, studentAnswerInput, problem, onSubmitCorrection],
+  );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        handleSave(e as unknown as React.MouseEvent)
-      } else if (e.key === 'Escape') {
-        handleCancel(e as unknown as React.MouseEvent)
+      if (e.key === "Enter") {
+        handleSave(e as unknown as React.MouseEvent);
+      } else if (e.key === "Escape") {
+        handleCancel(e as unknown as React.MouseEvent);
       }
     },
-    [handleSave, handleCancel]
-  )
+    [handleSave, handleCancel],
+  );
 
   const handleCheckboxClick = useCallback(
     (e: React.MouseEvent) => {
-      e.stopPropagation()
-      onToggleReparse?.(index)
+      e.stopPropagation();
+      onToggleReparse?.(index);
     },
-    [index, onToggleReparse]
-  )
+    [index, onToggleReparse],
+  );
 
+  const isExcluded = problem.excluded === true;
   const isCorrect =
-    problem.studentAnswer !== null && problem.studentAnswer === problem.correctAnswer
+    problem.studentAnswer !== null &&
+    problem.studentAnswer === problem.correctAnswer;
   const isIncorrect =
-    problem.studentAnswer !== null && problem.studentAnswer !== problem.correctAnswer
-  const isLowConfidence = Math.min(problem.termsConfidence, problem.studentAnswerConfidence) < 0.7
+    problem.studentAnswer !== null &&
+    problem.studentAnswer !== problem.correctAnswer;
+  const isLowConfidence =
+    Math.min(problem.termsConfidence, problem.studentAnswerConfidence) < 0.7;
 
   // Edit mode UI
   if (isEditing) {
@@ -236,37 +349,37 @@ export function EditableProblemRow({
         data-problem-index={index}
         className={css({
           padding: 3,
-          backgroundColor: isDark ? 'blue.900' : 'blue.50',
-          borderRadius: 'lg',
-          border: '2px solid token(colors.blue.500)',
+          backgroundColor: isDark ? "blue.900" : "blue.50",
+          borderRadius: "lg",
+          border: "2px solid token(colors.blue.500)",
         })}
         onClick={(e) => e.stopPropagation()}
       >
         <div
           className={css({
-            display: 'flex',
-            alignItems: 'center',
+            display: "flex",
+            alignItems: "center",
             gap: 2,
             marginBottom: 3,
           })}
         >
           <span
             className={css({
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              color: isDark ? 'gray.400' : 'gray.600',
+              fontSize: "sm",
+              fontWeight: "medium",
+              color: isDark ? "gray.400" : "gray.600",
             })}
           >
             #{index + 1}
           </span>
           <span
             className={css({
-              fontSize: 'xs',
+              fontSize: "xs",
               px: 2,
               py: 0.5,
-              borderRadius: 'md',
-              backgroundColor: isDark ? 'blue.800' : 'blue.100',
-              color: isDark ? 'blue.300' : 'blue.700',
+              borderRadius: "md",
+              backgroundColor: isDark ? "blue.800" : "blue.100",
+              color: isDark ? "blue.300" : "blue.700",
             })}
           >
             Editing
@@ -277,10 +390,10 @@ export function EditableProblemRow({
         <div className={css({ marginBottom: 3 })}>
           <label
             className={css({
-              display: 'block',
-              fontSize: 'xs',
-              fontWeight: 'medium',
-              color: isDark ? 'gray.400' : 'gray.600',
+              display: "block",
+              fontSize: "xs",
+              fontWeight: "medium",
+              color: isDark ? "gray.400" : "gray.600",
               marginBottom: 1,
             })}
           >
@@ -291,25 +404,29 @@ export function EditableProblemRow({
             type="text"
             value={termsInput}
             onChange={(e) => {
-              setTermsInput(e.target.value)
-              setTermsError(null)
+              setTermsInput(e.target.value);
+              setTermsError(null);
             }}
             onKeyDown={handleKeyDown}
             className={css({
-              width: '100%',
+              width: "100%",
               px: 3,
               py: 2,
-              fontSize: 'sm',
-              fontFamily: 'mono',
-              backgroundColor: isDark ? 'gray.800' : 'white',
-              color: isDark ? 'white' : 'gray.900',
-              border: '1px solid',
-              borderColor: termsError ? 'red.500' : isDark ? 'gray.600' : 'gray.300',
-              borderRadius: 'md',
+              fontSize: "sm",
+              fontFamily: "mono",
+              backgroundColor: isDark ? "gray.800" : "white",
+              color: isDark ? "white" : "gray.900",
+              border: "1px solid",
+              borderColor: termsError
+                ? "red.500"
+                : isDark
+                  ? "gray.600"
+                  : "gray.300",
+              borderRadius: "md",
               _focus: {
-                outline: 'none',
-                borderColor: 'blue.500',
-                boxShadow: '0 0 0 2px token(colors.blue.500/20)',
+                outline: "none",
+                borderColor: "blue.500",
+                boxShadow: "0 0 0 2px token(colors.blue.500/20)",
               },
             })}
             placeholder="45 + 27 - 12"
@@ -317,8 +434,8 @@ export function EditableProblemRow({
           {termsError && (
             <p
               className={css({
-                fontSize: 'xs',
-                color: 'red.400',
+                fontSize: "xs",
+                color: "red.400",
                 marginTop: 1,
               })}
             >
@@ -331,10 +448,10 @@ export function EditableProblemRow({
         <div className={css({ marginBottom: 3 })}>
           <label
             className={css({
-              display: 'block',
-              fontSize: 'xs',
-              fontWeight: 'medium',
-              color: isDark ? 'gray.400' : 'gray.600',
+              display: "block",
+              fontSize: "xs",
+              fontWeight: "medium",
+              color: isDark ? "gray.400" : "gray.600",
               marginBottom: 1,
             })}
           >
@@ -344,25 +461,29 @@ export function EditableProblemRow({
             type="text"
             value={studentAnswerInput}
             onChange={(e) => {
-              setStudentAnswerInput(e.target.value)
-              setAnswerError(null)
+              setStudentAnswerInput(e.target.value);
+              setAnswerError(null);
             }}
             onKeyDown={handleKeyDown}
             className={css({
-              width: '100px',
+              width: "100px",
               px: 3,
               py: 2,
-              fontSize: 'sm',
-              fontFamily: 'mono',
-              backgroundColor: isDark ? 'gray.800' : 'white',
-              color: isDark ? 'white' : 'gray.900',
-              border: '1px solid',
-              borderColor: answerError ? 'red.500' : isDark ? 'gray.600' : 'gray.300',
-              borderRadius: 'md',
+              fontSize: "sm",
+              fontFamily: "mono",
+              backgroundColor: isDark ? "gray.800" : "white",
+              color: isDark ? "white" : "gray.900",
+              border: "1px solid",
+              borderColor: answerError
+                ? "red.500"
+                : isDark
+                  ? "gray.600"
+                  : "gray.300",
+              borderRadius: "md",
               _focus: {
-                outline: 'none',
-                borderColor: 'blue.500',
-                boxShadow: '0 0 0 2px token(colors.blue.500/20)',
+                outline: "none",
+                borderColor: "blue.500",
+                boxShadow: "0 0 0 2px token(colors.blue.500/20)",
               },
             })}
             placeholder="60"
@@ -370,8 +491,8 @@ export function EditableProblemRow({
           {answerError && (
             <p
               className={css({
-                fontSize: 'xs',
-                color: 'red.400',
+                fontSize: "xs",
+                color: "red.400",
                 marginTop: 1,
               })}
             >
@@ -383,44 +504,44 @@ export function EditableProblemRow({
         {/* Correct answer display */}
         <div
           className={css({
-            fontSize: 'xs',
-            color: isDark ? 'gray.500' : 'gray.500',
+            fontSize: "xs",
+            color: isDark ? "gray.500" : "gray.500",
             marginBottom: 3,
           })}
         >
-          Correct answer (from terms):{' '}
-          <span className={css({ fontFamily: 'mono', fontWeight: 'medium' })}>
-            {parseTermsString(termsInput)?.reduce((a, b) => a + b, 0) ?? '?'}
+          Correct answer (from terms):{" "}
+          <span className={css({ fontFamily: "mono", fontWeight: "medium" })}>
+            {parseTermsString(termsInput)?.reduce((a, b) => a + b, 0) ?? "?"}
           </span>
         </div>
 
         {/* Action buttons */}
         <div
           className={css({
-            display: 'flex',
-            alignItems: 'center',
+            display: "flex",
+            alignItems: "center",
             gap: 2,
           })}
         >
           <button
             type="button"
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || !isFormValid}
             className={css({
               px: 3,
               py: 1.5,
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              backgroundColor: 'green.600',
-              color: 'white',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              _hover: { backgroundColor: 'green.700' },
-              _disabled: { opacity: 0.5, cursor: 'wait' },
+              fontSize: "sm",
+              fontWeight: "medium",
+              backgroundColor: "green.600",
+              color: "white",
+              border: "none",
+              borderRadius: "md",
+              cursor: "pointer",
+              _hover: { backgroundColor: "green.700" },
+              _disabled: { opacity: 0.5, cursor: "not-allowed" },
             })}
           >
-            {isSaving ? 'Saving...' : 'Save'}
+            {isSaving ? "Saving..." : "Save"}
           </button>
           <button
             type="button"
@@ -429,72 +550,59 @@ export function EditableProblemRow({
             className={css({
               px: 3,
               py: 1.5,
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              backgroundColor: isDark ? 'gray.700' : 'gray.200',
-              color: isDark ? 'white' : 'gray.700',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              _hover: { backgroundColor: isDark ? 'gray.600' : 'gray.300' },
-              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+              fontSize: "sm",
+              fontWeight: "medium",
+              backgroundColor: isDark ? "gray.700" : "gray.200",
+              color: isDark ? "white" : "gray.700",
+              border: "none",
+              borderRadius: "md",
+              cursor: "pointer",
+              _hover: { backgroundColor: isDark ? "gray.600" : "gray.300" },
+              _disabled: { opacity: 0.5, cursor: "not-allowed" },
             })}
           >
             Cancel
           </button>
-          <div className={css({ flex: 1 })} />
-          <button
-            type="button"
-            onClick={handleExclude}
-            disabled={isSaving}
-            className={css({
-              px: 3,
-              py: 1.5,
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              backgroundColor: 'transparent',
-              color: 'red.400',
-              border: '1px solid token(colors.red.400)',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              _hover: { backgroundColor: 'red.900/30' },
-              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-            })}
-          >
-            Exclude
-          </button>
         </div>
       </div>
-    )
+    );
   }
 
   // Show checkbox if hovered, has any selections, or this is checked
-  const showCheckbox = isHovered || hasSelections || isCheckedForReparse
+  const showCheckbox = isHovered || hasSelections || isCheckedForReparse;
 
   // Determine the background color based on state
-  const bgColor = isSelected
+  const bgColor = isExcluded
     ? isDark
-      ? 'blue.900'
-      : 'blue.50'
-    : isCheckedForReparse
+      ? "gray.800"
+      : "gray.200"
+    : isSelected
       ? isDark
-        ? 'blue.900/50'
-        : 'blue.50'
-      : isLowConfidence
+        ? "blue.900"
+        : "blue.50"
+      : isCheckedForReparse
         ? isDark
-          ? 'yellow.900/30'
-          : 'yellow.50'
-        : isDark
-          ? 'gray.700'
-          : 'gray.100'
+          ? "blue.900/50"
+          : "blue.50"
+        : isLowConfidence
+          ? isDark
+            ? "yellow.900/30"
+            : "yellow.50"
+          : isDark
+            ? "gray.700"
+            : "gray.100";
 
-  const hoverBgColor = isSelected
+  const hoverBgColor = isExcluded
     ? isDark
-      ? 'blue.900'
-      : 'blue.100'
-    : isDark
-      ? 'gray.600'
-      : 'gray.200'
+      ? "gray.700"
+      : "gray.300"
+    : isSelected
+      ? isDark
+        ? "blue.900"
+        : "blue.100"
+      : isDark
+        ? "gray.600"
+        : "gray.200";
 
   // Display mode UI
   return (
@@ -503,19 +611,20 @@ export function EditableProblemRow({
       data-problem-index={index}
       data-selected={isSelected}
       data-checked={isCheckedForReparse}
+      data-excluded={isExcluded}
       className={css({
-        display: 'flex',
-        alignItems: 'stretch',
+        display: "flex",
+        alignItems: "stretch",
         gap: 0,
-        borderRadius: 'lg',
+        borderRadius: "lg",
         backgroundColor: bgColor,
         border: isSelected
-          ? '2px solid token(colors.blue.500)'
+          ? "2px solid token(colors.blue.500)"
           : isCheckedForReparse
-            ? '2px solid token(colors.blue.500/50)'
-            : '2px solid transparent',
-        cursor: 'pointer',
-        transition: 'all 0.15s',
+            ? "2px solid token(colors.blue.500/50)"
+            : "2px solid transparent",
+        cursor: "pointer",
+        transition: "all 0.15s",
         _hover: {
           backgroundColor: hoverBgColor,
         },
@@ -530,71 +639,86 @@ export function EditableProblemRow({
           data-action="toggle-reparse"
           onClick={handleCheckboxClick}
           className={css({
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '40px',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "40px",
             flexShrink: 0,
-            backgroundColor: 'transparent',
-            borderRadius: 'lg 0 0 lg',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'opacity 0.15s',
+            backgroundColor: "transparent",
+            borderRadius: "lg 0 0 lg",
+            border: "none",
+            cursor: "pointer",
+            transition: "opacity 0.15s",
             // Hide checkbox visually but keep space reserved
-            opacity: showCheckbox ? (isCheckedForReparse || isHovered ? 1 : 0.5) : 0,
-            pointerEvents: showCheckbox ? 'auto' : 'none',
+            opacity: showCheckbox
+              ? isCheckedForReparse || isHovered
+                ? 1
+                : 0.5
+              : 0,
+            pointerEvents: showCheckbox ? "auto" : "none",
           })}
         >
           <div
             className={css({
-              width: '20px',
-              height: '20px',
-              borderRadius: 'sm',
-              border: '2px solid',
-              borderColor: isCheckedForReparse ? 'blue.400' : isDark ? 'gray.500' : 'gray.400',
-              backgroundColor: isCheckedForReparse ? 'blue.500' : 'transparent',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: 'xs',
-              fontWeight: 'bold',
+              width: "20px",
+              height: "20px",
+              borderRadius: "sm",
+              border: "2px solid",
+              borderColor: isCheckedForReparse
+                ? "blue.400"
+                : isDark
+                  ? "gray.500"
+                  : "gray.400",
+              backgroundColor: isCheckedForReparse ? "blue.500" : "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              fontSize: "xs",
+              fontWeight: "bold",
             })}
           >
-            {isCheckedForReparse && '✓'}
+            {isCheckedForReparse && "✓"}
           </div>
         </button>
       )}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         data-element="problem-row"
         onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect();
+          }
+        }}
         className={css({
           flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
           gap: 3,
           padding: 3,
-          backgroundColor: 'transparent',
-          borderRadius: onToggleReparse ? '0 lg lg 0' : 'lg',
-          border: 'none',
-          cursor: 'pointer',
-          textAlign: 'left',
+          backgroundColor: "transparent",
+          borderRadius: onToggleReparse ? "0 lg lg 0" : "lg",
+          border: "none",
+          cursor: "pointer",
+          textAlign: "left",
         })}
       >
         {/* Small thumbnail of cropped problem region - fixed size container */}
         <div
           className={css({
-            width: '48px',
-            height: '32px',
+            width: "48px",
+            height: "32px",
             flexShrink: 0,
-            borderRadius: 'sm',
-            overflow: 'hidden',
-            backgroundColor: 'gray.900',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            borderRadius: "sm",
+            overflow: "hidden",
+            backgroundColor: "gray.900",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           })}
         >
           {thumbnailUrl && (
@@ -602,151 +726,155 @@ export function EditableProblemRow({
               src={thumbnailUrl}
               alt=""
               className={css({
-                maxWidth: '100%',
-                maxHeight: '100%',
-                objectFit: 'contain',
+                maxWidth: "100%",
+                maxHeight: "100%",
+                objectFit: "contain",
               })}
             />
           )}
         </div>
-        <div className={css({ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 })}>
+        <div
+          className={css({
+            display: "flex",
+            flexDirection: "column",
+            gap: 1,
+            flex: 1,
+            opacity: isExcluded ? 0.5 : 1,
+          })}
+        >
           {/* Problem expression */}
           <div
             className={css({
-              fontFamily: 'mono',
-              fontSize: 'sm',
-              color: isDark ? 'white' : 'gray.900',
+              fontFamily: "mono",
+              fontSize: "sm",
+              color: isExcluded
+                ? isDark
+                  ? "gray.500"
+                  : "gray.500"
+                : isDark
+                  ? "white"
+                  : "gray.900",
+              textDecoration: isExcluded ? "line-through" : "none",
             })}
           >
-            #{index + 1}: {formatTerms(problem.terms)} ={' '}
+            #{index + 1}: {formatTerms(problem.terms)} ={" "}
             <span
               className={css({
                 color:
                   problem.studentAnswer === null
                     ? isDark
-                      ? 'gray.500'
-                      : 'gray.400'
+                      ? "gray.500"
+                      : "gray.400"
                     : isCorrect
                       ? isDark
-                        ? 'green.400'
-                        : 'green.600'
+                        ? "green.400"
+                        : "green.600"
                       : isDark
-                        ? 'red.400'
-                        : 'red.600',
+                        ? "red.400"
+                        : "red.600",
               })}
             >
-              {problem.studentAnswer ?? '?'}
+              {problem.studentAnswer ?? "?"}
             </span>
           </div>
 
           {/* Correct answer and status */}
           <div
             className={css({
-              fontSize: 'xs',
+              fontSize: "xs",
               color: isCorrect
                 ? isDark
-                  ? 'green.400'
-                  : 'green.600'
+                  ? "green.400"
+                  : "green.600"
                 : problem.studentAnswer == null
                   ? isDark
-                    ? 'gray.500'
-                    : 'gray.500'
+                    ? "gray.500"
+                    : "gray.500"
                   : isDark
-                    ? 'red.400'
-                    : 'red.600',
+                    ? "red.400"
+                    : "red.600",
             })}
           >
             {isCorrect
-              ? '✓ Correct'
+              ? "✓ Correct"
               : problem.studentAnswer == null
-                ? 'No answer detected'
+                ? "No answer detected"
                 : `✗ Incorrect (correct: ${problem.correctAnswer})`}
           </div>
         </div>
 
         <div
           className={css({
-            display: 'flex',
-            alignItems: 'center',
+            display: "flex",
+            alignItems: "center",
             gap: 2,
           })}
         >
-          {/* Low confidence warning */}
+          {/* Low confidence warning with tooltip */}
           {isLowConfidence && (
-            <span
-              className={css({
-                fontSize: 'xs',
-                color: isDark ? 'yellow.400' : 'yellow.600',
-              })}
-              title={`${Math.round(Math.min(problem.termsConfidence, problem.studentAnswerConfidence) * 100)}% confidence`}
+            <Tooltip
+              side="left"
+              content={
+                <ConfidenceTooltipContent
+                  termsConfidence={problem.termsConfidence}
+                  answerConfidence={problem.studentAnswerConfidence}
+                  notes={problem.notes}
+                />
+              }
             >
-              ⚠️
-            </span>
+              <span
+                className={css({
+                  fontSize: "sm",
+                  cursor: "help",
+                })}
+              >
+                ⚠️
+              </span>
+            </Tooltip>
           )}
 
-          {/* Confidence indicator */}
-          <div
-            className={css({
-              px: 2,
-              py: 1,
-              fontSize: 'xs',
-              fontWeight: 'medium',
-              borderRadius: 'md',
-              backgroundColor:
-                problem.studentAnswerConfidence >= 0.8
-                  ? isDark
-                    ? 'green.900'
-                    : 'green.100'
-                  : problem.studentAnswerConfidence >= 0.5
-                    ? isDark
-                      ? 'yellow.900'
-                      : 'yellow.100'
-                    : isDark
-                      ? 'red.900'
-                      : 'red.100',
-              color:
-                problem.studentAnswerConfidence >= 0.8
-                  ? isDark
-                    ? 'green.300'
-                    : 'green.700'
-                  : problem.studentAnswerConfidence >= 0.5
-                    ? isDark
-                      ? 'yellow.300'
-                      : 'yellow.700'
-                    : isDark
-                      ? 'red.300'
-                      : 'red.700',
-            })}
-          >
-            {Math.round(problem.studentAnswerConfidence * 100)}%
-          </div>
-
-          {/* Edit button */}
-          <button
-            type="button"
-            data-action="edit-problem"
-            onClick={handleEdit}
-            className={css({
-              px: 2,
-              py: 1,
-              fontSize: 'xs',
-              fontWeight: 'medium',
-              backgroundColor: isDark ? 'gray.600' : 'gray.200',
-              color: isDark ? 'white' : 'gray.700',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              _hover: {
-                backgroundColor: isDark ? 'gray.500' : 'gray.300',
-              },
-            })}
-          >
-            ✏️ Edit
-          </button>
+          {/* Excluded badge or Edit button */}
+          {isExcluded ? (
+            <span
+              className={css({
+                px: 2,
+                py: 1,
+                fontSize: "xs",
+                fontWeight: "medium",
+                borderRadius: "md",
+                backgroundColor: isDark ? "gray.700" : "gray.300",
+                color: isDark ? "gray.400" : "gray.600",
+              })}
+            >
+              Excluded
+            </span>
+          ) : (
+            <button
+              type="button"
+              data-action="edit-problem"
+              onClick={handleEdit}
+              className={css({
+                px: 2,
+                py: 1,
+                fontSize: "xs",
+                fontWeight: "medium",
+                backgroundColor: isDark ? "gray.600" : "gray.200",
+                color: isDark ? "white" : "gray.700",
+                border: "none",
+                borderRadius: "md",
+                cursor: "pointer",
+                _hover: {
+                  backgroundColor: isDark ? "gray.500" : "gray.300",
+                },
+              })}
+            >
+              ✏️ Edit
+            </button>
+          )}
         </div>
-      </button>
+      </div>
     </div>
-  )
+  );
 }
 
-export default EditableProblemRow
+export default EditableProblemRow;

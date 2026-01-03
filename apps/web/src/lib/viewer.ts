@@ -1,8 +1,8 @@
-import { eq } from 'drizzle-orm'
-import { cookies, headers } from 'next/headers'
-import { auth } from '@/auth'
-import { db, schema } from '@/db'
-import { GUEST_COOKIE_NAME, verifyGuestToken } from './guest-token'
+import { eq } from "drizzle-orm";
+import { cookies, headers } from "next/headers";
+import { auth } from "@/auth";
+import { db, schema } from "@/db";
+import { GUEST_COOKIE_NAME, verifyGuestToken } from "./guest-token";
 
 /**
  * Unified viewer utility for server components
@@ -13,36 +13,36 @@ import { GUEST_COOKIE_NAME, verifyGuestToken } from './guest-token'
  * @returns Viewer information with discriminated union type
  */
 export async function getViewer(): Promise<
-  | { kind: 'user'; session: Awaited<ReturnType<typeof auth>> }
-  | { kind: 'guest'; guestId: string }
-  | { kind: 'unknown' }
+  | { kind: "user"; session: Awaited<ReturnType<typeof auth>> }
+  | { kind: "guest"; guestId: string }
+  | { kind: "unknown" }
 > {
   // Check if user is authenticated via NextAuth
-  const session = await auth()
+  const session = await auth();
   if (session) {
-    return { kind: 'user', session }
+    return { kind: "user", session };
   }
 
   // Check for guest ID in header (set by middleware)
-  const headerStore = await headers()
-  const headerGuestId = headerStore.get('x-guest-id')
+  const headerStore = await headers();
+  const headerGuestId = headerStore.get("x-guest-id");
   if (headerGuestId) {
-    return { kind: 'guest', guestId: headerGuestId }
+    return { kind: "guest", guestId: headerGuestId };
   }
 
   // Fallback: check for guest cookie
-  const cookieStore = await cookies()
-  const guestCookie = cookieStore.get(GUEST_COOKIE_NAME)?.value
+  const cookieStore = await cookies();
+  const guestCookie = cookieStore.get(GUEST_COOKIE_NAME)?.value;
 
   if (!guestCookie) {
-    return { kind: 'unknown' }
+    return { kind: "unknown" };
   }
 
   try {
-    const { sid } = await verifyGuestToken(guestCookie)
-    return { kind: 'guest', guestId: sid }
+    const { sid } = await verifyGuestToken(guestCookie);
+    return { kind: "guest", guestId: sid };
   } catch {
-    return { kind: 'unknown' }
+    return { kind: "unknown" };
   }
 }
 
@@ -56,15 +56,15 @@ export async function getViewer(): Promise<
  * @throws Error if no valid viewer found
  */
 export async function getViewerId(): Promise<string> {
-  const viewer = await getViewer()
+  const viewer = await getViewer();
 
   switch (viewer.kind) {
-    case 'user':
-      return viewer.session.user!.id
-    case 'guest':
-      return viewer.guestId
-    case 'unknown':
-      throw new Error('No valid viewer session found')
+    case "user":
+      return viewer.session.user!.id;
+    case "guest":
+      return viewer.guestId;
+    case "unknown":
+      throw new Error("No valid viewer session found");
   }
 }
 
@@ -81,14 +81,17 @@ export async function getViewerId(): Promise<string> {
 async function getOrCreateUserFromGuestId(guestId: string) {
   let user = await db.query.users.findFirst({
     where: eq(schema.users.guestId, guestId),
-  })
+  });
 
   if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId }).returning()
-    user = newUser
+    const [newUser] = await db
+      .insert(schema.users)
+      .values({ guestId })
+      .returning();
+    user = newUser;
   }
 
-  return user
+  return user;
 }
 
 /**
@@ -105,19 +108,19 @@ async function getOrCreateUserFromGuestId(guestId: string) {
  * @throws Error if no valid viewer found
  */
 export async function getDbUserId(): Promise<string> {
-  const viewer = await getViewer()
+  const viewer = await getViewer();
 
   switch (viewer.kind) {
-    case 'user':
+    case "user":
       // Authenticated users already have a database user.id in their session
-      return viewer.session.user!.id
-    case 'guest': {
+      return viewer.session.user!.id;
+    case "guest": {
       // Guests need to look up their user record by guestId
-      const user = await getOrCreateUserFromGuestId(viewer.guestId)
-      return user.id
+      const user = await getOrCreateUserFromGuestId(viewer.guestId);
+      return user.id;
     }
-    case 'unknown':
-      throw new Error('No valid viewer session found')
+    case "unknown":
+      throw new Error("No valid viewer session found");
   }
 }
 
@@ -134,22 +137,22 @@ export async function getDbUserId(): Promise<string> {
  * @throws Error if no valid viewer found
  */
 export async function getViewerUser() {
-  const viewer = await getViewer()
+  const viewer = await getViewer();
 
   switch (viewer.kind) {
-    case 'user': {
+    case "user": {
       const user = await db.query.users.findFirst({
         where: eq(schema.users.id, viewer.session.user!.id),
-      })
+      });
       if (!user) {
-        throw new Error('Authenticated user not found in database')
+        throw new Error("Authenticated user not found in database");
       }
-      return user
+      return user;
     }
-    case 'guest': {
-      return getOrCreateUserFromGuestId(viewer.guestId)
+    case "guest": {
+      return getOrCreateUserFromGuestId(viewer.guestId);
     }
-    case 'unknown':
-      throw new Error('No valid viewer session found')
+    case "unknown":
+      throw new Error("No valid viewer session found");
   }
 }

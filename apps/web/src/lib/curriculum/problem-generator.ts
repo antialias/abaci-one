@@ -8,14 +8,17 @@
  * This is a pure function with no side effects, so it works in both environments.
  */
 
-import type { GeneratedProblem, ProblemConstraints } from '@/db/schema/session-plans'
-import { createBasicSkillSet, type SkillSet } from '@/types/tutorial'
+import type {
+  GeneratedProblem,
+  ProblemConstraints,
+} from "@/db/schema/session-plans";
+import { createBasicSkillSet, type SkillSet } from "@/types/tutorial";
 import {
   type GenerationDiagnostics,
   type ProblemConstraints as GeneratorConstraints,
   generateSingleProblemWithDiagnostics,
-} from '@/utils/problemGenerator'
-import type { SkillCostCalculator } from '@/utils/skillComplexity'
+} from "@/utils/problemGenerator";
+import type { SkillCostCalculator } from "@/utils/skillComplexity";
 
 /**
  * Error thrown when problem generation fails
@@ -24,10 +27,10 @@ export class ProblemGenerationError extends Error {
   constructor(
     message: string,
     public readonly constraints: ProblemConstraints,
-    public readonly diagnostics?: GenerationDiagnostics
+    public readonly diagnostics?: GenerationDiagnostics,
   ) {
-    super(message)
-    this.name = 'ProblemGenerationError'
+    super(message);
+    this.name = "ProblemGenerationError";
   }
 }
 
@@ -35,44 +38,54 @@ export class ProblemGenerationError extends Error {
  * Format diagnostics into an actionable error message
  */
 function formatDiagnosticsMessage(diagnostics: GenerationDiagnostics): string {
-  const lines: string[] = []
+  const lines: string[] = [];
 
   // Identify the main failure mode
   if (diagnostics.sequenceFailures === diagnostics.totalAttempts) {
-    lines.push('CAUSE: All attempts failed during sequence generation.')
+    lines.push("CAUSE: All attempts failed during sequence generation.");
     lines.push(
-      'This means no valid sequence of terms could be built with the given skill/budget constraints.'
-    )
+      "This means no valid sequence of terms could be built with the given skill/budget constraints.",
+    );
     if (diagnostics.enabledAllowedSkills.length === 0) {
-      lines.push('FIX: No allowed skills are enabled - enable at least some basic skills.')
+      lines.push(
+        "FIX: No allowed skills are enabled - enable at least some basic skills.",
+      );
     } else {
-      lines.push(`Enabled skills: ${diagnostics.enabledAllowedSkills.slice(0, 5).join(', ')}...`)
+      lines.push(
+        `Enabled skills: ${diagnostics.enabledAllowedSkills.slice(0, 5).join(", ")}...`,
+      );
     }
   } else if (diagnostics.skillMatchFailures > 0) {
     lines.push(
-      `CAUSE: ${diagnostics.skillMatchFailures}/${diagnostics.totalAttempts} attempts generated problems but they didn't match skill requirements.`
-    )
+      `CAUSE: ${diagnostics.skillMatchFailures}/${diagnostics.totalAttempts} attempts generated problems but they didn't match skill requirements.`,
+    );
     if (diagnostics.lastGeneratedSkills) {
-      lines.push(`Last problem used skills: ${diagnostics.lastGeneratedSkills.join(', ')}`)
+      lines.push(
+        `Last problem used skills: ${diagnostics.lastGeneratedSkills.join(", ")}`,
+      );
     }
     if (diagnostics.enabledTargetSkills.length > 0) {
       lines.push(
-        `Target skills required: ${diagnostics.enabledTargetSkills.slice(0, 5).join(', ')}`
-      )
-      lines.push('FIX: Generated problems may not naturally use the target skills.')
+        `Target skills required: ${diagnostics.enabledTargetSkills.slice(0, 5).join(", ")}`,
+      );
+      lines.push(
+        "FIX: Generated problems may not naturally use the target skills.",
+      );
     }
   } else if (diagnostics.sumConstraintFailures > 0) {
-    lines.push(`CAUSE: ${diagnostics.sumConstraintFailures} attempts failed sum constraints.`)
-    lines.push('FIX: Adjust min/max sum constraints or number range.')
+    lines.push(
+      `CAUSE: ${diagnostics.sumConstraintFailures} attempts failed sum constraints.`,
+    );
+    lines.push("FIX: Adjust min/max sum constraints or number range.");
   }
 
   // Add stats
-  lines.push('')
+  lines.push("");
   lines.push(
-    `Stats: ${diagnostics.totalAttempts} attempts = ${diagnostics.sequenceFailures} seq failures + ${diagnostics.sumConstraintFailures} sum failures + ${diagnostics.skillMatchFailures} skill failures`
-  )
+    `Stats: ${diagnostics.totalAttempts} attempts = ${diagnostics.sequenceFailures} seq failures + ${diagnostics.sumConstraintFailures} sum failures + ${diagnostics.skillMatchFailures} skill failures`,
+  );
 
-  return lines.join('\n')
+  return lines.join("\n");
 }
 
 /**
@@ -85,9 +98,9 @@ function formatDiagnosticsMessage(diagnostics: GenerationDiagnostics): string {
  */
 export function generateProblemFromConstraints(
   constraints: ProblemConstraints,
-  costCalculator?: SkillCostCalculator
+  costCalculator?: SkillCostCalculator,
 ): GeneratedProblem {
-  const baseSkillSet = createBasicSkillSet()
+  const baseSkillSet = createBasicSkillSet();
 
   const allowedSkills: SkillSet = {
     basic: { ...baseSkillSet.basic, ...constraints.allowedSkills?.basic },
@@ -111,10 +124,10 @@ export function generateProblemFromConstraints(
       ...baseSkillSet.advanced,
       ...constraints.allowedSkills?.advanced,
     },
-  }
+  };
 
-  const maxDigits = constraints.digitRange?.max || 1
-  const maxValue = 10 ** maxDigits - 1
+  const maxDigits = constraints.digitRange?.max || 1;
+  const maxValue = 10 ** maxDigits - 1;
 
   const generatorConstraints: GeneratorConstraints = {
     numberRange: { min: 1, max: maxValue },
@@ -123,26 +136,31 @@ export function generateProblemFromConstraints(
     problemCount: 1,
     minComplexityBudgetPerTerm: constraints.minComplexityBudgetPerTerm,
     maxComplexityBudgetPerTerm: constraints.maxComplexityBudgetPerTerm,
-  }
+  };
 
-  const { problem: generatedProblem, diagnostics } = generateSingleProblemWithDiagnostics({
-    constraints: generatorConstraints,
-    allowedSkills,
-    targetSkills: constraints.targetSkills,
-    forbiddenSkills: constraints.forbiddenSkills,
-    costCalculator,
-  })
+  const { problem: generatedProblem, diagnostics } =
+    generateSingleProblemWithDiagnostics({
+      constraints: generatorConstraints,
+      allowedSkills,
+      targetSkills: constraints.targetSkills,
+      forbiddenSkills: constraints.forbiddenSkills,
+      costCalculator,
+    });
 
-  if (process.env.DEBUG_SESSION_PLANNER === 'true' && constraints.targetSkills) {
-    const targetList = Object.entries(constraints.targetSkills).flatMap(([cat, skills]) =>
-      Object.entries(skills as Record<string, boolean>)
-        .filter(([, v]) => v)
-        .map(([s]) => `${cat}.${s}`)
-    )
+  if (
+    process.env.DEBUG_SESSION_PLANNER === "true" &&
+    constraints.targetSkills
+  ) {
+    const targetList = Object.entries(constraints.targetSkills).flatMap(
+      ([cat, skills]) =>
+        Object.entries(skills as Record<string, boolean>)
+          .filter(([, v]) => v)
+          .map(([s]) => `${cat}.${s}`),
+    );
     if (targetList.length > 0) {
       console.log(
-        `[ProblemGenerator] Targeting: ${targetList.join(', ')} → Generated: ${generatedProblem?.skillsUsed.join(', ') || 'null'}`
-      )
+        `[ProblemGenerator] Targeting: ${targetList.join(", ")} → Generated: ${generatedProblem?.skillsUsed.join(", ") || "null"}`,
+      );
     }
   }
 
@@ -152,7 +170,7 @@ export function generateProblemFromConstraints(
       answer: generatedProblem.answer,
       skillsRequired: generatedProblem.skillsUsed,
       generationTrace: generatedProblem.generationTrace,
-    }
+    };
   }
 
   // Build actionable error message
@@ -160,10 +178,14 @@ export function generateProblemFromConstraints(
     `Failed to generate problem with constraints:\n` +
     `  termCount: ${constraints.termCount?.min}-${constraints.termCount?.max}\n` +
     `  digitRange: ${constraints.digitRange?.min}-${constraints.digitRange?.max}\n` +
-    `  minComplexityBudget: ${constraints.minComplexityBudgetPerTerm ?? 'none'}\n` +
-    `  maxComplexityBudget: ${constraints.maxComplexityBudgetPerTerm ?? 'none'}\n`
+    `  minComplexityBudget: ${constraints.minComplexityBudgetPerTerm ?? "none"}\n` +
+    `  maxComplexityBudget: ${constraints.maxComplexityBudgetPerTerm ?? "none"}\n`;
 
-  const diagnosticsMessage = formatDiagnosticsMessage(diagnostics)
+  const diagnosticsMessage = formatDiagnosticsMessage(diagnostics);
 
-  throw new ProblemGenerationError(`${basicInfo}\n${diagnosticsMessage}`, constraints, diagnostics)
+  throw new ProblemGenerationError(
+    `${basicInfo}\n${diagnosticsMessage}`,
+    constraints,
+    diagnostics,
+  );
 }

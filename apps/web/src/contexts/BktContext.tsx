@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 /**
  * BKT Context
@@ -26,127 +26,140 @@
  * - 'unassessed': Not enough data for confident classification
  */
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   computeBktFromHistory,
   getStalenessWarning,
   type SkillBktResult,
-} from '@/lib/curriculum/bkt'
+} from "@/lib/curriculum/bkt";
 import {
   BKT_THRESHOLDS,
   classifySkill,
   type SkillClassification,
-} from '@/lib/curriculum/config/bkt-integration'
-import { getSkillDisplayName } from '@/lib/curriculum/skill-tutorial-config'
-import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+} from "@/lib/curriculum/config/bkt-integration";
+import { getSkillDisplayName } from "@/lib/curriculum/skill-tutorial-config";
+import type { ProblemResultWithContext } from "@/lib/curriculum/session-planner";
 
 // Re-export thresholds for convenience
-export { BKT_THRESHOLDS } from '@/lib/curriculum/config/bkt-integration'
+export { BKT_THRESHOLDS } from "@/lib/curriculum/config/bkt-integration";
 
 // ============================================================================
 // Types
 // ============================================================================
 
 /** 5-category extended classification (includes staleness and unassessed) */
-export type ExtendedSkillClassification = 'strong' | 'stale' | 'developing' | 'weak' | 'unassessed'
+export type ExtendedSkillClassification =
+  | "strong"
+  | "stale"
+  | "developing"
+  | "weak"
+  | "unassessed";
 
 /** Skill distribution counts for all 5 categories */
 export interface SkillDistribution {
-  strong: number
-  stale: number
-  developing: number
-  weak: number
-  unassessed: number
-  total: number
+  strong: number;
+  stale: number;
+  developing: number;
+  weak: number;
+  unassessed: number;
+  total: number;
 }
 
 /** Skill mastery data needed for staleness detection */
 export interface SkillMasteryInfo {
-  skillId: string
-  lastPracticedAt: Date | null
-  isPracticing: boolean
+  skillId: string;
+  lastPracticedAt: Date | null;
+  isPracticing: boolean;
 }
 
 export interface ClassifiedSkill {
-  skillId: string
-  displayName: string
-  pKnown: number
-  confidence: number
-  classification: SkillClassification | null
+  skillId: string;
+  displayName: string;
+  pKnown: number;
+  confidence: number;
+  classification: SkillClassification | null;
 }
 
 /** Extended skill with 5-category classification and staleness info */
 export interface ExtendedClassifiedSkill extends ClassifiedSkill {
   /** 5-category classification (includes stale and unassessed) */
-  extendedClassification: ExtendedSkillClassification
+  extendedClassification: ExtendedSkillClassification;
   /** Staleness warning message (null if recently practiced) */
-  stalenessWarning: string | null
+  stalenessWarning: string | null;
   /** Days since last practice (null if never practiced) */
-  daysSinceLastPractice: number | null
+  daysSinceLastPractice: number | null;
   /** Whether the skill is currently being practiced */
-  isPracticing: boolean
+  isPracticing: boolean;
 }
 
 interface BktConfigContextValue {
   /** Current confidence threshold being used */
-  confidenceThreshold: number
+  confidenceThreshold: number;
   /** Set a preview threshold (doesn't persist) */
-  setPreviewThreshold: (threshold: number) => void
+  setPreviewThreshold: (threshold: number) => void;
   /** Reset to default threshold */
-  resetThreshold: () => void
+  resetThreshold: () => void;
 }
 
 interface BktDataContextValue {
   /** All skills with BKT data */
-  skills: ClassifiedSkill[]
+  skills: ClassifiedSkill[];
   /** Skills classified as 'weak' (pKnown < 0.5) */
-  weak: ClassifiedSkill[]
+  weak: ClassifiedSkill[];
   /** Skills classified as 'developing' (0.5 <= pKnown < 0.8) */
-  developing: ClassifiedSkill[]
+  developing: ClassifiedSkill[];
   /** Skills classified as 'strong' (pKnown >= 0.8) */
-  strong: ClassifiedSkill[]
+  strong: ClassifiedSkill[];
   /** Whether there is any BKT data available */
-  hasData: boolean
+  hasData: boolean;
   /** Raw BKT results for advanced usage */
-  rawBktResults: SkillBktResult[]
+  rawBktResults: SkillBktResult[];
 }
 
 // Legacy interface for backwards compatibility with BktSettingsClient
 interface LegacySkillsByClassification {
   /** @deprecated Use 'weak' instead */
-  struggling: ClassifiedSkill[]
+  struggling: ClassifiedSkill[];
   /** @deprecated Use 'developing' instead */
-  learning: ClassifiedSkill[]
+  learning: ClassifiedSkill[];
   /** @deprecated Use 'strong' instead */
-  mastered: ClassifiedSkill[]
-  hasData: boolean
+  mastered: ClassifiedSkill[];
+  hasData: boolean;
 }
 
 /** Extended BKT data with 5-category classification and staleness */
 interface BktExtendedDataContextValue {
   /** All practicing skills with extended classification */
-  extendedSkills: ExtendedClassifiedSkill[]
+  extendedSkills: ExtendedClassifiedSkill[];
   /** Skills grouped by 5-category classification */
   byClassification: {
-    strong: ExtendedClassifiedSkill[]
-    stale: ExtendedClassifiedSkill[]
-    developing: ExtendedClassifiedSkill[]
-    weak: ExtendedClassifiedSkill[]
-    unassessed: ExtendedClassifiedSkill[]
-  }
+    strong: ExtendedClassifiedSkill[];
+    stale: ExtendedClassifiedSkill[];
+    developing: ExtendedClassifiedSkill[];
+    weak: ExtendedClassifiedSkill[];
+    unassessed: ExtendedClassifiedSkill[];
+  };
   /** Counts for each category */
-  distribution: SkillDistribution
+  distribution: SkillDistribution;
   /** Whether extended data is available */
-  hasExtendedData: boolean
+  hasExtendedData: boolean;
 }
 
 // ============================================================================
 // Context
 // ============================================================================
 
-const BktConfigContext = createContext<BktConfigContextValue | null>(null)
-const BktDataContext = createContext<BktDataContextValue | null>(null)
-const BktExtendedDataContext = createContext<BktExtendedDataContextValue | null>(null)
+const BktConfigContext = createContext<BktConfigContextValue | null>(null);
+const BktDataContext = createContext<BktDataContextValue | null>(null);
+const BktExtendedDataContext =
+  createContext<BktExtendedDataContextValue | null>(null);
 
 // ============================================================================
 // Provider
@@ -162,34 +175,36 @@ const BktExtendedDataContext = createContext<BktExtendedDataContextValue | null>
  */
 export function getExtendedClassification(
   bktClassification: SkillClassification | null,
-  stalenessWarning: string | null
+  stalenessWarning: string | null,
 ): ExtendedSkillClassification {
-  if (bktClassification === null) return 'unassessed'
-  if (bktClassification === 'strong' && stalenessWarning) return 'stale'
-  return bktClassification
+  if (bktClassification === null) return "unassessed";
+  if (bktClassification === "strong" && stalenessWarning) return "stale";
+  return bktClassification;
 }
 
 /**
  * Compute days since last practice from a Date.
  */
-function computeDaysSinceLastPractice(lastPracticedAt: Date | null): number | null {
-  if (!lastPracticedAt) return null
-  const now = new Date()
-  const diffMs = now.getTime() - lastPracticedAt.getTime()
-  return Math.floor(diffMs / (1000 * 60 * 60 * 24))
+function computeDaysSinceLastPractice(
+  lastPracticedAt: Date | null,
+): number | null {
+  if (!lastPracticedAt) return null;
+  const now = new Date();
+  const diffMs = now.getTime() - lastPracticedAt.getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
 }
 
 interface BktProviderProps {
-  children: ReactNode
+  children: ReactNode;
   /** Problem history to compute BKT from */
-  problemHistory: ProblemResultWithContext[]
+  problemHistory: ProblemResultWithContext[];
   /** Initial confidence threshold (defaults to BKT_THRESHOLDS.confidence) */
-  initialThreshold?: number
+  initialThreshold?: number;
   /**
    * Optional skill mastery data for extended (5-category) classification.
    * When provided, enables staleness detection and unassessed skill tracking.
    */
-  skillMasteryData?: SkillMasteryInfo[]
+  skillMasteryData?: SkillMasteryInfo[];
 }
 
 export function BktProvider({
@@ -198,22 +213,22 @@ export function BktProvider({
   initialThreshold = BKT_THRESHOLDS.confidence,
   skillMasteryData,
 }: BktProviderProps) {
-  const [previewThreshold, setPreviewThreshold] = useState<number | null>(null)
-  const effectiveThreshold = previewThreshold ?? initialThreshold
+  const [previewThreshold, setPreviewThreshold] = useState<number | null>(null);
+  const effectiveThreshold = previewThreshold ?? initialThreshold;
 
   const resetThreshold = useCallback(() => {
-    setPreviewThreshold(null)
-  }, [])
+    setPreviewThreshold(null);
+  }, []);
 
   // Compute BKT from problem history
   const bktResult = useMemo(() => {
     if (!problemHistory || problemHistory.length === 0) {
-      return { skills: [] }
+      return { skills: [] };
     }
     return computeBktFromHistory(problemHistory, {
       confidenceThreshold: effectiveThreshold,
-    })
-  }, [problemHistory, effectiveThreshold])
+    });
+  }, [problemHistory, effectiveThreshold]);
 
   // Classify skills using unified thresholds
   const classifiedSkills = useMemo<ClassifiedSkill[]>(() => {
@@ -223,8 +238,8 @@ export function BktProvider({
       pKnown: skill.pKnown,
       confidence: skill.confidence,
       classification: classifySkill(skill.pKnown, skill.confidence),
-    }))
-  }, [bktResult.skills])
+    }));
+  }, [bktResult.skills]);
 
   // Group by classification
   const { weak, developing, strong } = useMemo(() => {
@@ -232,26 +247,26 @@ export function BktProvider({
       weak: [] as ClassifiedSkill[],
       developing: [] as ClassifiedSkill[],
       strong: [] as ClassifiedSkill[],
-    }
+    };
 
     for (const skill of classifiedSkills) {
-      if (skill.classification === 'weak') {
-        groups.weak.push(skill)
-      } else if (skill.classification === 'developing') {
-        groups.developing.push(skill)
-      } else if (skill.classification === 'strong') {
-        groups.strong.push(skill)
+      if (skill.classification === "weak") {
+        groups.weak.push(skill);
+      } else if (skill.classification === "developing") {
+        groups.developing.push(skill);
+      } else if (skill.classification === "strong") {
+        groups.strong.push(skill);
       }
       // Skills with null classification (low confidence) are not grouped
     }
 
     // Sort each group by pKnown
-    groups.weak.sort((a, b) => a.pKnown - b.pKnown)
-    groups.developing.sort((a, b) => a.pKnown - b.pKnown)
-    groups.strong.sort((a, b) => b.pKnown - a.pKnown)
+    groups.weak.sort((a, b) => a.pKnown - b.pKnown);
+    groups.developing.sort((a, b) => a.pKnown - b.pKnown);
+    groups.strong.sort((a, b) => b.pKnown - a.pKnown);
 
-    return groups
-  }, [classifiedSkills])
+    return groups;
+  }, [classifiedSkills]);
 
   const configValue = useMemo<BktConfigContextValue>(
     () => ({
@@ -259,8 +274,8 @@ export function BktProvider({
       setPreviewThreshold,
       resetThreshold,
     }),
-    [effectiveThreshold, resetThreshold]
-  )
+    [effectiveThreshold, resetThreshold],
+  );
 
   const dataValue = useMemo<BktDataContextValue>(
     () => ({
@@ -271,44 +286,52 @@ export function BktProvider({
       hasData: classifiedSkills.length > 0,
       rawBktResults: bktResult.skills,
     }),
-    [classifiedSkills, weak, developing, strong, bktResult.skills]
-  )
+    [classifiedSkills, weak, developing, strong, bktResult.skills],
+  );
 
   // Create a map of BKT results for quick lookup
   const bktResultsMap = useMemo(() => {
-    const map = new Map<string, ClassifiedSkill>()
+    const map = new Map<string, ClassifiedSkill>();
     for (const skill of classifiedSkills) {
-      map.set(skill.skillId, skill)
+      map.set(skill.skillId, skill);
     }
-    return map
-  }, [classifiedSkills])
+    return map;
+  }, [classifiedSkills]);
 
   // Compute extended 5-category data when skillMasteryData is provided
   const extendedDataValue = useMemo<BktExtendedDataContextValue | null>(() => {
-    if (!skillMasteryData) return null
+    if (!skillMasteryData) return null;
 
     // Only process practicing skills for the distribution
-    const practicingSkillData = skillMasteryData.filter((s) => s.isPracticing)
+    const practicingSkillData = skillMasteryData.filter((s) => s.isPracticing);
 
-    const extendedSkills: ExtendedClassifiedSkill[] = practicingSkillData.map((skillMastery) => {
-      const bktData = bktResultsMap.get(skillMastery.skillId)
-      const daysSince = computeDaysSinceLastPractice(skillMastery.lastPracticedAt)
-      const stalenessWarning = getStalenessWarning(daysSince)
-      const baseClassification = bktData?.classification ?? null
-      const extendedClassification = getExtendedClassification(baseClassification, stalenessWarning)
+    const extendedSkills: ExtendedClassifiedSkill[] = practicingSkillData.map(
+      (skillMastery) => {
+        const bktData = bktResultsMap.get(skillMastery.skillId);
+        const daysSince = computeDaysSinceLastPractice(
+          skillMastery.lastPracticedAt,
+        );
+        const stalenessWarning = getStalenessWarning(daysSince);
+        const baseClassification = bktData?.classification ?? null;
+        const extendedClassification = getExtendedClassification(
+          baseClassification,
+          stalenessWarning,
+        );
 
-      return {
-        skillId: skillMastery.skillId,
-        displayName: bktData?.displayName ?? getSkillDisplayName(skillMastery.skillId),
-        pKnown: bktData?.pKnown ?? 0,
-        confidence: bktData?.confidence ?? 0,
-        classification: baseClassification,
-        extendedClassification,
-        stalenessWarning,
-        daysSinceLastPractice: daysSince,
-        isPracticing: skillMastery.isPracticing,
-      }
-    })
+        return {
+          skillId: skillMastery.skillId,
+          displayName:
+            bktData?.displayName ?? getSkillDisplayName(skillMastery.skillId),
+          pKnown: bktData?.pKnown ?? 0,
+          confidence: bktData?.confidence ?? 0,
+          classification: baseClassification,
+          extendedClassification,
+          stalenessWarning,
+          daysSinceLastPractice: daysSince,
+          isPracticing: skillMastery.isPracticing,
+        };
+      },
+    );
 
     // Group by extended classification
     const byClassification = {
@@ -317,20 +340,22 @@ export function BktProvider({
       developing: [] as ExtendedClassifiedSkill[],
       weak: [] as ExtendedClassifiedSkill[],
       unassessed: [] as ExtendedClassifiedSkill[],
-    }
+    };
 
     for (const skill of extendedSkills) {
-      byClassification[skill.extendedClassification].push(skill)
+      byClassification[skill.extendedClassification].push(skill);
     }
 
     // Sort each group
-    byClassification.strong.sort((a, b) => b.pKnown - a.pKnown)
+    byClassification.strong.sort((a, b) => b.pKnown - a.pKnown);
     byClassification.stale.sort(
-      (a, b) => (b.daysSinceLastPractice ?? 0) - (a.daysSinceLastPractice ?? 0)
-    )
-    byClassification.developing.sort((a, b) => b.pKnown - a.pKnown)
-    byClassification.weak.sort((a, b) => a.pKnown - b.pKnown)
-    byClassification.unassessed.sort((a, b) => a.displayName.localeCompare(b.displayName))
+      (a, b) => (b.daysSinceLastPractice ?? 0) - (a.daysSinceLastPractice ?? 0),
+    );
+    byClassification.developing.sort((a, b) => b.pKnown - a.pKnown);
+    byClassification.weak.sort((a, b) => a.pKnown - b.pKnown);
+    byClassification.unassessed.sort((a, b) =>
+      a.displayName.localeCompare(b.displayName),
+    );
 
     // Compute distribution counts
     const distribution: SkillDistribution = {
@@ -340,15 +365,15 @@ export function BktProvider({
       weak: byClassification.weak.length,
       unassessed: byClassification.unassessed.length,
       total: extendedSkills.length,
-    }
+    };
 
     return {
       extendedSkills,
       byClassification,
       distribution,
       hasExtendedData: extendedSkills.length > 0,
-    }
-  }, [skillMasteryData, bktResultsMap])
+    };
+  }, [skillMasteryData, bktResultsMap]);
 
   return (
     <BktConfigContext.Provider value={configValue}>
@@ -358,7 +383,7 @@ export function BktProvider({
         </BktExtendedDataContext.Provider>
       </BktDataContext.Provider>
     </BktConfigContext.Provider>
-  )
+  );
 }
 
 // ============================================================================
@@ -369,22 +394,22 @@ export function BktProvider({
  * Access BKT configuration (threshold settings)
  */
 export function useBktConfig(): BktConfigContextValue {
-  const context = useContext(BktConfigContext)
+  const context = useContext(BktConfigContext);
   if (!context) {
-    throw new Error('useBktConfig must be used within a BktProvider')
+    throw new Error("useBktConfig must be used within a BktProvider");
   }
-  return context
+  return context;
 }
 
 /**
  * Access BKT data (classified skills)
  */
 export function useBktData(): BktDataContextValue {
-  const context = useContext(BktDataContext)
+  const context = useContext(BktDataContext);
   if (!context) {
-    throw new Error('useBktData must be used within a BktProvider')
+    throw new Error("useBktData must be used within a BktProvider");
   }
-  return context
+  return context;
 }
 
 /**
@@ -400,8 +425,9 @@ export function useBktData(): BktDataContextValue {
  * - learning → developing
  * - mastered → strong
  */
-export function useSkillsByClassification(): BktDataContextValue & LegacySkillsByClassification {
-  const data = useBktData()
+export function useSkillsByClassification(): BktDataContextValue &
+  LegacySkillsByClassification {
+  const data = useBktData();
 
   // Provide legacy aliases for backwards compatibility
   return useMemo(
@@ -412,8 +438,8 @@ export function useSkillsByClassification(): BktDataContextValue & LegacySkillsB
       learning: data.developing,
       mastered: data.strong,
     }),
-    [data]
-  )
+    [data],
+  );
 }
 
 /**
@@ -430,7 +456,7 @@ export function useSkillsByClassification(): BktDataContextValue & LegacySkillsB
  * - unassessed: Not enough data for confident classification
  */
 export function useBktExtendedData(): BktExtendedDataContextValue | null {
-  return useContext(BktExtendedDataContext)
+  return useContext(BktExtendedDataContext);
 }
 
 /**
@@ -440,6 +466,6 @@ export function useBktExtendedData(): BktExtendedDataContextValue | null {
  * Returns null if extended data is not available.
  */
 export function useSkillDistribution(): SkillDistribution | null {
-  const extendedData = useContext(BktExtendedDataContext)
-  return extendedData?.distribution ?? null
+  const extendedData = useContext(BktExtendedDataContext);
+  return extendedData?.distribution ?? null;
 }

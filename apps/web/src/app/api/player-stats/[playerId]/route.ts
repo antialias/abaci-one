@@ -1,25 +1,31 @@
-import { eq } from 'drizzle-orm'
-import { NextResponse } from 'next/server'
-import { db } from '@/db'
-import type { GameStatsBreakdown } from '@/db/schema/player-stats'
-import { playerStats } from '@/db/schema/player-stats'
-import { players } from '@/db/schema/players'
-import type { GetPlayerStatsResponse, PlayerStatsData } from '@/lib/arcade/stats/types'
-import { getViewerId } from '@/lib/viewer'
+import { eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { db } from "@/db";
+import type { GameStatsBreakdown } from "@/db/schema/player-stats";
+import { playerStats } from "@/db/schema/player-stats";
+import { players } from "@/db/schema/players";
+import type {
+  GetPlayerStatsResponse,
+  PlayerStatsData,
+} from "@/lib/arcade/stats/types";
+import { getViewerId } from "@/lib/viewer";
 
 /**
  * GET /api/player-stats/[playerId]
  *
  * Fetches stats for a specific player (must be owned by current user).
  */
-export async function GET(_request: Request, { params }: { params: { playerId: string } }) {
+export async function GET(
+  _request: Request,
+  { params }: { params: { playerId: string } },
+) {
   try {
-    const { playerId } = params
+    const { playerId } = params;
 
     // 1. Authenticate user
-    const viewerId = await getViewerId()
+    const viewerId = await getViewerId();
     if (!viewerId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // 2. Verify player belongs to user
@@ -28,17 +34,17 @@ export async function GET(_request: Request, { params }: { params: { playerId: s
       .from(players)
       .where(eq(players.id, playerId))
       .limit(1)
-      .then((rows) => rows[0])
+      .then((rows) => rows[0]);
 
     if (!player) {
-      return NextResponse.json({ error: 'Player not found' }, { status: 404 })
+      return NextResponse.json({ error: "Player not found" }, { status: 404 });
     }
 
     if (player.userId !== viewerId) {
       return NextResponse.json(
-        { error: 'Forbidden: player belongs to another user' },
-        { status: 403 }
-      )
+        { error: "Forbidden: player belongs to another user" },
+        { status: 403 },
+      );
     }
 
     // 3. Fetch player stats
@@ -47,34 +53,36 @@ export async function GET(_request: Request, { params }: { params: { playerId: s
       .from(playerStats)
       .where(eq(playerStats.playerId, playerId))
       .limit(1)
-      .then((rows) => rows[0])
+      .then((rows) => rows[0]);
 
     const playerStatsData: PlayerStatsData = stats
       ? convertToPlayerStatsData(stats)
-      : createDefaultPlayerStats(playerId)
+      : createDefaultPlayerStats(playerId);
 
     // 4. Return response
     const response: GetPlayerStatsResponse = {
       stats: playerStatsData,
-    }
+    };
 
-    return NextResponse.json(response)
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('❌ Failed to fetch player stats:', error)
+    console.error("❌ Failed to fetch player stats:", error);
     return NextResponse.json(
       {
-        error: 'Failed to fetch player stats',
+        error: "Failed to fetch player stats",
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }
 
 /**
  * Convert DB record to PlayerStatsData
  */
-function convertToPlayerStatsData(dbStats: typeof playerStats.$inferSelect): PlayerStatsData {
+function convertToPlayerStatsData(
+  dbStats: typeof playerStats.$inferSelect,
+): PlayerStatsData {
   return {
     playerId: dbStats.playerId,
     gamesPlayed: dbStats.gamesPlayed,
@@ -87,14 +95,14 @@ function convertToPlayerStatsData(dbStats: typeof playerStats.$inferSelect): Pla
     lastPlayedAt: dbStats.lastPlayedAt,
     createdAt: dbStats.createdAt,
     updatedAt: dbStats.updatedAt,
-  }
+  };
 }
 
 /**
  * Create default player stats for new player
  */
 function createDefaultPlayerStats(playerId: string): PlayerStatsData {
-  const now = new Date()
+  const now = new Date();
   return {
     playerId,
     gamesPlayed: 0,
@@ -107,5 +115,5 @@ function createDefaultPlayerStats(playerId: string): PlayerStatsData {
     lastPlayedAt: null,
     createdAt: now,
     updatedAt: now,
-  }
+  };
 }

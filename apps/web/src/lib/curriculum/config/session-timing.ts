@@ -9,13 +9,13 @@
  * Default seconds per problem if no student history exists.
  * Used for initial session planning before we have timing data.
  */
-export const DEFAULT_SECONDS_PER_PROBLEM = 45
+export const DEFAULT_SECONDS_PER_PROBLEM = 45;
 
 /**
  * How long before an inactive session is auto-abandoned (hours).
  * Sessions older than this are cleaned up when the student returns.
  */
-export const SESSION_TIMEOUT_HOURS = 24
+export const SESSION_TIMEOUT_HOURS = 24;
 
 /**
  * Spaced repetition intervals for skill review.
@@ -28,6 +28,6 @@ export const REVIEW_INTERVAL_DAYS = {
   mastered: 7,
   /** Days between reviews for skills still being practiced */
   practicing: 3,
-} as const
+} as const;
 
-export type ReviewIntervalDays = typeof REVIEW_INTERVAL_DAYS
+export type ReviewIntervalDays = typeof REVIEW_INTERVAL_DAYS;

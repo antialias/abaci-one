@@ -1,16 +1,16 @@
-'use client'
+"use client";
 
-import { rithmomachiaGame } from '@/arcade-games/rithmomachia'
+import { rithmomachiaGame } from "@/arcade-games/rithmomachia";
 
 // Force dynamic rendering to avoid build-time initialization errors
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
-const { Provider, GameComponent } = rithmomachiaGame
+const { Provider, GameComponent } = rithmomachiaGame;
 
 export default function RithmomachiaPage() {
   return (
     <Provider>
       <GameComponent />
     </Provider>
-  )
+  );
 }

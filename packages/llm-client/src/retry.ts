@@ -1,24 +1,24 @@
-import type { LLMProgress, ValidationFeedback } from './types'
+import type { LLMProgress, ValidationFeedback } from "./types";
 import {
   LLMValidationError,
   LLMApiError,
   LLMTruncationError,
   LLMContentFilterError,
   LLMJsonParseError,
-} from './types'
+} from "./types";
 
 /**
  * Options for retry execution
  */
 export interface RetryOptions {
   /** Maximum number of retry attempts */
-  maxRetries: number
+  maxRetries: number;
   /** Progress callback */
-  onProgress?: (progress: LLMProgress) => void
+  onProgress?: (progress: LLMProgress) => void;
   /** Base delay for exponential backoff (ms) */
-  baseDelayMs?: number
+  baseDelayMs?: number;
   /** Maximum delay cap (ms) */
-  maxDelayMs?: number
+  maxDelayMs?: number;
 }
 
 /**
@@ -27,31 +27,31 @@ export interface RetryOptions {
 export function isRetryableError(error: unknown): boolean {
   // Content filter errors are never retryable - the model refused
   if (error instanceof LLMContentFilterError) {
-    return false
+    return false;
   }
 
   // Truncation errors might be retryable with a shorter prompt, but not automatically
   if (error instanceof LLMTruncationError) {
-    return false
+    return false;
   }
 
   // Validation errors are retryable - we feed back the error to the LLM
   if (error instanceof LLMValidationError) {
-    return true
+    return true;
   }
 
   // JSON parse errors are retryable - LLM might return valid JSON next time
   if (error instanceof LLMJsonParseError) {
-    return true
+    return true;
   }
 
   // API errors: rate limits and server errors are retryable, client errors are not
   if (error instanceof LLMApiError) {
-    return error.isRateLimited() || error.isServerError()
+    return error.isRateLimited() || error.isServerError();
   }
 
   // Generic errors (network issues, etc.) are retryable
-  return true
+  return true;
 }
 
 /**
@@ -61,17 +61,17 @@ export function getRetryDelay(
   error: unknown,
   attempt: number,
   baseDelayMs: number,
-  maxDelayMs: number
+  maxDelayMs: number,
 ): number {
   // If it's a rate limit with Retry-After, use that
   if (error instanceof LLMApiError && error.retryAfterMs) {
-    return Math.min(error.retryAfterMs, maxDelayMs)
+    return Math.min(error.retryAfterMs, maxDelayMs);
   }
 
   // Exponential backoff with jitter
-  const exponentialDelay = baseDelayMs * Math.pow(2, attempt - 1)
-  const jitter = Math.random() * 0.1 * exponentialDelay // 10% jitter
-  return Math.min(exponentialDelay + jitter, maxDelayMs)
+  const exponentialDelay = baseDelayMs * Math.pow(2, attempt - 1);
+  const jitter = Math.random() * 0.1 * exponentialDelay; // 10% jitter
+  return Math.min(exponentialDelay + jitter, maxDelayMs);
 }
 
 /**
@@ -96,130 +96,130 @@ export function getRetryDelay(
 export async function executeWithRetry<T>(
   fn: (feedback?: ValidationFeedback) => Promise<T>,
   validate: (result: T) => ValidationFeedback | null,
-  options: RetryOptions
+  options: RetryOptions,
 ): Promise<{ result: T; attempts: number }> {
   const {
     maxRetries,
     onProgress,
     baseDelayMs = 1000,
     maxDelayMs = 60000,
-  } = options
-  const maxAttempts = maxRetries + 1
+  } = options;
+  const maxAttempts = maxRetries + 1;
 
-  let lastFeedback: ValidationFeedback | undefined
-  let lastError: Error | undefined
+  let lastFeedback: ValidationFeedback | undefined;
+  let lastError: Error | undefined;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     // Report progress
     onProgress?.({
-      stage: attempt === 1 ? 'calling' : 'retrying',
+      stage: attempt === 1 ? "calling" : "retrying",
       attempt,
       maxAttempts,
       message:
         attempt === 1
-          ? 'Calling LLM...'
-          : `Retry ${attempt - 1}/${maxRetries}: fixing ${lastFeedback?.field ?? 'error'}`,
+          ? "Calling LLM..."
+          : `Retry ${attempt - 1}/${maxRetries}: fixing ${lastFeedback?.field ?? "error"}`,
       validationError: lastFeedback,
-    })
+    });
 
     try {
       // Call the function (with feedback on retry)
-      const result = await fn(lastFeedback)
+      const result = await fn(lastFeedback);
 
       // Report validation stage
       onProgress?.({
-        stage: 'validating',
+        stage: "validating",
         attempt,
         maxAttempts,
-        message: 'Validating response...',
-      })
+        message: "Validating response...",
+      });
 
       // Validate the result
-      const error = validate(result)
+      const error = validate(result);
 
       if (!error) {
         // Success!
-        return { result, attempts: attempt }
+        return { result, attempts: attempt };
       }
 
       // Validation failed
       if (attempt < maxAttempts) {
         // Store feedback for next attempt
-        lastFeedback = error
+        lastFeedback = error;
 
         // Backoff before retry
-        const delayMs = getRetryDelay(null, attempt, baseDelayMs, maxDelayMs)
-        await sleep(delayMs)
+        const delayMs = getRetryDelay(null, attempt, baseDelayMs, maxDelayMs);
+        await sleep(delayMs);
       } else {
         // Out of retries
-        throw new LLMValidationError(error)
+        throw new LLMValidationError(error);
       }
     } catch (error) {
       // Re-throw validation errors from final attempt
       if (error instanceof LLMValidationError) {
-        throw error
+        throw error;
       }
 
       // Check if this error is retryable
       if (!isRetryableError(error)) {
-        throw error
+        throw error;
       }
 
       // Store for potential re-throw
-      lastError = error as Error
+      lastError = error as Error;
 
       if (attempt < maxAttempts) {
         // Calculate delay based on error type
-        const delayMs = getRetryDelay(error, attempt, baseDelayMs, maxDelayMs)
+        const delayMs = getRetryDelay(error, attempt, baseDelayMs, maxDelayMs);
 
         // For JSON parse errors, convert to validation feedback for next attempt
         if (error instanceof LLMJsonParseError) {
           lastFeedback = {
-            field: 'root',
-            error: 'Response was not valid JSON',
+            field: "root",
+            error: "Response was not valid JSON",
             received: error.rawContent.substring(0, 500),
-          }
+          };
         }
 
-        await sleep(delayMs)
+        await sleep(delayMs);
       } else {
-        throw lastError
+        throw lastError;
       }
     }
   }
 
   // Should never reach here
-  throw lastError ?? new Error('Retry logic failed unexpectedly')
+  throw lastError ?? new Error("Retry logic failed unexpectedly");
 }
 
 /**
  * Sleep for a specified duration
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
  * Build validation feedback message for inclusion in retry prompt
  */
 export function buildFeedbackPrompt(feedback: ValidationFeedback): string {
-  let prompt = '\n\nPREVIOUS ATTEMPT HAD VALIDATION ERROR:\n'
-  prompt += `Field: ${feedback.field}\n`
-  prompt += `Error: ${feedback.error}\n`
+  let prompt = "\n\nPREVIOUS ATTEMPT HAD VALIDATION ERROR:\n";
+  prompt += `Field: ${feedback.field}\n`;
+  prompt += `Error: ${feedback.error}\n`;
 
   if (feedback.received !== undefined) {
-    prompt += `Received: ${JSON.stringify(feedback.received)}\n`
+    prompt += `Received: ${JSON.stringify(feedback.received)}\n`;
   }
 
   if (feedback.expected !== undefined) {
-    prompt += `Expected: ${JSON.stringify(feedback.expected)}\n`
+    prompt += `Expected: ${JSON.stringify(feedback.expected)}\n`;
   }
 
   if (feedback.validOptions && feedback.validOptions.length > 0) {
-    prompt += `Valid options: ${feedback.validOptions.join(', ')}\n`
+    prompt += `Valid options: ${feedback.validOptions.join(", ")}\n`;
   }
 
-  prompt += '\nPlease correct this error and provide a valid response.'
+  prompt += "\nPlease correct this error and provide a valid response.";
 
-  return prompt
+  return prompt;
 }

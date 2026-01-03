@@ -10,18 +10,18 @@
  * @deprecated Use QuadCorners for perspective-aware calibration
  */
 export interface ROI {
-  x: number
-  y: number
-  width: number
-  height: number
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 /**
  * A point in 2D space (video coordinates)
  */
 export interface Point {
-  x: number
-  y: number
+  x: number;
+  y: number;
 }
 
 /**
@@ -30,13 +30,13 @@ export interface Point {
  */
 export interface QuadCorners {
   /** Top-left corner */
-  topLeft: Point
+  topLeft: Point;
   /** Top-right corner */
-  topRight: Point
+  topRight: Point;
   /** Bottom-left corner */
-  bottomLeft: Point
+  bottomLeft: Point;
   /** Bottom-right corner */
-  bottomRight: Point
+  bottomRight: Point;
 }
 
 /**
@@ -44,61 +44,61 @@ export interface QuadCorners {
  */
 export interface CalibrationGrid {
   /** Bounding box in video coordinates (legacy - for backward compat) */
-  roi: ROI
+  roi: ROI;
   /** Four corners of the quadrilateral ROI (preferred) */
-  corners?: QuadCorners
+  corners?: QuadCorners;
   /** Number of abacus columns to detect */
-  columnCount: number
+  columnCount: number;
   /** Column divider positions as fractions (0-1) within ROI */
-  columnDividers: number[]
+  columnDividers: number[];
   /** Rotation angle in degrees (for skewed cameras) - deprecated, use corners instead */
-  rotation: number
+  rotation: number;
 }
 
 /**
  * Stored calibration data in localStorage
  */
 export interface StoredCalibration {
-  version: 1
-  grid: CalibrationGrid
-  createdAt: string
-  deviceId: string
+  version: 1;
+  grid: CalibrationGrid;
+  createdAt: string;
+  deviceId: string;
 }
 
 /**
  * Result of classifying a single column
  */
 export interface ColumnClassificationResult {
-  digit: number
-  confidence: number
+  digit: number;
+  confidence: number;
 }
 
 /**
  * Result of classifying all columns in a frame
  */
 export interface FrameClassificationResult {
-  digits: number[]
-  confidences: number[]
-  timestamp: number
+  digits: number[];
+  confidences: number[];
+  timestamp: number;
 }
 
 /**
  * Calibration mode options
  */
-export type CalibrationMode = 'manual' | 'auto'
+export type CalibrationMode = "manual" | "auto";
 
 /**
  * ArUco marker detection status
  */
 export interface MarkerDetectionStatus {
   /** Whether ArUco detection is available */
-  isAvailable: boolean
+  isAvailable: boolean;
   /** Whether all 4 markers are currently detected */
-  allMarkersFound: boolean
+  allMarkersFound: boolean;
   /** Number of markers currently detected (0-4) */
-  markersFound: number
+  markersFound: number;
   /** Which marker IDs are currently detected */
-  detectedIds: number[]
+  detectedIds: number[];
 }
 
 /**
@@ -106,38 +106,38 @@ export interface MarkerDetectionStatus {
  */
 export interface AbacusVisionState {
   // Vision state
-  isEnabled: boolean
-  isCalibrated: boolean
-  isDetecting: boolean
-  currentDetectedValue: number | null
-  confidence: number
-  columnConfidences: number[]
+  isEnabled: boolean;
+  isCalibrated: boolean;
+  isDetecting: boolean;
+  currentDetectedValue: number | null;
+  confidence: number;
+  columnConfidences: number[];
 
   // Classifier state
-  isClassifierLoading: boolean
-  isClassifierReady: boolean
-  classifierError: string | null
+  isClassifierLoading: boolean;
+  isClassifierReady: boolean;
+  classifierError: string | null;
 
   // Camera state
-  isCameraLoading: boolean
-  videoStream: MediaStream | null
-  cameraError: string | null
-  selectedDeviceId: string | null
-  availableDevices: MediaDeviceInfo[]
-  isDeskViewDetected: boolean
-  facingMode: 'user' | 'environment'
-  isTorchOn: boolean
-  isTorchAvailable: boolean
+  isCameraLoading: boolean;
+  videoStream: MediaStream | null;
+  cameraError: string | null;
+  selectedDeviceId: string | null;
+  availableDevices: MediaDeviceInfo[];
+  isDeskViewDetected: boolean;
+  facingMode: "user" | "environment";
+  isTorchOn: boolean;
+  isTorchAvailable: boolean;
 
   // Calibration state
-  calibrationGrid: CalibrationGrid | null
-  isCalibrating: boolean
-  calibrationMode: CalibrationMode
-  markerDetection: MarkerDetectionStatus
+  calibrationGrid: CalibrationGrid | null;
+  isCalibrating: boolean;
+  calibrationMode: CalibrationMode;
+  markerDetection: MarkerDetectionStatus;
 
   // Stability state
-  isHandDetected: boolean
-  consecutiveFrames: number
+  isHandDetected: boolean;
+  consecutiveFrames: number;
 }
 
 /**
@@ -145,42 +145,42 @@ export interface AbacusVisionState {
  */
 export interface AbacusVisionActions {
   /** Start the camera and vision processing */
-  enable: () => Promise<void>
+  enable: () => Promise<void>;
   /** Stop the camera and vision processing */
-  disable: () => void
+  disable: () => void;
   /** Enter manual calibration mode */
-  startCalibration: () => void
+  startCalibration: () => void;
   /** Save calibration and exit calibration mode */
-  finishCalibration: (grid: CalibrationGrid) => void
+  finishCalibration: (grid: CalibrationGrid) => void;
   /** Cancel calibration without saving */
-  cancelCalibration: () => void
+  cancelCalibration: () => void;
   /** Select a specific camera device */
-  selectCamera: (deviceId: string) => void
+  selectCamera: (deviceId: string) => void;
   /** Clear saved calibration */
-  resetCalibration: () => void
+  resetCalibration: () => void;
   /** Set calibration mode (auto uses ArUco markers, manual uses drag handles) */
-  setCalibrationMode: (mode: CalibrationMode) => void
+  setCalibrationMode: (mode: CalibrationMode) => void;
   /** Flip between front and back camera */
-  flipCamera: () => Promise<void>
+  flipCamera: () => Promise<void>;
   /** Toggle torch on/off */
-  toggleTorch: () => Promise<void>
+  toggleTorch: () => Promise<void>;
 }
 
 /**
  * Combined state and actions from useAbacusVision
  */
-export type UseAbacusVisionReturn = AbacusVisionState & AbacusVisionActions
+export type UseAbacusVisionReturn = AbacusVisionState & AbacusVisionActions;
 
 /**
  * Configuration for frame stability detection
  */
 export interface FrameStabilityConfig {
   /** Minimum consecutive frames showing same value to consider stable */
-  minConsecutiveFrames: number
+  minConsecutiveFrames: number;
   /** Minimum confidence threshold for a valid detection */
-  minConfidence: number
+  minConfidence: number;
   /** Pixel change ratio threshold for detecting hand motion */
-  handMotionThreshold: number
+  handMotionThreshold: number;
 }
 
 /**
@@ -190,14 +190,18 @@ export const DEFAULT_STABILITY_CONFIG: FrameStabilityConfig = {
   minConsecutiveFrames: 3, // 600ms at 5fps inference rate
   minConfidence: 0.5, // Lower threshold - model confidence is often 60-80%
   handMotionThreshold: 0.3,
-}
+};
 
 /**
  * Patterns to detect Desk View camera by device label
  */
-export const DESK_VIEW_PATTERNS = ['desk view', 'continuity camera', 'iphone camera']
+export const DESK_VIEW_PATTERNS = [
+  "desk view",
+  "continuity camera",
+  "iphone camera",
+];
 
 /**
  * localStorage key for calibration data
  */
-export const CALIBRATION_STORAGE_KEY = 'abacus-vision-calibration'
+export const CALIBRATION_STORAGE_KEY = "abacus-vision-calibration";

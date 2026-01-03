@@ -1,9 +1,9 @@
-export type { PulsingAnimationOptions } from './usePulsingAnimation'
-export { usePulsingAnimation } from './usePulsingAnimation'
+export type { PulsingAnimationOptions } from "./usePulsingAnimation";
+export { usePulsingAnimation } from "./usePulsingAnimation";
 
 export type {
   AnimationController,
   AnimationControllerActions,
   AnimationControllerState,
-} from './useAnimationController'
-export { useAnimationController } from './useAnimationController'
+} from "./useAnimationController";
+export { useAnimationController } from "./useAnimationController";

@@ -12,10 +12,10 @@ export type {
   MagnifierBorderStyle,
   MapGameContextValue,
   MapGameProviderProps,
-} from './MapGameContext'
+} from "./MapGameContext";
 
 export {
   MapGameProvider,
   useMapGameContext,
   useMapGameContextSafe,
-} from './MapGameContext'
+} from "./MapGameContext";

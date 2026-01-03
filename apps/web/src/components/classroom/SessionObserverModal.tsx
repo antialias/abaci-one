@@ -1,66 +1,73 @@
-'use client'
+"use client";
 
-import * as Dialog from '@radix-ui/react-dialog'
-import { useMutation } from '@tanstack/react-query'
-import { useRouter } from 'next/navigation'
-import { type ReactElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useToast } from '@/components/common/ToastContext'
-import { Z_INDEX } from '@/constants/zIndex'
-import { useMyAbacus } from '@/contexts/MyAbacusContext'
-import { useTheme } from '@/contexts/ThemeContext'
-import type { ActiveSessionInfo } from '@/hooks/useClassroom'
-import { useSessionObserver } from '@/hooks/useSessionObserver'
-import { api } from '@/lib/queryClient'
-import { css } from '../../../styled-system/css'
-import { AbacusDock } from '../AbacusDock'
-import { LiveResultsPanel } from '../practice/LiveResultsPanel'
-import { LiveSessionReportInline } from '../practice/LiveSessionReportModal'
-import { MobileResultsSummary } from '../practice/MobileResultsSummary'
-import { ObserverTransitionView } from '../practice/ObserverTransitionView'
-import { PracticeFeedback } from '../practice/PracticeFeedback'
-import { PurposeBadge } from '../practice/PurposeBadge'
-import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
-import { VerticalProblem } from '../practice/VerticalProblem'
-import { ObserverVisionFeed } from '../vision/ObserverVisionFeed'
-import { SessionShareButton } from './SessionShareButton'
+import * as Dialog from "@radix-ui/react-dialog";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import {
+  type ReactElement,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { useToast } from "@/components/common/ToastContext";
+import { Z_INDEX } from "@/constants/zIndex";
+import { useMyAbacus } from "@/contexts/MyAbacusContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { ActiveSessionInfo } from "@/hooks/useClassroom";
+import { useSessionObserver } from "@/hooks/useSessionObserver";
+import { api } from "@/lib/queryClient";
+import { css } from "../../../styled-system/css";
+import { AbacusDock } from "../AbacusDock";
+import { LiveResultsPanel } from "../practice/LiveResultsPanel";
+import { LiveSessionReportInline } from "../practice/LiveSessionReportModal";
+import { MobileResultsSummary } from "../practice/MobileResultsSummary";
+import { ObserverTransitionView } from "../practice/ObserverTransitionView";
+import { PracticeFeedback } from "../practice/PracticeFeedback";
+import { PurposeBadge } from "../practice/PurposeBadge";
+import { SessionProgressIndicator } from "../practice/SessionProgressIndicator";
+import { VerticalProblem } from "../practice/VerticalProblem";
+import { ObserverVisionFeed } from "../vision/ObserverVisionFeed";
+import { SessionShareButton } from "./SessionShareButton";
 
 interface SessionObserverModalProps {
   /** Whether the modal is open */
-  isOpen: boolean
+  isOpen: boolean;
   /** Close the modal */
-  onClose: () => void
+  onClose: () => void;
   /** Session info from the active sessions list */
-  session: ActiveSessionInfo
+  session: ActiveSessionInfo;
   /** Student info for display */
   student: {
-    name: string
-    emoji: string
-    color: string
-  }
+    name: string;
+    emoji: string;
+    color: string;
+  };
   /** Observer ID (e.g., teacher's user ID) */
-  observerId: string
+  observerId: string;
   /** Whether the observer can share this session (parents only) */
-  canShare?: boolean
+  canShare?: boolean;
   /** Classroom ID for entry prompts (teachers only) */
-  classroomId?: string
+  classroomId?: string;
 }
 
 interface SessionObserverViewProps {
-  session: ActiveSessionInfo
-  student: SessionObserverModalProps['student']
-  observerId: string
+  session: ActiveSessionInfo;
+  student: SessionObserverModalProps["student"];
+  observerId: string;
   /** Optional share token for public/guest observation (bypasses user auth) */
-  shareToken?: string
+  shareToken?: string;
   /** If true, hide all control buttons (pause/resume, dock abacus, share) */
-  isViewOnly?: boolean
+  isViewOnly?: boolean;
   /** Whether the observer can share this session (parents only) */
-  canShare?: boolean
+  canShare?: boolean;
   /** Classroom ID for entry prompts (teachers only) */
-  classroomId?: string
-  onClose?: () => void
-  onRequestFullscreen?: () => void
-  renderCloseButton?: (button: ReactElement) => ReactElement
-  variant?: 'modal' | 'page'
+  classroomId?: string;
+  onClose?: () => void;
+  onRequestFullscreen?: () => void;
+  renderCloseButton?: (button: ReactElement) => ReactElement;
+  variant?: "modal" | "page";
 }
 
 /**
@@ -82,14 +89,14 @@ export function SessionObserverModal({
   canShare,
   classroomId,
 }: SessionObserverModalProps) {
-  const router = useRouter()
+  const router = useRouter();
 
   const handleFullscreen = useCallback(() => {
-    router.push(`/practice/${session.playerId}/observe`, { scroll: false })
-  }, [router, session.playerId])
+    router.push(`/practice/${session.playerId}/observe`, { scroll: false });
+  }, [router, session.playerId]);
 
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -97,9 +104,9 @@ export function SessionObserverModal({
         <Dialog.Overlay
           data-element="observer-modal-overlay"
           className={css({
-            position: 'fixed',
+            position: "fixed",
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
             zIndex: Z_INDEX.NESTED_MODAL_BACKDROP,
           })}
         />
@@ -107,22 +114,22 @@ export function SessionObserverModal({
         <Dialog.Content
           data-component="session-observer-modal"
           className={css({
-            position: 'fixed',
-            top: { base: 0, md: '50%' },
-            left: { base: 0, md: '50%' },
-            transform: { base: 'none', md: 'translate(-50%, -50%)' },
-            width: { base: '100vw', md: '95vw', lg: '90vw' },
-            maxWidth: { base: 'none', md: '900px', lg: '1000px' },
-            height: { base: '100vh', md: 'auto' },
-            maxHeight: { base: '100vh', md: '90vh' },
-            backgroundColor: isDark ? 'gray.900' : 'white',
-            borderRadius: { base: 0, md: '16px' },
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+            position: "fixed",
+            top: { base: 0, md: "50%" },
+            left: { base: 0, md: "50%" },
+            transform: { base: "none", md: "translate(-50%, -50%)" },
+            width: { base: "100vw", md: "95vw", lg: "90vw" },
+            maxWidth: { base: "none", md: "900px", lg: "1000px" },
+            height: { base: "100vh", md: "auto" },
+            maxHeight: { base: "100vh", md: "90vh" },
+            backgroundColor: isDark ? "gray.900" : "white",
+            borderRadius: { base: 0, md: "16px" },
+            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
             zIndex: Z_INDEX.NESTED_MODAL,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            outline: 'none',
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            outline: "none",
           })}
         >
           <SessionObserverView
@@ -133,13 +140,15 @@ export function SessionObserverModal({
             classroomId={classroomId}
             onClose={onClose}
             onRequestFullscreen={handleFullscreen}
-            renderCloseButton={(button) => <Dialog.Close asChild>{button}</Dialog.Close>}
+            renderCloseButton={(button) => (
+              <Dialog.Close asChild>{button}</Dialog.Close>
+            )}
             variant="modal"
           />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-  )
+  );
 }
 
 export function SessionObserverView({
@@ -153,12 +162,12 @@ export function SessionObserverView({
   onClose,
   onRequestFullscreen,
   renderCloseButton,
-  variant = 'modal',
+  variant = "modal",
 }: SessionObserverViewProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
-  const { requestDock, dock, setDockedValue, isDockedByUser } = useMyAbacus()
-  const { showSuccess, showError } = useToast()
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const { requestDock, dock, setDockedValue, isDockedByUser } = useMyAbacus();
+  const { showSuccess, showError } = useToast();
 
   // Subscribe to the session's socket channel
   const {
@@ -172,124 +181,141 @@ export function SessionObserverView({
     sendControl,
     sendPause,
     sendResume,
-  } = useSessionObserver(session.sessionId, observerId, session.playerId, true, shareToken)
+  } = useSessionObserver(
+    session.sessionId,
+    observerId,
+    session.playerId,
+    true,
+    shareToken,
+  );
 
   // Track if we've paused the session (teacher controls resume)
-  const [hasPausedSession, setHasPausedSession] = useState(false)
+  const [hasPausedSession, setHasPausedSession] = useState(false);
 
   // Track if showing full report view (inline, not modal)
-  const [showFullReport, setShowFullReport] = useState(false)
+  const [showFullReport, setShowFullReport] = useState(false);
 
   // Track if entry prompt was sent (for authorization error case)
-  const [promptSent, setPromptSent] = useState(false)
+  const [promptSent, setPromptSent] = useState(false);
 
   // Mutation to send entry prompt to parents (for authorization error case)
   const sendEntryPrompt = useMutation({
     mutationFn: async () => {
-      if (!classroomId) throw new Error('No classroom ID')
+      if (!classroomId) throw new Error("No classroom ID");
       const response = await api(`classrooms/${classroomId}/entry-prompts`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ playerIds: [session.playerId] }),
-      })
+      });
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to send prompt')
+        const data = await response.json();
+        throw new Error(data.error || "Failed to send prompt");
       }
-      return response.json()
+      return response.json();
     },
     onSuccess: (data) => {
       if (data.created > 0) {
-        setPromptSent(true)
-        showSuccess('Entry prompt sent', `${student.name}'s parent has been notified.`)
+        setPromptSent(true);
+        showSuccess(
+          "Entry prompt sent",
+          `${student.name}'s parent has been notified.`,
+        );
       } else if (data.skipped?.length > 0) {
-        const reason = data.skipped[0]?.reason
-        if (reason === 'pending_prompt_exists') {
-          showError('Prompt already pending', `${student.name} already has a pending entry prompt.`)
-        } else if (reason === 'already_present') {
-          showSuccess('Already in classroom', `${student.name} is now in the classroom!`)
+        const reason = data.skipped[0]?.reason;
+        if (reason === "pending_prompt_exists") {
+          showError(
+            "Prompt already pending",
+            `${student.name} already has a pending entry prompt.`,
+          );
+        } else if (reason === "already_present") {
+          showSuccess(
+            "Already in classroom",
+            `${student.name} is now in the classroom!`,
+          );
         } else {
-          showError('Could not send prompt', reason || 'Unknown error')
+          showError("Could not send prompt", reason || "Unknown error");
         }
       }
     },
     onError: (err) => {
       showError(
-        'Failed to send prompt',
-        err instanceof Error ? err.message : 'An unexpected error occurred'
-      )
+        "Failed to send prompt",
+        err instanceof Error ? err.message : "An unexpected error occurred",
+      );
     },
-  })
+  });
 
   // Check if this is an authorization error that might be due to student not being present
-  const isNotAuthorizedError = error === 'Not authorized to observe this session'
+  const isNotAuthorizedError =
+    error === "Not authorized to observe this session";
 
   // Ref for measuring problem container height (same pattern as ActiveSession)
-  const problemRef = useRef<HTMLDivElement>(null)
-  const [problemHeight, setProblemHeight] = useState<number | null>(null)
+  const problemRef = useRef<HTMLDivElement>(null);
+  const [problemHeight, setProblemHeight] = useState<number | null>(null);
 
   // Measure problem container height with ResizeObserver (same as ActiveSession)
   useLayoutEffect(() => {
-    const element = problemRef.current
-    if (!element) return
+    const element = problemRef.current;
+    if (!element) return;
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
-        setProblemHeight(height)
+        const height =
+          entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+        setProblemHeight(height);
       }
-    })
+    });
 
-    observer.observe(element)
-    setProblemHeight(element.offsetHeight)
+    observer.observe(element);
+    setProblemHeight(element.offsetHeight);
 
-    return () => observer.disconnect()
-  }, [state?.currentProblem?.answer])
+    return () => observer.disconnect();
+  }, [state?.currentProblem?.answer]);
 
   // Handle teacher manipulating their docked abacus - sync to student
   const handleTeacherAbacusChange = useCallback(
     (newValue: number) => {
       // Send control to sync student's abacus to this value
-      sendControl({ type: 'set-abacus-value', value: newValue })
+      sendControl({ type: "set-abacus-value", value: newValue });
     },
-    [sendControl]
-  )
+    [sendControl],
+  );
 
   // Dock both teacher's and student's abaci
   const handleDockBothAbaci = useCallback(() => {
     // Dock teacher's MyAbacus into the modal's AbacusDock (only if not already docked)
     if (dock && !isDockedByUser) {
-      requestDock()
+      requestDock();
     }
     // Send control to dock student's abacus
-    sendControl({ type: 'show-abacus' })
-  }, [dock, isDockedByUser, requestDock, sendControl])
+    sendControl({ type: "show-abacus" });
+  }, [dock, isDockedByUser, requestDock, sendControl]);
 
   // Pause the student's session
   const handlePauseSession = useCallback(() => {
-    sendPause('Your teacher needs your attention.')
-    setHasPausedSession(true)
-  }, [sendPause])
+    sendPause("Your teacher needs your attention.");
+    setHasPausedSession(true);
+  }, [sendPause]);
 
   // Resume the student's session
   const handleResumeSession = useCallback(() => {
-    sendResume()
-    setHasPausedSession(false)
-  }, [sendResume])
+    sendResume();
+    setHasPausedSession(false);
+  }, [sendResume]);
 
   // Two-way sync: When student's abacus changes, sync teacher's docked abacus
   useEffect(() => {
-    if (!isDockedByUser || !state?.studentAnswer) return
+    if (!isDockedByUser || !state?.studentAnswer) return;
 
-    const parsedValue = parseInt(state.studentAnswer, 10)
+    const parsedValue = parseInt(state.studentAnswer, 10);
     if (!Number.isNaN(parsedValue) && parsedValue >= 0) {
-      setDockedValue(parsedValue)
+      setDockedValue(parsedValue);
     }
-  }, [state?.studentAnswer, isDockedByUser, setDockedValue])
+  }, [state?.studentAnswer, isDockedByUser, setDockedValue]);
 
   // Calculate columns for the abacus based on the answer (same as ActiveSession)
   const abacusColumns = state?.currentProblem
     ? String(Math.abs(state.currentProblem.answer)).length
-    : 3
+    : 3;
 
   const defaultCloseButton = (
     <button
@@ -297,62 +323,65 @@ export function SessionObserverView({
       data-action="close-observer"
       onClick={onClose}
       className={css({
-        padding: '8px 16px',
-        backgroundColor: isDark ? 'gray.700' : 'gray.200',
-        color: isDark ? 'gray.200' : 'gray.700',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '0.875rem',
-        fontWeight: 'medium',
-        cursor: 'pointer',
-        _hover: { backgroundColor: isDark ? 'gray.600' : 'gray.300' },
+        padding: "8px 16px",
+        backgroundColor: isDark ? "gray.700" : "gray.200",
+        color: isDark ? "gray.200" : "gray.700",
+        border: "none",
+        borderRadius: "8px",
+        fontSize: "0.875rem",
+        fontWeight: "medium",
+        cursor: "pointer",
+        _hover: { backgroundColor: isDark ? "gray.600" : "gray.300" },
       })}
     >
       Close
     </button>
-  )
+  );
 
-  const closeButton = renderCloseButton ? renderCloseButton(defaultCloseButton) : defaultCloseButton
+  const closeButton = renderCloseButton
+    ? renderCloseButton(defaultCloseButton)
+    : defaultCloseButton;
 
   return (
     <div
       data-component="session-observer-view"
       className={css({
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        backgroundColor: variant === 'page' ? (isDark ? 'gray.900' : 'white') : undefined,
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        backgroundColor:
+          variant === "page" ? (isDark ? "gray.900" : "white") : undefined,
       })}
     >
       {/* Header */}
       <div
         className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: { base: '10px 16px', md: '16px 20px' },
-          borderBottom: '1px solid',
-          borderColor: isDark ? 'gray.700' : 'gray.200',
-          gap: { base: '8px', md: '12px' },
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: { base: "10px 16px", md: "16px 20px" },
+          borderBottom: "1px solid",
+          borderColor: isDark ? "gray.700" : "gray.200",
+          gap: { base: "8px", md: "12px" },
         })}
       >
         <div
           className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: { base: '8px', md: '12px' },
+            display: "flex",
+            alignItems: "center",
+            gap: { base: "8px", md: "12px" },
             minWidth: 0,
           })}
         >
           <span
             className={css({
-              width: { base: '32px', md: '40px' },
-              height: { base: '32px', md: '40px' },
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: { base: '1rem', md: '1.25rem' },
+              width: { base: "32px", md: "40px" },
+              height: { base: "32px", md: "40px" },
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: { base: "1rem", md: "1.25rem" },
               flexShrink: 0,
             })}
             style={{ backgroundColor: student.color }}
@@ -361,56 +390,58 @@ export function SessionObserverView({
           </span>
           <div className={css({ minWidth: 0 })}>
             {/* Use Dialog.Title/Description only when inside a Dialog (modal variant) */}
-            {variant === 'modal' ? (
+            {variant === "modal" ? (
               <>
                 <Dialog.Title
                   className={css({
-                    fontWeight: 'bold',
-                    color: isDark ? 'white' : 'gray.800',
-                    fontSize: '1rem',
+                    fontWeight: "bold",
+                    color: isDark ? "white" : "gray.800",
+                    fontSize: "1rem",
                     margin: 0,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
                   })}
                 >
                   Observing {student.name}
                 </Dialog.Title>
                 <Dialog.Description
                   className={css({
-                    fontSize: '0.8125rem',
-                    color: isDark ? 'gray.400' : 'gray.500',
+                    fontSize: "0.8125rem",
+                    color: isDark ? "gray.400" : "gray.500",
                     margin: 0,
                   })}
                 >
-                  Problem {state?.currentProblemNumber ?? session.completedProblems + 1} of{' '}
-                  {state?.totalProblems ?? session.totalProblems}
+                  Problem{" "}
+                  {state?.currentProblemNumber ?? session.completedProblems + 1}{" "}
+                  of {state?.totalProblems ?? session.totalProblems}
                 </Dialog.Description>
               </>
             ) : (
               <>
                 <h1
                   className={css({
-                    fontWeight: 'bold',
-                    color: isDark ? 'white' : 'gray.800',
-                    fontSize: '1rem',
+                    fontWeight: "bold",
+                    color: isDark ? "white" : "gray.800",
+                    fontSize: "1rem",
                     margin: 0,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
                   })}
                 >
                   Observing {student.name}
                 </h1>
                 <p
                   className={css({
-                    fontSize: '0.8125rem',
-                    color: isDark ? 'gray.400' : 'gray.500',
+                    fontSize: "0.8125rem",
+                    color: isDark ? "gray.400" : "gray.500",
                     margin: 0,
                   })}
                 >
-                  Problem {state?.currentProblemNumber ?? session.completedProblems + 1} of{' '}
-                  {state?.totalProblems ?? session.totalProblems}
+                  Problem{" "}
+                  {state?.currentProblemNumber ?? session.completedProblems + 1}{" "}
+                  of {state?.totalProblems ?? session.totalProblems}
                 </p>
               </>
             )}
@@ -419,9 +450,9 @@ export function SessionObserverView({
 
         <div
           className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
             flexShrink: 0,
           })}
         >
@@ -431,20 +462,24 @@ export function SessionObserverView({
               data-action="fullscreen-observer"
               onClick={onRequestFullscreen}
               className={css({
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-                color: isDark ? 'white' : 'gray.700',
-                fontSize: '1rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                width: "32px",
+                height: "32px",
+                borderRadius: "8px",
+                border: "none",
+                backgroundColor: isDark
+                  ? "rgba(255, 255, 255, 0.2)"
+                  : "rgba(0, 0, 0, 0.1)",
+                color: isDark ? "white" : "gray.700",
+                fontSize: "1rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 flexShrink: 0,
                 _hover: {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.15)',
+                  backgroundColor: isDark
+                    ? "rgba(255, 255, 255, 0.3)"
+                    : "rgba(0, 0, 0, 0.15)",
                 },
               })}
               title="Open full-screen observation"
@@ -464,9 +499,9 @@ export function SessionObserverView({
           <div
             data-element="progress-indicator"
             className={css({
-              padding: { base: '0 16px 8px', md: '0 20px 12px' },
-              borderBottom: '1px solid',
-              borderColor: isDark ? 'gray.700' : 'gray.200',
+              padding: { base: "0 16px 8px", md: "0 20px 12px" },
+              borderBottom: "1px solid",
+              borderColor: isDark ? "gray.700" : "gray.200",
             })}
           >
             <SessionProgressIndicator
@@ -485,36 +520,42 @@ export function SessionObserverView({
       <div
         className={css({
           flex: 1,
-          padding: variant === 'page' ? { base: '12px', md: '28px' } : { base: '12px', md: '24px' },
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: { base: '12px', md: '20px' },
-          backgroundColor: variant === 'page' ? (isDark ? 'gray.900' : 'white') : undefined,
+          padding:
+            variant === "page"
+              ? { base: "12px", md: "28px" }
+              : { base: "12px", md: "24px" },
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: { base: "12px", md: "20px" },
+          backgroundColor:
+            variant === "page" ? (isDark ? "gray.900" : "white") : undefined,
         })}
       >
         {/* Connection status */}
         {!isConnected && !error && (
           <div
             className={css({
-              textAlign: 'center',
-              color: isDark ? 'gray.400' : 'gray.500',
+              textAlign: "center",
+              color: isDark ? "gray.400" : "gray.500",
             })}
           >
-            <p className={css({ fontSize: '1rem', marginBottom: '8px' })}>Connecting...</p>
+            <p className={css({ fontSize: "1rem", marginBottom: "8px" })}>
+              Connecting...
+            </p>
           </div>
         )}
 
         {error && !isNotAuthorizedError && (
           <div
             className={css({
-              textAlign: 'center',
-              color: isDark ? 'red.400' : 'red.600',
-              padding: '16px',
-              backgroundColor: isDark ? 'red.900/30' : 'red.50',
-              borderRadius: '8px',
+              textAlign: "center",
+              color: isDark ? "red.400" : "red.600",
+              padding: "16px",
+              backgroundColor: isDark ? "red.900/30" : "red.50",
+              borderRadius: "8px",
             })}
           >
             <p>{error}</p>
@@ -526,21 +567,21 @@ export function SessionObserverView({
           <div
             data-element="not-present-error"
             className={css({
-              textAlign: 'center',
-              maxWidth: '400px',
-              width: '100%',
+              textAlign: "center",
+              maxWidth: "400px",
+              width: "100%",
             })}
           >
             <p
               className={css({
-                fontSize: '1rem',
-                color: isDark ? 'gray.300' : 'gray.600',
-                marginBottom: '1.5rem',
-                lineHeight: '1.6',
+                fontSize: "1rem",
+                color: isDark ? "gray.300" : "gray.600",
+                marginBottom: "1.5rem",
+                lineHeight: "1.6",
               })}
             >
-              {student.name} is enrolled in your class, but you can only observe their practice
-              sessions when they are present in your classroom.
+              {student.name} is enrolled in your class, but you can only observe
+              their practice sessions when they are present in your classroom.
             </p>
 
             {/* Entry prompt section - only show for teachers with classroomId */}
@@ -548,30 +589,30 @@ export function SessionObserverView({
               <div
                 data-element="entry-prompt-section"
                 className={css({
-                  backgroundColor: isDark ? 'orange.900/30' : 'orange.50',
-                  border: '2px solid',
-                  borderColor: isDark ? 'orange.700' : 'orange.300',
-                  borderRadius: '12px',
-                  padding: '1.25rem',
-                  marginBottom: '1rem',
+                  backgroundColor: isDark ? "orange.900/30" : "orange.50",
+                  border: "2px solid",
+                  borderColor: isDark ? "orange.700" : "orange.300",
+                  borderRadius: "12px",
+                  padding: "1.25rem",
+                  marginBottom: "1rem",
                 })}
               >
                 <h3
                   className={css({
-                    fontSize: '0.9375rem',
-                    fontWeight: '600',
-                    color: isDark ? 'orange.300' : 'orange.700',
-                    marginBottom: '0.5rem',
+                    fontSize: "0.9375rem",
+                    fontWeight: "600",
+                    color: isDark ? "orange.300" : "orange.700",
+                    marginBottom: "0.5rem",
                   })}
                 >
                   Notify {student.name}&apos;s parent
                 </h3>
                 <p
                   className={css({
-                    fontSize: '0.875rem',
-                    color: isDark ? 'gray.300' : 'gray.600',
-                    marginBottom: '1rem',
-                    lineHeight: '1.5',
+                    fontSize: "0.875rem",
+                    color: isDark ? "gray.300" : "gray.600",
+                    marginBottom: "1rem",
+                    lineHeight: "1.5",
                   })}
                 >
                   Send a notification asking them to enter the classroom.
@@ -582,27 +623,29 @@ export function SessionObserverView({
                   disabled={sendEntryPrompt.isPending}
                   data-action="send-entry-prompt"
                   className={css({
-                    width: '100%',
-                    padding: '0.75rem 1rem',
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: 'white',
-                    backgroundColor: isDark ? 'orange.600' : 'orange.500',
-                    borderRadius: '8px',
-                    border: 'none',
-                    cursor: sendEntryPrompt.isPending ? 'wait' : 'pointer',
+                    width: "100%",
+                    padding: "0.75rem 1rem",
+                    fontSize: "1rem",
+                    fontWeight: "600",
+                    color: "white",
+                    backgroundColor: isDark ? "orange.600" : "orange.500",
+                    borderRadius: "8px",
+                    border: "none",
+                    cursor: sendEntryPrompt.isPending ? "wait" : "pointer",
                     opacity: sendEntryPrompt.isPending ? 0.7 : 1,
-                    transition: 'all 0.15s ease',
+                    transition: "all 0.15s ease",
                     _hover: {
-                      backgroundColor: isDark ? 'orange.500' : 'orange.600',
+                      backgroundColor: isDark ? "orange.500" : "orange.600",
                     },
                     _disabled: {
-                      cursor: 'wait',
+                      cursor: "wait",
                       opacity: 0.7,
                     },
                   })}
                 >
-                  {sendEntryPrompt.isPending ? 'Sending...' : 'Send Entry Prompt'}
+                  {sendEntryPrompt.isPending
+                    ? "Sending..."
+                    : "Send Entry Prompt"}
                 </button>
               </div>
             )}
@@ -612,19 +655,19 @@ export function SessionObserverView({
               <div
                 data-element="prompt-sent-confirmation"
                 className={css({
-                  backgroundColor: isDark ? 'green.900/30' : 'green.50',
-                  border: '2px solid',
-                  borderColor: isDark ? 'green.700' : 'green.300',
-                  borderRadius: '12px',
-                  padding: '1.25rem',
-                  marginBottom: '1rem',
+                  backgroundColor: isDark ? "green.900/30" : "green.50",
+                  border: "2px solid",
+                  borderColor: isDark ? "green.700" : "green.300",
+                  borderRadius: "12px",
+                  padding: "1.25rem",
+                  marginBottom: "1rem",
                 })}
               >
                 <p
                   className={css({
-                    fontSize: '0.9375rem',
-                    fontWeight: '500',
-                    color: isDark ? 'green.300' : 'green.700',
+                    fontSize: "0.9375rem",
+                    fontWeight: "500",
+                    color: isDark ? "green.300" : "green.700",
                   })}
                 >
                   Entry prompt sent to {student.name}&apos;s parent
@@ -635,35 +678,36 @@ export function SessionObserverView({
             {/* Manual instructions (secondary) */}
             <div
               className={css({
-                backgroundColor: isDark ? 'gray.800' : 'gray.100',
-                border: '1px solid',
-                borderColor: isDark ? 'gray.700' : 'gray.200',
-                borderRadius: '12px',
-                padding: '1rem',
-                textAlign: 'left',
+                backgroundColor: isDark ? "gray.800" : "gray.100",
+                border: "1px solid",
+                borderColor: isDark ? "gray.700" : "gray.200",
+                borderRadius: "12px",
+                padding: "1rem",
+                textAlign: "left",
               })}
             >
               <h3
                 className={css({
-                  fontSize: '0.8125rem',
-                  fontWeight: '600',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  marginBottom: '0.5rem',
+                  fontSize: "0.8125rem",
+                  fontWeight: "600",
+                  color: isDark ? "gray.400" : "gray.500",
+                  marginBottom: "0.5rem",
                 })}
               >
                 Or have {student.name} join manually
               </h3>
               <ol
                 className={css({
-                  fontSize: '0.8125rem',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  lineHeight: '1.6',
-                  paddingLeft: '1.25rem',
+                  fontSize: "0.8125rem",
+                  color: isDark ? "gray.400" : "gray.500",
+                  lineHeight: "1.6",
+                  paddingLeft: "1.25rem",
                   margin: 0,
                 })}
               >
                 <li>
-                  Have them open their device and go to <strong>Join Classroom</strong>
+                  Have them open their device and go to{" "}
+                  <strong>Join Classroom</strong>
                 </li>
                 <li>They enter your classroom code to join</li>
                 <li>Once they appear in your dashboard, you can observe</li>
@@ -675,14 +719,14 @@ export function SessionObserverView({
         {isObserving && !state && !transitionState && (
           <div
             className={css({
-              textAlign: 'center',
-              color: isDark ? 'gray.400' : 'gray.500',
+              textAlign: "center",
+              color: isDark ? "gray.400" : "gray.500",
             })}
           >
-            <p className={css({ fontSize: '1rem', marginBottom: '8px' })}>
+            <p className={css({ fontSize: "1rem", marginBottom: "8px" })}>
               Waiting for student activity...
             </p>
-            <p className={css({ fontSize: '0.875rem' })}>
+            <p className={css({ fontSize: "0.875rem" })}>
               You&apos;ll see their problem when they start working
             </p>
           </div>
@@ -704,20 +748,20 @@ export function SessionObserverView({
           <div
             data-element="observer-main-content"
             className={css({
-              display: 'flex',
-              flexDirection: { base: 'column', lg: 'row' },
-              alignItems: { base: 'center', lg: 'flex-start' },
-              gap: { base: '16px', md: '24px' },
-              width: '100%',
-              justifyContent: 'center',
+              display: "flex",
+              flexDirection: { base: "column", lg: "row" },
+              alignItems: { base: "center", lg: "flex-start" },
+              gap: { base: "16px", md: "24px" },
+              width: "100%",
+              justifyContent: "center",
             })}
           >
             {/* Live results panel - hidden on small/medium, shown on large */}
             <div
               data-element="results-panel-desktop"
               className={css({
-                display: { base: 'none', lg: 'block' },
-                width: '200px',
+                display: { base: "none", lg: "block" },
+                width: "200px",
                 flexShrink: 0,
               })}
             >
@@ -733,27 +777,30 @@ export function SessionObserverView({
             <div
               data-element="observer-content"
               className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: { base: '8px', md: '16px' },
-                width: '100%',
-                maxWidth: { base: '100%', md: '500px' },
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: { base: "8px", md: "16px" },
+                width: "100%",
+                maxWidth: { base: "100%", md: "500px" },
               })}
             >
               {/* Purpose badge with tooltip - matches student's view */}
-              <PurposeBadge purpose={state.purpose} complexity={state.complexity} />
+              <PurposeBadge
+                purpose={state.purpose}
+                complexity={state.complexity}
+              />
 
               {/* Problem container with AbacusDock - responsive flex layout */}
               <div
                 data-element="problem-with-dock"
                 className={css({
-                  display: 'flex',
-                  flexDirection: { base: 'column', sm: 'row' },
-                  alignItems: { base: 'center', sm: 'flex-start' },
-                  justifyContent: 'center',
-                  gap: { base: '12px', sm: '24px' },
-                  width: '100%',
+                  display: "flex",
+                  flexDirection: { base: "column", sm: "row" },
+                  alignItems: { base: "center", sm: "flex-start" },
+                  justifyContent: "center",
+                  gap: { base: "12px", sm: "24px" },
+                  width: "100%",
                 })}
               >
                 {/* Problem - ref for height measurement */}
@@ -761,27 +808,29 @@ export function SessionObserverView({
                   <VerticalProblem
                     terms={state.currentProblem.terms}
                     userAnswer={state.studentAnswer}
-                    isFocused={state.phase === 'problem'}
-                    isCompleted={state.phase === 'feedback'}
+                    isFocused={state.phase === "problem"}
+                    isCompleted={state.phase === "feedback"}
                     correctAnswer={state.currentProblem.answer}
                     size="large"
                   />
                 </div>
 
                 {/* Vision feed or AbacusDock - flex layout instead of absolute */}
-                {state.phase === 'problem' && (
+                {state.phase === "problem" && (
                   <div
                     data-element="abacus-container"
                     className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: { base: '140px', sm: '120px', md: '140px' },
-                      height: { base: '160px', sm: 'auto' },
-                      minHeight: { sm: '160px' },
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: { base: "140px", sm: "120px", md: "140px" },
+                      height: { base: "160px", sm: "auto" },
+                      minHeight: { sm: "160px" },
                       flexShrink: 0,
                     })}
-                    style={{ height: problemHeight ? `${problemHeight}px` : undefined }}
+                    style={{
+                      height: problemHeight ? `${problemHeight}px` : undefined,
+                    }}
                   >
                     {/* Show vision feed if available, otherwise show teacher's abacus dock */}
                     {visionFrame ? (
@@ -794,7 +843,7 @@ export function SessionObserverView({
                         showNumbers={false}
                         animated={true}
                         onValueChange={handleTeacherAbacusChange}
-                        style={{ height: '100%', width: '100%' }}
+                        style={{ height: "100%", width: "100%" }}
                       />
                     )}
                   </div>
@@ -802,7 +851,7 @@ export function SessionObserverView({
               </div>
 
               {/* Feedback message */}
-              {state.studentAnswer && state.phase === 'feedback' && (
+              {state.studentAnswer && state.phase === "feedback" && (
                 <PracticeFeedback
                   isCorrect={state.isCorrect ?? false}
                   correctAnswer={state.currentProblem.answer}
@@ -813,9 +862,9 @@ export function SessionObserverView({
               <div
                 data-element="results-panel-mobile"
                 className={css({
-                  display: { base: 'flex', lg: 'none' },
-                  width: '100%',
-                  justifyContent: 'center',
+                  display: { base: "flex", lg: "none" },
+                  width: "100%",
+                  justifyContent: "center",
                 })}
               >
                 <MobileResultsSummary
@@ -844,34 +893,40 @@ export function SessionObserverView({
       {/* Footer with connection status and controls */}
       <div
         className={css({
-          padding: { base: '8px 12px', md: '12px 20px' },
-          borderTop: '1px solid',
-          borderColor: isDark ? 'gray.700' : 'gray.200',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          backgroundColor: isDark ? 'gray.800' : 'gray.50',
+          padding: { base: "8px 12px", md: "12px 20px" },
+          borderTop: "1px solid",
+          borderColor: isDark ? "gray.700" : "gray.200",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          backgroundColor: isDark ? "gray.800" : "gray.50",
         })}
       >
         {/* Connection status */}
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '6px' })}>
+        <div
+          className={css({ display: "flex", alignItems: "center", gap: "6px" })}
+        >
           <span
             className={css({
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
             })}
             style={{
-              backgroundColor: isObserving ? '#10b981' : isConnected ? '#eab308' : '#6b7280',
+              backgroundColor: isObserving
+                ? "#10b981"
+                : isConnected
+                  ? "#eab308"
+                  : "#6b7280",
             }}
           />
           <span
             className={css({
-              fontSize: '0.75rem',
-              color: isDark ? 'gray.400' : 'gray.500',
+              fontSize: "0.75rem",
+              color: isDark ? "gray.400" : "gray.500",
             })}
           >
-            {isObserving ? 'Live' : isConnected ? 'Connected' : 'Disconnected'}
+            {isObserving ? "Live" : isConnected ? "Connected" : "Disconnected"}
           </span>
         </div>
 
@@ -879,71 +934,75 @@ export function SessionObserverView({
         {!isViewOnly && (
           <div
             className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
             })}
           >
             {/* Pause/Resume button */}
             {isObserving && (
               <button
                 type="button"
-                data-action={hasPausedSession ? 'resume-session' : 'pause-session'}
-                onClick={hasPausedSession ? handleResumeSession : handlePauseSession}
+                data-action={
+                  hasPausedSession ? "resume-session" : "pause-session"
+                }
+                onClick={
+                  hasPausedSession ? handleResumeSession : handlePauseSession
+                }
                 className={css({
-                  padding: '8px 12px',
+                  padding: "8px 12px",
                   backgroundColor: hasPausedSession
                     ? isDark
-                      ? 'green.700'
-                      : 'green.100'
+                      ? "green.700"
+                      : "green.100"
                     : isDark
-                      ? 'amber.700'
-                      : 'amber.100',
+                      ? "amber.700"
+                      : "amber.100",
                   color: hasPausedSession
                     ? isDark
-                      ? 'green.200'
-                      : 'green.700'
+                      ? "green.200"
+                      : "green.700"
                     : isDark
-                      ? 'amber.200'
-                      : 'amber.700',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.8125rem',
-                  fontWeight: 'medium',
-                  cursor: 'pointer',
+                      ? "amber.200"
+                      : "amber.700",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "0.8125rem",
+                  fontWeight: "medium",
+                  cursor: "pointer",
                   _hover: {
                     backgroundColor: hasPausedSession
                       ? isDark
-                        ? 'green.600'
-                        : 'green.200'
+                        ? "green.600"
+                        : "green.200"
                       : isDark
-                        ? 'amber.600'
-                        : 'amber.200',
+                        ? "amber.600"
+                        : "amber.200",
                   },
                 })}
               >
-                {hasPausedSession ? '▶️ Resume' : '⏸️ Pause'}
+                {hasPausedSession ? "▶️ Resume" : "⏸️ Pause"}
               </button>
             )}
 
             {/* Dock both abaci button */}
-            {state && state.phase === 'problem' && (
+            {state && state.phase === "problem" && (
               <button
                 type="button"
                 data-action="dock-both-abaci"
                 onClick={handleDockBothAbaci}
                 disabled={!isObserving}
                 className={css({
-                  padding: '8px 12px',
-                  backgroundColor: isDark ? 'blue.700' : 'blue.100',
-                  color: isDark ? 'blue.200' : 'blue.700',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.8125rem',
-                  fontWeight: 'medium',
-                  cursor: 'pointer',
-                  _hover: { backgroundColor: isDark ? 'blue.600' : 'blue.200' },
-                  _disabled: { opacity: 0.4, cursor: 'not-allowed' },
+                  padding: "8px 12px",
+                  backgroundColor: isDark ? "blue.700" : "blue.100",
+                  color: isDark ? "blue.200" : "blue.700",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "0.8125rem",
+                  fontWeight: "medium",
+                  cursor: "pointer",
+                  _hover: { backgroundColor: isDark ? "blue.600" : "blue.200" },
+                  _disabled: { opacity: 0.4, cursor: "not-allowed" },
                 })}
               >
                 🧮 Dock Abaci
@@ -951,10 +1010,15 @@ export function SessionObserverView({
             )}
 
             {/* Share session link button (parents only) */}
-            {canShare && <SessionShareButton sessionId={session.sessionId} isDark={isDark} />}
+            {canShare && (
+              <SessionShareButton
+                sessionId={session.sessionId}
+                isDark={isDark}
+              />
+            )}
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

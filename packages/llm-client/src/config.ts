@@ -1,4 +1,4 @@
-import type { LLMClientConfig, ProviderConfig } from './types'
+import type { LLMClientConfig, ProviderConfig } from "./types";
 
 /**
  * Known provider defaults
@@ -10,14 +10,14 @@ import type { LLMClientConfig, ProviderConfig } from './types'
  */
 const PROVIDER_DEFAULTS: Record<string, Partial<ProviderConfig>> = {
   openai: {
-    baseUrl: 'https://api.openai.com/v1',
-    defaultModel: 'gpt-5.2', // GPT-5.2 Thinking - best for vision + structured outputs
+    baseUrl: "https://api.openai.com/v1",
+    defaultModel: "gpt-5.2", // GPT-5.2 Thinking - best for vision + structured outputs
   },
   anthropic: {
-    baseUrl: 'https://api.anthropic.com/v1',
-    defaultModel: 'claude-sonnet-4-20250514',
+    baseUrl: "https://api.anthropic.com/v1",
+    defaultModel: "claude-sonnet-4-20250514",
   },
-}
+};
 
 /**
  * Parse provider configuration from environment variables
@@ -30,32 +30,36 @@ const PROVIDER_DEFAULTS: Record<string, Partial<ProviderConfig>> = {
  */
 function parseProviderFromEnv(
   providerName: string,
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
 ): ProviderConfig | null {
-  const prefix = `LLM_${providerName.toUpperCase()}_`
+  const prefix = `LLM_${providerName.toUpperCase()}_`;
 
-  const apiKey = env[`${prefix}API_KEY`]
+  const apiKey = env[`${prefix}API_KEY`];
   if (!apiKey) {
-    return null
+    return null;
   }
 
-  const defaults = PROVIDER_DEFAULTS[providerName.toLowerCase()] ?? {}
+  const defaults = PROVIDER_DEFAULTS[providerName.toLowerCase()] ?? {};
 
   const baseUrl =
-    env[`${prefix}BASE_URL`] ?? defaults.baseUrl ?? `https://api.${providerName}.com/v1`
+    env[`${prefix}BASE_URL`] ??
+    defaults.baseUrl ??
+    `https://api.${providerName}.com/v1`;
 
   const defaultModel =
-    env[`${prefix}DEFAULT_MODEL`] ?? defaults.defaultModel ?? 'default'
+    env[`${prefix}DEFAULT_MODEL`] ?? defaults.defaultModel ?? "default";
 
   // Collect any additional options
-  const options: Record<string, unknown> = {}
+  const options: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(env)) {
     if (
       key.startsWith(prefix) &&
-      !['API_KEY', 'BASE_URL', 'DEFAULT_MODEL'].includes(key.slice(prefix.length))
+      !["API_KEY", "BASE_URL", "DEFAULT_MODEL"].includes(
+        key.slice(prefix.length),
+      )
     ) {
-      const optionName = key.slice(prefix.length).toLowerCase()
-      options[optionName] = value
+      const optionName = key.slice(prefix.length).toLowerCase();
+      options[optionName] = value;
     }
   }
 
@@ -65,7 +69,7 @@ function parseProviderFromEnv(
     baseUrl,
     defaultModel,
     options: Object.keys(options).length > 0 ? options : undefined,
-  }
+  };
 }
 
 /**
@@ -80,33 +84,33 @@ function parseProviderFromEnv(
  * @param env - Environment variables (defaults to process.env)
  */
 export function loadConfigFromEnv(
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
 ): LLMClientConfig {
-  const defaultProvider = env.LLM_DEFAULT_PROVIDER?.toLowerCase() ?? 'openai'
-  const defaultModel = env.LLM_DEFAULT_MODEL
-  const defaultMaxRetries = parseInt(env.LLM_DEFAULT_MAX_RETRIES ?? '2', 10)
+  const defaultProvider = env.LLM_DEFAULT_PROVIDER?.toLowerCase() ?? "openai";
+  const defaultModel = env.LLM_DEFAULT_MODEL;
+  const defaultMaxRetries = parseInt(env.LLM_DEFAULT_MAX_RETRIES ?? "2", 10);
 
   // Discover configured providers by scanning for API keys
-  const providers: Record<string, ProviderConfig> = {}
+  const providers: Record<string, ProviderConfig> = {};
 
   // Check known providers
-  const knownProviders = ['openai', 'anthropic']
+  const knownProviders = ["openai", "anthropic"];
   for (const provider of knownProviders) {
-    const config = parseProviderFromEnv(provider, env)
+    const config = parseProviderFromEnv(provider, env);
     if (config) {
-      providers[provider] = config
+      providers[provider] = config;
     }
   }
 
   // Also check for any LLM_*_API_KEY pattern to discover custom providers
   for (const key of Object.keys(env)) {
-    const match = key.match(/^LLM_([A-Z0-9_]+)_API_KEY$/)
+    const match = key.match(/^LLM_([A-Z0-9_]+)_API_KEY$/);
     if (match) {
-      const providerName = match[1].toLowerCase()
+      const providerName = match[1].toLowerCase();
       if (!providers[providerName]) {
-        const config = parseProviderFromEnv(providerName, env)
+        const config = parseProviderFromEnv(providerName, env);
         if (config) {
-          providers[providerName] = config
+          providers[providerName] = config;
         }
       }
     }
@@ -117,7 +121,7 @@ export function loadConfigFromEnv(
     defaultModel,
     providers,
     defaultMaxRetries,
-  }
+  };
 }
 
 /**
@@ -125,10 +129,10 @@ export function loadConfigFromEnv(
  */
 export function getProviderConfig(
   config: LLMClientConfig,
-  providerName?: string
+  providerName?: string,
 ): ProviderConfig | undefined {
-  const name = providerName?.toLowerCase() ?? config.defaultProvider
-  return config.providers[name]
+  const name = providerName?.toLowerCase() ?? config.defaultProvider;
+  return config.providers[name];
 }
 
 /**
@@ -136,14 +140,14 @@ export function getProviderConfig(
  */
 export function isProviderConfigured(
   config: LLMClientConfig,
-  providerName: string
+  providerName: string,
 ): boolean {
-  return providerName.toLowerCase() in config.providers
+  return providerName.toLowerCase() in config.providers;
 }
 
 /**
  * Get list of configured provider names
  */
 export function getConfiguredProviders(config: LLMClientConfig): string[] {
-  return Object.keys(config.providers)
+  return Object.keys(config.providers);
 }

@@ -7,36 +7,39 @@
  * Use these for SSR prefetching with React Query's HydrationBoundary.
  */
 
-import 'server-only'
+import "server-only";
 
-import { eq, inArray, or } from 'drizzle-orm'
-import { db, schema } from '@/db'
-import { parentChild } from '@/db/schema'
-import type { Player } from '@/db/schema/players'
-import { getPlayer } from '@/lib/arcade/player-manager'
-import { getViewerId } from '@/lib/viewer'
+import { eq, inArray, or } from "drizzle-orm";
+import { db, schema } from "@/db";
+import { parentChild } from "@/db/schema";
+import type { Player } from "@/db/schema/players";
+import { getPlayer } from "@/lib/arcade/player-manager";
+import { getViewerId } from "@/lib/viewer";
 import {
   computeIntervention,
   computeSkillCategory,
   type SkillDistribution,
   type StudentWithSkillData,
-} from '@/utils/studentGrouping'
-import { computeBktFromHistory, getStalenessWarning } from './bkt'
+} from "@/utils/studentGrouping";
+import { computeBktFromHistory, getStalenessWarning } from "./bkt";
 import {
   getAllSkillMastery,
   getPaginatedSessions,
   getPlayerCurriculum,
   getRecentSessions,
-} from './progress-manager'
-import { getActiveSessionPlan, getRecentSessionResults } from './session-planner'
+} from "./progress-manager";
+import {
+  getActiveSessionPlan,
+  getRecentSessionResults,
+} from "./session-planner";
 
-export type { PlayerCurriculum } from '@/db/schema/player-curriculum'
-export type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
-export type { Player } from '@/db/schema/players'
-export type { PracticeSession } from '@/db/schema/practice-sessions'
+export type { PlayerCurriculum } from "@/db/schema/player-curriculum";
+export type { PlayerSkillMastery } from "@/db/schema/player-skill-mastery";
+export type { Player } from "@/db/schema/players";
+export type { PracticeSession } from "@/db/schema/practice-sessions";
 // Re-export types that consumers might need
-export type { SessionPlan } from '@/db/schema/session-plans'
-export type { StudentWithSkillData } from '@/utils/studentGrouping'
+export type { SessionPlan } from "@/db/schema/session-plans";
+export type { StudentWithSkillData } from "@/utils/studentGrouping";
 
 /**
  * Prefetch all data needed for the practice page
@@ -49,13 +52,14 @@ export type { StudentWithSkillData } from '@/utils/studentGrouping'
  * - Recent practice sessions
  */
 export async function prefetchPracticeData(playerId: string) {
-  const [player, activeSession, curriculum, skills, recentSessions] = await Promise.all([
-    getPlayer(playerId),
-    getActiveSessionPlan(playerId),
-    getPlayerCurriculum(playerId),
-    getAllSkillMastery(playerId),
-    getRecentSessions(playerId, 10),
-  ])
+  const [player, activeSession, curriculum, skills, recentSessions] =
+    await Promise.all([
+      getPlayer(playerId),
+      getActiveSessionPlan(playerId),
+      getPlayerCurriculum(playerId),
+      getAllSkillMastery(playerId),
+      getRecentSessions(playerId, 10),
+    ]);
 
   return {
     player: player ?? null,
@@ -63,7 +67,7 @@ export async function prefetchPracticeData(playerId: string) {
     curriculum,
     skills,
     recentSessions,
-  }
+  };
 }
 
 /**
@@ -72,26 +76,29 @@ export async function prefetchPracticeData(playerId: string) {
  * Uses getViewerId() to identify the current user/guest and fetches their players.
  */
 export async function getPlayersForViewer(): Promise<Player[]> {
-  const viewerId = await getViewerId()
+  const viewerId = await getViewerId();
 
   // Get or create user record
   let user = await db.query.users.findFirst({
     where: eq(schema.users.guestId, viewerId),
-  })
+  });
 
   if (!user) {
     // Create user if doesn't exist
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
+    const [newUser] = await db
+      .insert(schema.users)
+      .values({ guestId: viewerId })
+      .returning();
+    user = newUser;
   }
 
   // Get all players for this user
   const players = await db.query.players.findMany({
     where: eq(schema.players.userId, user.id),
     orderBy: (players, { desc }) => [desc(players.createdAt)],
-  })
+  });
 
-  return players
+  return players;
 }
 
 /**
@@ -100,7 +107,7 @@ export async function getPlayersForViewer(): Promise<Player[]> {
  */
 async function computePlayerSkillDistribution(
   playerId: string,
-  practicingSkillIds: string[]
+  practicingSkillIds: string[],
 ): Promise<SkillDistribution> {
   const distribution: SkillDistribution = {
     strong: 0,
@@ -109,53 +116,54 @@ async function computePlayerSkillDistribution(
     weak: 0,
     unassessed: 0,
     total: practicingSkillIds.length,
-  }
+  };
 
-  if (practicingSkillIds.length === 0) return distribution
+  if (practicingSkillIds.length === 0) return distribution;
 
   // Fetch recent problem history (last 100 problems is enough for BKT)
-  const problemHistory = await getRecentSessionResults(playerId, 100)
+  const problemHistory = await getRecentSessionResults(playerId, 100);
 
   if (problemHistory.length === 0) {
     // No history = all unassessed
-    distribution.unassessed = practicingSkillIds.length
-    return distribution
+    distribution.unassessed = practicingSkillIds.length;
+    return distribution;
   }
 
   // Compute BKT
-  const now = new Date()
-  const bktResult = computeBktFromHistory(problemHistory, {})
-  const bktMap = new Map(bktResult.skills.map((s) => [s.skillId, s]))
+  const now = new Date();
+  const bktResult = computeBktFromHistory(problemHistory, {});
+  const bktMap = new Map(bktResult.skills.map((s) => [s.skillId, s]));
 
   for (const skillId of practicingSkillIds) {
-    const bkt = bktMap.get(skillId)
+    const bkt = bktMap.get(skillId);
 
     if (!bkt || bkt.opportunities === 0) {
-      distribution.unassessed++
-      continue
+      distribution.unassessed++;
+      continue;
     }
 
-    const classification = bkt.masteryClassification ?? 'developing'
+    const classification = bkt.masteryClassification ?? "developing";
 
-    if (classification === 'strong') {
+    if (classification === "strong") {
       // Check staleness
-      const lastPracticed = bkt.lastPracticedAt
+      const lastPracticed = bkt.lastPracticedAt;
       if (lastPracticed) {
-        const daysSince = (now.getTime() - lastPracticed.getTime()) / (1000 * 60 * 60 * 24)
+        const daysSince =
+          (now.getTime() - lastPracticed.getTime()) / (1000 * 60 * 60 * 24);
         if (getStalenessWarning(daysSince)) {
-          distribution.stale++
+          distribution.stale++;
         } else {
-          distribution.strong++
+          distribution.strong++;
         }
       } else {
-        distribution.strong++
+        distribution.strong++;
       }
     } else {
-      distribution[classification]++
+      distribution[classification]++;
     }
   }
 
-  return distribution
+  return distribution;
 }
 
 /**
@@ -167,37 +175,45 @@ async function computePlayerSkillDistribution(
  * - skillCategory: Computed highest-level skill category
  * - intervention: Intervention data if student needs attention
  */
-export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
-  const viewerId = await getViewerId()
+export async function getPlayersWithSkillData(): Promise<
+  StudentWithSkillData[]
+> {
+  const viewerId = await getViewerId();
 
   // Get or create user record
   let user = await db.query.users.findFirst({
     where: eq(schema.users.guestId, viewerId),
-  })
+  });
 
   if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
+    const [newUser] = await db
+      .insert(schema.users)
+      .values({ guestId: viewerId })
+      .returning();
+    user = newUser;
   }
 
   // Get player IDs linked via parent_child table
   const linkedPlayerIds = await db.query.parentChild.findMany({
     where: eq(parentChild.parentUserId, user.id),
-  })
-  const linkedIds = linkedPlayerIds.map((link) => link.childPlayerId)
+  });
+  const linkedIds = linkedPlayerIds.map((link) => link.childPlayerId);
 
   // Get all players: created by this user OR linked via parent_child
-  let players: Player[]
+  let players: Player[];
   if (linkedIds.length > 0) {
     players = await db.query.players.findMany({
-      where: or(eq(schema.players.userId, user.id), inArray(schema.players.id, linkedIds)),
+      where: or(
+        eq(schema.players.userId, user.id),
+        inArray(schema.players.id, linkedIds),
+      ),
       orderBy: (players, { desc }) => [desc(players.createdAt)],
-    })
+    });
   } else {
     players = await db.query.players.findMany({
       where: eq(schema.players.userId, user.id),
       orderBy: (players, { desc }) => [desc(players.createdAt)],
-    })
+    });
   }
 
   // Fetch skill mastery for all players in parallel
@@ -205,40 +221,43 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
     players.map(async (player) => {
       const skills = await db.query.playerSkillMastery.findMany({
         where: eq(schema.playerSkillMastery.playerId, player.id),
-      })
+      });
 
       // Get practicing skills and compute lastPracticedAt
-      const practicingSkills: string[] = []
-      let lastPracticedAt: Date | null = null
+      const practicingSkills: string[] = [];
+      let lastPracticedAt: Date | null = null;
 
       for (const skill of skills) {
         if (skill.isPracticing) {
-          practicingSkills.push(skill.skillId)
+          practicingSkills.push(skill.skillId);
         }
         // Track the most recent practice date across all skills
         if (skill.lastPracticedAt) {
           if (!lastPracticedAt || skill.lastPracticedAt > lastPracticedAt) {
-            lastPracticedAt = skill.lastPracticedAt
+            lastPracticedAt = skill.lastPracticedAt;
           }
         }
       }
 
       // Compute skill category
-      const skillCategory = computeSkillCategory(practicingSkills)
+      const skillCategory = computeSkillCategory(practicingSkills);
 
       // Compute intervention data (only for non-archived students with skills)
-      let intervention = null
+      let intervention = null;
       if (!player.isArchived && practicingSkills.length > 0) {
-        const distribution = await computePlayerSkillDistribution(player.id, practicingSkills)
+        const distribution = await computePlayerSkillDistribution(
+          player.id,
+          practicingSkills,
+        );
         const daysSinceLastPractice = lastPracticedAt
           ? (Date.now() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
-          : Infinity
+          : Infinity;
 
         intervention = computeIntervention(
           distribution,
           daysSinceLastPractice,
-          practicingSkills.length > 0
-        )
+          practicingSkills.length > 0,
+        );
       }
 
       return {
@@ -247,26 +266,26 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
         lastPracticedAt,
         skillCategory,
         intervention,
-      }
-    })
-  )
+      };
+    }),
+  );
 
-  return playersWithSkills
+  return playersWithSkills;
 }
 
 // Re-export the individual functions for granular prefetching
-export { getPlayer } from '@/lib/arcade/player-manager'
+export { getPlayer } from "@/lib/arcade/player-manager";
 export {
   getAllSkillMastery,
   getPaginatedSessions,
   getPlayerCurriculum,
   getRecentSessions,
-} from './progress-manager'
-export type { PaginatedSessionsResponse } from './progress-manager'
+} from "./progress-manager";
+export type { PaginatedSessionsResponse } from "./progress-manager";
 export {
   getActiveSessionPlan,
   getMostRecentCompletedSession,
   getRecentSessionResults,
   getSessionPlan,
-} from './session-planner'
-export type { ProblemResultWithContext } from './session-planner'
+} from "./session-planner";
+export type { ProblemResultWithContext } from "./session-planner";

@@ -1,6 +1,6 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import type { SessionPlan } from '@/db/schema/session-plans'
-import { canPerformAction } from '@/lib/classroom'
+import { type NextRequest, NextResponse } from "next/server";
+import type { SessionPlan } from "@/db/schema/session-plans";
+import { canPerformAction } from "@/lib/classroom";
 import {
   ActiveSessionExistsError,
   type EnabledParts,
@@ -8,13 +8,13 @@ import {
   generateSessionPlan,
   getActiveSessionPlan,
   NoSkillsEnabledError,
-} from '@/lib/curriculum'
-import type { ProblemGenerationMode } from '@/lib/curriculum/config'
-import type { SessionMode } from '@/lib/curriculum/session-mode'
-import { getDbUserId } from '@/lib/viewer'
+} from "@/lib/curriculum";
+import type { ProblemGenerationMode } from "@/lib/curriculum/config";
+import type { SessionMode } from "@/lib/curriculum/session-mode";
+import { getDbUserId } from "@/lib/viewer";
 
 interface RouteParams {
-  params: Promise<{ playerId: string }>
+  params: Promise<{ playerId: string }>;
 }
 
 /**
@@ -24,11 +24,23 @@ interface RouteParams {
 function serializePlan(plan: SessionPlan) {
   return {
     ...plan,
-    createdAt: plan.createdAt instanceof Date ? plan.createdAt.getTime() : plan.createdAt,
-    approvedAt: plan.approvedAt instanceof Date ? plan.approvedAt.getTime() : plan.approvedAt,
-    startedAt: plan.startedAt instanceof Date ? plan.startedAt.getTime() : plan.startedAt,
-    completedAt: plan.completedAt instanceof Date ? plan.completedAt.getTime() : plan.completedAt,
-  }
+    createdAt:
+      plan.createdAt instanceof Date
+        ? plan.createdAt.getTime()
+        : plan.createdAt,
+    approvedAt:
+      plan.approvedAt instanceof Date
+        ? plan.approvedAt.getTime()
+        : plan.approvedAt,
+    startedAt:
+      plan.startedAt instanceof Date
+        ? plan.startedAt.getTime()
+        : plan.startedAt,
+    completedAt:
+      plan.completedAt instanceof Date
+        ? plan.completedAt.getTime()
+        : plan.completedAt,
+  };
 }
 
 /**
@@ -36,21 +48,24 @@ function serializePlan(plan: SessionPlan) {
  * Get the active session plan for a player (if any)
  */
 export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const { playerId } = await params
+  const { playerId } = await params;
 
   try {
     // Authorization check
-    const userId = await getDbUserId()
-    const canView = await canPerformAction(userId, playerId, 'view')
+    const userId = await getDbUserId();
+    const canView = await canPerformAction(userId, playerId, "view");
     if (!canView) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
-    const plan = await getActiveSessionPlan(playerId)
-    return NextResponse.json({ plan: plan ? serializePlan(plan) : null })
+    const plan = await getActiveSessionPlan(playerId);
+    return NextResponse.json({ plan: plan ? serializePlan(plan) : null });
   } catch (error) {
-    console.error('Error fetching active plan:', error)
-    return NextResponse.json({ error: 'Failed to fetch active plan' }, { status: 500 })
+    console.error("Error fetching active plan:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch active plan" },
+      { status: 500 },
+    );
   }
 }
 
@@ -74,17 +89,17 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
  * - Part 3: Linear (mental math, sentence format)
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { playerId } = await params
+  const { playerId } = await params;
 
   try {
     // Authorization check - only parents/present teachers can create sessions
-    const userId = await getDbUserId()
-    const canCreate = await canPerformAction(userId, playerId, 'start-session')
+    const userId = await getDbUserId();
+    const canCreate = await canPerformAction(userId, playerId, "start-session");
     if (!canCreate) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
-    const body = await request.json()
+    const body = await request.json();
     const {
       durationMinutes,
       abacusTermCount,
@@ -92,21 +107,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       problemGenerationMode,
       confidenceThreshold,
       sessionMode,
-    } = body
+    } = body;
 
-    if (!durationMinutes || typeof durationMinutes !== 'number') {
+    if (!durationMinutes || typeof durationMinutes !== "number") {
       return NextResponse.json(
-        { error: 'durationMinutes is required and must be a number' },
-        { status: 400 }
-      )
+        { error: "durationMinutes is required and must be a number" },
+        { status: 400 },
+      );
     }
 
     // Validate enabledParts if provided
     if (enabledParts) {
-      const validParts = ['abacus', 'visualization', 'linear']
-      const enabledCount = validParts.filter((p) => enabledParts[p] === true).length
+      const validParts = ["abacus", "visualization", "linear"];
+      const enabledCount = validParts.filter(
+        (p) => enabledParts[p] === true,
+      ).length;
       if (enabledCount === 0) {
-        return NextResponse.json({ error: 'At least one part must be enabled' }, { status: 400 })
+        return NextResponse.json(
+          { error: "At least one part must be enabled" },
+          { status: 400 },
+        );
       }
     }
 
@@ -116,10 +136,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       // Pass enabled parts
       enabledParts: enabledParts as EnabledParts | undefined,
       // Pass problem generation mode if specified
-      problemGenerationMode: problemGenerationMode as ProblemGenerationMode | undefined,
+      problemGenerationMode: problemGenerationMode as
+        | ProblemGenerationMode
+        | undefined,
       // Pass BKT confidence threshold if specified
       confidenceThreshold:
-        typeof confidenceThreshold === 'number' ? confidenceThreshold : undefined,
+        typeof confidenceThreshold === "number"
+          ? confidenceThreshold
+          : undefined,
       // Pass session mode for single source of truth targeting
       sessionMode: sessionMode as SessionMode | undefined,
       // Pass config overrides if abacusTermCount is specified
@@ -128,21 +152,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           abacusTermCount,
         },
       }),
-    }
+    };
 
-    const plan = await generateSessionPlan(options)
-    return NextResponse.json({ plan: serializePlan(plan) }, { status: 201 })
+    const plan = await generateSessionPlan(options);
+    return NextResponse.json({ plan: serializePlan(plan) }, { status: 201 });
   } catch (error) {
     // Handle active session conflict
     if (error instanceof ActiveSessionExistsError) {
       return NextResponse.json(
         {
-          error: 'Active session exists',
-          code: 'ACTIVE_SESSION_EXISTS',
+          error: "Active session exists",
+          code: "ACTIVE_SESSION_EXISTS",
           existingPlan: serializePlan(error.existingSession),
         },
-        { status: 409 }
-      )
+        { status: 409 },
+      );
     }
 
     // Handle no skills enabled
@@ -150,13 +174,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         {
           error: error.message,
-          code: 'NO_SKILLS_ENABLED',
+          code: "NO_SKILLS_ENABLED",
         },
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
-    console.error('Error generating session plan:', error)
-    return NextResponse.json({ error: 'Failed to generate session plan' }, { status: 500 })
+    console.error("Error generating session plan:", error);
+    return NextResponse.json(
+      { error: "Failed to generate session plan" },
+      { status: 500 },
+    );
   }
 }

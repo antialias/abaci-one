@@ -1,61 +1,65 @@
-'use client'
+"use client";
 
-import { motion } from 'framer-motion'
-import type { ReactNode } from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useAbacusVision } from '@/hooks/useAbacusVision'
-import { useFrameStability } from '@/hooks/useFrameStability'
-import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
-import { analyzeColumns, analysesToDigits } from '@/lib/vision/beadDetector'
-import { processImageFrame } from '@/lib/vision/frameProcessor'
-import { isOpenCVReady, loadOpenCV, rectifyQuadrilateral } from '@/lib/vision/perspectiveTransform'
-import type { CalibrationGrid, QuadCorners } from '@/types/vision'
-import { DEFAULT_STABILITY_CONFIG } from '@/types/vision'
-import { css } from '../../../styled-system/css'
-import { CalibrationOverlay } from './CalibrationOverlay'
-import { RemoteCameraQRCode } from './RemoteCameraQRCode'
-import { VisionCameraFeed } from './VisionCameraFeed'
-import { VisionStatusIndicator } from './VisionStatusIndicator'
+import { motion } from "framer-motion";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAbacusVision } from "@/hooks/useAbacusVision";
+import { useFrameStability } from "@/hooks/useFrameStability";
+import { useRemoteCameraDesktop } from "@/hooks/useRemoteCameraDesktop";
+import { analyzeColumns, analysesToDigits } from "@/lib/vision/beadDetector";
+import { processImageFrame } from "@/lib/vision/frameProcessor";
+import {
+  isOpenCVReady,
+  loadOpenCV,
+  rectifyQuadrilateral,
+} from "@/lib/vision/perspectiveTransform";
+import type { CalibrationGrid, QuadCorners } from "@/types/vision";
+import { DEFAULT_STABILITY_CONFIG } from "@/types/vision";
+import { css } from "../../../styled-system/css";
+import { CalibrationOverlay } from "./CalibrationOverlay";
+import { RemoteCameraQRCode } from "./RemoteCameraQRCode";
+import { VisionCameraFeed } from "./VisionCameraFeed";
+import { VisionStatusIndicator } from "./VisionStatusIndicator";
 
-type CameraSource = 'local' | 'phone'
+type CameraSource = "local" | "phone";
 
 /**
  * Configuration change payload for onConfigurationChange callback
  */
 export interface VisionConfigurationChange {
   /** Camera device ID (for local camera) */
-  cameraDeviceId?: string | null
+  cameraDeviceId?: string | null;
   /** Calibration grid */
-  calibration?: import('@/types/vision').CalibrationGrid | null
+  calibration?: import("@/types/vision").CalibrationGrid | null;
   /** Remote camera session ID (for phone camera) */
-  remoteCameraSessionId?: string | null
+  remoteCameraSessionId?: string | null;
   /** Active camera source (tracks which camera is in use) */
-  activeCameraSource?: CameraSource | null
+  activeCameraSource?: CameraSource | null;
 }
 
 export interface AbacusVisionBridgeProps {
   /** Number of abacus columns to detect */
-  columnCount: number
+  columnCount: number;
   /** Called when a stable value is detected */
-  onValueDetected: (value: number) => void
+  onValueDetected: (value: number) => void;
   /** Called when vision mode is closed */
-  onClose: () => void
+  onClose: () => void;
   /** Called on error */
-  onError?: (error: string) => void
+  onError?: (error: string) => void;
   /** Called when configuration changes (camera, calibration, or remote session) */
-  onConfigurationChange?: (config: VisionConfigurationChange) => void
+  onConfigurationChange?: (config: VisionConfigurationChange) => void;
   /** Initial camera source to show (defaults to 'local', but should be 'phone' if remote session is active) */
-  initialCameraSource?: CameraSource
+  initialCameraSource?: CameraSource;
   /** Whether to show vision control buttons (enable/disable, clear settings) */
-  showVisionControls?: boolean
+  showVisionControls?: boolean;
   /** Whether vision is currently enabled (for showVisionControls) */
-  isVisionEnabled?: boolean
+  isVisionEnabled?: boolean;
   /** Whether vision setup is complete (for showVisionControls) */
-  isVisionSetupComplete?: boolean
+  isVisionSetupComplete?: boolean;
   /** Called when user toggles vision on/off */
-  onToggleVision?: () => void
+  onToggleVision?: () => void;
   /** Called when user clicks clear settings */
-  onClearSettings?: () => void
+  onClearSettings?: () => void;
 }
 
 /**
@@ -73,7 +77,7 @@ export function AbacusVisionBridge({
   onClose,
   onError,
   onConfigurationChange,
-  initialCameraSource = 'local',
+  initialCameraSource = "local",
   showVisionControls = false,
   isVisionEnabled = false,
   isVisionSetupComplete = false,
@@ -81,44 +85,51 @@ export function AbacusVisionBridge({
   onClearSettings,
 }: AbacusVisionBridgeProps): ReactNode {
   const [videoDimensions, setVideoDimensions] = useState<{
-    width: number
-    height: number
-    containerWidth: number
-    containerHeight: number
-  } | null>(null)
+    width: number;
+    height: number;
+    containerWidth: number;
+    containerHeight: number;
+  } | null>(null);
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const cameraFeedContainerRef = useRef<HTMLDivElement>(null)
-  const remoteFeedContainerRef = useRef<HTMLDivElement>(null)
-  const remoteImageRef = useRef<HTMLImageElement>(null)
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  const previewCanvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cameraFeedContainerRef = useRef<HTMLDivElement>(null);
+  const remoteFeedContainerRef = useRef<HTMLDivElement>(null);
+  const remoteImageRef = useRef<HTMLImageElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Track remote image container dimensions for calibration
   const [remoteContainerDimensions, setRemoteContainerDimensions] = useState<{
-    width: number
-    height: number
-  } | null>(null)
+    width: number;
+    height: number;
+  } | null>(null);
 
-  const [calibrationCorners, setCalibrationCorners] = useState<QuadCorners | null>(null)
-  const [opencvReady, setOpencvReady] = useState(false)
+  const [calibrationCorners, setCalibrationCorners] =
+    useState<QuadCorners | null>(null);
+  const [opencvReady, setOpencvReady] = useState(false);
 
   // Camera source selection
-  const [cameraSource, setCameraSource] = useState<CameraSource>(initialCameraSource)
-  const [remoteCameraSessionId, setRemoteCameraSessionId] = useState<string | null>(null)
+  const [cameraSource, setCameraSource] =
+    useState<CameraSource>(initialCameraSource);
+  const [remoteCameraSessionId, setRemoteCameraSessionId] = useState<
+    string | null
+  >(null);
 
   // Remote camera state
-  const [remoteCalibrationMode, setRemoteCalibrationMode] = useState<'auto' | 'manual'>('auto')
-  const [remoteIsCalibrating, setRemoteIsCalibrating] = useState(false)
-  const [remoteCalibration, setRemoteCalibration] = useState<CalibrationGrid | null>(null)
+  const [remoteCalibrationMode, setRemoteCalibrationMode] = useState<
+    "auto" | "manual"
+  >("auto");
+  const [remoteIsCalibrating, setRemoteIsCalibrating] = useState(false);
+  const [remoteCalibration, setRemoteCalibration] =
+    useState<CalibrationGrid | null>(null);
 
   // Crop settings expansion state
-  const [isCropSettingsExpanded, setIsCropSettingsExpanded] = useState(false)
+  const [isCropSettingsExpanded, setIsCropSettingsExpanded] = useState(false);
 
   const vision = useAbacusVision({
     columnCount,
     onValueDetected,
-  })
+  });
 
   // Remote camera hook - destructure to get stable function references
   const {
@@ -140,273 +151,287 @@ export function AbacusVisionBridge({
     setRemoteTorch,
     getPersistedSessionId: remoteGetPersistedSessionId,
     clearSession: remoteClearSession,
-  } = useRemoteCameraDesktop()
+  } = useRemoteCameraDesktop();
 
   // Stability tracking for remote frames
-  const remoteStability = useFrameStability()
+  const remoteStability = useFrameStability();
 
   // Track last stable value for remote camera to avoid duplicate callbacks
-  const lastRemoteStableValueRef = useRef<number | null>(null)
+  const lastRemoteStableValueRef = useRef<number | null>(null);
 
   // Throttle remote frame processing
-  const lastRemoteInferenceTimeRef = useRef<number>(0)
-  const REMOTE_INFERENCE_INTERVAL_MS = 100 // 10fps
+  const lastRemoteInferenceTimeRef = useRef<number>(0);
+  const REMOTE_INFERENCE_INTERVAL_MS = 100; // 10fps
 
   // Track last reported configuration to avoid redundant callbacks
-  const lastReportedCameraRef = useRef<string | null>(null)
-  const lastReportedCalibrationRef = useRef<CalibrationGrid | null>(null)
-  const lastReportedRemoteSessionRef = useRef<string | null>(null)
+  const lastReportedCameraRef = useRef<string | null>(null);
+  const lastReportedCalibrationRef = useRef<CalibrationGrid | null>(null);
+  const lastReportedRemoteSessionRef = useRef<string | null>(null);
 
   // Initialize remote camera session from localStorage on mount
   useEffect(() => {
-    const persistedSessionId = remoteGetPersistedSessionId()
+    const persistedSessionId = remoteGetPersistedSessionId();
     if (persistedSessionId) {
-      console.log('[AbacusVisionBridge] Found persisted remote session:', persistedSessionId)
-      setRemoteCameraSessionId(persistedSessionId)
+      console.log(
+        "[AbacusVisionBridge] Found persisted remote session:",
+        persistedSessionId,
+      );
+      setRemoteCameraSessionId(persistedSessionId);
       // Also notify parent about the persisted session
       // This ensures the parent context stays in sync with localStorage
-      onConfigurationChange?.({ remoteCameraSessionId: persistedSessionId })
+      onConfigurationChange?.({ remoteCameraSessionId: persistedSessionId });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remoteGetPersistedSessionId]) // onConfigurationChange is intentionally omitted - only run on mount
+  }, [remoteGetPersistedSessionId]); // onConfigurationChange is intentionally omitted - only run on mount
 
   // Handle switching to phone camera
   const handleCameraSourceChange = useCallback(
     (source: CameraSource) => {
-      setCameraSource(source)
-      if (source === 'phone') {
+      setCameraSource(source);
+      if (source === "phone") {
         // Stop local camera
-        vision.disable()
+        vision.disable();
         // Set active camera source to phone and clear local camera config
         // (but keep local config in storage for when we switch back)
-        onConfigurationChange?.({ activeCameraSource: 'phone' })
+        onConfigurationChange?.({ activeCameraSource: "phone" });
         // Check for persisted session and reuse it
-        const persistedSessionId = remoteGetPersistedSessionId()
+        const persistedSessionId = remoteGetPersistedSessionId();
         if (persistedSessionId) {
-          console.log('[AbacusVisionBridge] Reusing persisted remote session:', persistedSessionId)
-          setRemoteCameraSessionId(persistedSessionId)
+          console.log(
+            "[AbacusVisionBridge] Reusing persisted remote session:",
+            persistedSessionId,
+          );
+          setRemoteCameraSessionId(persistedSessionId);
           // Notify parent about the reused session
           onConfigurationChange?.({
             remoteCameraSessionId: persistedSessionId,
-          })
+          });
         }
         // If no persisted session, RemoteCameraQRCode will create one
       } else {
         // Switching to local camera
         // Set active camera source to local
         // The remote session still persists in localStorage (via useRemoteCameraDesktop) for when we switch back
-        setRemoteCameraSessionId(null)
-        onConfigurationChange?.({ activeCameraSource: 'local' })
-        vision.enable()
+        setRemoteCameraSessionId(null);
+        onConfigurationChange?.({ activeCameraSource: "local" });
+        vision.enable();
       }
     },
-    [vision, onConfigurationChange, remoteGetPersistedSessionId]
-  )
+    [vision, onConfigurationChange, remoteGetPersistedSessionId],
+  );
 
   // Handle starting a fresh session (clear persisted and create new)
   const handleStartFreshSession = useCallback(() => {
-    remoteClearSession()
-    setRemoteCameraSessionId(null)
-  }, [remoteClearSession])
+    remoteClearSession();
+    setRemoteCameraSessionId(null);
+  }, [remoteClearSession]);
 
   // Handle session created by QR code component
   const handleRemoteSessionCreated = useCallback((sessionId: string) => {
-    setRemoteCameraSessionId(sessionId)
-  }, [])
+    setRemoteCameraSessionId(sessionId);
+  }, []);
 
   // Subscribe to remote camera session when sessionId changes
   useEffect(() => {
-    if (remoteCameraSessionId && cameraSource === 'phone') {
-      remoteSubscribe(remoteCameraSessionId)
-      return () => remoteUnsubscribe()
+    if (remoteCameraSessionId && cameraSource === "phone") {
+      remoteSubscribe(remoteCameraSessionId);
+      return () => remoteUnsubscribe();
     }
-  }, [remoteCameraSessionId, cameraSource, remoteSubscribe, remoteUnsubscribe])
+  }, [remoteCameraSessionId, cameraSource, remoteSubscribe, remoteUnsubscribe]);
 
   // Handle remote camera mode change
   const handleRemoteModeChange = useCallback(
-    (mode: 'auto' | 'manual') => {
-      setRemoteCalibrationMode(mode)
-      if (mode === 'auto') {
+    (mode: "auto" | "manual") => {
+      setRemoteCalibrationMode(mode);
+      if (mode === "auto") {
         // Tell phone to use its auto-calibration (cropped frames)
-        remoteSetPhoneFrameMode('cropped')
-        setRemoteIsCalibrating(false)
+        remoteSetPhoneFrameMode("cropped");
+        setRemoteIsCalibrating(false);
         // Clear desktop calibration on phone so it goes back to auto-detection
-        remoteClearCalibration()
-        setRemoteCalibration(null)
+        remoteClearCalibration();
+        setRemoteCalibration(null);
       } else {
         // Tell phone to send raw frames for desktop calibration
-        remoteSetPhoneFrameMode('raw')
+        remoteSetPhoneFrameMode("raw");
       }
     },
-    [remoteSetPhoneFrameMode, remoteClearCalibration]
-  )
+    [remoteSetPhoneFrameMode, remoteClearCalibration],
+  );
 
   // Start remote camera calibration
   const handleRemoteStartCalibration = useCallback(() => {
-    remoteSetPhoneFrameMode('raw')
-    setRemoteIsCalibrating(true)
-  }, [remoteSetPhoneFrameMode])
+    remoteSetPhoneFrameMode("raw");
+    setRemoteIsCalibrating(true);
+  }, [remoteSetPhoneFrameMode]);
 
   // Complete remote camera calibration
   const handleRemoteCalibrationComplete = useCallback(
     (grid: CalibrationGrid) => {
-      setRemoteCalibration(grid)
-      setRemoteIsCalibrating(false)
+      setRemoteCalibration(grid);
+      setRemoteIsCalibrating(false);
       // Send calibration to phone
       if (grid.corners) {
-        remoteSendCalibration(grid.corners)
+        remoteSendCalibration(grid.corners);
       }
     },
-    [remoteSendCalibration]
-  )
+    [remoteSendCalibration],
+  );
 
   // Cancel remote camera calibration
   const handleRemoteCancelCalibration = useCallback(() => {
-    setRemoteIsCalibrating(false)
+    setRemoteIsCalibrating(false);
     // Go back to previous mode
-    if (remoteCalibrationMode === 'auto') {
-      remoteSetPhoneFrameMode('cropped')
+    if (remoteCalibrationMode === "auto") {
+      remoteSetPhoneFrameMode("cropped");
     }
-  }, [remoteCalibrationMode, remoteSetPhoneFrameMode])
+  }, [remoteCalibrationMode, remoteSetPhoneFrameMode]);
 
   // Reset remote calibration
   const handleRemoteResetCalibration = useCallback(() => {
-    setRemoteCalibration(null)
-    remoteSetPhoneFrameMode('cropped')
-  }, [remoteSetPhoneFrameMode])
+    setRemoteCalibration(null);
+    remoteSetPhoneFrameMode("cropped");
+  }, [remoteSetPhoneFrameMode]);
 
   // Start camera on mount (only for local source)
   useEffect(() => {
-    if (cameraSource === 'local') {
-      vision.enable()
+    if (cameraSource === "local") {
+      vision.enable();
     }
-    return () => vision.disable()
+    return () => vision.disable();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only run on mount/unmount - vision functions are stable
+  }, []); // Only run on mount/unmount - vision functions are stable
 
   // Report errors
   useEffect(() => {
     if (vision.cameraError && onError) {
-      onError(vision.cameraError)
+      onError(vision.cameraError);
     }
-  }, [vision.cameraError, onError])
+  }, [vision.cameraError, onError]);
 
   // Notify about local camera device changes and ensure activeCameraSource is set
   useEffect(() => {
     if (
-      cameraSource === 'local' &&
+      cameraSource === "local" &&
       vision.selectedDeviceId &&
       vision.selectedDeviceId !== lastReportedCameraRef.current
     ) {
-      lastReportedCameraRef.current = vision.selectedDeviceId
+      lastReportedCameraRef.current = vision.selectedDeviceId;
       // Set both the camera device ID and the active camera source
       onConfigurationChange?.({
         cameraDeviceId: vision.selectedDeviceId,
-        activeCameraSource: 'local',
-      })
+        activeCameraSource: "local",
+      });
     }
-  }, [cameraSource, vision.selectedDeviceId, onConfigurationChange])
+  }, [cameraSource, vision.selectedDeviceId, onConfigurationChange]);
 
   // Notify about local calibration changes
   useEffect(() => {
     if (
-      cameraSource === 'local' &&
+      cameraSource === "local" &&
       vision.calibrationGrid &&
       vision.calibrationGrid !== lastReportedCalibrationRef.current
     ) {
-      lastReportedCalibrationRef.current = vision.calibrationGrid
-      onConfigurationChange?.({ calibration: vision.calibrationGrid })
+      lastReportedCalibrationRef.current = vision.calibrationGrid;
+      onConfigurationChange?.({ calibration: vision.calibrationGrid });
     }
-  }, [cameraSource, vision.calibrationGrid, onConfigurationChange])
+  }, [cameraSource, vision.calibrationGrid, onConfigurationChange]);
 
   // Notify about remote camera session changes
   // Reset the lastReportedRemoteSessionRef when switching away from phone camera
   // so that the next time we switch to phone, we'll notify the parent again
   useEffect(() => {
-    if (cameraSource !== 'phone') {
+    if (cameraSource !== "phone") {
       // When switching away from phone camera, reset the ref
       // This ensures we'll notify the parent again when switching back
-      lastReportedRemoteSessionRef.current = null
+      lastReportedRemoteSessionRef.current = null;
     } else if (
       remoteCameraSessionId &&
       remoteCameraSessionId !== lastReportedRemoteSessionRef.current
     ) {
-      lastReportedRemoteSessionRef.current = remoteCameraSessionId
-      onConfigurationChange?.({ remoteCameraSessionId })
+      lastReportedRemoteSessionRef.current = remoteCameraSessionId;
+      onConfigurationChange?.({ remoteCameraSessionId });
     }
-  }, [cameraSource, remoteCameraSessionId, onConfigurationChange])
+  }, [cameraSource, remoteCameraSessionId, onConfigurationChange]);
 
   // Notify about remote calibration changes (manual mode)
   useEffect(() => {
     if (
-      cameraSource === 'phone' &&
+      cameraSource === "phone" &&
       remoteCalibration &&
       remoteCalibration !== lastReportedCalibrationRef.current
     ) {
-      lastReportedCalibrationRef.current = remoteCalibration
-      onConfigurationChange?.({ calibration: remoteCalibration })
+      lastReportedCalibrationRef.current = remoteCalibration;
+      onConfigurationChange?.({ calibration: remoteCalibration });
     }
-  }, [cameraSource, remoteCalibration, onConfigurationChange])
+  }, [cameraSource, remoteCalibration, onConfigurationChange]);
 
   // Process remote camera frames through CV pipeline
   useEffect(() => {
     // Only process when using phone camera and connected
-    if (cameraSource !== 'phone' || !remoteIsPhoneConnected || !remoteLatestFrame) {
-      return
+    if (
+      cameraSource !== "phone" ||
+      !remoteIsPhoneConnected ||
+      !remoteLatestFrame
+    ) {
+      return;
     }
 
     // Don't process during calibration
     if (remoteIsCalibrating) {
-      return
+      return;
     }
 
     // In manual mode, need calibration to process
-    if (remoteCalibrationMode === 'manual' && !remoteCalibration) {
-      return
+    if (remoteCalibrationMode === "manual" && !remoteCalibration) {
+      return;
     }
 
     // Throttle processing
-    const now = performance.now()
-    if (now - lastRemoteInferenceTimeRef.current < REMOTE_INFERENCE_INTERVAL_MS) {
-      return
+    const now = performance.now();
+    if (
+      now - lastRemoteInferenceTimeRef.current <
+      REMOTE_INFERENCE_INTERVAL_MS
+    ) {
+      return;
     }
-    lastRemoteInferenceTimeRef.current = now
+    lastRemoteInferenceTimeRef.current = now;
 
     // Get image element
-    const image = remoteImageRef.current
+    const image = remoteImageRef.current;
     if (!image || !image.complete || image.naturalWidth === 0) {
-      return
+      return;
     }
 
     // Determine calibration to use
     // In auto mode (cropped frames), no calibration needed - phone already cropped
     // In manual mode, use the desktop calibration
-    const calibration = remoteCalibrationMode === 'auto' ? null : remoteCalibration
+    const calibration =
+      remoteCalibrationMode === "auto" ? null : remoteCalibration;
 
     // Process frame through CV pipeline
-    const columnImages = processImageFrame(image, calibration, columnCount)
-    if (columnImages.length === 0) return
+    const columnImages = processImageFrame(image, calibration, columnCount);
+    if (columnImages.length === 0) return;
 
     // Run CV-based bead detection
-    const analyses = analyzeColumns(columnImages)
-    const { digits, minConfidence } = analysesToDigits(analyses)
+    const analyses = analyzeColumns(columnImages);
+    const { digits, minConfidence } = analysesToDigits(analyses);
 
     // Convert digits to number
-    const detectedValue = digits.reduce((acc, d) => acc * 10 + d, 0)
+    const detectedValue = digits.reduce((acc, d) => acc * 10 + d, 0);
 
     // Log for debugging
     console.log(
-      '[Remote CV] Bead analysis:',
+      "[Remote CV] Bead analysis:",
       analyses.map((a) => ({
         digit: a.digit,
         conf: a.confidence.toFixed(2),
-        heaven: a.heavenActive ? '5' : '0',
+        heaven: a.heavenActive ? "5" : "0",
         earth: a.earthActiveCount,
-      }))
-    )
+      })),
+    );
 
     // Push to stability buffer
-    remoteStability.pushFrame(detectedValue, minConfidence)
+    remoteStability.pushFrame(detectedValue, minConfidence);
   }, [
     cameraSource,
     remoteIsPhoneConnected,
@@ -416,54 +441,54 @@ export function AbacusVisionBridge({
     remoteCalibration,
     columnCount,
     remoteStability,
-  ])
+  ]);
 
   // Notify when remote stable value changes
   useEffect(() => {
     if (
-      cameraSource === 'phone' &&
+      cameraSource === "phone" &&
       remoteStability.stableValue !== null &&
       remoteStability.stableValue !== lastRemoteStableValueRef.current
     ) {
-      lastRemoteStableValueRef.current = remoteStability.stableValue
-      onValueDetected(remoteStability.stableValue)
+      lastRemoteStableValueRef.current = remoteStability.stableValue;
+      onValueDetected(remoteStability.stableValue);
     }
-  }, [cameraSource, remoteStability.stableValue, onValueDetected])
+  }, [cameraSource, remoteStability.stableValue, onValueDetected]);
 
   // Load OpenCV when calibrating (local or remote)
   useEffect(() => {
-    const isCalibrating = vision.isCalibrating || remoteIsCalibrating
+    const isCalibrating = vision.isCalibrating || remoteIsCalibrating;
     if (isCalibrating && !opencvReady) {
       loadOpenCV()
         .then(() => setOpencvReady(true))
-        .catch((err) => console.error('Failed to load OpenCV:', err))
+        .catch((err) => console.error("Failed to load OpenCV:", err));
     }
-  }, [vision.isCalibrating, remoteIsCalibrating, opencvReady])
+  }, [vision.isCalibrating, remoteIsCalibrating, opencvReady]);
 
   // Track remote image container dimensions for calibration overlay
   useEffect(() => {
-    const container = remoteFeedContainerRef.current
-    if (!container || !remoteIsCalibrating) return
+    const container = remoteFeedContainerRef.current;
+    if (!container || !remoteIsCalibrating) return;
 
     const updateDimensions = () => {
-      const rect = container.getBoundingClientRect()
+      const rect = container.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
         setRemoteContainerDimensions({
           width: rect.width,
           height: rect.height,
-        })
+        });
       }
-    }
+    };
 
     // Update immediately
-    updateDimensions()
+    updateDimensions();
 
     // Also update on resize
-    const resizeObserver = new ResizeObserver(updateDimensions)
-    resizeObserver.observe(container)
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    resizeObserver.observe(container);
 
-    return () => resizeObserver.disconnect()
-  }, [remoteIsCalibrating, remoteLatestFrame])
+    return () => resizeObserver.disconnect();
+  }, [remoteIsCalibrating, remoteLatestFrame]);
 
   // Render preview when calibrating
   useEffect(() => {
@@ -473,75 +498,75 @@ export function AbacusVisionBridge({
       !videoRef.current ||
       !previewCanvasRef.current
     ) {
-      return
+      return;
     }
 
-    let running = true
-    const video = videoRef.current
-    const canvas = previewCanvasRef.current
+    let running = true;
+    const video = videoRef.current;
+    const canvas = previewCanvasRef.current;
 
     const drawPreview = () => {
       if (!running || video.readyState < 2) {
-        if (running) requestAnimationFrame(drawPreview)
-        return
+        if (running) requestAnimationFrame(drawPreview);
+        return;
       }
 
       if (opencvReady && isOpenCVReady()) {
         rectifyQuadrilateral(video, calibrationCorners, canvas, {
           outputWidth: 300,
           outputHeight: 200,
-        })
+        });
       }
 
-      requestAnimationFrame(drawPreview)
-    }
+      requestAnimationFrame(drawPreview);
+    };
 
-    drawPreview()
+    drawPreview();
     return () => {
-      running = false
-    }
-  }, [vision.isCalibrating, calibrationCorners, opencvReady])
+      running = false;
+    };
+  }, [vision.isCalibrating, calibrationCorners, opencvReady]);
 
   // Handle video ready - get dimensions
   const handleVideoReady = useCallback(
     (width: number, height: number) => {
-      const feedContainer = cameraFeedContainerRef.current
-      if (!feedContainer) return
+      const feedContainer = cameraFeedContainerRef.current;
+      if (!feedContainer) return;
 
-      const rect = feedContainer.getBoundingClientRect()
+      const rect = feedContainer.getBoundingClientRect();
       setVideoDimensions({
         width,
         height,
         containerWidth: rect.width,
         containerHeight: rect.height,
-      })
+      });
 
       // Initialize calibration with default grid if not already calibrated
       if (!vision.isCalibrated) {
         // Will start calibration on user action
       }
     },
-    [vision.isCalibrated]
-  )
+    [vision.isCalibrated],
+  );
 
   // Handle calibration complete
   const handleCalibrationComplete = useCallback(
     (grid: Parameters<typeof vision.finishCalibration>[0]) => {
-      vision.finishCalibration(grid)
+      vision.finishCalibration(grid);
     },
-    [vision]
-  )
+    [vision],
+  );
 
   // Camera selector
   const handleCameraSelect = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      vision.selectCamera(e.target.value)
+      vision.selectCamera(e.target.value);
     },
-    [vision]
-  )
+    [vision],
+  );
 
   // Determine if any calibration is active (disable drag during calibration)
-  const isCalibrating = vision.isCalibrating || remoteIsCalibrating
+  const isCalibrating = vision.isCalibrating || remoteIsCalibrating;
 
   return (
     <motion.div
@@ -551,39 +576,41 @@ export function AbacusVisionBridge({
       dragMomentum={false}
       dragElastic={0}
       className={css({
-        display: 'flex',
-        flexDirection: 'column',
+        display: "flex",
+        flexDirection: "column",
         gap: 3,
         p: 3,
-        bg: 'gray.900',
-        borderRadius: 'xl',
-        maxWidth: '400px',
-        width: '100%',
-        cursor: isCalibrating ? 'default' : 'grab',
-        _active: { cursor: isCalibrating ? 'default' : 'grabbing' },
+        bg: "gray.900",
+        borderRadius: "xl",
+        maxWidth: "400px",
+        width: "100%",
+        cursor: isCalibrating ? "default" : "grab",
+        _active: { cursor: isCalibrating ? "default" : "grabbing" },
       })}
     >
       {/* Header */}
       <div
         data-element="header"
         className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         })}
       >
-        <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
-          <span className={css({ fontSize: 'lg' })}>📷</span>
-          <span className={css({ color: 'white', fontWeight: 'medium' })}>Abacus Vision</span>
+        <div className={css({ display: "flex", alignItems: "center", gap: 2 })}>
+          <span className={css({ fontSize: "lg" })}>📷</span>
+          <span className={css({ color: "white", fontWeight: "medium" })}>
+            Abacus Vision
+          </span>
           {vision.isDeskViewDetected && (
             <span
               className={css({
                 px: 2,
                 py: 0.5,
-                bg: 'green.900',
-                color: 'green.300',
-                fontSize: 'xs',
-                borderRadius: 'full',
+                bg: "green.900",
+                color: "green.300",
+                fontSize: "xs",
+                borderRadius: "full",
               })}
             >
               Desk View
@@ -594,18 +621,18 @@ export function AbacusVisionBridge({
           type="button"
           onClick={onClose}
           className={css({
-            width: '32px',
-            height: '32px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bg: 'gray.700',
-            color: 'white',
-            border: 'none',
-            borderRadius: 'full',
-            cursor: 'pointer',
-            fontSize: 'lg',
-            _hover: { bg: 'gray.600' },
+            width: "32px",
+            height: "32px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bg: "gray.700",
+            color: "white",
+            border: "none",
+            borderRadius: "full",
+            cursor: "pointer",
+            fontSize: "lg",
+            _hover: { bg: "gray.600" },
           })}
           aria-label="Close"
         >
@@ -617,18 +644,20 @@ export function AbacusVisionBridge({
       <div
         ref={cameraFeedContainerRef}
         data-element="camera-feed-container"
-        className={css({ position: 'relative' })}
+        className={css({ position: "relative" })}
       >
-        {cameraSource === 'local' ? (
+        {cameraSource === "local" ? (
           <>
             <VisionCameraFeed
               videoStream={vision.videoStream}
               isLoading={vision.isCameraLoading}
               calibration={vision.calibrationGrid}
-              showCalibrationGrid={!vision.isCalibrating && !vision.isCalibrated}
+              showCalibrationGrid={
+                !vision.isCalibrating && !vision.isCalibrated
+              }
               showRectifiedView={vision.isCalibrated && !vision.isCalibrating}
               videoRef={(el) => {
-                videoRef.current = el
+                videoRef.current = el;
               }}
               onVideoReady={handleVideoReady}
             >
@@ -653,7 +682,7 @@ export function AbacusVisionBridge({
             {vision.isEnabled && !vision.isCalibrating && (
               <div
                 className={css({
-                  position: 'absolute',
+                  position: "absolute",
                   top: 2,
                   left: 2,
                 })}
@@ -675,49 +704,50 @@ export function AbacusVisionBridge({
               <div
                 data-element="feed-toolbar"
                 className={css({
-                  position: 'absolute',
+                  position: "absolute",
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   gap: 2,
                   p: 2,
-                  bg: 'rgba(0, 0, 0, 0.6)',
-                  backdropFilter: 'blur(4px)',
+                  bg: "rgba(0, 0, 0, 0.6)",
+                  backdropFilter: "blur(4px)",
                 })}
               >
                 {/* Camera selector - compact */}
                 {vision.availableDevices.length > 0 && (
                   <select
                     data-element="camera-selector"
-                    value={vision.selectedDeviceId ?? ''}
+                    value={vision.selectedDeviceId ?? ""}
                     onChange={handleCameraSelect}
                     className={css({
                       flex: 1,
                       py: 1.5,
                       px: 2,
-                      bg: 'rgba(255, 255, 255, 0.1)',
-                      color: 'white',
-                      border: '1px solid',
-                      borderColor: 'rgba(255, 255, 255, 0.2)',
-                      borderRadius: 'md',
-                      fontSize: 'xs',
-                      maxWidth: '180px',
-                      cursor: 'pointer',
+                      bg: "rgba(255, 255, 255, 0.1)",
+                      color: "white",
+                      border: "1px solid",
+                      borderColor: "rgba(255, 255, 255, 0.2)",
+                      borderRadius: "md",
+                      fontSize: "xs",
+                      maxWidth: "180px",
+                      cursor: "pointer",
                     })}
                   >
                     {vision.availableDevices.map((device) => (
                       <option key={device.deviceId} value={device.deviceId}>
-                        {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
+                        {device.label ||
+                          `Camera ${device.deviceId.slice(0, 8)}`}
                       </option>
                     ))}
                   </select>
                 )}
 
                 {/* Toolbar buttons */}
-                <div className={css({ display: 'flex', gap: 1 })}>
+                <div className={css({ display: "flex", gap: 1 })}>
                   {/* Flip camera */}
                   {vision.availableDevices.length > 1 && (
                     <button
@@ -725,20 +755,20 @@ export function AbacusVisionBridge({
                       onClick={() => vision.flipCamera()}
                       data-action="flip-camera"
                       className={css({
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '36px',
-                        height: '36px',
-                        bg: 'rgba(255, 255, 255, 0.15)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 'md',
-                        cursor: 'pointer',
-                        fontSize: 'md',
-                        _hover: { bg: 'rgba(255, 255, 255, 0.25)' },
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "36px",
+                        height: "36px",
+                        bg: "rgba(255, 255, 255, 0.15)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "md",
+                        cursor: "pointer",
+                        fontSize: "md",
+                        _hover: { bg: "rgba(255, 255, 255, 0.25)" },
                       })}
-                      title={`Switch to ${vision.facingMode === 'environment' ? 'front' : 'back'} camera`}
+                      title={`Switch to ${vision.facingMode === "environment" ? "front" : "back"} camera`}
                     >
                       🔄
                     </button>
@@ -750,26 +780,32 @@ export function AbacusVisionBridge({
                       type="button"
                       onClick={() => vision.toggleTorch()}
                       data-action="toggle-torch"
-                      data-status={vision.isTorchOn ? 'on' : 'off'}
+                      data-status={vision.isTorchOn ? "on" : "off"}
                       className={css({
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '36px',
-                        height: '36px',
-                        bg: vision.isTorchOn ? 'yellow.600' : 'rgba(255, 255, 255, 0.15)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 'md',
-                        cursor: 'pointer',
-                        fontSize: 'md',
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "36px",
+                        height: "36px",
+                        bg: vision.isTorchOn
+                          ? "yellow.600"
+                          : "rgba(255, 255, 255, 0.15)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "md",
+                        cursor: "pointer",
+                        fontSize: "md",
                         _hover: {
-                          bg: vision.isTorchOn ? 'yellow.500' : 'rgba(255, 255, 255, 0.25)',
+                          bg: vision.isTorchOn
+                            ? "yellow.500"
+                            : "rgba(255, 255, 255, 0.25)",
                         },
                       })}
-                      title={vision.isTorchOn ? 'Turn off flash' : 'Turn on flash'}
+                      title={
+                        vision.isTorchOn ? "Turn off flash" : "Turn on flash"
+                      }
                     >
-                      {vision.isTorchOn ? '🔦' : '💡'}
+                      {vision.isTorchOn ? "🔦" : "💡"}
                     </button>
                   )}
                 </div>
@@ -781,32 +817,35 @@ export function AbacusVisionBridge({
           <div
             data-element="phone-camera-feed"
             className={css({
-              position: 'relative',
-              width: '100%',
-              bg: 'gray.800',
-              borderRadius: 'lg',
-              overflow: 'hidden',
-              minHeight: '200px',
-              userSelect: 'none',
+              position: "relative",
+              width: "100%",
+              bg: "gray.800",
+              borderRadius: "lg",
+              overflow: "hidden",
+              minHeight: "200px",
+              userSelect: "none",
             })}
           >
             {!remoteCameraSessionId ? (
               /* Show QR code to connect phone */
               <div
                 className={css({
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
                   p: 6,
                 })}
               >
-                <RemoteCameraQRCode onSessionCreated={handleRemoteSessionCreated} size={180} />
+                <RemoteCameraQRCode
+                  onSessionCreated={handleRemoteSessionCreated}
+                  size={180}
+                />
                 <p
                   className={css({
-                    color: 'gray.400',
-                    fontSize: 'sm',
-                    textAlign: 'center',
+                    color: "gray.400",
+                    fontSize: "sm",
+                    textAlign: "center",
                     mt: 3,
                   })}
                 >
@@ -817,11 +856,11 @@ export function AbacusVisionBridge({
               /* Waiting for phone - 4:3 aspect ratio to match camera feed */
               <div
                 className={css({
-                  aspectRatio: '4/3',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  aspectRatio: "4/3",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
                   gap: 3,
                   p: 4,
                 })}
@@ -833,35 +872,37 @@ export function AbacusVisionBridge({
                 />
                 <div
                   className={css({
-                    display: 'flex',
-                    alignItems: 'center',
+                    display: "flex",
+                    alignItems: "center",
                     gap: 1.5,
-                    color: remoteIsReconnecting ? 'blue.300' : 'gray.400',
-                    fontSize: 'xs',
+                    color: remoteIsReconnecting ? "blue.300" : "gray.400",
+                    fontSize: "xs",
                   })}
                 >
                   <span
                     className={css({
                       width: 1.5,
                       height: 1.5,
-                      borderRadius: 'full',
-                      bg: remoteIsReconnecting ? 'blue.400' : 'gray.500',
-                      animation: 'pulse 1.5s infinite',
+                      borderRadius: "full",
+                      bg: remoteIsReconnecting ? "blue.400" : "gray.500",
+                      animation: "pulse 1.5s infinite",
                     })}
                   />
-                  {remoteIsReconnecting ? 'Reconnecting...' : 'Waiting for phone'}
-                  <span className={css({ color: 'gray.600' })}>·</span>
+                  {remoteIsReconnecting
+                    ? "Reconnecting..."
+                    : "Waiting for phone"}
+                  <span className={css({ color: "gray.600" })}>·</span>
                   <button
                     type="button"
                     onClick={handleStartFreshSession}
                     className={css({
-                      color: 'gray.500',
-                      bg: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: 'xs',
-                      textDecoration: 'underline',
-                      _hover: { color: 'gray.300' },
+                      color: "gray.500",
+                      bg: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "xs",
+                      textDecoration: "underline",
+                      _hover: { color: "gray.300" },
                     })}
                   >
                     new session
@@ -871,27 +912,30 @@ export function AbacusVisionBridge({
               </div>
             ) : (
               /* Show camera frames */
-              <div ref={remoteFeedContainerRef} className={css({ position: 'relative' })}>
+              <div
+                ref={remoteFeedContainerRef}
+                className={css({ position: "relative" })}
+              >
                 {remoteLatestFrame ? (
                   <img
                     ref={remoteImageRef}
                     src={`data:image/jpeg;base64,${remoteLatestFrame.imageData}`}
                     alt="Remote camera view"
                     className={css({
-                      width: '100%',
-                      height: 'auto',
-                      display: 'block',
+                      width: "100%",
+                      height: "auto",
+                      display: "block",
                     })}
                   />
                 ) : (
                   <div
                     className={css({
-                      width: '100%',
-                      aspectRatio: '2/1',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'gray.400',
+                      width: "100%",
+                      aspectRatio: "2/1",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "gray.400",
                     })}
                   >
                     Waiting for frames...
@@ -899,31 +943,36 @@ export function AbacusVisionBridge({
                 )}
 
                 {/* Calibration overlay when calibrating */}
-                {remoteIsCalibrating && remoteVideoDimensions && remoteContainerDimensions && (
-                  <CalibrationOverlay
-                    columnCount={columnCount}
-                    videoWidth={remoteVideoDimensions.width}
-                    videoHeight={remoteVideoDimensions.height}
-                    containerWidth={remoteContainerDimensions.width}
-                    containerHeight={remoteContainerDimensions.height}
-                    initialCalibration={remoteCalibration}
-                    onComplete={handleRemoteCalibrationComplete}
-                    onCancel={handleRemoteCancelCalibration}
-                    onCornersChange={setCalibrationCorners}
-                  />
-                )}
+                {remoteIsCalibrating &&
+                  remoteVideoDimensions &&
+                  remoteContainerDimensions && (
+                    <CalibrationOverlay
+                      columnCount={columnCount}
+                      videoWidth={remoteVideoDimensions.width}
+                      videoHeight={remoteVideoDimensions.height}
+                      containerWidth={remoteContainerDimensions.width}
+                      containerHeight={remoteContainerDimensions.height}
+                      initialCalibration={remoteCalibration}
+                      onComplete={handleRemoteCalibrationComplete}
+                      onCancel={handleRemoteCancelCalibration}
+                      onCornersChange={setCalibrationCorners}
+                    />
+                  )}
 
                 {/* Detection status indicator */}
                 {!remoteIsCalibrating && (
                   <div
                     className={css({
-                      position: 'absolute',
+                      position: "absolute",
                       top: 2,
                       left: 2,
                     })}
                   >
                     <VisionStatusIndicator
-                      isCalibrated={remoteCalibrationMode === 'auto' || remoteCalibration !== null}
+                      isCalibrated={
+                        remoteCalibrationMode === "auto" ||
+                        remoteCalibration !== null
+                      }
                       isDetecting={remoteLatestFrame !== null}
                       confidence={remoteStability.currentConfidence}
                       handDetected={remoteStability.isHandDetected}
@@ -939,68 +988,74 @@ export function AbacusVisionBridge({
                   <div
                     data-element="feed-toolbar"
                     className={css({
-                      position: 'absolute',
+                      position: "absolute",
                       bottom: 0,
                       left: 0,
                       right: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
                       gap: 2,
                       p: 2,
-                      bg: 'rgba(0, 0, 0, 0.6)',
-                      backdropFilter: 'blur(4px)',
+                      bg: "rgba(0, 0, 0, 0.6)",
+                      backdropFilter: "blur(4px)",
                     })}
                   >
                     {/* Connection status */}
                     <div
                       className={css({
-                        display: 'flex',
-                        alignItems: 'center',
+                        display: "flex",
+                        alignItems: "center",
                         gap: 2,
-                        fontSize: 'xs',
-                        color: 'white',
+                        fontSize: "xs",
+                        color: "white",
                       })}
                     >
                       <span
                         className={css({
                           width: 2,
                           height: 2,
-                          borderRadius: 'full',
-                          bg: 'green.500',
+                          borderRadius: "full",
+                          bg: "green.500",
                         })}
                       />
                       {remoteFrameRate} fps
                     </div>
 
                     {/* Toolbar buttons */}
-                    <div className={css({ display: 'flex', gap: 1 })}>
+                    <div className={css({ display: "flex", gap: 1 })}>
                       {/* Torch toggle - if available on phone */}
                       {remoteIsTorchAvailable && (
                         <button
                           type="button"
                           onClick={() => setRemoteTorch(!remoteIsTorchOn)}
                           data-action="toggle-torch"
-                          data-status={remoteIsTorchOn ? 'on' : 'off'}
+                          data-status={remoteIsTorchOn ? "on" : "off"}
                           className={css({
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '36px',
-                            height: '36px',
-                            bg: remoteIsTorchOn ? 'yellow.600' : 'rgba(255, 255, 255, 0.15)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 'md',
-                            cursor: 'pointer',
-                            fontSize: 'md',
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "36px",
+                            height: "36px",
+                            bg: remoteIsTorchOn
+                              ? "yellow.600"
+                              : "rgba(255, 255, 255, 0.15)",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "md",
+                            cursor: "pointer",
+                            fontSize: "md",
                             _hover: {
-                              bg: remoteIsTorchOn ? 'yellow.500' : 'rgba(255, 255, 255, 0.25)',
+                              bg: remoteIsTorchOn
+                                ? "yellow.500"
+                                : "rgba(255, 255, 255, 0.25)",
                             },
                           })}
-                          title={remoteIsTorchOn ? 'Turn off flash' : 'Turn on flash'}
+                          title={
+                            remoteIsTorchOn ? "Turn off flash" : "Turn on flash"
+                          }
                         >
-                          {remoteIsTorchOn ? '🔦' : '💡'}
+                          {remoteIsTorchOn ? "🔦" : "💡"}
                         </button>
                       )}
                     </div>
@@ -1013,24 +1068,26 @@ export function AbacusVisionBridge({
       </div>
 
       {/* Rectified preview during calibration (local camera only) */}
-      {cameraSource === 'local' && vision.isCalibrating && (
+      {cameraSource === "local" && vision.isCalibrating && (
         <div
           data-element="calibration-preview"
           className={css({
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
             gap: 1,
           })}
         >
-          <span className={css({ color: 'gray.400', fontSize: 'xs' })}>Rectified Preview</span>
+          <span className={css({ color: "gray.400", fontSize: "xs" })}>
+            Rectified Preview
+          </span>
           <canvas
             ref={previewCanvasRef}
             className={css({
-              borderRadius: 'md',
-              border: '1px solid',
-              borderColor: 'gray.600',
-              bg: 'gray.800',
+              borderRadius: "md",
+              border: "1px solid",
+              borderColor: "gray.600",
+              bg: "gray.800",
             })}
             width={300}
             height={200}
@@ -1042,37 +1099,37 @@ export function AbacusVisionBridge({
       <div
         data-element="source-selector"
         className={css({
-          display: 'flex',
+          display: "flex",
           gap: 0,
-          bg: 'gray.800',
-          borderRadius: 'lg',
+          bg: "gray.800",
+          borderRadius: "lg",
           p: 1,
         })}
       >
         <button
           type="button"
           data-source="local"
-          data-active={cameraSource === 'local' ? 'true' : 'false'}
-          onClick={() => handleCameraSourceChange('local')}
+          data-active={cameraSource === "local" ? "true" : "false"}
+          onClick={() => handleCameraSourceChange("local")}
           className={css({
             flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             gap: 2,
             py: 2,
             px: 3,
-            bg: cameraSource === 'local' ? 'gray.700' : 'transparent',
-            color: cameraSource === 'local' ? 'white' : 'gray.400',
-            border: 'none',
-            borderRadius: 'md',
-            cursor: 'pointer',
-            fontSize: 'sm',
-            fontWeight: cameraSource === 'local' ? 'medium' : 'normal',
-            transition: 'all 0.15s',
+            bg: cameraSource === "local" ? "gray.700" : "transparent",
+            color: cameraSource === "local" ? "white" : "gray.400",
+            border: "none",
+            borderRadius: "md",
+            cursor: "pointer",
+            fontSize: "sm",
+            fontWeight: cameraSource === "local" ? "medium" : "normal",
+            transition: "all 0.15s",
             _hover: {
-              color: 'white',
-              bg: cameraSource === 'local' ? 'gray.700' : 'gray.750',
+              color: "white",
+              bg: cameraSource === "local" ? "gray.700" : "gray.750",
             },
           })}
         >
@@ -1082,27 +1139,27 @@ export function AbacusVisionBridge({
         <button
           type="button"
           data-source="phone"
-          data-active={cameraSource === 'phone' ? 'true' : 'false'}
-          onClick={() => handleCameraSourceChange('phone')}
+          data-active={cameraSource === "phone" ? "true" : "false"}
+          onClick={() => handleCameraSourceChange("phone")}
           className={css({
             flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             gap: 2,
             py: 2,
             px: 3,
-            bg: cameraSource === 'phone' ? 'gray.700' : 'transparent',
-            color: cameraSource === 'phone' ? 'white' : 'gray.400',
-            border: 'none',
-            borderRadius: 'md',
-            cursor: 'pointer',
-            fontSize: 'sm',
-            fontWeight: cameraSource === 'phone' ? 'medium' : 'normal',
-            transition: 'all 0.15s',
+            bg: cameraSource === "phone" ? "gray.700" : "transparent",
+            color: cameraSource === "phone" ? "white" : "gray.400",
+            border: "none",
+            borderRadius: "md",
+            cursor: "pointer",
+            fontSize: "sm",
+            fontWeight: cameraSource === "phone" ? "medium" : "normal",
+            transition: "all 0.15s",
             _hover: {
-              color: 'white',
-              bg: cameraSource === 'phone' ? 'gray.700' : 'gray.750',
+              color: "white",
+              bg: cameraSource === "phone" ? "gray.700" : "gray.750",
             },
           })}
         >
@@ -1115,9 +1172,9 @@ export function AbacusVisionBridge({
       <div
         data-element="crop-settings"
         className={css({
-          bg: 'gray.800',
-          borderRadius: 'md',
-          overflow: 'hidden',
+          bg: "gray.800",
+          borderRadius: "md",
+          overflow: "hidden",
         })}
       >
         {/* Collapsible header - shows summary */}
@@ -1126,56 +1183,66 @@ export function AbacusVisionBridge({
           onClick={() => setIsCropSettingsExpanded(!isCropSettingsExpanded)}
           data-element="crop-settings-header"
           className={css({
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
             p: 2,
-            bg: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'white',
-            _hover: { bg: 'gray.750' },
+            bg: "transparent",
+            border: "none",
+            cursor: "pointer",
+            color: "white",
+            _hover: { bg: "gray.750" },
           })}
         >
-          <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+          <div
+            className={css({ display: "flex", alignItems: "center", gap: 2 })}
+          >
             <span
               className={css({
-                fontSize: 'xs',
-                color: 'gray.400',
-                transition: 'transform 0.15s',
-                transform: isCropSettingsExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                fontSize: "xs",
+                color: "gray.400",
+                transition: "transform 0.15s",
+                transform: isCropSettingsExpanded
+                  ? "rotate(90deg)"
+                  : "rotate(0deg)",
               })}
             >
               ▶
             </span>
-            <span className={css({ fontSize: 'sm', fontWeight: 'medium' })}>Crop</span>
-            <span className={css({ color: 'gray.400', fontSize: 'sm' })}>·</span>
+            <span className={css({ fontSize: "sm", fontWeight: "medium" })}>
+              Crop
+            </span>
+            <span className={css({ color: "gray.400", fontSize: "sm" })}>
+              ·
+            </span>
             {/* Status summary */}
-            {(cameraSource === 'local' && vision.isCalibrated) ||
-            (cameraSource === 'phone' && remoteCalibration) ? (
-              <span className={css({ color: 'blue.300', fontSize: 'sm' })}>Manual</span>
+            {(cameraSource === "local" && vision.isCalibrated) ||
+            (cameraSource === "phone" && remoteCalibration) ? (
+              <span className={css({ color: "blue.300", fontSize: "sm" })}>
+                Manual
+              </span>
             ) : (
               <span
                 className={css({
                   color:
-                    cameraSource === 'local'
+                    cameraSource === "local"
                       ? vision.markerDetection.allMarkersFound
-                        ? 'green.300'
-                        : 'yellow.300'
-                      : remoteFrameMode === 'cropped'
-                        ? 'green.300'
-                        : 'yellow.300',
-                  fontSize: 'sm',
+                        ? "green.300"
+                        : "yellow.300"
+                      : remoteFrameMode === "cropped"
+                        ? "green.300"
+                        : "yellow.300",
+                  fontSize: "sm",
                 })}
               >
-                {cameraSource === 'local'
+                {cameraSource === "local"
                   ? vision.markerDetection.allMarkersFound
-                    ? 'Auto'
+                    ? "Auto"
                     : `${vision.markerDetection.markersFound}/4 markers`
-                  : remoteFrameMode === 'cropped'
-                    ? 'Auto'
-                    : 'Detecting...'}
+                  : remoteFrameMode === "cropped"
+                    ? "Auto"
+                    : "Detecting..."}
               </span>
             )}
           </div>
@@ -1186,59 +1253,65 @@ export function AbacusVisionBridge({
           <div
             data-element="crop-settings-content"
             className={css({
-              display: 'flex',
-              flexDirection: 'column',
+              display: "flex",
+              flexDirection: "column",
               gap: 2,
               px: 2,
               pb: 2,
-              borderTop: '1px solid',
-              borderColor: 'gray.700',
+              borderTop: "1px solid",
+              borderColor: "gray.700",
             })}
           >
             {/* Manual crop indicator (if set) */}
-            {((cameraSource === 'local' && vision.isCalibrated) ||
-              (cameraSource === 'phone' && remoteCalibration)) && (
+            {((cameraSource === "local" && vision.isCalibrated) ||
+              (cameraSource === "phone" && remoteCalibration)) && (
               <div
                 className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   pt: 2,
                 })}
               >
-                <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                <div
+                  className={css({
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                  })}
+                >
                   <span
                     className={css({
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: 'full',
-                      bg: 'blue.400',
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "full",
+                      bg: "blue.400",
                     })}
                   />
-                  <span className={css({ color: 'white', fontSize: 'sm' })}>
+                  <span className={css({ color: "white", fontSize: "sm" })}>
                     Using manual crop region
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
-                    if (cameraSource === 'local') {
-                      vision.resetCalibration()
+                    if (cameraSource === "local") {
+                      vision.resetCalibration();
                     } else {
-                      handleRemoteResetCalibration()
+                      handleRemoteResetCalibration();
                     }
                   }}
                   className={css({
                     px: 2,
                     py: 1,
-                    fontSize: 'xs',
-                    bg: 'transparent',
-                    color: 'gray.400',
-                    border: '1px solid',
-                    borderColor: 'gray.600',
-                    borderRadius: 'md',
-                    cursor: 'pointer',
-                    _hover: { borderColor: 'gray.500', color: 'gray.300' },
+                    fontSize: "xs",
+                    bg: "transparent",
+                    color: "gray.400",
+                    border: "1px solid",
+                    borderColor: "gray.600",
+                    borderRadius: "md",
+                    cursor: "pointer",
+                    _hover: { borderColor: "gray.500", color: "gray.300" },
                   })}
                 >
                   Reset to auto
@@ -1248,57 +1321,69 @@ export function AbacusVisionBridge({
 
             {/* Auto crop status (when no manual crop) */}
             {!(
-              (cameraSource === 'local' && vision.isCalibrated) ||
-              (cameraSource === 'phone' && remoteCalibration)
+              (cameraSource === "local" && vision.isCalibrated) ||
+              (cameraSource === "phone" && remoteCalibration)
             ) && (
               <>
                 <div
                   className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                     pt: 2,
                   })}
                 >
-                  <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                  <div
+                    className={css({
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 2,
+                    })}
+                  >
                     <span
                       className={css({
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: 'full',
+                        width: "8px",
+                        height: "8px",
+                        borderRadius: "full",
                         bg:
-                          cameraSource === 'local'
+                          cameraSource === "local"
                             ? vision.markerDetection.allMarkersFound
-                              ? 'green.400'
-                              : 'yellow.400'
-                            : remoteFrameMode === 'cropped'
-                              ? 'green.400'
-                              : 'yellow.400',
+                              ? "green.400"
+                              : "yellow.400"
+                            : remoteFrameMode === "cropped"
+                              ? "green.400"
+                              : "yellow.400",
                       })}
                     />
-                    <span className={css({ color: 'white', fontSize: 'sm' })}>
-                      {cameraSource === 'local'
+                    <span className={css({ color: "white", fontSize: "sm" })}>
+                      {cameraSource === "local"
                         ? vision.markerDetection.allMarkersFound
-                          ? 'Auto-crop using markers'
+                          ? "Auto-crop using markers"
                           : `Looking for markers (${vision.markerDetection.markersFound}/4 found)`
-                        : remoteFrameMode === 'cropped'
-                          ? 'Phone auto-cropping'
-                          : 'Looking for markers...'}
+                        : remoteFrameMode === "cropped"
+                          ? "Phone auto-cropping"
+                          : "Looking for markers..."}
                     </span>
                   </div>
                 </div>
 
                 {/* Get markers link */}
-                <div className={css({ display: 'flex', alignItems: 'center', gap: 3 })}>
+                <div
+                  className={css({
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3,
+                  })}
+                >
                   <a
                     href="/create/vision-markers"
                     target="_blank"
                     rel="noopener noreferrer"
                     className={css({
-                      color: 'blue.300',
-                      fontSize: 'sm',
-                      textDecoration: 'underline',
-                      _hover: { color: 'blue.200' },
+                      color: "blue.300",
+                      fontSize: "sm",
+                      textDecoration: "underline",
+                      _hover: { color: "blue.200" },
                     })}
                   >
                     Print markers →
@@ -1306,33 +1391,37 @@ export function AbacusVisionBridge({
                 </div>
 
                 {/* Manual crop button */}
-                {!(cameraSource === 'local' ? vision.isCalibrating : remoteIsCalibrating) && (
+                {!(cameraSource === "local"
+                  ? vision.isCalibrating
+                  : remoteIsCalibrating) && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (cameraSource === 'local') {
-                        vision.setCalibrationMode('manual')
-                        vision.startCalibration()
+                      if (cameraSource === "local") {
+                        vision.setCalibrationMode("manual");
+                        vision.startCalibration();
                       } else {
-                        handleRemoteModeChange('manual')
-                        handleRemoteStartCalibration()
+                        handleRemoteModeChange("manual");
+                        handleRemoteStartCalibration();
                       }
                     }}
                     disabled={
-                      cameraSource === 'local' ? !vision.videoStream : !remoteIsPhoneConnected
+                      cameraSource === "local"
+                        ? !vision.videoStream
+                        : !remoteIsPhoneConnected
                     }
                     className={css({
                       px: 3,
                       py: 1.5,
-                      fontSize: 'sm',
-                      bg: 'transparent',
-                      color: 'gray.300',
-                      border: '1px solid',
-                      borderColor: 'gray.600',
-                      borderRadius: 'md',
-                      cursor: 'pointer',
-                      _hover: { borderColor: 'gray.500', bg: 'gray.700' },
-                      _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                      fontSize: "sm",
+                      bg: "transparent",
+                      color: "gray.300",
+                      border: "1px solid",
+                      borderColor: "gray.600",
+                      borderRadius: "md",
+                      cursor: "pointer",
+                      _hover: { borderColor: "gray.500", bg: "gray.700" },
+                      _disabled: { opacity: 0.5, cursor: "not-allowed" },
                     })}
                   >
                     Set crop manually instead
@@ -1347,8 +1436,8 @@ export function AbacusVisionBridge({
                 className={css({
                   pt: 2,
                   mt: 2,
-                  borderTop: '1px solid',
-                  borderColor: 'gray.700',
+                  borderTop: "1px solid",
+                  borderColor: "gray.700",
                 })}
               >
                 <button
@@ -1356,13 +1445,13 @@ export function AbacusVisionBridge({
                   data-action="clear-settings"
                   onClick={onClearSettings}
                   className={css({
-                    fontSize: 'xs',
-                    color: 'gray.500',
-                    bg: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                    _hover: { color: 'gray.300' },
+                    fontSize: "xs",
+                    color: "gray.500",
+                    bg: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                    _hover: { color: "gray.300" },
                   })}
                 >
                   Clear all settings
@@ -1374,14 +1463,14 @@ export function AbacusVisionBridge({
       </div>
 
       {/* Error display */}
-      {cameraSource === 'local' && vision.cameraError && (
+      {cameraSource === "local" && vision.cameraError && (
         <div
           className={css({
             p: 3,
-            bg: 'red.900',
-            color: 'red.200',
-            borderRadius: 'md',
-            fontSize: 'sm',
+            bg: "red.900",
+            color: "red.200",
+            borderRadius: "md",
+            fontSize: "sm",
           })}
         >
           {vision.cameraError}
@@ -1393,13 +1482,13 @@ export function AbacusVisionBridge({
         <div
           data-element="vision-controls"
           className={css({
-            display: 'flex',
-            flexDirection: 'column',
+            display: "flex",
+            flexDirection: "column",
             gap: 2,
             mt: 2,
             pt: 3,
-            borderTop: '1px solid',
-            borderColor: 'gray.700',
+            borderTop: "1px solid",
+            borderColor: "gray.700",
           })}
         >
           {isVisionSetupComplete && (
@@ -1409,26 +1498,26 @@ export function AbacusVisionBridge({
               className={css({
                 px: 4,
                 py: 3,
-                bg: isVisionEnabled ? 'red.600' : 'green.600',
-                color: 'white',
-                borderRadius: 'lg',
-                fontWeight: 'semibold',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
+                bg: isVisionEnabled ? "red.600" : "green.600",
+                color: "white",
+                borderRadius: "lg",
+                fontWeight: "semibold",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.2s",
                 _hover: {
-                  bg: isVisionEnabled ? 'red.700' : 'green.700',
-                  transform: 'scale(1.02)',
+                  bg: isVisionEnabled ? "red.700" : "green.700",
+                  transform: "scale(1.02)",
                 },
               })}
             >
-              {isVisionEnabled ? 'Disable Vision' : 'Enable Vision'}
+              {isVisionEnabled ? "Disable Vision" : "Enable Vision"}
             </button>
           )}
         </div>
       )}
     </motion.div>
-  )
+  );
 }
 
-export default AbacusVisionBridge
+export default AbacusVisionBridge;

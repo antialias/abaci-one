@@ -1,14 +1,14 @@
-import { action } from '@storybook/addon-actions'
-import type { Meta, StoryObj } from '@storybook/react'
-import { DevAccessProvider } from '../../hooks/useAccessControl'
-import { getTutorialForEditor } from '../../utils/tutorialConverter'
-import { TutorialPlayer } from './TutorialPlayer'
+import { action } from "@storybook/addon-actions";
+import type { Meta, StoryObj } from "@storybook/react";
+import { DevAccessProvider } from "../../hooks/useAccessControl";
+import { getTutorialForEditor } from "../../utils/tutorialConverter";
+import { TutorialPlayer } from "./TutorialPlayer";
 
 const meta: Meta<typeof TutorialPlayer> = {
-  title: 'Tutorial/TutorialPlayer',
+  title: "Tutorial/TutorialPlayer",
   component: TutorialPlayer,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     docs: {
       description: {
         component: `
@@ -29,19 +29,19 @@ It includes navigation controls, step-by-step guidance, an interactive abacus, a
   decorators: [
     (Story) => (
       <DevAccessProvider>
-        <div style={{ height: '100vh' }}>
+        <div style={{ height: "100vh" }}>
           <Story />
         </div>
       </DevAccessProvider>
     ),
   ],
-  tags: ['autodocs'],
-}
+  tags: ["autodocs"],
+};
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-const mockTutorial = getTutorialForEditor()
+const mockTutorial = getTutorialForEditor();
 
 export const Default: Story = {
   args: {
@@ -49,19 +49,20 @@ export const Default: Story = {
     initialStepIndex: 0,
     isDebugMode: false,
     showDebugPanel: false,
-    onStepChange: action('step-changed'),
-    onStepComplete: action('step-completed'),
-    onTutorialComplete: action('tutorial-completed'),
-    onEvent: action('tutorial-event'),
+    onStepChange: action("step-changed"),
+    onStepComplete: action("step-completed"),
+    onTutorialComplete: action("tutorial-completed"),
+    onEvent: action("tutorial-event"),
   },
   parameters: {
     docs: {
       description: {
-        story: 'Default tutorial player starting from the first step with minimal UI.',
+        story:
+          "Default tutorial player starting from the first step with minimal UI.",
       },
     },
   },
-}
+};
 
 export const WithDebugMode: Story = {
   args: {
@@ -73,11 +74,11 @@ export const WithDebugMode: Story = {
     docs: {
       description: {
         story:
-          'Tutorial player with debug mode enabled, showing debug panel and additional controls for development.',
+          "Tutorial player with debug mode enabled, showing debug panel and additional controls for development.",
       },
     },
   },
-}
+};
 
 export const StartingFromMiddle: Story = {
   args: {
@@ -90,11 +91,11 @@ export const StartingFromMiddle: Story = {
     docs: {
       description: {
         story:
-          'Tutorial player starting from the middle of the tutorial (heaven bead introduction).',
+          "Tutorial player starting from the middle of the tutorial (heaven bead introduction).",
       },
     },
   },
-}
+};
 
 export const ComplexStep: Story = {
   args: {
@@ -107,11 +108,11 @@ export const ComplexStep: Story = {
     docs: {
       description: {
         story:
-          'Tutorial player on a complex multi-step instruction (five complements) with full debugging enabled.',
+          "Tutorial player on a complex multi-step instruction (five complements) with full debugging enabled.",
       },
     },
   },
-}
+};
 
 export const MinimalTutorial: Story = {
   args: {
@@ -122,20 +123,20 @@ export const MinimalTutorial: Story = {
     initialStepIndex: 0,
     isDebugMode: false,
     showDebugPanel: false,
-    onStepChange: action('step-changed'),
-    onStepComplete: action('step-completed'),
-    onTutorialComplete: action('tutorial-completed'),
-    onEvent: action('tutorial-event'),
+    onStepChange: action("step-changed"),
+    onStepComplete: action("step-completed"),
+    onTutorialComplete: action("tutorial-completed"),
+    onEvent: action("tutorial-event"),
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Minimal tutorial with only the first 3 basic addition steps for testing shorter tutorials.',
+          "Minimal tutorial with only the first 3 basic addition steps for testing shorter tutorials.",
       },
     },
   },
-}
+};
 
 export const InteractiveDemo: Story = {
   args: {
@@ -168,7 +169,7 @@ Interactive demo showing all tutorial player features:
   },
   play: async ({ canvasElement }) => {
     // Optional: Add play function for automated interactions in Storybook
-    const canvas = canvasElement
-    console.log('Tutorial player ready for interaction', canvas)
+    const canvas = canvasElement;
+    console.log("Tutorial player ready for interaction", canvas);
   },
-}
+};

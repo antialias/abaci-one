@@ -1,37 +1,41 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   cleanupArucoDetector,
   detectMarkers,
   initArucoDetector,
   isArucoAvailable,
   loadAruco,
-} from '@/lib/vision/arucoDetection'
+} from "@/lib/vision/arucoDetection";
 import {
   analyzeColumns,
   analysesToDigits,
   digitsToNumber as cvDigitsToNumber,
-} from '@/lib/vision/beadDetector'
-import { digitsToNumber, getMinConfidence, processVideoFrame } from '@/lib/vision/frameProcessor'
+} from "@/lib/vision/beadDetector";
+import {
+  digitsToNumber,
+  getMinConfidence,
+  processVideoFrame,
+} from "@/lib/vision/frameProcessor";
 import type {
   CalibrationGrid,
   CalibrationMode,
   MarkerDetectionStatus,
   UseAbacusVisionReturn,
-} from '@/types/vision'
-import { useCameraCalibration } from './useCameraCalibration'
-import { useColumnClassifier } from './useColumnClassifier'
-import { useDeskViewCamera } from './useDeskViewCamera'
-import { useFrameStability } from './useFrameStability'
+} from "@/types/vision";
+import { useCameraCalibration } from "./useCameraCalibration";
+import { useColumnClassifier } from "./useColumnClassifier";
+import { useDeskViewCamera } from "./useDeskViewCamera";
+import { useFrameStability } from "./useFrameStability";
 
 export interface UseAbacusVisionOptions {
   /** Number of abacus columns to detect */
-  columnCount?: number
+  columnCount?: number;
   /** Called when a stable value is detected */
-  onValueDetected?: (value: number) => void
+  onValueDetected?: (value: number) => void;
   /** Initial calibration mode (default: 'auto') */
-  initialCalibrationMode?: CalibrationMode
+  initialCalibrationMode?: CalibrationMode;
 }
 
 /**
@@ -55,304 +59,345 @@ export interface UseAbacusVisionOptions {
  * )
  * ```
  */
-export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacusVisionReturn {
-  const { columnCount = 5, onValueDetected, initialCalibrationMode = 'auto' } = options
+export function useAbacusVision(
+  options: UseAbacusVisionOptions = {},
+): UseAbacusVisionReturn {
+  const {
+    columnCount = 5,
+    onValueDetected,
+    initialCalibrationMode = "auto",
+  } = options;
 
   // State
-  const [isEnabled, setIsEnabled] = useState(false)
-  const [isDetecting, setIsDetecting] = useState(false)
-  const [calibrationMode, setCalibrationMode] = useState<CalibrationMode>(initialCalibrationMode)
-  const [markerDetection, setMarkerDetection] = useState<MarkerDetectionStatus>({
-    isAvailable: false,
-    allMarkersFound: false,
-    markersFound: 0,
-    detectedIds: [],
-  })
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [calibrationMode, setCalibrationMode] = useState<CalibrationMode>(
+    initialCalibrationMode,
+  );
+  const [markerDetection, setMarkerDetection] = useState<MarkerDetectionStatus>(
+    {
+      isAvailable: false,
+      allMarkersFound: false,
+      markersFound: 0,
+      detectedIds: [],
+    },
+  );
 
   // Sub-hooks
-  const camera = useDeskViewCamera()
-  const calibration = useCameraCalibration()
-  const stability = useFrameStability()
-  const classifier = useColumnClassifier()
+  const camera = useDeskViewCamera();
+  const calibration = useCameraCalibration();
+  const stability = useFrameStability();
+  const classifier = useColumnClassifier();
 
   // Classifier state
-  const [columnConfidences, setColumnConfidences] = useState<number[]>([])
-  const [isClassifierReady, setIsClassifierReady] = useState(false)
+  const [columnConfidences, setColumnConfidences] = useState<number[]>([]);
+  const [isClassifierReady, setIsClassifierReady] = useState(false);
 
   // Video element ref for frame capture
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const animationFrameRef = useRef<number | null>(null)
-  const markerDetectionFrameRef = useRef<number | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const markerDetectionFrameRef = useRef<number | null>(null);
 
   // Track previous stable value to avoid duplicate callbacks
-  const lastStableValueRef = useRef<number | null>(null)
+  const lastStableValueRef = useRef<number | null>(null);
 
   // Throttle detection (CV is fast, 10fps is plenty)
-  const lastInferenceTimeRef = useRef<number>(0)
-  const INFERENCE_INTERVAL_MS = 100 // 10fps
+  const lastInferenceTimeRef = useRef<number>(0);
+  const INFERENCE_INTERVAL_MS = 100; // 10fps
 
   // Ref for calibration functions to avoid infinite loop in auto-calibration effect
-  const calibrationRef = useRef(calibration)
-  calibrationRef.current = calibration
+  const calibrationRef = useRef(calibration);
+  calibrationRef.current = calibration;
 
   // Sync device ID to calibration hook when camera device changes
   useEffect(() => {
     if (camera.currentDevice?.deviceId) {
-      calibration.setDeviceId(camera.currentDevice.deviceId)
+      calibration.setDeviceId(camera.currentDevice.deviceId);
     }
-  }, [camera.currentDevice?.deviceId, calibration])
+  }, [camera.currentDevice?.deviceId, calibration]);
 
   // Load and initialize ArUco on mount
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     const initAruco = async () => {
       try {
-        await loadAruco()
-        if (cancelled) return
+        await loadAruco();
+        if (cancelled) return;
 
-        const available = isArucoAvailable()
-        setMarkerDetection((prev) => ({ ...prev, isAvailable: available }))
+        const available = isArucoAvailable();
+        setMarkerDetection((prev) => ({ ...prev, isAvailable: available }));
         if (available) {
-          initArucoDetector()
+          initArucoDetector();
         }
       } catch (err) {
-        console.error('[ArUco] Failed to load:', err)
+        console.error("[ArUco] Failed to load:", err);
       }
-    }
+    };
 
-    initAruco()
+    initAruco();
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   // Cleanup ArUco detector on unmount
   useEffect(() => {
     return () => {
-      cleanupArucoDetector()
-    }
-  }, [])
+      cleanupArucoDetector();
+    };
+  }, []);
 
   // Auto-calibration loop using ArUco markers
   useEffect(() => {
-    if (!isEnabled || !camera.videoStream || calibrationMode !== 'auto') {
+    if (!isEnabled || !camera.videoStream || calibrationMode !== "auto") {
       if (markerDetectionFrameRef.current) {
-        cancelAnimationFrame(markerDetectionFrameRef.current)
-        markerDetectionFrameRef.current = null
+        cancelAnimationFrame(markerDetectionFrameRef.current);
+        markerDetectionFrameRef.current = null;
       }
-      return
+      return;
     }
 
     // Get video element from stream
-    const videoElements = document.querySelectorAll('video')
-    let video: HTMLVideoElement | null = null
+    const videoElements = document.querySelectorAll("video");
+    let video: HTMLVideoElement | null = null;
     for (const el of videoElements) {
       if (el.srcObject === camera.videoStream) {
-        video = el
-        break
+        video = el;
+        break;
       }
     }
 
-    if (!video) return
+    if (!video) return;
 
-    let running = true
+    let running = true;
 
     const detectLoop = () => {
       if (!running || !video || video.readyState < 2) {
         if (running) {
-          markerDetectionFrameRef.current = requestAnimationFrame(detectLoop)
+          markerDetectionFrameRef.current = requestAnimationFrame(detectLoop);
         }
-        return
+        return;
       }
 
-      const result = detectMarkers(video)
+      const result = detectMarkers(video);
 
       setMarkerDetection({
         isAvailable: true,
         allMarkersFound: result.allMarkersFound,
         markersFound: result.markersFound,
         detectedIds: Array.from(result.markers.keys()),
-      })
+      });
 
       // Auto-update calibration when all markers found
       if (result.allMarkersFound && result.quadCorners) {
         const grid: CalibrationGrid = {
           roi: {
-            x: Math.min(result.quadCorners.topLeft.x, result.quadCorners.bottomLeft.x),
-            y: Math.min(result.quadCorners.topLeft.y, result.quadCorners.topRight.y),
+            x: Math.min(
+              result.quadCorners.topLeft.x,
+              result.quadCorners.bottomLeft.x,
+            ),
+            y: Math.min(
+              result.quadCorners.topLeft.y,
+              result.quadCorners.topRight.y,
+            ),
             width:
-              Math.max(result.quadCorners.topRight.x, result.quadCorners.bottomRight.x) -
-              Math.min(result.quadCorners.topLeft.x, result.quadCorners.bottomLeft.x),
+              Math.max(
+                result.quadCorners.topRight.x,
+                result.quadCorners.bottomRight.x,
+              ) -
+              Math.min(
+                result.quadCorners.topLeft.x,
+                result.quadCorners.bottomLeft.x,
+              ),
             height:
-              Math.max(result.quadCorners.bottomLeft.y, result.quadCorners.bottomRight.y) -
-              Math.min(result.quadCorners.topLeft.y, result.quadCorners.topRight.y),
+              Math.max(
+                result.quadCorners.bottomLeft.y,
+                result.quadCorners.bottomRight.y,
+              ) -
+              Math.min(
+                result.quadCorners.topLeft.y,
+                result.quadCorners.topRight.y,
+              ),
           },
           corners: result.quadCorners,
           columnCount,
-          columnDividers: Array.from({ length: columnCount - 1 }, (_, i) => (i + 1) / columnCount),
+          columnDividers: Array.from(
+            { length: columnCount - 1 },
+            (_, i) => (i + 1) / columnCount,
+          ),
           rotation: 0,
-        }
-        calibrationRef.current.updateCalibration(grid)
+        };
+        calibrationRef.current.updateCalibration(grid);
         if (!calibrationRef.current.isCalibrated) {
-          calibrationRef.current.finishCalibration()
+          calibrationRef.current.finishCalibration();
         }
       }
 
-      markerDetectionFrameRef.current = requestAnimationFrame(detectLoop)
-    }
+      markerDetectionFrameRef.current = requestAnimationFrame(detectLoop);
+    };
 
-    detectLoop()
+    detectLoop();
 
     return () => {
-      running = false
+      running = false;
       if (markerDetectionFrameRef.current) {
-        cancelAnimationFrame(markerDetectionFrameRef.current)
-        markerDetectionFrameRef.current = null
+        cancelAnimationFrame(markerDetectionFrameRef.current);
+        markerDetectionFrameRef.current = null;
       }
-    }
-  }, [isEnabled, camera.videoStream, calibrationMode, columnCount])
+    };
+  }, [isEnabled, camera.videoStream, calibrationMode, columnCount]);
 
   /**
    * Enable vision mode - start camera and detection
    */
   const enable = useCallback(async () => {
-    setIsEnabled(true)
-    await camera.requestCamera()
-  }, [camera])
+    setIsEnabled(true);
+    await camera.requestCamera();
+  }, [camera]);
 
   /**
    * Disable vision mode - stop camera and detection
    */
   const disable = useCallback(() => {
-    setIsEnabled(false)
-    setIsDetecting(false)
-    camera.stopCamera()
-    stability.reset()
+    setIsEnabled(false);
+    setIsDetecting(false);
+    camera.stopCamera();
+    stability.reset();
 
     if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
-  }, [camera, stability])
+  }, [camera, stability]);
 
   /**
    * Start calibration mode
    */
   const startCalibration = useCallback(() => {
-    calibration.startCalibration()
-  }, [calibration])
+    calibration.startCalibration();
+  }, [calibration]);
 
   /**
    * Finish calibration
    */
   const finishCalibration = useCallback(
     (grid: CalibrationGrid) => {
-      calibration.updateCalibration(grid)
-      calibration.finishCalibration()
+      calibration.updateCalibration(grid);
+      calibration.finishCalibration();
     },
-    [calibration]
-  )
+    [calibration],
+  );
 
   /**
    * Cancel calibration
    */
   const cancelCalibration = useCallback(() => {
-    calibration.cancelCalibration()
-  }, [calibration])
+    calibration.cancelCalibration();
+  }, [calibration]);
 
   /**
    * Select specific camera
    */
   const selectCamera = useCallback(
     (deviceId: string) => {
-      camera.requestCamera(deviceId)
+      camera.requestCamera(deviceId);
     },
-    [camera]
-  )
+    [camera],
+  );
 
   /**
    * Reset calibration
    */
   const resetCalibration = useCallback(() => {
-    calibration.resetCalibration()
-  }, [calibration])
+    calibration.resetCalibration();
+  }, [calibration]);
 
   /**
    * Process a video frame for detection using CV-based bead detection
    */
   const processFrame = useCallback(async () => {
     // Throttle inference for performance (10fps)
-    const now = performance.now()
+    const now = performance.now();
     if (now - lastInferenceTimeRef.current < INFERENCE_INTERVAL_MS) {
-      return
+      return;
     }
-    lastInferenceTimeRef.current = now
+    lastInferenceTimeRef.current = now;
 
     // Get video element from camera stream
-    const videoElements = document.querySelectorAll('video')
-    let video: HTMLVideoElement | null = null
+    const videoElements = document.querySelectorAll("video");
+    let video: HTMLVideoElement | null = null;
     for (const el of videoElements) {
       if (el.srcObject === camera.videoStream) {
-        video = el
-        break
+        video = el;
+        break;
       }
     }
 
-    if (!video || video.readyState < 2) return
-    if (!calibration.isCalibrated || !calibration.calibration) return
+    if (!video || video.readyState < 2) return;
+    if (!calibration.isCalibrated || !calibration.calibration) return;
 
     // Check if hand is detected (motion) - pause classification during motion
-    if (stability.isHandDetected) return
+    if (stability.isHandDetected) return;
 
     // Process video frame into column strips
-    const columnImages = processVideoFrame(video, calibration.calibration)
-    if (columnImages.length === 0) return
+    const columnImages = processVideoFrame(video, calibration.calibration);
+    if (columnImages.length === 0) return;
 
     // Use CV-based bead detection instead of ML
-    const analyses = analyzeColumns(columnImages)
-    const { digits, confidences, minConfidence } = analysesToDigits(analyses)
+    const analyses = analyzeColumns(columnImages);
+    const { digits, confidences, minConfidence } = analysesToDigits(analyses);
 
     // Log analysis for debugging
     console.log(
-      '[CV] Bead analysis:',
+      "[CV] Bead analysis:",
       analyses.map((a) => ({
         digit: a.digit,
         conf: a.confidence.toFixed(2),
-        heaven: a.heavenActive ? '5' : '0',
+        heaven: a.heavenActive ? "5" : "0",
         earth: a.earthActiveCount,
         bar: a.reckoningBarPosition.toFixed(2),
-      }))
-    )
+      })),
+    );
 
     // Update column confidences
-    setColumnConfidences(confidences)
+    setColumnConfidences(confidences);
 
     // Convert digits to number
-    const detectedValue = cvDigitsToNumber(digits)
+    const detectedValue = cvDigitsToNumber(digits);
 
     // Push to stability buffer
-    stability.pushFrame(detectedValue, minConfidence)
-  }, [camera.videoStream, calibration.isCalibrated, calibration.calibration, stability])
+    stability.pushFrame(detectedValue, minConfidence);
+  }, [
+    camera.videoStream,
+    calibration.isCalibrated,
+    calibration.calibration,
+    stability,
+  ]);
 
   /**
    * Detection loop
    */
   const runDetectionLoop = useCallback(() => {
     if (!isEnabled || !calibration.isCalibrated || calibration.isCalibrating) {
-      return
+      return;
     }
 
-    setIsDetecting(true)
+    setIsDetecting(true);
 
     // Process frame asynchronously, then continue loop
     processFrame().finally(() => {
       if (isEnabled && calibration.isCalibrated && !calibration.isCalibrating) {
-        animationFrameRef.current = requestAnimationFrame(runDetectionLoop)
+        animationFrameRef.current = requestAnimationFrame(runDetectionLoop);
       }
-    })
-  }, [isEnabled, calibration.isCalibrated, calibration.isCalibrating, processFrame])
+    });
+  }, [
+    isEnabled,
+    calibration.isCalibrated,
+    calibration.isCalibrating,
+    processFrame,
+  ]);
 
   // Preload classifier when vision is enabled
   // Model may not exist yet (not trained) - that's ok, vision still works in manual mode
@@ -366,16 +411,18 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
       classifier.preload().then((success) => {
         // Set ready regardless - vision can work without ML classifier
         // (manual calibration + frame capture still works)
-        setIsClassifierReady(true)
+        setIsClassifierReady(true);
         if (!success) {
-          console.log('[useAbacusVision] ML classifier not available - using manual mode only')
+          console.log(
+            "[useAbacusVision] ML classifier not available - using manual mode only",
+          );
         }
-      })
+      });
     } else if (classifier.isModelUnavailable) {
       // Model doesn't exist - still allow vision in manual mode
-      setIsClassifierReady(true)
+      setIsClassifierReady(true);
     }
-  }, [isEnabled, classifier])
+  }, [isEnabled, classifier]);
 
   // Start/stop detection loop based on state
   useEffect(() => {
@@ -386,21 +433,21 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
       camera.videoStream &&
       isClassifierReady
     ) {
-      runDetectionLoop()
+      runDetectionLoop();
     } else {
-      setIsDetecting(false)
+      setIsDetecting(false);
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-        animationFrameRef.current = null
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
     }
 
     return () => {
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-        animationFrameRef.current = null
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
-    }
+    };
   }, [
     isEnabled,
     calibration.isCalibrated,
@@ -408,32 +455,35 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
     camera.videoStream,
     isClassifierReady,
     runDetectionLoop,
-  ])
+  ]);
 
   // Notify when stable value changes
   useEffect(() => {
-    if (stability.stableValue !== null && stability.stableValue !== lastStableValueRef.current) {
-      lastStableValueRef.current = stability.stableValue
-      onValueDetected?.(stability.stableValue)
+    if (
+      stability.stableValue !== null &&
+      stability.stableValue !== lastStableValueRef.current
+    ) {
+      lastStableValueRef.current = stability.stableValue;
+      onValueDetected?.(stability.stableValue);
     }
-  }, [stability.stableValue, onValueDetected])
+  }, [stability.stableValue, onValueDetected]);
 
   // Create hidden canvas for frame processing
   useEffect(() => {
     if (!canvasRef.current) {
-      canvasRef.current = document.createElement('canvas')
+      canvasRef.current = document.createElement("canvas");
     }
-  }, [])
+  }, []);
 
   // Cleanup animation frame on unmount (camera cleanup handled by disable())
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
+        cancelAnimationFrame(animationFrameRef.current);
       }
       // Note: camera.stopCamera() is called by disable() - don't duplicate
-    }
-  }, [])
+    };
+  }, []);
 
   return {
     // Vision state
@@ -481,5 +531,5 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
     setCalibrationMode,
     flipCamera: camera.flipCamera,
     toggleTorch: camera.toggleTorch,
-  }
+  };
 }
