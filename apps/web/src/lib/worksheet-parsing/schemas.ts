@@ -144,10 +144,9 @@ export const ParsedProblemSchema = z
     notes: z
       .string()
       .nullable()
-      .optional()
       .describe(
         'Brief explanation if confidence is low. Examples: "Answer partially obscured by smudge", ' +
-          '"Digit could be 7 or 1", "Answer box appears empty". Null/omit if confidence is high.',
+          '"Digit could be 7 or 1", "Answer box appears empty". Null if confidence is high.',
       ),
 
     // Bounding boxes for UI highlighting
@@ -161,7 +160,7 @@ export const ParsedProblemSchema = z
     // User exclusion (set by corrections, not LLM)
     excluded: z
       .boolean()
-      .optional()
+      .default(false)
       .describe(
         "True if user marked this problem to be excluded from the session",
       ),
