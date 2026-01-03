@@ -9,9 +9,9 @@
  * because it measures what's actually happening on screen.
  */
 
-"use client";
+'use client'
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef } from 'react'
 
 // ============================================================================
 // Types
@@ -19,27 +19,27 @@ import { useCallback, useRef } from "react";
 
 export interface EmpiricalScaleResult {
   /** Pixels per SVG unit (measured empirically) */
-  pixelsPerSvgUnit: number;
+  pixelsPerSvgUnit: number
   /** Whether measurement was successful */
-  isValid: boolean;
+  isValid: boolean
   /** Debug info about the measurement */
   debug?: {
-    probe1Screen: { x: number; y: number };
-    probe2Screen: { x: number; y: number };
-    pixelDistance: number;
-    svgDistance: number;
-  };
+    probe1Screen: { x: number; y: number }
+    probe2Screen: { x: number; y: number }
+    pixelDistance: number
+    svgDistance: number
+  }
 }
 
 export interface UseEmpiricalScaleReturn {
   /** Ref for first probe element (circle at known SVG coords) */
-  probe1Ref: React.RefObject<SVGCircleElement | null>;
+  probe1Ref: React.RefObject<SVGCircleElement | null>
   /** Ref for second probe element (circle at known SVG coords) */
-  probe2Ref: React.RefObject<SVGCircleElement | null>;
+  probe2Ref: React.RefObject<SVGCircleElement | null>
   /** Measure the current scale empirically */
-  measureScale: () => EmpiricalScaleResult;
+  measureScale: () => EmpiricalScaleResult
   /** The fixed SVG distance between probes (for reference) */
-  probeSvgDistance: number;
+  probeSvgDistance: number
 }
 
 // ============================================================================
@@ -51,7 +51,7 @@ export interface UseEmpiricalScaleReturn {
  * This should be large enough to get accurate measurements
  * but small enough to fit within the magnifier view at all zoom levels.
  */
-const PROBE_SVG_DISTANCE = 100;
+const PROBE_SVG_DISTANCE = 100
 
 // ============================================================================
 // Hook Implementation
@@ -83,43 +83,43 @@ const PROBE_SVG_DISTANCE = 100;
  * ```
  */
 export function useEmpiricalScale(): UseEmpiricalScaleReturn {
-  const probe1Ref = useRef<SVGCircleElement | null>(null);
-  const probe2Ref = useRef<SVGCircleElement | null>(null);
+  const probe1Ref = useRef<SVGCircleElement | null>(null)
+  const probe2Ref = useRef<SVGCircleElement | null>(null)
 
   const measureScale = useCallback((): EmpiricalScaleResult => {
-    const probe1 = probe1Ref.current;
-    const probe2 = probe2Ref.current;
+    const probe1 = probe1Ref.current
+    const probe2 = probe2Ref.current
 
     if (!probe1 || !probe2) {
-      return { pixelsPerSvgUnit: 1, isValid: false };
+      return { pixelsPerSvgUnit: 1, isValid: false }
     }
 
     // Get screen positions of the probes
-    const rect1 = probe1.getBoundingClientRect();
-    const rect2 = probe2.getBoundingClientRect();
+    const rect1 = probe1.getBoundingClientRect()
+    const rect2 = probe2.getBoundingClientRect()
 
     // Use center of each probe
     const screen1 = {
       x: rect1.left + rect1.width / 2,
       y: rect1.top + rect1.height / 2,
-    };
+    }
     const screen2 = {
       x: rect2.left + rect2.width / 2,
       y: rect2.top + rect2.height / 2,
-    };
+    }
 
     // Calculate pixel distance between probes
-    const dx = screen2.x - screen1.x;
-    const dy = screen2.y - screen1.y;
-    const pixelDistance = Math.sqrt(dx * dx + dy * dy);
+    const dx = screen2.x - screen1.x
+    const dy = screen2.y - screen1.y
+    const pixelDistance = Math.sqrt(dx * dx + dy * dy)
 
     // Guard against zero/invalid measurements
     if (pixelDistance < 1 || !Number.isFinite(pixelDistance)) {
-      return { pixelsPerSvgUnit: 1, isValid: false };
+      return { pixelsPerSvgUnit: 1, isValid: false }
     }
 
     // Calculate pixels per SVG unit
-    const pixelsPerSvgUnit = pixelDistance / PROBE_SVG_DISTANCE;
+    const pixelsPerSvgUnit = pixelDistance / PROBE_SVG_DISTANCE
 
     return {
       pixelsPerSvgUnit,
@@ -130,13 +130,13 @@ export function useEmpiricalScale(): UseEmpiricalScaleReturn {
         pixelDistance,
         svgDistance: PROBE_SVG_DISTANCE,
       },
-    };
-  }, []);
+    }
+  }, [])
 
   return {
     probe1Ref,
     probe2Ref,
     measureScale,
     probeSvgDistance: PROBE_SVG_DISTANCE,
-  };
+  }
 }

@@ -10,7 +10,7 @@
  * - player:${playerId}       - Student-specific notifications
  */
 
-import { getSocketIO } from "@/lib/socket-io";
+import { getSocketIO } from '@/lib/socket-io'
 import type {
   EnrollmentApprovedEvent,
   EnrollmentRequestApprovedEvent,
@@ -22,17 +22,17 @@ import type {
   SessionEndedEvent,
   SessionStartedEvent,
   StudentUnenrolledEvent,
-} from "./socket-events";
+} from './socket-events'
 
 /**
  * Enrollment event payload - common fields for all enrollment events
  */
 export interface EnrollmentEventPayload {
-  requestId: string;
-  classroomId: string;
-  classroomName: string;
-  playerId: string;
-  playerName: string;
+  requestId: string
+  classroomId: string
+  classroomName: string
+  playerId: string
+  playerName: string
 }
 
 /**
@@ -40,11 +40,11 @@ export interface EnrollmentEventPayload {
  */
 export interface SocketRecipients {
   /** Emit to the classroom channel (teacher's view) */
-  classroomId?: string;
+  classroomId?: string
   /** Emit to specific user channels (parents) */
-  userIds?: string[];
+  userIds?: string[]
   /** Emit to specific player channels */
-  playerIds?: string[];
+  playerIds?: string[]
 }
 
 /**
@@ -53,11 +53,11 @@ export interface SocketRecipients {
  * Use when: A new enrollment request is created (by teacher or parent)
  */
 export async function emitEnrollmentRequestCreated(
-  payload: EnrollmentEventPayload & { requestedByRole: "teacher" | "parent" },
-  recipients: SocketRecipients,
+  payload: EnrollmentEventPayload & { requestedByRole: 'teacher' | 'parent' },
+  recipients: SocketRecipients
 ): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: EnrollmentRequestCreatedEvent = {
     request: {
@@ -68,15 +68,9 @@ export async function emitEnrollmentRequestCreated(
       playerName: payload.playerName,
       requestedByRole: payload.requestedByRole,
     },
-  };
+  }
 
-  emitToRecipients(
-    io,
-    "enrollment-request-created",
-    eventData,
-    recipients,
-    "request-created",
-  );
+  emitToRecipients(io, 'enrollment-request-created', eventData, recipients, 'request-created')
 }
 
 /**
@@ -86,11 +80,11 @@ export async function emitEnrollmentRequestCreated(
  * This notifies the other party that their approval is still pending.
  */
 export async function emitEnrollmentRequestApproved(
-  payload: EnrollmentEventPayload & { approvedBy: "teacher" | "parent" },
-  recipients: SocketRecipients,
+  payload: EnrollmentEventPayload & { approvedBy: 'teacher' | 'parent' },
+  recipients: SocketRecipients
 ): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: EnrollmentRequestApprovedEvent = {
     requestId: payload.requestId,
@@ -99,15 +93,9 @@ export async function emitEnrollmentRequestApproved(
     playerId: payload.playerId,
     playerName: payload.playerName,
     approvedBy: payload.approvedBy,
-  };
+  }
 
-  emitToRecipients(
-    io,
-    "enrollment-request-approved",
-    eventData,
-    recipients,
-    "request-approved",
-  );
+  emitToRecipients(io, 'enrollment-request-approved', eventData, recipients, 'request-approved')
 }
 
 /**
@@ -116,11 +104,11 @@ export async function emitEnrollmentRequestApproved(
  * Use when: Either side denies the enrollment request.
  */
 export async function emitEnrollmentRequestDenied(
-  payload: EnrollmentEventPayload & { deniedBy: "teacher" | "parent" },
-  recipients: SocketRecipients,
+  payload: EnrollmentEventPayload & { deniedBy: 'teacher' | 'parent' },
+  recipients: SocketRecipients
 ): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: EnrollmentRequestDeniedEvent = {
     requestId: payload.requestId,
@@ -129,15 +117,9 @@ export async function emitEnrollmentRequestDenied(
     playerId: payload.playerId,
     playerName: payload.playerName,
     deniedBy: payload.deniedBy,
-  };
+  }
 
-  emitToRecipients(
-    io,
-    "enrollment-request-denied",
-    eventData,
-    recipients,
-    "request-denied",
-  );
+  emitToRecipients(io, 'enrollment-request-denied', eventData, recipients, 'request-denied')
 }
 
 /**
@@ -146,26 +128,20 @@ export async function emitEnrollmentRequestDenied(
  * Use when: Both sides have approved and the student is now enrolled.
  */
 export async function emitEnrollmentCompleted(
-  payload: Omit<EnrollmentEventPayload, "requestId">,
-  recipients: SocketRecipients,
+  payload: Omit<EnrollmentEventPayload, 'requestId'>,
+  recipients: SocketRecipients
 ): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: EnrollmentApprovedEvent = {
     classroomId: payload.classroomId,
     classroomName: payload.classroomName,
     playerId: payload.playerId,
     playerName: payload.playerName,
-  };
+  }
 
-  emitToRecipients(
-    io,
-    "enrollment-approved",
-    eventData,
-    recipients,
-    "enrollment-completed",
-  );
+  emitToRecipients(io, 'enrollment-approved', eventData, recipients, 'enrollment-completed')
 }
 
 /**
@@ -175,13 +151,13 @@ export async function emitEnrollmentCompleted(
  * This also implies their presence was removed if they were in the classroom.
  */
 export async function emitStudentUnenrolled(
-  payload: Omit<EnrollmentEventPayload, "requestId"> & {
-    unenrolledBy: "teacher" | "parent";
+  payload: Omit<EnrollmentEventPayload, 'requestId'> & {
+    unenrolledBy: 'teacher' | 'parent'
   },
-  recipients: SocketRecipients,
+  recipients: SocketRecipients
 ): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: StudentUnenrolledEvent = {
     classroomId: payload.classroomId,
@@ -189,55 +165,47 @@ export async function emitStudentUnenrolled(
     playerId: payload.playerId,
     playerName: payload.playerName,
     unenrolledBy: payload.unenrolledBy,
-  };
+  }
 
-  emitToRecipients(
-    io,
-    "student-unenrolled",
-    eventData,
-    recipients,
-    "student-unenrolled",
-  );
+  emitToRecipients(io, 'student-unenrolled', eventData, recipients, 'student-unenrolled')
 }
 
 /**
  * Internal helper to emit to all specified recipients
  */
 function emitToRecipients<T>(
-  io: ReturnType<typeof getSocketIO> extends Promise<infer U>
-    ? NonNullable<U>
-    : never,
+  io: ReturnType<typeof getSocketIO> extends Promise<infer U> ? NonNullable<U> : never,
   eventName: string,
   eventData: T,
   recipients: SocketRecipients,
-  logLabel: string,
+  logLabel: string
 ): void {
-  const { classroomId, userIds, playerIds } = recipients;
+  const { classroomId, userIds, playerIds } = recipients
 
   try {
     // Emit to classroom channel
     if (classroomId) {
-      io.to(`classroom:${classroomId}`).emit(eventName, eventData);
-      console.log(`[SocketEmitter] ${logLabel} -> classroom:${classroomId}`);
+      io.to(`classroom:${classroomId}`).emit(eventName, eventData)
+      console.log(`[SocketEmitter] ${logLabel} -> classroom:${classroomId}`)
     }
 
     // Emit to user channels
     if (userIds?.length) {
       for (const userId of userIds) {
-        io.to(`user:${userId}`).emit(eventName, eventData);
-        console.log(`[SocketEmitter] ${logLabel} -> user:${userId}`);
+        io.to(`user:${userId}`).emit(eventName, eventData)
+        console.log(`[SocketEmitter] ${logLabel} -> user:${userId}`)
       }
     }
 
     // Emit to player channels
     if (playerIds?.length) {
       for (const playerId of playerIds) {
-        io.to(`player:${playerId}`).emit(eventName, eventData);
-        console.log(`[SocketEmitter] ${logLabel} -> player:${playerId}`);
+        io.to(`player:${playerId}`).emit(eventName, eventData)
+        console.log(`[SocketEmitter] ${logLabel} -> player:${playerId}`)
       }
     }
   } catch (error) {
-    console.error(`[SocketEmitter] Failed to emit ${logLabel}:`, error);
+    console.error(`[SocketEmitter] Failed to emit ${logLabel}:`, error)
   }
 }
 
@@ -249,9 +217,9 @@ function emitToRecipients<T>(
  * Session event payload
  */
 export interface SessionEventPayload {
-  sessionId: string;
-  playerId: string;
-  playerName: string;
+  sessionId: string
+  playerId: string
+  playerName: string
 }
 
 /**
@@ -262,22 +230,22 @@ export interface SessionEventPayload {
  */
 export async function emitSessionStarted(
   payload: SessionEventPayload,
-  classroomId: string,
+  classroomId: string
 ): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: SessionStartedEvent = {
     sessionId: payload.sessionId,
     playerId: payload.playerId,
     playerName: payload.playerName,
-  };
+  }
 
   try {
-    io.to(`classroom:${classroomId}`).emit("session-started", eventData);
-    console.log(`[SocketEmitter] session-started -> classroom:${classroomId}`);
+    io.to(`classroom:${classroomId}`).emit('session-started', eventData)
+    console.log(`[SocketEmitter] session-started -> classroom:${classroomId}`)
   } catch (error) {
-    console.error("[SocketEmitter] Failed to emit session-started:", error);
+    console.error('[SocketEmitter] Failed to emit session-started:', error)
   }
 }
 
@@ -289,27 +257,25 @@ export async function emitSessionStarted(
  */
 export async function emitSessionEnded(
   payload: SessionEventPayload & {
-    reason: "completed" | "ended_early" | "abandoned";
+    reason: 'completed' | 'ended_early' | 'abandoned'
   },
-  classroomId: string,
+  classroomId: string
 ): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: SessionEndedEvent = {
     sessionId: payload.sessionId,
     playerId: payload.playerId,
     playerName: payload.playerName,
     reason: payload.reason,
-  };
+  }
 
   try {
-    io.to(`classroom:${classroomId}`).emit("session-ended", eventData);
-    console.log(
-      `[SocketEmitter] session-ended (${payload.reason}) -> classroom:${classroomId}`,
-    );
+    io.to(`classroom:${classroomId}`).emit('session-ended', eventData)
+    console.log(`[SocketEmitter] session-ended (${payload.reason}) -> classroom:${classroomId}`)
   } catch (error) {
-    console.error("[SocketEmitter] Failed to emit session-ended:", error);
+    console.error('[SocketEmitter] Failed to emit session-ended:', error)
   }
 }
 
@@ -319,28 +285,21 @@ export async function emitSessionEnded(
  * Use when: A student starts a practice session.
  * This notifies parents who are subscribed to their child's player channel.
  */
-export async function emitSessionStartedToPlayer(
-  payload: SessionEventPayload,
-): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+export async function emitSessionStartedToPlayer(payload: SessionEventPayload): Promise<void> {
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: SessionStartedEvent = {
     sessionId: payload.sessionId,
     playerId: payload.playerId,
     playerName: payload.playerName,
-  };
+  }
 
   try {
-    io.to(`player:${payload.playerId}`).emit("session-started", eventData);
-    console.log(
-      `[SocketEmitter] session-started -> player:${payload.playerId}`,
-    );
+    io.to(`player:${payload.playerId}`).emit('session-started', eventData)
+    console.log(`[SocketEmitter] session-started -> player:${payload.playerId}`)
   } catch (error) {
-    console.error(
-      "[SocketEmitter] Failed to emit session-started to player:",
-      error,
-    );
+    console.error('[SocketEmitter] Failed to emit session-started to player:', error)
   }
 }
 
@@ -352,29 +311,24 @@ export async function emitSessionStartedToPlayer(
  */
 export async function emitSessionEndedToPlayer(
   payload: SessionEventPayload & {
-    reason: "completed" | "ended_early" | "abandoned";
-  },
+    reason: 'completed' | 'ended_early' | 'abandoned'
+  }
 ): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: SessionEndedEvent = {
     sessionId: payload.sessionId,
     playerId: payload.playerId,
     playerName: payload.playerName,
     reason: payload.reason,
-  };
+  }
 
   try {
-    io.to(`player:${payload.playerId}`).emit("session-ended", eventData);
-    console.log(
-      `[SocketEmitter] session-ended (${payload.reason}) -> player:${payload.playerId}`,
-    );
+    io.to(`player:${payload.playerId}`).emit('session-ended', eventData)
+    console.log(`[SocketEmitter] session-ended (${payload.reason}) -> player:${payload.playerId}`)
   } catch (error) {
-    console.error(
-      "[SocketEmitter] Failed to emit session-ended to player:",
-      error,
-    );
+    console.error('[SocketEmitter] Failed to emit session-ended to player:', error)
   }
 }
 
@@ -386,12 +340,12 @@ export async function emitSessionEndedToPlayer(
  * Entry prompt event payload
  */
 export interface EntryPromptPayload {
-  promptId: string;
-  classroomId: string;
-  classroomName: string;
-  playerId: string;
-  playerName: string;
-  playerEmoji: string;
+  promptId: string
+  classroomId: string
+  classroomName: string
+  playerId: string
+  playerName: string
+  playerEmoji: string
 }
 
 /**
@@ -402,10 +356,10 @@ export interface EntryPromptPayload {
  */
 export async function emitEntryPromptCreated(
   payload: EntryPromptPayload & { teacherName: string; expiresAt: Date },
-  parentIds: string[],
+  parentIds: string[]
 ): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: EntryPromptCreatedEvent = {
     promptId: payload.promptId,
@@ -416,19 +370,16 @@ export async function emitEntryPromptCreated(
     playerEmoji: payload.playerEmoji,
     teacherName: payload.teacherName,
     expiresAt: payload.expiresAt.toISOString(),
-  };
+  }
 
   try {
     // Emit to each parent's user channel
     for (const parentId of parentIds) {
-      io.to(`user:${parentId}`).emit("entry-prompt-created", eventData);
-      console.log(`[SocketEmitter] entry-prompt-created -> user:${parentId}`);
+      io.to(`user:${parentId}`).emit('entry-prompt-created', eventData)
+      console.log(`[SocketEmitter] entry-prompt-created -> user:${parentId}`)
     }
   } catch (error) {
-    console.error(
-      "[SocketEmitter] Failed to emit entry-prompt-created:",
-      error,
-    );
+    console.error('[SocketEmitter] Failed to emit entry-prompt-created:', error)
   }
 }
 
@@ -439,11 +390,11 @@ export async function emitEntryPromptCreated(
  * This notifies the teacher and updates the classroom presence view.
  */
 export async function emitEntryPromptAccepted(
-  payload: Omit<EntryPromptPayload, "playerEmoji"> & { acceptedBy: string },
-  teacherId: string,
+  payload: Omit<EntryPromptPayload, 'playerEmoji'> & { acceptedBy: string },
+  teacherId: string
 ): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: EntryPromptAcceptedEvent = {
     promptId: payload.promptId,
@@ -451,26 +402,18 @@ export async function emitEntryPromptAccepted(
     playerId: payload.playerId,
     playerName: payload.playerName,
     acceptedBy: payload.acceptedBy,
-  };
+  }
 
   try {
     // Emit to teacher's user channel
-    io.to(`user:${teacherId}`).emit("entry-prompt-accepted", eventData);
-    console.log(`[SocketEmitter] entry-prompt-accepted -> user:${teacherId}`);
+    io.to(`user:${teacherId}`).emit('entry-prompt-accepted', eventData)
+    console.log(`[SocketEmitter] entry-prompt-accepted -> user:${teacherId}`)
 
     // Also emit to classroom channel for real-time presence updates
-    io.to(`classroom:${payload.classroomId}`).emit(
-      "entry-prompt-accepted",
-      eventData,
-    );
-    console.log(
-      `[SocketEmitter] entry-prompt-accepted -> classroom:${payload.classroomId}`,
-    );
+    io.to(`classroom:${payload.classroomId}`).emit('entry-prompt-accepted', eventData)
+    console.log(`[SocketEmitter] entry-prompt-accepted -> classroom:${payload.classroomId}`)
   } catch (error) {
-    console.error(
-      "[SocketEmitter] Failed to emit entry-prompt-accepted:",
-      error,
-    );
+    console.error('[SocketEmitter] Failed to emit entry-prompt-accepted:', error)
   }
 }
 
@@ -481,13 +424,13 @@ export async function emitEntryPromptAccepted(
  * This only notifies the teacher (no need to update classroom).
  */
 export async function emitEntryPromptDeclined(
-  payload: Omit<EntryPromptPayload, "playerEmoji" | "classroomName"> & {
-    declinedBy: string;
+  payload: Omit<EntryPromptPayload, 'playerEmoji' | 'classroomName'> & {
+    declinedBy: string
   },
-  teacherId: string,
+  teacherId: string
 ): Promise<void> {
-  const io = await getSocketIO();
-  if (!io) return;
+  const io = await getSocketIO()
+  if (!io) return
 
   const eventData: EntryPromptDeclinedEvent = {
     promptId: payload.promptId,
@@ -495,16 +438,13 @@ export async function emitEntryPromptDeclined(
     playerId: payload.playerId,
     playerName: payload.playerName,
     declinedBy: payload.declinedBy,
-  };
+  }
 
   try {
     // Emit only to teacher's user channel
-    io.to(`user:${teacherId}`).emit("entry-prompt-declined", eventData);
-    console.log(`[SocketEmitter] entry-prompt-declined -> user:${teacherId}`);
+    io.to(`user:${teacherId}`).emit('entry-prompt-declined', eventData)
+    console.log(`[SocketEmitter] entry-prompt-declined -> user:${teacherId}`)
   } catch (error) {
-    console.error(
-      "[SocketEmitter] Failed to emit entry-prompt-declined:",
-      error,
-    );
+    console.error('[SocketEmitter] Failed to emit entry-prompt-declined:', error)
   }
 }

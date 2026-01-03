@@ -5,31 +5,27 @@
  * in the unified student list. Used by teachers and parents.
  */
 
-import type { Player } from "@/db/schema/players";
-import type { StudentIntervention } from "@/utils/studentGrouping";
+import type { Player } from '@/db/schema/players'
+import type { StudentIntervention } from '@/utils/studentGrouping'
 
 /**
  * Activity status for a student
  */
-export type StudentActivityStatus = "idle" | "practicing" | "learning";
+export type StudentActivityStatus = 'idle' | 'practicing' | 'learning'
 
 /**
  * Enrollment status for a student relative to a classroom
  */
-export type EnrollmentStatus =
-  | "enrolled"
-  | "pending-teacher"
-  | "pending-parent"
-  | null;
+export type EnrollmentStatus = 'enrolled' | 'pending-teacher' | 'pending-parent' | null
 
 /**
  * Session progress when student is practicing
  */
 export interface SessionProgress {
   /** Current problem index (0-based) */
-  current: number;
+  current: number
   /** Total problems in session */
-  total: number;
+  total: number
 }
 
 /**
@@ -37,11 +33,11 @@ export interface SessionProgress {
  */
 export interface TutorialProgress {
   /** Skill being learned */
-  skill: string;
+  skill: string
   /** Current step index */
-  step: number;
+  step: number
   /** Total steps */
-  total: number;
+  total: number
 }
 
 /**
@@ -51,13 +47,13 @@ export interface TutorialProgress {
  */
 export interface StudentRelationship {
   /** Parent-child link exists (viewer is parent of this student) */
-  isMyChild: boolean;
+  isMyChild: boolean
   /** Student is enrolled in viewer's classroom (teachers only) */
-  isEnrolled: boolean;
+  isEnrolled: boolean
   /** Student is currently present in viewer's classroom (teachers only) */
-  isPresent: boolean;
+  isPresent: boolean
   /** Enrollment status if any pending enrollment */
-  enrollmentStatus: EnrollmentStatus;
+  enrollmentStatus: EnrollmentStatus
 }
 
 /**
@@ -67,13 +63,13 @@ export interface StudentRelationship {
  */
 export interface StudentActivity {
   /** Current activity status */
-  status: StudentActivityStatus;
+  status: StudentActivityStatus
   /** Session progress when practicing */
-  sessionProgress?: SessionProgress;
+  sessionProgress?: SessionProgress
   /** Tutorial progress when learning */
-  tutorialProgress?: TutorialProgress;
+  tutorialProgress?: TutorialProgress
   /** Session ID for observation (when practicing) */
-  sessionId?: string;
+  sessionId?: string
 }
 
 /**
@@ -95,28 +91,28 @@ export interface UnifiedStudent extends Player {
   // ============================================================================
 
   /** Current curriculum level (1-3) */
-  currentLevel?: number;
+  currentLevel?: number
   /** Current phase ID within level */
-  currentPhaseId?: string;
+  currentPhaseId?: string
   /** Overall mastery percentage (0-100) */
-  masteryPercent?: number;
+  masteryPercent?: number
   /** List of skill IDs being practiced */
-  practicingSkills?: string[];
+  practicingSkills?: string[]
   /** Most recent practice session timestamp */
-  lastPracticedAt?: Date | null;
+  lastPracticedAt?: Date | null
   /** Computed skill category (highest level) */
-  skillCategory?: string | null;
+  skillCategory?: string | null
   /** Intervention data if student needs attention */
-  intervention?: StudentIntervention | null;
+  intervention?: StudentIntervention | null
 
   // ============================================================================
   // New: Relationship and Activity Data
   // ============================================================================
 
   /** Relationship to the current viewer (parent/teacher) */
-  relationship: StudentRelationship;
+  relationship: StudentRelationship
   /** Current activity (practicing, learning, idle) */
-  activity: StudentActivity;
+  activity: StudentActivity
 }
 
 /**
@@ -128,7 +124,7 @@ export function createDefaultRelationship(): StudentRelationship {
     isEnrolled: false,
     isPresent: false,
     enrollmentStatus: null,
-  };
+  }
 }
 
 /**
@@ -136,8 +132,8 @@ export function createDefaultRelationship(): StudentRelationship {
  */
 export function createDefaultActivity(): StudentActivity {
   return {
-    status: "idle",
-  };
+    status: 'idle',
+  }
 }
 
 /**
@@ -148,7 +144,7 @@ export function toUnifiedStudent(player: Player): UnifiedStudent {
     ...player,
     relationship: createDefaultRelationship(),
     activity: createDefaultActivity(),
-  };
+  }
 }
 
 // =============================================================================
@@ -162,13 +158,13 @@ export function toUnifiedStudent(player: Player): UnifiedStudent {
  */
 export interface ParentInfo {
   /** Parent user ID */
-  id: string;
+  id: string
   /** Parent's display name */
-  name: string;
+  name: string
   /** Parent's email (optional) */
-  email?: string;
+  email?: string
   /** Whether this parent is the current viewer */
-  isMe: boolean;
+  isMe: boolean
 }
 
 /**
@@ -176,13 +172,13 @@ export interface ParentInfo {
  */
 export interface EnrolledClassroomInfo {
   /** Classroom ID */
-  id: string;
+  id: string
   /** Classroom name */
-  name: string;
+  name: string
   /** Teacher's display name */
-  teacherName: string;
+  teacherName: string
   /** Whether the current viewer is the teacher of this classroom */
-  isMyClassroom: boolean;
+  isMyClassroom: boolean
 }
 
 /**
@@ -190,17 +186,17 @@ export interface EnrolledClassroomInfo {
  */
 export interface PendingEnrollmentInfo {
   /** Enrollment request ID */
-  id: string;
+  id: string
   /** Target classroom ID */
-  classroomId: string;
+  classroomId: string
   /** Target classroom name */
-  classroomName: string;
+  classroomName: string
   /** Teacher's display name */
-  teacherName: string;
+  teacherName: string
   /** Who needs to approve: 'teacher' or 'parent' */
-  pendingApproval: "teacher" | "parent";
+  pendingApproval: 'teacher' | 'parent'
   /** Who initiated the request */
-  initiatedBy: "teacher" | "parent";
+  initiatedBy: 'teacher' | 'parent'
 }
 
 /**
@@ -208,11 +204,11 @@ export interface PendingEnrollmentInfo {
  */
 export interface PresenceInfo {
   /** Classroom ID where student is present */
-  classroomId: string;
+  classroomId: string
   /** Classroom name */
-  classroomName: string;
+  classroomName: string
   /** Teacher's display name */
-  teacherName: string;
+  teacherName: string
 }
 
 /**
@@ -220,28 +216,28 @@ export interface PresenceInfo {
  */
 export interface StudentStakeholders {
   /** All parents linked to this student */
-  parents: ParentInfo[];
+  parents: ParentInfo[]
   /** All classrooms the student is enrolled in */
-  enrolledClassrooms: EnrolledClassroomInfo[];
+  enrolledClassrooms: EnrolledClassroomInfo[]
   /** All pending enrollment requests */
-  pendingEnrollments: PendingEnrollmentInfo[];
+  pendingEnrollments: PendingEnrollmentInfo[]
   /** Current classroom presence (if any) */
-  currentPresence: PresenceInfo | null;
+  currentPresence: PresenceInfo | null
 }
 
 /**
  * Type of relationship the viewer has with a student
  */
-export type ViewerRelationType = "parent" | "teacher" | "observer" | "none";
+export type ViewerRelationType = 'parent' | 'teacher' | 'observer' | 'none'
 
 /**
  * Summary of the viewer's relationship with a student
  */
 export interface ViewerRelationshipSummary {
   /** Primary relationship type */
-  type: ViewerRelationType;
+  type: ViewerRelationType
   /** Human-readable description (e.g., "Your child", "Enrolled in Math 101") */
-  description: string;
+  description: string
   /** Classroom name if relevant (for teacher/observer) */
-  classroomName?: string;
+  classroomName?: string
 }

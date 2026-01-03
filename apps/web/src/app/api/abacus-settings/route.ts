@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
-import { type NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import * as schema from "@/db/schema";
-import { getViewerId } from "@/lib/viewer";
+import { eq } from 'drizzle-orm'
+import { type NextRequest, NextResponse } from 'next/server'
+import { db } from '@/db'
+import * as schema from '@/db/schema'
+import { getViewerId } from '@/lib/viewer'
 
 /**
  * GET /api/abacus-settings
@@ -10,30 +10,27 @@ import { getViewerId } from "@/lib/viewer";
  */
 export async function GET() {
   try {
-    const viewerId = await getViewerId();
-    const user = await getOrCreateUser(viewerId);
+    const viewerId = await getViewerId()
+    const user = await getOrCreateUser(viewerId)
 
     // Find or create abacus settings
     let settings = await db.query.abacusSettings.findFirst({
       where: eq(schema.abacusSettings.userId, user.id),
-    });
+    })
 
     // If no settings exist, create with defaults
     if (!settings) {
       const [newSettings] = await db
         .insert(schema.abacusSettings)
         .values({ userId: user.id })
-        .returning();
-      settings = newSettings;
+        .returning()
+      settings = newSettings
     }
 
-    return NextResponse.json({ settings });
+    return NextResponse.json({ settings })
   } catch (error) {
-    console.error("Failed to fetch abacus settings:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch abacus settings" },
-      { status: 500 },
-    );
+    console.error('Failed to fetch abacus settings:', error)
+    return NextResponse.json({ error: 'Failed to fetch abacus settings' }, { status: 500 })
   }
 }
 
@@ -43,36 +40,33 @@ export async function GET() {
  */
 export async function PATCH(req: NextRequest) {
   try {
-    const viewerId = await getViewerId();
+    const viewerId = await getViewerId()
 
     // Handle empty or invalid JSON body gracefully
-    let body: Record<string, unknown>;
+    let body: Record<string, unknown>
     try {
-      body = await req.json();
+      body = await req.json()
     } catch {
-      return NextResponse.json(
-        { error: "Invalid or empty request body" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Invalid or empty request body' }, { status: 400 })
     }
 
     // Security: Strip userId from request body - it must come from session only
-    const { userId: _, ...updates } = body;
+    const { userId: _, ...updates } = body
 
-    const user = await getOrCreateUser(viewerId);
+    const user = await getOrCreateUser(viewerId)
 
     // Ensure settings exist
     const existingSettings = await db.query.abacusSettings.findFirst({
       where: eq(schema.abacusSettings.userId, user.id),
-    });
+    })
 
     if (!existingSettings) {
       // Create new settings with updates
       const [newSettings] = await db
         .insert(schema.abacusSettings)
         .values({ userId: user.id, ...updates })
-        .returning();
-      return NextResponse.json({ settings: newSettings });
+        .returning()
+      return NextResponse.json({ settings: newSettings })
     }
 
     // Update existing settings
@@ -80,15 +74,12 @@ export async function PATCH(req: NextRequest) {
       .update(schema.abacusSettings)
       .set(updates)
       .where(eq(schema.abacusSettings.userId, user.id))
-      .returning();
+      .returning()
 
-    return NextResponse.json({ settings: updatedSettings });
+    return NextResponse.json({ settings: updatedSettings })
   } catch (error) {
-    console.error("Failed to update abacus settings:", error);
-    return NextResponse.json(
-      { error: "Failed to update abacus settings" },
-      { status: 500 },
-    );
+    console.error('Failed to update abacus settings:', error)
+    return NextResponse.json({ error: 'Failed to update abacus settings' }, { status: 500 })
   }
 }
 
@@ -99,7 +90,7 @@ async function getOrCreateUser(viewerId: string) {
   // Try to find existing user by guest ID
   let user = await db.query.users.findFirst({
     where: eq(schema.users.guestId, viewerId),
-  });
+  })
 
   // If no user exists, create one
   if (!user) {
@@ -108,10 +99,10 @@ async function getOrCreateUser(viewerId: string) {
       .values({
         guestId: viewerId,
       })
-      .returning();
+      .returning()
 
-    user = newUser;
+    user = newUser
   }
 
-  return user;
+  return user
 }

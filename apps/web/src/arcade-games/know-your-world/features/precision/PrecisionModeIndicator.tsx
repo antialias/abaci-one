@@ -9,9 +9,9 @@
  * click to activate precision mode for fine-grained cursor control.
  */
 
-"use client";
+'use client'
 
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react'
 
 // ============================================================================
 // Types
@@ -19,18 +19,18 @@ import type { CSSProperties } from "react";
 
 export interface PrecisionModeScrimProps {
   /** Whether the scrim should be visible */
-  show: boolean;
+  show: boolean
   /** Border radius to match container */
-  borderRadius?: string;
+  borderRadius?: string
 }
 
 export interface PrecisionModeFilterProps {
   /** Whether to apply the disabled filter effect */
-  isAtThreshold: boolean;
+  isAtThreshold: boolean
   /** Whether precision mode is active (filter should not apply) */
-  pointerLocked: boolean;
+  pointerLocked: boolean
   /** Whether device supports precision mode */
-  canUsePrecisionMode: boolean;
+  canUsePrecisionMode: boolean
 }
 
 // ============================================================================
@@ -51,24 +51,21 @@ export interface PrecisionModeFilterProps {
  * />
  * ```
  */
-export function PrecisionModeScrim({
-  show,
-  borderRadius = "12px",
-}: PrecisionModeScrimProps) {
-  if (!show) return null;
+export function PrecisionModeScrim({ show, borderRadius = '12px' }: PrecisionModeScrimProps) {
+  if (!show) return null
 
   return (
     <div
       data-element="precision-mode-scrim"
       style={{
-        position: "absolute",
+        position: 'absolute',
         inset: 0,
-        background: "rgba(251, 191, 36, 0.15)", // Gold scrim
-        pointerEvents: "none",
+        background: 'rgba(251, 191, 36, 0.15)', // Gold scrim
+        pointerEvents: 'none',
         borderRadius,
       }}
     />
-  );
+  )
 }
 
 // ============================================================================
@@ -99,18 +96,18 @@ export function getPrecisionModeFilter({
   isAtThreshold,
   pointerLocked,
   canUsePrecisionMode,
-}: PrecisionModeFilterProps): CSSProperties["filter"] {
+}: PrecisionModeFilterProps): CSSProperties['filter'] {
   // No filter when in precision mode (pointer locked)
-  if (pointerLocked) return "none";
+  if (pointerLocked) return 'none'
 
   // No filter when precision mode isn't available
-  if (!canUsePrecisionMode) return "none";
+  if (!canUsePrecisionMode) return 'none'
 
   // No filter when below threshold
-  if (!isAtThreshold) return "none";
+  if (!isAtThreshold) return 'none'
 
   // Apply "disabled" visual effect when at threshold but not in precision mode
-  return "brightness(0.6) saturate(0.5)";
+  return 'brightness(0.6) saturate(0.5)'
 }
 
 // ============================================================================
@@ -119,17 +116,17 @@ export function getPrecisionModeFilter({
 
 export interface PrecisionModeStatusLabelOptions {
   /** Current zoom level */
-  currentZoom: number;
+  currentZoom: number
   /** Current screen pixel ratio */
-  screenPixelRatio: number;
+  screenPixelRatio: number
   /** Whether at threshold */
-  isAtThreshold: boolean;
+  isAtThreshold: boolean
   /** Whether pointer is locked (precision mode active) */
-  pointerLocked: boolean;
+  pointerLocked: boolean
   /** Whether device supports precision mode */
-  canUsePrecisionMode: boolean;
+  canUsePrecisionMode: boolean
   /** Whether to show debug info */
-  showDebugInfo: boolean;
+  showDebugInfo: boolean
 }
 
 /**
@@ -166,18 +163,18 @@ export function getPrecisionModeStatusLabel({
 }: PrecisionModeStatusLabelOptions): string {
   // When in precision mode, just show zoom
   if (pointerLocked) {
-    return `${currentZoom.toFixed(1)}×`;
+    return `${currentZoom.toFixed(1)}×`
   }
 
   // When at threshold and precision mode is available, show activation message
   if (canUsePrecisionMode && isAtThreshold) {
-    return "Click to activate precision mode";
+    return 'Click to activate precision mode'
   }
 
   // Below threshold - show debug info or simple zoom
   if (showDebugInfo) {
-    return `${currentZoom.toFixed(1)}× | ${screenPixelRatio.toFixed(1)} px/px`;
+    return `${currentZoom.toFixed(1)}× | ${screenPixelRatio.toFixed(1)} px/px`
   }
 
-  return `${currentZoom.toFixed(1)}×`;
+  return `${currentZoom.toFixed(1)}×`
 }

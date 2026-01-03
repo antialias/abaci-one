@@ -1,84 +1,80 @@
-"use client";
+'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { css } from "../../../styled-system/css";
-import { hstack, vstack } from "../../../styled-system/patterns";
-import type {
-  Tutorial,
-  TutorialEvent,
-  TutorialStep,
-} from "../../types/tutorial";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { css } from '../../../styled-system/css'
+import { hstack, vstack } from '../../../styled-system/patterns'
+import type { Tutorial, TutorialEvent, TutorialStep } from '../../types/tutorial'
 import {
   type SkillTutorialConfig,
   getSkillTutorialConfig,
-} from "../../lib/curriculum/skill-tutorial-config";
-import { TutorialPlayer } from "./TutorialPlayer";
-import type { SkillTutorialControlAction } from "@/lib/classroom/socket-events";
+} from '../../lib/curriculum/skill-tutorial-config'
+import { TutorialPlayer } from './TutorialPlayer'
+import type { SkillTutorialControlAction } from '@/lib/classroom/socket-events'
 
 // ============================================================================
 // Types
 // ============================================================================
 
-type LauncherState = "intro" | "tutorial" | "complete";
+type LauncherState = 'intro' | 'tutorial' | 'complete'
 
 /**
  * Broadcast state for skill tutorial observation
  */
 export interface SkillTutorialBroadcastState {
   /** Current launcher state */
-  launcherState: "intro" | "tutorial" | "complete";
+  launcherState: 'intro' | 'tutorial' | 'complete'
   /** Skill being learned */
-  skillId: string;
+  skillId: string
   /** Skill display title */
-  skillTitle: string;
+  skillTitle: string
   /** Tutorial state details (only when in 'tutorial' state) */
   tutorialState?: {
-    currentStepIndex: number;
-    totalSteps: number;
-    currentMultiStep: number;
-    totalMultiSteps: number;
-    currentValue: number;
-    targetValue: number;
-    startValue: number;
-    isStepCompleted: boolean;
-    problem: string;
-    description: string;
-    currentInstruction: string;
-  };
+    currentStepIndex: number
+    totalSteps: number
+    currentMultiStep: number
+    totalMultiSteps: number
+    currentValue: number
+    targetValue: number
+    startValue: number
+    isStepCompleted: boolean
+    problem: string
+    description: string
+    currentInstruction: string
+  }
 }
 
 interface SkillTutorialLauncherProps {
   /** The skill ID to launch the tutorial for */
-  skillId: string;
+  skillId: string
   /** Player ID for tracking completion */
-  playerId: string;
+  playerId: string
   /** Callback when tutorial is completed successfully */
-  onComplete?: () => void;
+  onComplete?: () => void
   /** Callback when user skips the tutorial */
-  onSkip?: () => void;
+  onSkip?: () => void
   /** Callback when user cancels/exits */
-  onCancel?: () => void;
+  onCancel?: () => void
   /** Optional theme */
-  theme?: "light" | "dark";
+  theme?: 'light' | 'dark'
   /** Number of columns on the abacus */
-  abacusColumns?: number;
+  abacusColumns?: number
   /** Callback when broadcast state changes (for teacher observation) */
-  onBroadcastStateChange?: (state: SkillTutorialBroadcastState) => void;
+  onBroadcastStateChange?: (state: SkillTutorialBroadcastState) => void
   /** Control action from teacher (optional, for remote control) */
-  controlAction?: SkillTutorialControlAction | null;
+  controlAction?: SkillTutorialControlAction | null
   /** Callback when control action has been processed */
-  onControlActionProcessed?: () => void;
+  onControlActionProcessed?: () => void
   /**
    * Observed state from WebSocket (for teacher observation mode).
    * When provided, the component becomes read-only and displays this state
    * instead of managing its own internal state.
    */
-  observedState?: SkillTutorialBroadcastState;
+  observedState?: SkillTutorialBroadcastState
   /**
    * Callback for sending control actions (used in observation mode).
    * When provided, button clicks send control actions instead of changing local state.
    */
-  onControl?: (action: SkillTutorialControlAction) => void;
+  onControl?: (action: SkillTutorialControlAction) => void
 }
 
 // ============================================================================
@@ -91,10 +87,10 @@ interface SkillTutorialLauncherProps {
  */
 function generateTutorialFromConfig(config: SkillTutorialConfig): Tutorial {
   const steps: TutorialStep[] = config.exampleProblems.map((problem, index) => {
-    const delta = problem.target - problem.start;
-    const isAddition = delta > 0;
-    const operation = isAddition ? "+" : "";
-    const problemString = `${problem.start} ${operation}${delta} = ${problem.target}`;
+    const delta = problem.target - problem.start
+    const isAddition = delta > 0
+    const operation = isAddition ? '+' : ''
+    const problemString = `${problem.start} ${operation}${delta} = ${problem.target}`
 
     return {
       id: `${config.skillId}-step-${index}`,
@@ -103,31 +99,31 @@ function generateTutorialFromConfig(config: SkillTutorialConfig): Tutorial {
       description: config.description,
       startValue: problem.start,
       targetValue: problem.target,
-      expectedAction: "multi-step" as const,
+      expectedAction: 'multi-step' as const,
       actionDescription: `Move the beads to show ${problem.target}`,
       tooltip: {
         content: config.title,
         explanation: config.description,
       },
       multiStepInstructions: [], // TutorialPlayer will generate these dynamically
-    };
-  });
+    }
+  })
 
   return {
     id: `skill-tutorial-${config.skillId}`,
     title: config.title,
     description: config.description,
-    category: "skill-introduction",
-    difficulty: "beginner",
+    category: 'skill-introduction',
+    difficulty: 'beginner',
     estimatedDuration: 5, // 5 minutes
     steps,
-    tags: ["skill-tutorial", config.skillId],
-    author: "system",
-    version: "1.0",
+    tags: ['skill-tutorial', config.skillId],
+    author: 'system',
+    version: '1.0',
     createdAt: new Date(),
     updatedAt: new Date(),
     isPublished: true,
-  };
+  }
 }
 
 // ============================================================================
@@ -140,7 +136,7 @@ export function SkillTutorialLauncher({
   onComplete,
   onSkip,
   onCancel,
-  theme = "light",
+  theme = 'light',
   abacusColumns = 5,
   onBroadcastStateChange,
   controlAction,
@@ -149,56 +145,51 @@ export function SkillTutorialLauncher({
   onControl,
 }: SkillTutorialLauncherProps) {
   // Whether we're in observation mode (read-only, state comes from WebSocket)
-  const isObservationMode = !!observedState;
+  const isObservationMode = !!observedState
 
-  const [localState, setLocalState] = useState<LauncherState>("intro");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localState, setLocalState] = useState<LauncherState>('intro')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // In observation mode, use observed state; otherwise use local state
-  const state: LauncherState = isObservationMode
-    ? observedState.launcherState
-    : localState;
-  const setState = setLocalState; // Only used in interactive mode
+  const state: LauncherState = isObservationMode ? observedState.launcherState : localState
+  const setState = setLocalState // Only used in interactive mode
 
   // Track pending control action for TutorialPlayer
-  const [playerControlAction, setPlayerControlAction] =
-    useState<SkillTutorialControlAction | null>(null);
+  const [playerControlAction, setPlayerControlAction] = useState<SkillTutorialControlAction | null>(
+    null
+  )
 
   // Track tutorial player state for broadcasting (only in interactive mode)
   const [tutorialPlayerState, setTutorialPlayerState] = useState<{
-    currentStepIndex: number;
-    currentMultiStep: number;
-    currentValue: number;
-    isStepCompleted: boolean;
-  } | null>(null);
+    currentStepIndex: number
+    currentMultiStep: number
+    currentValue: number
+    isStepCompleted: boolean
+  } | null>(null)
 
   // Get the tutorial config for this skill (use observed skillId in observation mode)
-  const effectiveSkillId = isObservationMode ? observedState.skillId : skillId;
-  const config = useMemo(
-    () => getSkillTutorialConfig(effectiveSkillId),
-    [effectiveSkillId],
-  );
+  const effectiveSkillId = isObservationMode ? observedState.skillId : skillId
+  const config = useMemo(() => getSkillTutorialConfig(effectiveSkillId), [effectiveSkillId])
 
   // Generate the Tutorial object
   const tutorial = useMemo(() => {
-    if (!config) return null;
-    return generateTutorialFromConfig(config);
-  }, [config]);
+    if (!config) return null
+    return generateTutorialFromConfig(config)
+  }, [config])
 
   // Broadcast state changes for teacher observation
   useEffect(() => {
-    if (!onBroadcastStateChange || !config || !tutorial) return;
+    if (!onBroadcastStateChange || !config || !tutorial) return
 
     // Get current step info from tutorial
-    const currentStep =
-      tutorial.steps[tutorialPlayerState?.currentStepIndex ?? 0];
+    const currentStep = tutorial.steps[tutorialPlayerState?.currentStepIndex ?? 0]
 
     const broadcastState: SkillTutorialBroadcastState = {
       launcherState: state,
       skillId,
       skillTitle: config.title,
       tutorialState:
-        state === "tutorial" && currentStep && tutorialPlayerState
+        state === 'tutorial' && currentStep && tutorialPlayerState
           ? {
               currentStepIndex: tutorialPlayerState.currentStepIndex,
               totalSteps: tutorial.steps.length,
@@ -211,14 +202,13 @@ export function SkillTutorialLauncher({
               problem: currentStep.problem,
               description: currentStep.description,
               currentInstruction:
-                currentStep.multiStepInstructions?.[
-                  tutorialPlayerState.currentMultiStep
-                ] ?? currentStep.actionDescription,
+                currentStep.multiStepInstructions?.[tutorialPlayerState.currentMultiStep] ??
+                currentStep.actionDescription,
             }
           : undefined,
-    };
+    }
 
-    onBroadcastStateChange(broadcastState);
+    onBroadcastStateChange(broadcastState)
   }, [
     onBroadcastStateChange,
     config,
@@ -229,94 +219,87 @@ export function SkillTutorialLauncher({
     tutorialPlayerState?.currentMultiStep,
     tutorialPlayerState?.currentValue,
     tutorialPlayerState?.isStepCompleted,
-  ]);
+  ])
 
   // Handle tutorial completion
   const handleTutorialComplete = useCallback(
     async (_score: number, _timeSpent: number) => {
-      setState("complete");
-      setIsSubmitting(true);
+      setState('complete')
+      setIsSubmitting(true)
 
       try {
         // Mark tutorial as complete in database
         const response = await fetch(`/api/curriculum/${playerId}/tutorial`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             skillId,
-            action: "complete",
+            action: 'complete',
           }),
-        });
+        })
 
         if (!response.ok) {
-          throw new Error("Failed to mark tutorial complete");
+          throw new Error('Failed to mark tutorial complete')
         }
 
-        onComplete?.();
+        onComplete?.()
       } catch (error) {
-        console.error("Error marking tutorial complete:", error);
+        console.error('Error marking tutorial complete:', error)
         // Still call onComplete to not block the user
-        onComplete?.();
+        onComplete?.()
       } finally {
-        setIsSubmitting(false);
+        setIsSubmitting(false)
       }
     },
-    [playerId, skillId, onComplete],
-  );
+    [playerId, skillId, onComplete]
+  )
 
   // Handle skip
   const handleSkip = useCallback(async () => {
-    setIsSubmitting(true);
+    setIsSubmitting(true)
 
     try {
       // Record skip in database
       const response = await fetch(`/api/curriculum/${playerId}/tutorial`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           skillId,
-          action: "skip",
+          action: 'skip',
         }),
-      });
+      })
 
       if (!response.ok) {
-        console.error("Failed to record tutorial skip");
+        console.error('Failed to record tutorial skip')
       }
 
-      onSkip?.();
+      onSkip?.()
     } catch (error) {
-      console.error("Error recording tutorial skip:", error);
-      onSkip?.();
+      console.error('Error recording tutorial skip:', error)
+      onSkip?.()
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  }, [playerId, skillId, onSkip]);
+  }, [playerId, skillId, onSkip])
 
   // Handle step change from TutorialPlayer
-  const handleStepChange = useCallback(
-    (stepIndex: number, step: TutorialStep) => {
-      setTutorialPlayerState({
-        currentStepIndex: stepIndex,
-        currentMultiStep: 0, // Reset on new step
-        currentValue: step.startValue,
-        isStepCompleted: false,
-      });
-    },
-    [],
-  );
+  const handleStepChange = useCallback((stepIndex: number, step: TutorialStep) => {
+    setTutorialPlayerState({
+      currentStepIndex: stepIndex,
+      currentMultiStep: 0, // Reset on new step
+      currentValue: step.startValue,
+      isStepCompleted: false,
+    })
+  }, [])
 
   // Handle tutorial events to track value changes
   const handleEvent = useCallback((event: TutorialEvent) => {
-    if (event.type === "VALUE_CHANGED") {
-      setTutorialPlayerState((prev) =>
-        prev ? { ...prev, currentValue: event.newValue } : prev,
-      );
-    } else if (event.type === "STEP_COMPLETED") {
-      setTutorialPlayerState((prev) =>
-        prev ? { ...prev, isStepCompleted: true } : prev,
-      );
+    if (event.type === 'VALUE_CHANGED') {
+      setTutorialPlayerState((prev) => (prev ? { ...prev, currentValue: event.newValue } : prev))
+    } else if (event.type === 'STEP_COMPLETED') {
+      setTutorialPlayerState((prev) => (prev ? { ...prev, isStepCompleted: true } : prev))
     }
-  }, []);
+  }, [])
 
   // Handle step complete from TutorialPlayer
   const handleStepComplete = useCallback(
@@ -329,64 +312,59 @@ export function SkillTutorialLauncher({
               // Ensure the final value is captured when step completes
               currentValue: success ? step.targetValue : prev.currentValue,
             }
-          : prev,
-      );
+          : prev
+      )
     },
-    [],
-  );
+    []
+  )
 
   // Handle multi-step change from TutorialPlayer (for broadcasting to observers)
   const handleMultiStepChange = useCallback((multiStep: number) => {
-    setTutorialPlayerState((prev) =>
-      prev ? { ...prev, currentMultiStep: multiStep } : prev,
-    );
-  }, []);
+    setTutorialPlayerState((prev) => (prev ? { ...prev, currentMultiStep: multiStep } : prev))
+  }, [])
 
   // Handle control actions from teacher
   useEffect(() => {
-    if (!controlAction) return;
+    if (!controlAction) return
 
-    console.log(
-      "[SkillTutorialLauncher] Received control action:",
-      controlAction,
-    );
+    console.log('[SkillTutorialLauncher] Received control action:', controlAction)
 
     switch (controlAction.type) {
-      case "start-tutorial":
+      case 'start-tutorial':
         // Only works from intro state
-        if (state === "intro") {
-          setState("tutorial");
+        if (state === 'intro') {
+          setState('tutorial')
         }
-        break;
+        break
 
-      case "skip-tutorial":
+      case 'skip-tutorial':
         // Can skip from intro or tutorial state
-        if (state === "intro" || state === "tutorial") {
-          handleSkip();
+        if (state === 'intro' || state === 'tutorial') {
+          handleSkip()
         }
-        break;
+        break
 
-      case "next-step":
-      case "previous-step":
-      case "go-to-step":
-      case "set-abacus-value":
-      case "advance-multi-step":
-      case "previous-multi-step":
+      case 'next-step':
+      case 'previous-step':
+      case 'go-to-step':
+      case 'set-abacus-value':
+      case 'advance-multi-step':
+      case 'previous-multi-step':
         // Pass to TutorialPlayer
-        if (state === "tutorial") {
-          setPlayerControlAction(controlAction);
+        if (state === 'tutorial') {
+          setPlayerControlAction(controlAction)
         }
-        break;
+        break
     }
 
     // Mark action as processed
-    onControlActionProcessed?.();
-  }, [controlAction, state, handleSkip, onControlActionProcessed]);
+    onControlActionProcessed?.()
+  }, [controlAction, state, handleSkip, onControlActionProcessed])
 
   // Callback for TutorialPlayer when it processes a control action
   const handlePlayerControlProcessed = useCallback(() => {
-    setPlayerControlAction(null);
-  }, []);
+    setPlayerControlAction(null)
+  }, [])
 
   // No config found for this skill
   if (!config || !tutorial) {
@@ -396,8 +374,8 @@ export function SkillTutorialLauncher({
         data-status="no-config"
         className={css({
           p: 6,
-          textAlign: "center",
-          color: "gray.600",
+          textAlign: 'center',
+          color: 'gray.600',
         })}
       >
         <p>No tutorial available for this skill.</p>
@@ -408,43 +386,43 @@ export function SkillTutorialLauncher({
             mt: 4,
             px: 4,
             py: 2,
-            bg: "blue.500",
-            color: "white",
-            borderRadius: "md",
-            cursor: "pointer",
-            _hover: { bg: "blue.600" },
+            bg: 'blue.500',
+            color: 'white',
+            borderRadius: 'md',
+            cursor: 'pointer',
+            _hover: { bg: 'blue.600' },
           })}
         >
           Continue
         </button>
       </div>
-    );
+    )
   }
 
   // Intro screen
-  if (state === "intro") {
+  if (state === 'intro') {
     return (
       <div
         data-component="skill-tutorial-launcher"
         data-status="intro"
         className={css({
           p: 8,
-          maxW: "600px",
-          mx: "auto",
-          bg: theme === "dark" ? "gray.800" : "white",
-          borderRadius: "xl",
-          shadow: "lg",
+          maxW: '600px',
+          mx: 'auto',
+          bg: theme === 'dark' ? 'gray.800' : 'white',
+          borderRadius: 'xl',
+          shadow: 'lg',
         })}
       >
-        <div className={vstack({ gap: 6, alignItems: "center" })}>
+        <div className={vstack({ gap: 6, alignItems: 'center' })}>
           {/* Header */}
-          <div className={css({ textAlign: "center" })}>
+          <div className={css({ textAlign: 'center' })}>
             <h2
               data-element="skill-title"
               className={css({
-                fontSize: "2xl",
-                fontWeight: "bold",
-                color: theme === "dark" ? "white" : "gray.900",
+                fontSize: '2xl',
+                fontWeight: 'bold',
+                color: theme === 'dark' ? 'white' : 'gray.900',
                 mb: 2,
               })}
             >
@@ -453,9 +431,9 @@ export function SkillTutorialLauncher({
             <p
               data-element="skill-description"
               className={css({
-                fontSize: "lg",
-                color: theme === "dark" ? "gray.300" : "gray.600",
-                lineHeight: "1.6",
+                fontSize: 'lg',
+                color: theme === 'dark' ? 'gray.300' : 'gray.600',
+                lineHeight: '1.6',
               })}
             >
               {config.description}
@@ -467,20 +445,20 @@ export function SkillTutorialLauncher({
             data-element="tutorial-info"
             className={css({
               p: 4,
-              bg: theme === "dark" ? "blue.900" : "blue.50",
-              border: "1px solid",
-              borderColor: theme === "dark" ? "blue.700" : "blue.200",
-              borderRadius: "lg",
-              w: "full",
+              bg: theme === 'dark' ? 'blue.900' : 'blue.50',
+              border: '1px solid',
+              borderColor: theme === 'dark' ? 'blue.700' : 'blue.200',
+              borderRadius: 'lg',
+              w: 'full',
             })}
           >
-            <div className={hstack({ gap: 3, alignItems: "start" })}>
-              <span className={css({ fontSize: "2xl" })}>📚</span>
+            <div className={hstack({ gap: 3, alignItems: 'start' })}>
+              <span className={css({ fontSize: '2xl' })}>📚</span>
               <div>
                 <p
                   className={css({
-                    fontWeight: "medium",
-                    color: theme === "dark" ? "blue.200" : "blue.800",
+                    fontWeight: 'medium',
+                    color: theme === 'dark' ? 'blue.200' : 'blue.800',
                     mb: 1,
                   })}
                 >
@@ -488,43 +466,40 @@ export function SkillTutorialLauncher({
                 </p>
                 <p
                   className={css({
-                    fontSize: "sm",
-                    color: theme === "dark" ? "blue.300" : "blue.700",
+                    fontSize: 'sm',
+                    color: theme === 'dark' ? 'blue.300' : 'blue.700',
                   })}
                 >
-                  You'll practice {config.exampleProblems.length} example
-                  problems that show you exactly how to use this technique on
-                  the abacus.
+                  You'll practice {config.exampleProblems.length} example problems that show you
+                  exactly how to use this technique on the abacus.
                 </p>
               </div>
             </div>
           </div>
 
           {/* Action buttons */}
-          <div
-            className={hstack({ gap: 4, w: "full", justifyContent: "center" })}
-          >
+          <div className={hstack({ gap: 4, w: 'full', justifyContent: 'center' })}>
             <button
               data-action="start-tutorial"
               onClick={() => {
                 if (isObservationMode && onControl) {
-                  onControl({ type: "start-tutorial" });
+                  onControl({ type: 'start-tutorial' })
                 } else {
-                  setState("tutorial");
+                  setState('tutorial')
                 }
               }}
               disabled={isSubmitting}
               className={css({
                 px: 6,
                 py: 3,
-                bg: "green.500",
-                color: "white",
-                fontSize: "lg",
-                fontWeight: "semibold",
-                borderRadius: "lg",
-                cursor: "pointer",
-                _hover: { bg: "green.600" },
-                _disabled: { opacity: 0.5, cursor: "not-allowed" },
+                bg: 'green.500',
+                color: 'white',
+                fontSize: 'lg',
+                fontWeight: 'semibold',
+                borderRadius: 'lg',
+                cursor: 'pointer',
+                _hover: { bg: 'green.600' },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >
               Start Tutorial
@@ -534,25 +509,25 @@ export function SkillTutorialLauncher({
               data-action="skip-tutorial"
               onClick={() => {
                 if (isObservationMode && onControl) {
-                  onControl({ type: "skip-tutorial" });
+                  onControl({ type: 'skip-tutorial' })
                 } else {
-                  handleSkip();
+                  handleSkip()
                 }
               }}
               disabled={isSubmitting}
               className={css({
                 px: 4,
                 py: 3,
-                bg: "transparent",
-                color: theme === "dark" ? "gray.400" : "gray.500",
-                fontSize: "sm",
-                borderRadius: "lg",
-                cursor: "pointer",
+                bg: 'transparent',
+                color: theme === 'dark' ? 'gray.400' : 'gray.500',
+                fontSize: 'sm',
+                borderRadius: 'lg',
+                cursor: 'pointer',
                 _hover: {
-                  bg: theme === "dark" ? "gray.700" : "gray.100",
-                  color: theme === "dark" ? "gray.300" : "gray.600",
+                  bg: theme === 'dark' ? 'gray.700' : 'gray.100',
+                  color: theme === 'dark' ? 'gray.300' : 'gray.600',
                 },
-                _disabled: { opacity: 0.5, cursor: "not-allowed" },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >
               Skip for now
@@ -565,11 +540,11 @@ export function SkillTutorialLauncher({
               data-action="cancel"
               onClick={onCancel}
               className={css({
-                color: theme === "dark" ? "gray.500" : "gray.400",
-                fontSize: "sm",
-                textDecoration: "underline",
-                cursor: "pointer",
-                _hover: { color: theme === "dark" ? "gray.400" : "gray.500" },
+                color: theme === 'dark' ? 'gray.500' : 'gray.400',
+                fontSize: 'sm',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                _hover: { color: theme === 'dark' ? 'gray.400' : 'gray.500' },
               })}
             >
               Cancel
@@ -577,11 +552,11 @@ export function SkillTutorialLauncher({
           )}
         </div>
       </div>
-    );
+    )
   }
 
   // Tutorial in progress
-  if (state === "tutorial") {
+  if (state === 'tutorial') {
     // In observation mode, wait for tutorialState before rendering TutorialPlayer
     if (isObservationMode && !observedState.tutorialState) {
       return (
@@ -589,23 +564,23 @@ export function SkillTutorialLauncher({
           data-component="skill-tutorial-launcher"
           data-status="tutorial-loading"
           className={css({
-            height: "100%",
-            minHeight: "600px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            height: '100%',
+            minHeight: '600px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           })}
         >
           <p
             className={css({
-              color: theme === "dark" ? "gray.400" : "gray.500",
-              fontSize: "0.9375rem",
+              color: theme === 'dark' ? 'gray.400' : 'gray.500',
+              fontSize: '0.9375rem',
             })}
           >
             Waiting for tutorial to load...
           </p>
         </div>
-      );
+      )
     }
 
     // Convert observed state to TutorialPlayer's observed state format
@@ -617,61 +592,57 @@ export function SkillTutorialLauncher({
             currentValue: observedState.tutorialState.currentValue,
             isStepCompleted: observedState.tutorialState.isStepCompleted,
           }
-        : undefined;
+        : undefined
 
     return (
       <div
         data-component="skill-tutorial-launcher"
         data-status="tutorial"
-        data-observation-mode={isObservationMode ? "true" : undefined}
+        data-observation-mode={isObservationMode ? 'true' : undefined}
         className={css({
-          height: "100%",
-          minHeight: "600px",
+          height: '100%',
+          minHeight: '600px',
         })}
       >
         <TutorialPlayer
           tutorial={tutorial}
           theme={theme}
           abacusColumns={abacusColumns}
-          onTutorialComplete={
-            isObservationMode ? undefined : handleTutorialComplete
-          }
+          onTutorialComplete={isObservationMode ? undefined : handleTutorialComplete}
           onStepChange={isObservationMode ? undefined : handleStepChange}
           onStepComplete={isObservationMode ? undefined : handleStepComplete}
           onEvent={isObservationMode ? undefined : handleEvent}
-          onMultiStepChange={
-            isObservationMode ? undefined : handleMultiStepChange
-          }
+          onMultiStepChange={isObservationMode ? undefined : handleMultiStepChange}
           controlAction={playerControlAction}
           onControlActionProcessed={handlePlayerControlProcessed}
           observedState={tutorialObservedState}
           onControl={onControl}
         />
       </div>
-    );
+    )
   }
 
   // Complete screen
-  if (state === "complete") {
+  if (state === 'complete') {
     return (
       <div
         data-component="skill-tutorial-launcher"
         data-status="complete"
         className={css({
           p: 8,
-          maxW: "600px",
-          mx: "auto",
-          textAlign: "center",
+          maxW: '600px',
+          mx: 'auto',
+          textAlign: 'center',
         })}
       >
-        <div className={vstack({ gap: 6, alignItems: "center" })}>
-          <span className={css({ fontSize: "6xl" })}>🎉</span>
+        <div className={vstack({ gap: 6, alignItems: 'center' })}>
+          <span className={css({ fontSize: '6xl' })}>🎉</span>
 
           <h2
             className={css({
-              fontSize: "2xl",
-              fontWeight: "bold",
-              color: theme === "dark" ? "white" : "gray.900",
+              fontSize: '2xl',
+              fontWeight: 'bold',
+              color: theme === 'dark' ? 'white' : 'gray.900',
             })}
           >
             Great job!
@@ -679,23 +650,21 @@ export function SkillTutorialLauncher({
 
           <p
             className={css({
-              fontSize: "lg",
-              color: theme === "dark" ? "gray.300" : "gray.600",
+              fontSize: 'lg',
+              color: theme === 'dark' ? 'gray.300' : 'gray.600',
             })}
           >
-            You've completed the tutorial for <strong>{config.title}</strong>.
-            This skill is now ready to practice!
+            You've completed the tutorial for <strong>{config.title}</strong>. This skill is now
+            ready to practice!
           </p>
 
           {isSubmitting && (
-            <p className={css({ color: "gray.500", fontSize: "sm" })}>
-              Saving progress...
-            </p>
+            <p className={css({ color: 'gray.500', fontSize: 'sm' })}>Saving progress...</p>
           )}
         </div>
       </div>
-    );
+    )
   }
 
-  return null;
+  return null
 }

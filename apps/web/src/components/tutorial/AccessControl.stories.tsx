@@ -1,30 +1,24 @@
-import type { Meta, StoryObj } from "@storybook/react";
-import {
-  DevAccessProvider,
-  useEditorAccess,
-} from "../../hooks/useAccessControl";
+import type { Meta, StoryObj } from '@storybook/react'
+import { DevAccessProvider, useEditorAccess } from '../../hooks/useAccessControl'
 
 // Simple component that tests access control
 function AccessControlDisplay() {
-  const access = useEditorAccess();
+  const access = useEditorAccess()
 
   return (
-    <div style={{ padding: "20px", fontFamily: "monospace" }}>
+    <div style={{ padding: '20px', fontFamily: 'monospace' }}>
       <h2>Access Control Test</h2>
       <div>
-        <strong>Can Access Editor:</strong>{" "}
-        {access.canAccessEditor ? "Yes" : "No"}
+        <strong>Can Access Editor:</strong> {access.canAccessEditor ? 'Yes' : 'No'}
       </div>
       <div>
-        <strong>Can Edit Tutorials:</strong>{" "}
-        {access.canEditTutorials ? "Yes" : "No"}
+        <strong>Can Edit Tutorials:</strong> {access.canEditTutorials ? 'Yes' : 'No'}
       </div>
       <div>
-        <strong>Can Publish:</strong>{" "}
-        {access.canPublishTutorials ? "Yes" : "No"}
+        <strong>Can Publish:</strong> {access.canPublishTutorials ? 'Yes' : 'No'}
       </div>
       <div>
-        <strong>Can Delete:</strong> {access.canDeleteTutorials ? "Yes" : "No"}
+        <strong>Can Delete:</strong> {access.canDeleteTutorials ? 'Yes' : 'No'}
       </div>
       {access.reason && (
         <div>
@@ -32,7 +26,7 @@ function AccessControlDisplay() {
         </div>
       )}
     </div>
-  );
+  )
 }
 
 function AccessControlWithProvider() {
@@ -40,27 +34,27 @@ function AccessControlWithProvider() {
     <DevAccessProvider>
       <AccessControlDisplay />
     </DevAccessProvider>
-  );
+  )
 }
 
 const meta: Meta<typeof AccessControlWithProvider> = {
-  title: "Debug/AccessControl",
+  title: 'Debug/AccessControl',
   component: AccessControlWithProvider,
   parameters: {
     docs: {
       description: {
-        component: "Test the access control hook in isolation",
+        component: 'Test the access control hook in isolation',
       },
     },
   },
-};
+}
 
-export default meta;
-type Story = StoryObj<typeof AccessControlWithProvider>;
+export default meta
+type Story = StoryObj<typeof AccessControlWithProvider>
 
-export const WithDevAccess: Story = {};
+export const WithDevAccess: Story = {}
 
 // Test without provider to see if that causes issues
 export const WithoutProvider: Story = {
   render: () => <AccessControlDisplay />,
-};
+}

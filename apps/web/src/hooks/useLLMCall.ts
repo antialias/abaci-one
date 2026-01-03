@@ -30,23 +30,23 @@
  * ```
  */
 
-import { useState, useCallback } from "react";
-import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
-import type { z } from "zod";
-import { llm, type LLMProgress, type LLMResponse } from "@/lib/llm";
+import { useState, useCallback } from 'react'
+import { useMutation, type UseMutationOptions } from '@tanstack/react-query'
+import type { z } from 'zod'
+import { llm, type LLMProgress, type LLMResponse } from '@/lib/llm'
 
 /** Request options for LLM call (without schema) */
 interface LLMCallRequest {
-  prompt: string;
-  images?: string[];
-  provider?: string;
-  model?: string;
-  maxRetries?: number;
+  prompt: string
+  images?: string[]
+  provider?: string
+  model?: string
+  maxRetries?: number
 }
 
 /** Request options for vision call (requires images) */
 interface LLMVisionRequest extends LLMCallRequest {
-  images: string[];
+  images: string[]
 }
 
 /**
@@ -57,32 +57,29 @@ interface LLMVisionRequest extends LLMCallRequest {
  */
 export function useLLMCall<T extends z.ZodType>(
   schema: T,
-  options?: Omit<
-    UseMutationOptions<LLMResponse<z.infer<T>>, Error, LLMCallRequest>,
-    "mutationFn"
-  >,
+  options?: Omit<UseMutationOptions<LLMResponse<z.infer<T>>, Error, LLMCallRequest>, 'mutationFn'>
 ) {
-  const [progress, setProgress] = useState<LLMProgress | null>(null);
+  const [progress, setProgress] = useState<LLMProgress | null>(null)
 
   const mutation = useMutation({
     mutationFn: async (request: LLMCallRequest) => {
-      setProgress(null);
+      setProgress(null)
       return llm.call({
         ...request,
         schema,
         onProgress: setProgress,
-      });
+      })
     },
     onSettled: () => {
-      setProgress(null);
+      setProgress(null)
     },
     ...options,
-  });
+  })
 
   return {
     ...mutation,
     progress,
-  };
+  }
 }
 
 /**
@@ -103,32 +100,29 @@ export function useLLMCall<T extends z.ZodType>(
  */
 export function useLLMVision<T extends z.ZodType>(
   schema: T,
-  options?: Omit<
-    UseMutationOptions<LLMResponse<z.infer<T>>, Error, LLMVisionRequest>,
-    "mutationFn"
-  >,
+  options?: Omit<UseMutationOptions<LLMResponse<z.infer<T>>, Error, LLMVisionRequest>, 'mutationFn'>
 ) {
-  const [progress, setProgress] = useState<LLMProgress | null>(null);
+  const [progress, setProgress] = useState<LLMProgress | null>(null)
 
   const mutation = useMutation({
     mutationFn: async (request: LLMVisionRequest) => {
-      setProgress(null);
+      setProgress(null)
       return llm.vision({
         ...request,
         schema,
         onProgress: setProgress,
-      });
+      })
     },
     onSettled: () => {
-      setProgress(null);
+      setProgress(null)
     },
     ...options,
-  });
+  })
 
   return {
     ...mutation,
     progress,
-  };
+  }
 }
 
 /**
@@ -144,21 +138,15 @@ export function useLLMVision<T extends z.ZodType>(
  * ```
  */
 export function useLLMStatus() {
-  const getProviders = useCallback(() => llm.getProviders(), []);
-  const isProviderAvailable = useCallback(
-    (name: string) => llm.isProviderAvailable(name),
-    [],
-  );
-  const getDefaultProvider = useCallback(() => llm.getDefaultProvider(), []);
-  const getDefaultModel = useCallback(
-    (provider?: string) => llm.getDefaultModel(provider),
-    [],
-  );
+  const getProviders = useCallback(() => llm.getProviders(), [])
+  const isProviderAvailable = useCallback((name: string) => llm.isProviderAvailable(name), [])
+  const getDefaultProvider = useCallback(() => llm.getDefaultProvider(), [])
+  const getDefaultModel = useCallback((provider?: string) => llm.getDefaultModel(provider), [])
 
   return {
     providers: getProviders(),
     isProviderAvailable,
     defaultProvider: getDefaultProvider(),
     getDefaultModel,
-  };
+  }
 }

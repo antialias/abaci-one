@@ -1,84 +1,66 @@
-"use client";
+'use client'
 
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-import type { WorksheetFormState } from "@/app/create/worksheets/types";
-import { validateProblemSpace } from "@/app/create/worksheets/utils/validateProblemSpace";
-import { useTheme } from "@/contexts/ThemeContext";
+import { createContext, type ReactNode, useContext, useEffect, useState } from 'react'
+import type { WorksheetFormState } from '@/app/create/worksheets/types'
+import { validateProblemSpace } from '@/app/create/worksheets/utils/validateProblemSpace'
+import { useTheme } from '@/contexts/ThemeContext'
 
 interface WorksheetPreviewContextValue {
   // Theme
-  isDark: boolean;
+  isDark: boolean
 
   // Warnings
-  warnings: string[];
-  isDismissed: boolean;
-  setIsDismissed: (dismissed: boolean) => void;
+  warnings: string[]
+  isDismissed: boolean
+  setIsDismissed: (dismissed: boolean) => void
 
   // Form state
-  formState: WorksheetFormState;
+  formState: WorksheetFormState
 }
 
-const WorksheetPreviewContext =
-  createContext<WorksheetPreviewContextValue | null>(null);
+const WorksheetPreviewContext = createContext<WorksheetPreviewContextValue | null>(null)
 
 export function useWorksheetPreview() {
-  const context = useContext(WorksheetPreviewContext);
+  const context = useContext(WorksheetPreviewContext)
   if (!context) {
-    throw new Error(
-      "useWorksheetPreview must be used within WorksheetPreviewProvider",
-    );
+    throw new Error('useWorksheetPreview must be used within WorksheetPreviewProvider')
   }
-  return context;
+  return context
 }
 
 interface WorksheetPreviewProviderProps {
-  formState: WorksheetFormState;
-  children: ReactNode;
+  formState: WorksheetFormState
+  children: ReactNode
 }
 
-export function WorksheetPreviewProvider({
-  formState,
-  children,
-}: WorksheetPreviewProviderProps) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-  const [isDismissed, setIsDismissed] = useState(false);
-  const [warnings, setWarnings] = useState<string[]>([]);
+export function WorksheetPreviewProvider({ formState, children }: WorksheetPreviewProviderProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const [isDismissed, setIsDismissed] = useState(false)
+  const [warnings, setWarnings] = useState<string[]>([])
 
   // Validate problem space whenever relevant config changes
   useEffect(() => {
-    const problemsPerPage = formState.problemsPerPage ?? 20;
-    const pages = formState.pages ?? 1;
-    const operator = formState.operator ?? "addition";
-    const mode = formState.mode ?? "custom";
+    const problemsPerPage = formState.problemsPerPage ?? 20
+    const pages = formState.pages ?? 1
+    const operator = formState.operator ?? 'addition'
+    const mode = formState.mode ?? 'custom'
 
     // Reset dismissed state when config changes
-    setIsDismissed(false);
+    setIsDismissed(false)
 
     // Skip validation for mastery+mixed mode - too complex with separate skill configs
-    if (mode === "mastery" && operator === "mixed") {
-      setWarnings([]);
-      return;
+    if (mode === 'mastery' && operator === 'mixed') {
+      setWarnings([])
+      return
     }
 
-    const digitRange = formState.digitRange ?? { min: 2, max: 2 };
-    const pAnyStart = formState.pAnyStart ?? 0;
+    const digitRange = formState.digitRange ?? { min: 2, max: 2 }
+    const pAnyStart = formState.pAnyStart ?? 0
 
-    const validation = validateProblemSpace(
-      problemsPerPage,
-      pages,
-      digitRange,
-      pAnyStart,
-      operator,
-    );
+    const validation = validateProblemSpace(problemsPerPage, pages, digitRange, pAnyStart, operator)
 
-    setWarnings(validation.warnings);
+    setWarnings(validation.warnings)
   }, [
     formState.problemsPerPage,
     formState.pages,
@@ -86,7 +68,7 @@ export function WorksheetPreviewProvider({
     formState.pAnyStart,
     formState.operator,
     formState.mode,
-  ]);
+  ])
 
   const value: WorksheetPreviewContextValue = {
     isDark,
@@ -94,11 +76,9 @@ export function WorksheetPreviewProvider({
     isDismissed,
     setIsDismissed,
     formState,
-  };
+  }
 
   return (
-    <WorksheetPreviewContext.Provider value={value}>
-      {children}
-    </WorksheetPreviewContext.Provider>
-  );
+    <WorksheetPreviewContext.Provider value={value}>{children}</WorksheetPreviewContext.Provider>
+  )
 }

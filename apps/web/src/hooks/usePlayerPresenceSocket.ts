@@ -1,14 +1,14 @@
-"use client";
+'use client'
 
-import { useEffect, useRef, useState } from "react";
-import { io, type Socket } from "socket.io-client";
-import { useQueryClient } from "@tanstack/react-query";
-import { invalidateForEvent } from "@/lib/classroom/query-invalidations";
+import { useEffect, useRef, useState } from 'react'
+import { io, type Socket } from 'socket.io-client'
+import { useQueryClient } from '@tanstack/react-query'
+import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
 import type {
   EnrollmentApprovedEvent,
   PresenceRemovedEvent,
   StudentUnenrolledEvent,
-} from "@/lib/classroom/socket-events";
+} from '@/lib/classroom/socket-events'
 
 /**
  * Hook for real-time player presence updates via WebSocket
@@ -21,76 +21,70 @@ import type {
  * @returns Whether the socket is connected
  */
 export function usePlayerPresenceSocket(playerId: string | undefined): {
-  connected: boolean;
+  connected: boolean
 } {
-  const [connected, setConnected] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
-  const queryClient = useQueryClient();
+  const [connected, setConnected] = useState(false)
+  const socketRef = useRef<Socket | null>(null)
+  const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (!playerId) return;
+    if (!playerId) return
 
     // Create socket connection
     const socket = io({
-      path: "/api/socket",
+      path: '/api/socket',
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
-    });
-    socketRef.current = socket;
+    })
+    socketRef.current = socket
 
-    socket.on("connect", () => {
-      console.log("[PlayerPresenceSocket] Connected");
-      setConnected(true);
+    socket.on('connect', () => {
+      console.log('[PlayerPresenceSocket] Connected')
+      setConnected(true)
       // Join the player channel
-      socket.emit("join-player", { playerId });
-    });
+      socket.emit('join-player', { playerId })
+    })
 
-    socket.on("disconnect", () => {
-      console.log("[PlayerPresenceSocket] Disconnected");
-      setConnected(false);
-    });
+    socket.on('disconnect', () => {
+      console.log('[PlayerPresenceSocket] Disconnected')
+      setConnected(false)
+    })
 
     // Listen for presence removed event (when teacher or parent removes student from classroom)
-    socket.on("presence-removed", (data: PresenceRemovedEvent) => {
-      console.log("[PlayerPresenceSocket] Presence removed:", data);
+    socket.on('presence-removed', (data: PresenceRemovedEvent) => {
+      console.log('[PlayerPresenceSocket] Presence removed:', data)
       // Invalidate the student's presence query to refetch
       queryClient.invalidateQueries({
-        queryKey: ["players", playerId, "presence"],
-      });
-    });
+        queryKey: ['players', playerId, 'presence'],
+      })
+    })
 
     // Listen for student unenrolled event (student removed from classroom entirely)
-    socket.on("student-unenrolled", (data: StudentUnenrolledEvent) => {
-      console.log(
-        "[PlayerPresenceSocket] Student unenrolled from:",
-        data.classroomName,
-      );
-      invalidateForEvent(queryClient, "studentUnenrolled", {
+    socket.on('student-unenrolled', (data: StudentUnenrolledEvent) => {
+      console.log('[PlayerPresenceSocket] Student unenrolled from:', data.classroomName)
+      invalidateForEvent(queryClient, 'studentUnenrolled', {
         classroomId: data.classroomId,
         playerId,
-      });
-    });
+      })
+    })
 
     // Listen for enrollment completed event (student now enrolled in classroom)
-    socket.on("enrollment-approved", (data: EnrollmentApprovedEvent) => {
-      console.log(
-        "[PlayerPresenceSocket] Enrolled in classroom:",
-        data.classroomName,
-      );
-      invalidateForEvent(queryClient, "enrollmentCompleted", {
+    socket.on('enrollment-approved', (data: EnrollmentApprovedEvent) => {
+      console.log('[PlayerPresenceSocket] Enrolled in classroom:', data.classroomName)
+      invalidateForEvent(queryClient, 'enrollmentCompleted', {
         classroomId: data.classroomId,
         playerId,
-      });
-    });
+      })
+    })
 
     // Cleanup on unmount
     return () => {
-      socket.emit("leave-player", { playerId });
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [playerId, queryClient]);
+      socket.emit('leave-player', { playerId })
+      socket.disconnect()
+      socketRef.current = null
+    }
+  }, [playerId, queryClient])
 
-  return { connected };
+  return { connected }
 }

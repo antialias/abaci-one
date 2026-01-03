@@ -1,21 +1,18 @@
-"use client";
+'use client'
 
-import { animated, to, useSpring } from "@react-spring/web";
-import { useEffect, useState } from "react";
-import { useAbacusSettings } from "@/hooks/useAbacusSettings";
-import { useCaptureContext } from "../../contexts/CaptureContext";
-import {
-  getRelationColor,
-  getRelationOperator,
-} from "../../constants/captureRelations";
-import { getEffectiveValue } from "../../utils/pieceSetup";
-import { getSquarePosition } from "../../utils/boardCoordinates";
-import { PieceRenderer } from "../PieceRenderer";
+import { animated, to, useSpring } from '@react-spring/web'
+import { useEffect, useState } from 'react'
+import { useAbacusSettings } from '@/hooks/useAbacusSettings'
+import { useCaptureContext } from '../../contexts/CaptureContext'
+import { getRelationColor, getRelationOperator } from '../../constants/captureRelations'
+import { getEffectiveValue } from '../../utils/pieceSetup'
+import { getSquarePosition } from '../../utils/boardCoordinates'
+import { PieceRenderer } from '../PieceRenderer'
 
 interface NumberBondVisualizationProps {
-  onConfirm: () => void;
-  moverStartPos: { x: number; y: number };
-  helperStartPos: { x: number; y: number };
+  onConfirm: () => void
+  moverStartPos: { x: number; y: number }
+  helperStartPos: { x: number; y: number }
 }
 
 /**
@@ -28,40 +25,36 @@ export function NumberBondVisualization({
   moverStartPos,
   helperStartPos,
 }: NumberBondVisualizationProps) {
-  const { layout, pieces, selectedRelation, closing } = useCaptureContext();
-  const { targetPos, cellSize, padding, gap } = layout;
-  const {
-    mover: moverPiece,
-    target: targetPiece,
-    helper: helperPiece,
-  } = pieces;
-  const relation = selectedRelation!;
+  const { layout, pieces, selectedRelation, closing } = useCaptureContext()
+  const { targetPos, cellSize, padding, gap } = layout
+  const { mover: moverPiece, target: targetPiece, helper: helperPiece } = pieces
+  const relation = selectedRelation!
 
   // Get abacus settings
-  const { data: abacusSettings } = useAbacusSettings();
-  const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false;
+  const { data: abacusSettings } = useAbacusSettings()
+  const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
 
-  const autoAnimate = true;
-  const [animating, setAnimating] = useState(false);
+  const autoAnimate = true
+  const [animating, setAnimating] = useState(false)
 
   // Auto-trigger animation immediately when component mounts (after helper selection)
   useEffect(() => {
-    if (!autoAnimate) return;
+    if (!autoAnimate) return
     const timer = setTimeout(() => {
-      setAnimating(true);
-    }, 300); // Short delay to show the triangle briefly
-    return () => clearTimeout(timer);
-  }, [autoAnimate]);
+      setAnimating(true)
+    }, 300) // Short delay to show the triangle briefly
+    return () => clearTimeout(timer)
+  }, [autoAnimate])
 
-  const color = getRelationColor(relation);
-  const operator = getRelationOperator(relation);
+  const color = getRelationColor(relation)
+  const operator = getRelationOperator(relation)
 
   // Calculate actual board position for target
   const targetBoardPos = getSquarePosition(targetPiece.square, {
     cellSize,
     gap,
     padding,
-  });
+  })
 
   // Animation: Rotate and collapse from actual positions to target
   const captureAnimation = useSpring({
@@ -72,30 +65,26 @@ export function NumberBondVisualization({
     config: animating ? { duration: 2500 } : { tension: 280, friction: 20 },
     onRest: () => {
       if (animating) {
-        onConfirm();
+        onConfirm()
       }
     },
-  });
+  })
 
   // Type guard - this component should only be rendered when helper is selected
   // Must be after all hooks to follow Rules of Hooks
   if (!helperPiece) {
-    return null;
+    return null
   }
 
   // Get piece values
-  const getMoverValue = () => getEffectiveValue(moverPiece);
-  const getHelperValue = () => getEffectiveValue(helperPiece);
-  const getTargetValue = () => getEffectiveValue(targetPiece);
+  const getMoverValue = () => getEffectiveValue(moverPiece)
+  const getHelperValue = () => getEffectiveValue(helperPiece)
+  const getTargetValue = () => getEffectiveValue(targetPiece)
 
   return (
     <g>
       {/* Triangle connecting lines between actual piece positions - fade during animation */}
-      <animated.g
-        opacity={to([captureAnimation.opacity], (op) =>
-          animating ? op * 0.5 : 0.5,
-        )}
-      >
+      <animated.g opacity={to([captureAnimation.opacity], (op) => (animating ? op * 0.5 : 0.5))}>
         <line
           x1={moverStartPos.x}
           y1={moverStartPos.y}
@@ -132,32 +121,25 @@ export function NumberBondVisualization({
         fontSize={cellSize * 0.8}
         fontWeight="900"
         fontFamily="Georgia, 'Times New Roman', serif"
-        opacity={to([captureAnimation.opacity], (op) =>
-          animating ? op * 0.9 : 0.9,
-        )}
+        opacity={to([captureAnimation.opacity], (op) => (animating ? op * 0.9 : 0.9))}
       >
         {operator}
       </animated.text>
 
       {/* Mover piece - starts at board position, spirals to target, STAYS VISIBLE */}
       <animated.g
-        transform={to(
-          [captureAnimation.rotation, captureAnimation.progress],
-          (rot, prog) => {
-            // Interpolate from start position to target position
-            const x =
-              moverStartPos.x + (targetBoardPos.x - moverStartPos.x) * prog;
-            const y =
-              moverStartPos.y + (targetBoardPos.y - moverStartPos.y) * prog;
+        transform={to([captureAnimation.rotation, captureAnimation.progress], (rot, prog) => {
+          // Interpolate from start position to target position
+          const x = moverStartPos.x + (targetBoardPos.x - moverStartPos.x) * prog
+          const y = moverStartPos.y + (targetBoardPos.y - moverStartPos.y) * prog
 
-            // Add spiral rotation around the interpolated center
-            const spiralRadius = (1 - prog) * cellSize * 0.5;
-            const spiralX = x + Math.cos(rot) * spiralRadius;
-            const spiralY = y + Math.sin(rot) * spiralRadius;
+          // Add spiral rotation around the interpolated center
+          const spiralRadius = (1 - prog) * cellSize * 0.5
+          const spiralX = x + Math.cos(rot) * spiralRadius
+          const spiralY = y + Math.sin(rot) * spiralRadius
 
-            return `translate(${spiralX}, ${spiralY})`;
-          },
-        )}
+          return `translate(${spiralX}, ${spiralY})`
+        })}
         opacity={1} // Mover stays fully visible
       >
         <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
@@ -173,22 +155,17 @@ export function NumberBondVisualization({
 
       {/* Helper piece - starts in ring, spirals to target, FADES OUT */}
       <animated.g
-        transform={to(
-          [captureAnimation.rotation, captureAnimation.progress],
-          (rot, prog) => {
-            const x =
-              helperStartPos.x + (targetBoardPos.x - helperStartPos.x) * prog;
-            const y =
-              helperStartPos.y + (targetBoardPos.y - helperStartPos.y) * prog;
+        transform={to([captureAnimation.rotation, captureAnimation.progress], (rot, prog) => {
+          const x = helperStartPos.x + (targetBoardPos.x - helperStartPos.x) * prog
+          const y = helperStartPos.y + (targetBoardPos.y - helperStartPos.y) * prog
 
-            const spiralRadius = (1 - prog) * cellSize * 0.5;
-            const angle = rot + (Math.PI * 2) / 3; // Offset by 120°
-            const spiralX = x + Math.cos(angle) * spiralRadius;
-            const spiralY = y + Math.sin(angle) * spiralRadius;
+          const spiralRadius = (1 - prog) * cellSize * 0.5
+          const angle = rot + (Math.PI * 2) / 3 // Offset by 120°
+          const spiralX = x + Math.cos(angle) * spiralRadius
+          const spiralY = y + Math.sin(angle) * spiralRadius
 
-            return `translate(${spiralX}, ${spiralY})`;
-          },
-        )}
+          return `translate(${spiralX}, ${spiralY})`
+        })}
         opacity={to([captureAnimation.opacity], (op) => (animating ? op : 1))}
       >
         <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
@@ -204,20 +181,17 @@ export function NumberBondVisualization({
 
       {/* Target piece - stays at board position, spirals in place, FADES OUT */}
       <animated.g
-        transform={to(
-          [captureAnimation.rotation, captureAnimation.progress],
-          (rot, prog) => {
-            const x = targetBoardPos.x;
-            const y = targetBoardPos.y;
+        transform={to([captureAnimation.rotation, captureAnimation.progress], (rot, prog) => {
+          const x = targetBoardPos.x
+          const y = targetBoardPos.y
 
-            const spiralRadius = (1 - prog) * cellSize * 0.5;
-            const angle = rot + (Math.PI * 4) / 3; // Offset by 240°
-            const spiralX = x + Math.cos(angle) * spiralRadius;
-            const spiralY = y + Math.sin(angle) * spiralRadius;
+          const spiralRadius = (1 - prog) * cellSize * 0.5
+          const angle = rot + (Math.PI * 4) / 3 // Offset by 240°
+          const spiralX = x + Math.cos(angle) * spiralRadius
+          const spiralY = y + Math.sin(angle) * spiralRadius
 
-            return `translate(${spiralX}, ${spiralY})`;
-          },
-        )}
+          return `translate(${spiralX}, ${spiralY})`
+        })}
         opacity={to([captureAnimation.opacity], (op) => (animating ? op : 1))}
       >
         <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
@@ -231,5 +205,5 @@ export function NumberBondVisualization({
         </g>
       </animated.g>
     </g>
-  );
+  )
 }

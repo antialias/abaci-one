@@ -1,15 +1,15 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { players } from "@/db/schema";
-import type { SessionPlan, SlotResult } from "@/db/schema/session-plans";
-import { canPerformAction, getStudentPresence } from "@/lib/classroom";
+import { type NextRequest, NextResponse } from 'next/server'
+import { eq } from 'drizzle-orm'
+import { db } from '@/db'
+import { players } from '@/db/schema'
+import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import { canPerformAction, getStudentPresence } from '@/lib/classroom'
 import {
   emitSessionEnded,
   emitSessionEndedToPlayer,
   emitSessionStarted,
   emitSessionStartedToPlayer,
-} from "@/lib/classroom/socket-emitter";
+} from '@/lib/classroom/socket-emitter'
 import {
   abandonSessionPlan,
   approveSessionPlan,
@@ -17,11 +17,11 @@ import {
   getSessionPlan,
   recordSlotResult,
   startSessionPlan,
-} from "@/lib/curriculum";
-import { getDbUserId } from "@/lib/viewer";
+} from '@/lib/curriculum'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
-  params: Promise<{ playerId: string; planId: string }>;
+  params: Promise<{ playerId: string; planId: string }>
 }
 
 /**
@@ -31,23 +31,11 @@ interface RouteParams {
 function serializePlan(plan: SessionPlan) {
   return {
     ...plan,
-    createdAt:
-      plan.createdAt instanceof Date
-        ? plan.createdAt.getTime()
-        : plan.createdAt,
-    approvedAt:
-      plan.approvedAt instanceof Date
-        ? plan.approvedAt.getTime()
-        : plan.approvedAt,
-    startedAt:
-      plan.startedAt instanceof Date
-        ? plan.startedAt.getTime()
-        : plan.startedAt,
-    completedAt:
-      plan.completedAt instanceof Date
-        ? plan.completedAt.getTime()
-        : plan.completedAt,
-  };
+    createdAt: plan.createdAt instanceof Date ? plan.createdAt.getTime() : plan.createdAt,
+    approvedAt: plan.approvedAt instanceof Date ? plan.approvedAt.getTime() : plan.approvedAt,
+    startedAt: plan.startedAt instanceof Date ? plan.startedAt.getTime() : plan.startedAt,
+    completedAt: plan.completedAt instanceof Date ? plan.completedAt.getTime() : plan.completedAt,
+  }
 }
 
 /**
@@ -55,20 +43,17 @@ function serializePlan(plan: SessionPlan) {
  * Get a specific session plan
  */
 export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const { planId } = await params;
+  const { planId } = await params
 
   try {
-    const plan = await getSessionPlan(planId);
+    const plan = await getSessionPlan(planId)
     if (!plan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
-    return NextResponse.json({ plan: serializePlan(plan) });
+    return NextResponse.json({ plan: serializePlan(plan) })
   } catch (error) {
-    console.error("Error fetching plan:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch plan" },
-      { status: 500 },
-    );
+    console.error('Error fetching plan:', error)
+    return NextResponse.json({ error: 'Failed to fetch plan' }, { status: 500 })
   }
 }
 
@@ -82,74 +67,67 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
  * - reason?: string (for 'end_early' action)
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  const { playerId, planId } = await params;
+  const { playerId, planId } = await params
 
   try {
     // Authorization: require 'start-session' permission (parent or teacher-present)
-    const userId = await getDbUserId();
-    const canModify = await canPerformAction(userId, playerId, "start-session");
+    const userId = await getDbUserId()
+    const canModify = await canPerformAction(userId, playerId, 'start-session')
     if (!canModify) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const body = await request.json();
-    const { action, result, reason } = body;
+    const body = await request.json()
+    const { action, result, reason } = body
 
-    let plan;
+    let plan
 
     switch (action) {
-      case "approve":
-        plan = await approveSessionPlan(planId);
-        break;
+      case 'approve':
+        plan = await approveSessionPlan(planId)
+        break
 
-      case "start":
-        plan = await startSessionPlan(planId);
+      case 'start':
+        plan = await startSessionPlan(planId)
         // Emit session events to player channel (parents) and classroom channel (if present)
-        await emitSessionEvents(playerId, planId, "start");
-        break;
+        await emitSessionEvents(playerId, planId, 'start')
+        break
 
-      case "record":
+      case 'record':
         if (!result) {
           return NextResponse.json(
-            { error: "result is required for record action" },
-            { status: 400 },
-          );
+            { error: 'result is required for record action' },
+            { status: 400 }
+          )
         }
-        plan = await recordSlotResult(
-          planId,
-          result as Omit<SlotResult, "timestamp">,
-        );
-        break;
+        plan = await recordSlotResult(planId, result as Omit<SlotResult, 'timestamp'>)
+        break
 
-      case "end_early":
-        plan = await completeSessionPlanEarly(planId, reason);
+      case 'end_early':
+        plan = await completeSessionPlanEarly(planId, reason)
         // Emit session events to player channel (parents) and classroom channel (if present)
-        await emitSessionEvents(playerId, planId, "end_early");
-        break;
+        await emitSessionEvents(playerId, planId, 'end_early')
+        break
 
-      case "abandon":
-        plan = await abandonSessionPlan(planId);
+      case 'abandon':
+        plan = await abandonSessionPlan(planId)
         // Emit session events to player channel (parents) and classroom channel (if present)
-        await emitSessionEvents(playerId, planId, "abandon");
-        break;
+        await emitSessionEvents(playerId, planId, 'abandon')
+        break
 
       default:
         return NextResponse.json(
           {
-            error:
-              "Invalid action. Must be: approve, start, record, end_early, or abandon",
+            error: 'Invalid action. Must be: approve, start, record, end_early, or abandon',
           },
-          { status: 400 },
-        );
+          { status: 400 }
+        )
     }
 
-    return NextResponse.json({ plan: serializePlan(plan) });
+    return NextResponse.json({ plan: serializePlan(plan) })
   } catch (error) {
-    console.error("Error updating plan:", error);
-    return NextResponse.json(
-      { error: "Failed to update plan" },
-      { status: 500 },
-    );
+    console.error('Error updating plan:', error)
+    return NextResponse.json({ error: 'Failed to update plan' }, { status: 500 })
   }
 }
 
@@ -161,47 +139,41 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 async function emitSessionEvents(
   playerId: string,
   sessionId: string,
-  action: "start" | "end_early" | "abandon",
+  action: 'start' | 'end_early' | 'abandon'
 ): Promise<void> {
   try {
     // Get player name
     const player = await db.query.players.findFirst({
       where: eq(players.id, playerId),
-    });
-    const playerName = player?.name ?? "Unknown";
+    })
+    const playerName = player?.name ?? 'Unknown'
 
     // Always emit to player channel (for parents)
-    if (action === "start") {
-      await emitSessionStartedToPlayer({ sessionId, playerId, playerName });
+    if (action === 'start') {
+      await emitSessionStartedToPlayer({ sessionId, playerId, playerName })
     } else {
-      const reason = action === "end_early" ? "ended_early" : "abandoned";
+      const reason = action === 'end_early' ? 'ended_early' : 'abandoned'
       await emitSessionEndedToPlayer({
         sessionId,
         playerId,
         playerName,
         reason,
-      });
+      })
     }
 
     // Also emit to classroom channel if student is present
-    const presence = await getStudentPresence(playerId);
+    const presence = await getStudentPresence(playerId)
     if (presence) {
-      const classroomId = presence.classroomId;
-      if (action === "start") {
-        await emitSessionStarted(
-          { sessionId, playerId, playerName },
-          classroomId,
-        );
+      const classroomId = presence.classroomId
+      if (action === 'start') {
+        await emitSessionStarted({ sessionId, playerId, playerName }, classroomId)
       } else {
-        const reason = action === "end_early" ? "ended_early" : "abandoned";
-        await emitSessionEnded(
-          { sessionId, playerId, playerName, reason },
-          classroomId,
-        );
+        const reason = action === 'end_early' ? 'ended_early' : 'abandoned'
+        await emitSessionEnded({ sessionId, playerId, playerName, reason }, classroomId)
       }
     }
   } catch (error) {
     // Don't fail the request if socket emission fails
-    console.error("[SessionPlan] Failed to emit session event:", error);
+    console.error('[SessionPlan] Failed to emit session event:', error)
   }
 }

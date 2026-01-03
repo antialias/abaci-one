@@ -1,9 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { getStudentPresence, canPerformAction } from "@/lib/classroom";
-import { getDbUserId } from "@/lib/viewer";
+import { type NextRequest, NextResponse } from 'next/server'
+import { getStudentPresence, canPerformAction } from '@/lib/classroom'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>
 }
 
 /**
@@ -14,23 +14,20 @@ interface RouteParams {
  */
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    const { id: playerId } = await params;
-    const userId = await getDbUserId();
+    const { id: playerId } = await params
+    const userId = await getDbUserId()
 
     // Check authorization: must have at least view access
-    const canView = await canPerformAction(userId, playerId, "view");
+    const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const presence = await getStudentPresence(playerId);
+    const presence = await getStudentPresence(playerId)
 
-    return NextResponse.json({ presence });
+    return NextResponse.json({ presence })
   } catch (error) {
-    console.error("Failed to fetch student presence:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch student presence" },
-      { status: 500 },
-    );
+    console.error('Failed to fetch student presence:', error)
+    return NextResponse.json({ error: 'Failed to fetch student presence' }, { status: 500 })
   }
 }

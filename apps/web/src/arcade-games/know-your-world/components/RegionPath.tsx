@@ -14,13 +14,13 @@
  * from RegionRenderContext to reduce prop drilling.
  */
 
-"use client";
+'use client'
 
-import { memo } from "react";
+import { memo } from 'react'
 
-import { getRegionColor, getRegionStroke } from "../mapColors";
-import type { MapRegion } from "../types";
-import { useRegionRenderState } from "./RegionRenderContext";
+import { getRegionColor, getRegionStroke } from '../mapColors'
+import type { MapRegion } from '../types'
+import { useRegionRenderState } from './RegionRenderContext'
 
 // ============================================================================
 // Types
@@ -28,39 +28,39 @@ import { useRegionRenderState } from "./RegionRenderContext";
 
 export interface RegionPathProps {
   /** The region data to render */
-  region: MapRegion;
+  region: MapRegion
 
   // -------------------------------------------------------------------------
   // Per-Region State (varies for each region)
   // -------------------------------------------------------------------------
   /** Whether this region is excluded from the game (greyed out) */
-  isExcluded: boolean;
+  isExcluded: boolean
   /** Whether this region has been found by any player */
-  isFound: boolean;
+  isFound: boolean
   /** Player ID who found this region (for pattern fill) */
-  playerId: string | null;
+  playerId: string | null
   /** Whether this region is currently being revealed (give-up animation) */
-  isBeingRevealed: boolean;
+  isBeingRevealed: boolean
   /** Whether this region is currently being hinted */
-  isBeingHinted: boolean;
+  isBeingHinted: boolean
   /** Whether this region is currently celebrating */
-  isCelebrating: boolean;
+  isCelebrating: boolean
   /** Whether this region is hovered by local cursor */
-  isHovered: boolean;
+  isHovered: boolean
   /** Network hover info if another player is hovering this region */
-  networkHover?: { color: string } | null;
+  networkHover?: { color: string } | null
   /** Whether to show the region outline (based on showOutline function result) */
-  showOutline: boolean;
+  showOutline: boolean
 
   // -------------------------------------------------------------------------
   // Callbacks
   // -------------------------------------------------------------------------
   /** Called when mouse enters region (native hover) */
-  onMouseEnter: () => void;
+  onMouseEnter: () => void
   /** Called when mouse leaves region */
-  onMouseLeave: () => void;
+  onMouseLeave: () => void
   /** Called when region is clicked */
-  onClick: () => void;
+  onClick: () => void
 }
 
 // ============================================================================
@@ -115,7 +115,7 @@ export const RegionPath = memo(function RegionPath({
     celebrationFlashProgress,
     isGiveUpAnimating,
     celebrationActive,
-  } = useRegionRenderState();
+  } = useRegionRenderState()
 
   // -------------------------------------------------------------------------
   // Calculate Fill Color
@@ -126,11 +126,11 @@ export const RegionPath = memo(function RegionPath({
       ? `rgba(255, 200, 0, ${0.6 + giveUpFlashProgress * 0.4})` // Brighter gold, higher base opacity
       : isExcluded
         ? isDark
-          ? "#374151" // gray-700
-          : "#d1d5db" // gray-300
+          ? '#374151' // gray-700
+          : '#d1d5db' // gray-300
         : isFound && playerId
           ? `url(#player-pattern-${playerId})`
-          : getRegionColor(region.id, isFound, isHovered, isDark);
+          : getRegionColor(region.id, isFound, isHovered, isDark)
 
   // -------------------------------------------------------------------------
   // Calculate Stroke
@@ -139,20 +139,14 @@ export const RegionPath = memo(function RegionPath({
     ? `rgba(255, 180, 0, ${0.8 + celebrationFlashProgress * 0.2})` // Gold stroke for celebration
     : isBeingRevealed
       ? `rgba(255, 140, 0, ${0.8 + giveUpFlashProgress * 0.2})` // Orange stroke for contrast
-      : getRegionStroke(isFound, isDark);
+      : getRegionStroke(isFound, isDark)
 
-  const strokeWidth = isCelebrating
-    ? 4
-    : isBeingRevealed
-      ? 3
-      : isFound
-        ? 1
-        : 1.5;
+  const strokeWidth = isCelebrating ? 4 : isBeingRevealed ? 3 : isFound ? 1 : 1.5
 
   // -------------------------------------------------------------------------
   // Calculate Opacity (dim during give-up animation)
   // -------------------------------------------------------------------------
-  const dimmedOpacity = isGiveUpAnimating && !isBeingRevealed ? 0.25 : 1;
+  const dimmedOpacity = isGiveUpAnimating && !isBeingRevealed ? 0.25 : 1
 
   // -------------------------------------------------------------------------
   // Render
@@ -168,7 +162,7 @@ export const RegionPath = memo(function RegionPath({
           strokeWidth={6}
           vectorEffect="non-scaling-stroke"
           opacity={0.5}
-          style={{ filter: "blur(3px)" }}
+          style={{ filter: 'blur(3px)' }}
           pointerEvents="none"
         />
       )}
@@ -181,7 +175,7 @@ export const RegionPath = memo(function RegionPath({
           stroke={`rgba(255, 215, 0, ${0.3 + giveUpFlashProgress * 0.5})`}
           strokeWidth={8}
           vectorEffect="non-scaling-stroke"
-          style={{ filter: "blur(4px)" }}
+          style={{ filter: 'blur(4px)' }}
         />
       )}
 
@@ -193,7 +187,7 @@ export const RegionPath = memo(function RegionPath({
           stroke={`rgba(0, 200, 255, ${0.4 + hintFlashProgress * 0.6})`}
           strokeWidth={6}
           vectorEffect="non-scaling-stroke"
-          style={{ filter: "blur(3px)" }}
+          style={{ filter: 'blur(3px)' }}
           pointerEvents="none"
         />
       )}
@@ -206,7 +200,7 @@ export const RegionPath = memo(function RegionPath({
           stroke={`rgba(255, 215, 0, ${0.4 + celebrationFlashProgress * 0.6})`}
           strokeWidth={10}
           vectorEffect="non-scaling-stroke"
-          style={{ filter: "blur(6px)" }}
+          style={{ filter: 'blur(6px)' }}
           pointerEvents="none"
         />
       )}
@@ -238,13 +232,9 @@ export const RegionPath = memo(function RegionPath({
         onMouseLeave={!pointerLocked ? onMouseLeave : undefined}
         onClick={!isExcluded && !celebrationActive ? onClick : undefined}
         style={{
-          cursor: hasAnyFinePointer
-            ? "none"
-            : isExcluded
-              ? "default"
-              : "pointer",
-          transition: "all 0.2s ease",
-          pointerEvents: isExcluded ? "none" : "all",
+          cursor: hasAnyFinePointer ? 'none' : isExcluded ? 'default' : 'pointer',
+          transition: 'all 0.2s ease',
+          pointerEvents: isExcluded ? 'none' : 'all',
         }}
       />
 
@@ -258,5 +248,5 @@ export const RegionPath = memo(function RegionPath({
         data-ghost-region={region.id}
       />
     </g>
-  );
-});
+  )
+})

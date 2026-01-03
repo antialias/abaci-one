@@ -1,9 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { getPlayerAccess } from "@/lib/classroom";
-import { getDbUserId } from "@/lib/viewer";
+import { type NextRequest, NextResponse } from 'next/server'
+import { getPlayerAccess } from '@/lib/classroom'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>
 }
 
 /**
@@ -13,13 +13,25 @@ interface RouteParams {
  * Returns: { accessLevel, isParent, isTeacher, isPresent, classroomId? }
  */
 export async function GET(req: NextRequest, { params }: RouteParams) {
+  const routeStart = performance.now()
+
   try {
-    const { id: playerId } = await params;
+    const { id: playerId } = await params
+
     // Use getDbUserId() to get the database user.id, not the guestId
     // This is required because parent_child links to user.id
-    const viewerId = await getDbUserId();
+    let t = performance.now()
+    const viewerId = await getDbUserId()
+    const getDbUserIdTime = performance.now() - t
 
-    const access = await getPlayerAccess(viewerId, playerId);
+    t = performance.now()
+    const access = await getPlayerAccess(viewerId, playerId)
+    const getPlayerAccessTime = performance.now() - t
+
+    const total = performance.now() - routeStart
+    console.log(
+      `[PERF] /api/players/[id]/access: ${total.toFixed(1)}ms | getDbUserId=${getDbUserIdTime.toFixed(1)}ms, getPlayerAccess=${getPlayerAccessTime.toFixed(1)}ms, playerId=${playerId}`
+    )
 
     return NextResponse.json({
       accessLevel: access.accessLevel,
@@ -27,12 +39,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       isTeacher: access.isTeacher,
       isPresent: access.isPresent,
       classroomId: access.classroomId,
-    });
+    })
   } catch (error) {
-    console.error("Failed to check player access:", error);
-    return NextResponse.json(
-      { error: "Failed to check player access" },
-      { status: 500 },
-    );
+    console.error('Failed to check player access:', error)
+    return NextResponse.json({ error: 'Failed to check player access' }, { status: 500 })
   }
 }

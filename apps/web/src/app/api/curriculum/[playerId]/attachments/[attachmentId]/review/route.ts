@@ -6,24 +6,21 @@
  *   - Updates the parsing result with corrections
  */
 
-import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
-import { db } from "@/db";
-import {
-  practiceAttachments,
-  type ParsingStatus,
-} from "@/db/schema/practice-attachments";
-import { canPerformAction } from "@/lib/classroom";
-import { getDbUserId } from "@/lib/viewer";
+import { NextResponse } from 'next/server'
+import { eq } from 'drizzle-orm'
+import { z } from 'zod'
+import { db } from '@/db'
+import { practiceAttachments, type ParsingStatus } from '@/db/schema/practice-attachments'
+import { canPerformAction } from '@/lib/classroom'
+import { getDbUserId } from '@/lib/viewer'
 import {
   applyCorrections,
   computeParsingStats,
   ProblemCorrectionSchema,
-} from "@/lib/worksheet-parsing";
+} from '@/lib/worksheet-parsing'
 
 interface RouteParams {
-  params: Promise<{ playerId: string; attachmentId: string }>;
+  params: Promise<{ playerId: string; attachmentId: string }>
 }
 
 /**
@@ -32,78 +29,69 @@ interface RouteParams {
 const ReviewRequestSchema = z.object({
   corrections: z.array(ProblemCorrectionSchema).min(1),
   markAsReviewed: z.boolean().default(false),
-});
+})
 
 /**
  * PATCH - Submit corrections to parsed problems
  */
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
-    const { playerId, attachmentId } = await params;
+    const { playerId, attachmentId } = await params
 
     if (!playerId || !attachmentId) {
-      return NextResponse.json(
-        { error: "Player ID and Attachment ID required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
     }
 
     // Authorization check
-    const userId = await getDbUserId();
-    const canReview = await canPerformAction(userId, playerId, "start-session");
+    const userId = await getDbUserId()
+    const canReview = await canPerformAction(userId, playerId, 'start-session')
     if (!canReview) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     // Parse request body
-    const body = await request.json();
-    const parseResult = ReviewRequestSchema.safeParse(body);
+    const body = await request.json()
+    const parseResult = ReviewRequestSchema.safeParse(body)
     if (!parseResult.success) {
       return NextResponse.json(
         {
-          error: "Invalid request body",
+          error: 'Invalid request body',
           details: parseResult.error.issues,
         },
-        { status: 400 },
-      );
+        { status: 400 }
+      )
     }
 
-    const { corrections, markAsReviewed } = parseResult.data;
+    const { corrections, markAsReviewed } = parseResult.data
 
     // Get attachment record
     const attachment = await db
       .select()
       .from(practiceAttachments)
       .where(eq(practiceAttachments.id, attachmentId))
-      .get();
+      .get()
 
     if (!attachment) {
-      return NextResponse.json(
-        { error: "Attachment not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
     }
 
     if (attachment.playerId !== playerId) {
-      return NextResponse.json(
-        { error: "Attachment not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
     }
 
     // Check if we have parsing results to correct
     if (!attachment.rawParsingResult) {
       return NextResponse.json(
         {
-          error: "No parsing results to correct. Parse the worksheet first.",
+          error: 'No parsing results to correct. Parse the worksheet first.',
         },
-        { status: 400 },
-      );
+        { status: 400 }
+      )
     }
 
     // Apply corrections to approved result (if exists) or raw result
     // This ensures corrections are cumulative
-    const baseResult = attachment.approvedResult ?? attachment.rawParsingResult;
+    const baseResult = attachment.approvedResult ?? attachment.rawParsingResult
     const correctedResult = applyCorrections(
       baseResult,
       corrections.map((c) => ({
@@ -112,23 +100,23 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         correctedStudentAnswer: c.correctedStudentAnswer ?? undefined,
         shouldExclude: c.shouldExclude,
         shouldRestore: c.shouldRestore,
-      })),
-    );
+      }))
+    )
 
     // Compute new stats
-    const stats = computeParsingStats(correctedResult);
+    const stats = computeParsingStats(correctedResult)
 
     // Determine new status
-    let newStatus: ParsingStatus = attachment.parsingStatus ?? "needs_review";
+    let newStatus: ParsingStatus = attachment.parsingStatus ?? 'needs_review'
     if (markAsReviewed) {
       // If user explicitly marks as reviewed, set to approved
-      newStatus = "approved";
+      newStatus = 'approved'
     } else if (!correctedResult.needsReview) {
       // If all problems now have high confidence, auto-approve
-      newStatus = "approved";
+      newStatus = 'approved'
     } else {
       // Still needs review
-      newStatus = "needs_review";
+      newStatus = 'needs_review'
     }
 
     // Update database - store corrected result as approved result
@@ -140,7 +128,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         confidenceScore: correctedResult.overallConfidence,
         needsReview: correctedResult.needsReview,
       })
-      .where(eq(practiceAttachments.id, attachmentId));
+      .where(eq(practiceAttachments.id, attachmentId))
 
     return NextResponse.json({
       success: true,
@@ -148,12 +136,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       result: correctedResult,
       stats,
       correctionsApplied: corrections.length,
-    });
+    })
   } catch (error) {
-    console.error("Error applying corrections:", error);
-    return NextResponse.json(
-      { error: "Failed to apply corrections" },
-      { status: 500 },
-    );
+    console.error('Error applying corrections:', error)
+    return NextResponse.json({ error: 'Failed to apply corrections' }, { status: 500 })
   }
 }

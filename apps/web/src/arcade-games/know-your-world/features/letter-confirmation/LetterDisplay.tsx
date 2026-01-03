@@ -13,20 +13,20 @@
  * - Spaces: Always full opacity
  */
 
-"use client";
+'use client'
 
-import { memo, useMemo } from "react";
-import type { LetterDisplayProps, LetterStatus } from "./types";
-import { getLetterStatus, getLetterStyles } from "./letterUtils";
+import { memo, useMemo } from 'react'
+import type { LetterDisplayProps, LetterStatus } from './types'
+import { getLetterStatus, getLetterStyles } from './letterUtils'
 
 /**
  * Renders a single letter with appropriate styling based on confirmation status.
  */
 interface StyledLetterProps {
-  char: string;
-  status: LetterStatus | "space";
-  isDark: boolean;
-  index: number;
+  char: string
+  status: LetterStatus | 'space'
+  isDark: boolean
+  index: number
 }
 
 const StyledLetter = memo(function StyledLetter({
@@ -36,22 +36,22 @@ const StyledLetter = memo(function StyledLetter({
   index,
 }: StyledLetterProps) {
   // Spaces are always shown at full opacity
-  if (status === "space") {
+  if (status === 'space') {
     return (
-      <span key={index} style={{ transition: "all 0.15s ease-out" }}>
+      <span key={index} style={{ transition: 'all 0.15s ease-out' }}>
         {char}
       </span>
-    );
+    )
   }
 
-  const styles = getLetterStyles(status, isDark);
+  const styles = getLetterStyles(status, isDark)
 
   return (
     <span key={index} style={styles}>
       {char}
     </span>
-  );
-});
+  )
+})
 
 /**
  * Renders a region name with letter confirmation highlighting.
@@ -84,46 +84,30 @@ export const LetterDisplay = memo(function LetterDisplay({
 }: LetterDisplayProps) {
   // Calculate letter statuses and render elements
   const letterElements = useMemo(() => {
-    let nonSpaceIndex = 0;
+    let nonSpaceIndex = 0
 
-    return regionName.split("").map((char, index) => {
-      const isSpace = char === " ";
+    return regionName.split('').map((char, index) => {
+      const isSpace = char === ' '
 
       if (isSpace) {
-        return (
-          <StyledLetter
-            key={index}
-            char={char}
-            status="space"
-            isDark={isDark}
-            index={index}
-          />
-        );
+        return <StyledLetter key={index} char={char} status="space" isDark={isDark} index={index} />
       }
 
       // Get current index before incrementing
-      const currentNonSpaceIndex = nonSpaceIndex;
-      nonSpaceIndex++;
+      const currentNonSpaceIndex = nonSpaceIndex
+      nonSpaceIndex++
 
       // Determine letter status
       const status = getLetterStatus(
         currentNonSpaceIndex,
         confirmedCount,
         requiredLetters,
-        isComplete,
-      );
+        isComplete
+      )
 
-      return (
-        <StyledLetter
-          key={index}
-          char={char}
-          status={status}
-          isDark={isDark}
-          index={index}
-        />
-      );
-    });
-  }, [regionName, confirmedCount, requiredLetters, isComplete, isDark]);
+      return <StyledLetter key={index} char={char} status={status} isDark={isDark} index={index} />
+    })
+  }, [regionName, confirmedCount, requiredLetters, isComplete, isDark])
 
   return (
     <span
@@ -134,5 +118,5 @@ export const LetterDisplay = memo(function LetterDisplay({
     >
       {letterElements}
     </span>
-  );
-});
+  )
+})

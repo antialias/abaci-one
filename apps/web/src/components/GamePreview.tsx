@@ -1,26 +1,23 @@
-"use client";
+'use client'
 
-import { Component, createContext, useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
-import type {
-  GameComponent,
-  GameProviderComponent,
-} from "@/lib/arcade/game-sdk/types";
-import { MockArcadeEnvironment } from "./MockArcadeEnvironment";
-import { GameModeProvider } from "@/contexts/GameModeContext";
-import { ViewportProvider } from "@/contexts/ViewportContext";
-import { getMockGameState } from "./MockGameStates";
+import { Component, createContext, useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
+import type { GameComponent, GameProviderComponent } from '@/lib/arcade/game-sdk/types'
+import { MockArcadeEnvironment } from './MockArcadeEnvironment'
+import { GameModeProvider } from '@/contexts/GameModeContext'
+import { ViewportProvider } from '@/contexts/ViewportContext'
+import { getMockGameState } from './MockGameStates'
 
 // Export context so useArcadeSession can check for preview mode
 export const PreviewModeContext = createContext<{
-  isPreview: boolean;
-  mockState: any;
-} | null>(null);
+  isPreview: boolean
+  mockState: any
+} | null>(null)
 
 interface GamePreviewProps {
-  GameComponent: GameComponent;
-  Provider: GameProviderComponent;
-  gameName: string;
+  GameComponent: GameComponent
+  Provider: GameProviderComponent
+  gameName: string
 }
 
 /**
@@ -31,23 +28,23 @@ class GameErrorBoundary extends Component<
   { hasError: boolean }
 > {
   constructor(props: { children: ReactNode; fallback: ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
+    super(props)
+    this.state = { hasError: false }
   }
 
   static getDerivedStateFromError() {
-    return { hasError: true };
+    return { hasError: true }
   }
 
   componentDidCatch(error: Error) {
-    console.error(`Game preview error (${error.message}):`, error);
+    console.error(`Game preview error (${error.message}):`, error)
   }
 
   render() {
     if (this.state.hasError) {
-      return this.props.fallback;
+      return this.props.fallback
     }
-    return this.props.children;
+    return this.props.children
   }
 }
 
@@ -55,19 +52,15 @@ class GameErrorBoundary extends Component<
  * Wrapper for displaying games in demo/preview mode
  * Provides mock arcade contexts so games can render
  */
-export function GamePreview({
-  GameComponent,
-  Provider,
-  gameName,
-}: GamePreviewProps) {
+export function GamePreview({ GameComponent, Provider, gameName }: GamePreviewProps) {
   // Don't render on first mount to avoid hydration issues
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(false)
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    setMounted(true)
+  }, [])
 
   // Get mock state for this game
-  const mockState = useMemo(() => getMockGameState(gameName), [gameName]);
+  const mockState = useMemo(() => getMockGameState(gameName), [gameName])
 
   // Preview mode context value
   const previewModeValue = useMemo(
@@ -75,11 +68,11 @@ export function GamePreview({
       isPreview: true,
       mockState,
     }),
-    [mockState],
-  );
+    [mockState]
+  )
 
   if (!mounted) {
-    return null;
+    return null
   }
 
   return (
@@ -87,18 +80,18 @@ export function GamePreview({
       fallback={
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-            color: "rgba(255, 255, 255, 0.4)",
-            fontSize: "14px",
-            textAlign: "center",
-            padding: "20px",
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            color: 'rgba(255, 255, 255, 0.4)',
+            fontSize: '14px',
+            textAlign: 'center',
+            padding: '20px',
           }}
         >
-          <span style={{ fontSize: "48px", marginBottom: "10px" }}>🎮</span>
+          <span style={{ fontSize: '48px', marginBottom: '10px' }}>🎮</span>
           Game Demo
         </div>
       }
@@ -113,10 +106,10 @@ export function GamePreview({
             <ViewportProvider width={1440} height={900}>
               <div
                 style={{
-                  width: "1440px",
-                  height: "900px",
-                  position: "relative",
-                  overflow: "hidden",
+                  width: '1440px',
+                  height: '900px',
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
                 <Provider>
@@ -128,5 +121,5 @@ export function GamePreview({
         </MockArcadeEnvironment>
       </PreviewModeContext.Provider>
     </GameErrorBoundary>
-  );
+  )
 }

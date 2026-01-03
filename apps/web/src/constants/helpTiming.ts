@@ -25,20 +25,20 @@ export const HELP_TIMING = {
     /** Duration of fade-out transition */
     transitionDurationMs: 200,
   },
-} as const;
+} as const
 
 export type HelpTimingConfig = {
-  readonly coachHintDelayMs: number;
-  readonly beadTooltipDelayMs: number;
-  readonly celebrationDurationMs: number;
-  readonly transitionDurationMs: number;
-};
+  readonly coachHintDelayMs: number
+  readonly beadTooltipDelayMs: number
+  readonly celebrationDurationMs: number
+  readonly transitionDurationMs: number
+}
 
 /**
  * Get timing configuration based on debug mode
  */
 export function getHelpTiming(debug: boolean): HelpTimingConfig {
-  return debug ? HELP_TIMING.debug : HELP_TIMING.production;
+  return debug ? HELP_TIMING.debug : HELP_TIMING.production
 }
 
 /**
@@ -47,16 +47,16 @@ export function getHelpTiming(debug: boolean): HelpTimingConfig {
  * - True in development if localStorage flag is set or storybook
  */
 export function shouldUseDebugTiming(): boolean {
-  if (typeof window === "undefined") return false;
-  if (process.env.NODE_ENV === "production") return false;
+  if (typeof window === 'undefined') return false
+  if (process.env.NODE_ENV === 'production') return false
 
   // Check for storybook
-  if (window.location?.href?.includes("storybook")) return true;
+  if (window.location?.href?.includes('storybook')) return true
 
   // Check for localStorage flag
   try {
-    return localStorage.getItem("helpDebugTiming") === "true";
+    return localStorage.getItem('helpDebugTiming') === 'true'
   } catch {
-    return false;
+    return false
   }
 }

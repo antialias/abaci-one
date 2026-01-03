@@ -1,38 +1,38 @@
-"use client";
+'use client'
 
-import * as Popover from "@radix-ui/react-popover";
-import { useState } from "react";
+import * as Popover from '@radix-ui/react-popover'
+import { useState } from 'react'
 
-import { Z_INDEX } from "@/constants/zIndex";
-import { useTheme } from "@/contexts/ThemeContext";
-import type { UseShareCodeReturn } from "@/hooks/useShareCode";
-import { css } from "../../../styled-system/css";
-import { AbacusQRCode } from "./AbacusQRCode";
+import { Z_INDEX } from '@/constants/zIndex'
+import { useTheme } from '@/contexts/ThemeContext'
+import type { UseShareCodeReturn } from '@/hooks/useShareCode'
+import { css } from '../../../styled-system/css'
+import { AbacusQRCode } from './AbacusQRCode'
 
 export interface ShareCodePanelProps {
   /** Share code state from useShareCode hook */
-  shareCode: UseShareCodeReturn;
+  shareCode: UseShareCodeReturn
 
   /** Panel title (e.g., "Share Access", "Invite Parents") */
-  title?: string;
+  title?: string
 
   /** Panel subtitle/description */
-  subtitle?: string;
+  subtitle?: string
 
   /** Compact chip mode (inline) vs full panel mode */
-  compact?: boolean;
+  compact?: boolean
 
   /** Show QR code option (default: true) */
-  showQR?: boolean;
+  showQR?: boolean
 
   /** Show link copy button (default: true) */
-  showLink?: boolean;
+  showLink?: boolean
 
   /** Show regenerate button (default: true if regenerate is available) */
-  showRegenerate?: boolean;
+  showRegenerate?: boolean
 
   /** Additional CSS class name */
-  className?: string;
+  className?: string
 }
 
 /**
@@ -70,8 +70,8 @@ export function ShareCodePanel({
   showRegenerate = true,
   className,
 }: ShareCodePanelProps) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
   if (compact) {
     return (
@@ -82,7 +82,7 @@ export function ShareCodePanel({
         isDark={isDark}
         className={className}
       />
-    );
+    )
   }
 
   return (
@@ -96,11 +96,11 @@ export function ShareCodePanel({
       isDark={isDark}
       className={className}
     />
-  );
+  )
 }
 
-interface FullSharePanelProps extends Omit<ShareCodePanelProps, "compact"> {
-  isDark: boolean;
+interface FullSharePanelProps extends Omit<ShareCodePanelProps, 'compact'> {
+  isDark: boolean
 }
 
 function FullSharePanel({
@@ -113,33 +113,25 @@ function FullSharePanel({
   isDark,
   className,
 }: FullSharePanelProps) {
-  const {
-    code,
-    shareUrl,
-    copyCode,
-    codeCopied,
-    copyLink,
-    linkCopied,
-    regenerate,
-    isRegenerating,
-  } = shareCode;
+  const { code, shareUrl, copyCode, codeCopied, copyLink, linkCopied, regenerate, isRegenerating } =
+    shareCode
 
-  const canRegenerate = showRegenerate && regenerate;
+  const canRegenerate = showRegenerate && regenerate
 
   return (
     <div
       data-component="share-code-panel"
       className={
         css({
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-          padding: "20px",
-          bg: isDark ? "gray.800" : "white",
-          borderRadius: "12px",
-          border: "1px solid",
-          borderColor: isDark ? "gray.700" : "gray.200",
-        }) + (className ? ` ${className}` : "")
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          padding: '20px',
+          bg: isDark ? 'gray.800' : 'white',
+          borderRadius: '12px',
+          border: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
+        }) + (className ? ` ${className}` : '')
       }
     >
       {/* Header */}
@@ -148,10 +140,10 @@ function FullSharePanel({
           {title && (
             <h3
               className={css({
-                fontSize: "18px",
-                fontWeight: "semibold",
-                color: isDark ? "gray.100" : "gray.900",
-                marginBottom: subtitle ? "4px" : "0",
+                fontSize: '18px',
+                fontWeight: 'semibold',
+                color: isDark ? 'gray.100' : 'gray.900',
+                marginBottom: subtitle ? '4px' : '0',
               })}
             >
               {title}
@@ -160,8 +152,8 @@ function FullSharePanel({
           {subtitle && (
             <p
               className={css({
-                fontSize: "14px",
-                color: isDark ? "gray.400" : "gray.600",
+                fontSize: '14px',
+                color: isDark ? 'gray.400' : 'gray.600',
               })}
             >
               {subtitle}
@@ -175,13 +167,13 @@ function FullSharePanel({
         <div
           data-element="share-qr-code"
           className={css({
-            display: "flex",
-            justifyContent: "center",
-            padding: "16px",
-            bg: "white",
-            borderRadius: "8px",
-            border: "1px solid",
-            borderColor: isDark ? "gray.600" : "gray.200",
+            display: 'flex',
+            justifyContent: 'center',
+            padding: '16px',
+            bg: 'white',
+            borderRadius: '8px',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.600' : 'gray.200',
           })}
         >
           <AbacusQRCode value={shareUrl} size={180} />
@@ -193,64 +185,64 @@ function FullSharePanel({
         type="button"
         onClick={copyCode}
         data-action="copy-code"
-        data-status={codeCopied ? "copied" : "idle"}
+        data-status={codeCopied ? 'copied' : 'idle'}
         className={css({
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "8px",
-          padding: "12px 16px",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          padding: '12px 16px',
           bg: codeCopied
             ? isDark
-              ? "green.900/60"
-              : "green.50"
+              ? 'green.900/60'
+              : 'green.50'
             : isDark
-              ? "purple.900/60"
-              : "purple.50",
-          border: "2px solid",
+              ? 'purple.900/60'
+              : 'purple.50',
+          border: '2px solid',
           borderColor: codeCopied
             ? isDark
-              ? "green.700"
-              : "green.300"
+              ? 'green.700'
+              : 'green.300'
             : isDark
-              ? "purple.700"
-              : "purple.300",
-          borderRadius: "8px",
-          cursor: "pointer",
-          transition: "all 0.2s ease",
+              ? 'purple.700'
+              : 'purple.300',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
           _hover: {
             bg: codeCopied
               ? isDark
-                ? "green.800/60"
-                : "green.100"
+                ? 'green.800/60'
+                : 'green.100'
               : isDark
-                ? "purple.800/60"
-                : "purple.100",
+                ? 'purple.800/60'
+                : 'purple.100',
           },
         })}
       >
         <span
           className={css({
-            fontSize: "16px",
-            fontFamily: "monospace",
-            fontWeight: "bold",
-            letterSpacing: "0.1em",
+            fontSize: '16px',
+            fontFamily: 'monospace',
+            fontWeight: 'bold',
+            letterSpacing: '0.1em',
             color: codeCopied
               ? isDark
-                ? "green.300"
-                : "green.700"
+                ? 'green.300'
+                : 'green.700'
               : isDark
-                ? "purple.300"
-                : "purple.700",
+                ? 'purple.300'
+                : 'purple.700',
           })}
         >
-          {codeCopied ? "✓ Copied!" : code}
+          {codeCopied ? '✓ Copied!' : code}
         </span>
         {!codeCopied && (
           <span
             className={css({
-              fontSize: "12px",
-              color: isDark ? "purple.400" : "purple.500",
+              fontSize: '12px',
+              color: isDark ? 'purple.400' : 'purple.500',
             })}
           >
             Copy code
@@ -264,55 +256,55 @@ function FullSharePanel({
           type="button"
           onClick={copyLink}
           data-action="copy-link"
-          data-status={linkCopied ? "copied" : "idle"}
+          data-status={linkCopied ? 'copied' : 'idle'}
           className={css({
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            padding: "10px 16px",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '10px 16px',
             bg: linkCopied
               ? isDark
-                ? "green.900/60"
-                : "green.50"
+                ? 'green.900/60'
+                : 'green.50'
               : isDark
-                ? "blue.900/60"
-                : "blue.50",
-            border: "1px solid",
+                ? 'blue.900/60'
+                : 'blue.50',
+            border: '1px solid',
             borderColor: linkCopied
               ? isDark
-                ? "green.700"
-                : "green.300"
+                ? 'green.700'
+                : 'green.300'
               : isDark
-                ? "blue.700"
-                : "blue.300",
-            borderRadius: "8px",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
+                ? 'blue.700'
+                : 'blue.300',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
             _hover: {
               bg: linkCopied
                 ? isDark
-                  ? "green.800/60"
-                  : "green.100"
+                  ? 'green.800/60'
+                  : 'green.100'
                 : isDark
-                  ? "blue.800/60"
-                  : "blue.100",
+                  ? 'blue.800/60'
+                  : 'blue.100',
             },
           })}
         >
           <span
             className={css({
-              fontSize: "14px",
+              fontSize: '14px',
               color: linkCopied
                 ? isDark
-                  ? "green.300"
-                  : "green.700"
+                  ? 'green.300'
+                  : 'green.700'
                 : isDark
-                  ? "blue.300"
-                  : "blue.700",
+                  ? 'blue.300'
+                  : 'blue.700',
             })}
           >
-            {linkCopied ? "✓ Link copied!" : "🔗 Copy link"}
+            {linkCopied ? '✓ Link copied!' : '🔗 Copy link'}
           </span>
         </button>
       )}
@@ -325,43 +317,43 @@ function FullSharePanel({
           disabled={isRegenerating}
           data-action="regenerate-code"
           className={css({
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            padding: "10px 16px",
-            bg: "transparent",
-            border: "1px solid",
-            borderColor: isDark ? "gray.600" : "gray.300",
-            borderRadius: "8px",
-            cursor: isRegenerating ? "wait" : "pointer",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '10px 16px',
+            bg: 'transparent',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.600' : 'gray.300',
+            borderRadius: '8px',
+            cursor: isRegenerating ? 'wait' : 'pointer',
             opacity: isRegenerating ? 0.6 : 1,
-            transition: "all 0.2s ease",
+            transition: 'all 0.2s ease',
             _hover: {
-              bg: isDark ? "gray.700" : "gray.50",
+              bg: isDark ? 'gray.700' : 'gray.50',
             },
           })}
         >
           <span
             className={css({
-              fontSize: "14px",
-              color: isDark ? "gray.400" : "gray.600",
+              fontSize: '14px',
+              color: isDark ? 'gray.400' : 'gray.600',
             })}
           >
-            {isRegenerating ? "Generating..." : "🔄 Generate new code"}
+            {isRegenerating ? 'Generating...' : '🔄 Generate new code'}
           </span>
         </button>
       )}
     </div>
-  );
+  )
 }
 
 interface CompactShareChipProps {
-  shareCode: UseShareCodeReturn;
-  showQR?: boolean;
-  showLink?: boolean;
-  isDark: boolean;
-  className?: string;
+  shareCode: UseShareCodeReturn
+  showQR?: boolean
+  showLink?: boolean
+  isDark: boolean
+  className?: string
 }
 
 function CompactShareChip({
@@ -371,9 +363,8 @@ function CompactShareChip({
   isDark,
   className,
 }: CompactShareChipProps) {
-  const [open, setOpen] = useState(false);
-  const { code, shareUrl, copyCode, codeCopied, copyLink, linkCopied } =
-    shareCode;
+  const [open, setOpen] = useState(false)
+  const { code, shareUrl, copyCode, codeCopied, copyLink, linkCopied } = shareCode
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -383,30 +374,30 @@ function CompactShareChip({
           data-element="share-code-chip"
           className={
             css({
-              display: "flex",
-              alignItems: "center",
-              gap: "3px",
-              padding: "2px 6px",
-              bg: "transparent",
-              border: "none",
-              borderRadius: "4px",
-              fontSize: "11px",
-              fontFamily: "monospace",
-              fontWeight: "500",
-              color: isDark ? "gray.400" : "gray.500",
-              cursor: "pointer",
-              transition: "all 0.15s ease",
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3px',
+              padding: '2px 6px',
+              bg: 'transparent',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontFamily: 'monospace',
+              fontWeight: '500',
+              color: isDark ? 'gray.400' : 'gray.500',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
               _hover: {
-                bg: isDark ? "gray.700" : "gray.200",
-                color: isDark ? "gray.300" : "gray.600",
+                bg: isDark ? 'gray.700' : 'gray.200',
+                color: isDark ? 'gray.300' : 'gray.600',
               },
               _active: {
-                transform: "scale(0.98)",
+                transform: 'scale(0.98)',
               },
-            }) + (className ? ` ${className}` : "")
+            }) + (className ? ` ${className}` : '')
           }
         >
-          <span className={css({ fontSize: "10px" })}>📋</span>
+          <span className={css({ fontSize: '10px' })}>📋</span>
           <span>{code}</span>
         </button>
       </Popover.Trigger>
@@ -417,28 +408,28 @@ function CompactShareChip({
           side="bottom"
           sideOffset={8}
           className={css({
-            bg: isDark ? "gray.800" : "white",
-            border: "1px solid",
-            borderColor: isDark ? "gray.600" : "gray.200",
-            borderRadius: "12px",
-            padding: "16px",
-            boxShadow: "lg",
+            bg: isDark ? 'gray.800' : 'white',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.600' : 'gray.200',
+            borderRadius: '12px',
+            padding: '16px',
+            boxShadow: 'lg',
             zIndex: Z_INDEX.DROPDOWN,
-            maxWidth: "280px",
+            maxWidth: '280px',
           })}
         >
           {/* QR Code */}
           {showQR && (
             <div
               className={css({
-                display: "flex",
-                justifyContent: "center",
-                padding: "12px",
-                bg: "white",
-                borderRadius: "8px",
-                border: "1px solid",
-                borderColor: isDark ? "gray.600" : "gray.200",
-                marginBottom: "12px",
+                display: 'flex',
+                justifyContent: 'center',
+                padding: '12px',
+                bg: 'white',
+                borderRadius: '8px',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.600' : 'gray.200',
+                marginBottom: '12px',
               })}
             >
               <AbacusQRCode value={shareUrl} size={160} />
@@ -451,49 +442,49 @@ function CompactShareChip({
             onClick={copyCode}
             data-action="copy-code"
             className={css({
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              padding: "10px 12px",
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '10px 12px',
               bg: codeCopied
                 ? isDark
-                  ? "green.900/60"
-                  : "green.50"
+                  ? 'green.900/60'
+                  : 'green.50'
                 : isDark
-                  ? "purple.900/60"
-                  : "purple.50",
-              border: "1px solid",
+                  ? 'purple.900/60'
+                  : 'purple.50',
+              border: '1px solid',
               borderColor: codeCopied
                 ? isDark
-                  ? "green.700"
-                  : "green.300"
+                  ? 'green.700'
+                  : 'green.300'
                 : isDark
-                  ? "purple.700"
-                  : "purple.300",
-              borderRadius: "8px",
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-              marginBottom: showLink ? "8px" : "0",
+                  ? 'purple.700'
+                  : 'purple.300',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              marginBottom: showLink ? '8px' : '0',
             })}
           >
             <span
               className={css({
-                fontSize: "14px",
-                fontFamily: "monospace",
-                fontWeight: "bold",
-                letterSpacing: "0.08em",
+                fontSize: '14px',
+                fontFamily: 'monospace',
+                fontWeight: 'bold',
+                letterSpacing: '0.08em',
                 color: codeCopied
                   ? isDark
-                    ? "green.300"
-                    : "green.700"
+                    ? 'green.300'
+                    : 'green.700'
                   : isDark
-                    ? "purple.300"
-                    : "purple.700",
+                    ? 'purple.300'
+                    : 'purple.700',
               })}
             >
-              {codeCopied ? "✓ Copied!" : code}
+              {codeCopied ? '✓ Copied!' : code}
             </span>
           </button>
 
@@ -504,61 +495,61 @@ function CompactShareChip({
               onClick={copyLink}
               data-action="copy-link"
               className={css({
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "6px",
-                padding: "8px 12px",
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                padding: '8px 12px',
                 bg: linkCopied
                   ? isDark
-                    ? "green.900/60"
-                    : "green.50"
+                    ? 'green.900/60'
+                    : 'green.50'
                   : isDark
-                    ? "blue.900/60"
-                    : "blue.50",
-                border: "1px solid",
+                    ? 'blue.900/60'
+                    : 'blue.50',
+                border: '1px solid',
                 borderColor: linkCopied
                   ? isDark
-                    ? "green.700"
-                    : "green.300"
+                    ? 'green.700'
+                    : 'green.300'
                   : isDark
-                    ? "blue.700"
-                    : "blue.300",
-                borderRadius: "8px",
-                cursor: "pointer",
-                transition: "all 0.15s ease",
+                    ? 'blue.700'
+                    : 'blue.300',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
               })}
             >
               <span
                 className={css({
-                  fontSize: "12px",
+                  fontSize: '12px',
                   color: linkCopied
                     ? isDark
-                      ? "green.300"
-                      : "green.700"
+                      ? 'green.300'
+                      : 'green.700'
                     : isDark
-                      ? "blue.300"
-                      : "blue.700",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                      ? 'blue.300'
+                      : 'blue.700',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
                 })}
               >
-                {linkCopied ? "✓ Link copied!" : `🔗 ${shareUrl}`}
+                {linkCopied ? '✓ Link copied!' : `🔗 ${shareUrl}`}
               </span>
             </button>
           )}
 
           <Popover.Arrow
             className={css({
-              fill: isDark ? "gray.800" : "white",
+              fill: isDark ? 'gray.800' : 'white',
             })}
           />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
-  );
+  )
 }
 
-export default ShareCodePanel;
+export default ShareCodePanel

@@ -1,16 +1,12 @@
-import { notFound } from "next/navigation";
-import {
-  getPlayer,
-  getRecentSessionResults,
-  getSessionPlan,
-} from "@/lib/curriculum/server";
-import { SummaryClient } from "../../summary/SummaryClient";
+import { notFound } from 'next/navigation'
+import { getPlayer, getRecentSessionResults, getSessionPlan } from '@/lib/curriculum/server'
+import { SummaryClient } from '../../summary/SummaryClient'
 
 // Disable caching for this page - session data should be fresh
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic'
 
 interface SessionPageProps {
-  params: Promise<{ studentId: string; sessionId: string }>;
+  params: Promise<{ studentId: string; sessionId: string }>
 }
 
 /**
@@ -22,27 +18,27 @@ interface SessionPageProps {
  * Used when viewing session history from the dashboard.
  */
 export default async function SessionPage({ params }: SessionPageProps) {
-  const { studentId, sessionId } = await params;
+  const { studentId, sessionId } = await params
 
   // Fetch player, session, and problem history in parallel
   const [player, session, problemHistory] = await Promise.all([
     getPlayer(studentId),
     getSessionPlan(sessionId),
     getRecentSessionResults(studentId, 100),
-  ]);
+  ])
 
   // 404 if player doesn't exist
   if (!player) {
-    notFound();
+    notFound()
   }
 
   // 404 if session doesn't exist or belongs to different player
   if (!session || session.playerId !== studentId) {
-    notFound();
+    notFound()
   }
 
   // Calculate average seconds per problem from the session
-  const avgSecondsPerProblem = session.avgTimePerProblemSeconds ?? 40;
+  const avgSecondsPerProblem = session.avgTimePerProblemSeconds ?? 40
 
   return (
     <SummaryClient
@@ -52,5 +48,5 @@ export default async function SessionPage({ params }: SessionPageProps) {
       avgSecondsPerProblem={avgSecondsPerProblem}
       problemHistory={problemHistory}
     />
-  );
+  )
 }

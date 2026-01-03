@@ -1,4 +1,4 @@
-"use client";
+'use client'
 
 /**
  * HelpCountdown - Pie chart style countdown timer for help escalation
@@ -8,17 +8,17 @@
  * in the VerticalProblem component.
  */
 
-import { css } from "../../../styled-system/css";
+import { css } from '../../../styled-system/css'
 
 export interface HelpCountdownProps {
   /** Time elapsed since problem started (ms) */
-  elapsedTimeMs: number;
+  elapsedTimeMs: number
   /** Target time for next help level (ms) */
-  targetTimeMs: number;
+  targetTimeMs: number
   /** Size of the countdown circle (matches cell size) */
-  size?: string;
+  size?: string
   /** Whether dark mode is active */
-  isDark?: boolean;
+  isDark?: boolean
 }
 
 /**
@@ -27,13 +27,13 @@ export interface HelpCountdownProps {
  */
 function getColor(percentRemaining: number, isDark: boolean): string {
   if (percentRemaining > 66) {
-    return isDark ? "#22c55e" : "#16a34a"; // green
+    return isDark ? '#22c55e' : '#16a34a' // green
   } else if (percentRemaining > 33) {
-    return isDark ? "#eab308" : "#ca8a04"; // yellow
+    return isDark ? '#eab308' : '#ca8a04' // yellow
   } else if (percentRemaining > 15) {
-    return isDark ? "#f97316" : "#ea580c"; // orange
+    return isDark ? '#f97316' : '#ea580c' // orange
   } else {
-    return isDark ? "#ef4444" : "#dc2626"; // red
+    return isDark ? '#ef4444' : '#dc2626' // red
   }
 }
 
@@ -46,26 +46,26 @@ function getColor(percentRemaining: number, isDark: boolean): string {
 export function HelpCountdown({
   elapsedTimeMs,
   targetTimeMs,
-  size = "2.4rem",
+  size = '2.4rem',
   isDark = false,
 }: HelpCountdownProps) {
-  const remainingMs = Math.max(0, targetTimeMs - elapsedTimeMs);
-  const remainingSeconds = Math.ceil(remainingMs / 1000);
-  const percentRemaining = (remainingMs / targetTimeMs) * 100;
+  const remainingMs = Math.max(0, targetTimeMs - elapsedTimeMs)
+  const remainingSeconds = Math.ceil(remainingMs / 1000)
+  const percentRemaining = (remainingMs / targetTimeMs) * 100
 
   // SVG parameters
-  const viewBoxSize = 100;
-  const center = viewBoxSize / 2;
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius;
+  const viewBoxSize = 100
+  const center = viewBoxSize / 2
+  const radius = 40
+  const circumference = 2 * Math.PI * radius
 
   // Calculate stroke dash for remaining time (pie depletes as time passes)
-  const strokeDashoffset = circumference * (1 - percentRemaining / 100);
+  const strokeDashoffset = circumference * (1 - percentRemaining / 100)
 
-  const color = getColor(percentRemaining, isDark);
+  const color = getColor(percentRemaining, isDark)
 
   // Background color for the circle
-  const bgColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
+  const bgColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
 
   return (
     <div
@@ -74,29 +74,22 @@ export function HelpCountdown({
       className={css({
         width: size,
         height: size,
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       })}
     >
       <svg
         viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
         className={css({
-          width: "100%",
-          height: "100%",
-          transform: "rotate(-90deg)", // Start from top
+          width: '100%',
+          height: '100%',
+          transform: 'rotate(-90deg)', // Start from top
         })}
       >
         {/* Background circle */}
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke={bgColor}
-          strokeWidth="12"
-        />
+        <circle cx={center} cy={center} r={radius} fill="none" stroke={bgColor} strokeWidth="12" />
         {/* Progress arc */}
         <circle
           cx={center}
@@ -109,20 +102,20 @@ export function HelpCountdown({
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
           className={css({
-            transition: "stroke-dashoffset 0.3s ease-out, stroke 0.3s ease",
+            transition: 'stroke-dashoffset 0.3s ease-out, stroke 0.3s ease',
           })}
         />
       </svg>
       {/* Seconds remaining in center */}
       <div
         className={css({
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          fontSize: "0.75rem",
-          fontWeight: "bold",
-          fontFamily: "var(--font-mono, monospace)",
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          fontSize: '0.75rem',
+          fontWeight: 'bold',
+          fontFamily: 'var(--font-mono, monospace)',
           color: color,
           lineHeight: 1,
         })}
@@ -130,7 +123,7 @@ export function HelpCountdown({
         {remainingSeconds}
       </div>
     </div>
-  );
+  )
 }
 
-export default HelpCountdown;
+export default HelpCountdown

@@ -60,7 +60,7 @@
  *   🧊 Forgotten Weaknesses   - Weak skills that are also stale
  */
 
-import { parseArgs } from "node:util";
+import { parseArgs } from 'node:util'
 
 // =============================================================================
 // CLI Argument Parsing
@@ -68,15 +68,15 @@ import { parseArgs } from "node:util";
 
 const { values: cliArgs } = parseArgs({
   options: {
-    help: { type: "boolean", short: "h", default: false },
-    list: { type: "boolean", short: "l", default: false },
-    name: { type: "string", short: "n", multiple: true, default: [] },
-    category: { type: "string", short: "c", multiple: true, default: [] },
-    "dry-run": { type: "boolean", default: false },
+    help: { type: 'boolean', short: 'h', default: false },
+    list: { type: 'boolean', short: 'l', default: false },
+    name: { type: 'string', short: 'n', multiple: true, default: [] },
+    category: { type: 'string', short: 'c', multiple: true, default: [] },
+    'dry-run': { type: 'boolean', default: false },
   },
   strict: true,
   allowPositionals: false,
-});
+})
 
 function showHelp(): void {
   console.log(`
@@ -102,33 +102,30 @@ Examples:
   npm run seed:test-students -- -c edge          # Seed all edge case students
   npm run seed:test-students -- -c bkt -c session
   npm run seed:test-students -- -n "🔴 Multi-Skill Deficient" -n "🟢 Progressing Nicely"
-`);
+`)
 }
 
 // Note: listProfiles is defined after TEST_PROFILES (below)
 
-import { createId } from "@paralleldrive/cuid2";
-import { desc, eq } from "drizzle-orm";
-import { db, schema } from "../src/db";
-import {
-  computeBktFromHistory,
-  type SkillBktResult,
-} from "../src/lib/curriculum/bkt";
-import { applyLearning, bktUpdate } from "../src/lib/curriculum/bkt/bkt-core";
-import { getDefaultParams } from "../src/lib/curriculum/bkt/skill-priors";
-import { BKT_THRESHOLDS } from "../src/lib/curriculum/config/bkt-integration";
-import { getRecentSessionResults } from "../src/lib/curriculum/session-planner";
+import { createId } from '@paralleldrive/cuid2'
+import { desc, eq } from 'drizzle-orm'
+import { db, schema } from '../src/db'
+import { computeBktFromHistory, type SkillBktResult } from '../src/lib/curriculum/bkt'
+import { applyLearning, bktUpdate } from '../src/lib/curriculum/bkt/bkt-core'
+import { getDefaultParams } from '../src/lib/curriculum/bkt/skill-priors'
+import { BKT_THRESHOLDS } from '../src/lib/curriculum/config/bkt-integration'
+import { getRecentSessionResults } from '../src/lib/curriculum/session-planner'
 import type {
   GeneratedProblem,
   SessionPart,
   SessionSummary,
   SlotResult,
-} from "../src/db/schema/session-plans";
+} from '../src/db/schema/session-plans'
 import {
   generateSingleProblem,
   type GeneratedProblem as GenProblem,
-} from "../src/utils/problemGenerator";
-import { createEmptySkillSet, type SkillSet } from "../src/types/tutorial";
+} from '../src/utils/problemGenerator'
+import { createEmptySkillSet, type SkillSet } from '../src/types/tutorial'
 
 // =============================================================================
 // BKT Simulation Utilities
@@ -143,23 +140,23 @@ import { createEmptySkillSet, type SkillSet } from "../src/types/tutorial";
  * - INCORRECT: bktUpdate only (no learning transition on failure)
  */
 function simulateBktSequence(skillId: string, sequence: boolean[]): number {
-  const params = getDefaultParams(skillId);
-  let pKnown = params.pInit;
+  const params = getDefaultParams(skillId)
+  let pKnown = params.pInit
 
   for (const isCorrect of sequence) {
-    const updated = bktUpdate(pKnown, isCorrect, params);
+    const updated = bktUpdate(pKnown, isCorrect, params)
     // Only apply learning transition on CORRECT answers
     // (matches updateOnCorrect vs updateOnIncorrect behavior)
-    pKnown = isCorrect ? applyLearning(updated, params.pLearn) : updated;
+    pKnown = isCorrect ? applyLearning(updated, params.pLearn) : updated
   }
 
-  return pKnown;
+  return pKnown
 }
 
 /**
  * Target classification for a skill
  */
-type TargetClassification = "weak" | "developing" | "strong";
+type TargetClassification = 'weak' | 'developing' | 'strong'
 
 /**
  * Design a sequence of correct/incorrect answers that will reliably produce
@@ -176,42 +173,39 @@ type TargetClassification = "weak" | "developing" | "strong";
 function designSequenceForClassification(
   skillId: string,
   problemCount: number,
-  target: TargetClassification,
+  target: TargetClassification
 ): boolean[] {
   // For very few problems, use simple patterns
   if (problemCount <= 3) {
     switch (target) {
-      case "strong":
-        return Array(problemCount).fill(true);
-      case "weak":
-        return Array(problemCount).fill(false);
-      case "developing":
+      case 'strong':
+        return Array(problemCount).fill(true)
+      case 'weak':
+        return Array(problemCount).fill(false)
+      case 'developing':
         // All correct for tiny counts since multi-skill coupling pulls down
-        return Array(problemCount).fill(true);
+        return Array(problemCount).fill(true)
     }
   }
 
   // For longer sequences, use empirically-tuned patterns
   switch (target) {
-    case "strong": {
+    case 'strong': {
       // 85% correct, ending with streak of correct
-      const incorrectCount = Math.max(1, Math.floor(problemCount * 0.15));
+      const incorrectCount = Math.max(1, Math.floor(problemCount * 0.15))
       return [
         ...Array(incorrectCount).fill(false),
         ...Array(problemCount - incorrectCount).fill(true),
-      ];
+      ]
     }
 
-    case "weak": {
+    case 'weak': {
       // 90% incorrect, ending with long streak of incorrect
-      const correctCount = Math.max(1, Math.floor(problemCount * 0.1));
-      return [
-        ...Array(correctCount).fill(true),
-        ...Array(problemCount - correctCount).fill(false),
-      ];
+      const correctCount = Math.max(1, Math.floor(problemCount * 0.1))
+      return [...Array(correctCount).fill(true), ...Array(problemCount - correctCount).fill(false)]
     }
 
-    case "developing": {
+    case 'developing': {
       // The developing range (0.5-0.8) is narrow and BKT is swingy.
       // Try multiple pattern types to find one that lands in range.
 
@@ -220,79 +214,76 @@ function designSequenceForClassification(
         // Pattern 1: End with exactly 1 correct after many incorrect
         // This leverages BKT's swingy nature - one correct from low pKnown lands ~0.65-0.75
         (n: number, correct: number) => {
-          const endCorrect = 1;
-          const startCorrect = correct - endCorrect;
+          const endCorrect = 1
+          const startCorrect = correct - endCorrect
           return [
             ...Array(startCorrect).fill(true),
             ...Array(n - correct).fill(false),
             ...Array(endCorrect).fill(true),
-          ];
+          ]
         },
 
         // Pattern 2: Alternating ending with correct
         // Creates "oscillating" pKnown that can land in middle
         (n: number, correct: number) => {
-          const seq: boolean[] = [];
-          let remainingCorrect = correct;
-          let remainingIncorrect = n - correct;
+          const seq: boolean[] = []
+          let remainingCorrect = correct
+          let remainingIncorrect = n - correct
           // Interleave with bias toward incorrect first
           while (remainingCorrect > 0 || remainingIncorrect > 0) {
             if (
               remainingIncorrect > 0 &&
               (remainingIncorrect > remainingCorrect || remainingCorrect === 0)
             ) {
-              seq.push(false);
-              remainingIncorrect--;
+              seq.push(false)
+              remainingIncorrect--
             } else if (remainingCorrect > 0) {
-              seq.push(true);
-              remainingCorrect--;
+              seq.push(true)
+              remainingCorrect--
             }
           }
-          return seq;
+          return seq
         },
 
         // Pattern 3: Front-loaded correct, then incorrect, ending with 1 correct
         (n: number, correct: number) => {
-          const endCorrect = 1;
-          const frontCorrect = correct - endCorrect;
+          const endCorrect = 1
+          const frontCorrect = correct - endCorrect
           return [
             ...Array(frontCorrect).fill(true),
             ...Array(n - correct).fill(false),
             ...Array(endCorrect).fill(true),
-          ];
+          ]
         },
 
         // Pattern 4: Sandwich - incorrect, correct, incorrect
         (n: number, correct: number) => {
-          const thirdIncorrect = Math.floor((n - correct) / 2);
+          const thirdIncorrect = Math.floor((n - correct) / 2)
           return [
             ...Array(thirdIncorrect).fill(false),
             ...Array(correct).fill(true),
             ...Array(n - correct - thirdIncorrect).fill(false),
-          ];
+          ]
         },
-      ];
+      ]
 
       // Try different correct counts with each pattern
       // For developing, we want something between strong (>80%) and weak (<50%)
       // Try 40-70% correct with various patterns
       for (const correctRatio of [0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7]) {
-        const correctCount = Math.max(
-          1,
-          Math.round(problemCount * correctRatio),
-        );
+        const correctCount = Math.max(1, Math.round(problemCount * correctRatio))
 
         for (const generatePattern of patternGenerators) {
-          const sequence = generatePattern(problemCount, correctCount);
+          const sequence = generatePattern(problemCount, correctCount)
 
           // Verify sequence length is correct
-          if (sequence.length !== problemCount) continue;
+          if (sequence.length !== problemCount) continue
 
-          const pKnown = simulateBktSequence(skillId, sequence);
+          const pKnown = simulateBktSequence(skillId, sequence)
 
           // Check if it lands in developing range
           if (pKnown >= BKT_THRESHOLDS.weak && pKnown < BKT_THRESHOLDS.strong) {
-            return sequence;
+            return sequence
           }
         }
       }
@@ -305,10 +296,10 @@ function designSequenceForClassification(
           ...Array(correct - 1).fill(true),
           ...Array(problemCount - correct).fill(false),
           true, // End with one correct
-        ];
-        const pKnown = simulateBktSequence(skillId, sequence);
+        ]
+        const pKnown = simulateBktSequence(skillId, sequence)
         if (pKnown >= BKT_THRESHOLDS.weak && pKnown < BKT_THRESHOLDS.strong) {
-          return sequence;
+          return sequence
         }
       }
 
@@ -317,7 +308,7 @@ function designSequenceForClassification(
       return [
         ...Array(problemCount - 1).fill(false),
         true, // Single correct at end
-      ];
+      ]
     }
   }
 }
@@ -329,43 +320,32 @@ function designSequenceForClassification(
 /**
  * Maps a skill ID to the category and key for SkillSet modification
  */
-function parseSkillId(
-  skillId: string,
-): { category: string; key: string } | null {
-  const parts = skillId.split(".");
-  if (parts.length !== 2) return null;
-  return { category: parts[0], key: parts[1] };
+function parseSkillId(skillId: string): { category: string; key: string } | null {
+  const parts = skillId.split('.')
+  if (parts.length !== 2) return null
+  return { category: parts[0], key: parts[1] }
 }
 
 /**
  * Enables a specific skill in a SkillSet (mutates the set)
  */
 function enableSkill(skillSet: SkillSet, skillId: string): void {
-  const parsed = parseSkillId(skillId);
-  if (!parsed) return;
+  const parsed = parseSkillId(skillId)
+  if (!parsed) return
 
-  const { category, key } = parsed;
-  if (category === "basic" && key in skillSet.basic) {
-    (skillSet.basic as Record<string, boolean>)[key] = true;
-  } else if (
-    category === "fiveComplements" &&
-    key in skillSet.fiveComplements
-  ) {
-    (skillSet.fiveComplements as Record<string, boolean>)[key] = true;
-  } else if (category === "tenComplements" && key in skillSet.tenComplements) {
-    (skillSet.tenComplements as Record<string, boolean>)[key] = true;
-  } else if (
-    category === "fiveComplementsSub" &&
-    key in skillSet.fiveComplementsSub
-  ) {
-    (skillSet.fiveComplementsSub as Record<string, boolean>)[key] = true;
-  } else if (
-    category === "tenComplementsSub" &&
-    key in skillSet.tenComplementsSub
-  ) {
-    (skillSet.tenComplementsSub as Record<string, boolean>)[key] = true;
-  } else if (category === "advanced" && key in skillSet.advanced) {
-    (skillSet.advanced as Record<string, boolean>)[key] = true;
+  const { category, key } = parsed
+  if (category === 'basic' && key in skillSet.basic) {
+    ;(skillSet.basic as Record<string, boolean>)[key] = true
+  } else if (category === 'fiveComplements' && key in skillSet.fiveComplements) {
+    ;(skillSet.fiveComplements as Record<string, boolean>)[key] = true
+  } else if (category === 'tenComplements' && key in skillSet.tenComplements) {
+    ;(skillSet.tenComplements as Record<string, boolean>)[key] = true
+  } else if (category === 'fiveComplementsSub' && key in skillSet.fiveComplementsSub) {
+    ;(skillSet.fiveComplementsSub as Record<string, boolean>)[key] = true
+  } else if (category === 'tenComplementsSub' && key in skillSet.tenComplementsSub) {
+    ;(skillSet.tenComplementsSub as Record<string, boolean>)[key] = true
+  } else if (category === 'advanced' && key in skillSet.advanced) {
+    ;(skillSet.advanced as Record<string, boolean>)[key] = true
   }
 }
 
@@ -375,45 +355,45 @@ function enableSkill(skillSet: SkillSet, skillId: string): void {
  * states where adding 3 triggers +5-2.
  */
 function getPrerequisiteSkills(skillId: string): string[] {
-  const category = skillId.split(".")[0];
+  const category = skillId.split('.')[0]
 
   switch (category) {
-    case "basic":
+    case 'basic':
       // Basic skills need directAddition enabled (except directAddition itself)
-      if (skillId === "basic.directAddition") {
-        return [];
+      if (skillId === 'basic.directAddition') {
+        return []
       }
-      return ["basic.directAddition"];
-    case "fiveComplements":
+      return ['basic.directAddition']
+    case 'fiveComplements':
       // Five complements need directAddition and heavenBead to reach necessary states
-      return ["basic.directAddition", "basic.heavenBead"];
-    case "tenComplements":
+      return ['basic.directAddition', 'basic.heavenBead']
+    case 'tenComplements':
       // Ten complements need basics plus five complements to reach carry states
       return [
-        "basic.directAddition",
-        "basic.heavenBead",
-        "basic.simpleCombinations",
-        "fiveComplements.4=5-1",
-        "fiveComplements.3=5-2",
-        "fiveComplements.2=5-3",
-        "fiveComplements.1=5-4",
-      ];
-    case "fiveComplementsSub":
+        'basic.directAddition',
+        'basic.heavenBead',
+        'basic.simpleCombinations',
+        'fiveComplements.4=5-1',
+        'fiveComplements.3=5-2',
+        'fiveComplements.2=5-3',
+        'fiveComplements.1=5-4',
+      ]
+    case 'fiveComplementsSub':
       // Subtraction five complements need subtraction basics
-      return ["basic.directSubtraction", "basic.heavenBeadSubtraction"];
-    case "tenComplementsSub":
+      return ['basic.directSubtraction', 'basic.heavenBeadSubtraction']
+    case 'tenComplementsSub':
       // Subtraction ten complements need all subtraction skills
       return [
-        "basic.directSubtraction",
-        "basic.heavenBeadSubtraction",
-        "basic.simpleCombinationsSub",
-        "fiveComplementsSub.-4=-5+1",
-        "fiveComplementsSub.-3=-5+2",
-        "fiveComplementsSub.-2=-5+3",
-        "fiveComplementsSub.-1=-5+4",
-      ];
+        'basic.directSubtraction',
+        'basic.heavenBeadSubtraction',
+        'basic.simpleCombinationsSub',
+        'fiveComplementsSub.-4=-5+1',
+        'fiveComplementsSub.-3=-5+2',
+        'fiveComplementsSub.-2=-5+3',
+        'fiveComplementsSub.-1=-5+4',
+      ]
     default:
-      return [];
+      return []
   }
 }
 
@@ -421,37 +401,37 @@ function getPrerequisiteSkills(skillId: string): string[] {
  * Creates a SkillSet that enables the target skill plus prerequisites
  */
 function createSkillSetForTarget(targetSkill: string): SkillSet {
-  const skillSet = createEmptySkillSet();
+  const skillSet = createEmptySkillSet()
 
   // Enable prerequisites first
-  const prereqs = getPrerequisiteSkills(targetSkill);
+  const prereqs = getPrerequisiteSkills(targetSkill)
   for (const prereq of prereqs) {
-    enableSkill(skillSet, prereq);
+    enableSkill(skillSet, prereq)
   }
 
   // Enable the target skill
-  enableSkill(skillSet, targetSkill);
+  enableSkill(skillSet, targetSkill)
 
-  return skillSet;
+  return skillSet
 }
 
 /**
  * Creates a target SkillSet with only the target skill enabled (for problem matching)
  */
 function createTargetSkillSet(targetSkill: string): Partial<SkillSet> {
-  const skillSet = createEmptySkillSet();
-  enableSkill(skillSet, targetSkill);
-  return skillSet;
+  const skillSet = createEmptySkillSet()
+  enableSkill(skillSet, targetSkill)
+  return skillSet
 }
 
 /**
  * Generated problem with metadata for seeding
  */
 interface RealisticProblem {
-  terms: number[];
-  answer: number;
-  skillsUsed: string[];
-  generationTrace?: GenProblem["generationTrace"];
+  terms: number[]
+  answer: number
+  skillsUsed: string[]
+  generationTrace?: GenProblem['generationTrace']
 }
 
 /**
@@ -462,31 +442,28 @@ interface RealisticProblem {
 function generateRealisticProblems(
   targetSkill: string,
   count: number,
-  maxAttempts: number = 100,
+  maxAttempts: number = 100
 ): RealisticProblem[] {
-  const problems: RealisticProblem[] = [];
-  const allowedSkills = createSkillSetForTarget(targetSkill);
-  const targetSkillSet = createTargetSkillSet(targetSkill);
+  const problems: RealisticProblem[] = []
+  const allowedSkills = createSkillSetForTarget(targetSkill)
+  const targetSkillSet = createTargetSkillSet(targetSkill)
 
   // Determine number range based on skill category
-  const category = targetSkill.split(".")[0];
-  let numberRange = { min: 1, max: 9 };
-  let maxSum = 20;
+  const category = targetSkill.split('.')[0]
+  let numberRange = { min: 1, max: 9 }
+  let maxSum = 20
 
-  if (category === "tenComplements" || category === "tenComplementsSub") {
-    numberRange = { min: 1, max: 99 };
-    maxSum = 200;
-  } else if (
-    category === "fiveComplements" ||
-    category === "fiveComplementsSub"
-  ) {
-    numberRange = { min: 1, max: 9 };
-    maxSum = 20;
+  if (category === 'tenComplements' || category === 'tenComplementsSub') {
+    numberRange = { min: 1, max: 99 }
+    maxSum = 200
+  } else if (category === 'fiveComplements' || category === 'fiveComplementsSub') {
+    numberRange = { min: 1, max: 9 }
+    maxSum = 20
   }
 
-  let attempts = 0;
+  let attempts = 0
   while (problems.length < count && attempts < count * maxAttempts) {
-    attempts++;
+    attempts++
 
     const problem = generateSingleProblem({
       constraints: {
@@ -499,7 +476,7 @@ function generateRealisticProblems(
       allowedSkills,
       targetSkills: targetSkillSet,
       attempts: 20,
-    });
+    })
 
     // STRICT: Only accept problems that actually use the target skill
     if (problem && problem.skillsUsed.includes(targetSkill)) {
@@ -511,7 +488,7 @@ function generateRealisticProblems(
         // This ensures the generated patterns reliably produce target classifications.
         skillsUsed: [targetSkill],
         generationTrace: problem.generationTrace,
-      });
+      })
     }
   }
 
@@ -520,24 +497,24 @@ function generateRealisticProblems(
   if (problems.length < count) {
     console.warn(
       `[Seed] Could only generate ${problems.length}/${count} problems for ${targetSkill}. ` +
-        `Synthesizing ${count - problems.length} more.`,
-    );
+        `Synthesizing ${count - problems.length} more.`
+    )
 
     while (problems.length < count) {
       // Synthesize a problem that uses the target skill
       // The actual math doesn't matter for BKT - only skillsUsed matters
-      const a = Math.floor(Math.random() * 8) + 1;
-      const b = Math.floor(Math.random() * 8) + 1;
+      const a = Math.floor(Math.random() * 8) + 1
+      const b = Math.floor(Math.random() * 8) + 1
       problems.push({
         terms: [a, b],
         answer: a + b,
         // IMPORTANT: Include the target skill so BKT processes it
         skillsUsed: [targetSkill],
-      });
+      })
     }
   }
 
-  return problems;
+  return problems
 }
 
 // =============================================================================
@@ -545,15 +522,15 @@ function generateRealisticProblems(
 // =============================================================================
 
 interface SkillConfig {
-  skillId: string;
+  skillId: string
   /** Target BKT classification - sequences will be designed to achieve this */
-  targetClassification: TargetClassification;
+  targetClassification: TargetClassification
   /** Number of problems to generate */
-  problems: number;
+  problems: number
   /** Days ago this skill was practiced (default: 1 day) */
-  ageDays?: number;
+  ageDays?: number
   /** Simulate legacy data by omitting hadHelp field (tests NaN handling) */
-  simulateLegacyData?: boolean;
+  simulateLegacyData?: boolean
 }
 
 /**
@@ -561,17 +538,17 @@ interface SkillConfig {
  */
 interface SuccessCriteria {
   /** Minimum number of weak skills required */
-  minWeak?: number;
+  minWeak?: number
   /** Maximum number of weak skills allowed */
-  maxWeak?: number;
+  maxWeak?: number
   /** Minimum number of developing skills required */
-  minDeveloping?: number;
+  minDeveloping?: number
   /** Maximum number of developing skills allowed */
-  maxDeveloping?: number;
+  maxDeveloping?: number
   /** Minimum number of strong skills required */
-  minStrong?: number;
+  minStrong?: number
   /** Maximum number of strong skills allowed */
-  maxStrong?: number;
+  maxStrong?: number
 }
 
 /**
@@ -579,56 +556,56 @@ interface SuccessCriteria {
  */
 interface TuningAdjustment {
   /** Skill ID to adjust (or 'all' for all skills) */
-  skillId: string | "all";
+  skillId: string | 'all'
   /** Add this many problems */
-  problemsAdd?: number;
+  problemsAdd?: number
   /** Multiply problems by this factor */
-  problemsMultiplier?: number;
+  problemsMultiplier?: number
 }
 
 /** Profile category for CLI filtering */
-type ProfileCategory = "bkt" | "session" | "edge";
+type ProfileCategory = 'bkt' | 'session' | 'edge'
 
 interface TestStudentProfile {
-  name: string;
-  emoji: string;
-  color: string;
+  name: string
+  emoji: string
+  color: string
   /** Category for CLI filtering: 'bkt', 'session', or 'edge' */
-  category: ProfileCategory;
-  description: string;
+  category: ProfileCategory
+  description: string
   /** Intention notes - what this profile is TRYING to achieve */
-  intentionNotes: string;
+  intentionNotes: string
   /** Skills that should have isPracticing = true (realistic curriculum progression) */
-  practicingSkills: string[];
+  practicingSkills: string[]
   /** Skills with problem history (can include non-practicing for testing edge cases) */
-  skillHistory: SkillConfig[];
+  skillHistory: SkillConfig[]
   /**
    * If true, auto-generate problems for all practicing skills that don't have explicit history.
    * This ensures all practicing skills have BKT data for proper session mode detection.
    */
-  ensureAllPracticingHaveHistory?: boolean;
+  ensureAllPracticingHaveHistory?: boolean
   /** Curriculum phase this student is nominally at */
-  currentPhaseId: string;
+  currentPhaseId: string
   /** Skills that should have their tutorial marked as completed */
-  tutorialCompletedSkills?: string[];
+  tutorialCompletedSkills?: string[]
   /** Expected session mode for this profile */
-  expectedSessionMode?: "remediation" | "progression" | "maintenance";
+  expectedSessionMode?: 'remediation' | 'progression' | 'maintenance'
   /** Success criteria for this profile */
-  successCriteria?: SuccessCriteria;
+  successCriteria?: SuccessCriteria
   /** Tuning adjustments to apply if criteria aren't met */
-  tuningAdjustments?: TuningAdjustment[];
+  tuningAdjustments?: TuningAdjustment[]
   /**
    * Minimum number of practice sessions to create.
    * Problems will be distributed across sessions over time.
    * Default: 5
    */
-  minSessions?: number;
+  minSessions?: number
   /**
    * Number of days to spread sessions across.
    * Sessions will be distributed evenly across this period.
    * Default: 30
    */
-  sessionSpreadDays?: number;
+  sessionSpreadDays?: number
 }
 
 // =============================================================================
@@ -636,57 +613,57 @@ interface TestStudentProfile {
 // =============================================================================
 
 /** Early Level 1 - just learning basics */
-const EARLY_L1_SKILLS = ["basic.directAddition", "basic.heavenBead"];
+const EARLY_L1_SKILLS = ['basic.directAddition', 'basic.heavenBead']
 
 /** Mid Level 1 - basics strong, learning five complements */
 const MID_L1_SKILLS = [
-  "basic.directAddition",
-  "basic.heavenBead",
-  "basic.simpleCombinations",
-  "fiveComplements.4=5-1",
-  "fiveComplements.3=5-2",
-];
+  'basic.directAddition',
+  'basic.heavenBead',
+  'basic.simpleCombinations',
+  'fiveComplements.4=5-1',
+  'fiveComplements.3=5-2',
+]
 
 /** Late Level 1 Addition - all addition skills */
 const LATE_L1_ADD_SKILLS = [
-  "basic.directAddition",
-  "basic.heavenBead",
-  "basic.simpleCombinations",
-  "fiveComplements.4=5-1",
-  "fiveComplements.3=5-2",
-  "fiveComplements.2=5-3",
-  "fiveComplements.1=5-4",
-];
+  'basic.directAddition',
+  'basic.heavenBead',
+  'basic.simpleCombinations',
+  'fiveComplements.4=5-1',
+  'fiveComplements.3=5-2',
+  'fiveComplements.2=5-3',
+  'fiveComplements.1=5-4',
+]
 
 /** Complete Level 1 - includes subtraction basics */
 const COMPLETE_L1_SKILLS = [
   ...LATE_L1_ADD_SKILLS,
-  "basic.directSubtraction",
-  "basic.heavenBeadSubtraction",
-  "basic.simpleCombinationsSub",
-  "fiveComplementsSub.-4=-5+1",
-  "fiveComplementsSub.-3=-5+2",
-  "fiveComplementsSub.-2=-5+3",
-  "fiveComplementsSub.-1=-5+4",
-];
+  'basic.directSubtraction',
+  'basic.heavenBeadSubtraction',
+  'basic.simpleCombinationsSub',
+  'fiveComplementsSub.-4=-5+1',
+  'fiveComplementsSub.-3=-5+2',
+  'fiveComplementsSub.-2=-5+3',
+  'fiveComplementsSub.-1=-5+4',
+]
 
 /** Level 2 skills (ten complements for addition) */
 const L2_ADD_SKILLS = [
-  "tenComplements.9=10-1",
-  "tenComplements.8=10-2",
-  "tenComplements.7=10-3",
-  "tenComplements.6=10-4",
-];
+  'tenComplements.9=10-1',
+  'tenComplements.8=10-2',
+  'tenComplements.7=10-3',
+  'tenComplements.6=10-4',
+]
 
 // All test student profiles
 const TEST_PROFILES: TestStudentProfile[] = [
   {
-    name: "🔴 Multi-Skill Deficient",
-    emoji: "😰",
-    color: "#ef4444", // red
-    category: "bkt",
-    description: "Struggling with many skills - needs intervention",
-    currentPhaseId: "L1.add.+3.direct",
+    name: '🔴 Multi-Skill Deficient',
+    emoji: '😰',
+    color: '#ef4444', // red
+    category: 'bkt',
+    description: 'Struggling with many skills - needs intervention',
+    currentPhaseId: 'L1.add.+3.direct',
     practicingSkills: EARLY_L1_SKILLS,
     intentionNotes: `INTENTION: Multi-Skill Deficient
 
@@ -705,27 +682,27 @@ Use this student to test how the UI handles intervention alerts for foundational
     skillHistory: [
       // Weak in basics - this is concerning at this stage
       {
-        skillId: "basic.directAddition",
-        targetClassification: "weak",
+        skillId: 'basic.directAddition',
+        targetClassification: 'weak',
         problems: 15,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "weak",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'weak',
         problems: 12,
       },
     ],
     // Tuning: Need at least 2 weak skills
     successCriteria: { minWeak: 2 },
-    tuningAdjustments: [{ skillId: "all", problemsAdd: 10 }],
+    tuningAdjustments: [{ skillId: 'all', problemsAdd: 10 }],
   },
   {
-    name: "🟡 Single-Skill Blocker",
-    emoji: "🤔",
-    color: "#f59e0b", // amber
-    category: "bkt",
-    description: "One weak skill blocking progress, others are fine",
-    currentPhaseId: "L1.add.+2.five",
+    name: '🟡 Single-Skill Blocker',
+    emoji: '🤔',
+    color: '#f59e0b', // amber
+    category: 'bkt',
+    description: 'One weak skill blocking progress, others are fine',
+    currentPhaseId: 'L1.add.+2.five',
     practicingSkills: MID_L1_SKILLS,
     intentionNotes: `INTENTION: Single-Skill Blocker
 
@@ -746,42 +723,41 @@ Use this student to test targeted intervention recommendations.`,
     skillHistory: [
       // Strong basics
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 20,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 18,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 15,
       },
       // Strong in first five complement
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
         problems: 16,
       },
       // THE BLOCKER - weak despite practice
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "weak",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
         problems: 18,
       },
     ],
   },
   {
-    name: "🟢 Progressing Nicely",
-    emoji: "😊",
-    color: "#22c55e", // green
-    category: "bkt",
-    description:
-      "Healthy progression - mostly strong with one skill in progress",
-    currentPhaseId: "L1.add.+3.five",
+    name: '🟢 Progressing Nicely',
+    emoji: '😊',
+    color: '#22c55e', // green
+    category: 'bkt',
+    description: 'Healthy progression - mostly strong with one skill in progress',
+    currentPhaseId: 'L1.add.+3.five',
     practicingSkills: MID_L1_SKILLS,
     intentionNotes: `INTENTION: Progressing Nicely
 
@@ -803,30 +779,30 @@ Use this student to verify:
     skillHistory: [
       // Strong basics (mastered)
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 22,
       },
       // Developing - in the middle zone
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "developing",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'developing',
         problems: 12,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "developing",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'developing',
         problems: 10,
       },
       // Just started (expected to be weak)
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "weak",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
         problems: 8,
       },
     ],
@@ -834,12 +810,12 @@ Use this student to verify:
     successCriteria: { minDeveloping: 1 },
   },
   {
-    name: "⭐ Ready to Level Up",
-    emoji: "🌟",
-    color: "#8b5cf6", // violet
-    category: "bkt",
-    description: "All skills strong - ready for next curriculum phase",
-    currentPhaseId: "L1.add.+1.five",
+    name: '⭐ Ready to Level Up',
+    emoji: '🌟',
+    color: '#8b5cf6', // violet
+    category: 'bkt',
+    description: 'All skills strong - ready for next curriculum phase',
+    currentPhaseId: 'L1.add.+1.five',
     practicingSkills: LATE_L1_ADD_SKILLS,
     intentionNotes: `INTENTION: Ready to Level Up
 
@@ -861,50 +837,49 @@ Use this student to test:
     skillHistory: [
       // All strong
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 22,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
         problems: 20,
       },
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
         problems: 20,
       },
       {
-        skillId: "fiveComplements.2=5-3",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
         problems: 18,
       },
       {
-        skillId: "fiveComplements.1=5-4",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'strong',
         problems: 18,
       },
     ],
   },
   {
-    name: "🚀 Overdue for Promotion",
-    emoji: "🏆",
-    color: "#06b6d4", // cyan
-    category: "bkt",
-    description:
-      "All skills mastered long ago - should have leveled up already",
-    currentPhaseId: "L2.add.+9.ten",
+    name: '🚀 Overdue for Promotion',
+    emoji: '🏆',
+    color: '#06b6d4', // cyan
+    category: 'bkt',
+    description: 'All skills mastered long ago - should have leveled up already',
+    currentPhaseId: 'L2.add.+9.ten',
     practicingSkills: [...COMPLETE_L1_SKILLS, ...L2_ADD_SKILLS],
     intentionNotes: `INTENTION: Overdue for Promotion
 
@@ -928,96 +903,96 @@ Use this student to test:
     skillHistory: [
       // Extremely strong basics
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 35,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 35,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 30,
       },
       {
-        skillId: "basic.directSubtraction",
-        targetClassification: "strong",
+        skillId: 'basic.directSubtraction',
+        targetClassification: 'strong',
         problems: 30,
       },
       {
-        skillId: "basic.heavenBeadSubtraction",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBeadSubtraction',
+        targetClassification: 'strong',
         problems: 28,
       },
       {
-        skillId: "basic.simpleCombinationsSub",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinationsSub',
+        targetClassification: 'strong',
         problems: 28,
       },
       // All five complements mastered
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
         problems: 30,
       },
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
         problems: 30,
       },
       {
-        skillId: "fiveComplements.2=5-3",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
         problems: 28,
       },
       {
-        skillId: "fiveComplements.1=5-4",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'strong',
         problems: 28,
       },
       // Subtraction five complements too
       {
-        skillId: "fiveComplementsSub.-4=-5+1",
-        targetClassification: "strong",
+        skillId: 'fiveComplementsSub.-4=-5+1',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "fiveComplementsSub.-3=-5+2",
-        targetClassification: "strong",
+        skillId: 'fiveComplementsSub.-3=-5+2',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "fiveComplementsSub.-2=-5+3",
-        targetClassification: "strong",
+        skillId: 'fiveComplementsSub.-2=-5+3',
+        targetClassification: 'strong',
         problems: 22,
       },
       {
-        skillId: "fiveComplementsSub.-1=-5+4",
-        targetClassification: "strong",
+        skillId: 'fiveComplementsSub.-1=-5+4',
+        targetClassification: 'strong',
         problems: 22,
       },
       // Even L2 ten complements
       {
-        skillId: "tenComplements.9=10-1",
-        targetClassification: "strong",
+        skillId: 'tenComplements.9=10-1',
+        targetClassification: 'strong',
         problems: 20,
       },
       {
-        skillId: "tenComplements.8=10-2",
-        targetClassification: "strong",
+        skillId: 'tenComplements.8=10-2',
+        targetClassification: 'strong',
         problems: 20,
       },
       {
-        skillId: "tenComplements.7=10-3",
-        targetClassification: "strong",
+        skillId: 'tenComplements.7=10-3',
+        targetClassification: 'strong',
         problems: 18,
       },
       {
-        skillId: "tenComplements.6=10-4",
-        targetClassification: "strong",
+        skillId: 'tenComplements.6=10-4',
+        targetClassification: 'strong',
         problems: 18,
       },
     ],
@@ -1028,19 +1003,19 @@ Use this student to test:
   // =============================================================================
 
   {
-    name: "🎯 Remediation Test",
-    emoji: "🎯",
-    color: "#dc2626", // red-600
-    category: "session",
-    description: "REMEDIATION MODE - Weak skills blocking promotion",
-    currentPhaseId: "L1.add.+3.five",
+    name: '🎯 Remediation Test',
+    emoji: '🎯',
+    color: '#dc2626', // red-600
+    category: 'session',
+    description: 'REMEDIATION MODE - Weak skills blocking promotion',
+    currentPhaseId: 'L1.add.+3.five',
     practicingSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
     ],
-    expectedSessionMode: "remediation",
+    expectedSessionMode: 'remediation',
     intentionNotes: `INTENTION: Remediation Mode
 
 This student is specifically configured to trigger REMEDIATION mode.
@@ -1059,51 +1034,51 @@ How it works:
 
 Use this to test the remediation UI in dashboard and modal.`,
     tutorialCompletedSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
     ],
     skillHistory: [
       // Strong skills
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 20,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 18,
       },
       // WEAK skills - will trigger remediation
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "weak",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'weak',
         problems: 15,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "weak",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'weak',
         problems: 18,
       },
     ],
   },
   {
-    name: "📚 Progression Tutorial Test",
-    emoji: "📚",
-    color: "#7c3aed", // violet-600
-    category: "session",
-    description: "PROGRESSION MODE - Ready for new skill, tutorial required",
-    currentPhaseId: "L1.add.+3.five",
+    name: '📚 Progression Tutorial Test',
+    emoji: '📚',
+    color: '#7c3aed', // violet-600
+    category: 'session',
+    description: 'PROGRESSION MODE - Ready for new skill, tutorial required',
+    currentPhaseId: 'L1.add.+3.five',
     practicingSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
     ],
     ensureAllPracticingHaveHistory: true, // All practicing skills must be strong for progression
-    expectedSessionMode: "progression",
+    expectedSessionMode: 'progression',
     intentionNotes: `INTENTION: Progression Mode (Tutorial Required)
 
 This student is specifically configured to trigger PROGRESSION mode with tutorial gate.
@@ -1122,51 +1097,51 @@ How it works:
 
 Use this to test the progression UI and tutorial gate flow.`,
     tutorialCompletedSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
       // NOTE: fiveComplements.3=5-2 tutorial NOT completed - triggers tutorial gate
     ],
     skillHistory: [
       // All skills STRONG
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 22,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 20,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
         problems: 20,
       },
     ],
   },
   {
-    name: "🚀 Progression Ready Test",
-    emoji: "🚀",
-    color: "#059669", // emerald-600
-    category: "session",
-    description: "PROGRESSION MODE - Tutorial done, ready to practice",
-    currentPhaseId: "L1.add.+3.five",
+    name: '🚀 Progression Ready Test',
+    emoji: '🚀',
+    color: '#059669', // emerald-600
+    category: 'session',
+    description: 'PROGRESSION MODE - Tutorial done, ready to practice',
+    currentPhaseId: 'L1.add.+3.five',
     practicingSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
     ],
     ensureAllPracticingHaveHistory: true, // All practicing skills must be strong for progression
-    expectedSessionMode: "progression",
+    expectedSessionMode: 'progression',
     intentionNotes: `INTENTION: Progression Mode (Tutorial Already Done)
 
 This student is specifically configured to trigger PROGRESSION mode with tutorial satisfied.
@@ -1185,54 +1160,54 @@ How it works:
 
 Use this to test the progression UI when tutorial is already satisfied.`,
     tutorialCompletedSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2", // Tutorial already completed!
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2', // Tutorial already completed!
     ],
     skillHistory: [
       // All skills STRONG
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 22,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 20,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
         problems: 20,
       },
     ],
   },
   {
-    name: "🏆 Maintenance Test",
-    emoji: "🏆",
-    color: "#0891b2", // cyan-600
-    category: "session",
-    description: "MAINTENANCE MODE - All skills strong, mixed practice",
-    currentPhaseId: "L1.add.+4.five",
+    name: '🏆 Maintenance Test',
+    emoji: '🏆',
+    color: '#0891b2', // cyan-600
+    category: 'session',
+    description: 'MAINTENANCE MODE - All skills strong, mixed practice',
+    currentPhaseId: 'L1.add.+4.five',
     practicingSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
-      "fiveComplements.1=5-4",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+      'fiveComplements.1=5-4',
     ],
     ensureAllPracticingHaveHistory: true, // All practicing skills must be strong for maintenance
-    expectedSessionMode: "maintenance",
+    expectedSessionMode: 'maintenance',
     intentionNotes: `INTENTION: Maintenance Mode
 
 This student is specifically configured to trigger MAINTENANCE mode.
@@ -1255,49 +1230,49 @@ This profile demonstrates the maintenance case.
 
 Use this to test the maintenance mode UI in dashboard and modal.`,
     tutorialCompletedSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
-      "fiveComplements.1=5-4",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+      'fiveComplements.1=5-4',
     ],
     skillHistory: [
       // All L1 addition skills STRONG with high confidence
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 30,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 28,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
         problems: 22,
       },
       {
-        skillId: "fiveComplements.2=5-3",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
         problems: 22,
       },
       {
-        skillId: "fiveComplements.1=5-4",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'strong',
         problems: 20,
       },
     ],
@@ -1308,12 +1283,12 @@ Use this to test the maintenance mode UI in dashboard and modal.`,
   // =============================================================================
 
   {
-    name: "🆕 Brand New Student",
-    emoji: "🌱",
-    color: "#84cc16", // lime-500
-    category: "edge",
-    description: "EDGE CASE - Zero practicing skills, empty state",
-    currentPhaseId: "L1.add.+1.direct",
+    name: '🆕 Brand New Student',
+    emoji: '🌱',
+    color: '#84cc16', // lime-500
+    category: 'edge',
+    description: 'EDGE CASE - Zero practicing skills, empty state',
+    currentPhaseId: 'L1.add.+1.direct',
     practicingSkills: [], // No skills practicing yet!
     intentionNotes: `INTENTION: Brand New Student (Edge Case)
 
@@ -1330,14 +1305,14 @@ Use this to verify the dashboard handles zero practicing skills gracefully.`,
     skillHistory: [], // No history at all
   },
   {
-    name: "🔢 Single Skill Only",
-    emoji: "1️⃣",
-    color: "#a855f7", // purple-500
-    category: "edge",
-    description: "EDGE CASE - Only one skill practicing",
-    currentPhaseId: "L1.add.+1.direct",
-    practicingSkills: ["basic.directAddition"],
-    tutorialCompletedSkills: ["basic.directAddition"],
+    name: '🔢 Single Skill Only',
+    emoji: '1️⃣',
+    color: '#a855f7', // purple-500
+    category: 'edge',
+    description: 'EDGE CASE - Only one skill practicing',
+    currentPhaseId: 'L1.add.+1.direct',
+    practicingSkills: ['basic.directAddition'],
+    tutorialCompletedSkills: ['basic.directAddition'],
     intentionNotes: `INTENTION: Single Skill Only (Edge Case)
 
 This student is practicing exactly ONE skill. This is the minimum case.
@@ -1350,43 +1325,43 @@ What you should see:
 Use this to verify the dashboard handles single-skill students correctly.`,
     skillHistory: [
       {
-        skillId: "basic.directAddition",
-        targetClassification: "developing",
+        skillId: 'basic.directAddition',
+        targetClassification: 'developing',
         problems: 12,
       },
     ],
   },
   {
-    name: "📊 High Volume Learner",
-    emoji: "📈",
-    color: "#3b82f6", // blue-500
-    category: "edge",
-    description: "EDGE CASE - Many skills with lots of practice history",
-    currentPhaseId: "L1.sub.-3.five",
+    name: '📊 High Volume Learner',
+    emoji: '📈',
+    color: '#3b82f6', // blue-500
+    category: 'edge',
+    description: 'EDGE CASE - Many skills with lots of practice history',
+    currentPhaseId: 'L1.sub.-3.five',
     practicingSkills: [
       // All L1 addition
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
-      "fiveComplements.1=5-4",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+      'fiveComplements.1=5-4',
       // L1 subtraction basics
-      "basic.directSubtraction",
-      "basic.heavenBeadSubtraction",
+      'basic.directSubtraction',
+      'basic.heavenBeadSubtraction',
     ],
     ensureAllPracticingHaveHistory: true,
     tutorialCompletedSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
-      "fiveComplements.1=5-4",
-      "basic.directSubtraction",
-      "basic.heavenBeadSubtraction",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
+      'fiveComplements.1=5-4',
+      'basic.directSubtraction',
+      'basic.heavenBeadSubtraction',
     ],
     intentionNotes: `INTENTION: High Volume Learner
 
@@ -1403,75 +1378,75 @@ Use this to verify:
     skillHistory: [
       // All L1 addition - strong
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 40,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 35,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 30,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
         problems: 28,
       },
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "fiveComplements.2=5-3",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "fiveComplements.1=5-4",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'strong',
         problems: 22,
       },
       // Subtraction - developing
       {
-        skillId: "basic.directSubtraction",
-        targetClassification: "developing",
+        skillId: 'basic.directSubtraction',
+        targetClassification: 'developing',
         problems: 15,
       },
       {
-        skillId: "basic.heavenBeadSubtraction",
-        targetClassification: "developing",
+        skillId: 'basic.heavenBeadSubtraction',
+        targetClassification: 'developing',
         problems: 12,
       },
     ],
   },
   {
-    name: "⚖️ Multi-Weak Remediation",
-    emoji: "⚖️",
-    color: "#f97316", // orange-500
-    category: "edge",
-    description: "EDGE CASE - Many weak skills needing remediation",
-    currentPhaseId: "L1.add.+2.five",
+    name: '⚖️ Multi-Weak Remediation',
+    emoji: '⚖️',
+    color: '#f97316', // orange-500
+    category: 'edge',
+    description: 'EDGE CASE - Many weak skills needing remediation',
+    currentPhaseId: 'L1.add.+2.five',
     practicingSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
     ],
     tutorialCompletedSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
     ],
     intentionNotes: `INTENTION: Multi-Weak Remediation (Edge Case)
 
@@ -1491,35 +1466,35 @@ Complements 🔴 Multi-Skill Deficient (which has only 2 weak).`,
     skillHistory: [
       // 2 Strong
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 22,
       },
       // 2 Developing
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "developing",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'developing',
         problems: 15,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "developing",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'developing',
         problems: 14,
       },
       // 2 Weak
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "weak",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
         problems: 18,
       },
       {
-        skillId: "fiveComplements.2=5-3",
-        targetClassification: "weak",
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'weak',
         problems: 16,
       },
     ],
@@ -1527,27 +1502,27 @@ Complements 🔴 Multi-Skill Deficient (which has only 2 weak).`,
     successCriteria: { minWeak: 2 },
   },
   {
-    name: "🕰️ Stale Skills Test",
-    emoji: "⏰",
-    color: "#6b7280", // gray-500
-    category: "edge",
-    description: "EDGE CASE - Skills at various staleness levels",
-    currentPhaseId: "L1.add.+2.five",
+    name: '🕰️ Stale Skills Test',
+    emoji: '⏰',
+    color: '#6b7280', // gray-500
+    category: 'edge',
+    description: 'EDGE CASE - Skills at various staleness levels',
+    currentPhaseId: 'L1.add.+2.five',
     practicingSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
     ],
     tutorialCompletedSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
     ],
     intentionNotes: `INTENTION: Stale Skills Test
 
@@ -1569,68 +1544,68 @@ Use this to test:
     skillHistory: [
       // Recent skills (1 day ago) - NOT stale
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 20,
         ageDays: 1,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 18,
         ageDays: 1,
       },
       // "Not practiced recently" (7-14 days)
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 15,
         ageDays: 10,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
         problems: 16,
         ageDays: 10,
       },
       // "Getting rusty" (14-30 days)
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
         problems: 18,
         ageDays: 20,
       },
       // "Very stale" (30+ days)
       {
-        skillId: "fiveComplements.2=5-3",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
         problems: 16,
         ageDays: 45,
       },
     ],
   },
   {
-    name: "💥 NaN Stress Test",
-    emoji: "💥",
-    color: "#dc2626", // red-600
-    category: "edge",
-    description: "EDGE CASE - Stress tests BKT NaN handling with extreme data",
-    currentPhaseId: "L1.add.+3.five",
+    name: '💥 NaN Stress Test',
+    emoji: '💥',
+    color: '#dc2626', // red-600
+    category: 'edge',
+    description: 'EDGE CASE - Stress tests BKT NaN handling with extreme data',
+    currentPhaseId: 'L1.add.+3.five',
     practicingSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
     ],
     tutorialCompletedSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
     ],
     intentionNotes: `INTENTION: NaN Stress Test
 
@@ -1666,39 +1641,39 @@ Use this profile to verify:
     skillHistory: [
       // LEGACY DATA TEST - missing hadHelp (the actual root cause)
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 30,
         simulateLegacyData: true,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "developing",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'developing',
         problems: 25,
         simulateLegacyData: true,
       },
       // STRONG with many problems
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 100,
       },
       // WEAK with many problems
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "weak",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'weak',
         problems: 100,
       },
       // DEVELOPING
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "developing",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'developing',
         problems: 50,
       },
       // Very old skill with legacy data (tests decay + legacy handling)
       {
-        skillId: "fiveComplements.2=5-3",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
         problems: 40,
         ageDays: 90,
         simulateLegacyData: true,
@@ -1706,28 +1681,27 @@ Use this profile to verify:
     ],
   },
   {
-    name: "🧊 Forgotten Weaknesses",
-    emoji: "🧊",
-    color: "#3b82f6", // blue-500
-    category: "edge",
-    description:
-      "EDGE CASE - Weak skills that are also stale (urgent remediation needed)",
-    currentPhaseId: "L1.add.+2.five",
+    name: '🧊 Forgotten Weaknesses',
+    emoji: '🧊',
+    color: '#3b82f6', // blue-500
+    category: 'edge',
+    description: 'EDGE CASE - Weak skills that are also stale (urgent remediation needed)',
+    currentPhaseId: 'L1.add.+2.five',
     practicingSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
     ],
     tutorialCompletedSkills: [
-      "basic.directAddition",
-      "basic.heavenBead",
-      "basic.simpleCombinations",
-      "fiveComplements.4=5-1",
-      "fiveComplements.3=5-2",
-      "fiveComplements.2=5-3",
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+      'fiveComplements.4=5-1',
+      'fiveComplements.3=5-2',
+      'fiveComplements.2=5-3',
     ],
     intentionNotes: `INTENTION: Forgotten Weaknesses
 
@@ -1755,43 +1729,43 @@ are both - the forgotten weaknesses that need urgent attention.`,
     skillHistory: [
       // STRONG + recent (healthy baseline)
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 20,
         ageDays: 1,
       },
       // STRONG + stale 20 days (stale-only - "Getting rusty" but should be fine)
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 18,
         ageDays: 20,
       },
       // WEAK + recent (weak-only - actively struggling with this)
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "weak",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'weak',
         problems: 15,
         ageDays: 2,
       },
       // WEAK + stale 14 days (overlap: weak AND "Not practiced recently")
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "weak",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'weak',
         problems: 14,
         ageDays: 14,
       },
       // WEAK + stale 35 days (overlap: urgent - weak AND "Very stale")
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "weak",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
         problems: 18,
         ageDays: 35,
       },
       // DEVELOPING + stale 25 days (borderline - needs practice)
       {
-        skillId: "fiveComplements.2=5-3",
-        targetClassification: "developing",
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'developing',
         problems: 16,
         ageDays: 25,
       },
@@ -1806,13 +1780,12 @@ are both - the forgotten weaknesses that need urgent attention.`,
   // These profiles specifically test the SkillProgressChart component behavior
 
   {
-    name: "📉 Chart: 1 Session Only",
-    emoji: "📉",
-    color: "#64748b", // slate-500
-    category: "edge",
-    description:
-      "CHART EDGE - Only 1 session, chart shows legend only (no area chart)",
-    currentPhaseId: "L1.add.+2.five",
+    name: '📉 Chart: 1 Session Only',
+    emoji: '📉',
+    color: '#64748b', // slate-500
+    category: 'edge',
+    description: 'CHART EDGE - Only 1 session, chart shows legend only (no area chart)',
+    currentPhaseId: 'L1.add.+2.five',
     practicingSkills: MID_L1_SKILLS,
     minSessions: 1, // Force exactly 1 session
     sessionSpreadDays: 1,
@@ -1830,40 +1803,39 @@ What you should see:
 Use this to verify the chart gracefully handles the minimum history case.`,
     skillHistory: [
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 8,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 6,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "developing",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'developing',
         problems: 5,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "developing",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'developing',
         problems: 4,
       },
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "weak",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
         problems: 3,
       },
     ],
   },
   {
-    name: "📊 Chart: 2 Sessions (Min)",
-    emoji: "📊",
-    color: "#0ea5e9", // sky-500
-    category: "edge",
-    description:
-      "CHART EDGE - Exactly 2 sessions, minimum to show stacked area chart",
-    currentPhaseId: "L1.add.+2.five",
+    name: '📊 Chart: 2 Sessions (Min)',
+    emoji: '📊',
+    color: '#0ea5e9', // sky-500
+    category: 'edge',
+    description: 'CHART EDGE - Exactly 2 sessions, minimum to show stacked area chart',
+    currentPhaseId: 'L1.add.+2.five',
     practicingSkills: MID_L1_SKILLS,
     minSessions: 2, // Force exactly 2 sessions
     sessionSpreadDays: 7,
@@ -1881,39 +1853,39 @@ What you should see:
 Use this to verify the chart renders correctly at the minimum viable history.`,
     skillHistory: [
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 12,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 10,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "developing",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'developing',
         problems: 8,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "developing",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'developing',
         problems: 6,
       },
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "weak",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
         problems: 5,
       },
     ],
   },
   {
-    name: "📈 Chart: 25 Sessions",
-    emoji: "📈",
-    color: "#10b981", // emerald-500
-    category: "edge",
-    description: "CHART EDGE - 25 sessions, tests the 20-session display limit",
-    currentPhaseId: "L1.add.+1.five",
+    name: '📈 Chart: 25 Sessions',
+    emoji: '📈',
+    color: '#10b981', // emerald-500
+    category: 'edge',
+    description: 'CHART EDGE - 25 sessions, tests the 20-session display limit',
+    currentPhaseId: 'L1.add.+1.five',
     practicingSkills: LATE_L1_ADD_SKILLS,
     minSessions: 25, // More than the 20-session limit
     sessionSpreadDays: 60,
@@ -1938,50 +1910,49 @@ Use this to verify:
     skillHistory: [
       // Higher problem counts to distribute across 25 sessions
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 50,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 45,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 40,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
         problems: 35,
       },
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
         problems: 30,
       },
       {
-        skillId: "fiveComplements.2=5-3",
-        targetClassification: "developing",
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'developing',
         problems: 25,
       },
       {
-        skillId: "fiveComplements.1=5-4",
-        targetClassification: "developing",
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'developing',
         problems: 20,
       },
     ],
   },
   {
-    name: "🏋️ Chart: 150 Sessions",
-    emoji: "🏋️",
-    color: "#8b5cf6", // violet-500
-    category: "edge",
-    description:
-      "CHART EDGE - 150 sessions, stress test for high-volume history",
-    currentPhaseId: "L2.add.+9.ten",
+    name: '🏋️ Chart: 150 Sessions',
+    emoji: '🏋️',
+    color: '#8b5cf6', // violet-500
+    category: 'edge',
+    description: 'CHART EDGE - 150 sessions, stress test for high-volume history',
+    currentPhaseId: 'L2.add.+9.ten',
     practicingSkills: [...COMPLETE_L1_SKILLS, ...L2_ADD_SKILLS],
     minSessions: 150, // Very high session count
     sessionSpreadDays: 180, // 6 months of history
@@ -2008,105 +1979,104 @@ Use this to verify:
       // Very high problem counts for 150 sessions
       // Total ~2000 problems across all skills
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 150,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 140,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 130,
       },
       {
-        skillId: "basic.directSubtraction",
-        targetClassification: "strong",
+        skillId: 'basic.directSubtraction',
+        targetClassification: 'strong',
         problems: 120,
       },
       {
-        skillId: "basic.heavenBeadSubtraction",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBeadSubtraction',
+        targetClassification: 'strong',
         problems: 110,
       },
       {
-        skillId: "basic.simpleCombinationsSub",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinationsSub',
+        targetClassification: 'strong',
         problems: 100,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
         problems: 90,
       },
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'strong',
         problems: 85,
       },
       {
-        skillId: "fiveComplements.2=5-3",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'strong',
         problems: 80,
       },
       {
-        skillId: "fiveComplements.1=5-4",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'strong',
         problems: 75,
       },
       {
-        skillId: "fiveComplementsSub.-4=-5+1",
-        targetClassification: "strong",
+        skillId: 'fiveComplementsSub.-4=-5+1',
+        targetClassification: 'strong',
         problems: 70,
       },
       {
-        skillId: "fiveComplementsSub.-3=-5+2",
-        targetClassification: "strong",
+        skillId: 'fiveComplementsSub.-3=-5+2',
+        targetClassification: 'strong',
         problems: 65,
       },
       {
-        skillId: "fiveComplementsSub.-2=-5+3",
-        targetClassification: "strong",
+        skillId: 'fiveComplementsSub.-2=-5+3',
+        targetClassification: 'strong',
         problems: 60,
       },
       {
-        skillId: "fiveComplementsSub.-1=-5+4",
-        targetClassification: "strong",
+        skillId: 'fiveComplementsSub.-1=-5+4',
+        targetClassification: 'strong',
         problems: 55,
       },
       {
-        skillId: "tenComplements.9=10-1",
-        targetClassification: "strong",
+        skillId: 'tenComplements.9=10-1',
+        targetClassification: 'strong',
         problems: 50,
       },
       {
-        skillId: "tenComplements.8=10-2",
-        targetClassification: "strong",
+        skillId: 'tenComplements.8=10-2',
+        targetClassification: 'strong',
         problems: 45,
       },
       {
-        skillId: "tenComplements.7=10-3",
-        targetClassification: "strong",
+        skillId: 'tenComplements.7=10-3',
+        targetClassification: 'strong',
         problems: 40,
       },
       {
-        skillId: "tenComplements.6=10-4",
-        targetClassification: "strong",
+        skillId: 'tenComplements.6=10-4',
+        targetClassification: 'strong',
         problems: 35,
       },
     ],
   },
   {
-    name: "🌈 Chart: Dramatic Progress",
-    emoji: "🌈",
-    color: "#f43f5e", // rose-500
-    category: "edge",
-    description:
-      "CHART EDGE - Shows dramatic improvement trajectory for motivational display",
-    currentPhaseId: "L1.add.+1.five",
+    name: '🌈 Chart: Dramatic Progress',
+    emoji: '🌈',
+    color: '#f43f5e', // rose-500
+    category: 'edge',
+    description: 'CHART EDGE - Shows dramatic improvement trajectory for motivational display',
+    currentPhaseId: 'L1.add.+1.five',
     practicingSkills: LATE_L1_ADD_SKILLS,
     minSessions: 15, // Good number for visible progression
     sessionSpreadDays: 45, // 6 weeks of progress
@@ -2131,92 +2101,92 @@ Use this to verify:
     skillHistory: [
       // Mix that should show progression when computed at each session point
       {
-        skillId: "basic.directAddition",
-        targetClassification: "strong",
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
         problems: 35,
       },
       {
-        skillId: "basic.heavenBead",
-        targetClassification: "strong",
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
         problems: 32,
       },
       {
-        skillId: "basic.simpleCombinations",
-        targetClassification: "strong",
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
         problems: 28,
       },
       {
-        skillId: "fiveComplements.4=5-1",
-        targetClassification: "strong",
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'strong',
         problems: 25,
       },
       {
-        skillId: "fiveComplements.3=5-2",
-        targetClassification: "developing",
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'developing',
         problems: 18,
       },
       {
-        skillId: "fiveComplements.2=5-3",
-        targetClassification: "developing",
+        skillId: 'fiveComplements.2=5-3',
+        targetClassification: 'developing',
         problems: 15,
       },
       {
-        skillId: "fiveComplements.1=5-4",
-        targetClassification: "weak",
+        skillId: 'fiveComplements.1=5-4',
+        targetClassification: 'weak',
         problems: 10,
       },
     ],
   },
-];
+]
 
 // =============================================================================
 // CLI Helper Functions
 // =============================================================================
 
 function listProfiles(): void {
-  console.log("\n📋 Available Test Students:\n");
+  console.log('\n📋 Available Test Students:\n')
 
   const categories: Record<ProfileCategory, TestStudentProfile[]> = {
     bkt: [],
     session: [],
     edge: [],
-  };
+  }
 
   for (const profile of TEST_PROFILES) {
-    categories[profile.category].push(profile);
+    categories[profile.category].push(profile)
   }
 
-  console.log("BKT Scenarios (--category bkt):");
+  console.log('BKT Scenarios (--category bkt):')
   for (const p of categories.bkt) {
-    console.log(`  ${p.name}`);
-    console.log(`    ${p.description}`);
+    console.log(`  ${p.name}`)
+    console.log(`    ${p.description}`)
   }
 
-  console.log("\nSession Mode Tests (--category session):");
+  console.log('\nSession Mode Tests (--category session):')
   for (const p of categories.session) {
-    console.log(`  ${p.name}`);
-    console.log(`    ${p.description}`);
+    console.log(`  ${p.name}`)
+    console.log(`    ${p.description}`)
   }
 
-  console.log("\nEdge Cases (--category edge):");
+  console.log('\nEdge Cases (--category edge):')
   for (const p of categories.edge) {
-    console.log(`  ${p.name}`);
-    console.log(`    ${p.description}`);
+    console.log(`  ${p.name}`)
+    console.log(`    ${p.description}`)
   }
 
-  console.log(`\nTotal: ${TEST_PROFILES.length} students\n`);
+  console.log(`\nTotal: ${TEST_PROFILES.length} students\n`)
 }
 
 /**
  * Filter profiles based on CLI args (name and category filters)
  */
 function filterProfiles(profiles: TestStudentProfile[]): TestStudentProfile[] {
-  const names = cliArgs.name as string[];
-  const categories = cliArgs.category as string[];
+  const names = cliArgs.name as string[]
+  const categories = cliArgs.category as string[]
 
   // If no filters, return all
   if (names.length === 0 && categories.length === 0) {
-    return profiles;
+    return profiles
   }
 
   return profiles.filter((profile) => {
@@ -2226,21 +2196,20 @@ function filterProfiles(profiles: TestStudentProfile[]): TestStudentProfile[] {
       names.some(
         (n) =>
           profile.name.toLowerCase().includes(n.toLowerCase()) ||
-          n.toLowerCase().includes(profile.name.toLowerCase()),
-      );
+          n.toLowerCase().includes(profile.name.toLowerCase())
+      )
 
     // Check category filter
-    const matchesCategory =
-      categories.length === 0 || categories.includes(profile.category);
+    const matchesCategory = categories.length === 0 || categories.includes(profile.category)
 
     // If both filters specified, must match at least one
     if (names.length > 0 && categories.length > 0) {
-      return matchesName || matchesCategory;
+      return matchesName || matchesCategory
     }
 
     // If only one filter type, must match that one
-    return matchesName && matchesCategory;
-  });
+    return matchesName && matchesCategory
+  })
 }
 
 // =============================================================================
@@ -2250,24 +2219,21 @@ function filterProfiles(profiles: TestStudentProfile[]): TestStudentProfile[] {
 function generateSlotResults(
   config: SkillConfig,
   startIndex: number,
-  sessionStartTime: Date,
+  sessionStartTime: Date
 ): SlotResult[] {
   // Generate realistic problems targeting the skill
-  const realisticProblems = generateRealisticProblems(
-    config.skillId,
-    config.problems,
-  );
+  const realisticProblems = generateRealisticProblems(config.skillId, config.problems)
 
   // Design a sequence that will reliably produce the target BKT classification
   // This replaces random shuffling with deterministic patterns
   const correctnessSequence = designSequenceForClassification(
     config.skillId,
     config.problems,
-    config.targetClassification,
-  );
+    config.targetClassification
+  )
 
   return realisticProblems.map((realistic, i) => {
-    const isCorrect = correctnessSequence[i];
+    const isCorrect = correctnessSequence[i]
 
     // Convert to the schema's GeneratedProblem format
     const problem: GeneratedProblem = {
@@ -2275,12 +2241,11 @@ function generateSlotResults(
       answer: realistic.answer,
       skillsRequired: realistic.skillsUsed,
       generationTrace: realistic.generationTrace,
-    };
+    }
 
     // Generate a plausible wrong answer if incorrect
     const wrongAnswer =
-      realistic.answer +
-      (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1);
+      realistic.answer + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1)
 
     const baseResult = {
       partNumber: 1 as const,
@@ -2291,24 +2256,22 @@ function generateSlotResults(
       responseTimeMs: 4000 + Math.random() * 2000,
       skillsExercised: realistic.skillsUsed, // ALL skills used, not just target
       usedOnScreenAbacus: false,
-      timestamp: new Date(
-        sessionStartTime.getTime() + (startIndex + i) * 10000,
-      ),
+      timestamp: new Date(sessionStartTime.getTime() + (startIndex + i) * 10000),
       incorrectAttempts: isCorrect ? 0 : 1,
-    };
+    }
 
     // If simulating legacy data, omit hadHelp and helpTrigger
     // This tests the NaN handling code path for old data missing these fields
     if (config.simulateLegacyData) {
-      return baseResult as SlotResult;
+      return baseResult as SlotResult
     }
 
     return {
       ...baseResult,
       hadHelp: false,
-      helpTrigger: "none" as const,
-    };
-  });
+      helpTrigger: 'none' as const,
+    }
+  })
 }
 
 /**
@@ -2316,49 +2279,35 @@ function generateSlotResults(
  */
 function checkSuccessCriteria(
   classifications: Record<string, number>,
-  criteria?: SuccessCriteria,
+  criteria?: SuccessCriteria
 ): { success: boolean; reasons: string[] } {
   if (!criteria) {
-    return { success: true, reasons: [] };
+    return { success: true, reasons: [] }
   }
 
-  const reasons: string[] = [];
-  const { weak, developing, strong } = classifications;
+  const reasons: string[] = []
+  const { weak, developing, strong } = classifications
 
   if (criteria.minWeak !== undefined && weak < criteria.minWeak) {
-    reasons.push(`Need at least ${criteria.minWeak} weak skills, got ${weak}`);
+    reasons.push(`Need at least ${criteria.minWeak} weak skills, got ${weak}`)
   }
   if (criteria.maxWeak !== undefined && weak > criteria.maxWeak) {
-    reasons.push(`Need at most ${criteria.maxWeak} weak skills, got ${weak}`);
+    reasons.push(`Need at most ${criteria.maxWeak} weak skills, got ${weak}`)
   }
-  if (
-    criteria.minDeveloping !== undefined &&
-    developing < criteria.minDeveloping
-  ) {
-    reasons.push(
-      `Need at least ${criteria.minDeveloping} developing skills, got ${developing}`,
-    );
+  if (criteria.minDeveloping !== undefined && developing < criteria.minDeveloping) {
+    reasons.push(`Need at least ${criteria.minDeveloping} developing skills, got ${developing}`)
   }
-  if (
-    criteria.maxDeveloping !== undefined &&
-    developing > criteria.maxDeveloping
-  ) {
-    reasons.push(
-      `Need at most ${criteria.maxDeveloping} developing skills, got ${developing}`,
-    );
+  if (criteria.maxDeveloping !== undefined && developing > criteria.maxDeveloping) {
+    reasons.push(`Need at most ${criteria.maxDeveloping} developing skills, got ${developing}`)
   }
   if (criteria.minStrong !== undefined && strong < criteria.minStrong) {
-    reasons.push(
-      `Need at least ${criteria.minStrong} strong skills, got ${strong}`,
-    );
+    reasons.push(`Need at least ${criteria.minStrong} strong skills, got ${strong}`)
   }
   if (criteria.maxStrong !== undefined && strong > criteria.maxStrong) {
-    reasons.push(
-      `Need at most ${criteria.maxStrong} strong skills, got ${strong}`,
-    );
+    reasons.push(`Need at most ${criteria.maxStrong} strong skills, got ${strong}`)
   }
 
-  return { success: reasons.length === 0, reasons };
+  return { success: reasons.length === 0, reasons }
 }
 
 /**
@@ -2366,41 +2315,39 @@ function checkSuccessCriteria(
  */
 function applyTuningAdjustments(
   skillHistory: SkillConfig[],
-  adjustments?: TuningAdjustment[],
+  adjustments?: TuningAdjustment[]
 ): SkillConfig[] {
   if (!adjustments || adjustments.length === 0) {
-    return skillHistory;
+    return skillHistory
   }
 
   return skillHistory.map((config) => {
-    const newConfig = { ...config };
+    const newConfig = { ...config }
 
     for (const adj of adjustments) {
-      if (adj.skillId === "all" || adj.skillId === config.skillId) {
+      if (adj.skillId === 'all' || adj.skillId === config.skillId) {
         if (adj.problemsAdd !== undefined) {
-          newConfig.problems = newConfig.problems + adj.problemsAdd;
+          newConfig.problems = newConfig.problems + adj.problemsAdd
         }
         if (adj.problemsMultiplier !== undefined) {
-          newConfig.problems = Math.round(
-            newConfig.problems * adj.problemsMultiplier,
-          );
+          newConfig.problems = Math.round(newConfig.problems * adj.problemsMultiplier)
         }
       }
     }
 
-    return newConfig;
-  });
+    return newConfig
+  })
 }
 
 /**
  * Tuning history entry
  */
 interface TuningRound {
-  round: number;
-  classifications: Record<string, number>;
-  success: boolean;
-  failureReasons: string[];
-  adjustmentsApplied: string[];
+  round: number
+  classifications: Record<string, number>
+  success: boolean
+  failureReasons: string[]
+  adjustmentsApplied: string[]
 }
 
 /**
@@ -2408,39 +2355,39 @@ interface TuningRound {
  */
 function formatTuningHistory(history: TuningRound[]): string {
   if (history.length <= 1) {
-    return ""; // No tuning needed
+    return '' // No tuning needed
   }
 
-  const lines: string[] = [];
-  lines.push("");
-  lines.push("───────────────────────────────────────────────────────────");
-  lines.push("TUNING HISTORY");
-  lines.push("───────────────────────────────────────────────────────────");
+  const lines: string[] = []
+  lines.push('')
+  lines.push('───────────────────────────────────────────────────────────')
+  lines.push('TUNING HISTORY')
+  lines.push('───────────────────────────────────────────────────────────')
 
   for (const round of history) {
-    lines.push("");
-    lines.push(`Round ${round.round}:`);
+    lines.push('')
+    lines.push(`Round ${round.round}:`)
     lines.push(
-      `  Classifications: 🔴 ${round.classifications.weak} weak, 📚 ${round.classifications.developing} developing, ✅ ${round.classifications.strong} strong`,
-    );
+      `  Classifications: 🔴 ${round.classifications.weak} weak, 📚 ${round.classifications.developing} developing, ✅ ${round.classifications.strong} strong`
+    )
 
     if (round.success) {
-      lines.push(`  Result: ✅ Success`);
+      lines.push(`  Result: ✅ Success`)
     } else {
-      lines.push(`  Result: ❌ Failed`);
+      lines.push(`  Result: ❌ Failed`)
       for (const reason of round.failureReasons) {
-        lines.push(`    - ${reason}`);
+        lines.push(`    - ${reason}`)
       }
       if (round.adjustmentsApplied.length > 0) {
-        lines.push(`  Adjustments applied for next round:`);
+        lines.push(`  Adjustments applied for next round:`)
         for (const adj of round.adjustmentsApplied) {
-          lines.push(`    - ${adj}`);
+          lines.push(`    - ${adj}`)
         }
       }
     }
   }
 
-  return lines.join("\n");
+  return lines.join('\n')
 }
 
 /**
@@ -2449,128 +2396,122 @@ function formatTuningHistory(history: TuningRound[]): string {
 function formatActualOutcomes(
   bktResult: { skills: SkillBktResult[] },
   profile: TestStudentProfile,
-  tuningHistory?: TuningRound[],
+  tuningHistory?: TuningRound[]
 ): string {
   const skillsByClassification: Record<string, SkillBktResult[]> = {
     weak: [],
     developing: [],
     strong: [],
-  };
+  }
 
   for (const skill of bktResult.skills) {
     if (skill.masteryClassification) {
-      skillsByClassification[skill.masteryClassification].push(skill);
+      skillsByClassification[skill.masteryClassification].push(skill)
     }
   }
 
-  const lines: string[] = [];
-  lines.push("");
-  lines.push("═══════════════════════════════════════════════════════════");
-  lines.push("ACTUAL OUTCOMES (generated by seeder)");
-  lines.push("═══════════════════════════════════════════════════════════");
-  lines.push("");
-  lines.push(`BKT Classification Counts:`);
-  lines.push(`  🔴 Weak: ${skillsByClassification.weak.length}`);
-  lines.push(`  📚 Developing: ${skillsByClassification.developing.length}`);
-  lines.push(`  ✅ Strong: ${skillsByClassification.strong.length}`);
-  lines.push("");
+  const lines: string[] = []
+  lines.push('')
+  lines.push('═══════════════════════════════════════════════════════════')
+  lines.push('ACTUAL OUTCOMES (generated by seeder)')
+  lines.push('═══════════════════════════════════════════════════════════')
+  lines.push('')
+  lines.push(`BKT Classification Counts:`)
+  lines.push(`  🔴 Weak: ${skillsByClassification.weak.length}`)
+  lines.push(`  📚 Developing: ${skillsByClassification.developing.length}`)
+  lines.push(`  ✅ Strong: ${skillsByClassification.strong.length}`)
+  lines.push('')
 
   if (profile.expectedSessionMode) {
-    lines.push(
-      `Expected Session Mode: ${profile.expectedSessionMode.toUpperCase()}`,
-    );
+    lines.push(`Expected Session Mode: ${profile.expectedSessionMode.toUpperCase()}`)
     // Determine actual mode based on BKT
-    let actualMode = "maintenance";
+    let actualMode = 'maintenance'
     if (skillsByClassification.weak.length > 0) {
-      actualMode = "remediation";
-    } else if (
-      skillsByClassification.strong.length === profile.practicingSkills.length
-    ) {
-      actualMode = "progression";
+      actualMode = 'remediation'
+    } else if (skillsByClassification.strong.length === profile.practicingSkills.length) {
+      actualMode = 'progression'
     }
-    const matches = actualMode === profile.expectedSessionMode ? "✅" : "⚠️";
-    lines.push(`Actual Session Mode: ${actualMode.toUpperCase()} ${matches}`);
-    lines.push("");
+    const matches = actualMode === profile.expectedSessionMode ? '✅' : '⚠️'
+    lines.push(`Actual Session Mode: ${actualMode.toUpperCase()} ${matches}`)
+    lines.push('')
   }
 
   // List skills by classification with pKnown values
   if (skillsByClassification.weak.length > 0) {
-    lines.push("Weak Skills (pKnown < 0.5):");
+    lines.push('Weak Skills (pKnown < 0.5):')
     for (const skill of skillsByClassification.weak) {
-      lines.push(`  - ${skill.skillId}: ${(skill.pKnown * 100).toFixed(0)}%`);
+      lines.push(`  - ${skill.skillId}: ${(skill.pKnown * 100).toFixed(0)}%`)
     }
-    lines.push("");
+    lines.push('')
   }
 
   if (skillsByClassification.developing.length > 0) {
-    lines.push("Developing Skills (0.5 ≤ pKnown < 0.8):");
+    lines.push('Developing Skills (0.5 ≤ pKnown < 0.8):')
     for (const skill of skillsByClassification.developing) {
-      lines.push(`  - ${skill.skillId}: ${(skill.pKnown * 100).toFixed(0)}%`);
+      lines.push(`  - ${skill.skillId}: ${(skill.pKnown * 100).toFixed(0)}%`)
     }
-    lines.push("");
+    lines.push('')
   }
 
   if (skillsByClassification.strong.length > 0) {
-    lines.push("Strong Skills (pKnown ≥ 0.8):");
+    lines.push('Strong Skills (pKnown ≥ 0.8):')
     for (const skill of skillsByClassification.strong) {
-      lines.push(`  - ${skill.skillId}: ${(skill.pKnown * 100).toFixed(0)}%`);
+      lines.push(`  - ${skill.skillId}: ${(skill.pKnown * 100).toFixed(0)}%`)
     }
-    lines.push("");
+    lines.push('')
   }
 
-  lines.push(`Generated: ${new Date().toISOString()}`);
+  lines.push(`Generated: ${new Date().toISOString()}`)
 
   // Add tuning history if present
   if (tuningHistory && tuningHistory.length > 0) {
-    lines.push(formatTuningHistory(tuningHistory));
+    lines.push(formatTuningHistory(tuningHistory))
   }
 
-  return lines.join("\n");
+  return lines.join('\n')
 }
 
 async function createTestStudent(
   profile: TestStudentProfile,
   userId: string,
-  skillHistoryOverride?: SkillConfig[],
+  skillHistoryOverride?: SkillConfig[]
 ): Promise<{
-  playerId: string;
-  classifications: Record<string, number>;
-  bktResult: { skills: SkillBktResult[] };
+  playerId: string
+  classifications: Record<string, number>
+  bktResult: { skills: SkillBktResult[] }
 }> {
-  let effectiveSkillHistory = skillHistoryOverride ?? profile.skillHistory;
+  let effectiveSkillHistory = skillHistoryOverride ?? profile.skillHistory
 
   // If ensureAllPracticingHaveHistory is set, add missing practicing skills with default strong history
   if (profile.ensureAllPracticingHaveHistory) {
-    const historySkillIds = new Set(
-      effectiveSkillHistory.map((c) => c.skillId),
-    );
-    const missingSkills: SkillConfig[] = [];
+    const historySkillIds = new Set(effectiveSkillHistory.map((c) => c.skillId))
+    const missingSkills: SkillConfig[] = []
 
     for (const skillId of profile.practicingSkills) {
       if (!historySkillIds.has(skillId)) {
         // Add a default "strong" config for missing skills
         missingSkills.push({
           skillId,
-          targetClassification: "strong",
+          targetClassification: 'strong',
           problems: 15,
-        });
+        })
       }
     }
 
     if (missingSkills.length > 0) {
-      effectiveSkillHistory = [...effectiveSkillHistory, ...missingSkills];
+      effectiveSkillHistory = [...effectiveSkillHistory, ...missingSkills]
     }
   }
   // Delete existing player with this name
   const existing = await db.query.players.findFirst({
     where: eq(schema.players.name, profile.name),
-  });
+  })
   if (existing) {
-    await db.delete(schema.players).where(eq(schema.players.id, existing.id));
+    await db.delete(schema.players).where(eq(schema.players.id, existing.id))
   }
 
   // Create player with intention notes only (will update with actual outcomes later)
-  const playerId = createId();
+  const playerId = createId()
   await db.insert(schema.players).values({
     id: playerId,
     userId,
@@ -2579,21 +2520,19 @@ async function createTestStudent(
     color: profile.color,
     isActive: true,
     notes: profile.intentionNotes,
-  });
+  })
 
   // Build a map of skill -> age from skill history
-  const skillAgeMap = new Map<string, number>();
+  const skillAgeMap = new Map<string, number>()
   for (const config of effectiveSkillHistory) {
-    skillAgeMap.set(config.skillId, config.ageDays ?? 1);
+    skillAgeMap.set(config.skillId, config.ageDays ?? 1)
   }
 
   // Create skill mastery records for practicing skills
   // Note: attempts/correct are computed on-the-fly from session results
   for (const skillId of profile.practicingSkills) {
-    const ageDays = skillAgeMap.get(skillId) ?? 1;
-    const lastPracticedAt = new Date(
-      Date.now() - ageDays * 24 * 60 * 60 * 1000,
-    );
+    const ageDays = skillAgeMap.get(skillId) ?? 1
+    const lastPracticedAt = new Date(Date.now() - ageDays * 24 * 60 * 60 * 1000)
 
     await db.insert(schema.playerSkillMastery).values({
       id: createId(),
@@ -2601,7 +2540,7 @@ async function createTestStudent(
       skillId,
       isPracticing: true,
       lastPracticedAt,
-    });
+    })
   }
 
   // Create tutorial progress records for completed tutorials
@@ -2615,7 +2554,7 @@ async function createTestStudent(
         completedAt: new Date(Date.now() - 48 * 60 * 60 * 1000), // 2 days ago
         teacherOverride: false,
         skipCount: 0,
-      });
+      })
     }
   }
 
@@ -2633,37 +2572,37 @@ async function createTestStudent(
   //   problem 45 days ago, while still creating enough sessions for the chart
   // ==========================================================================
 
-  const minSessions = profile.minSessions ?? 5;
-  const sessionSpreadDays = profile.sessionSpreadDays ?? 30;
+  const minSessions = profile.minSessions ?? 5
+  const sessionSpreadDays = profile.sessionSpreadDays ?? 30
 
   // Group problems by their skill's ageDays (for staleness preservation)
   interface ProblemWithMeta {
-    result: SlotResult;
-    skillId: string;
-    skillAgeDays: number;
+    result: SlotResult
+    skillId: string
+    skillAgeDays: number
   }
 
-  const problemsByAge = new Map<number, ProblemWithMeta[]>();
+  const problemsByAge = new Map<number, ProblemWithMeta[]>()
   for (const config of effectiveSkillHistory) {
-    const ageDays = config.ageDays ?? 1;
-    const sessionStartTime = new Date(); // Placeholder, will be updated per-session
-    const results = generateSlotResults(config, 0, sessionStartTime);
+    const ageDays = config.ageDays ?? 1
+    const sessionStartTime = new Date() // Placeholder, will be updated per-session
+    const results = generateSlotResults(config, 0, sessionStartTime)
 
-    const existing = problemsByAge.get(ageDays) ?? [];
+    const existing = problemsByAge.get(ageDays) ?? []
     for (const result of results) {
       existing.push({
         result,
         skillId: config.skillId,
         skillAgeDays: ageDays,
-      });
+      })
     }
-    problemsByAge.set(ageDays, existing);
+    problemsByAge.set(ageDays, existing)
   }
 
   // Count total problems
-  let totalProblems = 0;
+  let totalProblems = 0
   for (const problems of problemsByAge.values()) {
-    totalProblems += problems.length;
+    totalProblems += problems.length
   }
 
   // If no problems, skip session creation
@@ -2671,98 +2610,88 @@ async function createTestStudent(
     // No sessions to create - empty history
   } else {
     // Determine the actual spread: use explicit sessionSpreadDays or the max ageDays
-    const maxAgeDays = Math.max(...Array.from(problemsByAge.keys()));
-    const actualSpreadDays = Math.max(sessionSpreadDays, maxAgeDays);
+    const maxAgeDays = Math.max(...Array.from(problemsByAge.keys()))
+    const actualSpreadDays = Math.max(sessionSpreadDays, maxAgeDays)
 
     // Calculate target sessions per age group
     // We want at least minSessions total, distributed proportionally
-    const ageGroups = Array.from(problemsByAge.keys()).sort((a, b) => b - a); // oldest first
-    const totalAgeGroups = ageGroups.length;
+    const ageGroups = Array.from(problemsByAge.keys()).sort((a, b) => b - a) // oldest first
+    const totalAgeGroups = ageGroups.length
 
     // Minimum sessions per age group (at least 1, more if we have many problems)
-    const baseSessionsPerGroup = Math.max(
-      1,
-      Math.floor(minSessions / totalAgeGroups),
-    );
+    const baseSessionsPerGroup = Math.max(1, Math.floor(minSessions / totalAgeGroups))
 
     // Track all sessions we create for final count
-    let sessionNumber = 0;
+    let sessionNumber = 0
 
     for (const ageDays of ageGroups) {
-      const groupProblems = problemsByAge.get(ageDays)!;
+      const groupProblems = problemsByAge.get(ageDays)!
 
       // Determine how many sessions for this age group
       // More problems = more sessions, but at least baseSessionsPerGroup
-      const problemsPerSession = Math.max(
-        3,
-        Math.ceil(groupProblems.length / baseSessionsPerGroup),
-      );
+      const problemsPerSession = Math.max(3, Math.ceil(groupProblems.length / baseSessionsPerGroup))
       const sessionsForGroup = Math.max(
         baseSessionsPerGroup,
-        Math.ceil(groupProblems.length / problemsPerSession),
-      );
+        Math.ceil(groupProblems.length / problemsPerSession)
+      )
 
       // Distribute sessions across a time window ending at ageDays
       // If ageDays is 45, sessions might be at 49, 48, 47, 46, 45 days ago
       // This preserves staleness (most recent at ageDays) while creating multiple sessions
       // IMPORTANT: First problems go to OLDEST sessions so BKT sees them first
-      let problemIndex = 0;
+      let problemIndex = 0
       for (let i = 0; i < sessionsForGroup; i++) {
         // Calculate session date: FIRST problems go to OLDEST session
         // so that BKT (which processes chronologically) sees the learning sequence correctly
-        const sessionAgeDays = ageDays + (sessionsForGroup - 1 - i);
-        const sessionStartTime = new Date(
-          Date.now() - sessionAgeDays * 24 * 60 * 60 * 1000,
-        );
+        const sessionAgeDays = ageDays + (sessionsForGroup - 1 - i)
+        const sessionStartTime = new Date(Date.now() - sessionAgeDays * 24 * 60 * 60 * 1000)
 
         // Calculate how many problems in this session
-        const remainingProblems = groupProblems.length - problemIndex;
-        const remainingSessions = sessionsForGroup - i;
-        const isLastSession = i === sessionsForGroup - 1;
+        const remainingProblems = groupProblems.length - problemIndex
+        const remainingSessions = sessionsForGroup - i
+        const isLastSession = i === sessionsForGroup - 1
         const problemsThisSession = isLastSession
           ? remainingProblems
-          : Math.ceil(remainingProblems / remainingSessions);
+          : Math.ceil(remainingProblems / remainingSessions)
 
-        if (problemsThisSession === 0) continue;
+        if (problemsThisSession === 0) continue
 
         // Get problems for this session
         const sessionProblems = groupProblems.slice(
           problemIndex,
-          problemIndex + problemsThisSession,
-        );
-        problemIndex += problemsThisSession;
-        sessionNumber++;
+          problemIndex + problemsThisSession
+        )
+        problemIndex += problemsThisSession
+        sessionNumber++
 
         // Update timestamps
         const orderedResults: SlotResult[] = sessionProblems.map((p, idx) => ({
           ...p.result,
           slotIndex: idx,
           timestamp: new Date(sessionStartTime.getTime() + idx * 10000),
-        }));
+        }))
 
         // Create session
-        const sessionId = createId();
-        const sessionEndTime = new Date(
-          sessionStartTime.getTime() + orderedResults.length * 10000,
-        );
+        const sessionId = createId()
+        const sessionEndTime = new Date(sessionStartTime.getTime() + orderedResults.length * 10000)
 
         const slots = orderedResults.map((r, idx) => ({
           index: idx,
-          purpose: "focus" as const,
+          purpose: 'focus' as const,
           constraints: {},
           problem: r.problem,
-        }));
+        }))
 
         const parts: SessionPart[] = [
           {
             partNumber: 1,
-            type: "linear",
-            format: "linear",
+            type: 'linear',
+            format: 'linear',
             useAbacus: false,
             slots,
             estimatedMinutes: 30,
           },
-        ];
+        ]
 
         const summary: SessionSummary = {
           focusDescription: `Test session ${sessionNumber} for ${profile.name} (${sessionAgeDays} days ago)`,
@@ -2771,13 +2700,13 @@ async function createTestStudent(
           parts: [
             {
               partNumber: 1,
-              type: "linear",
-              description: "Mental Math (Linear)",
+              type: 'linear',
+              description: 'Mental Math (Linear)',
               problemCount: orderedResults.length,
               estimatedMinutes: 30,
             },
           ],
-        };
+        }
 
         await db.insert(schema.sessionPlans).values({
           id: sessionId,
@@ -2788,11 +2717,11 @@ async function createTestStudent(
           parts,
           summary,
           masteredSkillIds: profile.practicingSkills,
-          status: "completed",
+          status: 'completed',
           currentPartIndex: 1,
           currentSlotIndex: 0,
           sessionHealth: {
-            overall: "good",
+            overall: 'good',
             accuracy: 0.6,
             pacePercent: 100,
             currentStreak: 0,
@@ -2804,7 +2733,7 @@ async function createTestStudent(
           approvedAt: sessionStartTime,
           startedAt: sessionStartTime,
           completedAt: sessionEndTime,
-        });
+        })
       }
     }
   }
@@ -2813,23 +2742,23 @@ async function createTestStudent(
   // Note: Skill stats (attempts/correct) are computed on-the-fly from session results
   // so we don't need to update playerSkillMastery aggregate columns
   // Use a high limit to ensure BKT includes all problems for high-volume test profiles
-  const problemHistory = await getRecentSessionResults(playerId, 5000);
+  const problemHistory = await getRecentSessionResults(playerId, 5000)
   const bktResult = computeBktFromHistory(problemHistory, {
     confidenceThreshold: BKT_THRESHOLDS.confidence,
-  });
+  })
 
   const classifications: Record<string, number> = {
     weak: 0,
     developing: 0,
     strong: 0,
-  };
+  }
   for (const skill of bktResult.skills) {
     if (skill.masteryClassification) {
-      classifications[skill.masteryClassification]++;
+      classifications[skill.masteryClassification]++
     }
   }
 
-  return { playerId, classifications, bktResult };
+  return { playerId, classifications, bktResult }
 }
 
 /**
@@ -2838,29 +2767,29 @@ async function createTestStudent(
 async function createTestStudentWithTuning(
   profile: TestStudentProfile,
   userId: string,
-  maxRounds: number = 3,
+  maxRounds: number = 3
 ): Promise<{
-  playerId: string;
-  classifications: Record<string, number>;
-  tuningHistory: TuningRound[];
+  playerId: string
+  classifications: Record<string, number>
+  tuningHistory: TuningRound[]
 }> {
-  const tuningHistory: TuningRound[] = [];
-  let currentSkillHistory = profile.skillHistory;
+  const tuningHistory: TuningRound[] = []
+  let currentSkillHistory = profile.skillHistory
   let result: {
-    playerId: string;
-    classifications: Record<string, number>;
-    bktResult: { skills: SkillBktResult[] };
-  };
+    playerId: string
+    classifications: Record<string, number>
+    bktResult: { skills: SkillBktResult[] }
+  }
 
   for (let round = 1; round <= maxRounds; round++) {
     // Generate the student
-    result = await createTestStudent(profile, userId, currentSkillHistory);
+    result = await createTestStudent(profile, userId, currentSkillHistory)
 
     // Check success criteria
     const { success, reasons } = checkSuccessCriteria(
       result.classifications,
-      profile.successCriteria,
-    );
+      profile.successCriteria
+    )
 
     // Record this round
     const roundEntry: TuningRound = {
@@ -2869,57 +2798,46 @@ async function createTestStudentWithTuning(
       success,
       failureReasons: reasons,
       adjustmentsApplied: [],
-    };
+    }
 
     if (success || round === maxRounds) {
       // Success or final round - we're done
-      tuningHistory.push(roundEntry);
-      break;
+      tuningHistory.push(roundEntry)
+      break
     }
 
     // Need to tune - apply adjustments
     if (profile.tuningAdjustments) {
-      currentSkillHistory = applyTuningAdjustments(
-        currentSkillHistory,
-        profile.tuningAdjustments,
-      );
+      currentSkillHistory = applyTuningAdjustments(currentSkillHistory, profile.tuningAdjustments)
       roundEntry.adjustmentsApplied = profile.tuningAdjustments.map((adj) => {
-        const parts: string[] = [];
-        if (adj.accuracyMultiplier)
-          parts.push(`accuracy × ${adj.accuracyMultiplier}`);
-        if (adj.problemsAdd) parts.push(`problems + ${adj.problemsAdd}`);
-        if (adj.problemsMultiplier)
-          parts.push(`problems × ${adj.problemsMultiplier}`);
-        return `${adj.skillId}: ${parts.join(", ")}`;
-      });
+        const parts: string[] = []
+        if (adj.accuracyMultiplier) parts.push(`accuracy × ${adj.accuracyMultiplier}`)
+        if (adj.problemsAdd) parts.push(`problems + ${adj.problemsAdd}`)
+        if (adj.problemsMultiplier) parts.push(`problems × ${adj.problemsMultiplier}`)
+        return `${adj.skillId}: ${parts.join(', ')}`
+      })
     }
 
-    tuningHistory.push(roundEntry);
+    tuningHistory.push(roundEntry)
 
     // Delete the student so we can recreate with adjusted params
-    await db
-      .delete(schema.players)
-      .where(eq(schema.players.id, result.playerId));
+    await db.delete(schema.players).where(eq(schema.players.id, result.playerId))
   }
 
   // Update the final student's notes with tuning history
-  const actualOutcomes = formatActualOutcomes(
-    result!.bktResult,
-    profile,
-    tuningHistory,
-  );
-  const fullNotes = profile.intentionNotes + actualOutcomes;
+  const actualOutcomes = formatActualOutcomes(result!.bktResult, profile, tuningHistory)
+  const fullNotes = profile.intentionNotes + actualOutcomes
 
   await db
     .update(schema.players)
     .set({ notes: fullNotes })
-    .where(eq(schema.players.id, result!.playerId));
+    .where(eq(schema.players.id, result!.playerId))
 
   return {
     playerId: result!.playerId,
     classifications: result!.classifications,
     tuningHistory,
-  };
+  }
 }
 
 // =============================================================================
@@ -2929,171 +2847,155 @@ async function createTestStudentWithTuning(
 async function main() {
   // Handle --help
   if (cliArgs.help) {
-    showHelp();
-    process.exit(0);
+    showHelp()
+    process.exit(0)
   }
 
   // Handle --list
   if (cliArgs.list) {
-    listProfiles();
-    process.exit(0);
+    listProfiles()
+    process.exit(0)
   }
 
   // Filter profiles based on CLI args
-  const profilesToSeed = filterProfiles(TEST_PROFILES);
+  const profilesToSeed = filterProfiles(TEST_PROFILES)
 
   if (profilesToSeed.length === 0) {
-    console.log("❌ No students match the specified filters.");
-    console.log("   Use --list to see available students.");
-    process.exit(1);
+    console.log('❌ No students match the specified filters.')
+    console.log('   Use --list to see available students.')
+    process.exit(1)
   }
 
   // Handle --dry-run
-  if (cliArgs["dry-run"]) {
-    console.log("🧪 DRY RUN - Would seed the following students:\n");
+  if (cliArgs['dry-run']) {
+    console.log('🧪 DRY RUN - Would seed the following students:\n')
     for (const profile of profilesToSeed) {
-      console.log(`   ${profile.name} [${profile.category}]`);
-      console.log(`      ${profile.description}`);
+      console.log(`   ${profile.name} [${profile.category}]`)
+      console.log(`      ${profile.description}`)
     }
-    console.log(`\nTotal: ${profilesToSeed.length} students`);
-    process.exit(0);
+    console.log(`\nTotal: ${profilesToSeed.length} students`)
+    process.exit(0)
   }
 
-  console.log("🧪 Seeding Test Students for BKT Testing...\n");
+  console.log('🧪 Seeding Test Students for BKT Testing...\n')
 
   // Show filter info if applicable
-  const names = cliArgs.name as string[];
-  const categories = cliArgs.category as string[];
+  const names = cliArgs.name as string[]
+  const categories = cliArgs.category as string[]
   if (names.length > 0 || categories.length > 0) {
-    console.log(
-      `   Filtering: ${profilesToSeed.length} of ${TEST_PROFILES.length} students`,
-    );
-    if (names.length > 0) console.log(`   Names: ${names.join(", ")}`);
-    if (categories.length > 0)
-      console.log(`   Categories: ${categories.join(", ")}`);
-    console.log("");
+    console.log(`   Filtering: ${profilesToSeed.length} of ${TEST_PROFILES.length} students`)
+    if (names.length > 0) console.log(`   Names: ${names.join(', ')}`)
+    if (categories.length > 0) console.log(`   Categories: ${categories.join(', ')}`)
+    console.log('')
   }
 
   // Find the most recent browser session by looking at recent session activity
   // This is more reliable than player creation time
-  console.log("1. Finding most recent browser session...");
+  console.log('1. Finding most recent browser session...')
 
   // First, try to find the most recent session from a real (non-test) player
   const recentSession = await db.query.sessionPlans.findFirst({
     orderBy: [desc(schema.sessionPlans.createdAt)],
-  });
+  })
 
-  let userId: string | null = null;
-  let foundVia = "";
+  let userId: string | null = null
+  let foundVia = ''
 
   if (recentSession) {
     // Look up the player for this session
     const sessionPlayer = await db.query.players.findFirst({
       where: eq(schema.players.id, recentSession.playerId),
-    });
+    })
 
     // Check if this is a test user (exclude test-user-* pattern)
-    if (sessionPlayer && !sessionPlayer.userId.startsWith("test-user")) {
-      userId = sessionPlayer.userId;
-      foundVia = `session activity from player: ${sessionPlayer.name}`;
+    if (sessionPlayer && !sessionPlayer.userId.startsWith('test-user')) {
+      userId = sessionPlayer.userId
+      foundVia = `session activity from player: ${sessionPlayer.name}`
     }
   }
 
   // Fallback: find a real player (exclude test users and test emoji names)
   if (!userId) {
     const testEmojiPatterns = [
-      "🔴",
-      "🟡",
-      "🟢",
-      "⭐",
-      "🚀",
-      "🎯",
-      "📚",
-      "🏆",
-      "🆕",
-      "🔢",
-      "📊",
-      "⚖️",
-      "🕰️",
-    ];
+      '🔴',
+      '🟡',
+      '🟢',
+      '⭐',
+      '🚀',
+      '🎯',
+      '📚',
+      '🏆',
+      '🆕',
+      '🔢',
+      '📊',
+      '⚖️',
+      '🕰️',
+    ]
 
     const realPlayer = await db.query.players.findFirst({
       where: (players, { not, like, and, notLike }) =>
         and(
-          not(like(players.name, "%Test%")),
-          notLike(players.userId, "test-user%"),
+          not(like(players.name, '%Test%')),
+          notLike(players.userId, 'test-user%'),
           // Exclude common test emoji prefixes
-          ...testEmojiPatterns.map((emoji) =>
-            notLike(players.name, `${emoji}%`),
-          ),
+          ...testEmojiPatterns.map((emoji) => notLike(players.name, `${emoji}%`))
         ),
       orderBy: [desc(schema.players.createdAt)],
-    });
+    })
 
     if (realPlayer) {
-      userId = realPlayer.userId;
-      foundVia = `player: ${realPlayer.name}`;
+      userId = realPlayer.userId
+      foundVia = `player: ${realPlayer.name}`
     }
   }
 
   if (!userId) {
-    console.error(
-      "❌ No real users found! Create a student at /practice first.",
-    );
-    console.error(
-      "   (Make sure you have a non-test player in your browser session)",
-    );
-    process.exit(1);
+    console.error('❌ No real users found! Create a student at /practice first.')
+    console.error('   (Make sure you have a non-test player in your browser session)')
+    process.exit(1)
   }
 
-  console.log(`   Found user via ${foundVia}`);
+  console.log(`   Found user via ${foundVia}`)
 
   // Create each test profile with iterative tuning (up to 3 rounds)
-  console.log(
-    "\n2. Creating test students (with up to 2 tuning rounds if needed)...\n",
-  );
+  console.log('\n2. Creating test students (with up to 2 tuning rounds if needed)...\n')
 
   for (const profile of profilesToSeed) {
-    const { playerId, classifications, tuningHistory } =
-      await createTestStudentWithTuning(
-        profile,
-        userId,
-        3, // maxRounds: initial + 2 tuning rounds
-      );
-    const { weak, developing, strong } = classifications;
+    const { playerId, classifications, tuningHistory } = await createTestStudentWithTuning(
+      profile,
+      userId,
+      3 // maxRounds: initial + 2 tuning rounds
+    )
+    const { weak, developing, strong } = classifications
 
-    console.log(`   ${profile.name}`);
-    console.log(`      ${profile.description}`);
-    console.log(`      Phase: ${profile.currentPhaseId}`);
-    console.log(`      Practicing: ${profile.practicingSkills.length} skills`);
+    console.log(`   ${profile.name}`)
+    console.log(`      ${profile.description}`)
+    console.log(`      Phase: ${profile.currentPhaseId}`)
+    console.log(`      Practicing: ${profile.practicingSkills.length} skills`)
     console.log(
-      `      Classifications: 🔴 ${weak} weak, 📚 ${developing} developing, ✅ ${strong} strong`,
-    );
+      `      Classifications: 🔴 ${weak} weak, 📚 ${developing} developing, ✅ ${strong} strong`
+    )
     if (profile.expectedSessionMode) {
-      console.log(
-        `      Expected Mode: ${profile.expectedSessionMode.toUpperCase()}`,
-      );
+      console.log(`      Expected Mode: ${profile.expectedSessionMode.toUpperCase()}`)
     }
     if (profile.tutorialCompletedSkills) {
-      console.log(
-        `      Tutorials Completed: ${profile.tutorialCompletedSkills.length} skills`,
-      );
+      console.log(`      Tutorials Completed: ${profile.tutorialCompletedSkills.length} skills`)
     }
     if (tuningHistory.length > 1) {
-      const finalRound = tuningHistory[tuningHistory.length - 1];
+      const finalRound = tuningHistory[tuningHistory.length - 1]
       console.log(
-        `      Tuning: ${tuningHistory.length} rounds, final: ${finalRound.success ? "✅ success" : "⚠️ best effort"}`,
-      );
+        `      Tuning: ${tuningHistory.length} rounds, final: ${finalRound.success ? '✅ success' : '⚠️ best effort'}`
+      )
     }
-    console.log(`      Player ID: ${playerId}`);
-    console.log("");
+    console.log(`      Player ID: ${playerId}`)
+    console.log('')
   }
 
-  console.log("✅ All test students created!");
-  console.log("\n   Visit http://localhost:3000/practice to see them.");
+  console.log('✅ All test students created!')
+  console.log('\n   Visit http://localhost:3000/practice to see them.')
 }
 
 main().catch((err) => {
-  console.error("Error seeding test students:", err);
-  process.exit(1);
-});
+  console.error('Error seeding test students:', err)
+  process.exit(1)
+})

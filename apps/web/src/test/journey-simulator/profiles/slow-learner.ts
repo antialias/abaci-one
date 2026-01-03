@@ -22,7 +22,7 @@
  * would require subtraction problems to be generated.
  */
 
-import type { StudentProfile } from "../types";
+import type { StudentProfile } from '../types'
 
 /**
  * Slow learner who missed some ten-complement concepts.
@@ -30,36 +30,36 @@ import type { StudentProfile } from "../types";
  */
 const initialExposures: Record<string, number> = {
   // Basic skills - well learned with extra practice (45 exposures → ~93%)
-  "basic.directAddition": 45,
-  "basic.heavenBead": 42,
-  "basic.simpleCombinations": 40,
-  "basic.directSubtraction": 40,
-  "basic.heavenBeadSubtraction": 38,
-  "basic.simpleCombinationsSub": 38,
+  'basic.directAddition': 45,
+  'basic.heavenBead': 42,
+  'basic.simpleCombinations': 40,
+  'basic.directSubtraction': 40,
+  'basic.heavenBeadSubtraction': 38,
+  'basic.simpleCombinationsSub': 38,
   // Five complements - well learned (40 exposures → ~91%)
-  "fiveComplements.4=5-1": 42,
-  "fiveComplements.3=5-2": 40,
-  "fiveComplements.2=5-3": 38,
-  "fiveComplements.1=5-4": 38,
+  'fiveComplements.4=5-1': 42,
+  'fiveComplements.3=5-2': 40,
+  'fiveComplements.2=5-3': 38,
+  'fiveComplements.1=5-4': 38,
   // Ten complements - MIXED: some well learned, some MISSED (0 exposure)
-  "tenComplements.9=10-1": 42,
-  "tenComplements.8=10-2": 40,
-  "tenComplements.7=10-3": 0, // MISSED
-  "tenComplements.6=10-4": 0, // MISSED
-  "tenComplements.5=10-5": 0, // MISSED
-};
+  'tenComplements.9=10-1': 42,
+  'tenComplements.8=10-2': 40,
+  'tenComplements.7=10-3': 0, // MISSED
+  'tenComplements.6=10-4': 0, // MISSED
+  'tenComplements.5=10-5': 0, // MISSED
+}
 
 /** Skills this student is weak at (for test validation) */
 export const SLOW_LEARNER_WEAK_SKILLS = [
-  "tenComplements.7=10-3",
-  "tenComplements.6=10-4",
-  "tenComplements.5=10-5",
-];
+  'tenComplements.7=10-3',
+  'tenComplements.6=10-4',
+  'tenComplements.5=10-5',
+]
 
 export const slowLearnerProfile: StudentProfile = {
-  name: "Slow Learner (Missed Ten-Complements)",
+  name: 'Slow Learner (Missed Ten-Complements)',
   description:
-    "Strong in basics and five-complements, missed some ten-complement concepts, learns slowly",
+    'Strong in basics and five-complements, missed some ten-complement concepts, learns slowly',
 
   // K = 15: Reaches 50% proficiency at 15 exposures (slow but achievable)
   halfMaxExposure: 15,
@@ -80,4 +80,4 @@ export const slowLearnerProfile: StudentProfile = {
 
   // More variable (sometimes fast guesses, sometimes slow thinking)
   responseTimeVariance: 0.4,
-};
+}

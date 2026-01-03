@@ -5,8 +5,8 @@
  * into the css() function or used directly in className.
  */
 
-import type { SystemStyleObject } from "../../../../styled-system/types";
-import { themed } from "./practiceTheme";
+import type { SystemStyleObject } from '../../../../styled-system/types'
+import { themed } from './practiceTheme'
 
 // ============================================================================
 // Container Styles
@@ -18,13 +18,13 @@ import { themed } from "./practiceTheme";
  */
 export function cardStyles(isDark: boolean): SystemStyleObject {
   return {
-    padding: "1.5rem",
-    backgroundColor: themed("surface", isDark),
-    borderRadius: "12px",
-    boxShadow: "md",
-    border: "1px solid",
-    borderColor: themed("border", isDark),
-  };
+    padding: '1.5rem',
+    backgroundColor: themed('surface', isDark),
+    borderRadius: '12px',
+    boxShadow: 'md',
+    border: '1px solid',
+    borderColor: themed('border', isDark),
+  }
 }
 
 /**
@@ -33,12 +33,12 @@ export function cardStyles(isDark: boolean): SystemStyleObject {
  */
 export function sectionStyles(isDark: boolean): SystemStyleObject {
   return {
-    padding: "1rem",
-    backgroundColor: themed("surfaceMuted", isDark),
-    borderRadius: "12px",
-    border: "1px solid",
-    borderColor: themed("borderMuted", isDark),
-  };
+    padding: '1rem',
+    backgroundColor: themed('surfaceMuted', isDark),
+    borderRadius: '12px',
+    border: '1px solid',
+    borderColor: themed('borderMuted', isDark),
+  }
 }
 
 /**
@@ -47,24 +47,18 @@ export function sectionStyles(isDark: boolean): SystemStyleObject {
  */
 export function panelStyles(
   isDark: boolean,
-  variant:
-    | "info"
-    | "success"
-    | "warning"
-    | "error"
-    | "purple"
-    | "orange" = "info",
+  variant: 'info' | 'success' | 'warning' | 'error' | 'purple' | 'orange' = 'info'
 ): SystemStyleObject {
   return {
-    padding: "1rem",
+    padding: '1rem',
     backgroundColor: themed(variant, isDark),
-    borderRadius: "12px",
-    border: "2px solid",
+    borderRadius: '12px',
+    border: '2px solid',
     borderColor: themed(
-      `${variant}Border` as keyof typeof import("./practiceTheme").practiceColors,
-      isDark,
+      `${variant}Border` as keyof typeof import('./practiceTheme').practiceColors,
+      isDark
     ),
-  };
+  }
 }
 
 /**
@@ -72,13 +66,13 @@ export function panelStyles(
  */
 export function pageContainerStyles(): SystemStyleObject {
   return {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.5rem",
-    padding: "1.5rem",
-    maxWidth: "600px",
-    margin: "0 auto",
-  };
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
+    padding: '1.5rem',
+    maxWidth: '600px',
+    margin: '0 auto',
+  }
 }
 
 // ============================================================================
@@ -90,21 +84,21 @@ export function pageContainerStyles(): SystemStyleObject {
  */
 export function primaryButtonStyles(): SystemStyleObject {
   return {
-    padding: "1rem",
-    fontSize: "1.125rem",
-    fontWeight: "bold",
-    color: "white",
-    backgroundColor: "blue.500",
-    borderRadius: "8px",
-    border: "none",
-    cursor: "pointer",
-    transition: "background-color 0.2s ease",
-    _hover: { backgroundColor: "blue.600" },
+    padding: '1rem',
+    fontSize: '1.125rem',
+    fontWeight: 'bold',
+    color: 'white',
+    backgroundColor: 'blue.500',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s ease',
+    _hover: { backgroundColor: 'blue.600' },
     _disabled: {
       opacity: 0.5,
-      cursor: "not-allowed",
+      cursor: 'not-allowed',
     },
-  };
+  }
 }
 
 /**
@@ -112,17 +106,17 @@ export function primaryButtonStyles(): SystemStyleObject {
  */
 export function successButtonStyles(): SystemStyleObject {
   return {
-    padding: "1rem",
-    fontSize: "1.125rem",
-    fontWeight: "bold",
-    color: "white",
-    backgroundColor: "green.500",
-    borderRadius: "8px",
-    border: "none",
-    cursor: "pointer",
-    transition: "background-color 0.2s ease",
-    _hover: { backgroundColor: "green.600" },
-  };
+    padding: '1rem',
+    fontSize: '1.125rem',
+    fontWeight: 'bold',
+    color: 'white',
+    backgroundColor: 'green.500',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s ease',
+    _hover: { backgroundColor: 'green.600' },
+  }
 }
 
 /**
@@ -130,18 +124,18 @@ export function successButtonStyles(): SystemStyleObject {
  */
 export function secondaryButtonStyles(isDark: boolean): SystemStyleObject {
   return {
-    padding: "0.75rem",
-    fontSize: "1rem",
-    color: themed("text", isDark),
-    backgroundColor: themed("surfaceMuted", isDark),
-    borderRadius: "8px",
-    border: "none",
-    cursor: "pointer",
-    transition: "background-color 0.2s ease",
+    padding: '0.75rem',
+    fontSize: '1rem',
+    color: themed('text', isDark),
+    backgroundColor: themed('surfaceMuted', isDark),
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s ease',
     _hover: {
-      backgroundColor: isDark ? "gray.600" : "gray.200",
+      backgroundColor: isDark ? 'gray.600' : 'gray.200',
     },
-  };
+  }
 }
 
 /**
@@ -149,19 +143,19 @@ export function secondaryButtonStyles(isDark: boolean): SystemStyleObject {
  */
 export function ghostButtonStyles(isDark: boolean): SystemStyleObject {
   return {
-    padding: "0.5rem 1rem",
-    fontSize: "0.875rem",
-    color: themed("textMuted", isDark),
-    backgroundColor: "transparent",
-    border: "1px solid",
-    borderColor: themed("border", isDark),
-    borderRadius: "6px",
-    cursor: "pointer",
-    transition: "all 0.2s ease",
+    padding: '0.5rem 1rem',
+    fontSize: '0.875rem',
+    color: themed('textMuted', isDark),
+    backgroundColor: 'transparent',
+    border: '1px solid',
+    borderColor: themed('border', isDark),
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
     _hover: {
-      backgroundColor: themed("surfaceMuted", isDark),
+      backgroundColor: themed('surfaceMuted', isDark),
     },
-  };
+  }
 }
 
 /**
@@ -170,15 +164,15 @@ export function ghostButtonStyles(isDark: boolean): SystemStyleObject {
 export function linkButtonStyles(isDark: boolean): SystemStyleObject {
   return {
     padding: 0,
-    fontSize: "0.875rem",
-    color: isDark ? "blue.400" : "blue.500",
-    backgroundColor: "transparent",
-    border: "none",
-    cursor: "pointer",
+    fontSize: '0.875rem',
+    color: isDark ? 'blue.400' : 'blue.500',
+    backgroundColor: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
     _hover: {
-      textDecoration: "underline",
+      textDecoration: 'underline',
     },
-  };
+  }
 }
 
 /**
@@ -186,33 +180,33 @@ export function linkButtonStyles(isDark: boolean): SystemStyleObject {
  */
 export function iconButtonStyles(
   isDark: boolean,
-  size: "sm" | "md" | "lg" = "md",
+  size: 'sm' | 'md' | 'lg' = 'md'
 ): SystemStyleObject {
   const sizeMap = {
-    sm: { width: "32px", height: "32px", fontSize: "1rem" },
-    md: { width: "48px", height: "48px", fontSize: "1.5rem" },
-    lg: { width: "56px", height: "56px", fontSize: "2rem" },
-  };
+    sm: { width: '32px', height: '32px', fontSize: '1rem' },
+    md: { width: '48px', height: '48px', fontSize: '1.5rem' },
+    lg: { width: '56px', height: '56px', fontSize: '2rem' },
+  }
   return {
     ...sizeMap[size],
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "white",
-    backgroundColor: "gray.700",
-    borderRadius: "8px",
-    border: "2px solid",
-    borderColor: "gray.600",
-    cursor: "pointer",
-    transition: "all 0.15s ease",
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'white',
+    backgroundColor: 'gray.700',
+    borderRadius: '8px',
+    border: '2px solid',
+    borderColor: 'gray.600',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
     _hover: {
-      backgroundColor: "gray.600",
-      transform: "scale(1.05)",
+      backgroundColor: 'gray.600',
+      transform: 'scale(1.05)',
     },
     _active: {
-      transform: "scale(0.95)",
+      transform: 'scale(0.95)',
     },
-  };
+  }
 }
 
 /**
@@ -220,39 +214,32 @@ export function iconButtonStyles(
  */
 export function toolButtonStyles(
   isDark: boolean,
-  variant:
-    | "info"
-    | "success"
-    | "warning"
-    | "error"
-    | "purple"
-    | "orange" = "info",
+  variant: 'info' | 'success' | 'warning' | 'error' | 'purple' | 'orange' = 'info'
 ): SystemStyleObject {
-  const variantKey =
-    variant as keyof typeof import("./practiceTheme").practiceColors;
+  const variantKey = variant as keyof typeof import('./practiceTheme').practiceColors
   return {
-    padding: "0.5rem 0.75rem",
-    fontSize: "0.875rem",
+    padding: '0.5rem 0.75rem',
+    fontSize: '0.875rem',
     color: themed(
-      `${variantKey}Text` as keyof typeof import("./practiceTheme").practiceColors,
-      isDark,
+      `${variantKey}Text` as keyof typeof import('./practiceTheme').practiceColors,
+      isDark
     ),
     backgroundColor: themed(variantKey, isDark),
-    borderRadius: "6px",
-    border: "1px solid",
+    borderRadius: '6px',
+    border: '1px solid',
     borderColor: themed(
-      `${variantKey}Border` as keyof typeof import("./practiceTheme").practiceColors,
-      isDark,
+      `${variantKey}Border` as keyof typeof import('./practiceTheme').practiceColors,
+      isDark
     ),
-    cursor: "pointer",
-    transition: "all 0.2s ease",
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
     _hover: {
       backgroundColor: themed(
-        `${variantKey}Muted` as keyof typeof import("./practiceTheme").practiceColors,
-        isDark,
+        `${variantKey}Muted` as keyof typeof import('./practiceTheme').practiceColors,
+        isDark
       ),
     },
-  };
+  }
 }
 
 // ============================================================================
@@ -264,39 +251,31 @@ export function toolButtonStyles(
  */
 export function badgeStyles(
   isDark: boolean,
-  variant:
-    | "success"
-    | "warning"
-    | "error"
-    | "info"
-    | "purple"
-    | "orange"
-    | "neutral" = "neutral",
+  variant: 'success' | 'warning' | 'error' | 'info' | 'purple' | 'orange' | 'neutral' = 'neutral'
 ): SystemStyleObject {
-  if (variant === "neutral") {
+  if (variant === 'neutral') {
     return {
-      fontSize: "0.75rem",
-      fontWeight: "medium",
-      padding: "0.25rem 0.75rem",
-      borderRadius: "9999px",
-      backgroundColor: themed("surfaceMuted", isDark),
-      color: themed("textMuted", isDark),
-    };
+      fontSize: '0.75rem',
+      fontWeight: 'medium',
+      padding: '0.25rem 0.75rem',
+      borderRadius: '9999px',
+      backgroundColor: themed('surfaceMuted', isDark),
+      color: themed('textMuted', isDark),
+    }
   }
 
-  const variantKey =
-    variant as keyof typeof import("./practiceTheme").practiceColors;
+  const variantKey = variant as keyof typeof import('./practiceTheme').practiceColors
   return {
-    fontSize: "0.75rem",
-    fontWeight: "medium",
-    padding: "0.25rem 0.75rem",
-    borderRadius: "9999px",
+    fontSize: '0.75rem',
+    fontWeight: 'medium',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '9999px',
     backgroundColor: themed(variantKey, isDark),
     color: themed(
-      `${variantKey}Text` as keyof typeof import("./practiceTheme").practiceColors,
-      isDark,
+      `${variantKey}Text` as keyof typeof import('./practiceTheme').practiceColors,
+      isDark
     ),
-  };
+  }
 }
 
 /**
@@ -304,20 +283,20 @@ export function badgeStyles(
  */
 export function purposeBadgeStyles(
   isDark: boolean,
-  purpose: "focus" | "reinforce" | "review" | "challenge",
+  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
 ): SystemStyleObject {
   const variantMap = {
-    focus: "info",
-    reinforce: "orange",
-    review: "success",
-    challenge: "purple",
-  } as const;
+    focus: 'info',
+    reinforce: 'orange',
+    review: 'success',
+    challenge: 'purple',
+  } as const
 
   return {
     ...badgeStyles(isDark, variantMap[purpose]),
-    textTransform: "uppercase",
-    fontWeight: "bold",
-  };
+    textTransform: 'uppercase',
+    fontWeight: 'bold',
+  }
 }
 
 // ============================================================================
@@ -329,16 +308,16 @@ export function purposeBadgeStyles(
  */
 export function progressBarContainerStyles(
   isDark: boolean,
-  height: "sm" | "md" | "lg" = "md",
+  height: 'sm' | 'md' | 'lg' = 'md'
 ): SystemStyleObject {
-  const heightMap = { sm: "4px", md: "8px", lg: "12px" };
+  const heightMap = { sm: '4px', md: '8px', lg: '12px' }
   return {
-    width: "100%",
+    width: '100%',
     height: heightMap[height],
-    backgroundColor: isDark ? "gray.700" : "gray.200",
-    borderRadius: "4px",
-    overflow: "hidden",
-  };
+    backgroundColor: isDark ? 'gray.700' : 'gray.200',
+    borderRadius: '4px',
+    overflow: 'hidden',
+  }
 }
 
 /**
@@ -346,19 +325,19 @@ export function progressBarContainerStyles(
  */
 export function progressBarFillStyles(
   isDark: boolean,
-  variant: "success" | "info" | "warning" = "success",
+  variant: 'success' | 'info' | 'warning' = 'success'
 ): SystemStyleObject {
   const colorMap = {
-    success: isDark ? "green.400" : "green.500",
-    info: isDark ? "blue.400" : "blue.500",
-    warning: isDark ? "yellow.400" : "yellow.500",
-  };
+    success: isDark ? 'green.400' : 'green.500',
+    info: isDark ? 'blue.400' : 'blue.500',
+    warning: isDark ? 'yellow.400' : 'yellow.500',
+  }
   return {
-    height: "100%",
+    height: '100%',
     backgroundColor: colorMap[variant],
-    borderRadius: "4px",
-    transition: "width 0.5s ease",
-  };
+    borderRadius: '4px',
+    transition: 'width 0.5s ease',
+  }
 }
 
 // ============================================================================
@@ -370,11 +349,11 @@ export function progressBarFillStyles(
  */
 export function pageTitleStyles(isDark: boolean): SystemStyleObject {
   return {
-    fontSize: "1.75rem",
-    fontWeight: "bold",
-    color: themed("text", isDark),
-    textAlign: "center",
-  };
+    fontSize: '1.75rem',
+    fontWeight: 'bold',
+    color: themed('text', isDark),
+    textAlign: 'center',
+  }
 }
 
 /**
@@ -382,11 +361,11 @@ export function pageTitleStyles(isDark: boolean): SystemStyleObject {
  */
 export function sectionHeadingStyles(isDark: boolean): SystemStyleObject {
   return {
-    fontSize: "1rem",
-    fontWeight: "bold",
-    color: themed("text", isDark),
-    marginBottom: "0.75rem",
-  };
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    color: themed('text', isDark),
+    marginBottom: '0.75rem',
+  }
 }
 
 /**
@@ -394,11 +373,11 @@ export function sectionHeadingStyles(isDark: boolean): SystemStyleObject {
  */
 export function labelStyles(isDark: boolean): SystemStyleObject {
   return {
-    fontSize: "0.75rem",
-    fontWeight: "bold",
-    color: themed("textMuted", isDark),
-    textTransform: "uppercase",
-  };
+    fontSize: '0.75rem',
+    fontWeight: 'bold',
+    color: themed('textMuted', isDark),
+    textTransform: 'uppercase',
+  }
 }
 
 /**
@@ -406,10 +385,10 @@ export function labelStyles(isDark: boolean): SystemStyleObject {
  */
 export function bodyTextStyles(isDark: boolean): SystemStyleObject {
   return {
-    fontSize: "1rem",
-    color: themed("textMuted", isDark),
-    lineHeight: "1.5",
-  };
+    fontSize: '1rem',
+    color: themed('textMuted', isDark),
+    lineHeight: '1.5',
+  }
 }
 
 /**
@@ -417,9 +396,9 @@ export function bodyTextStyles(isDark: boolean): SystemStyleObject {
  */
 export function captionStyles(isDark: boolean): SystemStyleObject {
   return {
-    fontSize: "0.75rem",
-    color: themed("textSubtle", isDark),
-  };
+    fontSize: '0.75rem',
+    color: themed('textSubtle', isDark),
+  }
 }
 
 // ============================================================================
@@ -431,12 +410,12 @@ export function captionStyles(isDark: boolean): SystemStyleObject {
  */
 export function statCardStyles(isDark: boolean): SystemStyleObject {
   return {
-    textAlign: "center",
-    padding: "1rem",
-    backgroundColor: themed("surface", isDark),
-    borderRadius: "12px",
-    boxShadow: "sm",
-  };
+    textAlign: 'center',
+    padding: '1rem',
+    backgroundColor: themed('surface', isDark),
+    borderRadius: '12px',
+    boxShadow: 'sm',
+  }
 }
 
 /**
@@ -444,27 +423,21 @@ export function statCardStyles(isDark: boolean): SystemStyleObject {
  */
 export function statValueStyles(
   isDark: boolean,
-  variant:
-    | "success"
-    | "warning"
-    | "error"
-    | "info"
-    | "purple"
-    | "neutral" = "neutral",
+  variant: 'success' | 'warning' | 'error' | 'info' | 'purple' | 'neutral' = 'neutral'
 ): SystemStyleObject {
   const colorMap = {
-    success: isDark ? "green.400" : "green.600",
-    warning: isDark ? "yellow.400" : "yellow.600",
-    error: isDark ? "red.400" : "red.600",
-    info: isDark ? "blue.400" : "blue.600",
-    purple: isDark ? "purple.400" : "purple.600",
-    neutral: themed("text", isDark),
-  };
+    success: isDark ? 'green.400' : 'green.600',
+    warning: isDark ? 'yellow.400' : 'yellow.600',
+    error: isDark ? 'red.400' : 'red.600',
+    info: isDark ? 'blue.400' : 'blue.600',
+    purple: isDark ? 'purple.400' : 'purple.600',
+    neutral: themed('text', isDark),
+  }
   return {
-    fontSize: "2rem",
-    fontWeight: "bold",
+    fontSize: '2rem',
+    fontWeight: 'bold',
     color: colorMap[variant],
-  };
+  }
 }
 
 /**
@@ -472,9 +445,9 @@ export function statValueStyles(
  */
 export function statLabelStyles(isDark: boolean): SystemStyleObject {
   return {
-    fontSize: "0.75rem",
-    color: themed("textSubtle", isDark),
-  };
+    fontSize: '0.75rem',
+    color: themed('textSubtle', isDark),
+  }
 }
 
 // ============================================================================
@@ -486,34 +459,34 @@ export function statLabelStyles(isDark: boolean): SystemStyleObject {
  */
 export function inputContainerStyles(
   isDark: boolean,
-  state: "default" | "focused" | "correct" | "incorrect" = "default",
+  state: 'default' | 'focused' | 'correct' | 'incorrect' = 'default'
 ): SystemStyleObject {
   const stateStyles = {
     default: {
-      backgroundColor: themed("surface", isDark),
-      borderColor: themed("border", isDark),
+      backgroundColor: themed('surface', isDark),
+      borderColor: themed('border', isDark),
     },
     focused: {
-      backgroundColor: themed("info", isDark),
-      borderColor: themed("infoBorder", isDark),
+      backgroundColor: themed('info', isDark),
+      borderColor: themed('infoBorder', isDark),
     },
     correct: {
-      backgroundColor: themed("success", isDark),
-      borderColor: themed("successBorder", isDark),
+      backgroundColor: themed('success', isDark),
+      borderColor: themed('successBorder', isDark),
     },
     incorrect: {
-      backgroundColor: themed("error", isDark),
-      borderColor: themed("errorBorder", isDark),
+      backgroundColor: themed('error', isDark),
+      borderColor: themed('errorBorder', isDark),
     },
-  };
+  }
 
   return {
-    padding: "0.5rem 1rem",
-    borderRadius: "8px",
-    border: "2px solid",
-    transition: "all 0.2s ease",
+    padding: '0.5rem 1rem',
+    borderRadius: '8px',
+    border: '2px solid',
+    transition: 'all 0.2s ease',
     ...stateStyles[state],
-  };
+  }
 }
 
 // ============================================================================
@@ -523,20 +496,18 @@ export function inputContainerStyles(
 /**
  * Avatar container
  */
-export function avatarStyles(
-  size: "sm" | "md" | "lg" | "xl" = "md",
-): SystemStyleObject {
+export function avatarStyles(size: 'sm' | 'md' | 'lg' | 'xl' = 'md'): SystemStyleObject {
   const sizeMap = {
-    sm: { width: "40px", height: "40px", fontSize: "1.25rem" },
-    md: { width: "60px", height: "60px", fontSize: "2rem" },
-    lg: { width: "80px", height: "80px", fontSize: "3rem" },
-    xl: { width: "100px", height: "100px", fontSize: "4rem" },
-  };
+    sm: { width: '40px', height: '40px', fontSize: '1.25rem' },
+    md: { width: '60px', height: '60px', fontSize: '2rem' },
+    lg: { width: '80px', height: '80px', fontSize: '3rem' },
+    xl: { width: '100px', height: '100px', fontSize: '4rem' },
+  }
   return {
     ...sizeMap[size],
-    borderRadius: "50%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  };
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
 }

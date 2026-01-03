@@ -16,13 +16,13 @@
 
 export interface RegionMusicHint {
   /** Strudel pattern fragment to layer on top of continental */
-  pattern: string;
+  pattern: string
   /** How loud relative to base (0.0 - 1.0, typically 0.1-0.2) */
-  gain: number;
+  gain: number
   /** Crossfade time when this region becomes active (ms) */
-  fadeIn: number;
+  fadeIn: number
   /** Only trigger after N seconds of searching */
-  delayStart: number;
+  delayStart: number
 }
 
 /**
@@ -691,7 +691,7 @@ export const worldHints: Record<string, RegionMusicHint> = {
     fadeIn: 1000,
     delayStart: 2000,
   },
-};
+}
 
 /**
  * USA state hints.
@@ -806,24 +806,24 @@ export const usaHints: Record<string, RegionMusicHint> = {
     fadeIn: 1500,
     delayStart: 2500,
   },
-};
+}
 
 /**
  * Get the hyper-local hint for a region, if one exists.
  */
 export function getHintForRegion(
   regionId: string | null | undefined,
-  mapType: "world" | "usa",
+  mapType: 'world' | 'usa'
 ): RegionMusicHint | null {
-  if (!regionId) return null;
+  if (!regionId) return null
 
-  const normalizedId = regionId.toLowerCase();
+  const normalizedId = regionId.toLowerCase()
 
-  if (mapType === "usa") {
-    return usaHints[normalizedId] || null;
+  if (mapType === 'usa') {
+    return usaHints[normalizedId] || null
   }
 
-  return worldHints[normalizedId] || null;
+  return worldHints[normalizedId] || null
 }
 
 /**
@@ -831,7 +831,7 @@ export function getHintForRegion(
  */
 export function hasHintForRegion(
   regionId: string | null | undefined,
-  mapType: "world" | "usa",
+  mapType: 'world' | 'usa'
 ): boolean {
-  return getHintForRegion(regionId, mapType) !== null;
+  return getHintForRegion(regionId, mapType) !== null
 }

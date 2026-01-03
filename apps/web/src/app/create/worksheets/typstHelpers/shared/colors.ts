@@ -14,7 +14,7 @@ export function generatePlaceValueColors(): string {
 #let color-ten-thousands = rgb(243, 229, 245) // Light purple/lavender (ten-thousands)
 #let color-hundred-thousands = rgb(255, 239, 213) // Light peach/orange (hundred-thousands)
 #let color-none = white                   // No color
-`;
+`
 }
 
 /**
@@ -22,11 +22,11 @@ export function generatePlaceValueColors(): string {
  */
 export function getPlaceValueColorNames(): string[] {
   return [
-    "color-ones",
-    "color-tens",
-    "color-hundreds",
-    "color-thousands",
-    "color-ten-thousands",
-    "color-hundred-thousands",
-  ];
+    'color-ones',
+    'color-tens',
+    'color-hundreds',
+    'color-thousands',
+    'color-ten-thousands',
+    'color-hundred-thousands',
+  ]
 }

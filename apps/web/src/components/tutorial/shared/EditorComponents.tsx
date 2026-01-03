@@ -1,43 +1,43 @@
-"use client";
+'use client'
 
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import type { ReactNode } from "react";
-import { css } from "../../../../styled-system/css";
-import { hstack, vstack } from "../../../../styled-system/patterns";
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import type { ReactNode } from 'react'
+import { css } from '../../../../styled-system/css'
+import { hstack, vstack } from '../../../../styled-system/patterns'
 
 // Shared input styles
 export const inputStyles = {
-  w: "full",
+  w: 'full',
   px: 2,
   py: 1,
-  border: "1px solid",
-  borderColor: "gray.300",
-  rounded: "sm",
-  fontSize: "xs",
-} as const;
+  border: '1px solid',
+  borderColor: 'gray.300',
+  rounded: 'sm',
+  fontSize: 'xs',
+} as const
 
 export const labelStyles = {
-  fontSize: "xs",
-  color: "gray.600",
+  fontSize: 'xs',
+  color: 'gray.600',
   mb: 1,
-  display: "block",
-} as const;
+  display: 'block',
+} as const
 
 // Shared Editor Layout Component - wraps entire editor with consistent styling
 interface EditorLayoutProps {
-  title: string;
-  onClose: () => void;
-  onDelete?: () => void;
-  deleteLabel?: string;
-  children: ReactNode;
-  className?: string;
+  title: string
+  onClose: () => void
+  onDelete?: () => void
+  deleteLabel?: string
+  children: ReactNode
+  className?: string
 }
 
 export function EditorLayout({
   title,
   onClose,
   onDelete,
-  deleteLabel = "Delete",
+  deleteLabel = 'Delete',
   children,
   className,
 }: EditorLayoutProps) {
@@ -46,17 +46,17 @@ export function EditorLayout({
       className={css(
         {
           p: 3,
-          bg: "purple.50",
-          border: "1px solid",
-          borderColor: "purple.200",
-          rounded: "lg",
-          height: "100%",
-          overflowY: "auto",
+          bg: 'purple.50',
+          border: '1px solid',
+          borderColor: 'purple.200',
+          rounded: 'lg',
+          height: '100%',
+          overflowY: 'auto',
         },
-        className,
+        className
       )}
     >
-      <div className={vstack({ gap: 3, alignItems: "stretch" })}>
+      <div className={vstack({ gap: 3, alignItems: 'stretch' })}>
         {/* Header */}
         <EditorHeader
           title={title}
@@ -69,35 +69,35 @@ export function EditorLayout({
         {children}
       </div>
     </div>
-  );
+  )
 }
 
 // Shared Editor Header Component
 interface EditorHeaderProps {
-  title: string;
-  onClose: () => void;
-  onDelete?: () => void;
-  deleteLabel?: string;
+  title: string
+  onClose: () => void
+  onDelete?: () => void
+  deleteLabel?: string
 }
 
 export function EditorHeader({
   title,
   onClose,
   onDelete,
-  deleteLabel = "Delete",
+  deleteLabel = 'Delete',
 }: EditorHeaderProps) {
   return (
     <div
       className={hstack({
-        justifyContent: "space-between",
-        alignItems: "center",
+        justifyContent: 'space-between',
+        alignItems: 'center',
       })}
     >
       <h3
         className={css({
-          fontSize: "md",
-          fontWeight: "semibold",
-          color: "purple.800",
+          fontSize: 'md',
+          fontWeight: 'semibold',
+          color: 'purple.800',
         })}
       >
         {title}
@@ -109,12 +109,12 @@ export function EditorHeader({
             className={css({
               px: 2,
               py: 1,
-              bg: "red.500",
-              color: "white",
-              rounded: "sm",
-              fontSize: "xs",
-              cursor: "pointer",
-              _hover: { bg: "red.600" },
+              bg: 'red.500',
+              color: 'white',
+              rounded: 'sm',
+              fontSize: 'xs',
+              cursor: 'pointer',
+              _hover: { bg: 'red.600' },
             })}
           >
             {deleteLabel}
@@ -124,22 +124,22 @@ export function EditorHeader({
           onClick={onClose}
           className={css({
             p: 1,
-            borderRadius: "sm",
-            cursor: "pointer",
-            _hover: { bg: "gray.100" },
+            borderRadius: 'sm',
+            cursor: 'pointer',
+            _hover: { bg: 'gray.100' },
           })}
         >
           ✕
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 // Shared Field Component
 interface FieldProps {
-  label: string;
-  children: ReactNode;
+  label: string
+  children: ReactNode
 }
 
 export function Field({ label, children }: FieldProps) {
@@ -148,17 +148,17 @@ export function Field({ label, children }: FieldProps) {
       <label className={css(labelStyles)}>{label}</label>
       {children}
     </div>
-  );
+  )
 }
 
 // Shared Text Input Component
 interface TextInputProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  multiline?: boolean;
-  rows?: number;
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  multiline?: boolean
+  rows?: number
 }
 
 export function TextInput({
@@ -178,7 +178,7 @@ export function TextInput({
           rows={rows}
           className={css({
             ...inputStyles,
-            resize: "none",
+            resize: 'none',
           })}
           placeholder={placeholder}
         />
@@ -192,27 +192,20 @@ export function TextInput({
         />
       )}
     </Field>
-  );
+  )
 }
 
 // Shared Number Input Component
 interface NumberInputProps {
-  label: string;
-  value: number | string;
-  onChange: (value: number) => void;
-  min?: number;
-  max?: number;
-  placeholder?: string;
+  label: string
+  value: number | string
+  onChange: (value: number) => void
+  min?: number
+  max?: number
+  placeholder?: string
 }
 
-export function NumberInput({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-  placeholder,
-}: NumberInputProps) {
+export function NumberInput({ label, value, onChange, min, max, placeholder }: NumberInputProps) {
   return (
     <Field label={label}>
       <input
@@ -225,78 +218,74 @@ export function NumberInput({
         placeholder={placeholder}
       />
     </Field>
-  );
+  )
 }
 
 // Shared Grid Layout Component
 interface GridLayoutProps {
-  columns: 1 | 2 | 3 | 4;
-  gap?: number;
-  children: ReactNode;
+  columns: 1 | 2 | 3 | 4
+  gap?: number
+  children: ReactNode
 }
 
 export function GridLayout({ columns, gap = 2, children }: GridLayoutProps) {
   const gridCols = {
-    1: "1fr",
-    2: "1fr 1fr",
-    3: "1fr 1fr 1fr",
-    4: "1fr 1fr 1fr 1fr",
-  };
+    1: '1fr',
+    2: '1fr 1fr',
+    3: '1fr 1fr 1fr',
+    4: '1fr 1fr 1fr 1fr',
+  }
 
   return (
     <div
       className={css({
-        display: "grid",
+        display: 'grid',
         gridTemplateColumns: gridCols[columns],
         gap: gap,
       })}
     >
       {children}
     </div>
-  );
+  )
 }
 
 // Shared Section Component
 interface SectionProps {
-  title?: string;
-  children: ReactNode;
-  collapsible?: boolean;
-  defaultOpen?: boolean;
-  background?: "white" | "gray" | "none";
+  title?: string
+  children: ReactNode
+  collapsible?: boolean
+  defaultOpen?: boolean
+  background?: 'white' | 'gray' | 'none'
 }
 
-export function Section({
-  title,
-  children,
-  background = "white",
-}: SectionProps) {
+export function Section({ title, children, background = 'white' }: SectionProps) {
   const bgStyles = {
     white: {
       p: 2,
-      bg: "white",
-      border: "1px solid",
-      borderColor: "gray.200",
-      rounded: "md",
+      bg: 'white',
+      border: '1px solid',
+      borderColor: 'gray.200',
+      rounded: 'md',
     },
     gray: {
       p: 2,
-      bg: "gray.50",
-      border: "1px solid",
-      borderColor: "gray.200",
-      rounded: "sm",
+      bg: 'gray.50',
+      border: '1px solid',
+      borderColor: 'gray.200',
+      rounded: 'sm',
     },
     none: {},
-  };
+  }
 
   return (
     <div className={css(bgStyles[background])}>
       {title && (
         <h4
           className={css({
-            fontSize: "sm",
-            fontWeight: "medium",
+            fontSize: 'sm',
+            fontWeight: 'medium',
             mb: 2,
-            color: "gray.800",
+            color: 'gray.800',
           })}
         >
           {title}
@@ -304,53 +293,49 @@ export function Section({
       )}
       {children}
     </div>
-  );
+  )
 }
 
 // Shared Form Group Component - handles common form layouts
 interface FormGroupProps {
-  children: ReactNode;
-  columns?: 1 | 2 | 3;
-  gap?: number;
+  children: ReactNode
+  columns?: 1 | 2 | 3
+  gap?: number
 }
 
 export function FormGroup({ children, columns = 1, gap = 2 }: FormGroupProps) {
   if (columns === 1) {
-    return (
-      <div className={vstack({ gap: gap, alignItems: "stretch" })}>
-        {children}
-      </div>
-    );
+    return <div className={vstack({ gap: gap, alignItems: 'stretch' })}>{children}</div>
   }
 
   return (
     <GridLayout columns={columns} gap={gap}>
       {children}
     </GridLayout>
-  );
+  )
 }
 
 // Shared Compact Step Item Component
 interface CompactStepItemProps {
-  type: "concept" | "practice";
-  index: number;
-  title: string;
-  subtitle?: string;
-  description?: string;
-  isSelected?: boolean;
-  hasErrors?: boolean;
-  hasWarnings?: boolean;
-  errorCount?: number;
-  warningCount?: number;
-  onClick?: () => void;
-  onPreview?: () => void;
-  onDelete?: () => void;
-  children?: ReactNode;
+  type: 'concept' | 'practice'
+  index: number
+  title: string
+  subtitle?: string
+  description?: string
+  isSelected?: boolean
+  hasErrors?: boolean
+  hasWarnings?: boolean
+  errorCount?: number
+  warningCount?: number
+  onClick?: () => void
+  onPreview?: () => void
+  onDelete?: () => void
+  children?: ReactNode
   // Hover-add functionality
-  onAddStepBefore?: () => void;
-  onAddPracticeStepBefore?: () => void;
-  onAddStepAfter?: () => void;
-  onAddPracticeStepAfter?: () => void;
+  onAddStepBefore?: () => void
+  onAddPracticeStepBefore?: () => void
+  onAddStepAfter?: () => void
+  onAddPracticeStepAfter?: () => void
 }
 
 export function CompactStepItem({
@@ -374,51 +359,48 @@ export function CompactStepItem({
   onAddPracticeStepAfter,
 }: CompactStepItemProps) {
   const getBorderColor = () => {
-    if (isSelected) return "blue.500";
-    if (hasErrors) return "red.300";
-    return "gray.200";
-  };
+    if (isSelected) return 'blue.500'
+    if (hasErrors) return 'red.300'
+    return 'gray.200'
+  }
 
   const getBgColor = () => {
-    if (isSelected) return "blue.50";
-    if (hasWarnings) return "yellow.50";
-    if (hasErrors) return "red.50";
-    return "white";
-  };
+    if (isSelected) return 'blue.50'
+    if (hasWarnings) return 'yellow.50'
+    if (hasErrors) return 'red.50'
+    return 'white'
+  }
 
   const getHoverBg = () => {
-    return isSelected ? "blue.100" : "gray.50";
-  };
+    return isSelected ? 'blue.100' : 'gray.50'
+  }
 
-  const typeIcon = type === "concept" ? "📝" : "🎯";
-  const typeLabel = type === "concept" ? "Step" : "Practice";
+  const typeIcon = type === 'concept' ? '📝' : '🎯'
+  const typeLabel = type === 'concept' ? 'Step' : 'Practice'
 
   const _hasAddActions =
-    onAddStepBefore ||
-    onAddPracticeStepBefore ||
-    onAddStepAfter ||
-    onAddPracticeStepAfter;
+    onAddStepBefore || onAddPracticeStepBefore || onAddStepAfter || onAddPracticeStepAfter
 
   return (
-    <div className={css({ position: "relative" })}>
+    <div className={css({ position: 'relative' })}>
       {/* Main step item */}
       <div
         onClick={onClick}
         className={css({
           px: 1.5,
           py: 1,
-          border: "1px solid",
+          border: '1px solid',
           borderColor: getBorderColor(),
-          borderRadius: "sm",
+          borderRadius: 'sm',
           bg: getBgColor(),
-          cursor: onClick ? "pointer" : "default",
+          cursor: onClick ? 'pointer' : 'default',
           _hover: onClick ? { bg: getHoverBg() } : {},
         })}
       >
         <div
           className={hstack({
-            justifyContent: "space-between",
-            alignItems: "center",
+            justifyContent: 'space-between',
+            alignItems: 'center',
             gap: 2,
           })}
         >
@@ -427,19 +409,19 @@ export function CompactStepItem({
             <div
               className={hstack({
                 gap: 1.5,
-                alignItems: "center",
-                flexWrap: "wrap",
+                alignItems: 'center',
+                flexWrap: 'wrap',
               })}
             >
               <span
                 className={css({
-                  fontSize: "xs",
-                  fontWeight: "bold",
-                  color: type === "concept" ? "blue.800" : "purple.800",
-                  bg: type === "concept" ? "blue.100" : "purple.100",
+                  fontSize: 'xs',
+                  fontWeight: 'bold',
+                  color: type === 'concept' ? 'blue.800' : 'purple.800',
+                  bg: type === 'concept' ? 'blue.100' : 'purple.100',
                   px: 0.5,
                   py: 0.5,
-                  borderRadius: "xs",
+                  borderRadius: 'xs',
                   flexShrink: 0,
                 })}
               >
@@ -449,11 +431,11 @@ export function CompactStepItem({
               {/* Title inline */}
               <div
                 className={css({
-                  fontWeight: "medium",
-                  fontSize: "xs",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  fontWeight: 'medium',
+                  fontSize: 'xs',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
                   flex: 1,
                   minWidth: 0,
                 })}
@@ -465,12 +447,12 @@ export function CompactStepItem({
               {hasErrors && (
                 <span
                   className={css({
-                    fontSize: "xs",
-                    color: "red.600",
-                    bg: "red.100",
+                    fontSize: 'xs',
+                    color: 'red.600',
+                    bg: 'red.100',
                     px: 1,
                     py: 0.5,
-                    borderRadius: "xs",
+                    borderRadius: 'xs',
                     flexShrink: 0,
                   })}
                 >
@@ -481,12 +463,12 @@ export function CompactStepItem({
               {hasWarnings && (
                 <span
                   className={css({
-                    fontSize: "xs",
-                    color: "yellow.600",
-                    bg: "yellow.100",
+                    fontSize: 'xs',
+                    color: 'yellow.600',
+                    bg: 'yellow.100',
                     px: 1,
                     py: 0.5,
-                    borderRadius: "xs",
+                    borderRadius: 'xs',
                     flexShrink: 0,
                   })}
                 >
@@ -499,11 +481,11 @@ export function CompactStepItem({
             {subtitle && (
               <div
                 className={css({
-                  fontSize: "xs",
-                  color: "gray.600",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  fontSize: 'xs',
+                  color: 'gray.600',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
                   mt: 0.5,
                 })}
               >
@@ -520,19 +502,19 @@ export function CompactStepItem({
             {onPreview && (
               <button
                 onClick={(e) => {
-                  e.stopPropagation();
-                  onPreview();
+                  e.stopPropagation()
+                  onPreview()
                 }}
                 className={css({
                   p: 1,
-                  bg: "blue.100",
-                  color: "blue.700",
-                  border: "1px solid",
-                  borderColor: "blue.300",
-                  borderRadius: "sm",
-                  fontSize: "xs",
-                  cursor: "pointer",
-                  _hover: { bg: "blue.200" },
+                  bg: 'blue.100',
+                  color: 'blue.700',
+                  border: '1px solid',
+                  borderColor: 'blue.300',
+                  borderRadius: 'sm',
+                  fontSize: 'xs',
+                  cursor: 'pointer',
+                  _hover: { bg: 'blue.200' },
                 })}
                 title="Preview"
               >
@@ -543,19 +525,19 @@ export function CompactStepItem({
             {onDelete && (
               <button
                 onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
+                  e.stopPropagation()
+                  onDelete()
                 }}
                 className={css({
                   p: 1,
-                  bg: "red.100",
-                  color: "red.700",
-                  border: "1px solid",
-                  borderColor: "red.300",
-                  borderRadius: "sm",
-                  fontSize: "xs",
-                  cursor: "pointer",
-                  _hover: { bg: "red.200" },
+                  bg: 'red.100',
+                  color: 'red.700',
+                  border: '1px solid',
+                  borderColor: 'red.300',
+                  borderRadius: 'sm',
+                  fontSize: 'xs',
+                  cursor: 'pointer',
+                  _hover: { bg: 'red.200' },
                 })}
                 title="Delete"
               >
@@ -566,29 +548,26 @@ export function CompactStepItem({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // Between-step hover area with dropdown
 interface BetweenStepAddProps {
-  onAddStep: () => void;
-  onAddPracticeStep: () => void;
+  onAddStep: () => void
+  onAddPracticeStep: () => void
 }
 
-export function BetweenStepAdd({
-  onAddStep,
-  onAddPracticeStep,
-}: BetweenStepAddProps) {
+export function BetweenStepAdd({ onAddStep, onAddPracticeStep }: BetweenStepAddProps) {
   return (
     <div
       className={css({
-        position: "relative",
-        height: "16px",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
+        position: 'relative',
+        height: '16px',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         zIndex: 50, // Higher z-index for the container
-        "&:hover .add-button": {
+        '&:hover .add-button': {
           opacity: 0.5,
         },
       })}
@@ -599,21 +578,21 @@ export function BetweenStepAdd({
             className={`${css({
               px: 2,
               py: 0.5,
-              bg: "gray.100",
-              color: "gray.600",
-              border: "1px dashed",
-              borderColor: "gray.300",
-              borderRadius: "sm",
-              fontSize: "xs",
-              cursor: "pointer",
+              bg: 'gray.100',
+              color: 'gray.600',
+              border: '1px dashed',
+              borderColor: 'gray.300',
+              borderRadius: 'sm',
+              fontSize: 'xs',
+              cursor: 'pointer',
               opacity: 0,
-              transition: "opacity 0.2s ease",
+              transition: 'opacity 0.2s ease',
               zIndex: 50, // Higher z-index for the button
-              position: "relative",
+              position: 'relative',
               _hover: {
-                opacity: "1 !important",
-                bg: "gray.200",
-                borderColor: "gray.400",
+                opacity: '1 !important',
+                bg: 'gray.200',
+                borderColor: 'gray.400',
               },
             })} add-button`}
           >
@@ -625,13 +604,13 @@ export function BetweenStepAdd({
           <DropdownMenu.Content
             className={css({
               mt: 1,
-              bg: "white",
-              border: "1px solid",
-              borderColor: "gray.200",
-              borderRadius: "md",
-              shadow: "md",
+              bg: 'white',
+              border: '1px solid',
+              borderColor: 'gray.200',
+              borderRadius: 'md',
+              shadow: 'md',
               zIndex: 100, // Very high z-index for dropdown content
-              minW: "150px",
+              minW: '150px',
             })}
             sideOffset={4}
           >
@@ -639,17 +618,17 @@ export function BetweenStepAdd({
               <button
                 onClick={onAddStep}
                 className={css({
-                  w: "full",
+                  w: 'full',
                   px: 3,
                   py: 2,
-                  textAlign: "left",
-                  fontSize: "sm",
-                  cursor: "pointer",
-                  border: "none",
-                  bg: "transparent",
-                  _hover: { bg: "blue.50", color: "blue.700" },
-                  borderBottom: "1px solid",
-                  borderColor: "gray.100",
+                  textAlign: 'left',
+                  fontSize: 'sm',
+                  cursor: 'pointer',
+                  border: 'none',
+                  bg: 'transparent',
+                  _hover: { bg: 'blue.50', color: 'blue.700' },
+                  borderBottom: '1px solid',
+                  borderColor: 'gray.100',
                 })}
               >
                 📝 Concept Step
@@ -659,15 +638,15 @@ export function BetweenStepAdd({
               <button
                 onClick={onAddPracticeStep}
                 className={css({
-                  w: "full",
+                  w: 'full',
                   px: 3,
                   py: 2,
-                  textAlign: "left",
-                  fontSize: "sm",
-                  cursor: "pointer",
-                  border: "none",
-                  bg: "transparent",
-                  _hover: { bg: "purple.50", color: "purple.700" },
+                  textAlign: 'left',
+                  fontSize: 'sm',
+                  cursor: 'pointer',
+                  border: 'none',
+                  bg: 'transparent',
+                  _hover: { bg: 'purple.50', color: 'purple.700' },
                 })}
               >
                 🎯 Problem Page
@@ -677,50 +656,50 @@ export function BetweenStepAdd({
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
     </div>
-  );
+  )
 }
 
 // Shared Button Component
 interface ButtonProps {
-  children: ReactNode;
-  onClick: () => void;
-  variant?: "primary" | "secondary" | "outline";
-  size?: "xs" | "sm" | "md";
-  disabled?: boolean;
-  title?: string;
+  children: ReactNode
+  onClick: () => void
+  variant?: 'primary' | 'secondary' | 'outline'
+  size?: 'xs' | 'sm' | 'md'
+  disabled?: boolean
+  title?: string
 }
 
 export function Button({
   children,
   onClick,
-  variant = "secondary",
-  size = "sm",
+  variant = 'secondary',
+  size = 'sm',
   disabled = false,
   title,
 }: ButtonProps) {
   const variantStyles = {
-    primary: { bg: "blue.500", color: "white", _hover: { bg: "blue.600" } },
+    primary: { bg: 'blue.500', color: 'white', _hover: { bg: 'blue.600' } },
     secondary: {
-      bg: "blue.100",
-      color: "blue.800",
-      border: "1px solid",
-      borderColor: "blue.300",
-      _hover: { bg: "blue.200" },
+      bg: 'blue.100',
+      color: 'blue.800',
+      border: '1px solid',
+      borderColor: 'blue.300',
+      _hover: { bg: 'blue.200' },
     },
     outline: {
-      bg: "gray.100",
-      color: "gray.700",
-      border: "1px solid",
-      borderColor: "gray.300",
-      _hover: { bg: "gray.200" },
+      bg: 'gray.100',
+      color: 'gray.700',
+      border: '1px solid',
+      borderColor: 'gray.300',
+      _hover: { bg: 'gray.200' },
     },
-  };
+  }
 
   const sizeStyles = {
-    xs: { px: 1, py: 1, fontSize: "xs" },
-    sm: { px: 2, py: 1, fontSize: "xs" },
-    md: { px: 3, py: 2, fontSize: "sm" },
-  };
+    xs: { px: 1, py: 1, fontSize: 'xs' },
+    sm: { px: 2, py: 1, fontSize: 'xs' },
+    md: { px: 3, py: 2, fontSize: 'sm' },
+  }
 
   return (
     <button
@@ -730,13 +709,13 @@ export function Button({
       className={css({
         ...variantStyles[variant],
         ...sizeStyles[size],
-        rounded: "sm",
-        cursor: disabled ? "not-allowed" : "pointer",
+        rounded: 'sm',
+        cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
-        textAlign: "center",
+        textAlign: 'center',
       })}
     >
       {children}
     </button>
-  );
+  )
 }

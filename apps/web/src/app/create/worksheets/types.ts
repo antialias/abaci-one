@@ -5,7 +5,7 @@ import type {
   AdditionConfigV4Custom,
   AdditionConfigV4Manual,
   AdditionConfigV4Mastery,
-} from "@/app/create/worksheets/config-schemas";
+} from '@/app/create/worksheets/config-schemas'
 
 /**
  * Complete, validated configuration for worksheet generation
@@ -19,34 +19,34 @@ import type {
  */
 export type WorksheetConfig = AdditionConfigV4 & {
   // Problem set - DERIVED state
-  total: number; // total = problemsPerPage * pages
-  rows: number; // rows = (problemsPerPage / cols) * pages
+  total: number // total = problemsPerPage * pages
+  rows: number // rows = (problemsPerPage / cols) * pages
 
   // Personalization
-  date: string;
+  date: string
 
   // Problem reproducibility (critical for sharing)
-  seed: number;
-  prngAlgorithm: string;
+  seed: number
+  prngAlgorithm: string
 
   // Answer key generation
-  includeAnswerKey: boolean;
+  includeAnswerKey: boolean
 
   // QR code linking to shared worksheet
-  includeQRCode: boolean;
+  includeQRCode: boolean
 
   // Layout
   page: {
-    wIn: number;
-    hIn: number;
-  };
+    wIn: number
+    hIn: number
+  }
   margins: {
-    left: number;
-    right: number;
-    top: number;
-    bottom: number;
-  };
-};
+    left: number
+    right: number
+    top: number
+    bottom: number
+  }
+}
 
 /**
  * Partial form state - user may be editing, fields optional
@@ -78,11 +78,9 @@ export type WorksheetConfig = AdditionConfigV4 & {
  *
  * See `.claude/WORKSHEET_CONFIG_PERSISTENCE.md` for full architecture.
  */
-export type WorksheetFormState = Partial<
-  Omit<AdditionConfigV4Custom, "version">
-> &
-  Partial<Omit<AdditionConfigV4Manual, "version">> &
-  Partial<Omit<AdditionConfigV4Mastery, "version">> & {
+export type WorksheetFormState = Partial<Omit<AdditionConfigV4Custom, 'version'>> &
+  Partial<Omit<AdditionConfigV4Manual, 'version'>> &
+  Partial<Omit<AdditionConfigV4Mastery, 'version'>> & {
     // ========================================
     // DERIVED STATE (never persisted)
     // ========================================
@@ -90,10 +88,10 @@ export type WorksheetFormState = Partial<
     // See extractConfigFields() blacklist for exclusion logic.
 
     /** Derived: total = problemsPerPage × pages */
-    rows?: number;
+    rows?: number
 
     /** Derived: rows = Math.ceil(problemsPerPage / cols) */
-    total?: number;
+    total?: number
 
     // ========================================
     // EPHEMERAL STATE (never persisted)
@@ -101,7 +99,7 @@ export type WorksheetFormState = Partial<
     // Generated fresh at render time
 
     /** Ephemeral: Current date when worksheet is generated */
-    date?: string;
+    date?: string
 
     // ========================================
     // PRIMARY STATE (persisted)
@@ -109,50 +107,50 @@ export type WorksheetFormState = Partial<
     // Critical for reproducibility when sharing worksheets
 
     /** Primary: Random seed for reproducible problem generation */
-    seed?: number;
+    seed?: number
 
     /** Primary: PRNG algorithm (ensures same random sequence across systems) */
-    prngAlgorithm?: string;
-  };
+    prngAlgorithm?: string
+  }
 
 /**
  * Worksheet operator type
  */
-export type WorksheetOperator = "addition" | "subtraction" | "mixed";
+export type WorksheetOperator = 'addition' | 'subtraction' | 'mixed'
 
 /**
  * A single addition problem
  */
 export interface AdditionProblem {
-  a: number;
-  b: number;
-  operator: "add";
+  a: number
+  b: number
+  operator: 'add'
 }
 
 /**
  * A single subtraction problem
  */
 export interface SubtractionProblem {
-  minuend: number;
-  subtrahend: number;
-  operator: "sub";
+  minuend: number
+  subtrahend: number
+  operator: 'sub'
 }
 
 /**
  * Unified problem type (addition or subtraction)
  */
-export type WorksheetProblem = AdditionProblem | SubtractionProblem;
+export type WorksheetProblem = AdditionProblem | SubtractionProblem
 
 /**
  * Validation result
  */
 export interface ValidationResult {
-  isValid: boolean;
-  config?: WorksheetConfig;
-  errors?: string[];
+  isValid: boolean
+  config?: WorksheetConfig
+  errors?: string[]
 }
 
 /**
  * Problem category for difficulty control
  */
-export type ProblemCategory = "non" | "onesOnly" | "both";
+export type ProblemCategory = 'non' | 'onesOnly' | 'both'

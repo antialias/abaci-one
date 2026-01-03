@@ -6,43 +6,43 @@
  * coordinating with pointer lock state.
  */
 
-import { useSpring, useSpringRef } from "@react-spring/web";
-import { type RefObject, useEffect, useRef, useState } from "react";
-import { getMagnifierDimensions } from "../utils/magnifierDimensions";
+import { useSpring, useSpringRef } from '@react-spring/web'
+import { type RefObject, useEffect, useRef, useState } from 'react'
+import { getMagnifierDimensions } from '../utils/magnifierDimensions'
 import {
   calculateMaxZoomAtThreshold,
   calculateScreenPixelRatio,
   isAboveThreshold,
-} from "../utils/screenPixelRatio";
+} from '../utils/screenPixelRatio'
 
 export interface UseMagnifierZoomOptions {
   /** The container element (for calculating dimensions) */
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement>
   /** The SVG element (for calculating dimensions) */
-  svgRef: RefObject<SVGSVGElement>;
+  svgRef: RefObject<SVGSVGElement>
   /** The SVG viewBox string (e.g., "0 0 1000 500") */
-  viewBox: string;
+  viewBox: string
   /** Precision mode threshold in px/px (e.g., 20) */
-  threshold: number;
+  threshold: number
   /** Whether pointer lock is currently active */
-  pointerLocked: boolean;
+  pointerLocked: boolean
   /** Initial zoom level */
-  initialZoom?: number;
+  initialZoom?: number
   /** Disable threshold-based zoom capping (useful for mobile where there's no pointer lock alternative) */
-  disableThresholdCapping?: boolean;
+  disableThresholdCapping?: boolean
 }
 
 export interface UseMagnifierZoomReturn {
   /** Current target zoom level (may be capped) */
-  targetZoom: number;
+  targetZoom: number
   /** Set the target zoom level */
-  setTargetZoom: (zoom: number) => void;
+  setTargetZoom: (zoom: number) => void
   /** The animated spring value for zoom (spring object, not a number) */
-  zoomSpring: any; // Spring value that can be used with animated.div
+  zoomSpring: any // Spring value that can be used with animated.div
   /** Get the current animated zoom value */
-  getCurrentZoom: () => number;
+  getCurrentZoom: () => number
   /** Reference to the uncapped adaptive zoom (for pointer lock transitions) */
-  uncappedAdaptiveZoomRef: React.MutableRefObject<number | null>;
+  uncappedAdaptiveZoomRef: React.MutableRefObject<number | null>
 }
 
 /**
@@ -58,9 +58,7 @@ export interface UseMagnifierZoomReturn {
  * @param options - Configuration options
  * @returns Zoom state and control methods
  */
-export function useMagnifierZoom(
-  options: UseMagnifierZoomOptions,
-): UseMagnifierZoomReturn {
+export function useMagnifierZoom(options: UseMagnifierZoomOptions): UseMagnifierZoomReturn {
   const {
     containerRef,
     svgRef,
@@ -69,13 +67,13 @@ export function useMagnifierZoom(
     pointerLocked,
     initialZoom = 10,
     disableThresholdCapping = false,
-  } = options;
+  } = options
 
-  const [targetZoom, setTargetZoom] = useState(initialZoom);
-  const uncappedAdaptiveZoomRef = useRef<number | null>(null);
+  const [targetZoom, setTargetZoom] = useState(initialZoom)
+  const uncappedAdaptiveZoomRef = useRef<number | null>(null)
 
   // Set up React Spring animation for smooth zoom transitions
-  const springRef = useSpringRef();
+  const springRef = useSpringRef()
   const [magnifierSpring, magnifierApi] = useSpring(
     () => ({
       ref: springRef,
@@ -88,154 +86,142 @@ export function useMagnifierZoom(
         mass: 4,
       },
     }),
-    [],
-  );
+    []
+  )
 
   // Handle pointer lock state changes - recalculate zoom with capping
   useEffect(() => {
     // Skip capping logic entirely when disabled (e.g., on mobile)
     if (disableThresholdCapping) {
-      return;
+      return
     }
 
     // When pointer lock is released, cap zoom if it exceeds threshold
     if (!pointerLocked && uncappedAdaptiveZoomRef.current !== null) {
-      const containerElement = containerRef.current;
-      const svgElement = svgRef.current;
+      const containerElement = containerRef.current
+      const svgElement = svgRef.current
 
       if (!containerElement || !svgElement) {
-        return;
+        return
       }
 
-      const containerRect = containerElement.getBoundingClientRect();
-      const svgRect = svgElement.getBoundingClientRect();
+      const containerRect = containerElement.getBoundingClientRect()
+      const svgRect = svgElement.getBoundingClientRect()
       const { width: magnifierWidth } = getMagnifierDimensions(
         containerRect.width,
-        containerRect.height,
-      );
-      const viewBoxParts = viewBox.split(" ").map(Number);
-      const viewBoxWidth = viewBoxParts[2];
+        containerRect.height
+      )
+      const viewBoxParts = viewBox.split(' ').map(Number)
+      const viewBoxWidth = viewBoxParts[2]
 
       if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) {
-        return;
+        return
       }
 
-      const uncappedZoom = uncappedAdaptiveZoomRef.current;
+      const uncappedZoom = uncappedAdaptiveZoomRef.current
       const screenPixelRatio = calculateScreenPixelRatio({
         magnifierWidth,
         viewBoxWidth,
         svgWidth: svgRect.width,
         zoom: uncappedZoom,
-      });
+      })
 
       // Cap zoom if it exceeds threshold
       if (isAboveThreshold(screenPixelRatio, threshold)) {
-        const maxZoom = calculateMaxZoomAtThreshold(
-          threshold,
-          magnifierWidth,
-          svgRect.width,
-        );
-        const cappedZoom = Math.min(uncappedZoom, maxZoom);
-        setTargetZoom(cappedZoom);
+        const maxZoom = calculateMaxZoomAtThreshold(threshold, magnifierWidth, svgRect.width)
+        const cappedZoom = Math.min(uncappedZoom, maxZoom)
+        setTargetZoom(cappedZoom)
       }
     }
 
     // When pointer lock is acquired, update target zoom to uncapped value
     if (pointerLocked && uncappedAdaptiveZoomRef.current !== null) {
-      setTargetZoom(uncappedAdaptiveZoomRef.current);
+      setTargetZoom(uncappedAdaptiveZoomRef.current)
     }
-  }, [
-    pointerLocked,
-    containerRef,
-    svgRef,
-    viewBox,
-    threshold,
-    disableThresholdCapping,
-  ]);
+  }, [pointerLocked, containerRef, svgRef, viewBox, threshold, disableThresholdCapping])
 
   // Handle pause/resume at threshold
   useEffect(() => {
-    const currentZoom = magnifierSpring.zoom.get();
-    const zoomIsAnimating = Math.abs(currentZoom - targetZoom) > 0.01;
+    const currentZoom = magnifierSpring.zoom.get()
+    const zoomIsAnimating = Math.abs(currentZoom - targetZoom) > 0.01
 
     // Skip threshold checking when capping is disabled (e.g., on mobile)
     // In this case, just ensure the animation runs without pausing
     if (disableThresholdCapping) {
-      magnifierApi.resume();
-      magnifierApi.start({ zoom: targetZoom });
-      return;
+      magnifierApi.resume()
+      magnifierApi.start({ zoom: targetZoom })
+      return
     }
 
     // Check if CURRENT zoom is at/above threshold (zoom is capped)
-    let currentScreenPixelRatio = 0;
+    let currentScreenPixelRatio = 0
     const currentIsAtThreshold =
       !pointerLocked &&
       containerRef.current &&
       svgRef.current &&
       (() => {
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const svgRect = svgRef.current.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const svgRect = svgRef.current.getBoundingClientRect()
         const { width: magnifierWidth } = getMagnifierDimensions(
           containerRect.width,
-          containerRect.height,
-        );
-        const viewBoxParts = viewBox.split(" ").map(Number);
-        const viewBoxWidth = viewBoxParts[2];
+          containerRect.height
+        )
+        const viewBoxParts = viewBox.split(' ').map(Number)
+        const viewBoxWidth = viewBoxParts[2]
 
-        if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return false;
+        if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return false
 
         currentScreenPixelRatio = calculateScreenPixelRatio({
           magnifierWidth,
           viewBoxWidth,
           svgWidth: svgRect.width,
           zoom: currentZoom,
-        });
+        })
 
-        return isAboveThreshold(currentScreenPixelRatio, threshold);
-      })();
+        return isAboveThreshold(currentScreenPixelRatio, threshold)
+      })()
 
     // Check if TARGET zoom is at/above threshold
-    let targetScreenPixelRatio = 0;
+    let targetScreenPixelRatio = 0
     const targetIsAtThreshold =
       !pointerLocked &&
       containerRef.current &&
       svgRef.current &&
       (() => {
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const svgRect = svgRef.current.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const svgRect = svgRef.current.getBoundingClientRect()
         const { width: magnifierWidth } = getMagnifierDimensions(
           containerRect.width,
-          containerRect.height,
-        );
-        const viewBoxParts = viewBox.split(" ").map(Number);
-        const viewBoxWidth = viewBoxParts[2];
+          containerRect.height
+        )
+        const viewBoxParts = viewBox.split(' ').map(Number)
+        const viewBoxWidth = viewBoxParts[2]
 
-        if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return false;
+        if (!viewBoxWidth || Number.isNaN(viewBoxWidth)) return false
 
         targetScreenPixelRatio = calculateScreenPixelRatio({
           magnifierWidth,
           viewBoxWidth,
           svgWidth: svgRect.width,
           zoom: targetZoom,
-        });
+        })
 
-        return isAboveThreshold(targetScreenPixelRatio, threshold);
-      })();
+        return isAboveThreshold(targetScreenPixelRatio, threshold)
+      })()
 
     // Pause if:
     // - Currently at threshold AND
     // - Animating toward higher zoom AND
     // - Target is also at threshold
-    const shouldPause =
-      currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold;
+    const shouldPause = currentIsAtThreshold && zoomIsAnimating && targetIsAtThreshold
 
     if (shouldPause) {
-      magnifierApi.pause();
+      magnifierApi.pause()
     } else {
       // Resume/update animation
       // CRITICAL: Always resume first in case spring was paused
-      magnifierApi.resume();
-      magnifierApi.start({ zoom: targetZoom });
+      magnifierApi.resume()
+      magnifierApi.start({ zoom: targetZoom })
     }
   }, [
     targetZoom, // Effect runs when target zoom changes
@@ -249,7 +235,7 @@ export function useMagnifierZoom(
     // NOTE: Do NOT include magnifierSpring.zoom here!
     // Spring values don't trigger React effects correctly.
     // We read spring.zoom.get() inside the effect, but don't depend on it.
-  ]);
+  ])
 
   return {
     targetZoom,
@@ -257,5 +243,5 @@ export function useMagnifierZoom(
     zoomSpring: magnifierSpring.zoom, // Return the spring object, not .get()
     getCurrentZoom: () => magnifierSpring.zoom.get(),
     uncappedAdaptiveZoomRef,
-  };
+  }
 }

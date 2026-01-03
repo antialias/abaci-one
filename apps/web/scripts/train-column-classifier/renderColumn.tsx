@@ -4,10 +4,10 @@
  * Uses AbacusStatic from @soroban/abacus-react for consistent rendering
  */
 
-import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { AbacusStatic } from "@soroban/abacus-react";
-import type { AbacusStyleVariant } from "./types";
+import React from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { AbacusStatic } from '@soroban/abacus-react'
+import type { AbacusStyleVariant } from './types'
 
 /**
  * Render a single column showing a digit (0-9)
@@ -16,12 +16,9 @@ import type { AbacusStyleVariant } from "./types";
  * @param style - The visual style configuration
  * @returns SVG string
  */
-export function renderColumnSVG(
-  digit: number,
-  style: AbacusStyleVariant,
-): string {
+export function renderColumnSVG(digit: number, style: AbacusStyleVariant): string {
   if (digit < 0 || digit > 9) {
-    throw new Error(`Digit must be 0-9, got ${digit}`);
+    throw new Error(`Digit must be 0-9, got ${digit}`)
   }
 
   const element = (
@@ -35,9 +32,9 @@ export function renderColumnSVG(
       frameVisible={true}
       hideInactiveBeads={false}
     />
-  );
+  )
 
-  return renderToStaticMarkup(element);
+  return renderToStaticMarkup(element)
 }
 
 /**
@@ -46,16 +43,14 @@ export function renderColumnSVG(
  * @param style - The visual style configuration
  * @returns Map of digit -> SVG string
  */
-export function generateAllDigitSVGs(
-  style: AbacusStyleVariant,
-): Map<number, string> {
-  const svgMap = new Map<number, string>();
+export function generateAllDigitSVGs(style: AbacusStyleVariant): Map<number, string> {
+  const svgMap = new Map<number, string>()
 
   for (let digit = 0; digit <= 9; digit++) {
-    svgMap.set(digit, renderColumnSVG(digit, style));
+    svgMap.set(digit, renderColumnSVG(digit, style))
   }
 
-  return svgMap;
+  return svgMap
 }
 
 /**
@@ -65,16 +60,16 @@ export function generateAllDigitSVGs(
  * @returns { width, height } in pixels
  */
 export function getColumnDimensions(scaleFactor: number = 1): {
-  width: number;
-  height: number;
+  width: number
+  height: number
 } {
   // Base dimensions for a single column (from calculateStandardDimensions)
   // These are approximate values; actual values come from the shared dimension calculator
-  const baseRodSpacing = 50;
-  const baseHeight = 180; // Approximate height for 1 heaven + 4 earth beads
+  const baseRodSpacing = 50
+  const baseHeight = 180 // Approximate height for 1 heaven + 4 earth beads
 
   return {
     width: Math.round(baseRodSpacing * scaleFactor),
     height: Math.round(baseHeight * scaleFactor),
-  };
+  }
 }

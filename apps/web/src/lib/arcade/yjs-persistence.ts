@@ -3,8 +3,8 @@
  * Sync Y.Doc state with arcade sessions database
  */
 
-import type * as Y from "yjs";
-import type { GridCell } from "@/arcade-games/yjs-demo/types";
+import type * as Y from 'yjs'
+import type { GridCell } from '@/arcade-games/yjs-demo/types'
 
 /**
  * Extract grid cells from a Y.Doc for persistence
@@ -12,15 +12,15 @@ import type { GridCell } from "@/arcade-games/yjs-demo/types";
  * @param arrayName - Name of the Y.Array containing cells (default: 'cells')
  * @returns Array of grid cells
  */
-export function extractCellsFromDoc(doc: any, arrayName = "cells"): GridCell[] {
-  const cellsArray = doc.getArray(arrayName);
-  if (!cellsArray) return [];
+export function extractCellsFromDoc(doc: any, arrayName = 'cells'): GridCell[] {
+  const cellsArray = doc.getArray(arrayName)
+  if (!cellsArray) return []
 
-  const cells: GridCell[] = [];
+  const cells: GridCell[] = []
   cellsArray.forEach((cell: GridCell) => {
-    cells.push(cell);
-  });
-  return cells;
+    cells.push(cell)
+  })
+  return cells
 }
 
 /**
@@ -29,21 +29,17 @@ export function extractCellsFromDoc(doc: any, arrayName = "cells"): GridCell[] {
  * @param cells - Array of grid cells to restore
  * @param arrayName - Name of the Y.Array to populate (default: 'cells')
  */
-export function populateDocWithCells(
-  doc: any,
-  cells: GridCell[],
-  arrayName = "cells",
-): void {
-  const cellsArray = doc.getArray(arrayName);
+export function populateDocWithCells(doc: any, cells: GridCell[], arrayName = 'cells'): void {
+  const cellsArray = doc.getArray(arrayName)
 
   // Clear existing cells first
-  cellsArray.delete(0, cellsArray.length);
+  cellsArray.delete(0, cellsArray.length)
 
   // Add persisted cells
   if (cells.length > 0) {
     doc.transact(() => {
-      cellsArray.push(cells);
-    });
+      cellsArray.push(cells)
+    })
   }
 }
 
@@ -54,9 +50,9 @@ export function populateDocWithCells(
  * @returns Base64-encoded document state
  */
 export function serializeDoc(doc: any): string {
-  const Y = require("yjs");
-  const state = Y.encodeStateAsUpdate(doc);
-  return Buffer.from(state).toString("base64");
+  const Y = require('yjs')
+  const state = Y.encodeStateAsUpdate(doc)
+  return Buffer.from(state).toString('base64')
 }
 
 /**
@@ -65,7 +61,7 @@ export function serializeDoc(doc: any): string {
  * @param serialized - Base64-encoded document state
  */
 export function deserializeDoc(doc: any, serialized: string): void {
-  const Y = require("yjs");
-  const state = Buffer.from(serialized, "base64");
-  Y.applyUpdate(doc, state);
+  const Y = require('yjs')
+  const state = Buffer.from(serialized, 'base64')
+  Y.applyUpdate(doc, state)
 }

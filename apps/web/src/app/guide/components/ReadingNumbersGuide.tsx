@@ -1,185 +1,181 @@
-"use client";
+'use client'
 
-import { AbacusReact, useAbacusConfig } from "@soroban/abacus-react";
-import Link from "next/link";
-import { useTranslations } from "next-intl";
-import { css } from "../../../../styled-system/css";
-import { grid, hstack, stack } from "../../../../styled-system/patterns";
+import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
+import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { css } from '../../../../styled-system/css'
+import { grid, hstack, stack } from '../../../../styled-system/patterns'
 
 export function ReadingNumbersGuide() {
-  const appConfig = useAbacusConfig();
-  const t = useTranslations("guide.reading");
+  const appConfig = useAbacusConfig()
+  const t = useTranslations('guide.reading')
 
   return (
-    <div className={stack({ gap: "12" })}>
+    <div className={stack({ gap: '12' })}>
       {/* Section Introduction */}
-      <div className={css({ textAlign: "center" })}>
+      <div className={css({ textAlign: 'center' })}>
         <h2
           className={css({
-            fontSize: "3xl",
-            fontWeight: "bold",
-            color: "text.primary",
-            mb: "4",
+            fontSize: '3xl',
+            fontWeight: 'bold',
+            color: 'text.primary',
+            mb: '4',
           })}
         >
-          {t("title")}
+          {t('title')}
         </h2>
         <p
           className={css({
-            fontSize: "lg",
-            color: "text.secondary",
-            maxW: "3xl",
-            mx: "auto",
-            lineHeight: "relaxed",
+            fontSize: 'lg',
+            color: 'text.secondary',
+            maxW: '3xl',
+            mx: 'auto',
+            lineHeight: 'relaxed',
           })}
         >
-          {t("subtitle")}
+          {t('subtitle')}
         </p>
       </div>
 
       {/* Step 1: Basic Structure */}
       <div
         className={css({
-          border: "1px solid",
-          borderColor: "border.default",
-          rounded: "xl",
-          p: "8",
+          border: '1px solid',
+          borderColor: 'border.default',
+          rounded: 'xl',
+          p: '8',
         })}
       >
-        <div className={stack({ gap: "6" })}>
-          <div className={hstack({ gap: "4", alignItems: "center" })}>
+        <div className={stack({ gap: '6' })}>
+          <div className={hstack({ gap: '4', alignItems: 'center' })}>
             <div
               className={css({
-                w: "12",
-                h: "12",
-                bg: "brand.600",
-                color: "white",
-                rounded: "full",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "bold",
-                fontSize: "lg",
+                w: '12',
+                h: '12',
+                bg: 'brand.600',
+                color: 'white',
+                rounded: 'full',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: 'lg',
               })}
             >
-              {t("structure.number")}
+              {t('structure.number')}
             </div>
             <h3
               className={css({
-                fontSize: "2xl",
-                fontWeight: "bold",
-                color: "text.primary",
+                fontSize: '2xl',
+                fontWeight: 'bold',
+                color: 'text.primary',
               })}
             >
-              {t("structure.title")}
+              {t('structure.title')}
             </h3>
           </div>
 
-          <div className={stack({ gap: "6" })}>
+          <div className={stack({ gap: '6' })}>
             <p
               className={css({
-                fontSize: "lg",
-                color: "text.secondary",
-                lineHeight: "relaxed",
+                fontSize: 'lg',
+                color: 'text.secondary',
+                lineHeight: 'relaxed',
               })}
             >
-              {t("structure.description")}
+              {t('structure.description')}
             </p>
 
-            <div className={grid({ columns: { base: 1, md: 2 }, gap: "8" })}>
+            <div className={grid({ columns: { base: 1, md: 2 }, gap: '8' })}>
               <div
                 className={css({
-                  bg: "blue.50",
-                  border: "1px solid",
-                  borderColor: "blue.200",
-                  rounded: "xl",
-                  p: "6",
+                  bg: 'blue.50',
+                  border: '1px solid',
+                  borderColor: 'blue.200',
+                  rounded: 'xl',
+                  p: '6',
                 })}
               >
                 <h4
                   className={css({
-                    fontSize: "lg",
-                    fontWeight: "semibold",
-                    color: "blue.800",
-                    mb: "3",
+                    fontSize: 'lg',
+                    fontWeight: 'semibold',
+                    color: 'blue.800',
+                    mb: '3',
                   })}
                 >
-                  {t("structure.heaven.title")}
+                  {t('structure.heaven.title')}
                 </h4>
                 <ul
                   className={css({
-                    fontSize: "sm",
-                    color: "blue.700",
-                    lineHeight: "relaxed",
-                    pl: "4",
+                    fontSize: 'sm',
+                    color: 'blue.700',
+                    lineHeight: 'relaxed',
+                    pl: '4',
                   })}
                 >
-                  {(t.raw("structure.heaven.points") as string[]).map(
-                    (point, i) => (
-                      <li key={i} className={css({ mb: i < 3 ? "2" : "0" })}>
-                        • {point}
-                      </li>
-                    ),
-                  )}
+                  {(t.raw('structure.heaven.points') as string[]).map((point, i) => (
+                    <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                      • {point}
+                    </li>
+                  ))}
                 </ul>
               </div>
 
               <div
                 className={css({
-                  bg: "green.50",
-                  border: "1px solid",
-                  borderColor: "green.200",
-                  rounded: "xl",
-                  p: "6",
+                  bg: 'green.50',
+                  border: '1px solid',
+                  borderColor: 'green.200',
+                  rounded: 'xl',
+                  p: '6',
                 })}
               >
                 <h4
                   className={css({
-                    fontSize: "lg",
-                    fontWeight: "semibold",
-                    color: "green.800",
-                    mb: "3",
+                    fontSize: 'lg',
+                    fontWeight: 'semibold',
+                    color: 'green.800',
+                    mb: '3',
                   })}
                 >
-                  {t("structure.earth.title")}
+                  {t('structure.earth.title')}
                 </h4>
                 <ul
                   className={css({
-                    fontSize: "sm",
-                    color: "green.700",
-                    lineHeight: "relaxed",
-                    pl: "4",
+                    fontSize: 'sm',
+                    color: 'green.700',
+                    lineHeight: 'relaxed',
+                    pl: '4',
                   })}
                 >
-                  {(t.raw("structure.earth.points") as string[]).map(
-                    (point, i) => (
-                      <li key={i} className={css({ mb: i < 3 ? "2" : "0" })}>
-                        • {point}
-                      </li>
-                    ),
-                  )}
+                  {(t.raw('structure.earth.points') as string[]).map((point, i) => (
+                    <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                      • {point}
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
 
             <div
               className={css({
-                bg: "yellow.50",
-                border: "1px solid",
-                borderColor: "yellow.300",
-                rounded: "xl",
-                p: "4",
-                textAlign: "center",
+                bg: 'yellow.50',
+                border: '1px solid',
+                borderColor: 'yellow.300',
+                rounded: 'xl',
+                p: '4',
+                textAlign: 'center',
               })}
             >
               <p
                 className={css({
-                  fontSize: "md",
-                  color: "yellow.800",
-                  fontWeight: "medium",
+                  fontSize: 'md',
+                  color: 'yellow.800',
+                  fontWeight: 'medium',
                 })}
               >
-                {t("structure.keyConcept")}
+                {t('structure.keyConcept')}
               </p>
             </div>
           </div>
@@ -189,79 +185,79 @@ export function ReadingNumbersGuide() {
       {/* Step 2: Single Digits */}
       <div
         className={css({
-          border: "1px solid",
-          borderColor: "border.default",
-          rounded: "xl",
-          p: "8",
+          border: '1px solid',
+          borderColor: 'border.default',
+          rounded: 'xl',
+          p: '8',
         })}
       >
-        <div className={stack({ gap: "6" })}>
-          <div className={hstack({ gap: "4", alignItems: "center" })}>
+        <div className={stack({ gap: '6' })}>
+          <div className={hstack({ gap: '4', alignItems: 'center' })}>
             <div
               className={css({
-                w: "12",
-                h: "12",
-                bg: "brand.600",
-                color: "white",
-                rounded: "full",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "bold",
-                fontSize: "lg",
+                w: '12',
+                h: '12',
+                bg: 'brand.600',
+                color: 'white',
+                rounded: 'full',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: 'lg',
               })}
             >
-              {t("singleDigits.number")}
+              {t('singleDigits.number')}
             </div>
             <h3
               className={css({
-                fontSize: "2xl",
-                fontWeight: "bold",
-                color: "text.primary",
+                fontSize: '2xl',
+                fontWeight: 'bold',
+                color: 'text.primary',
               })}
             >
-              {t("singleDigits.title")}
+              {t('singleDigits.title')}
             </h3>
           </div>
 
           <p
             className={css({
-              fontSize: "lg",
-              color: "text.secondary",
-              lineHeight: "relaxed",
+              fontSize: 'lg',
+              color: 'text.secondary',
+              lineHeight: 'relaxed',
             })}
           >
-            {t("singleDigits.description")}
+            {t('singleDigits.description')}
           </p>
 
-          <div className={grid({ columns: { base: 1, lg: 5 }, gap: "6" })}>
+          <div className={grid({ columns: { base: 1, lg: 5 }, gap: '6' })}>
             {[
-              { num: 0, descKey: "0" },
-              { num: 1, descKey: "1" },
-              { num: 3, descKey: "3" },
-              { num: 5, descKey: "5" },
-              { num: 7, descKey: "7" },
+              { num: 0, descKey: '0' },
+              { num: 1, descKey: '1' },
+              { num: 3, descKey: '3' },
+              { num: 5, descKey: '5' },
+              { num: 7, descKey: '7' },
             ].map((example) => (
               <div
                 key={example.num}
                 className={css({
-                  bg: "bg.subtle",
-                  border: "1px solid",
-                  borderColor: "border.default",
-                  rounded: "lg",
-                  p: "2",
-                  textAlign: "center",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
+                  bg: 'bg.subtle',
+                  border: '1px solid',
+                  borderColor: 'border.default',
+                  rounded: 'lg',
+                  p: '2',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
                 })}
               >
                 <div
                   className={css({
-                    fontSize: "xl",
-                    fontWeight: "bold",
-                    color: "brand.600",
-                    mb: "2",
+                    fontSize: 'xl',
+                    fontWeight: 'bold',
+                    color: 'brand.600',
+                    mb: '2',
                   })}
                 >
                   {example.num}
@@ -269,11 +265,11 @@ export function ReadingNumbersGuide() {
 
                 <div
                   className={css({
-                    flex: "1",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    my: "2",
+                    flex: '1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    my: '2',
                   })}
                 >
                   <AbacusReact
@@ -291,11 +287,11 @@ export function ReadingNumbersGuide() {
 
                 <p
                   className={css({
-                    fontSize: "2xs",
-                    color: "text.secondary",
-                    lineHeight: "tight",
-                    textAlign: "center",
-                    mt: "2",
+                    fontSize: '2xs',
+                    color: 'text.secondary',
+                    lineHeight: 'tight',
+                    textAlign: 'center',
+                    mt: '2',
                   })}
                 >
                   {t(`singleDigits.examples.${example.descKey}`)}
@@ -309,126 +305,122 @@ export function ReadingNumbersGuide() {
       {/* Step 3: Multi-digit Numbers */}
       <div
         className={css({
-          border: "1px solid",
-          borderColor: "border.default",
-          rounded: "xl",
-          p: "8",
+          border: '1px solid',
+          borderColor: 'border.default',
+          rounded: 'xl',
+          p: '8',
         })}
       >
-        <div className={stack({ gap: "6" })}>
-          <div className={hstack({ gap: "4", alignItems: "center" })}>
+        <div className={stack({ gap: '6' })}>
+          <div className={hstack({ gap: '4', alignItems: 'center' })}>
             <div
               className={css({
-                w: "12",
-                h: "12",
-                bg: "brand.600",
-                color: "white",
-                rounded: "full",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "bold",
-                fontSize: "lg",
+                w: '12',
+                h: '12',
+                bg: 'brand.600',
+                color: 'white',
+                rounded: 'full',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: 'lg',
               })}
             >
-              {t("multiDigit.number")}
+              {t('multiDigit.number')}
             </div>
             <h3
               className={css({
-                fontSize: "2xl",
-                fontWeight: "bold",
-                color: "text.primary",
+                fontSize: '2xl',
+                fontWeight: 'bold',
+                color: 'text.primary',
               })}
             >
-              {t("multiDigit.title")}
+              {t('multiDigit.title')}
             </h3>
           </div>
 
           <p
             className={css({
-              fontSize: "lg",
-              color: "text.secondary",
-              lineHeight: "relaxed",
+              fontSize: 'lg',
+              color: 'text.secondary',
+              lineHeight: 'relaxed',
             })}
           >
-            {t("multiDigit.description")}
+            {t('multiDigit.description')}
           </p>
 
           <div
             className={css({
-              bg: "purple.50",
-              border: "1px solid",
-              borderColor: "purple.200",
-              rounded: "xl",
-              p: "6",
+              bg: 'purple.50',
+              border: '1px solid',
+              borderColor: 'purple.200',
+              rounded: 'xl',
+              p: '6',
             })}
           >
             <h4
               className={css({
-                fontSize: "lg",
-                fontWeight: "semibold",
-                color: "purple.800",
-                mb: "4",
-                textAlign: "center",
+                fontSize: 'lg',
+                fontWeight: 'semibold',
+                color: 'purple.800',
+                mb: '4',
+                textAlign: 'center',
               })}
             >
-              {t("multiDigit.readingDirection.title")}
+              {t('multiDigit.readingDirection.title')}
             </h4>
-            <div className={grid({ columns: { base: 1, md: 2 }, gap: "6" })}>
+            <div className={grid({ columns: { base: 1, md: 2 }, gap: '6' })}>
               <div>
                 <h5
                   className={css({
-                    fontWeight: "semibold",
-                    mb: "2",
-                    color: "purple.800",
+                    fontWeight: 'semibold',
+                    mb: '2',
+                    color: 'purple.800',
                   })}
                 >
-                  {t("multiDigit.readingDirection.readingOrder.title")}
+                  {t('multiDigit.readingDirection.readingOrder.title')}
                 </h5>
                 <ul
                   className={css({
-                    fontSize: "sm",
-                    color: "purple.700",
-                    pl: "4",
+                    fontSize: 'sm',
+                    color: 'purple.700',
+                    pl: '4',
                   })}
                 >
-                  {(
-                    t.raw(
-                      "multiDigit.readingDirection.readingOrder.points",
-                    ) as string[]
-                  ).map((point, i) => (
-                    <li key={i} className={css({ mb: i < 2 ? "1" : "0" })}>
-                      • {point}
-                    </li>
-                  ))}
+                  {(t.raw('multiDigit.readingDirection.readingOrder.points') as string[]).map(
+                    (point, i) => (
+                      <li key={i} className={css({ mb: i < 2 ? '1' : '0' })}>
+                        • {point}
+                      </li>
+                    )
+                  )}
                 </ul>
               </div>
               <div>
                 <h5
                   className={css({
-                    fontWeight: "semibold",
-                    mb: "2",
-                    color: "purple.800",
+                    fontWeight: 'semibold',
+                    mb: '2',
+                    color: 'purple.800',
                   })}
                 >
-                  {t("multiDigit.readingDirection.placeValues.title")}
+                  {t('multiDigit.readingDirection.placeValues.title')}
                 </h5>
                 <ul
                   className={css({
-                    fontSize: "sm",
-                    color: "purple.700",
-                    pl: "4",
+                    fontSize: 'sm',
+                    color: 'purple.700',
+                    pl: '4',
                   })}
                 >
-                  {(
-                    t.raw(
-                      "multiDigit.readingDirection.placeValues.points",
-                    ) as string[]
-                  ).map((point, i) => (
-                    <li key={i} className={css({ mb: i < 2 ? "1" : "0" })}>
-                      • {point}
-                    </li>
-                  ))}
+                  {(t.raw('multiDigit.readingDirection.placeValues.points') as string[]).map(
+                    (point, i) => (
+                      <li key={i} className={css({ mb: i < 2 ? '1' : '0' })}>
+                        • {point}
+                      </li>
+                    )
+                  )}
                 </ul>
               </div>
             </div>
@@ -437,51 +429,51 @@ export function ReadingNumbersGuide() {
           {/* Multi-digit Examples */}
           <div
             className={css({
-              bg: "blue.50",
-              border: "1px solid",
-              borderColor: "blue.200",
-              rounded: "xl",
-              p: "6",
+              bg: 'blue.50',
+              border: '1px solid',
+              borderColor: 'blue.200',
+              rounded: 'xl',
+              p: '6',
             })}
           >
             <h4
               className={css({
-                fontSize: "lg",
-                fontWeight: "semibold",
-                color: "blue.800",
-                mb: "4",
-                textAlign: "center",
+                fontSize: 'lg',
+                fontWeight: 'semibold',
+                color: 'blue.800',
+                mb: '4',
+                textAlign: 'center',
               })}
             >
-              {t("multiDigit.examples.title")}
+              {t('multiDigit.examples.title')}
             </h4>
 
-            <div className={grid({ columns: { base: 1, md: 3 }, gap: "8" })}>
+            <div className={grid({ columns: { base: 1, md: 3 }, gap: '8' })}>
               {[
-                { num: 23, descKey: "23" },
-                { num: 58, descKey: "58" },
-                { num: 147, descKey: "147" },
+                { num: 23, descKey: '23' },
+                { num: 58, descKey: '58' },
+                { num: 147, descKey: '147' },
               ].map((example) => (
                 <div
                   key={example.num}
                   className={css({
-                    bg: "bg.default",
-                    border: "1px solid",
-                    borderColor: "blue.300",
-                    rounded: "lg",
-                    p: "2",
-                    textAlign: "center",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
+                    bg: 'bg.default',
+                    border: '1px solid',
+                    borderColor: 'blue.300',
+                    rounded: 'lg',
+                    p: '2',
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
                   })}
                 >
                   <div
                     className={css({
-                      fontSize: "2xl",
-                      fontWeight: "bold",
-                      color: "blue.600",
-                      mb: "2",
+                      fontSize: '2xl',
+                      fontWeight: 'bold',
+                      color: 'blue.600',
+                      mb: '2',
                     })}
                   >
                     {example.num}
@@ -489,16 +481,16 @@ export function ReadingNumbersGuide() {
 
                   <div
                     className={css({
-                      flex: "1",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      my: "2",
+                      flex: '1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      my: '2',
                     })}
                   >
                     <AbacusReact
                       value={example.num}
-                      columns={"auto"}
+                      columns={'auto'}
                       beadShape={appConfig.beadShape}
                       colorScheme={appConfig.colorScheme}
                       hideInactiveBeads={appConfig.hideInactiveBeads}
@@ -511,11 +503,11 @@ export function ReadingNumbersGuide() {
 
                   <p
                     className={css({
-                      fontSize: "xs",
-                      color: "blue.700",
-                      lineHeight: "relaxed",
-                      textAlign: "center",
-                      mt: "2",
+                      fontSize: 'xs',
+                      color: 'blue.700',
+                      lineHeight: 'relaxed',
+                      textAlign: 'center',
+                      mt: '2',
                     })}
                   >
                     {t(`multiDigit.examples.${example.descKey}`)}
@@ -530,159 +522,155 @@ export function ReadingNumbersGuide() {
       {/* Step 4: Practice Tips */}
       <div
         className={css({
-          border: "1px solid",
-          borderColor: "border.default",
-          rounded: "xl",
-          p: "8",
+          border: '1px solid',
+          borderColor: 'border.default',
+          rounded: 'xl',
+          p: '8',
         })}
       >
-        <div className={stack({ gap: "6" })}>
-          <div className={hstack({ gap: "4", alignItems: "center" })}>
+        <div className={stack({ gap: '6' })}>
+          <div className={hstack({ gap: '4', alignItems: 'center' })}>
             <div
               className={css({
-                w: "12",
-                h: "12",
-                bg: "brand.600",
-                color: "white",
-                rounded: "full",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "bold",
-                fontSize: "lg",
+                w: '12',
+                h: '12',
+                bg: 'brand.600',
+                color: 'white',
+                rounded: 'full',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: 'lg',
               })}
             >
-              {t("practice.number")}
+              {t('practice.number')}
             </div>
             <h3
               className={css({
-                fontSize: "2xl",
-                fontWeight: "bold",
-                color: "text.primary",
+                fontSize: '2xl',
+                fontWeight: 'bold',
+                color: 'text.primary',
               })}
             >
-              {t("practice.title")}
+              {t('practice.title')}
             </h3>
           </div>
 
-          <div className={grid({ columns: { base: 1, md: 2 }, gap: "6" })}>
+          <div className={grid({ columns: { base: 1, md: 2 }, gap: '6' })}>
             <div
               className={css({
-                bg: "green.50",
-                border: "1px solid",
-                borderColor: "green.200",
-                rounded: "xl",
-                p: "6",
+                bg: 'green.50',
+                border: '1px solid',
+                borderColor: 'green.200',
+                rounded: 'xl',
+                p: '6',
               })}
             >
               <h4
                 className={css({
-                  fontSize: "lg",
-                  fontWeight: "semibold",
-                  color: "green.800",
-                  mb: "4",
+                  fontSize: 'lg',
+                  fontWeight: 'semibold',
+                  color: 'green.800',
+                  mb: '4',
                 })}
               >
-                {t("practice.learningTips.title")}
+                {t('practice.learningTips.title')}
               </h4>
               <ul
                 className={css({
-                  fontSize: "sm",
-                  color: "green.700",
-                  lineHeight: "relaxed",
-                  pl: "4",
+                  fontSize: 'sm',
+                  color: 'green.700',
+                  lineHeight: 'relaxed',
+                  pl: '4',
                 })}
               >
-                {(t.raw("practice.learningTips.points") as string[]).map(
-                  (point, i) => (
-                    <li key={i} className={css({ mb: i < 3 ? "2" : "0" })}>
-                      • {point}
-                    </li>
-                  ),
-                )}
+                {(t.raw('practice.learningTips.points') as string[]).map((point, i) => (
+                  <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                    • {point}
+                  </li>
+                ))}
               </ul>
             </div>
 
             <div
               className={css({
-                bg: "orange.50",
-                border: "1px solid",
-                borderColor: "orange.200",
-                rounded: "xl",
-                p: "6",
+                bg: 'orange.50',
+                border: '1px solid',
+                borderColor: 'orange.200',
+                rounded: 'xl',
+                p: '6',
               })}
             >
               <h4
                 className={css({
-                  fontSize: "lg",
-                  fontWeight: "semibold",
-                  color: "orange.800",
-                  mb: "4",
+                  fontSize: 'lg',
+                  fontWeight: 'semibold',
+                  color: 'orange.800',
+                  mb: '4',
                 })}
               >
-                {t("practice.quickRecognition.title")}
+                {t('practice.quickRecognition.title')}
               </h4>
               <ul
                 className={css({
-                  fontSize: "sm",
-                  color: "orange.700",
-                  lineHeight: "relaxed",
-                  pl: "4",
+                  fontSize: 'sm',
+                  color: 'orange.700',
+                  lineHeight: 'relaxed',
+                  pl: '4',
                 })}
               >
-                {(t.raw("practice.quickRecognition.points") as string[]).map(
-                  (point, i) => (
-                    <li key={i} className={css({ mb: i < 3 ? "2" : "0" })}>
-                      • {point}
-                    </li>
-                  ),
-                )}
+                {(t.raw('practice.quickRecognition.points') as string[]).map((point, i) => (
+                  <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                    • {point}
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
 
           <div
             className={css({
-              bg: "blue.600",
-              color: "white",
-              rounded: "xl",
-              p: "6",
-              textAlign: "center",
+              bg: 'blue.600',
+              color: 'white',
+              rounded: 'xl',
+              p: '6',
+              textAlign: 'center',
             })}
           >
             <h4
               className={css({
-                fontSize: "lg",
-                fontWeight: "semibold",
-                mb: "3",
+                fontSize: 'lg',
+                fontWeight: 'semibold',
+                mb: '3',
               })}
             >
-              {t("practice.readyToPractice.title")}
+              {t('practice.readyToPractice.title')}
             </h4>
             <p
               className={css({
-                mb: "4",
-                opacity: "0.9",
+                mb: '4',
+                opacity: '0.9',
               })}
             >
-              {t("practice.readyToPractice.description")}
+              {t('practice.readyToPractice.description')}
             </p>
             <Link
               href="/create"
               className={css({
-                display: "inline-block",
-                px: "6",
-                py: "3",
-                bg: "bg.default",
-                color: "blue.600",
-                fontWeight: "semibold",
-                rounded: "lg",
-                textDecoration: "none",
-                transition: "all",
-                _hover: { transform: "translateY(-1px)", shadow: "lg" },
+                display: 'inline-block',
+                px: '6',
+                py: '3',
+                bg: 'bg.default',
+                color: 'blue.600',
+                fontWeight: 'semibold',
+                rounded: 'lg',
+                textDecoration: 'none',
+                transition: 'all',
+                _hover: { transform: 'translateY(-1px)', shadow: 'lg' },
               })}
             >
-              {t("practice.readyToPractice.button")}
+              {t('practice.readyToPractice.button')}
             </Link>
           </div>
         </div>
@@ -691,93 +679,91 @@ export function ReadingNumbersGuide() {
       {/* Step 5: Interactive Practice */}
       <div
         className={css({
-          border: "1px solid",
-          borderColor: "border.default",
-          rounded: "xl",
-          p: "8",
+          border: '1px solid',
+          borderColor: 'border.default',
+          rounded: 'xl',
+          p: '8',
         })}
       >
-        <div className={stack({ gap: "6" })}>
-          <div className={hstack({ gap: "4", alignItems: "center" })}>
+        <div className={stack({ gap: '6' })}>
+          <div className={hstack({ gap: '4', alignItems: 'center' })}>
             <div
               className={css({
-                w: "12",
-                h: "12",
-                bg: "brand.600",
-                color: "white",
-                rounded: "full",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "bold",
-                fontSize: "lg",
+                w: '12',
+                h: '12',
+                bg: 'brand.600',
+                color: 'white',
+                rounded: 'full',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: 'lg',
               })}
             >
-              {t("interactive.number")}
+              {t('interactive.number')}
             </div>
             <h3
               className={css({
-                fontSize: "2xl",
-                fontWeight: "bold",
-                color: "text.primary",
+                fontSize: '2xl',
+                fontWeight: 'bold',
+                color: 'text.primary',
               })}
             >
-              {t("interactive.title")}
+              {t('interactive.title')}
             </h3>
           </div>
 
           <p
             className={css({
-              fontSize: "lg",
-              color: "text.secondary",
-              lineHeight: "relaxed",
+              fontSize: 'lg',
+              color: 'text.secondary',
+              lineHeight: 'relaxed',
             })}
           >
-            {t("interactive.description")}
+            {t('interactive.description')}
           </p>
 
           <div
             className={css({
-              bg: "orange.50",
-              border: "1px solid",
-              borderColor: "orange.200",
-              rounded: "xl",
-              p: "6",
+              bg: 'orange.50',
+              border: '1px solid',
+              borderColor: 'orange.200',
+              rounded: 'xl',
+              p: '6',
             })}
           >
             <h4
               className={css({
-                fontSize: "lg",
-                fontWeight: "semibold",
-                color: "orange.800",
-                mb: "4",
-                textAlign: "center",
+                fontSize: 'lg',
+                fontWeight: 'semibold',
+                color: 'orange.800',
+                mb: '4',
+                textAlign: 'center',
               })}
             >
-              {t("interactive.howToUse.title")}
+              {t('interactive.howToUse.title')}
             </h4>
-            <div className={grid({ columns: { base: 1, md: 2 }, gap: "6" })}>
+            <div className={grid({ columns: { base: 1, md: 2 }, gap: '6' })}>
               <div>
                 <h5
                   className={css({
-                    fontWeight: "semibold",
-                    mb: "2",
-                    color: "orange.800",
+                    fontWeight: 'semibold',
+                    mb: '2',
+                    color: 'orange.800',
                   })}
                 >
-                  {t("interactive.howToUse.heaven.title")}
+                  {t('interactive.howToUse.heaven.title')}
                 </h5>
                 <ul
                   className={css({
-                    fontSize: "sm",
-                    color: "orange.700",
-                    pl: "4",
+                    fontSize: 'sm',
+                    color: 'orange.700',
+                    pl: '4',
                   })}
                 >
-                  {(
-                    t.raw("interactive.howToUse.heaven.points") as string[]
-                  ).map((point, i) => (
-                    <li key={i} className={css({ mb: i < 2 ? "1" : "0" })}>
+                  {(t.raw('interactive.howToUse.heaven.points') as string[]).map((point, i) => (
+                    <li key={i} className={css({ mb: i < 2 ? '1' : '0' })}>
                       • {point}
                     </li>
                   ))}
@@ -786,27 +772,25 @@ export function ReadingNumbersGuide() {
               <div>
                 <h5
                   className={css({
-                    fontWeight: "semibold",
-                    mb: "2",
-                    color: "orange.800",
+                    fontWeight: 'semibold',
+                    mb: '2',
+                    color: 'orange.800',
                   })}
                 >
-                  {t("interactive.howToUse.earth.title")}
+                  {t('interactive.howToUse.earth.title')}
                 </h5>
                 <ul
                   className={css({
-                    fontSize: "sm",
-                    color: "orange.700",
-                    pl: "4",
+                    fontSize: 'sm',
+                    color: 'orange.700',
+                    pl: '4',
                   })}
                 >
-                  {(t.raw("interactive.howToUse.earth.points") as string[]).map(
-                    (point, i) => (
-                      <li key={i} className={css({ mb: i < 2 ? "1" : "0" })}>
-                        • {point}
-                      </li>
-                    ),
-                  )}
+                  {(t.raw('interactive.howToUse.earth.points') as string[]).map((point, i) => (
+                    <li key={i} className={css({ mb: i < 2 ? '1' : '0' })}>
+                      • {point}
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -815,15 +799,15 @@ export function ReadingNumbersGuide() {
           {/* Interactive Abacus Component */}
           <div
             className={css({
-              bg: "bg.default",
-              border: "2px solid",
-              borderColor: "brand.200",
-              rounded: "xl",
-              p: "6",
-              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.08)",
-              display: "flex",
-              justifyContent: "center",
-              width: "100%",
+              bg: 'bg.default',
+              border: '2px solid',
+              borderColor: 'brand.200',
+              rounded: 'xl',
+              p: '6',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+              display: 'flex',
+              justifyContent: 'center',
+              width: '100%',
             })}
           >
             <AbacusReact
@@ -841,50 +825,50 @@ export function ReadingNumbersGuide() {
 
           <div
             className={css({
-              bg: "blue.600",
-              color: "white",
-              rounded: "xl",
-              p: "6",
-              textAlign: "center",
+              bg: 'blue.600',
+              color: 'white',
+              rounded: 'xl',
+              p: '6',
+              textAlign: 'center',
             })}
           >
             <h4
               className={css({
-                fontSize: "lg",
-                fontWeight: "semibold",
-                mb: "3",
+                fontSize: 'lg',
+                fontWeight: 'semibold',
+                mb: '3',
               })}
             >
-              {t("interactive.readyToPractice.title")}
+              {t('interactive.readyToPractice.title')}
             </h4>
             <p
               className={css({
-                mb: "4",
-                opacity: "0.9",
+                mb: '4',
+                opacity: '0.9',
               })}
             >
-              {t("interactive.readyToPractice.description")}
+              {t('interactive.readyToPractice.description')}
             </p>
             <Link
               href="/create"
               className={css({
-                display: "inline-block",
-                px: "6",
-                py: "3",
-                bg: "bg.default",
-                color: "blue.600",
-                fontWeight: "semibold",
-                rounded: "lg",
-                textDecoration: "none",
-                transition: "all",
-                _hover: { transform: "translateY(-1px)", shadow: "lg" },
+                display: 'inline-block',
+                px: '6',
+                py: '3',
+                bg: 'bg.default',
+                color: 'blue.600',
+                fontWeight: 'semibold',
+                rounded: 'lg',
+                textDecoration: 'none',
+                transition: 'all',
+                _hover: { transform: 'translateY(-1px)', shadow: 'lg' },
               })}
             >
-              {t("interactive.readyToPractice.button")}
+              {t('interactive.readyToPractice.button')}
             </Link>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

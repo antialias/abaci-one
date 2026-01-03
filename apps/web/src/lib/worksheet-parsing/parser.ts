@@ -4,34 +4,28 @@
  * Uses the LLM client to parse abacus workbook page images
  * into structured problem data.
  */
-import { llm, type LLMProgress, type ReasoningEffort } from "@/lib/llm";
-import {
-  WorksheetParsingResultSchema,
-  type WorksheetParsingResult,
-} from "./schemas";
-import {
-  buildWorksheetParsingPrompt,
-  type PromptOptions,
-} from "./prompt-builder";
+import { llm, type LLMProgress, type ReasoningEffort } from '@/lib/llm'
+import { WorksheetParsingResultSchema, type WorksheetParsingResult } from './schemas'
+import { buildWorksheetParsingPrompt, type PromptOptions } from './prompt-builder'
 
 /**
  * Available model configurations for worksheet parsing
  */
 export interface ModelConfig {
   /** Unique identifier for this config */
-  id: string;
+  id: string
   /** Display name for UI */
-  name: string;
+  name: string
   /** Provider name */
-  provider: "openai" | "anthropic";
+  provider: 'openai' | 'anthropic'
   /** Model ID to use */
-  model: string;
+  model: string
   /** Reasoning effort (for GPT-5.2+) */
-  reasoningEffort?: ReasoningEffort;
+  reasoningEffort?: ReasoningEffort
   /** Description of when to use this config */
-  description: string;
+  description: string
   /** Whether this is the default config */
-  isDefault?: boolean;
+  isDefault?: boolean
 }
 
 /**
@@ -39,53 +33,51 @@ export interface ModelConfig {
  */
 export const PARSING_MODEL_CONFIGS: ModelConfig[] = [
   {
-    id: "gpt-5.2-thinking",
-    name: "GPT-5.2 Thinking",
-    provider: "openai",
-    model: "gpt-5.2",
-    reasoningEffort: "medium",
-    description: "Best balance of quality and speed for worksheet analysis",
+    id: 'gpt-5.2-thinking',
+    name: 'GPT-5.2 Thinking',
+    provider: 'openai',
+    model: 'gpt-5.2',
+    reasoningEffort: 'medium',
+    description: 'Best balance of quality and speed for worksheet analysis',
     isDefault: true,
   },
   {
-    id: "gpt-5.2-thinking-high",
-    name: "GPT-5.2 Thinking (High)",
-    provider: "openai",
-    model: "gpt-5.2",
-    reasoningEffort: "high",
-    description: "More thorough reasoning, better for difficult handwriting",
+    id: 'gpt-5.2-thinking-high',
+    name: 'GPT-5.2 Thinking (High)',
+    provider: 'openai',
+    model: 'gpt-5.2',
+    reasoningEffort: 'high',
+    description: 'More thorough reasoning, better for difficult handwriting',
   },
   {
-    id: "gpt-5.2-instant",
-    name: "GPT-5.2 Instant",
-    provider: "openai",
-    model: "gpt-5.2-chat-latest",
-    reasoningEffort: "none",
-    description: "Faster but less accurate, good for clear worksheets",
+    id: 'gpt-5.2-instant',
+    name: 'GPT-5.2 Instant',
+    provider: 'openai',
+    model: 'gpt-5.2-chat-latest',
+    reasoningEffort: 'none',
+    description: 'Faster but less accurate, good for clear worksheets',
   },
   {
-    id: "claude-sonnet",
-    name: "Claude Sonnet 4",
-    provider: "anthropic",
-    model: "claude-sonnet-4-20250514",
-    description: "Alternative provider, good for comparison",
+    id: 'claude-sonnet',
+    name: 'Claude Sonnet 4',
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-20250514',
+    description: 'Alternative provider, good for comparison',
   },
-];
+]
 
 /**
  * Get the default model config
  */
 export function getDefaultModelConfig(): ModelConfig {
-  return (
-    PARSING_MODEL_CONFIGS.find((c) => c.isDefault) ?? PARSING_MODEL_CONFIGS[0]
-  );
+  return PARSING_MODEL_CONFIGS.find((c) => c.isDefault) ?? PARSING_MODEL_CONFIGS[0]
 }
 
 /**
  * Get a model config by ID
  */
 export function getModelConfig(id: string): ModelConfig | undefined {
-  return PARSING_MODEL_CONFIGS.find((c) => c.id === id);
+  return PARSING_MODEL_CONFIGS.find((c) => c.id === id)
 }
 
 /**
@@ -93,19 +85,19 @@ export function getModelConfig(id: string): ModelConfig | undefined {
  */
 export interface ParseWorksheetOptions {
   /** Progress callback for UI updates */
-  onProgress?: (progress: LLMProgress) => void;
+  onProgress?: (progress: LLMProgress) => void
   /** Maximum retries on validation failure */
-  maxRetries?: number;
+  maxRetries?: number
   /** Additional prompt customization */
-  promptOptions?: PromptOptions;
+  promptOptions?: PromptOptions
   /** Specific provider to use (defaults to configured default) */
-  provider?: string;
+  provider?: string
   /** Specific model to use (defaults to configured default) */
-  model?: string;
+  model?: string
   /** Reasoning effort for GPT-5.2+ models */
-  reasoningEffort?: ReasoningEffort;
+  reasoningEffort?: ReasoningEffort
   /** Use a specific model config by ID */
-  modelConfigId?: string;
+  modelConfigId?: string
 }
 
 /**
@@ -113,23 +105,23 @@ export interface ParseWorksheetOptions {
  */
 export interface ParseWorksheetResult {
   /** Parsed worksheet data */
-  data: WorksheetParsingResult;
+  data: WorksheetParsingResult
   /** Number of LLM call attempts made */
-  attempts: number;
+  attempts: number
   /** Provider used */
-  provider: string;
+  provider: string
   /** Model used */
-  model: string;
+  model: string
   /** Token usage */
   usage: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+  }
   /** Raw JSON response from the LLM (before validation/parsing) */
-  rawResponse: string;
+  rawResponse: string
   /** JSON Schema sent to the LLM (with field descriptions) */
-  jsonSchema: string;
+  jsonSchema: string
 }
 
 /**
@@ -153,7 +145,7 @@ export interface ParseWorksheetResult {
  */
 export async function parseWorksheetImage(
   imageDataUrl: string,
-  options: ParseWorksheetOptions = {},
+  options: ParseWorksheetOptions = {}
 ): Promise<ParseWorksheetResult> {
   const {
     onProgress,
@@ -163,30 +155,30 @@ export async function parseWorksheetImage(
     model: explicitModel,
     reasoningEffort: explicitReasoningEffort,
     modelConfigId,
-  } = options;
+  } = options
 
   // Resolve model config
-  let provider = explicitProvider;
-  let model = explicitModel;
-  let reasoningEffort = explicitReasoningEffort;
+  let provider = explicitProvider
+  let model = explicitModel
+  let reasoningEffort = explicitReasoningEffort
 
   if (modelConfigId) {
-    const config = getModelConfig(modelConfigId);
+    const config = getModelConfig(modelConfigId)
     if (config) {
-      provider = provider ?? config.provider;
-      model = model ?? config.model;
-      reasoningEffort = reasoningEffort ?? config.reasoningEffort;
+      provider = provider ?? config.provider
+      model = model ?? config.model
+      reasoningEffort = reasoningEffort ?? config.reasoningEffort
     }
   } else if (!provider && !model) {
     // Use default config
-    const defaultConfig = getDefaultModelConfig();
-    provider = defaultConfig.provider;
-    model = defaultConfig.model;
-    reasoningEffort = reasoningEffort ?? defaultConfig.reasoningEffort;
+    const defaultConfig = getDefaultModelConfig()
+    provider = defaultConfig.provider
+    model = defaultConfig.model
+    reasoningEffort = reasoningEffort ?? defaultConfig.reasoningEffort
   }
 
   // Build the prompt
-  const prompt = buildWorksheetParsingPrompt(promptOptions);
+  const prompt = buildWorksheetParsingPrompt(promptOptions)
 
   // Make the vision call
   const response = await llm.vision({
@@ -198,7 +190,7 @@ export async function parseWorksheetImage(
     provider,
     model,
     reasoningEffort,
-  });
+  })
 
   return {
     data: response.data,
@@ -208,7 +200,7 @@ export async function parseWorksheetImage(
     usage: response.usage,
     rawResponse: response.rawResponse,
     jsonSchema: response.jsonSchema,
-  };
+  }
 }
 
 /**
@@ -228,7 +220,7 @@ export async function reparseProblems(
   problemNumbers: number[],
   additionalContext: string,
   originalWarnings: string[],
-  options: Omit<ParseWorksheetOptions, "promptOptions"> = {},
+  options: Omit<ParseWorksheetOptions, 'promptOptions'> = {}
 ): Promise<ParseWorksheetResult> {
   return parseWorksheetImage(imageDataUrl, {
     ...options,
@@ -237,29 +229,27 @@ export async function reparseProblems(
       additionalContext: `${additionalContext}
 
 Previous warnings for these problems:
-${originalWarnings.map((w) => `- ${w}`).join("\n")}`,
+${originalWarnings.map((w) => `- ${w}`).join('\n')}`,
     },
-  });
+  })
 }
 
 /**
  * Compute problem statistics from parsed results
  */
 export function computeParsingStats(result: WorksheetParsingResult) {
-  const problems = result.problems;
+  const problems = result.problems
 
   // Count problems needing review (low confidence)
   const lowConfidenceProblems = problems.filter(
-    (p) => p.termsConfidence < 0.7 || p.studentAnswerConfidence < 0.7,
-  );
+    (p) => p.termsConfidence < 0.7 || p.studentAnswerConfidence < 0.7
+  )
 
   // Count problems with answers
-  const answeredProblems = problems.filter((p) => p.studentAnswer !== null);
+  const answeredProblems = problems.filter((p) => p.studentAnswer !== null)
 
   // Compute accuracy if answers are present
-  const correctAnswers = answeredProblems.filter(
-    (p) => p.studentAnswer === p.correctAnswer,
-  );
+  const correctAnswers = answeredProblems.filter((p) => p.studentAnswer === p.correctAnswer)
 
   return {
     totalProblems: problems.length,
@@ -267,14 +257,11 @@ export function computeParsingStats(result: WorksheetParsingResult) {
     unansweredProblems: problems.length - answeredProblems.length,
     correctAnswers: correctAnswers.length,
     incorrectAnswers: answeredProblems.length - correctAnswers.length,
-    accuracy:
-      answeredProblems.length > 0
-        ? correctAnswers.length / answeredProblems.length
-        : null,
+    accuracy: answeredProblems.length > 0 ? correctAnswers.length / answeredProblems.length : null,
     lowConfidenceCount: lowConfidenceProblems.length,
     problemsNeedingReview: lowConfidenceProblems.map((p) => p.problemNumber),
     warningCount: result.warnings.length,
-  };
+  }
 }
 
 /**
@@ -285,25 +272,25 @@ export function computeParsingStats(result: WorksheetParsingResult) {
 export function applyCorrections(
   result: WorksheetParsingResult,
   corrections: Array<{
-    problemNumber: number;
-    correctedTerms?: number[] | null;
-    correctedStudentAnswer?: number | null;
-    shouldExclude?: boolean;
-    shouldRestore?: boolean;
-  }>,
+    problemNumber: number
+    correctedTerms?: number[] | null
+    correctedStudentAnswer?: number | null
+    shouldExclude?: boolean
+    shouldRestore?: boolean
+  }>
 ): WorksheetParsingResult {
-  const correctionMap = new Map(corrections.map((c) => [c.problemNumber, c]));
+  const correctionMap = new Map(corrections.map((c) => [c.problemNumber, c]))
 
   const correctedProblems = result.problems.map((problem) => {
-    const correction = correctionMap.get(problem.problemNumber);
-    if (!correction) return problem;
+    const correction = correctionMap.get(problem.problemNumber)
+    if (!correction) return problem
 
     // Handle exclude/restore toggle
     if (correction.shouldExclude) {
-      return { ...problem, excluded: true };
+      return { ...problem, excluded: true }
     }
     if (correction.shouldRestore) {
-      return { ...problem, excluded: false };
+      return { ...problem, excluded: false }
     }
 
     return {
@@ -317,32 +304,28 @@ export function applyCorrections(
           ? correction.correctedStudentAnswer
           : problem.studentAnswer,
       // Boost confidence since user verified
-      termsConfidence: correction.correctedTerms
-        ? 1.0
-        : problem.termsConfidence,
+      termsConfidence: correction.correctedTerms ? 1.0 : problem.termsConfidence,
       studentAnswerConfidence:
-        correction.correctedStudentAnswer !== undefined
-          ? 1.0
-          : problem.studentAnswerConfidence,
-    };
-  });
+        correction.correctedStudentAnswer !== undefined ? 1.0 : problem.studentAnswerConfidence,
+    }
+  })
 
   // Recalculate overall confidence (only for non-excluded problems)
-  const activeProblems = correctedProblems.filter((p) => !p.excluded);
+  const activeProblems = correctedProblems.filter((p) => !p.excluded)
   const avgConfidence =
     activeProblems.length > 0
       ? activeProblems.reduce(
           (sum, p) => sum + (p.termsConfidence + p.studentAnswerConfidence) / 2,
-          0,
+          0
         ) / activeProblems.length
-      : 0;
+      : 0
 
   return {
     ...result,
     problems: correctedProblems,
     overallConfidence: avgConfidence,
     needsReview: activeProblems.some(
-      (p) => p.termsConfidence < 0.7 || p.studentAnswerConfidence < 0.7,
+      (p) => p.termsConfidence < 0.7 || p.studentAnswerConfidence < 0.7
     ),
-  };
+  }
 }

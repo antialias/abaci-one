@@ -1,6 +1,6 @@
-import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import { GUEST_COOKIE_NAME, verifyGuestToken } from "@/lib/guest-token";
+import NextAuth from 'next-auth'
+import Credentials from 'next-auth/providers/credentials'
+import { GUEST_COOKIE_NAME, verifyGuestToken } from '@/lib/guest-token'
 
 /**
  * NextAuth v5 configuration with guest session support
@@ -9,26 +9,26 @@ import { GUEST_COOKIE_NAME, verifyGuestToken } from "@/lib/guest-token";
  * Supports both guest users and future full authentication.
  */
 
-export type Role = "guest" | "user";
+export type Role = 'guest' | 'user'
 
 // Extend NextAuth types to include our custom fields
-declare module "next-auth" {
+declare module 'next-auth' {
   interface Session {
     user: {
-      id: string;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-    };
-    isGuest?: boolean;
-    guestId?: string | null;
+      id: string
+      name?: string | null
+      email?: string | null
+      image?: string | null
+    }
+    isGuest?: boolean
+    guestId?: string | null
   }
 }
 
-declare module "next-auth/jwt" {
+declare module 'next-auth/jwt' {
   interface JWT {
-    role?: Role;
-    guestId?: string | null;
+    role?: Role
+    guestId?: string | null
   }
 }
 
@@ -39,14 +39,14 @@ declare module "next-auth/jwt" {
  * a single code path for both guest and authenticated users.
  */
 const GuestProvider = Credentials({
-  id: "guest",
-  name: "Guest",
+  id: 'guest',
+  name: 'Guest',
   credentials: {},
   async authorize() {
     // Create a synthetic user ID for the guest session
-    return { id: `guest:${crypto.randomUUID()}`, name: "Guest" } as any;
+    return { id: `guest:${crypto.randomUUID()}`, name: 'Guest' } as any
   },
-});
+})
 
 /**
  * NextAuth configuration with lazy initialization
@@ -57,7 +57,7 @@ const GuestProvider = Credentials({
 export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
   // JWT strategy for stateless sessions (no database lookups)
   session: {
-    strategy: "jwt",
+    strategy: 'jwt',
     maxAge: 60 * 60 * 24 * 30, // 30 days
   },
 
@@ -81,27 +81,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
      */
     async jwt({ token, user, account, trigger }) {
       // Handle guest sign-in
-      if (trigger === "signIn" && account?.provider === "guest" && user) {
-        token.sub = user.id;
-        token.role = "guest";
+      if (trigger === 'signIn' && account?.provider === 'guest' && user) {
+        token.sub = user.id
+        token.role = 'guest'
       }
 
       // Handle upgrade from guest to full account
-      if (trigger === "signIn" && account && account.provider !== "guest") {
+      if (trigger === 'signIn' && account && account.provider !== 'guest') {
         // Capture the guest ID from the cookie for data migration
-        const guestCookie = req?.cookies.get(GUEST_COOKIE_NAME)?.value;
+        const guestCookie = req?.cookies.get(GUEST_COOKIE_NAME)?.value
         if (guestCookie) {
           try {
-            const { sid } = await verifyGuestToken(guestCookie);
-            token.guestId = sid; // Store for merge/migration
+            const { sid } = await verifyGuestToken(guestCookie)
+            token.guestId = sid // Store for merge/migration
           } catch {
             // Invalid guest token, ignore
           }
         }
-        token.role = "user";
+        token.role = 'user'
       }
 
-      return token;
+      return token
     },
 
     /**
@@ -113,24 +113,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
      */
     async session({ session, token }) {
       if (session.user && token.sub) {
-        session.user.id = token.sub;
+        session.user.id = token.sub
       }
 
-      session.isGuest = token.role === "guest";
+      session.isGuest = token.role === 'guest'
 
       // Expose the stable guest ID from the cookie
-      const guestCookie = req?.cookies.get(GUEST_COOKIE_NAME)?.value;
-      session.guestId = null;
+      const guestCookie = req?.cookies.get(GUEST_COOKIE_NAME)?.value
+      session.guestId = null
       if (guestCookie) {
         try {
-          const { sid } = await verifyGuestToken(guestCookie);
-          session.guestId = sid;
+          const { sid } = await verifyGuestToken(guestCookie)
+          session.guestId = sid
         } catch {
           // Invalid guest token, ignore
         }
       }
 
-      return session;
+      return session
     },
 
     /**
@@ -141,7 +141,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
     authorized({ auth }) {
       // For now, allow all visitors (guests + authenticated)
       // Add role-based checks here later if needed
-      return true;
+      return true
     },
   },
 
@@ -161,4 +161,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
       // }
     },
   },
-}));
+}))

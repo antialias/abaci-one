@@ -14,51 +14,51 @@
  * - Adaptive mode should target and improve it faster than classic
  */
 
-import type { StudentProfile } from "../types";
+import type { StudentProfile } from '../types'
 
 /**
  * Order of skills in curriculum progression
  */
 const SKILL_ORDER = [
   // Basic addition
-  "basic.directAddition",
-  "basic.heavenBead",
-  "basic.simpleCombinations",
+  'basic.directAddition',
+  'basic.heavenBead',
+  'basic.simpleCombinations',
   // Basic subtraction
-  "basic.directSubtraction",
-  "basic.heavenBeadSubtraction",
-  "basic.simpleCombinationsSub",
+  'basic.directSubtraction',
+  'basic.heavenBeadSubtraction',
+  'basic.simpleCombinationsSub',
   // Five complements addition
-  "fiveComplements.4=5-1",
-  "fiveComplements.3=5-2",
-  "fiveComplements.2=5-3",
-  "fiveComplements.1=5-4",
+  'fiveComplements.4=5-1',
+  'fiveComplements.3=5-2',
+  'fiveComplements.2=5-3',
+  'fiveComplements.1=5-4',
   // Five complements subtraction
-  "fiveComplementsSub.-4=-5+1",
-  "fiveComplementsSub.-3=-5+2",
-  "fiveComplementsSub.-2=-5+3",
-  "fiveComplementsSub.-1=-5+4",
+  'fiveComplementsSub.-4=-5+1',
+  'fiveComplementsSub.-3=-5+2',
+  'fiveComplementsSub.-2=-5+3',
+  'fiveComplementsSub.-1=-5+4',
   // Ten complements addition
-  "tenComplements.9=10-1",
-  "tenComplements.8=10-2",
-  "tenComplements.7=10-3",
-  "tenComplements.6=10-4",
-  "tenComplements.5=10-5",
-  "tenComplements.4=10-6",
-  "tenComplements.3=10-7",
-  "tenComplements.2=10-8",
-  "tenComplements.1=10-9",
+  'tenComplements.9=10-1',
+  'tenComplements.8=10-2',
+  'tenComplements.7=10-3',
+  'tenComplements.6=10-4',
+  'tenComplements.5=10-5',
+  'tenComplements.4=10-6',
+  'tenComplements.3=10-7',
+  'tenComplements.2=10-8',
+  'tenComplements.1=10-9',
   // Ten complements subtraction
-  "tenComplementsSub.-9=+1-10",
-  "tenComplementsSub.-8=+2-10",
-  "tenComplementsSub.-7=+3-10",
-  "tenComplementsSub.-6=+4-10",
-  "tenComplementsSub.-5=+5-10",
-  "tenComplementsSub.-4=+6-10",
-  "tenComplementsSub.-3=+7-10",
-  "tenComplementsSub.-2=+8-10",
-  "tenComplementsSub.-1=+9-10",
-] as const;
+  'tenComplementsSub.-9=+1-10',
+  'tenComplementsSub.-8=+2-10',
+  'tenComplementsSub.-7=+3-10',
+  'tenComplementsSub.-6=+4-10',
+  'tenComplementsSub.-5=+5-10',
+  'tenComplementsSub.-4=+6-10',
+  'tenComplementsSub.-3=+7-10',
+  'tenComplementsSub.-2=+8-10',
+  'tenComplementsSub.-1=+9-10',
+] as const
 
 /**
  * Learner type configurations.
@@ -79,7 +79,7 @@ const SKILL_ORDER = [
  */
 export const LEARNER_TYPES = {
   fast: {
-    name: "Fast Learner",
+    name: 'Fast Learner',
     halfMaxExposure: 25,
     hillCoefficient: 2.0,
     /**
@@ -96,7 +96,7 @@ export const LEARNER_TYPES = {
     responseTimeVariance: 0.25,
   },
   average: {
-    name: "Average Learner",
+    name: 'Average Learner',
     halfMaxExposure: 40,
     hillCoefficient: 2.5,
     /**
@@ -114,7 +114,7 @@ export const LEARNER_TYPES = {
     responseTimeVariance: 0.35,
   },
   slow: {
-    name: "Slow Learner",
+    name: 'Slow Learner',
     halfMaxExposure: 60,
     hillCoefficient: 3.0,
     /**
@@ -131,11 +131,11 @@ export const LEARNER_TYPES = {
     baseResponseTimeMs: 7000,
     responseTimeVariance: 0.4,
   },
-} as const;
+} as const
 
-export type LearnerType = keyof typeof LEARNER_TYPES;
+export type LearnerType = keyof typeof LEARNER_TYPES
 
-const DEFAULT_LEARNER_TYPE: LearnerType = "average";
+const DEFAULT_LEARNER_TYPE: LearnerType = 'average'
 
 /**
  * Generate a student profile deficient in a specific skill.
@@ -145,44 +145,40 @@ const DEFAULT_LEARNER_TYPE: LearnerType = "average";
  */
 export function generateDeficientProfile(
   deficientSkillId: string,
-  learnerType: LearnerType = DEFAULT_LEARNER_TYPE,
+  learnerType: LearnerType = DEFAULT_LEARNER_TYPE
 ): StudentProfile {
-  const config = LEARNER_TYPES[learnerType];
+  const config = LEARNER_TYPES[learnerType]
 
   // Find the index of the deficient skill in SKILL_ORDER
-  const deficientIndex = SKILL_ORDER.indexOf(
-    deficientSkillId as (typeof SKILL_ORDER)[number],
-  );
+  const deficientIndex = SKILL_ORDER.indexOf(deficientSkillId as (typeof SKILL_ORDER)[number])
 
   if (deficientIndex === -1) {
-    throw new Error(
-      `Unknown skill ID: ${deficientSkillId}. Must be one of SKILL_ORDER.`,
-    );
+    throw new Error(`Unknown skill ID: ${deficientSkillId}. Must be one of SKILL_ORDER.`)
   }
 
   // Build initial exposures:
   // - All skills BEFORE deficientIndex: high exposure (mastered)
   // - The deficient skill itself: 0 exposure
   // - All skills AFTER deficientIndex: 0 exposure (not yet learned)
-  const initialExposures: Record<string, number> = {};
+  const initialExposures: Record<string, number> = {}
 
   for (let i = 0; i < SKILL_ORDER.length; i++) {
-    const skillId = SKILL_ORDER[i];
+    const skillId = SKILL_ORDER[i]
     if (i < deficientIndex) {
       // Prerequisite skill - mastered
-      initialExposures[skillId] = config.masteredExposure;
+      initialExposures[skillId] = config.masteredExposure
     } else if (i === deficientIndex) {
       // Deficient skill - 0 exposure
-      initialExposures[skillId] = 0;
+      initialExposures[skillId] = 0
     } else {
       // Future skill - not yet learned (0 exposure)
       // These won't be in practicingSkills anyway
-      initialExposures[skillId] = 0;
+      initialExposures[skillId] = 0
     }
   }
 
   // Human-readable skill name for profile description
-  const skillName = getSkillDisplayName(deficientSkillId);
+  const skillName = getSkillDisplayName(deficientSkillId)
 
   return {
     name: `${config.name} - Deficient: ${skillName}`,
@@ -194,62 +190,58 @@ export function generateDeficientProfile(
     helpBonuses: config.helpBonuses,
     baseResponseTimeMs: config.baseResponseTimeMs,
     responseTimeVariance: config.responseTimeVariance,
-  };
+  }
 }
 
 /**
  * Get the practicing skills for a deficient profile.
  * Includes all prerequisites + the deficient skill itself.
  */
-export function getPracticingSkillsForDeficiency(
-  deficientSkillId: string,
-): string[] {
-  const deficientIndex = SKILL_ORDER.indexOf(
-    deficientSkillId as (typeof SKILL_ORDER)[number],
-  );
+export function getPracticingSkillsForDeficiency(deficientSkillId: string): string[] {
+  const deficientIndex = SKILL_ORDER.indexOf(deficientSkillId as (typeof SKILL_ORDER)[number])
 
   if (deficientIndex === -1) {
-    throw new Error(`Unknown skill ID: ${deficientSkillId}`);
+    throw new Error(`Unknown skill ID: ${deficientSkillId}`)
   }
 
   // Return all skills up to and including the deficient skill
-  return SKILL_ORDER.slice(0, deficientIndex + 1) as string[];
+  return SKILL_ORDER.slice(0, deficientIndex + 1) as string[]
 }
 
 /**
  * Generate all 32 per-skill deficiency profiles for a given learner type.
  */
 export function generateAllDeficiencyProfiles(
-  learnerType: LearnerType = DEFAULT_LEARNER_TYPE,
+  learnerType: LearnerType = DEFAULT_LEARNER_TYPE
 ): Array<{
-  skillId: string;
-  learnerType: LearnerType;
-  profile: StudentProfile;
-  practicingSkills: string[];
+  skillId: string
+  learnerType: LearnerType
+  profile: StudentProfile
+  practicingSkills: string[]
 }> {
   return SKILL_ORDER.map((skillId) => ({
     skillId,
     learnerType,
     profile: generateDeficientProfile(skillId, learnerType),
     practicingSkills: getPracticingSkillsForDeficiency(skillId),
-  }));
+  }))
 }
 
 /**
  * Generate ALL combinations: 32 skills × 3 learner types = 96 profiles.
  */
 export function generateAllSkillLearnerCombinations(): Array<{
-  skillId: string;
-  learnerType: LearnerType;
-  profile: StudentProfile;
-  practicingSkills: string[];
+  skillId: string
+  learnerType: LearnerType
+  profile: StudentProfile
+  practicingSkills: string[]
 }> {
   const combinations: Array<{
-    skillId: string;
-    learnerType: LearnerType;
-    profile: StudentProfile;
-    practicingSkills: string[];
-  }> = [];
+    skillId: string
+    learnerType: LearnerType
+    profile: StudentProfile
+    practicingSkills: string[]
+  }> = []
 
   for (const learnerType of Object.keys(LEARNER_TYPES) as LearnerType[]) {
     for (const skillId of SKILL_ORDER) {
@@ -258,47 +250,45 @@ export function generateAllSkillLearnerCombinations(): Array<{
         learnerType,
         profile: generateDeficientProfile(skillId, learnerType),
         practicingSkills: getPracticingSkillsForDeficiency(skillId),
-      });
+      })
     }
   }
 
-  return combinations;
+  return combinations
 }
 
 /**
  * Get a subset of profiles for faster testing.
  * Selects one skill from each category.
  */
-export function getRepresentativeProfiles(
-  learnerType: LearnerType = DEFAULT_LEARNER_TYPE,
-): Array<{
-  skillId: string;
-  learnerType: LearnerType;
-  profile: StudentProfile;
-  practicingSkills: string[];
+export function getRepresentativeProfiles(learnerType: LearnerType = DEFAULT_LEARNER_TYPE): Array<{
+  skillId: string
+  learnerType: LearnerType
+  profile: StudentProfile
+  practicingSkills: string[]
 }> {
   const representativeSkills = [
     // Basic (1 from each sub-type)
-    "basic.directAddition",
-    "basic.heavenBead",
-    "basic.simpleCombinations",
-    "basic.directSubtraction",
+    'basic.directAddition',
+    'basic.heavenBead',
+    'basic.simpleCombinations',
+    'basic.directSubtraction',
     // Five complements (2 total)
-    "fiveComplements.3=5-2",
-    "fiveComplementsSub.-3=-5+2",
+    'fiveComplements.3=5-2',
+    'fiveComplementsSub.-3=-5+2',
     // Ten complements (4 total - early, mid, late)
-    "tenComplements.9=10-1",
-    "tenComplements.5=10-5",
-    "tenComplementsSub.-9=+1-10",
-    "tenComplementsSub.-5=+5-10",
-  ];
+    'tenComplements.9=10-1',
+    'tenComplements.5=10-5',
+    'tenComplementsSub.-9=+1-10',
+    'tenComplementsSub.-5=+5-10',
+  ]
 
   return representativeSkills.map((skillId) => ({
     skillId,
     learnerType,
     profile: generateDeficientProfile(skillId, learnerType),
     practicingSkills: getPracticingSkillsForDeficiency(skillId),
-  }));
+  }))
 }
 
 /**
@@ -306,23 +296,23 @@ export function getRepresentativeProfiles(
  * Returns 10 skills × 3 learner types = 30 profiles.
  */
 export function getRepresentativeProfilesAllLearners(): Array<{
-  skillId: string;
-  learnerType: LearnerType;
-  profile: StudentProfile;
-  practicingSkills: string[];
+  skillId: string
+  learnerType: LearnerType
+  profile: StudentProfile
+  practicingSkills: string[]
 }> {
   const allProfiles: Array<{
-    skillId: string;
-    learnerType: LearnerType;
-    profile: StudentProfile;
-    practicingSkills: string[];
-  }> = [];
+    skillId: string
+    learnerType: LearnerType
+    profile: StudentProfile
+    practicingSkills: string[]
+  }> = []
 
   for (const learnerType of Object.keys(LEARNER_TYPES) as LearnerType[]) {
-    allProfiles.push(...getRepresentativeProfiles(learnerType));
+    allProfiles.push(...getRepresentativeProfiles(learnerType))
   }
 
-  return allProfiles;
+  return allProfiles
 }
 
 /**
@@ -330,43 +320,43 @@ export function getRepresentativeProfilesAllLearners(): Array<{
  */
 function getSkillDisplayName(skillId: string): string {
   const names: Record<string, string> = {
-    "basic.directAddition": "Direct Addition",
-    "basic.heavenBead": "Heaven Bead",
-    "basic.simpleCombinations": "Simple Combinations",
-    "basic.directSubtraction": "Direct Subtraction",
-    "basic.heavenBeadSubtraction": "Heaven Bead Subtraction",
-    "basic.simpleCombinationsSub": "Simple Combinations Sub",
-    "fiveComplements.4=5-1": "+4 (5-1)",
-    "fiveComplements.3=5-2": "+3 (5-2)",
-    "fiveComplements.2=5-3": "+2 (5-3)",
-    "fiveComplements.1=5-4": "+1 (5-4)",
-    "fiveComplementsSub.-4=-5+1": "-4 (-5+1)",
-    "fiveComplementsSub.-3=-5+2": "-3 (-5+2)",
-    "fiveComplementsSub.-2=-5+3": "-2 (-5+3)",
-    "fiveComplementsSub.-1=-5+4": "-1 (-5+4)",
-    "tenComplements.9=10-1": "+9 (10-1)",
-    "tenComplements.8=10-2": "+8 (10-2)",
-    "tenComplements.7=10-3": "+7 (10-3)",
-    "tenComplements.6=10-4": "+6 (10-4)",
-    "tenComplements.5=10-5": "+5 (10-5)",
-    "tenComplements.4=10-6": "+4 (10-6)",
-    "tenComplements.3=10-7": "+3 (10-7)",
-    "tenComplements.2=10-8": "+2 (10-8)",
-    "tenComplements.1=10-9": "+1 (10-9)",
-    "tenComplementsSub.-9=+1-10": "-9 (+1-10)",
-    "tenComplementsSub.-8=+2-10": "-8 (+2-10)",
-    "tenComplementsSub.-7=+3-10": "-7 (+3-10)",
-    "tenComplementsSub.-6=+4-10": "-6 (+4-10)",
-    "tenComplementsSub.-5=+5-10": "-5 (+5-10)",
-    "tenComplementsSub.-4=+6-10": "-4 (+6-10)",
-    "tenComplementsSub.-3=+7-10": "-3 (+7-10)",
-    "tenComplementsSub.-2=+8-10": "-2 (+8-10)",
-    "tenComplementsSub.-1=+9-10": "-1 (+9-10)",
-  };
-  return names[skillId] || skillId;
+    'basic.directAddition': 'Direct Addition',
+    'basic.heavenBead': 'Heaven Bead',
+    'basic.simpleCombinations': 'Simple Combinations',
+    'basic.directSubtraction': 'Direct Subtraction',
+    'basic.heavenBeadSubtraction': 'Heaven Bead Subtraction',
+    'basic.simpleCombinationsSub': 'Simple Combinations Sub',
+    'fiveComplements.4=5-1': '+4 (5-1)',
+    'fiveComplements.3=5-2': '+3 (5-2)',
+    'fiveComplements.2=5-3': '+2 (5-3)',
+    'fiveComplements.1=5-4': '+1 (5-4)',
+    'fiveComplementsSub.-4=-5+1': '-4 (-5+1)',
+    'fiveComplementsSub.-3=-5+2': '-3 (-5+2)',
+    'fiveComplementsSub.-2=-5+3': '-2 (-5+3)',
+    'fiveComplementsSub.-1=-5+4': '-1 (-5+4)',
+    'tenComplements.9=10-1': '+9 (10-1)',
+    'tenComplements.8=10-2': '+8 (10-2)',
+    'tenComplements.7=10-3': '+7 (10-3)',
+    'tenComplements.6=10-4': '+6 (10-4)',
+    'tenComplements.5=10-5': '+5 (10-5)',
+    'tenComplements.4=10-6': '+4 (10-6)',
+    'tenComplements.3=10-7': '+3 (10-7)',
+    'tenComplements.2=10-8': '+2 (10-8)',
+    'tenComplements.1=10-9': '+1 (10-9)',
+    'tenComplementsSub.-9=+1-10': '-9 (+1-10)',
+    'tenComplementsSub.-8=+2-10': '-8 (+2-10)',
+    'tenComplementsSub.-7=+3-10': '-7 (+3-10)',
+    'tenComplementsSub.-6=+4-10': '-6 (+4-10)',
+    'tenComplementsSub.-5=+5-10': '-5 (+5-10)',
+    'tenComplementsSub.-4=+6-10': '-4 (+6-10)',
+    'tenComplementsSub.-3=+7-10': '-3 (+7-10)',
+    'tenComplementsSub.-2=+8-10': '-2 (+8-10)',
+    'tenComplementsSub.-1=+9-10': '-1 (+9-10)',
+  }
+  return names[skillId] || skillId
 }
 
 /**
  * Export the skill order for tests
  */
-export { SKILL_ORDER };
+export { SKILL_ORDER }

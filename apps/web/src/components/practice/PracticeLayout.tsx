@@ -1,12 +1,12 @@
-"use client";
+'use client'
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, type ReactNode } from 'react'
 import {
   SessionModeBannerProvider,
   useSessionModeBanner,
-} from "@/contexts/SessionModeBannerContext";
-import { useSessionMode } from "@/hooks/useSessionMode";
-import { ProjectingBanner } from "./ProjectingBanner";
+} from '@/contexts/SessionModeBannerContext'
+import { useSessionMode } from '@/hooks/useSessionMode'
+import { ProjectingBanner } from './ProjectingBanner'
 
 // ============================================================================
 // Types
@@ -14,11 +14,11 @@ import { ProjectingBanner } from "./ProjectingBanner";
 
 interface PracticeLayoutProps {
   /** The student/player ID for fetching session mode */
-  studentId: string;
+  studentId: string
   /** Child content to render */
-  children: ReactNode;
+  children: ReactNode
   /** Callback when banner action is triggered (e.g., open StartPracticeModal) */
-  onBannerAction?: () => void;
+  onBannerAction?: () => void
 }
 
 // ============================================================================
@@ -26,26 +26,23 @@ interface PracticeLayoutProps {
 // ============================================================================
 
 interface PracticeLayoutInnerProps {
-  children: ReactNode;
-  onBannerAction?: () => void;
+  children: ReactNode
+  onBannerAction?: () => void
 }
 
 /**
  * Inner component that registers the action callback and renders the banner.
  * Needs to be inside the provider to access context.
  */
-function PracticeLayoutInner({
-  children,
-  onBannerAction,
-}: PracticeLayoutInnerProps) {
-  const { setOnAction } = useSessionModeBanner();
+function PracticeLayoutInner({ children, onBannerAction }: PracticeLayoutInnerProps) {
+  const { setOnAction } = useSessionModeBanner()
 
   // Register the action callback
   useEffect(() => {
     if (onBannerAction) {
-      setOnAction(onBannerAction);
+      setOnAction(onBannerAction)
     }
-  }, [onBannerAction, setOnAction]);
+  }, [onBannerAction, setOnAction])
 
   return (
     <>
@@ -53,7 +50,7 @@ function PracticeLayoutInner({
       <ProjectingBanner />
       {children}
     </>
-  );
+  )
 }
 
 // ============================================================================
@@ -78,24 +75,15 @@ function PracticeLayoutInner({
  * </PracticeLayout>
  * ```
  */
-export function PracticeLayout({
-  studentId,
-  children,
-  onBannerAction,
-}: PracticeLayoutProps) {
+export function PracticeLayout({ studentId, children, onBannerAction }: PracticeLayoutProps) {
   // Fetch session mode
-  const { data: sessionMode, isLoading } = useSessionMode(studentId);
+  const { data: sessionMode, isLoading } = useSessionMode(studentId)
 
   return (
-    <SessionModeBannerProvider
-      sessionMode={sessionMode ?? null}
-      isLoading={isLoading}
-    >
-      <PracticeLayoutInner onBannerAction={onBannerAction}>
-        {children}
-      </PracticeLayoutInner>
+    <SessionModeBannerProvider sessionMode={sessionMode ?? null} isLoading={isLoading}>
+      <PracticeLayoutInner onBannerAction={onBannerAction}>{children}</PracticeLayoutInner>
     </SessionModeBannerProvider>
-  );
+  )
 }
 
-export default PracticeLayout;
+export default PracticeLayout

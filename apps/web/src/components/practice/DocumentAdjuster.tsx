@@ -1,40 +1,36 @@
-"use client";
+'use client'
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { css } from "../../../styled-system/css";
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { css } from '../../../styled-system/css'
 
 interface Corner {
-  x: number;
-  y: number;
+  x: number
+  y: number
 }
 
 interface DetectQuadsResult {
-  detected: boolean;
-  corners: Array<{ x: number; y: number }>;
-  sourceCanvas: HTMLCanvasElement;
+  detected: boolean
+  corners: Array<{ x: number; y: number }>
+  sourceCanvas: HTMLCanvasElement
 }
 
-interface DocumentAdjusterProps {
+export interface DocumentAdjusterProps {
   /** The original captured image as a canvas */
-  sourceCanvas: HTMLCanvasElement;
+  sourceCanvas: HTMLCanvasElement
   /** Initial corner positions (in source image coordinates) */
-  initialCorners: Corner[];
+  initialCorners: Corner[]
   /** Initial rotation in degrees (0, 90, 180, or 270) */
-  initialRotation?: 0 | 90 | 180 | 270;
+  initialRotation?: 0 | 90 | 180 | 270
   /** Callback when user confirms with final File, corners, and rotation */
-  onConfirm: (
-    file: File,
-    corners: Corner[],
-    rotation: 0 | 90 | 180 | 270,
-  ) => void;
+  onConfirm: (file: File, corners: Corner[], rotation: 0 | 90 | 180 | 270) => void
   /** Callback when user cancels */
-  onCancel: () => void;
+  onCancel: () => void
   /** Callback when user skips adjustment (uses original as-is) */
-  onSkip?: () => void;
+  onSkip?: () => void
   /** OpenCV reference for transformations */
-  cv: unknown;
+  cv: unknown
   /** Optional function to re-detect quads in the source image (for autocrop) */
-  detectQuadsInImage?: (canvas: HTMLCanvasElement) => DetectQuadsResult;
+  detectQuadsInImage?: (canvas: HTMLCanvasElement) => DetectQuadsResult
 }
 
 /**
@@ -53,27 +49,27 @@ export function DocumentAdjuster({
   cv,
   detectQuadsInImage,
 }: DocumentAdjusterProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [corners, setCorners] = useState<Corner[]>(initialCorners);
-  const [rotation, setRotation] = useState<0 | 90 | 180 | 270>(initialRotation);
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-  const [displayScale, setDisplayScale] = useState(1);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [autoDetectFailed, setAutoDetectFailed] = useState(false);
-  const [detectedCorners, setDetectedCorners] = useState<Corner[] | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null)
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null)
+  const [corners, setCorners] = useState<Corner[]>(initialCorners)
+  const [rotation, setRotation] = useState<0 | 90 | 180 | 270>(initialRotation)
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const [displayScale, setDisplayScale] = useState(1)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [autoDetectFailed, setAutoDetectFailed] = useState(false)
+  const [detectedCorners, setDetectedCorners] = useState<Corner[] | null>(null)
 
   // Check if auto-detect would work on mount and store detected corners
   useEffect(() => {
-    if (!detectQuadsInImage) return;
-    const result = detectQuadsInImage(sourceCanvas);
+    if (!detectQuadsInImage) return
+    const result = detectQuadsInImage(sourceCanvas)
     if (result.detected) {
-      setDetectedCorners(result.corners);
+      setDetectedCorners(result.corners)
     } else {
-      setAutoDetectFailed(true);
-      setDetectedCorners(null);
+      setAutoDetectFailed(true)
+      setDetectedCorners(null)
     }
-  }, [detectQuadsInImage, sourceCanvas]);
+  }, [detectQuadsInImage, sourceCanvas])
 
   // Check if current corners match detected corners
   const cornersMatchDetected = !!(
@@ -81,46 +77,39 @@ export function DocumentAdjuster({
     corners.length === 4 &&
     detectedCorners.length === 4 &&
     corners.every(
-      (c, i) =>
-        Math.abs(c.x - detectedCorners[i].x) < 1 &&
-        Math.abs(c.y - detectedCorners[i].y) < 1,
+      (c, i) => Math.abs(c.x - detectedCorners[i].x) < 1 && Math.abs(c.y - detectedCorners[i].y) < 1
     )
-  );
+  )
 
   // Calculate display scale to fit source image in container
   useEffect(() => {
     const updateScale = () => {
-      if (!containerRef.current) return;
-      const containerWidth = containerRef.current.clientWidth - 32; // padding
-      const containerHeight = containerRef.current.clientHeight * 0.5; // half for source
-      const scaleX = containerWidth / sourceCanvas.width;
-      const scaleY = containerHeight / sourceCanvas.height;
-      setDisplayScale(Math.min(scaleX, scaleY, 1));
-    };
-    updateScale();
-    window.addEventListener("resize", updateScale);
-    return () => window.removeEventListener("resize", updateScale);
-  }, [sourceCanvas.width, sourceCanvas.height]);
+      if (!containerRef.current) return
+      const containerWidth = containerRef.current.clientWidth - 32 // padding
+      const containerHeight = containerRef.current.clientHeight * 0.5 // half for source
+      const scaleX = containerWidth / sourceCanvas.width
+      const scaleY = containerHeight / sourceCanvas.height
+      setDisplayScale(Math.min(scaleX, scaleY, 1))
+    }
+    updateScale()
+    window.addEventListener('resize', updateScale)
+    return () => window.removeEventListener('resize', updateScale)
+  }, [sourceCanvas.width, sourceCanvas.height])
 
   // Update preview when corners or rotation change
   useEffect(() => {
-    if (!previewCanvasRef.current || !cv) return;
-    updatePreview();
-  }, [corners, rotation, cv]);
+    if (!previewCanvasRef.current || !cv) return
+    updatePreview()
+  }, [corners, rotation, cv])
 
   const updatePreview = useCallback(() => {
     const cvAny = cv as {
-      imread: (canvas: HTMLCanvasElement) => unknown;
-      Mat: new () => unknown;
-      matFromArray: (
-        rows: number,
-        cols: number,
-        type: number,
-        data: number[],
-      ) => unknown;
-      Size: new (w: number, h: number) => unknown;
-      Scalar: new () => unknown;
-      getPerspectiveTransform: (src: unknown, dst: unknown) => unknown;
+      imread: (canvas: HTMLCanvasElement) => unknown
+      Mat: new () => unknown
+      matFromArray: (rows: number, cols: number, type: number, data: number[]) => unknown
+      Size: new (w: number, h: number) => unknown
+      Scalar: new () => unknown
+      getPerspectiveTransform: (src: unknown, dst: unknown) => unknown
       warpPerspective: (
         src: unknown,
         dst: unknown,
@@ -128,33 +117,32 @@ export function DocumentAdjuster({
         size: unknown,
         flags: number,
         borderMode: number,
-        borderValue: unknown,
-      ) => void;
-      rotate: (src: unknown, dst: unknown, code: number) => void;
-      imshow: (canvas: HTMLCanvasElement, mat: unknown) => void;
-      CV_32FC2: number;
-      INTER_LINEAR: number;
-      BORDER_CONSTANT: number;
-      ROTATE_90_CLOCKWISE: number;
-      ROTATE_180: number;
-      ROTATE_90_COUNTERCLOCKWISE: number;
-    };
+        borderValue: unknown
+      ) => void
+      rotate: (src: unknown, dst: unknown, code: number) => void
+      imshow: (canvas: HTMLCanvasElement, mat: unknown) => void
+      CV_32FC2: number
+      INTER_LINEAR: number
+      BORDER_CONSTANT: number
+      ROTATE_90_CLOCKWISE: number
+      ROTATE_180: number
+      ROTATE_90_COUNTERCLOCKWISE: number
+    }
 
-    const previewCanvas = previewCanvasRef.current;
-    if (!previewCanvas) return;
+    const previewCanvas = previewCanvasRef.current
+    if (!previewCanvas) return
 
     // Helper to calculate distance
-    const distance = (p1: Corner, p2: Corner) =>
-      Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+    const distance = (p1: Corner, p2: Corner) => Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
 
     try {
       // Calculate output dimensions from corners
-      const width1 = distance(corners[0], corners[1]);
-      const width2 = distance(corners[3], corners[2]);
-      const height1 = distance(corners[0], corners[3]);
-      const height2 = distance(corners[1], corners[2]);
-      let outputWidth = Math.round((width1 + width2) / 2);
-      let outputHeight = Math.round((height1 + height2) / 2);
+      const width1 = distance(corners[0], corners[1])
+      const width2 = distance(corners[3], corners[2])
+      const height1 = distance(corners[0], corners[3])
+      const height2 = distance(corners[1], corners[2])
+      let outputWidth = Math.round((width1 + width2) / 2)
+      let outputHeight = Math.round((height1 + height2) / 2)
 
       // Create perspective transform
       const srcPts = cvAny.matFromArray(4, 1, cvAny.CV_32FC2, [
@@ -166,7 +154,7 @@ export function DocumentAdjuster({
         corners[2].y,
         corners[3].x,
         corners[3].y,
-      ]);
+      ])
 
       const dstPts = cvAny.matFromArray(4, 1, cvAny.CV_32FC2, [
         0,
@@ -177,11 +165,11 @@ export function DocumentAdjuster({
         outputHeight,
         0,
         outputHeight,
-      ]);
+      ])
 
-      const M = cvAny.getPerspectiveTransform(srcPts, dstPts);
-      const src = cvAny.imread(sourceCanvas);
-      const warped = new cvAny.Mat();
+      const M = cvAny.getPerspectiveTransform(srcPts, dstPts)
+      const src = cvAny.imread(sourceCanvas)
+      const warped = new cvAny.Mat()
 
       cvAny.warpPerspective(
         src,
@@ -190,166 +178,166 @@ export function DocumentAdjuster({
         new cvAny.Size(outputWidth, outputHeight),
         cvAny.INTER_LINEAR,
         cvAny.BORDER_CONSTANT,
-        new cvAny.Scalar(),
-      );
+        new cvAny.Scalar()
+      )
 
       // Apply rotation if needed
-      let final = warped;
+      let final = warped
       if (rotation !== 0) {
-        const rotated = new cvAny.Mat();
+        const rotated = new cvAny.Mat()
         const rotateCode =
           rotation === 90
             ? cvAny.ROTATE_90_CLOCKWISE
             : rotation === 180
               ? cvAny.ROTATE_180
-              : cvAny.ROTATE_90_COUNTERCLOCKWISE;
-        cvAny.rotate(warped, rotated, rotateCode);
-        (warped as { delete: () => void }).delete();
-        final = rotated;
+              : cvAny.ROTATE_90_COUNTERCLOCKWISE
+        cvAny.rotate(warped, rotated, rotateCode)
+        ;(warped as { delete: () => void }).delete()
+        final = rotated
 
         // Swap dimensions for 90/270 rotation
         if (rotation === 90 || rotation === 270) {
-          [outputWidth, outputHeight] = [outputHeight, outputWidth];
+          ;[outputWidth, outputHeight] = [outputHeight, outputWidth]
         }
       }
 
       // Update preview canvas size and show result
-      previewCanvas.width = outputWidth;
-      previewCanvas.height = outputHeight;
-      cvAny.imshow(previewCanvas, final);
+      previewCanvas.width = outputWidth
+      previewCanvas.height = outputHeight
+      cvAny.imshow(previewCanvas, final)
 
       // Clean up
-      (srcPts as { delete: () => void }).delete();
-      (dstPts as { delete: () => void }).delete();
-      (M as { delete: () => void }).delete();
-      (src as { delete: () => void }).delete();
-      (final as { delete: () => void }).delete();
+      ;(srcPts as { delete: () => void }).delete()
+      ;(dstPts as { delete: () => void }).delete()
+      ;(M as { delete: () => void }).delete()
+      ;(src as { delete: () => void }).delete()
+      ;(final as { delete: () => void }).delete()
     } catch (err) {
-      console.warn("Preview update failed:", err);
+      console.warn('Preview update failed:', err)
     }
-  }, [corners, rotation, sourceCanvas, cv]);
+  }, [corners, rotation, sourceCanvas, cv])
 
   // Handle corner dragging
   const handlePointerDown = useCallback(
     (index: number) => (e: React.PointerEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDraggingIndex(index);
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      e.preventDefault()
+      e.stopPropagation()
+      setDraggingIndex(index)
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
     },
-    [],
-  );
+    []
+  )
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (draggingIndex === null) return;
+      if (draggingIndex === null) return
 
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const x = (e.clientX - rect.left) / displayScale;
-      const y = (e.clientY - rect.top) / displayScale;
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      const x = (e.clientX - rect.left) / displayScale
+      const y = (e.clientY - rect.top) / displayScale
 
       // Clamp to image bounds
-      const clampedX = Math.max(0, Math.min(sourceCanvas.width, x));
-      const clampedY = Math.max(0, Math.min(sourceCanvas.height, y));
+      const clampedX = Math.max(0, Math.min(sourceCanvas.width, x))
+      const clampedY = Math.max(0, Math.min(sourceCanvas.height, y))
 
       setCorners((prev) => {
-        const next = [...prev];
-        next[draggingIndex] = { x: clampedX, y: clampedY };
-        return next;
-      });
+        const next = [...prev]
+        next[draggingIndex] = { x: clampedX, y: clampedY }
+        return next
+      })
     },
-    [draggingIndex, displayScale, sourceCanvas.width, sourceCanvas.height],
-  );
+    [draggingIndex, displayScale, sourceCanvas.width, sourceCanvas.height]
+  )
 
   const handlePointerUp = useCallback(() => {
-    setDraggingIndex(null);
-  }, []);
+    setDraggingIndex(null)
+  }, [])
 
   // Handle rotation
-  const handleRotate = useCallback((direction: "cw" | "ccw") => {
+  const handleRotate = useCallback((direction: 'cw' | 'ccw') => {
     setRotation((prev) => {
-      if (direction === "cw") {
-        return ((prev + 90) % 360) as 0 | 90 | 180 | 270;
+      if (direction === 'cw') {
+        return ((prev + 90) % 360) as 0 | 90 | 180 | 270
       } else {
-        return ((prev - 90 + 360) % 360) as 0 | 90 | 180 | 270;
+        return ((prev - 90 + 360) % 360) as 0 | 90 | 180 | 270
       }
-    });
-  }, []);
+    })
+  }, [])
 
   // Handle autocrop - re-detect document edges and reset corners
   const handleAutocrop = useCallback(() => {
-    if (!detectQuadsInImage) return;
+    if (!detectQuadsInImage) return
 
-    const result = detectQuadsInImage(sourceCanvas);
+    const result = detectQuadsInImage(sourceCanvas)
     if (result.detected && result.corners.length === 4) {
-      setCorners(result.corners);
+      setCorners(result.corners)
       // Reset rotation when auto-detecting
-      setRotation(0);
-      setAutoDetectFailed(false);
+      setRotation(0)
+      setAutoDetectFailed(false)
     } else {
       // Detection failed - disable the button
-      setAutoDetectFailed(true);
+      setAutoDetectFailed(true)
     }
-  }, [detectQuadsInImage, sourceCanvas]);
+  }, [detectQuadsInImage, sourceCanvas])
 
   // Handle confirm
   const handleConfirm = useCallback(async () => {
-    if (!previewCanvasRef.current) return;
-    setIsProcessing(true);
+    if (!previewCanvasRef.current) return
+    setIsProcessing(true)
 
     try {
       // Force one final preview update
-      updatePreview();
+      updatePreview()
 
       const blob = await new Promise<Blob>((resolve, reject) => {
         previewCanvasRef.current!.toBlob(
           (b) => {
-            if (b) resolve(b);
-            else reject(new Error("Failed to create blob"));
+            if (b) resolve(b)
+            else reject(new Error('Failed to create blob'))
           },
-          "image/jpeg",
-          0.9,
-        );
-      });
+          'image/jpeg',
+          0.9
+        )
+      })
 
       const file = new File([blob], `document-${Date.now()}.jpg`, {
-        type: "image/jpeg",
-      });
+        type: 'image/jpeg',
+      })
 
       // Pass file, corners, and rotation to callback
-      onConfirm(file, corners, rotation);
+      onConfirm(file, corners, rotation)
     } catch (err) {
-      console.error("Failed to create file:", err);
+      console.error('Failed to create file:', err)
     } finally {
-      setIsProcessing(false);
+      setIsProcessing(false)
     }
-  }, [onConfirm, updatePreview, corners, rotation]);
+  }, [onConfirm, updatePreview, corners, rotation])
 
-  const displayWidth = sourceCanvas.width * displayScale;
-  const displayHeight = sourceCanvas.height * displayScale;
+  const displayWidth = sourceCanvas.width * displayScale
+  const displayHeight = sourceCanvas.height * displayScale
 
   return (
     <div
       ref={containerRef}
       data-component="document-adjuster"
       className={css({
-        position: "absolute",
+        position: 'absolute',
         inset: 0,
-        bg: "gray.900",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
+        bg: 'gray.900',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
       })}
     >
       {/* Header */}
       <div
         className={css({
           p: 4,
-          borderBottom: "1px solid",
-          borderColor: "gray.700",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          borderBottom: '1px solid',
+          borderColor: 'gray.700',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
         })}
       >
         <button
@@ -358,19 +346,17 @@ export function DocumentAdjuster({
           className={css({
             px: 4,
             py: 2,
-            color: "white",
-            bg: "transparent",
-            borderRadius: "md",
-            cursor: "pointer",
-            _hover: { bg: "gray.800" },
+            color: 'white',
+            bg: 'transparent',
+            borderRadius: 'md',
+            cursor: 'pointer',
+            _hover: { bg: 'gray.800' },
           })}
         >
           ← Back
         </button>
-        <span className={css({ color: "white", fontWeight: "bold" })}>
-          Adjust Document
-        </span>
-        <div className={css({ display: "flex", gap: 2 })}>
+        <span className={css({ color: 'white', fontWeight: 'bold' })}>Adjust Document</span>
+        <div className={css({ display: 'flex', gap: 2 })}>
           {onSkip && (
             <button
               type="button"
@@ -380,12 +366,12 @@ export function DocumentAdjuster({
               className={css({
                 px: 4,
                 py: 2,
-                bg: "gray.700",
-                color: "white",
-                borderRadius: "md",
-                cursor: "pointer",
-                _hover: { bg: "gray.600" },
-                _disabled: { opacity: 0.5, cursor: "not-allowed" },
+                bg: 'gray.700',
+                color: 'white',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                _hover: { bg: 'gray.600' },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >
               Skip
@@ -399,16 +385,16 @@ export function DocumentAdjuster({
             className={css({
               px: 4,
               py: 2,
-              bg: "green.500",
-              color: "white",
-              borderRadius: "md",
-              fontWeight: "bold",
-              cursor: "pointer",
-              _hover: { bg: "green.600" },
-              _disabled: { opacity: 0.5, cursor: "not-allowed" },
+              bg: 'green.500',
+              color: 'white',
+              borderRadius: 'md',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              _hover: { bg: 'green.600' },
+              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
             })}
           >
-            {isProcessing ? "Processing..." : "Done ✓"}
+            {isProcessing ? 'Processing...' : 'Done ✓'}
           </button>
         </div>
       </div>
@@ -417,20 +403,20 @@ export function DocumentAdjuster({
       <div
         className={css({
           flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
           p: 4,
           gap: 4,
-          overflow: "auto",
+          overflow: 'auto',
         })}
       >
         <div
           className={css({
-            color: "gray.400",
-            fontSize: "sm",
-            textAlign: "center",
+            color: 'gray.400',
+            fontSize: 'sm',
+            textAlign: 'center',
           })}
         >
           Drag corners to adjust crop area
@@ -439,8 +425,8 @@ export function DocumentAdjuster({
         {/* Source image container */}
         <div
           className={css({
-            position: "relative",
-            touchAction: "none",
+            position: 'relative',
+            touchAction: 'none',
           })}
           style={{ width: displayWidth, height: displayHeight }}
           onPointerMove={handlePointerMove}
@@ -451,28 +437,28 @@ export function DocumentAdjuster({
           <canvas
             ref={(el) => {
               if (el) {
-                el.width = sourceCanvas.width;
-                el.height = sourceCanvas.height;
-                const ctx = el.getContext("2d");
-                ctx?.drawImage(sourceCanvas, 0, 0);
+                el.width = sourceCanvas.width
+                el.height = sourceCanvas.height
+                const ctx = el.getContext('2d')
+                ctx?.drawImage(sourceCanvas, 0, 0)
               }
             }}
             style={{
               width: displayWidth,
               height: displayHeight,
-              borderRadius: "8px",
+              borderRadius: '8px',
             }}
           />
 
           {/* Quad overlay */}
           <svg
             style={{
-              position: "absolute",
+              position: 'absolute',
               top: 0,
               left: 0,
               width: displayWidth,
               height: displayHeight,
-              pointerEvents: "none",
+              pointerEvents: 'none',
             }}
           >
             {/* Darkened area outside quad */}
@@ -482,23 +468,16 @@ export function DocumentAdjuster({
                 <polygon
                   points={corners
                     .map((c) => `${c.x * displayScale},${c.y * displayScale}`)
-                    .join(" ")}
+                    .join(' ')}
                   fill="black"
                 />
               </mask>
             </defs>
-            <rect
-              width="100%"
-              height="100%"
-              fill="rgba(0, 0, 0, 0.5)"
-              mask="url(#quadMask)"
-            />
+            <rect width="100%" height="100%" fill="rgba(0, 0, 0, 0.5)" mask="url(#quadMask)" />
 
             {/* Quad border */}
             <polygon
-              points={corners
-                .map((c) => `${c.x * displayScale},${c.y * displayScale}`)
-                .join(" ")}
+              points={corners.map((c) => `${c.x * displayScale},${c.y * displayScale}`).join(' ')}
               fill="none"
               stroke="#22c55e"
               strokeWidth="2"
@@ -506,7 +485,7 @@ export function DocumentAdjuster({
 
             {/* Edge lines */}
             {corners.map((corner, i) => {
-              const next = corners[(i + 1) % 4];
+              const next = corners[(i + 1) % 4]
               return (
                 <line
                   key={i}
@@ -518,7 +497,7 @@ export function DocumentAdjuster({
                   strokeWidth="2"
                   strokeDasharray="5,5"
                 />
-              );
+              )
             })}
           </svg>
 
@@ -529,23 +508,23 @@ export function DocumentAdjuster({
               data-element={`corner-handle-${index}`}
               onPointerDown={handlePointerDown(index)}
               className={css({
-                position: "absolute",
-                width: "40px",
-                height: "40px",
-                borderRadius: "full",
-                bg: "green.500",
-                border: "3px solid white",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-                cursor: "grab",
-                transform: "translate(-50%, -50%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                fontWeight: "bold",
-                fontSize: "sm",
-                touchAction: "none",
-                _active: { cursor: "grabbing", bg: "green.600" },
+                position: 'absolute',
+                width: '40px',
+                height: '40px',
+                borderRadius: 'full',
+                bg: 'green.500',
+                border: '3px solid white',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                cursor: 'grab',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: 'sm',
+                touchAction: 'none',
+                _active: { cursor: 'grabbing', bg: 'green.600' },
               })}
               style={{
                 left: corner.x * displayScale,
@@ -560,26 +539,26 @@ export function DocumentAdjuster({
         {/* Rotation controls */}
         <div
           className={css({
-            display: "flex",
+            display: 'flex',
             gap: 4,
-            alignItems: "center",
+            alignItems: 'center',
           })}
         >
           <button
             type="button"
-            onClick={() => handleRotate("ccw")}
+            onClick={() => handleRotate('ccw')}
             className={css({
-              width: "48px",
-              height: "48px",
-              bg: "gray.700",
-              color: "white",
-              borderRadius: "full",
-              fontSize: "2xl",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              _hover: { bg: "gray.600" },
+              width: '48px',
+              height: '48px',
+              bg: 'gray.700',
+              color: 'white',
+              borderRadius: 'full',
+              fontSize: '2xl',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              _hover: { bg: 'gray.600' },
             })}
             title="Rotate counter-clockwise"
           >
@@ -587,29 +566,29 @@ export function DocumentAdjuster({
           </button>
           <span
             className={css({
-              color: "gray.400",
-              fontSize: "sm",
-              minWidth: "60px",
-              textAlign: "center",
+              color: 'gray.400',
+              fontSize: 'sm',
+              minWidth: '60px',
+              textAlign: 'center',
             })}
           >
             {rotation}°
           </span>
           <button
             type="button"
-            onClick={() => handleRotate("cw")}
+            onClick={() => handleRotate('cw')}
             className={css({
-              width: "48px",
-              height: "48px",
-              bg: "gray.700",
-              color: "white",
-              borderRadius: "full",
-              fontSize: "2xl",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              _hover: { bg: "gray.600" },
+              width: '48px',
+              height: '48px',
+              bg: 'gray.700',
+              color: 'white',
+              borderRadius: 'full',
+              fontSize: '2xl',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              _hover: { bg: 'gray.600' },
             })}
             title="Rotate clockwise"
           >
@@ -627,73 +606,61 @@ export function DocumentAdjuster({
             className={css({
               px: 4,
               py: 2,
-              bg: autoDetectFailed
-                ? "gray.600"
-                : cornersMatchDetected
-                  ? "green.600"
-                  : "blue.600",
-              color: "white",
-              borderRadius: "lg",
-              fontSize: "sm",
-              fontWeight: "medium",
-              cursor:
-                autoDetectFailed || cornersMatchDetected
-                  ? "default"
-                  : "pointer",
-              display: "flex",
-              alignItems: "center",
+              bg: autoDetectFailed ? 'gray.600' : cornersMatchDetected ? 'green.600' : 'blue.600',
+              color: 'white',
+              borderRadius: 'lg',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              cursor: autoDetectFailed || cornersMatchDetected ? 'default' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
               gap: 2,
               opacity: autoDetectFailed ? 0.6 : 1,
-              _hover:
-                autoDetectFailed || cornersMatchDetected
-                  ? {}
-                  : { bg: "blue.500" },
+              _hover: autoDetectFailed || cornersMatchDetected ? {} : { bg: 'blue.500' },
             })}
             title={
               autoDetectFailed
-                ? "No document edges detected"
+                ? 'No document edges detected'
                 : cornersMatchDetected
-                  ? "Document edges are currently applied"
-                  : "Re-detect document edges automatically"
+                  ? 'Document edges are currently applied'
+                  : 'Re-detect document edges automatically'
             }
           >
-            <span>{cornersMatchDetected ? "✓" : "🔍"}</span>
+            <span>{cornersMatchDetected ? '✓' : '🔍'}</span>
             <span>
               {autoDetectFailed
-                ? "No edges found"
+                ? 'No edges found'
                 : cornersMatchDetected
-                  ? "Edges detected"
-                  : "Auto-detect edges"}
+                  ? 'Edges detected'
+                  : 'Auto-detect edges'}
             </span>
           </button>
         )}
 
         {/* Preview */}
-        <div className={css({ color: "gray.400", fontSize: "sm", mt: 2 })}>
-          Preview
-        </div>
+        <div className={css({ color: 'gray.400', fontSize: 'sm', mt: 2 })}>Preview</div>
         <div
           className={css({
-            maxWidth: "100%",
-            maxHeight: "200px",
-            overflow: "hidden",
-            borderRadius: "lg",
-            border: "2px solid",
-            borderColor: "gray.600",
+            maxWidth: '100%',
+            maxHeight: '200px',
+            overflow: 'hidden',
+            borderRadius: 'lg',
+            border: '2px solid',
+            borderColor: 'gray.600',
           })}
         >
           <canvas
             ref={previewCanvasRef}
             className={css({
-              maxWidth: "100%",
-              maxHeight: "200px",
-              objectFit: "contain",
+              maxWidth: '100%',
+              maxHeight: '200px',
+              objectFit: 'contain',
             })}
           />
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default DocumentAdjuster;
+export default DocumentAdjuster

@@ -8,9 +8,9 @@
  * - Unenroll students
  */
 
-import { createId } from "@paralleldrive/cuid2";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
-import { db } from "@/db";
+import { createId } from '@paralleldrive/cuid2'
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { db } from '@/db'
 import {
   classroomEnrollments,
   classroomPresence,
@@ -23,17 +23,17 @@ import {
   type EnrollmentRequestRole,
   type Classroom,
   type Player,
-} from "@/db/schema";
+} from '@/db/schema'
 
 // ============================================================================
 // Create Enrollment Request
 // ============================================================================
 
 export interface CreateEnrollmentRequestParams {
-  classroomId: string;
-  playerId: string;
-  requestedBy: string;
-  requestedByRole: EnrollmentRequestRole;
+  classroomId: string
+  playerId: string
+  requestedBy: string
+  requestedByRole: EnrollmentRequestRole
 }
 
 /**
@@ -43,31 +43,31 @@ export interface CreateEnrollmentRequestParams {
  * reset to pending status with new requester info.
  */
 export async function createEnrollmentRequest(
-  params: CreateEnrollmentRequestParams,
+  params: CreateEnrollmentRequestParams
 ): Promise<EnrollmentRequest> {
-  const { classroomId, playerId, requestedBy, requestedByRole } = params;
+  const { classroomId, playerId, requestedBy, requestedByRole } = params
 
   // Check for existing request
   const existing = await db.query.enrollmentRequests.findFirst({
     where: and(
       eq(enrollmentRequests.classroomId, classroomId),
-      eq(enrollmentRequests.playerId, playerId),
+      eq(enrollmentRequests.playerId, playerId)
     ),
-  });
+  })
 
   // Auto-approve the requester's side (they implicitly approve by creating the request)
-  const teacherApproval = requestedByRole === "teacher" ? "approved" : null;
-  const teacherApprovedAt = requestedByRole === "teacher" ? new Date() : null;
-  const parentApproval = requestedByRole === "parent" ? "approved" : null;
-  const parentApprovedBy = requestedByRole === "parent" ? requestedBy : null;
-  const parentApprovedAt = requestedByRole === "parent" ? new Date() : null;
+  const teacherApproval = requestedByRole === 'teacher' ? 'approved' : null
+  const teacherApprovedAt = requestedByRole === 'teacher' ? new Date() : null
+  const parentApproval = requestedByRole === 'parent' ? 'approved' : null
+  const parentApprovedBy = requestedByRole === 'parent' ? requestedBy : null
+  const parentApprovedAt = requestedByRole === 'parent' ? new Date() : null
 
   if (existing) {
     // Upsert: reset with auto-approval for requester's side
     const [updated] = await db
       .update(enrollmentRequests)
       .set({
-        status: "pending",
+        status: 'pending',
         requestedBy,
         requestedByRole,
         requestedAt: new Date(),
@@ -79,8 +79,8 @@ export async function createEnrollmentRequest(
         resolvedAt: null,
       })
       .where(eq(enrollmentRequests.id, existing.id))
-      .returning();
-    return updated;
+      .returning()
+    return updated
   }
 
   // Create new request with auto-approval for requester's side
@@ -98,9 +98,9 @@ export async function createEnrollmentRequest(
       parentApprovedBy,
       parentApprovedAt,
     })
-    .returning();
+    .returning()
 
-  return request;
+  return request
 }
 
 // ============================================================================
@@ -108,8 +108,8 @@ export async function createEnrollmentRequest(
 // ============================================================================
 
 export interface ApprovalResult {
-  request: EnrollmentRequest;
-  fullyApproved: boolean;
+  request: EnrollmentRequest
+  fullyApproved: boolean
 }
 
 /**
@@ -121,36 +121,36 @@ export interface ApprovalResult {
 export async function approveEnrollmentRequest(
   requestId: string,
   approverId: string,
-  approverRole: "teacher" | "parent",
+  approverRole: 'teacher' | 'parent'
 ): Promise<ApprovalResult> {
   const request = await db.query.enrollmentRequests.findFirst({
     where: eq(enrollmentRequests.id, requestId),
-  });
+  })
 
-  if (!request || request.status !== "pending") {
-    throw new Error("Request not found or not pending");
+  if (!request || request.status !== 'pending') {
+    throw new Error('Request not found or not pending')
   }
 
   // Update appropriate approval field
-  const updates: Partial<EnrollmentRequest> = {};
+  const updates: Partial<EnrollmentRequest> = {}
 
-  if (approverRole === "teacher") {
-    updates.teacherApproval = "approved";
-    updates.teacherApprovedAt = new Date();
+  if (approverRole === 'teacher') {
+    updates.teacherApproval = 'approved'
+    updates.teacherApprovedAt = new Date()
   } else {
-    updates.parentApproval = "approved";
-    updates.parentApprovedBy = approverId;
-    updates.parentApprovedAt = new Date();
+    updates.parentApproval = 'approved'
+    updates.parentApprovedBy = approverId
+    updates.parentApprovedAt = new Date()
   }
 
   const [updated] = await db
     .update(enrollmentRequests)
     .set(updates)
     .where(eq(enrollmentRequests.id, requestId))
-    .returning();
+    .returning()
 
   // Check if fully approved
-  const fullyApproved = isFullyApproved(updated);
+  const fullyApproved = isFullyApproved(updated)
 
   if (fullyApproved) {
     // Create actual enrollment
@@ -158,16 +158,16 @@ export async function approveEnrollmentRequest(
       id: createId(),
       classroomId: request.classroomId,
       playerId: request.playerId,
-    });
+    })
 
     // Update request status
     await db
       .update(enrollmentRequests)
-      .set({ status: "approved", resolvedAt: new Date() })
-      .where(eq(enrollmentRequests.id, requestId));
+      .set({ status: 'approved', resolvedAt: new Date() })
+      .where(eq(enrollmentRequests.id, requestId))
   }
 
-  return { request: updated, fullyApproved };
+  return { request: updated, fullyApproved }
 }
 
 /**
@@ -176,52 +176,50 @@ export async function approveEnrollmentRequest(
 export async function denyEnrollmentRequest(
   requestId: string,
   denierId: string,
-  denierRole: "teacher" | "parent",
+  denierRole: 'teacher' | 'parent'
 ): Promise<EnrollmentRequest> {
   const request = await db.query.enrollmentRequests.findFirst({
     where: eq(enrollmentRequests.id, requestId),
-  });
+  })
 
-  if (!request || request.status !== "pending") {
-    throw new Error("Request not found or not pending");
+  if (!request || request.status !== 'pending') {
+    throw new Error('Request not found or not pending')
   }
 
   const updates: Partial<EnrollmentRequest> = {
-    status: "denied",
+    status: 'denied',
     resolvedAt: new Date(),
-  };
+  }
 
-  if (denierRole === "teacher") {
-    updates.teacherApproval = "denied";
-    updates.teacherApprovedAt = new Date();
+  if (denierRole === 'teacher') {
+    updates.teacherApproval = 'denied'
+    updates.teacherApprovedAt = new Date()
   } else {
-    updates.parentApproval = "denied";
-    updates.parentApprovedBy = denierId;
-    updates.parentApprovedAt = new Date();
+    updates.parentApproval = 'denied'
+    updates.parentApprovedBy = denierId
+    updates.parentApprovedAt = new Date()
   }
 
   const [updated] = await db
     .update(enrollmentRequests)
     .set(updates)
     .where(eq(enrollmentRequests.id, requestId))
-    .returning();
+    .returning()
 
-  return updated;
+  return updated
 }
 
 /**
  * Cancel an enrollment request
  */
-export async function cancelEnrollmentRequest(
-  requestId: string,
-): Promise<EnrollmentRequest> {
+export async function cancelEnrollmentRequest(requestId: string): Promise<EnrollmentRequest> {
   const [updated] = await db
     .update(enrollmentRequests)
-    .set({ status: "cancelled", resolvedAt: new Date() })
+    .set({ status: 'cancelled', resolvedAt: new Date() })
     .where(eq(enrollmentRequests.id, requestId))
-    .returning();
+    .returning()
 
-  return updated;
+  return updated
 }
 
 // ============================================================================
@@ -229,8 +227,8 @@ export async function cancelEnrollmentRequest(
 // ============================================================================
 
 export interface EnrollmentRequestWithRelations extends EnrollmentRequest {
-  player?: Player;
-  classroom?: Classroom;
+  player?: Player
+  classroom?: Classroom
 }
 
 /**
@@ -240,30 +238,30 @@ export interface EnrollmentRequestWithRelations extends EnrollmentRequest {
  * Teacher-initiated requests are auto-approved on teacher side, so they won't appear here.
  */
 export async function getPendingRequestsForClassroom(
-  classroomId: string,
+  classroomId: string
 ): Promise<EnrollmentRequestWithRelations[]> {
   const requests = await db.query.enrollmentRequests.findMany({
     where: and(
       eq(enrollmentRequests.classroomId, classroomId),
-      eq(enrollmentRequests.status, "pending"),
-      isNull(enrollmentRequests.teacherApproval), // Only requests needing teacher approval
+      eq(enrollmentRequests.status, 'pending'),
+      isNull(enrollmentRequests.teacherApproval) // Only requests needing teacher approval
     ),
     orderBy: [desc(enrollmentRequests.requestedAt)],
-  });
+  })
 
   // Fetch related players
-  if (requests.length === 0) return [];
+  if (requests.length === 0) return []
 
-  const playerIds = [...new Set(requests.map((r) => r.playerId))];
+  const playerIds = [...new Set(requests.map((r) => r.playerId))]
   const players = await db.query.players.findMany({
     where: (players, { inArray }) => inArray(players.id, playerIds),
-  });
-  const playerMap = new Map(players.map((p) => [p.id, p]));
+  })
+  const playerMap = new Map(players.map((p) => [p.id, p]))
 
   return requests.map((r) => ({
     ...r,
     player: playerMap.get(r.playerId),
-  }));
+  }))
 }
 
 /**
@@ -273,31 +271,31 @@ export async function getPendingRequestsForClassroom(
  * via family code and is waiting for the parent to approve.
  */
 export async function getRequestsAwaitingParentApproval(
-  classroomId: string,
+  classroomId: string
 ): Promise<EnrollmentRequestWithRelations[]> {
   const requests = await db.query.enrollmentRequests.findMany({
     where: and(
       eq(enrollmentRequests.classroomId, classroomId),
-      eq(enrollmentRequests.status, "pending"),
-      eq(enrollmentRequests.teacherApproval, "approved"), // Teacher has approved
-      isNull(enrollmentRequests.parentApproval), // Parent hasn't responded yet
+      eq(enrollmentRequests.status, 'pending'),
+      eq(enrollmentRequests.teacherApproval, 'approved'), // Teacher has approved
+      isNull(enrollmentRequests.parentApproval) // Parent hasn't responded yet
     ),
     orderBy: [desc(enrollmentRequests.requestedAt)],
-  });
+  })
 
   // Fetch related players
-  if (requests.length === 0) return [];
+  if (requests.length === 0) return []
 
-  const playerIds = [...new Set(requests.map((r) => r.playerId))];
+  const playerIds = [...new Set(requests.map((r) => r.playerId))]
   const players = await db.query.players.findMany({
     where: (players, { inArray }) => inArray(players.id, playerIds),
-  });
-  const playerMap = new Map(players.map((p) => [p.id, p]));
+  })
+  const playerMap = new Map(players.map((p) => [p.id, p]))
 
   return requests.map((r) => ({
     ...r,
     player: playerMap.get(r.playerId),
-  }));
+  }))
 }
 
 /**
@@ -307,32 +305,32 @@ export async function getRequestsAwaitingParentApproval(
  * where parent approval hasn't been given yet.
  */
 export async function getPendingRequestsForParent(
-  parentUserId: string,
+  parentUserId: string
 ): Promise<EnrollmentRequestWithRelations[]> {
   // Get all children of this parent
   const children = await db.query.parentChild.findMany({
     where: eq(parentChild.parentUserId, parentUserId),
-  });
-  const childIds = children.map((c) => c.childPlayerId);
+  })
+  const childIds = children.map((c) => c.childPlayerId)
 
-  if (childIds.length === 0) return [];
+  if (childIds.length === 0) return []
 
   // Find pending requests for these children that need parent approval
   const requests = await db.query.enrollmentRequests.findMany({
     where: and(
       inArray(enrollmentRequests.playerId, childIds),
-      eq(enrollmentRequests.status, "pending"),
-      eq(enrollmentRequests.requestedByRole, "teacher"), // Teacher initiated, needs parent
-      isNull(enrollmentRequests.parentApproval),
+      eq(enrollmentRequests.status, 'pending'),
+      eq(enrollmentRequests.requestedByRole, 'teacher'), // Teacher initiated, needs parent
+      isNull(enrollmentRequests.parentApproval)
     ),
     orderBy: [desc(enrollmentRequests.requestedAt)],
-  });
+  })
 
-  if (requests.length === 0) return [];
+  if (requests.length === 0) return []
 
   // Fetch related players and classrooms
-  const playerIds = [...new Set(requests.map((r) => r.playerId))];
-  const classroomIds = [...new Set(requests.map((r) => r.classroomId))];
+  const playerIds = [...new Set(requests.map((r) => r.playerId))]
+  const classroomIds = [...new Set(requests.map((r) => r.classroomId))]
 
   const [players, classroomList] = await Promise.all([
     db.query.players.findMany({
@@ -341,16 +339,16 @@ export async function getPendingRequestsForParent(
     db.query.classrooms.findMany({
       where: (classrooms, { inArray }) => inArray(classrooms.id, classroomIds),
     }),
-  ]);
+  ])
 
-  const playerMap = new Map(players.map((p) => [p.id, p]));
-  const classroomMap = new Map(classroomList.map((c) => [c.id, c]));
+  const playerMap = new Map(players.map((p) => [p.id, p]))
+  const classroomMap = new Map(classroomList.map((c) => [c.id, c]))
 
   return requests.map((r) => ({
     ...r,
     player: playerMap.get(r.playerId),
     classroom: classroomMap.get(r.classroomId),
-  }));
+  }))
 }
 
 // ============================================================================
@@ -360,37 +358,32 @@ export async function getPendingRequestsForParent(
 /**
  * Check if a player is enrolled in a classroom
  */
-export async function isEnrolled(
-  classroomId: string,
-  playerId: string,
-): Promise<boolean> {
+export async function isEnrolled(classroomId: string, playerId: string): Promise<boolean> {
   const enrollment = await db.query.classroomEnrollments.findFirst({
     where: and(
       eq(classroomEnrollments.classroomId, classroomId),
-      eq(classroomEnrollments.playerId, playerId),
+      eq(classroomEnrollments.playerId, playerId)
     ),
-  });
-  return !!enrollment;
+  })
+  return !!enrollment
 }
 
 /**
  * Get all enrolled students in a classroom
  */
-export async function getEnrolledStudents(
-  classroomId: string,
-): Promise<Player[]> {
+export async function getEnrolledStudents(classroomId: string): Promise<Player[]> {
   const enrollments = await db.query.classroomEnrollments.findMany({
     where: eq(classroomEnrollments.classroomId, classroomId),
-  });
+  })
 
-  if (enrollments.length === 0) return [];
+  if (enrollments.length === 0) return []
 
-  const playerIds = enrollments.map((e) => e.playerId);
+  const playerIds = enrollments.map((e) => e.playerId)
   const students = await db.query.players.findMany({
     where: (players, { inArray }) => inArray(players.id, playerIds),
-  });
+  })
 
-  return students;
+  return students
 }
 
 /**
@@ -398,61 +391,53 @@ export async function getEnrolledStudents(
  *
  * Also removes presence and cancels pending requests.
  */
-export async function unenrollStudent(
-  classroomId: string,
-  playerId: string,
-): Promise<void> {
+export async function unenrollStudent(classroomId: string, playerId: string): Promise<void> {
   // Remove enrollment
   await db
     .delete(classroomEnrollments)
     .where(
       and(
         eq(classroomEnrollments.classroomId, classroomId),
-        eq(classroomEnrollments.playerId, playerId),
-      ),
-    );
+        eq(classroomEnrollments.playerId, playerId)
+      )
+    )
 
   // Also remove presence if present
   await db
     .delete(classroomPresence)
     .where(
-      and(
-        eq(classroomPresence.classroomId, classroomId),
-        eq(classroomPresence.playerId, playerId),
-      ),
-    );
+      and(eq(classroomPresence.classroomId, classroomId), eq(classroomPresence.playerId, playerId))
+    )
 
   // Cancel any pending requests
   await db
     .update(enrollmentRequests)
-    .set({ status: "cancelled", resolvedAt: new Date() })
+    .set({ status: 'cancelled', resolvedAt: new Date() })
     .where(
       and(
         eq(enrollmentRequests.classroomId, classroomId),
         eq(enrollmentRequests.playerId, playerId),
-        eq(enrollmentRequests.status, "pending"),
-      ),
-    );
+        eq(enrollmentRequests.status, 'pending')
+      )
+    )
 }
 
 /**
  * Get all classrooms a player is enrolled in
  */
-export async function getEnrolledClassrooms(
-  playerId: string,
-): Promise<Classroom[]> {
+export async function getEnrolledClassrooms(playerId: string): Promise<Classroom[]> {
   const enrollments = await db.query.classroomEnrollments.findMany({
     where: eq(classroomEnrollments.playerId, playerId),
-  });
+  })
 
-  if (enrollments.length === 0) return [];
+  if (enrollments.length === 0) return []
 
-  const classroomIds = enrollments.map((e) => e.classroomId);
+  const classroomIds = enrollments.map((e) => e.classroomId)
   const classroomList = await db.query.classrooms.findMany({
     where: (classrooms, { inArray }) => inArray(classrooms.id, classroomIds),
-  });
+  })
 
-  return classroomList;
+  return classroomList
 }
 
 /**
@@ -464,20 +449,17 @@ export async function getEnrolledClassrooms(
  *
  * @returns true if enrolled, false if already enrolled
  */
-export async function directEnrollStudent(
-  classroomId: string,
-  playerId: string,
-): Promise<boolean> {
+export async function directEnrollStudent(classroomId: string, playerId: string): Promise<boolean> {
   // Check if already enrolled
   const existing = await db.query.classroomEnrollments.findFirst({
     where: and(
       eq(classroomEnrollments.classroomId, classroomId),
-      eq(classroomEnrollments.playerId, playerId),
+      eq(classroomEnrollments.playerId, playerId)
     ),
-  });
+  })
 
   if (existing) {
-    return false; // Already enrolled
+    return false // Already enrolled
   }
 
   // Create enrollment directly
@@ -485,10 +467,10 @@ export async function directEnrollStudent(
     id: createId(),
     classroomId,
     playerId,
-  });
+  })
 
-  return true;
+  return true
 }
 
 // Re-export helper functions from schema
-export { getRequiredApprovals, isFullyApproved, isDenied } from "@/db/schema";
+export { getRequiredApprovals, isFullyApproved, isDenied } from '@/db/schema'

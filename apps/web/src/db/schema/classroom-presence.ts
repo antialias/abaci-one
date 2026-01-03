@@ -1,7 +1,7 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { classrooms } from "./classrooms";
-import { players } from "./players";
-import { users } from "./users";
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { classrooms } from './classrooms'
+import { players } from './players'
+import { users } from './users'
 
 /**
  * Classroom presence - ephemeral "in classroom" state
@@ -19,33 +19,33 @@ import { users } from "./users";
  * - Control the student's tutorial/abacus
  */
 export const classroomPresence = sqliteTable(
-  "classroom_presence",
+  'classroom_presence',
   {
     /** Player ID - also the primary key (one classroom at a time) */
-    playerId: text("player_id")
+    playerId: text('player_id')
       .primaryKey()
-      .references(() => players.id, { onDelete: "cascade" }),
+      .references(() => players.id, { onDelete: 'cascade' }),
 
     /** Classroom the student is currently in */
-    classroomId: text("classroom_id")
+    classroomId: text('classroom_id')
       .notNull()
-      .references(() => classrooms.id, { onDelete: "cascade" }),
+      .references(() => classrooms.id, { onDelete: 'cascade' }),
 
     /** When the student entered the classroom */
-    enteredAt: integer("entered_at", { mode: "timestamp" })
+    enteredAt: integer('entered_at', { mode: 'timestamp' })
       .notNull()
       .$defaultFn(() => new Date()),
 
     /** Who put the student in the classroom (parent, teacher, or self) */
-    enteredBy: text("entered_by")
+    enteredBy: text('entered_by')
       .notNull()
       .references(() => users.id),
   },
   (table) => ({
     /** Index for finding all students present in a classroom */
-    classroomIdx: index("idx_presence_classroom").on(table.classroomId),
-  }),
-);
+    classroomIdx: index('idx_presence_classroom').on(table.classroomId),
+  })
+)
 
-export type ClassroomPresence = typeof classroomPresence.$inferSelect;
-export type NewClassroomPresence = typeof classroomPresence.$inferInsert;
+export type ClassroomPresence = typeof classroomPresence.$inferSelect
+export type NewClassroomPresence = typeof classroomPresence.$inferInsert

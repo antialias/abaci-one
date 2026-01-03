@@ -6,171 +6,161 @@
  * Falls back gracefully: emoji-specific → category → generic abacus theme
  */
 
-import {
-  EMOJI_SPECIFIC_WORDS,
-  EMOJI_TO_THEME,
-  THEMED_WORD_LISTS,
-} from "./themedWords";
+import { EMOJI_SPECIFIC_WORDS, EMOJI_TO_THEME, THEMED_WORD_LISTS } from './themedWords'
 
 // Generic abacus-themed words (used as ultimate fallback)
 const ADJECTIVES = [
   // Abacus-themed adjectives
-  "Ancient",
-  "Wooden",
-  "Sliding",
-  "Decimal",
-  "Binary",
-  "Counting",
-  "Soroban",
-  "Chinese",
-  "Japanese",
-  "Nimble",
-  "Clicking",
-  "Beaded",
-  "Columnar",
-  "Vertical",
-  "Horizontal",
-  "Upper",
-  "Lower",
-  "Heaven",
-  "Earth",
-  "Golden",
-  "Jade",
-  "Bamboo",
-  "Polished",
-  "Skilled",
-  "Master",
+  'Ancient',
+  'Wooden',
+  'Sliding',
+  'Decimal',
+  'Binary',
+  'Counting',
+  'Soroban',
+  'Chinese',
+  'Japanese',
+  'Nimble',
+  'Clicking',
+  'Beaded',
+  'Columnar',
+  'Vertical',
+  'Horizontal',
+  'Upper',
+  'Lower',
+  'Heaven',
+  'Earth',
+  'Golden',
+  'Jade',
+  'Bamboo',
+  'Polished',
+  'Skilled',
+  'Master',
   // Arithmetic/calculation adjectives
-  "Adding",
-  "Subtracting",
-  "Multiplying",
-  "Dividing",
-  "Calculating",
-  "Computing",
-  "Estimating",
-  "Rounding",
-  "Summing",
-  "Tallying",
-  "Decimal",
-  "Fractional",
-  "Exponential",
-  "Algebraic",
-  "Geometric",
-  "Prime",
-  "Composite",
-  "Rational",
-  "Digital",
-  "Numeric",
-  "Precise",
-  "Accurate",
-  "Lightning",
-  "Rapid",
-  "Mental",
-];
+  'Adding',
+  'Subtracting',
+  'Multiplying',
+  'Dividing',
+  'Calculating',
+  'Computing',
+  'Estimating',
+  'Rounding',
+  'Summing',
+  'Tallying',
+  'Decimal',
+  'Fractional',
+  'Exponential',
+  'Algebraic',
+  'Geometric',
+  'Prime',
+  'Composite',
+  'Rational',
+  'Digital',
+  'Numeric',
+  'Precise',
+  'Accurate',
+  'Lightning',
+  'Rapid',
+  'Mental',
+]
 
 const NOUNS = [
   // Abacus-themed nouns
-  "Counter",
-  "Abacist",
-  "Calculator",
-  "Bead",
-  "Rod",
-  "Frame",
-  "Slider",
-  "Merchant",
-  "Trader",
-  "Accountant",
-  "Bookkeeper",
-  "Clerk",
-  "Scribe",
-  "Master",
-  "Apprentice",
-  "Scholar",
-  "Student",
-  "Teacher",
-  "Sensei",
-  "Guru",
-  "Expert",
-  "Virtuoso",
-  "Prodigy",
-  "Wizard",
-  "Sage",
+  'Counter',
+  'Abacist',
+  'Calculator',
+  'Bead',
+  'Rod',
+  'Frame',
+  'Slider',
+  'Merchant',
+  'Trader',
+  'Accountant',
+  'Bookkeeper',
+  'Clerk',
+  'Scribe',
+  'Master',
+  'Apprentice',
+  'Scholar',
+  'Student',
+  'Teacher',
+  'Sensei',
+  'Guru',
+  'Expert',
+  'Virtuoso',
+  'Prodigy',
+  'Wizard',
+  'Sage',
   // Arithmetic/calculation nouns
-  "Adder",
-  "Multiplier",
-  "Divider",
-  "Solver",
-  "Mathematician",
-  "Arithmetician",
-  "Analyst",
-  "Computer",
-  "Estimator",
-  "Logician",
-  "Statistician",
-  "Numerologist",
-  "Quantifier",
-  "Tallier",
-  "Sumner",
-  "Keeper",
-  "Reckoner",
-  "Cipher",
-  "Digit",
-  "Figure",
-  "Number",
-  "Brain",
-  "Thinker",
-  "Genius",
-  "Whiz",
-];
+  'Adder',
+  'Multiplier',
+  'Divider',
+  'Solver',
+  'Mathematician',
+  'Arithmetician',
+  'Analyst',
+  'Computer',
+  'Estimator',
+  'Logician',
+  'Statistician',
+  'Numerologist',
+  'Quantifier',
+  'Tallier',
+  'Sumner',
+  'Keeper',
+  'Reckoner',
+  'Cipher',
+  'Digit',
+  'Figure',
+  'Number',
+  'Brain',
+  'Thinker',
+  'Genius',
+  'Whiz',
+]
 
 /**
  * Select a word list tier using weighted random selection
  * Balanced mix: emoji-specific (50%), category (25%), global abacus (25%)
  */
-function selectWordListTier(
-  emoji: string,
-  wordType: "adjectives" | "nouns",
-): string[] {
+function selectWordListTier(emoji: string, wordType: 'adjectives' | 'nouns'): string[] {
   // Collect available tiers
-  const availableTiers: Array<{ weight: number; words: string[] }> = [];
+  const availableTiers: Array<{ weight: number; words: string[] }> = []
 
   // Emoji-specific tier (50% preference)
-  const emojiSpecific = EMOJI_SPECIFIC_WORDS[emoji];
+  const emojiSpecific = EMOJI_SPECIFIC_WORDS[emoji]
   if (emojiSpecific) {
-    availableTiers.push({ weight: 50, words: emojiSpecific[wordType] });
+    availableTiers.push({ weight: 50, words: emojiSpecific[wordType] })
   }
 
   // Category tier (25% preference)
-  const category = EMOJI_TO_THEME[emoji];
+  const category = EMOJI_TO_THEME[emoji]
   if (category) {
-    const categoryTheme = THEMED_WORD_LISTS[category];
+    const categoryTheme = THEMED_WORD_LISTS[category]
     if (categoryTheme) {
-      availableTiers.push({ weight: 25, words: categoryTheme[wordType] });
+      availableTiers.push({ weight: 25, words: categoryTheme[wordType] })
     }
   }
 
   // Global abacus tier (25% preference)
   availableTiers.push({
     weight: 25,
-    words: wordType === "adjectives" ? ADJECTIVES : NOUNS,
-  });
+    words: wordType === 'adjectives' ? ADJECTIVES : NOUNS,
+  })
 
   // Weighted random selection
-  const totalWeight = availableTiers.reduce(
-    (sum, tier) => sum + tier.weight,
-    0,
-  );
-  let random = Math.random() * totalWeight;
+  const totalWeight = availableTiers.reduce((sum, tier) => sum + tier.weight, 0)
+  let random = Math.random() * totalWeight
 
   for (const tier of availableTiers) {
-    random -= tier.weight;
+    random -= tier.weight
     if (random <= 0) {
-      return tier.words;
+      return tier.words
     }
   }
 
   // Fallback (should never reach here)
-  return wordType === "adjectives" ? ADJECTIVES : NOUNS;
+  return wordType === 'adjectives' ? ADJECTIVES : NOUNS
 }
 
 /**
@@ -184,21 +174,20 @@ function selectWordListTier(
 export function generatePlayerName(emoji?: string): string {
   if (!emoji) {
     // No emoji provided, use pure abacus theme
-    const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
-    const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-    return `${adjective} ${noun}`;
+    const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
+    const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
+    return `${adjective} ${noun}`
   }
 
   // Select tier independently for each word type
   // This creates natural mixing: adjective might be emoji-specific while noun is global
-  const adjectiveList = selectWordListTier(emoji, "adjectives");
-  const nounList = selectWordListTier(emoji, "nouns");
+  const adjectiveList = selectWordListTier(emoji, 'adjectives')
+  const nounList = selectWordListTier(emoji, 'nouns')
 
-  const adjective =
-    adjectiveList[Math.floor(Math.random() * adjectiveList.length)];
-  const noun = nounList[Math.floor(Math.random() * nounList.length)];
+  const adjective = adjectiveList[Math.floor(Math.random() * adjectiveList.length)]
+  const noun = nounList[Math.floor(Math.random() * nounList.length)]
 
-  return `${adjective} ${noun}`;
+  return `${adjective} ${noun}`
 }
 
 /**
@@ -211,26 +200,24 @@ export function generatePlayerName(emoji?: string): string {
 export function generateUniquePlayerName(
   existingNames: string[],
   emoji?: string,
-  maxAttempts = 50,
+  maxAttempts = 50
 ): string {
-  const existingNamesSet = new Set(
-    existingNames.map((name) => name.toLowerCase()),
-  );
+  const existingNamesSet = new Set(existingNames.map((name) => name.toLowerCase()))
 
   for (let i = 0; i < maxAttempts; i++) {
-    const name = generatePlayerName(emoji);
+    const name = generatePlayerName(emoji)
     if (!existingNamesSet.has(name.toLowerCase())) {
-      return name;
+      return name
     }
   }
 
   // Fallback: if we can't find a unique name, append a number
-  const baseName = generatePlayerName(emoji);
-  let counter = 1;
+  const baseName = generatePlayerName(emoji)
+  let counter = 1
   while (existingNamesSet.has(`${baseName} ${counter}`.toLowerCase())) {
-    counter++;
+    counter++
   }
-  return `${baseName} ${counter}`;
+  return `${baseName} ${counter}`
 }
 
 /**
@@ -239,14 +226,11 @@ export function generateUniquePlayerName(
  * @param emoji - Optional emoji avatar to theme the names around
  * @returns Array of unique player names
  */
-export function generateUniquePlayerNames(
-  count: number,
-  emoji?: string,
-): string[] {
-  const names: string[] = [];
+export function generateUniquePlayerNames(count: number, emoji?: string): string[] {
+  const names: string[] = []
   for (let i = 0; i < count; i++) {
-    const name = generateUniquePlayerName(names, emoji);
-    names.push(name);
+    const name = generateUniquePlayerName(names, emoji)
+    names.push(name)
   }
-  return names;
+  return names
 }

@@ -1,212 +1,195 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { css } from "../../../styled-system/css";
-import { useToast } from "@/components/common/ToastContext";
-import { PageWithNav } from "@/components/PageWithNav";
-import { getRoomDisplayWithEmoji } from "@/utils/room-display";
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { css } from '../../../styled-system/css'
+import { useToast } from '@/components/common/ToastContext'
+import { PageWithNav } from '@/components/PageWithNav'
+import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
 interface Room {
-  id: string;
-  code: string;
-  name: string | null;
-  gameName: string;
-  status: "lobby" | "playing" | "finished";
-  createdAt: Date;
-  creatorName: string;
-  isLocked: boolean;
-  accessMode:
-    | "open"
-    | "password"
-    | "approval-only"
-    | "restricted"
-    | "locked"
-    | "retired";
-  memberCount?: number;
-  playerCount?: number;
-  isMember?: boolean;
+  id: string
+  code: string
+  name: string | null
+  gameName: string
+  status: 'lobby' | 'playing' | 'finished'
+  createdAt: Date
+  creatorName: string
+  isLocked: boolean
+  accessMode: 'open' | 'password' | 'approval-only' | 'restricted' | 'locked' | 'retired'
+  memberCount?: number
+  playerCount?: number
+  isMember?: boolean
 }
 
 export default function RoomBrowserPage() {
-  const router = useRouter();
-  const { showError, showInfo } = useToast();
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const router = useRouter()
+  const { showError, showInfo } = useToast()
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   useEffect(() => {
-    fetchRooms();
-  }, []);
+    fetchRooms()
+  }, [])
 
   const fetchRooms = async () => {
     try {
-      setLoading(true);
-      const response = await fetch("/api/arcade/rooms");
+      setLoading(true)
+      const response = await fetch('/api/arcade/rooms')
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new Error(`HTTP ${response.status}`)
       }
-      const data = await response.json();
-      setRooms(data.rooms);
-      setError(null);
+      const data = await response.json()
+      setRooms(data.rooms)
+      setError(null)
     } catch (err) {
-      console.error("Failed to fetch rooms:", err);
-      setError("Failed to load rooms");
+      console.error('Failed to fetch rooms:', err)
+      setError('Failed to load rooms')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const createRoom = async (name: string | null, gameName: string) => {
     try {
-      const response = await fetch("/api/arcade/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/arcade/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
           gameName,
-          creatorName: "Player",
+          creatorName: 'Player',
           gameConfig: { difficulty: 6 },
         }),
-      });
+      })
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new Error(`HTTP ${response.status}`)
       }
 
-      const data = await response.json();
-      router.push(`/join/${data.room.code}`);
+      const data = await response.json()
+      router.push(`/join/${data.room.code}`)
     } catch (err) {
-      console.error("Failed to create room:", err);
-      showError(
-        "Failed to create room",
-        err instanceof Error ? err.message : undefined,
-      );
+      console.error('Failed to create room:', err)
+      showError('Failed to create room', err instanceof Error ? err.message : undefined)
     }
-  };
+  }
 
   const joinRoom = async (room: Room) => {
     try {
       // Check access mode
-      if (room.accessMode === "password") {
-        const password = prompt(
-          `Enter password for ${room.name || `Room ${room.code}`}:`,
-        );
-        if (!password) return; // User cancelled
+      if (room.accessMode === 'password') {
+        const password = prompt(`Enter password for ${room.name || `Room ${room.code}`}:`)
+        if (!password) return // User cancelled
 
         const response = await fetch(`/api/arcade/rooms/${room.id}/join`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ displayName: "Player", password }),
-        });
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: 'Player', password }),
+        })
 
         if (!response.ok) {
-          const errorData = await response.json();
-          showError("Failed to join room", errorData.error);
-          return;
+          const errorData = await response.json()
+          showError('Failed to join room', errorData.error)
+          return
         }
 
-        router.push(`/arcade-rooms/${room.id}`);
-        return;
+        router.push(`/arcade-rooms/${room.id}`)
+        return
       }
 
-      if (room.accessMode === "approval-only") {
+      if (room.accessMode === 'approval-only') {
         showInfo(
-          "Approval Required",
-          "This room requires host approval. Please use the Join Room modal to request access.",
-        );
-        return;
+          'Approval Required',
+          'This room requires host approval. Please use the Join Room modal to request access.'
+        )
+        return
       }
 
-      if (room.accessMode === "restricted") {
+      if (room.accessMode === 'restricted') {
         showInfo(
-          "Invitation Only",
-          "This room is invitation-only. Please ask the host for an invitation.",
-        );
-        return;
+          'Invitation Only',
+          'This room is invitation-only. Please ask the host for an invitation.'
+        )
+        return
       }
 
       // For open rooms
       const response = await fetch(`/api/arcade/rooms/${room.id}/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: "Player" }),
-      });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: 'Player' }),
+      })
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json()
 
         // Handle specific room membership conflict
-        if (errorData.code === "ROOM_MEMBERSHIP_CONFLICT") {
-          showError(
-            "Already in Another Room",
-            errorData.userMessage || errorData.message,
-          );
+        if (errorData.code === 'ROOM_MEMBERSHIP_CONFLICT') {
+          showError('Already in Another Room', errorData.userMessage || errorData.message)
           // Refresh the page to update room list state
-          await fetchRooms();
-          return;
+          await fetchRooms()
+          return
         }
 
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+        throw new Error(errorData.error || `HTTP ${response.status}`)
       }
 
-      const data = await response.json();
+      const data = await response.json()
 
       // Show notification if user was auto-removed from other rooms
       if (data.autoLeave) {
-        console.log(`[Room Join] ${data.autoLeave.message}`);
+        console.log(`[Room Join] ${data.autoLeave.message}`)
         // Could show a toast notification here in the future
       }
 
-      router.push(`/arcade-rooms/${room.id}`);
+      router.push(`/arcade-rooms/${room.id}`)
     } catch (err) {
-      console.error("Failed to join room:", err);
-      showError(
-        "Failed to join room",
-        err instanceof Error ? err.message : undefined,
-      );
+      console.error('Failed to join room:', err)
+      showError('Failed to join room', err instanceof Error ? err.message : undefined)
     }
-  };
+  }
 
   return (
     <PageWithNav>
       <div
         className={css({
-          minH: "calc(100vh - 80px)",
-          bg: "linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)",
-          p: "8",
+          minH: 'calc(100vh - 80px)',
+          bg: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
+          p: '8',
         })}
       >
-        <div className={css({ maxW: "1200px", mx: "auto" })}>
+        <div className={css({ maxW: '1200px', mx: 'auto' })}>
           {/* Header */}
-          <div className={css({ mb: "8", textAlign: "center" })}>
+          <div className={css({ mb: '8', textAlign: 'center' })}>
             <h1
               className={css({
-                fontSize: "4xl",
-                fontWeight: "bold",
-                color: "white",
-                mb: "4",
+                fontSize: '4xl',
+                fontWeight: 'bold',
+                color: 'white',
+                mb: '4',
               })}
             >
               🎮 Multiplayer Rooms
             </h1>
-            <p className={css({ color: "#a0a0ff", fontSize: "lg", mb: "6" })}>
+            <p className={css({ color: '#a0a0ff', fontSize: 'lg', mb: '6' })}>
               Join a room or create your own to play with friends
             </p>
             <button
               onClick={() => setShowCreateModal(true)}
               className={css({
-                px: "6",
-                py: "3",
-                bg: "#10b981",
-                color: "white",
-                rounded: "lg",
-                fontSize: "lg",
+                px: '6',
+                py: '3',
+                bg: '#10b981',
+                color: 'white',
+                rounded: 'lg',
+                fontSize: 'lg',
                 fontWeight: 600,
-                cursor: "pointer",
-                _hover: { bg: "#059669" },
-                transition: "all 0.2s",
+                cursor: 'pointer',
+                _hover: { bg: '#059669' },
+                transition: 'all 0.2s',
               })}
             >
               + Create New Room
@@ -215,9 +198,7 @@ export default function RoomBrowserPage() {
 
           {/* Room List */}
           {loading && (
-            <div
-              className={css({ textAlign: "center", color: "white", py: "12" })}
-            >
+            <div className={css({ textAlign: 'center', color: 'white', py: '12' })}>
               Loading rooms...
             </div>
           )}
@@ -225,12 +206,12 @@ export default function RoomBrowserPage() {
           {error && (
             <div
               className={css({
-                bg: "#fef2f2",
-                border: "1px solid #fecaca",
-                color: "#991b1b",
-                p: "4",
-                rounded: "lg",
-                textAlign: "center",
+                bg: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#991b1b',
+                p: '4',
+                rounded: 'lg',
+                textAlign: 'center',
               })}
             >
               {error}
@@ -240,66 +221,62 @@ export default function RoomBrowserPage() {
           {!loading && !error && rooms.length === 0 && (
             <div
               className={css({
-                bg: "rgba(255, 255, 255, 0.05)",
-                backdropFilter: "blur(10px)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
-                rounded: "lg",
-                p: "12",
-                textAlign: "center",
-                color: "white",
+                bg: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                rounded: 'lg',
+                p: '12',
+                textAlign: 'center',
+                color: 'white',
               })}
             >
-              <p className={css({ fontSize: "xl", mb: "2" })}>
-                No rooms available
-              </p>
-              <p className={css({ color: "#a0a0ff" })}>
-                Be the first to create one!
-              </p>
+              <p className={css({ fontSize: 'xl', mb: '2' })}>No rooms available</p>
+              <p className={css({ color: '#a0a0ff' })}>Be the first to create one!</p>
             </div>
           )}
 
           {!loading && !error && rooms.length > 0 && (
-            <div className={css({ display: "grid", gap: "4" })}>
+            <div className={css({ display: 'grid', gap: '4' })}>
               {rooms.map((room) => (
                 <div
                   key={room.id}
                   className={css({
-                    bg: "rgba(255, 255, 255, 0.05)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    rounded: "lg",
-                    p: "6",
-                    transition: "all 0.2s",
+                    bg: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    rounded: 'lg',
+                    p: '6',
+                    transition: 'all 0.2s',
                     _hover: {
-                      bg: "rgba(255, 255, 255, 0.08)",
-                      borderColor: "rgba(255, 255, 255, 0.2)",
+                      bg: 'rgba(255, 255, 255, 0.08)',
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
                     },
                   })}
                 >
                   <div
                     className={css({
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
                     })}
                   >
                     <div
                       onClick={() => router.push(`/arcade-rooms/${room.id}`)}
-                      className={css({ flex: 1, cursor: "pointer" })}
+                      className={css({ flex: 1, cursor: 'pointer' })}
                     >
                       <div
                         className={css({
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "3",
-                          mb: "2",
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3',
+                          mb: '2',
                         })}
                       >
                         <h3
                           className={css({
-                            fontSize: "2xl",
-                            fontWeight: "bold",
-                            color: "white",
+                            fontSize: '2xl',
+                            fontWeight: 'bold',
+                            color: 'white',
                           })}
                         >
                           {getRoomDisplayWithEmoji({
@@ -310,14 +287,14 @@ export default function RoomBrowserPage() {
                         </h3>
                         <span
                           className={css({
-                            px: "3",
-                            py: "1",
-                            bg: "rgba(255, 255, 255, 0.1)",
-                            color: "#fbbf24",
-                            rounded: "full",
-                            fontSize: "sm",
+                            px: '3',
+                            py: '1',
+                            bg: 'rgba(255, 255, 255, 0.1)',
+                            color: '#fbbf24',
+                            rounded: 'full',
+                            fontSize: 'sm',
                             fontWeight: 600,
-                            fontFamily: "monospace",
+                            fontFamily: 'monospace',
                           })}
                         >
                           {room.code}
@@ -325,8 +302,8 @@ export default function RoomBrowserPage() {
                         {room.isLocked && (
                           <span
                             className={css({
-                              color: "#f87171",
-                              fontSize: "sm",
+                              color: '#f87171',
+                              fontSize: 'sm',
                             })}
                           >
                             🔒 Locked
@@ -335,11 +312,11 @@ export default function RoomBrowserPage() {
                       </div>
                       <div
                         className={css({
-                          display: "flex",
-                          gap: "4",
-                          color: "#a0a0ff",
-                          fontSize: "sm",
-                          flexWrap: "wrap",
+                          display: 'flex',
+                          gap: '4',
+                          color: '#a0a0ff',
+                          fontSize: 'sm',
+                          flexWrap: 'wrap',
                         })}
                       >
                         <span>👤 Host: {room.creatorName}</span>
@@ -347,46 +324,45 @@ export default function RoomBrowserPage() {
                         {room.memberCount !== undefined && (
                           <span>
                             👥 {room.memberCount} member
-                            {room.memberCount !== 1 ? "s" : ""}
+                            {room.memberCount !== 1 ? 's' : ''}
                           </span>
                         )}
-                        {room.playerCount !== undefined &&
-                          room.playerCount > 0 && (
-                            <span>
-                              🎯 {room.playerCount} player
-                              {room.playerCount !== 1 ? "s" : ""}
-                            </span>
-                          )}
+                        {room.playerCount !== undefined && room.playerCount > 0 && (
+                          <span>
+                            🎯 {room.playerCount} player
+                            {room.playerCount !== 1 ? 's' : ''}
+                          </span>
+                        )}
                         <span
                           className={css({
                             color:
-                              room.status === "lobby"
-                                ? "#10b981"
-                                : room.status === "playing"
-                                  ? "#fbbf24"
-                                  : "#6b7280",
+                              room.status === 'lobby'
+                                ? '#10b981'
+                                : room.status === 'playing'
+                                  ? '#fbbf24'
+                                  : '#6b7280',
                           })}
                         >
-                          {room.status === "lobby"
-                            ? "⏳ Waiting"
-                            : room.status === "playing"
-                              ? "🎮 Playing"
-                              : "✓ Finished"}
+                          {room.status === 'lobby'
+                            ? '⏳ Waiting'
+                            : room.status === 'playing'
+                              ? '🎮 Playing'
+                              : '✓ Finished'}
                         </span>
                       </div>
                     </div>
                     {room.isMember ? (
                       <div
                         className={css({
-                          px: "6",
-                          py: "3",
-                          bg: "#10b981",
-                          color: "white",
-                          rounded: "lg",
+                          px: '6',
+                          py: '3',
+                          bg: '#10b981',
+                          color: 'white',
+                          rounded: 'lg',
                           fontWeight: 600,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "2",
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '2',
                         })}
                       >
                         ✓ Joined
@@ -394,54 +370,52 @@ export default function RoomBrowserPage() {
                     ) : (
                       <button
                         onClick={(e) => {
-                          e.stopPropagation();
-                          joinRoom(room);
+                          e.stopPropagation()
+                          joinRoom(room)
                         }}
                         disabled={
                           room.isLocked ||
-                          room.accessMode === "locked" ||
-                          room.accessMode === "retired"
+                          room.accessMode === 'locked' ||
+                          room.accessMode === 'retired'
                         }
                         className={css({
-                          px: "6",
-                          py: "3",
+                          px: '6',
+                          py: '3',
                           bg:
                             room.isLocked ||
-                            room.accessMode === "locked" ||
-                            room.accessMode === "retired"
-                              ? "#6b7280"
-                              : room.accessMode === "password"
-                                ? "#f59e0b"
-                                : "#3b82f6",
-                          color: "white",
-                          rounded: "lg",
+                            room.accessMode === 'locked' ||
+                            room.accessMode === 'retired'
+                              ? '#6b7280'
+                              : room.accessMode === 'password'
+                                ? '#f59e0b'
+                                : '#3b82f6',
+                          color: 'white',
+                          rounded: 'lg',
                           fontWeight: 600,
                           cursor:
                             room.isLocked ||
-                            room.accessMode === "locked" ||
-                            room.accessMode === "retired"
-                              ? "not-allowed"
-                              : "pointer",
+                            room.accessMode === 'locked' ||
+                            room.accessMode === 'retired'
+                              ? 'not-allowed'
+                              : 'pointer',
                           opacity:
                             room.isLocked ||
-                            room.accessMode === "locked" ||
-                            room.accessMode === "retired"
+                            room.accessMode === 'locked' ||
+                            room.accessMode === 'retired'
                               ? 0.5
                               : 1,
                           _hover:
                             room.isLocked ||
-                            room.accessMode === "locked" ||
-                            room.accessMode === "retired"
+                            room.accessMode === 'locked' ||
+                            room.accessMode === 'retired'
                               ? {}
-                              : room.accessMode === "password"
-                                ? { bg: "#d97706" }
-                                : { bg: "#2563eb" },
-                          transition: "all 0.2s",
+                              : room.accessMode === 'password'
+                                ? { bg: '#d97706' }
+                                : { bg: '#2563eb' },
+                          transition: 'all 0.2s',
                         })}
                       >
-                        {room.accessMode === "password"
-                          ? "🔑 Join with Password"
-                          : "Join Room"}
+                        {room.accessMode === 'password' ? '🔑 Join with Password' : 'Join Room'}
                       </button>
                     )}
                   </div>
@@ -455,87 +429,83 @@ export default function RoomBrowserPage() {
         {showCreateModal && (
           <div
             className={css({
-              position: "fixed",
+              position: 'fixed',
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
-              bg: "rgba(0, 0, 0, 0.7)",
-              backdropFilter: "blur(4px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              bg: 'rgba(0, 0, 0, 0.7)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               zIndex: 50,
             })}
             onClick={() => setShowCreateModal(false)}
           >
             <div
               className={css({
-                bg: "white",
-                rounded: "xl",
-                p: "8",
-                maxW: "500px",
-                w: "full",
-                mx: "4",
+                bg: 'white',
+                rounded: 'xl',
+                p: '8',
+                maxW: '500px',
+                w: 'full',
+                mx: '4',
               })}
               onClick={(e) => e.stopPropagation()}
             >
               <h2
                 className={css({
-                  fontSize: "2xl",
-                  fontWeight: "bold",
-                  mb: "6",
+                  fontSize: '2xl',
+                  fontWeight: 'bold',
+                  mb: '6',
                 })}
               >
                 Create New Room
               </h2>
               <form
                 onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  const nameValue = formData.get("name") as string;
-                  const gameName = formData.get("gameName") as string;
+                  e.preventDefault()
+                  const formData = new FormData(e.currentTarget)
+                  const nameValue = formData.get('name') as string
+                  const gameName = formData.get('gameName') as string
                   // Treat empty name as null
-                  const name = nameValue?.trim() || null;
+                  const name = nameValue?.trim() || null
                   if (gameName) {
-                    createRoom(name, gameName);
+                    createRoom(name, gameName)
                   }
                 }}
               >
-                <div className={css({ mb: "4" })}>
+                <div className={css({ mb: '4' })}>
                   <label
                     className={css({
-                      display: "block",
-                      mb: "2",
+                      display: 'block',
+                      mb: '2',
                       fontWeight: 600,
                     })}
                   >
-                    Room Name{" "}
-                    <span
-                      className={css({ fontWeight: 400, color: "#9ca3af" })}
-                    >
-                      (optional)
-                    </span>
+                    Room Name{' '}
+                    <span className={css({ fontWeight: 400, color: '#9ca3af' })}>(optional)</span>
                   </label>
                   <input
                     name="name"
                     type="text"
                     placeholder="e.g., Friday Night Games (defaults to: 🎮 CODE)"
                     className={css({
-                      w: "full",
-                      px: "4",
-                      py: "3",
-                      border: "1px solid #d1d5db",
-                      rounded: "lg",
-                      _focus: { outline: "none", borderColor: "#3b82f6" },
+                      w: 'full',
+                      px: '4',
+                      py: '3',
+                      border: '1px solid #d1d5db',
+                      rounded: 'lg',
+                      _focus: { outline: 'none', borderColor: '#3b82f6' },
                     })}
                   />
                 </div>
-                <div className={css({ mb: "6" })}>
+                <div className={css({ mb: '6' })}>
                   <label
                     className={css({
-                      display: "block",
-                      mb: "2",
+                      display: 'block',
+                      mb: '2',
                       fontWeight: 600,
                     })}
                   >
@@ -545,12 +515,12 @@ export default function RoomBrowserPage() {
                     name="gameName"
                     required
                     className={css({
-                      w: "full",
-                      px: "4",
-                      py: "3",
-                      border: "1px solid #d1d5db",
-                      rounded: "lg",
-                      _focus: { outline: "none", borderColor: "#3b82f6" },
+                      w: 'full',
+                      px: '4',
+                      py: '3',
+                      border: '1px solid #d1d5db',
+                      rounded: 'lg',
+                      _focus: { outline: 'none', borderColor: '#3b82f6' },
                     })}
                   >
                     <option value="matching">Memory Matching</option>
@@ -558,20 +528,20 @@ export default function RoomBrowserPage() {
                     <option value="complement-race">Complement Race</option>
                   </select>
                 </div>
-                <div className={css({ display: "flex", gap: "3" })}>
+                <div className={css({ display: 'flex', gap: '3' })}>
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
                     className={css({
                       flex: 1,
-                      px: "6",
-                      py: "3",
-                      bg: "#e5e7eb",
-                      color: "#374151",
-                      rounded: "lg",
+                      px: '6',
+                      py: '3',
+                      bg: '#e5e7eb',
+                      color: '#374151',
+                      rounded: 'lg',
                       fontWeight: 600,
-                      cursor: "pointer",
-                      _hover: { bg: "#d1d5db" },
+                      cursor: 'pointer',
+                      _hover: { bg: '#d1d5db' },
                     })}
                   >
                     Cancel
@@ -580,14 +550,14 @@ export default function RoomBrowserPage() {
                     type="submit"
                     className={css({
                       flex: 1,
-                      px: "6",
-                      py: "3",
-                      bg: "#10b981",
-                      color: "white",
-                      rounded: "lg",
+                      px: '6',
+                      py: '3',
+                      bg: '#10b981',
+                      color: 'white',
+                      rounded: 'lg',
                       fontWeight: 600,
-                      cursor: "pointer",
-                      _hover: { bg: "#059669" },
+                      cursor: 'pointer',
+                      _hover: { bg: '#059669' },
                     })}
                   >
                     Create Room
@@ -599,5 +569,5 @@ export default function RoomBrowserPage() {
         )}
       </div>
     </PageWithNav>
-  );
+  )
 }

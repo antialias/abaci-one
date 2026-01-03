@@ -1,9 +1,9 @@
-import { eq, and } from "drizzle-orm";
-import { type NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { customSkills } from "@/db/schema";
-import { getViewerId } from "@/lib/viewer";
-import { nanoid } from "nanoid";
+import { eq, and } from 'drizzle-orm'
+import { type NextRequest, NextResponse } from 'next/server'
+import { db } from '@/db'
+import { customSkills } from '@/db/schema'
+import { getViewerId } from '@/lib/viewer'
+import { nanoid } from 'nanoid'
 
 /**
  * GET /api/worksheets/skills/custom
@@ -12,24 +12,18 @@ import { nanoid } from "nanoid";
  */
 export async function GET(request: NextRequest) {
   try {
-    const viewerId = await getViewerId();
-    const { searchParams } = new URL(request.url);
-    const operator = searchParams.get("operator") as
-      | "addition"
-      | "subtraction"
-      | null;
+    const viewerId = await getViewerId()
+    const { searchParams } = new URL(request.url)
+    const operator = searchParams.get('operator') as 'addition' | 'subtraction' | null
 
     const query = operator
-      ? and(
-          eq(customSkills.userId, viewerId),
-          eq(customSkills.operator, operator),
-        )
-      : eq(customSkills.userId, viewerId);
+      ? and(eq(customSkills.userId, viewerId), eq(customSkills.operator, operator))
+      : eq(customSkills.userId, viewerId)
 
     const skills = await db.query.customSkills.findMany({
       where: query,
       orderBy: (customSkills, { asc }) => [asc(customSkills.createdAt)],
-    });
+    })
 
     // Parse JSON fields
     const parsed = skills.map((skill) => ({
@@ -37,15 +31,12 @@ export async function GET(request: NextRequest) {
       digitRange: JSON.parse(skill.digitRange),
       regroupingConfig: JSON.parse(skill.regroupingConfig),
       displayRules: JSON.parse(skill.displayRules),
-    }));
+    }))
 
-    return NextResponse.json({ skills: parsed });
+    return NextResponse.json({ skills: parsed })
   } catch (error) {
-    console.error("Failed to fetch custom skills:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch custom skills" },
-      { status: 500 },
-    );
+    console.error('Failed to fetch custom skills:', error)
+    return NextResponse.json({ error: 'Failed to fetch custom skills' }, { status: 500 })
   }
 }
 
@@ -56,40 +47,24 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const viewerId = await getViewerId();
-    const body = await request.json();
+    const viewerId = await getViewerId()
+    const body = await request.json()
 
-    const {
-      name,
-      description,
-      operator,
-      digitRange,
-      regroupingConfig,
-      displayRules,
-    } = body;
+    const { name, description, operator, digitRange, regroupingConfig, displayRules } = body
 
     // Validate required fields
-    if (
-      !name ||
-      !operator ||
-      !digitRange ||
-      !regroupingConfig ||
-      !displayRules
-    ) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 },
-      );
+    if (!name || !operator || !digitRange || !regroupingConfig || !displayRules) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     // Validate operator
-    if (operator !== "addition" && operator !== "subtraction") {
-      return NextResponse.json({ error: "Invalid operator" }, { status: 400 });
+    if (operator !== 'addition' && operator !== 'subtraction') {
+      return NextResponse.json({ error: 'Invalid operator' }, { status: 400 })
     }
 
     // Generate ID with custom prefix
-    const id = `custom-${nanoid(10)}`;
-    const now = new Date().toISOString();
+    const id = `custom-${nanoid(10)}`
+    const now = new Date().toISOString()
 
     const newSkill = {
       id,
@@ -102,9 +77,9 @@ export async function POST(request: NextRequest) {
       displayRules: JSON.stringify(displayRules),
       createdAt: now,
       updatedAt: now,
-    };
+    }
 
-    await db.insert(customSkills).values(newSkill);
+    await db.insert(customSkills).values(newSkill)
 
     // Return parsed skill
     return NextResponse.json({
@@ -114,12 +89,9 @@ export async function POST(request: NextRequest) {
         regroupingConfig,
         displayRules,
       },
-    });
+    })
   } catch (error) {
-    console.error("Failed to create custom skill:", error);
-    return NextResponse.json(
-      { error: "Failed to create custom skill" },
-      { status: 500 },
-    );
+    console.error('Failed to create custom skill:', error)
+    return NextResponse.json({ error: 'Failed to create custom skill' }, { status: 500 })
   }
 }

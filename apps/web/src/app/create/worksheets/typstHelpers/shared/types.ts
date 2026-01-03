@@ -1,37 +1,37 @@
 // Shared TypeScript types for Typst generation
 
 export interface DisplayOptions {
-  showCarryBoxes: boolean;
-  showAnswerBoxes: boolean;
-  showPlaceValueColors: boolean;
-  showProblemNumbers: boolean;
-  showCellBorder: boolean;
-  showTenFrames: boolean;
-  showTenFramesForAll: boolean;
-  fontSize: number;
+  showCarryBoxes: boolean
+  showAnswerBoxes: boolean
+  showPlaceValueColors: boolean
+  showProblemNumbers: boolean
+  showCellBorder: boolean
+  showTenFrames: boolean
+  showTenFramesForAll: boolean
+  fontSize: number
 }
 
 export interface CellDimensions {
-  cellSize: number; // in inches
-  cellSizeIn: string; // formatted for Typst (e.g., "0.55in")
-  cellSizePt: number; // in points (for font sizing)
+  cellSize: number // in inches
+  cellSizeIn: string // formatted for Typst (e.g., "0.55in")
+  cellSizePt: number // in points (for font sizing)
 }
 
 export interface TypstConstants {
-  CELL_STROKE_WIDTH: number;
-  TEN_FRAME_STROKE_WIDTH: number;
-  TEN_FRAME_CELL_STROKE_WIDTH: number;
-  ARROW_STROKE_WIDTH: number;
+  CELL_STROKE_WIDTH: number
+  TEN_FRAME_STROKE_WIDTH: number
+  TEN_FRAME_CELL_STROKE_WIDTH: number
+  ARROW_STROKE_WIDTH: number
 
   // Positioning offsets for borrowing hint arrows
-  ARROW_START_DX: number;
-  ARROW_START_DY: number;
-  ARROWHEAD_DX: number;
-  ARROWHEAD_DY: number;
+  ARROW_START_DX: number
+  ARROW_START_DY: number
+  ARROWHEAD_DX: number
+  ARROWHEAD_DY: number
 
   // Sizing factors
-  HINT_TEXT_SIZE_FACTOR: number;
-  ARROWHEAD_SIZE_FACTOR: number;
+  HINT_TEXT_SIZE_FACTOR: number
+  ARROWHEAD_SIZE_FACTOR: number
 }
 
 export const TYPST_CONSTANTS: TypstConstants = {
@@ -47,4 +47,4 @@ export const TYPST_CONSTANTS: TypstConstants = {
 
   HINT_TEXT_SIZE_FACTOR: 0.25,
   ARROWHEAD_SIZE_FACTOR: 0.35,
-} as const;
+} as const

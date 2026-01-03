@@ -6,28 +6,24 @@
  * the current P(known) estimate for each skill.
  */
 
-import { BKT_THRESHOLDS } from "../config/bkt-integration";
-import type { ProblemResultWithContext } from "../session-planner";
-import { calculateConfidence, getUncertaintyRange } from "./confidence";
-import {
-  type BlameMethod,
-  updateOnCorrect,
-  updateOnIncorrectWithMethod,
-} from "./conjunctive-bkt";
-import { helpWeight, responseTimeWeight } from "./evidence-quality";
-import { getDefaultParams } from "./skill-priors";
+import { BKT_THRESHOLDS } from '../config/bkt-integration'
+import type { ProblemResultWithContext } from '../session-planner'
+import { calculateConfidence, getUncertaintyRange } from './confidence'
+import { type BlameMethod, updateOnCorrect, updateOnIncorrectWithMethod } from './conjunctive-bkt'
+import { helpWeight, responseTimeWeight } from './evidence-quality'
+import { getDefaultParams } from './skill-priors'
 import type {
   BktComputeOptions,
   BktComputeResult,
   BktSkillState,
   MasteryClassification,
   SkillBktResult,
-} from "./types";
+} from './types'
 
 /** Extended options including blame method (not part of base BktComputeOptions to avoid breaking changes) */
 export interface BktComputeExtendedOptions extends BktComputeOptions {
   /** Which blame attribution method to use for incorrect multi-skill problems */
-  blameMethod?: BlameMethod;
+  blameMethod?: BlameMethod
 }
 
 /**
@@ -38,8 +34,8 @@ export const DEFAULT_BKT_OPTIONS: BktComputeExtendedOptions = {
   useCrossStudentPriors: false,
   applyDecay: false,
   decayHalfLifeDays: 30,
-  blameMethod: "heuristic",
-};
+  blameMethod: 'heuristic',
+}
 
 /**
  * Apply time-based decay to P(known).
@@ -55,15 +51,15 @@ function applyTimeDecay(
   pKnown: number,
   daysSinceLastPractice: number,
   halfLifeDays: number,
-  pInit: number,
+  pInit: number
 ): number {
-  if (daysSinceLastPractice <= 0) return pKnown;
+  if (daysSinceLastPractice <= 0) return pKnown
 
   // Exponential decay: after halfLifeDays, the "learned" portion decays by 50%
   // pKnown decays toward pInit (prior), not toward 0
-  const decayFactor = 0.5 ** (daysSinceLastPractice / halfLifeDays);
-  const learnedPortion = pKnown - pInit;
-  return pInit + learnedPortion * decayFactor;
+  const decayFactor = 0.5 ** (daysSinceLastPractice / halfLifeDays)
+  const learnedPortion = pKnown - pInit
+  return pInit + learnedPortion * decayFactor
 }
 
 /**
@@ -79,181 +75,158 @@ function applyTimeDecay(
  */
 export function computeBktFromHistory(
   results: ProblemResultWithContext[],
-  options: Partial<BktComputeExtendedOptions> = {},
+  options: Partial<BktComputeExtendedOptions> = {}
 ): BktComputeResult {
   // Merge with defaults so callers can override just what they need
   const opts: BktComputeExtendedOptions = {
     ...DEFAULT_BKT_OPTIONS,
     ...options,
-  };
+  }
   // Sort by timestamp to replay in chronological order
   // Note: timestamp may be a Date or a string (from JSON serialization)
   const sorted = [...results].sort((a, b) => {
     const timeA =
-      a.timestamp instanceof Date
-        ? a.timestamp.getTime()
-        : new Date(a.timestamp).getTime();
+      a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime()
     const timeB =
-      b.timestamp instanceof Date
-        ? b.timestamp.getTime()
-        : new Date(b.timestamp).getTime();
-    return timeA - timeB;
-  });
+      b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime()
+    return timeA - timeB
+  })
 
   // Track state for each skill
-  const skillStates = new Map<string, BktSkillState>();
+  const skillStates = new Map<string, BktSkillState>()
 
   // Process each problem result
   for (const result of sorted) {
     // Extract skill IDs from the result (skillsExercised tracks what was actually used)
-    const skillIds = result.skillsExercised ?? [];
-    if (skillIds.length === 0) continue;
+    const skillIds = result.skillsExercised ?? []
+    if (skillIds.length === 0) continue
 
     // Check if this is a recency-refresh sentinel record
     // These update lastPracticedAt but are ZERO-WEIGHT for BKT mastery (pKnown)
-    const isRecencyRefresh = result.source === "recency-refresh";
+    const isRecencyRefresh = result.source === 'recency-refresh'
 
     // Ensure all skills have state initialized
     for (const skillId of skillIds) {
       if (!skillStates.has(skillId)) {
-        const params = getDefaultParams(skillId);
+        const params = getDefaultParams(skillId)
         skillStates.set(skillId, {
           pKnown: params.pInit,
           opportunities: 0,
           successCount: 0,
           lastPracticedAt: null,
           params,
-        });
+        })
       }
     }
 
     // For recency-refresh sentinels, only update lastPracticedAt - skip BKT calculation
     if (isRecencyRefresh) {
       const timestamp =
-        result.timestamp instanceof Date
-          ? result.timestamp
-          : new Date(result.timestamp);
+        result.timestamp instanceof Date ? result.timestamp : new Date(result.timestamp)
       for (const skillId of skillIds) {
-        const state = skillStates.get(skillId)!;
+        const state = skillStates.get(skillId)!
         // Update lastPracticedAt if this is more recent
         if (!state.lastPracticedAt || timestamp > state.lastPracticedAt) {
-          state.lastPracticedAt = timestamp;
+          state.lastPracticedAt = timestamp
         }
       }
-      continue; // Skip pKnown updates for sentinel records
+      continue // Skip pKnown updates for sentinel records
     }
 
     // Build skill records for BKT update
     const skillRecords = skillIds.map((skillId: string) => {
-      const state = skillStates.get(skillId)!;
+      const state = skillStates.get(skillId)!
       return {
         skillId,
         pKnown: state.pKnown,
         params: state.params,
-      };
-    });
+      }
+    })
 
     // Calculate evidence weight based on help usage, response time, and retry status
-    const helpW = helpWeight(result.hadHelp);
-    const rtWeight = responseTimeWeight(
-      result.responseTimeMs,
-      result.isCorrect,
-    );
+    const helpW = helpWeight(result.hadHelp)
+    const rtWeight = responseTimeWeight(result.responseTimeMs, result.isCorrect)
     // Apply mastery weight from retry system (1.0 for first attempt, 0.5 for first retry, 0.25 for second retry)
     // If masteryWeight is undefined (old data), default to 1.0
-    const retryWeight = result.masteryWeight ?? 1.0;
-    const evidenceWeight = helpW * rtWeight * retryWeight;
+    const retryWeight = result.masteryWeight ?? 1.0
+    const evidenceWeight = helpW * rtWeight * retryWeight
 
     // Compute BKT updates (conjunctive model)
-    const blameMethod = opts.blameMethod ?? "heuristic";
+    const blameMethod = opts.blameMethod ?? 'heuristic'
     const updates = result.isCorrect
       ? updateOnCorrect(skillRecords)
-      : updateOnIncorrectWithMethod(skillRecords, blameMethod);
+      : updateOnIncorrectWithMethod(skillRecords, blameMethod)
 
     // Check if any update produced NaN (indicates invalid input data)
-    const hasInvalidUpdate = updates.some(
-      (u) => !Number.isFinite(u.updatedPKnown),
-    );
+    const hasInvalidUpdate = updates.some((u) => !Number.isFinite(u.updatedPKnown))
     if (hasInvalidUpdate) {
       console.warn(
-        "[BKT] Skipping problem result due to invalid data - skills:",
-        skillIds.join(", "),
-        "timestamp:",
+        '[BKT] Skipping problem result due to invalid data - skills:',
+        skillIds.join(', '),
+        'timestamp:',
         result.timestamp,
-        "Updates with NaN:",
-        updates
-          .filter((u) => !Number.isFinite(u.updatedPKnown))
-          .map((u) => u.skillId),
-      );
-      continue; // Skip this problem, don't corrupt skill states
+        'Updates with NaN:',
+        updates.filter((u) => !Number.isFinite(u.updatedPKnown)).map((u) => u.skillId)
+      )
+      continue // Skip this problem, don't corrupt skill states
     }
 
     // Apply updates with evidence weighting
     for (const update of updates) {
-      const state = skillStates.get(update.skillId)!;
+      const state = skillStates.get(update.skillId)!
 
       // Weighted blend between old and new pKnown based on evidence quality
       // When evidenceWeight = 1.0, use full update
       // When evidenceWeight < 1.0, stay closer to prior
-      const newPKnown =
-        state.pKnown * (1 - evidenceWeight) +
-        update.updatedPKnown * evidenceWeight;
+      const newPKnown = state.pKnown * (1 - evidenceWeight) + update.updatedPKnown * evidenceWeight
 
       // Final safety check - if blending still produces NaN, preserve prior state
       if (!Number.isFinite(newPKnown)) {
         console.warn(
-          "[BKT] Evidence blending produced NaN for skill:",
+          '[BKT] Evidence blending produced NaN for skill:',
           update.skillId,
-          "evidenceWeight:",
+          'evidenceWeight:',
           evidenceWeight,
-          "updatedPKnown:",
+          'updatedPKnown:',
           update.updatedPKnown,
-          "- preserving prior state",
-        );
-        continue;
+          '- preserving prior state'
+        )
+        continue
       }
 
-      state.pKnown = newPKnown;
-      state.opportunities += 1;
-      if (result.isCorrect) state.successCount += 1;
+      state.pKnown = newPKnown
+      state.opportunities += 1
+      if (result.isCorrect) state.successCount += 1
       state.lastPracticedAt =
-        result.timestamp instanceof Date
-          ? result.timestamp
-          : new Date(result.timestamp);
+        result.timestamp instanceof Date ? result.timestamp : new Date(result.timestamp)
     }
   }
 
   // Convert to results
-  const skills: SkillBktResult[] = [];
-  const now = new Date();
+  const skills: SkillBktResult[] = []
+  const now = new Date()
 
   for (const [skillId, state] of skillStates) {
-    const successRate =
-      state.opportunities > 0 ? state.successCount / state.opportunities : 0.5;
-    const confidence = calculateConfidence(state.opportunities, successRate);
+    const successRate = state.opportunities > 0 ? state.successCount / state.opportunities : 0.5
+    const confidence = calculateConfidence(state.opportunities, successRate)
 
     // Apply decay if enabled
-    let finalPKnown = state.pKnown;
+    let finalPKnown = state.pKnown
     if (opts.applyDecay && state.lastPracticedAt) {
       const daysSinceLastPractice =
-        (now.getTime() - state.lastPracticedAt.getTime()) /
-        (1000 * 60 * 60 * 24);
+        (now.getTime() - state.lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
       finalPKnown = applyTimeDecay(
         state.pKnown,
         daysSinceLastPractice,
         opts.decayHalfLifeDays,
-        state.params.pInit,
-      );
+        state.params.pInit
+      )
     }
 
-    const uncertaintyRange = getUncertaintyRange(finalPKnown, confidence);
+    const uncertaintyRange = getUncertaintyRange(finalPKnown, confidence)
 
     // Classify mastery based on P(known) and confidence
-    const masteryClassification = classifyMastery(
-      finalPKnown,
-      confidence,
-      opts.confidenceThreshold,
-    );
+    const masteryClassification = classifyMastery(finalPKnown, confidence, opts.confidenceThreshold)
 
     // Final safety check - this should not happen after skipping invalid updates
     // If it does, warn and let UI show error state for this specific skill
@@ -261,8 +234,8 @@ export function computeBktFromHistory(
       console.warn(
         `[BKT] UNEXPECTED: Skill ${skillId} has corrupted pKnown after processing: ${finalPKnown}. ` +
           `Opportunities: ${state.opportunities}, SuccessCount: ${state.successCount}. ` +
-          "This should not happen - invalid updates should have been skipped.",
-      );
+          'This should not happen - invalid updates should have been skipped.'
+      )
     }
 
     skills.push({
@@ -274,21 +247,19 @@ export function computeBktFromHistory(
       successCount: state.successCount,
       lastPracticedAt: state.lastPracticedAt,
       masteryClassification,
-    });
+    })
   }
 
   // Sort by pKnown ascending (weak skills first)
-  skills.sort((a, b) => a.pKnown - b.pKnown);
+  skills.sort((a, b) => a.pKnown - b.pKnown)
 
   // Identify intervention needed (low pKnown with sufficient confidence)
-  const interventionNeeded = skills.filter(
-    (s) => s.masteryClassification === "weak",
-  );
+  const interventionNeeded = skills.filter((s) => s.masteryClassification === 'weak')
 
   // Identify strengths (high pKnown with sufficient confidence)
-  const strengths = skills.filter((s) => s.masteryClassification === "strong");
+  const strengths = skills.filter((s) => s.masteryClassification === 'strong')
 
-  return { skills, interventionNeeded, strengths };
+  return { skills, interventionNeeded, strengths }
 }
 
 /**
@@ -302,19 +273,19 @@ export function computeBktFromHistory(
 function classifyMastery(
   pKnown: number,
   confidence: number,
-  confidenceThreshold: number,
+  confidenceThreshold: number
 ): MasteryClassification {
   // Need sufficient confidence to make strong claims
   if (confidence < confidenceThreshold) {
-    return "developing"; // Not enough data to be sure either way
+    return 'developing' // Not enough data to be sure either way
   }
 
   if (pKnown >= BKT_THRESHOLDS.strong) {
-    return "strong";
+    return 'strong'
   } else if (pKnown < BKT_THRESHOLDS.weak) {
-    return "weak";
+    return 'weak'
   } else {
-    return "developing";
+    return 'developing'
   }
 }
 
@@ -324,7 +295,7 @@ function classifyMastery(
  */
 export function recomputeWithOptions(
   bktResult: BktComputeResult,
-  newOptions: BktComputeOptions,
+  newOptions: BktComputeOptions
 ): BktComputeResult {
   // Re-classify all skills with new threshold
   const skills = bktResult.skills.map((skill) => ({
@@ -332,14 +303,12 @@ export function recomputeWithOptions(
     masteryClassification: classifyMastery(
       skill.pKnown,
       skill.confidence,
-      newOptions.confidenceThreshold,
+      newOptions.confidenceThreshold
     ),
-  }));
+  }))
 
-  const interventionNeeded = skills.filter(
-    (s) => s.masteryClassification === "weak",
-  );
-  const strengths = skills.filter((s) => s.masteryClassification === "strong");
+  const interventionNeeded = skills.filter((s) => s.masteryClassification === 'weak')
+  const strengths = skills.filter((s) => s.masteryClassification === 'strong')
 
-  return { skills, interventionNeeded, strengths };
+  return { skills, interventionNeeded, strengths }
 }

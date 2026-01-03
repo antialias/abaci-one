@@ -494,7 +494,9 @@
       "Bash(photos\" banner instead of silently hiding the upload buttons.\n\nThis ensures users see feedback when access is unexpectedly denied,\nrather than being confused by missing UI elements.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "WebFetch(domain:platform.openai.com)",
       "WebFetch(domain:cookbook.openai.com)",
-      "WebFetch(domain:docs.aimlapi.com)"
+      "WebFetch(domain:docs.aimlapi.com)",
+      "Bash(\"/Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/app/practice/[studentId]/summary/FullscreenCamera.tsx\")",
+      "Bash(xargs -I {} bash -c 'echo \"\"\"\"=== {} ===\"\"\"\" && grep -A3 \"\"\"\"dynamic\\(\"\"\"\" {}')"
     ],
     "deny": [],
     "ask": []
