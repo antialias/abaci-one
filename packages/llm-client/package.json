@@ -37,15 +37,14 @@
     "schema",
     "validation"
   ],
-  "dependencies": {},
-  "peerDependencies": {
-    "zod": "^4.0.0"
+  "dependencies": {
+    "zod": "^4.1.12",
+    "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0",
-    "vitest": "^1.0.0",
-    "zod": "^4.1.12"
+    "vitest": "^1.0.0"
   },
   "author": "Soroban Flashcards Team",
   "license": "MIT",
