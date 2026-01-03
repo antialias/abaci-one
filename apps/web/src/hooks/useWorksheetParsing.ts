@@ -78,6 +78,17 @@ interface AttachmentsCache {
 // Hooks
 // ============================================================================
 
+/** Options for starting parsing */
+export interface StartParsingOptions {
+  attachmentId: string
+  /** Optional model config ID - uses default if not specified */
+  modelConfigId?: string
+  /** Optional additional context/hints for re-parsing */
+  additionalContext?: string
+  /** Optional bounding boxes to preserve from user adjustments (keyed by problem index) */
+  preservedBoundingBoxes?: Record<number, { x: number; y: number; width: number; height: number }>
+}
+
 /**
  * Hook to start parsing a worksheet attachment
  */
@@ -86,9 +97,27 @@ export function useStartParsing(playerId: string, sessionId: string) {
   const queryKey = attachmentKeys.session(playerId, sessionId)
 
   return useMutation({
-    mutationFn: async (attachmentId: string) => {
+    mutationFn: async (options: StartParsingOptions | string) => {
+      // Support both old (string) and new (object) signature for backwards compatibility
+      const { attachmentId, modelConfigId, additionalContext, preservedBoundingBoxes } =
+        typeof options === 'string'
+          ? {
+              attachmentId: options,
+              modelConfigId: undefined,
+              additionalContext: undefined,
+              preservedBoundingBoxes: undefined,
+            }
+          : options
+
+      // Build request body if we have any options
+      const body =
+        modelConfigId || additionalContext || preservedBoundingBoxes
+          ? JSON.stringify({ modelConfigId, additionalContext, preservedBoundingBoxes })
+          : undefined
+
       const res = await api(`curriculum/${playerId}/attachments/${attachmentId}/parse`, {
         method: 'POST',
+        body,
       })
       if (!res.ok) {
         const error = await res.json()
@@ -97,7 +126,9 @@ export function useStartParsing(playerId: string, sessionId: string) {
       return res.json() as Promise<ParseResponse>
     },
 
-    onMutate: async (attachmentId) => {
+    onMutate: async (options) => {
+      const attachmentId = typeof options === 'string' ? options : options.attachmentId
+
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey })
 
@@ -119,14 +150,16 @@ export function useStartParsing(playerId: string, sessionId: string) {
       return { previous }
     },
 
-    onError: (_err, attachmentId, context) => {
+    onError: (_err, _options, context) => {
       // Revert on error
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous)
       }
     },
 
-    onSuccess: (data, attachmentId) => {
+    onSuccess: (data, options) => {
+      const attachmentId = typeof options === 'string' ? options : options.attachmentId
+
       // Update cache with actual result
       const current = queryClient.getQueryData<AttachmentsCache>(queryKey)
       if (current && data.success) {
@@ -267,6 +300,114 @@ export function useApproveAndCreateSession(playerId: string, sessionId: string) 
 
     onSettled: () => {
       // Always refetch attachments to ensure consistency
+      queryClient.invalidateQueries({ queryKey })
+    },
+  })
+}
+
+/** Options for selective re-parsing */
+export interface ReparseSelectedOptions {
+  attachmentId: string
+  /** Indices of problems to re-parse (0-based) */
+  problemIndices: number[]
+  /** Bounding boxes for each problem (must match problemIndices length) */
+  boundingBoxes: Array<{ x: number; y: number; width: number; height: number }>
+  /** Optional additional context/hints for the LLM */
+  additionalContext?: string
+  /** Optional model config ID */
+  modelConfigId?: string
+}
+
+/** Response from selective re-parse API */
+interface ReparseSelectedResponse {
+  success: boolean
+  reparsedCount: number
+  reparsedIndices: number[]
+  updatedResult: import('@/lib/worksheet-parsing').WorksheetParsingResult
+}
+
+/**
+ * Hook to re-parse selected problems
+ */
+export function useReparseSelected(playerId: string, sessionId: string) {
+  const queryClient = useQueryClient()
+  const queryKey = attachmentKeys.session(playerId, sessionId)
+
+  return useMutation({
+    mutationFn: async (options: ReparseSelectedOptions) => {
+      const { attachmentId, problemIndices, boundingBoxes, additionalContext, modelConfigId } =
+        options
+
+      const res = await api(`curriculum/${playerId}/attachments/${attachmentId}/parse-selected`, {
+        method: 'POST',
+        body: JSON.stringify({
+          problemIndices,
+          boundingBoxes,
+          additionalContext,
+          modelConfigId,
+        }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to re-parse selected problems')
+      }
+      return res.json() as Promise<ReparseSelectedResponse>
+    },
+
+    onMutate: async (options) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey })
+
+      // Snapshot current state
+      const previous = queryClient.getQueryData<AttachmentsCache>(queryKey)
+
+      // Optimistic update: mark as processing
+      if (previous) {
+        queryClient.setQueryData<AttachmentsCache>(queryKey, {
+          ...previous,
+          attachments: previous.attachments.map((a) =>
+            a.id === options.attachmentId
+              ? { ...a, parsingStatus: 'processing' as ParsingStatus }
+              : a
+          ),
+        })
+      }
+
+      return { previous }
+    },
+
+    onError: (_err, _options, context) => {
+      // Revert on error
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous)
+      }
+    },
+
+    onSuccess: (data, options) => {
+      // Update cache with actual result
+      const current = queryClient.getQueryData<AttachmentsCache>(queryKey)
+      if (current && data.success) {
+        queryClient.setQueryData<AttachmentsCache>(queryKey, {
+          ...current,
+          attachments: current.attachments.map((a) =>
+            a.id === options.attachmentId
+              ? {
+                  ...a,
+                  parsingStatus: data.updatedResult.needsReview
+                    ? ('needs_review' as ParsingStatus)
+                    : ('approved' as ParsingStatus),
+                  rawParsingResult: data.updatedResult,
+                  confidenceScore: data.updatedResult.overallConfidence,
+                  needsReview: data.updatedResult.needsReview,
+                }
+              : a
+          ),
+        })
+      }
+    },
+
+    onSettled: () => {
+      // Always refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey })
     },
   })

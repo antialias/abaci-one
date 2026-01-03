@@ -20,6 +20,9 @@ import { getDbUserId } from '@/lib/viewer'
 import {
   parseWorksheetImage,
   computeParsingStats,
+  buildWorksheetParsingPrompt,
+  getModelConfig,
+  getDefaultModelConfig,
   type WorksheetParsingResult,
 } from '@/lib/worksheet-parsing'
 
@@ -29,14 +32,37 @@ interface RouteParams {
 
 /**
  * POST - Start parsing the attachment
+ *
+ * Body (optional):
+ *   - modelConfigId: string - ID of the model config to use (from PARSING_MODEL_CONFIGS)
+ *   - additionalContext: string - Additional context/hints for the LLM
+ *   - preservedBoundingBoxes: Record<number, BoundingBox> - Bounding boxes to preserve by index
  */
-export async function POST(_request: Request, { params }: RouteParams) {
+export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { playerId, attachmentId } = await params
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
     }
+
+    // Parse optional parameters from request body
+    let modelConfigId: string | undefined
+    let additionalContext: string | undefined
+    let preservedBoundingBoxes:
+      | Record<number, { x: number; y: number; width: number; height: number }>
+      | undefined
+    try {
+      const body = await request.json()
+      modelConfigId = body?.modelConfigId
+      additionalContext = body?.additionalContext
+      preservedBoundingBoxes = body?.preservedBoundingBoxes
+    } catch {
+      // No body or invalid JSON is fine - use defaults
+    }
+
+    // Resolve model config
+    const modelConfig = modelConfigId ? getModelConfig(modelConfigId) : getDefaultModelConfig()
 
     // Authorization check
     const userId = await getDbUserId()
@@ -85,19 +111,44 @@ export async function POST(_request: Request, { params }: RouteParams) {
     const mimeType = attachment.mimeType || 'image/jpeg'
     const imageDataUrl = `data:${mimeType};base64,${base64Image}`
 
+    // Build the prompt (capture for debugging)
+    const promptOptions = additionalContext ? { additionalContext } : {}
+    const promptUsed = buildWorksheetParsingPrompt(promptOptions)
+
     try {
-      // Parse the worksheet
+      // Parse the worksheet (always uses cropped image)
       const result = await parseWorksheetImage(imageDataUrl, {
         maxRetries: 2,
+        modelConfigId: modelConfig?.id,
+        promptOptions,
       })
 
-      const parsingResult = result.data
+      let parsingResult = result.data
+
+      // Merge preserved bounding boxes from user adjustments
+      // This allows the user's manual adjustments to be retained after re-parsing
+      if (preservedBoundingBoxes && Object.keys(preservedBoundingBoxes).length > 0) {
+        parsingResult = {
+          ...parsingResult,
+          problems: parsingResult.problems.map((problem, index) => {
+            const preservedBox = preservedBoundingBoxes[index]
+            if (preservedBox) {
+              return {
+                ...problem,
+                problemBoundingBox: preservedBox,
+              }
+            }
+            return problem
+          }),
+        }
+      }
+
       const stats = computeParsingStats(parsingResult)
 
       // Determine status based on confidence
       const status: ParsingStatus = parsingResult.needsReview ? 'needs_review' : 'approved'
 
-      // Save results to database
+      // Save results and LLM metadata to database
       await db
         .update(practiceAttachments)
         .set({
@@ -107,6 +158,17 @@ export async function POST(_request: Request, { params }: RouteParams) {
           confidenceScore: parsingResult.overallConfidence,
           needsReview: parsingResult.needsReview,
           parsingError: null,
+          // LLM metadata for debugging/transparency
+          llmProvider: result.provider,
+          llmModel: result.model,
+          llmPromptUsed: promptUsed,
+          llmRawResponse: result.rawResponse,
+          llmJsonSchema: result.jsonSchema,
+          llmImageSource: 'cropped',
+          llmAttempts: result.attempts,
+          llmPromptTokens: result.usage.promptTokens,
+          llmCompletionTokens: result.usage.completionTokens,
+          llmTotalTokens: result.usage.promptTokens + result.usage.completionTokens,
         })
         .where(eq(practiceAttachments.id, attachmentId))
 
@@ -115,8 +177,14 @@ export async function POST(_request: Request, { params }: RouteParams) {
         status,
         result: parsingResult,
         stats,
-        attempts: result.attempts,
-        usage: result.usage,
+        // LLM metadata in response
+        llm: {
+          provider: result.provider,
+          model: result.model,
+          attempts: result.attempts,
+          imageSource: 'cropped',
+          usage: result.usage,
+        },
       })
     } catch (parseError) {
       const errorMessage =
@@ -189,6 +257,20 @@ export async function GET(_request: Request, { params }: RouteParams) {
       needsReview: boolean
       confidenceScore: number | null
       stats?: ReturnType<typeof computeParsingStats>
+      llm?: {
+        provider: string | null
+        model: string | null
+        promptUsed: string | null
+        rawResponse: string | null
+        jsonSchema: string | null
+        imageSource: string | null
+        attempts: number | null
+        usage: {
+          promptTokens: number | null
+          completionTokens: number | null
+          totalTokens: number | null
+        }
+      }
     } = {
       status: attachment.parsingStatus,
       parsedAt: attachment.parsedAt,
@@ -201,6 +283,24 @@ export async function GET(_request: Request, { params }: RouteParams) {
     // Add stats if we have results
     if (attachment.rawParsingResult) {
       response.stats = computeParsingStats(attachment.rawParsingResult)
+    }
+
+    // Add LLM metadata if available
+    if (attachment.llmProvider || attachment.llmModel) {
+      response.llm = {
+        provider: attachment.llmProvider,
+        model: attachment.llmModel,
+        promptUsed: attachment.llmPromptUsed,
+        rawResponse: attachment.llmRawResponse,
+        jsonSchema: attachment.llmJsonSchema,
+        imageSource: attachment.llmImageSource,
+        attempts: attachment.llmAttempts,
+        usage: {
+          promptTokens: attachment.llmPromptTokens,
+          completionTokens: attachment.llmCompletionTokens,
+          totalTokens: attachment.llmTotalTokens,
+        },
+      }
     }
 
     return NextResponse.json(response)

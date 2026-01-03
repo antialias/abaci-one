@@ -82,6 +82,11 @@ export class OpenAIProvider extends BaseProvider {
       },
     }
 
+    // Add reasoning_effort for GPT-5.2+ models
+    if (request.reasoningEffort) {
+      requestBody.reasoning_effort = request.reasoningEffort
+    }
+
     const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -147,11 +152,15 @@ export class OpenAIProvider extends BaseProvider {
       throw new LLMApiError(this.name, 500, 'Empty response content')
     }
 
+    // Store raw content before parsing
+    const rawContent = choice.message.content
+
     // Parse JSON response
-    const parsedContent = this.parseJsonResponse(choice.message.content)
+    const parsedContent = this.parseJsonResponse(rawContent)
 
     return {
       content: parsedContent,
+      rawContent,
       usage: {
         promptTokens: data.usage?.prompt_tokens ?? 0,
         completionTokens: data.usage?.completion_tokens ?? 0,

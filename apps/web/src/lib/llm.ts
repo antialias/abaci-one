@@ -43,6 +43,7 @@ export type {
   ProviderRequest,
   ProviderResponse,
   ValidationFeedback,
+  ReasoningEffort,
 } from '@soroban/llm-client'
 
 export {

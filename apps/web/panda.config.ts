@@ -204,6 +204,11 @@ export default defineConfig({
           '0%, 100%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.05)' },
         },
+        // Pulse opacity - fading effect for loading states
+        pulseOpacity: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.5' },
+        },
         // Error shake - stronger horizontal oscillation (line 2009)
         errorShake: {
           '0%, 100%': { transform: 'translateX(0)' },
@@ -238,6 +243,11 @@ export default defineConfig({
         shimmer: {
           '0%, 100%': { opacity: '0.7' },
           '50%': { opacity: '0.4' },
+        },
+        // Spin - rotate 360 degrees for spinners
+        spin: {
+          from: { transform: 'rotate(0deg)' },
+          to: { transform: 'rotate(360deg)' },
         },
         // Fade in with scale - entrance animation
         fadeInScale: {

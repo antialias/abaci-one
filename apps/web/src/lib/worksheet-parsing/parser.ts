@@ -4,9 +4,81 @@
  * Uses the LLM client to parse abacus workbook page images
  * into structured problem data.
  */
-import { llm, type LLMProgress } from '@/lib/llm'
+import { llm, type LLMProgress, type ReasoningEffort } from '@/lib/llm'
 import { WorksheetParsingResultSchema, type WorksheetParsingResult } from './schemas'
 import { buildWorksheetParsingPrompt, type PromptOptions } from './prompt-builder'
+
+/**
+ * Available model configurations for worksheet parsing
+ */
+export interface ModelConfig {
+  /** Unique identifier for this config */
+  id: string
+  /** Display name for UI */
+  name: string
+  /** Provider name */
+  provider: 'openai' | 'anthropic'
+  /** Model ID to use */
+  model: string
+  /** Reasoning effort (for GPT-5.2+) */
+  reasoningEffort?: ReasoningEffort
+  /** Description of when to use this config */
+  description: string
+  /** Whether this is the default config */
+  isDefault?: boolean
+}
+
+/**
+ * Available model configurations for worksheet parsing
+ */
+export const PARSING_MODEL_CONFIGS: ModelConfig[] = [
+  {
+    id: 'gpt-5.2-thinking',
+    name: 'GPT-5.2 Thinking',
+    provider: 'openai',
+    model: 'gpt-5.2',
+    reasoningEffort: 'medium',
+    description: 'Best balance of quality and speed for worksheet analysis',
+    isDefault: true,
+  },
+  {
+    id: 'gpt-5.2-thinking-high',
+    name: 'GPT-5.2 Thinking (High)',
+    provider: 'openai',
+    model: 'gpt-5.2',
+    reasoningEffort: 'high',
+    description: 'More thorough reasoning, better for difficult handwriting',
+  },
+  {
+    id: 'gpt-5.2-instant',
+    name: 'GPT-5.2 Instant',
+    provider: 'openai',
+    model: 'gpt-5.2-chat-latest',
+    reasoningEffort: 'none',
+    description: 'Faster but less accurate, good for clear worksheets',
+  },
+  {
+    id: 'claude-sonnet',
+    name: 'Claude Sonnet 4',
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-20250514',
+    description: 'Alternative provider, good for comparison',
+  },
+]
+
+/**
+ * Get the default model config
+ */
+export function getDefaultModelConfig(): ModelConfig {
+  return PARSING_MODEL_CONFIGS.find((c) => c.isDefault) ?? PARSING_MODEL_CONFIGS[0]
+}
+
+/**
+ * Get a model config by ID
+ */
+export function getModelConfig(id: string): ModelConfig | undefined {
+  return PARSING_MODEL_CONFIGS.find((c) => c.id === id)
+}
 
 /**
  * Options for parsing a worksheet
@@ -22,6 +94,10 @@ export interface ParseWorksheetOptions {
   provider?: string
   /** Specific model to use (defaults to configured default) */
   model?: string
+  /** Reasoning effort for GPT-5.2+ models */
+  reasoningEffort?: ReasoningEffort
+  /** Use a specific model config by ID */
+  modelConfigId?: string
 }
 
 /**
@@ -42,6 +118,10 @@ export interface ParseWorksheetResult {
     completionTokens: number
     totalTokens: number
   }
+  /** Raw JSON response from the LLM (before validation/parsing) */
+  rawResponse: string
+  /** JSON Schema sent to the LLM (with field descriptions) */
+  jsonSchema: string
 }
 
 /**
@@ -67,7 +147,35 @@ export async function parseWorksheetImage(
   imageDataUrl: string,
   options: ParseWorksheetOptions = {}
 ): Promise<ParseWorksheetResult> {
-  const { onProgress, maxRetries = 2, promptOptions = {}, provider, model } = options
+  const {
+    onProgress,
+    maxRetries = 2,
+    promptOptions = {},
+    provider: explicitProvider,
+    model: explicitModel,
+    reasoningEffort: explicitReasoningEffort,
+    modelConfigId,
+  } = options
+
+  // Resolve model config
+  let provider = explicitProvider
+  let model = explicitModel
+  let reasoningEffort = explicitReasoningEffort
+
+  if (modelConfigId) {
+    const config = getModelConfig(modelConfigId)
+    if (config) {
+      provider = provider ?? config.provider
+      model = model ?? config.model
+      reasoningEffort = reasoningEffort ?? config.reasoningEffort
+    }
+  } else if (!provider && !model) {
+    // Use default config
+    const defaultConfig = getDefaultModelConfig()
+    provider = defaultConfig.provider
+    model = defaultConfig.model
+    reasoningEffort = reasoningEffort ?? defaultConfig.reasoningEffort
+  }
 
   // Build the prompt
   const prompt = buildWorksheetParsingPrompt(promptOptions)
@@ -81,6 +189,7 @@ export async function parseWorksheetImage(
     onProgress,
     provider,
     model,
+    reasoningEffort,
   })
 
   return {
@@ -89,6 +198,8 @@ export async function parseWorksheetImage(
     provider: response.provider,
     model: response.model,
     usage: response.usage,
+    rawResponse: response.rawResponse,
+    jsonSchema: response.jsonSchema,
   }
 }
 

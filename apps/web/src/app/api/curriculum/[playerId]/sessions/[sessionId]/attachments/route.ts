@@ -47,6 +47,21 @@ export interface SessionAttachment {
   needsReview: boolean
   sessionCreated: boolean
   createdSessionId: string | null
+  // LLM metadata (for debugging/transparency)
+  llm: {
+    provider: string | null
+    model: string | null
+    promptUsed: string | null
+    rawResponse: string | null
+    jsonSchema: string | null
+    imageSource: string | null
+    attempts: number | null
+    usage: {
+      promptTokens: number | null
+      completionTokens: number | null
+      totalTokens: number | null
+    }
+  } | null
 }
 
 /**
@@ -107,6 +122,24 @@ export async function GET(_request: Request, { params }: RouteParams) {
       needsReview: att.needsReview === true,
       sessionCreated: att.sessionCreated === true,
       createdSessionId: att.createdSessionId ?? null,
+      // LLM metadata (for debugging/transparency)
+      llm:
+        att.llmProvider || att.llmModel
+          ? {
+              provider: att.llmProvider ?? null,
+              model: att.llmModel ?? null,
+              promptUsed: att.llmPromptUsed ?? null,
+              rawResponse: att.llmRawResponse ?? null,
+              jsonSchema: att.llmJsonSchema ?? null,
+              imageSource: att.llmImageSource ?? null,
+              attempts: att.llmAttempts ?? null,
+              usage: {
+                promptTokens: att.llmPromptTokens ?? null,
+                completionTokens: att.llmCompletionTokens ?? null,
+                totalTokens: att.llmTotalTokens ?? null,
+              },
+            }
+          : null,
     }))
 
     return NextResponse.json({ attachments: result })
@@ -297,6 +330,8 @@ export async function POST(request: Request, { params }: RouteParams) {
         needsReview: false,
         sessionCreated: false,
         createdSessionId: null,
+        // No LLM metadata yet
+        llm: null,
       })
     }
 

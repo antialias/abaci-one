@@ -1,11 +1,36 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Z_INDEX } from '@/constants/zIndex'
 import { css } from '../../../styled-system/css'
 import { DocumentAdjuster } from './DocumentAdjuster'
 import { useDocumentDetection } from './useDocumentDetection'
+import {
+  BoundingBoxOverlay,
+  DebugContentModal,
+  EditableProblemRow,
+  type ProblemCorrection,
+} from '@/components/worksheet-parsing'
+
+import type { WorksheetParsingResult, ModelConfig } from '@/lib/worksheet-parsing'
+import { cropImageWithCanvas } from '@/lib/worksheet-parsing'
+
+/** LLM metadata for debugging */
+export interface LLMMetadata {
+  provider: string | null
+  model: string | null
+  promptUsed: string | null
+  rawResponse: string | null
+  jsonSchema: string | null
+  imageSource: string | null
+  attempts: number | null
+  usage: {
+    promptTokens: number | null
+    completionTokens: number | null
+    totalTokens: number | null
+  }
+}
 
 export interface PhotoViewerEditorPhoto {
   id: string
@@ -19,6 +44,10 @@ export interface PhotoViewerEditorPhoto {
   problemCount?: number
   /** Whether a session was created from this photo */
   sessionCreated?: boolean
+  /** Full parsing result for review mode */
+  rawParsingResult?: WorksheetParsingResult | null
+  /** LLM metadata for debugging */
+  llm?: LLMMetadata | null
 }
 
 interface PhotoViewerEditorProps {
@@ -26,8 +55,8 @@ interface PhotoViewerEditorProps {
   photos: PhotoViewerEditorPhoto[]
   /** Index of the initially selected photo */
   initialIndex: number
-  /** Initial mode - 'view' shows photo, 'edit' shows crop UI */
-  initialMode: 'view' | 'edit'
+  /** Initial mode - 'view' shows photo, 'edit' shows crop UI, 'review' shows parsed problems */
+  initialMode: 'view' | 'edit' | 'review'
   /** Whether the viewer is open */
   isOpen: boolean
   /** Callback when viewer should close */
@@ -40,17 +69,42 @@ interface PhotoViewerEditorProps {
     rotation: 0 | 90 | 180 | 270
   ) => Promise<void>
   /** Callback to parse worksheet (optional - if not provided, no parse button shown) */
-  onParse?: (photoId: string) => void
+  onParse?: (
+    photoId: string,
+    modelConfigId?: string,
+    additionalContext?: string,
+    preservedBoundingBoxes?: Record<number, { x: number; y: number; width: number; height: number }>
+  ) => void
   /** ID of the photo currently being parsed (null if none) */
   parsingPhotoId?: string | null
+  /** Available model configurations for parsing */
+  modelConfigs?: ModelConfig[]
+  /** Callback to approve parsed worksheet and create session */
+  onApprove?: (photoId: string) => void
+  /** ID of photo currently being approved (null if none) */
+  approvingPhotoId?: string | null
+  /** Callback to submit corrections to parsed problems */
+  onSubmitCorrection?: (photoId: string, correction: ProblemCorrection) => Promise<void>
+  /** Problem number currently being saved (null if none) */
+  savingProblemNumber?: number | null
+  /** Callback to re-parse selected problems */
+  onReparseSelected?: (
+    photoId: string,
+    problemIndices: number[],
+    boundingBoxes: Array<{ x: number; y: number; width: number; height: number }>,
+    additionalContext?: string
+  ) => Promise<void>
+  /** Whether selective re-parsing is in progress */
+  isReparsingSelected?: boolean
 }
 
 /**
- * PhotoViewerEditor - Unified photo viewer and editor
+ * PhotoViewerEditor - Unified photo viewer, editor, and review tool
  *
  * Combines the PhotoLightbox viewing experience with DocumentAdjuster editing:
  * - View mode: Full-screen photo view with navigation (prev/next, keyboard)
  * - Edit mode: DocumentAdjuster crop/rotate UI
+ * - Review mode: Split-view with bounding boxes and problem list for parsed worksheets
  * - Seamless toggle between modes
  */
 export function PhotoViewerEditor({
@@ -62,18 +116,52 @@ export function PhotoViewerEditor({
   onEditConfirm,
   onParse,
   parsingPhotoId = null,
+  modelConfigs = [],
+  onApprove,
+  approvingPhotoId = null,
+  onSubmitCorrection,
+  savingProblemNumber = null,
+  onReparseSelected,
+  isReparsingSelected = false,
 }: PhotoViewerEditorProps): ReactNode {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
-  const [mode, setMode] = useState<'view' | 'edit'>(initialMode)
+  const [mode, setMode] = useState<'view' | 'edit' | 'review'>(initialMode)
+  const [selectedProblemIndex, setSelectedProblemIndex] = useState<number | null>(null)
   const [isLoadingOriginal, setIsLoadingOriginal] = useState(false)
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false)
+  const [showBboxDebug, setShowBboxDebug] = useState(false)
+  const modelDropdownRef = useRef<HTMLDivElement>(null)
+  const reviewImageRef = useRef<HTMLImageElement>(null)
   const [editState, setEditState] = useState<{
     sourceCanvas: HTMLCanvasElement
     corners: Array<{ x: number; y: number }>
     rotation: 0 | 90 | 180 | 270
   } | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  // Re-parse hints modal state
+  const [showReparseModal, setShowReparseModal] = useState(false)
+  const [reparseHints, setReparseHints] = useState('')
+  // Selection for selective re-parsing (no mode toggle needed - always selectable)
+  const [selectedForReparse, setSelectedForReparse] = useState<Set<number>>(new Set())
+  // Adjusted bounding boxes for selected problems (overrides original when re-parsing)
+  const [adjustedBoxes, setAdjustedBoxes] = useState<
+    Map<number, { x: number; y: number; width: number; height: number }>
+  >(new Map())
+  // Pre-flight confirmation for re-parse
+  const [showReparsePreview, setShowReparsePreview] = useState(false)
+  // Cropped image previews for re-parse confirmation (keyed by problem index)
+  const [croppedPreviews, setCroppedPreviews] = useState<Map<number, string>>(new Map())
+  // Thumbnails for all problems in the list (keyed by problem index)
+  const [problemThumbnails, setProblemThumbnails] = useState<Map<number, string>>(new Map())
   // Flag to prevent auto-reload after saving (which clears editState)
   const [editCompleted, setEditCompleted] = useState(false)
+  // Debug content modal state
+  const [debugModal, setDebugModal] = useState<{
+    isOpen: boolean
+    title: string
+    content: string
+    contentType: 'text' | 'json' | 'markdown'
+  }>({ isOpen: false, title: '', content: '', contentType: 'text' })
 
   const {
     isReady: isDetectionReady,
@@ -208,6 +296,175 @@ export function PhotoViewerEditor({
     }
   }, [initialMode, onClose])
 
+  // Toggle a problem for re-parsing
+  const toggleProblemForReparse = useCallback((index: number) => {
+    setSelectedForReparse((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) {
+        next.delete(index)
+      } else {
+        next.add(index)
+      }
+      return next
+    })
+  }, [])
+
+  // Clear all selections
+  const clearSelections = useCallback(() => {
+    setSelectedForReparse(new Set())
+    setAdjustedBoxes(new Map())
+  }, [])
+
+  // Handle adjusting a bounding box
+  const handleAdjustBox = useCallback(
+    (index: number, box: { x: number; y: number; width: number; height: number }) => {
+      setAdjustedBoxes((prev) => {
+        const next = new Map(prev)
+        next.set(index, box)
+        return next
+      })
+    },
+    []
+  )
+
+  // Show pre-flight confirmation for re-parse
+  const handleReparseSelected = useCallback(() => {
+    if (!currentPhoto || selectedForReparse.size === 0) return
+    setShowReparsePreview(true)
+  }, [currentPhoto, selectedForReparse])
+
+  // Cancel pre-flight and go back to selection
+  const cancelReparsePreview = useCallback(() => {
+    setShowReparsePreview(false)
+  }, [])
+
+  // Confirm and execute re-parse
+  const confirmReparseSelected = useCallback(async () => {
+    if (!currentPhoto || !onReparseSelected || selectedForReparse.size === 0) return
+
+    const problems = currentPhoto.rawParsingResult?.problems ?? []
+    const indices = Array.from(selectedForReparse).sort((a, b) => a - b)
+
+    // Use adjusted boxes if available, otherwise use original
+    const boundingBoxes = indices
+      .map((i) => {
+        const adjusted = adjustedBoxes.get(i)
+        if (adjusted) return adjusted
+        return problems[i]?.problemBoundingBox
+      })
+      .filter(Boolean) as Array<{
+      x: number
+      y: number
+      width: number
+      height: number
+    }>
+
+    if (boundingBoxes.length !== indices.length) {
+      console.error('Missing bounding boxes for some selected problems')
+      return
+    }
+
+    await onReparseSelected(currentPhoto.id, indices, boundingBoxes)
+
+    // Clear selections after re-parsing
+    setShowReparsePreview(false)
+    setSelectedForReparse(new Set())
+    setAdjustedBoxes(new Map())
+  }, [currentPhoto, onReparseSelected, selectedForReparse, adjustedBoxes])
+
+  // Get bounding boxes for preview (memoized for rendering)
+  const reparsePreviewData = useMemo(() => {
+    if (!currentPhoto || selectedForReparse.size === 0) return []
+
+    const problems = currentPhoto.rawParsingResult?.problems ?? []
+    const indices = Array.from(selectedForReparse).sort((a, b) => a - b)
+
+    return indices
+      .map((i) => {
+        const problem = problems[i]
+        if (!problem) return null
+        const box = adjustedBoxes.get(i) ?? problem.problemBoundingBox
+        const isAdjusted = adjustedBoxes.has(i)
+        return { index: i, problem, box, isAdjusted }
+      })
+      .filter(Boolean) as Array<{
+      index: number
+      problem: (typeof problems)[number]
+      box: { x: number; y: number; width: number; height: number }
+      isAdjusted: boolean
+    }>
+  }, [currentPhoto, selectedForReparse, adjustedBoxes])
+
+  // Generate cropped previews when entering re-parse confirmation
+  useEffect(() => {
+    if (!showReparsePreview || !currentPhoto || reparsePreviewData.length === 0) {
+      setCroppedPreviews(new Map())
+      return
+    }
+
+    let cancelled = false
+
+    async function generatePreviews() {
+      const previews = new Map<number, string>()
+
+      for (const { index, box } of reparsePreviewData) {
+        if (cancelled) break
+        try {
+          const croppedUrl = await cropImageWithCanvas(currentPhoto!.url, box)
+          previews.set(index, croppedUrl)
+          // Update state progressively so user sees previews appear
+          if (!cancelled) {
+            setCroppedPreviews(new Map(previews))
+          }
+        } catch (err) {
+          console.error(`Failed to crop preview for problem ${index}:`, err)
+        }
+      }
+    }
+
+    generatePreviews()
+    return () => {
+      cancelled = true
+    }
+  }, [showReparsePreview, currentPhoto, reparsePreviewData])
+
+  // Generate thumbnails for all problems in the list
+  useEffect(() => {
+    const problems = currentPhoto?.rawParsingResult?.problems
+    if (!currentPhoto || !problems || problems.length === 0) {
+      setProblemThumbnails(new Map())
+      return
+    }
+
+    let cancelled = false
+
+    async function generateAllThumbnails() {
+      const thumbnails = new Map<number, string>()
+
+      for (let i = 0; i < problems!.length; i++) {
+        if (cancelled) break
+        const problem = problems![i]
+        // Use adjusted box if available, otherwise original
+        const box = adjustedBoxes.get(i) ?? problem.problemBoundingBox
+        try {
+          const croppedUrl = await cropImageWithCanvas(currentPhoto!.url, box)
+          thumbnails.set(i, croppedUrl)
+          // Update state progressively
+          if (!cancelled) {
+            setProblemThumbnails(new Map(thumbnails))
+          }
+        } catch (err) {
+          console.error(`Failed to generate thumbnail for problem ${i}:`, err)
+        }
+      }
+    }
+
+    generateAllThumbnails()
+    return () => {
+      cancelled = true
+    }
+  }, [currentPhoto, adjustedBoxes])
+
   // Keyboard navigation
   useEffect(() => {
     if (!isOpen) return
@@ -220,6 +477,19 @@ export function PhotoViewerEditor({
             onClose()
           } else {
             setMode('view')
+          }
+        }
+        return
+      }
+
+      if (mode === 'review') {
+        // In review mode, Escape goes back to view mode (or closes if opened in review mode)
+        if (e.key === 'Escape') {
+          if (initialMode === 'review') {
+            onClose()
+          } else {
+            setMode('view')
+            setSelectedProblemIndex(null)
           }
         }
         return
@@ -240,12 +510,41 @@ export function PhotoViewerEditor({
         case 'E':
           handleEnterEditMode()
           break
+        case 'r':
+        case 'R':
+          // Enter review mode if the current photo has parsing results
+          if (currentPhoto?.rawParsingResult) {
+            setMode('review')
+          }
+          break
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, mode, initialMode, onClose, goToPrevious, goToNext, handleEnterEditMode])
+  }, [
+    isOpen,
+    mode,
+    initialMode,
+    onClose,
+    goToPrevious,
+    goToNext,
+    handleEnterEditMode,
+    currentPhoto,
+  ])
+
+  // Close model dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
+        setIsModelDropdownOpen(false)
+      }
+    }
+    if (isModelDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isModelDropdownOpen])
 
   // Prevent body scroll when open
   useEffect(() => {
@@ -317,6 +616,875 @@ export function PhotoViewerEditor({
             })}
           >
             Saving...
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Review mode - split-view with image + bounding boxes and problem list
+  if (mode === 'review' && currentPhoto?.rawParsingResult) {
+    const parsingResult = currentPhoto.rawParsingResult
+    const problems = parsingResult.problems ?? []
+    const llm = currentPhoto.llm
+
+    return (
+      <div
+        data-component="photo-viewer-editor"
+        data-mode="review"
+        className={css({
+          position: 'fixed',
+          inset: 0,
+          zIndex: Z_INDEX.MODAL,
+          backgroundColor: 'gray.900',
+          display: 'flex',
+          flexDirection: 'column',
+        })}
+      >
+        {/* Top toolbar */}
+        <div
+          data-element="review-toolbar"
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 3,
+            borderBottom: '1px solid',
+            borderColor: 'gray.700',
+            backgroundColor: 'gray.800',
+          })}
+        >
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 3 })}>
+            {/* Back button */}
+            <button
+              type="button"
+              data-action="back-to-view"
+              onClick={() => {
+                setMode('view')
+                setSelectedProblemIndex(null)
+              }}
+              className={css({
+                px: 3,
+                py: 2,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: 'white',
+                backgroundColor: 'gray.700',
+                border: 'none',
+                borderRadius: 'lg',
+                cursor: 'pointer',
+                _hover: { backgroundColor: 'gray.600' },
+              })}
+            >
+              ← Back
+            </button>
+
+            {/* Status badges */}
+            <div
+              data-element="review-status"
+              className={css({
+                px: 3,
+                py: 1,
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                borderRadius: 'md',
+                backgroundColor:
+                  parsingResult.needsReview || parsingResult.overallConfidence < 0.8
+                    ? 'yellow.500'
+                    : 'green.500',
+                color:
+                  parsingResult.needsReview || parsingResult.overallConfidence < 0.8
+                    ? 'yellow.900'
+                    : 'white',
+              })}
+            >
+              {problems.length} problems •{' '}
+              {Math.round((parsingResult.overallConfidence ?? 0) * 100)}% confidence
+              {parsingResult.needsReview && ' • Needs Review'}
+            </div>
+          </div>
+
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+            {/* Debug toggle button */}
+            <button
+              type="button"
+              data-action="toggle-bbox-debug"
+              onClick={() => setShowBboxDebug(!showBboxDebug)}
+              className={css({
+                px: 3,
+                py: 2,
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: showBboxDebug ? 'cyan.900' : 'white',
+                backgroundColor: showBboxDebug ? 'cyan.400' : 'gray.700',
+                border: 'none',
+                borderRadius: 'lg',
+                cursor: 'pointer',
+                _hover: { backgroundColor: showBboxDebug ? 'cyan.500' : 'gray.600' },
+              })}
+            >
+              🐞 {showBboxDebug ? 'Debug ON' : 'Debug'}
+            </button>
+
+            {/* Re-parse button - handles full flow: select → preview → confirm */}
+            {onParse && !currentPhoto.sessionCreated && (
+              <button
+                type="button"
+                data-action={
+                  showReparsePreview
+                    ? 'confirm-reparse'
+                    : selectedForReparse.size > 0
+                      ? 'reparse-selected'
+                      : 'reparse-with-hints'
+                }
+                onClick={() => {
+                  if (showReparsePreview) {
+                    // In preview mode: confirm and execute
+                    confirmReparseSelected()
+                  } else if (selectedForReparse.size > 0) {
+                    // Has selections: enter preview mode
+                    handleReparseSelected()
+                  } else {
+                    // No selections: open hints modal for full re-parse
+                    setShowReparseModal(true)
+                  }
+                }}
+                disabled={parsingPhotoId === currentPhoto.id || isReparsingSelected}
+                className={css({
+                  px: 3,
+                  py: 2,
+                  fontSize: 'sm',
+                  fontWeight: 'medium',
+                  color: 'white',
+                  backgroundColor: showReparsePreview ? 'green.600' : 'orange.600',
+                  border: 'none',
+                  borderRadius: 'lg',
+                  cursor: 'pointer',
+                  _hover: { backgroundColor: showReparsePreview ? 'green.700' : 'orange.700' },
+                  _disabled: { opacity: 0.5, cursor: 'wait' },
+                })}
+              >
+                {parsingPhotoId === currentPhoto.id || isReparsingSelected
+                  ? '⏳ Re-parsing...'
+                  : showReparsePreview
+                    ? `✓ Confirm Re-parse (${selectedForReparse.size})`
+                    : selectedForReparse.size > 0
+                      ? `🔄 Re-parse (${selectedForReparse.size} selected)`
+                      : '🔄 Re-parse'}
+              </button>
+            )}
+            {/* Cancel button - only shown in preview mode */}
+            {showReparsePreview && (
+              <button
+                type="button"
+                data-action="cancel-reparse-preview"
+                onClick={cancelReparsePreview}
+                className={css({
+                  px: 3,
+                  py: 2,
+                  fontSize: 'sm',
+                  color: 'gray.300',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  borderRadius: 'lg',
+                  cursor: 'pointer',
+                  _hover: { backgroundColor: 'gray.700' },
+                })}
+              >
+                Cancel
+              </button>
+            )}
+
+            {/* Approve button */}
+            {onApprove && !currentPhoto.sessionCreated && (
+              <button
+                type="button"
+                data-action="approve-and-create-session"
+                onClick={() => onApprove(currentPhoto.id)}
+                disabled={approvingPhotoId === currentPhoto.id}
+                className={css({
+                  px: 4,
+                  py: 2,
+                  fontSize: 'sm',
+                  fontWeight: 'medium',
+                  color: 'white',
+                  backgroundColor: 'green.600',
+                  border: 'none',
+                  borderRadius: 'lg',
+                  cursor: 'pointer',
+                  _hover: { backgroundColor: 'green.700' },
+                  _disabled: { opacity: 0.5, cursor: 'wait' },
+                })}
+              >
+                {approvingPhotoId === currentPhoto.id
+                  ? 'Creating Session...'
+                  : '✓ Approve & Create Session'}
+              </button>
+            )}
+
+            {/* Close button */}
+            <button
+              type="button"
+              data-action="close-review"
+              onClick={onClose}
+              className={css({
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.5rem',
+                color: 'gray.400',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                _hover: { backgroundColor: 'gray.700', color: 'white' },
+              })}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* Main split-view content */}
+        <div
+          data-element="review-content"
+          className={css({
+            flex: 1,
+            display: 'flex',
+            overflow: 'hidden',
+          })}
+        >
+          {/* Left side - Image with bounding boxes */}
+          <div
+            data-element="review-image-panel"
+            className={css({
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 4,
+              backgroundColor: 'gray.950',
+              overflow: 'hidden',
+              position: 'relative',
+            })}
+          >
+            <div
+              data-element="image-container"
+              className={css({
+                position: 'relative',
+                maxWidth: '100%',
+                maxHeight: '100%',
+              })}
+            >
+              {/* biome-ignore lint/performance/noImgElement: API-served images */}
+              <img
+                ref={reviewImageRef}
+                src={currentPhoto.url}
+                alt="Worksheet"
+                className={css({
+                  maxWidth: '100%',
+                  maxHeight: 'calc(100vh - 150px)',
+                  objectFit: 'contain',
+                  borderRadius: 'lg',
+                })}
+              />
+              {/* Bounding box overlay for parsed problems */}
+              <BoundingBoxOverlay
+                problems={problems}
+                selectedIndex={selectedProblemIndex}
+                onSelectProblem={setSelectedProblemIndex}
+                imageRef={reviewImageRef}
+                debug={showBboxDebug}
+                selectedForReparse={selectedForReparse}
+                onToggleReparse={toggleProblemForReparse}
+                adjustedBoxes={adjustedBoxes}
+                onAdjustBox={handleAdjustBox}
+              />
+            </div>
+          </div>
+
+          {/* Right side - Problem list and debug info */}
+          <div
+            data-element="review-sidebar"
+            className={css({
+              width: '400px',
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              borderLeft: '1px solid',
+              borderColor: 'gray.700',
+              backgroundColor: 'gray.800',
+              overflow: 'hidden',
+            })}
+          >
+            {/* Problem list */}
+            <div
+              data-element="problem-list"
+              className={css({
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'auto',
+                padding: 3,
+                minHeight: 0,
+              })}
+            >
+              {/* Header with selection mode toggle */}
+              <h3
+                className={css({
+                  fontSize: 'sm',
+                  fontWeight: 'semibold',
+                  color: 'gray.400',
+                  textTransform: 'uppercase',
+                  letterSpacing: 'wide',
+                  marginBottom: 3,
+                })}
+              >
+                Extracted Problems ({problems.length})
+              </h3>
+
+              {/* Pre-flight confirmation for re-parse */}
+              {showReparsePreview ? (
+                <div
+                  data-element="reparse-preflight"
+                  className={css({
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 3,
+                    flex: 1,
+                    minHeight: 0,
+                  })}
+                >
+                  {/* Pre-flight header */}
+                  <div
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      padding: 3,
+                      backgroundColor: 'orange.900',
+                      borderRadius: 'lg',
+                      border: '2px solid token(colors.orange.600)',
+                    })}
+                  >
+                    <span className={css({ fontSize: 'lg' })}>⚠️</span>
+                    <div>
+                      <div
+                        className={css({
+                          fontWeight: 'semibold',
+                          color: 'orange.200',
+                          fontSize: 'sm',
+                        })}
+                      >
+                        Confirm Re-parse
+                      </div>
+                      <div className={css({ fontSize: 'xs', color: 'orange.300' })}>
+                        Review the cropped regions below before proceeding
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cropped region previews */}
+                  <div
+                    className={css({
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                      flex: 1,
+                      overflowY: 'auto',
+                      minHeight: 0,
+                    })}
+                  >
+                    {reparsePreviewData.map(({ index, problem, box, isAdjusted }) => (
+                      <div
+                        key={index}
+                        className={css({
+                          display: 'flex',
+                          gap: 3,
+                          padding: 2,
+                          backgroundColor: 'gray.800',
+                          borderRadius: 'md',
+                          border: '1px solid token(colors.gray.700)',
+                        })}
+                      >
+                        {/* Cropped image preview - exact same crop as sent to LLM */}
+                        <div
+                          className={css({
+                            position: 'relative',
+                            minWidth: '80px',
+                            maxWidth: '200px',
+                            backgroundColor: 'gray.900',
+                            borderRadius: 'sm',
+                            overflow: 'hidden',
+                            flexShrink: 0,
+                          })}
+                        >
+                          {croppedPreviews.get(index) ? (
+                            <img
+                              src={croppedPreviews.get(index)}
+                              alt={`Problem ${index + 1} cropped region`}
+                              className={css({
+                                display: 'block',
+                                width: '100%',
+                                height: 'auto',
+                              })}
+                            />
+                          ) : (
+                            <div
+                              className={css({
+                                width: '120px',
+                                height: '80px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'gray.500',
+                                fontSize: 'xs',
+                              })}
+                            >
+                              Loading...
+                            </div>
+                          )}
+                          {isAdjusted && (
+                            <div
+                              className={css({
+                                position: 'absolute',
+                                top: 1,
+                                right: 1,
+                                padding: '2px 4px',
+                                backgroundColor: 'orange.600',
+                                borderRadius: 'sm',
+                                fontSize: '10px',
+                                color: 'white',
+                                fontWeight: 'bold',
+                              })}
+                            >
+                              ✎ Adjusted
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Problem info */}
+                        <div className={css({ flex: 1, minWidth: 0 })}>
+                          <div
+                            className={css({
+                              fontWeight: 'medium',
+                              color: 'gray.200',
+                              fontSize: 'sm',
+                              marginBottom: 1,
+                            })}
+                          >
+                            Problem #{index + 1}
+                          </div>
+                          <div className={css({ fontSize: 'xs', color: 'gray.400' })}>
+                            {problem.terms
+                              .map((t, i) =>
+                                i === 0 ? t : t >= 0 ? ` + ${t}` : ` − ${Math.abs(t)}`
+                              )
+                              .join('')}{' '}
+                            = {problem.studentAnswer ?? '?'}
+                          </div>
+                          <div
+                            className={css({
+                              fontSize: 'xs',
+                              color: 'gray.500',
+                              marginTop: 1,
+                            })}
+                          >
+                            Region: {(box.x * 100).toFixed(0)}%, {(box.y * 100).toFixed(0)}% →{' '}
+                            {((box.x + box.width) * 100).toFixed(0)}%,{' '}
+                            {((box.y + box.height) * 100).toFixed(0)}%
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : problems.length === 0 ? (
+                <div className={css({ color: 'gray.500', fontSize: 'sm' })}>
+                  No problems extracted from this worksheet.
+                </div>
+              ) : (
+                <div className={css({ display: 'flex', flexDirection: 'column', gap: 2 })}>
+                  {problems.map((problem, index) => (
+                    <EditableProblemRow
+                      key={problem.problemNumber ?? index}
+                      problem={problem}
+                      index={index}
+                      isSelected={selectedProblemIndex === index}
+                      onSelect={() =>
+                        setSelectedProblemIndex(selectedProblemIndex === index ? null : index)
+                      }
+                      onSubmitCorrection={(correction) => {
+                        if (onSubmitCorrection && currentPhoto) {
+                          onSubmitCorrection(currentPhoto.id, correction)
+                        }
+                      }}
+                      isSaving={savingProblemNumber === problem.problemNumber}
+                      isDark={true}
+                      hasSelections={selectedForReparse.size > 0}
+                      isCheckedForReparse={selectedForReparse.has(index)}
+                      onToggleReparse={toggleProblemForReparse}
+                      thumbnailUrl={problemThumbnails.get(index)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Selection info bar - fixed footer outside scrollable area */}
+            {selectedForReparse.size > 0 && !showReparsePreview && (
+              <div
+                data-element="selection-toolbar"
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '8px 12px',
+                  borderTop: '1px solid',
+                  borderColor: 'gray.700',
+                  backgroundColor: 'gray.850',
+                  flexShrink: 0,
+                })}
+              >
+                <span className={css({ fontSize: 'sm', color: 'gray.400' })}>
+                  {selectedForReparse.size} problem{selectedForReparse.size === 1 ? '' : 's'}{' '}
+                  selected
+                </span>
+                <button
+                  type="button"
+                  onClick={clearSelections}
+                  className={css({
+                    padding: '4px 12px',
+                    fontSize: 'sm',
+                    color: 'gray.400',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderRadius: 'md',
+                    cursor: 'pointer',
+                    _hover: {
+                      backgroundColor: 'gray.700',
+                      color: 'gray.300',
+                    },
+                  })}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+
+            {/* Debug panel - LLM metadata */}
+            {llm && (
+              <div
+                data-element="debug-panel"
+                className={css({
+                  borderTop: '1px solid',
+                  borderColor: 'gray.700',
+                  padding: 3,
+                  backgroundColor: 'gray.900',
+                })}
+              >
+                <h3
+                  className={css({
+                    fontSize: 'xs',
+                    fontWeight: 'semibold',
+                    color: 'gray.500',
+                    textTransform: 'uppercase',
+                    letterSpacing: 'wide',
+                    marginBottom: 2,
+                  })}
+                >
+                  LLM Debug Info
+                </h3>
+                <div
+                  className={css({
+                    display: 'grid',
+                    gridTemplateColumns: 'auto 1fr',
+                    gap: 1,
+                    fontSize: 'xs',
+                    fontFamily: 'mono',
+                  })}
+                >
+                  <span className={css({ color: 'gray.500' })}>Provider:</span>
+                  <span className={css({ color: 'gray.300' })}>{llm.provider ?? 'unknown'}</span>
+
+                  <span className={css({ color: 'gray.500' })}>Model:</span>
+                  <span className={css({ color: 'gray.300' })}>{llm.model ?? 'unknown'}</span>
+
+                  <span className={css({ color: 'gray.500' })}>Image:</span>
+                  <span className={css({ color: 'gray.300' })}>
+                    {llm.imageSource ?? 'cropped'} ✓
+                  </span>
+
+                  <span className={css({ color: 'gray.500' })}>Attempts:</span>
+                  <span className={css({ color: 'gray.300' })}>{llm.attempts ?? 1}</span>
+
+                  <span className={css({ color: 'gray.500' })}>Tokens:</span>
+                  <span className={css({ color: 'gray.300' })}>
+                    {llm.usage?.totalTokens ?? '?'} ({llm.usage?.promptTokens ?? '?'} in /{' '}
+                    {llm.usage?.completionTokens ?? '?'} out)
+                  </span>
+                </div>
+
+                {/* Debug content buttons */}
+                <div
+                  className={css({
+                    display: 'flex',
+                    gap: 2,
+                    marginTop: 2,
+                    borderTop: '1px solid',
+                    borderColor: 'gray.800',
+                    paddingTop: 2,
+                  })}
+                >
+                  {llm.promptUsed && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDebugModal({
+                          isOpen: true,
+                          title: 'LLM Prompt',
+                          content: llm.promptUsed!,
+                          contentType: 'text',
+                        })
+                      }
+                      className={css({
+                        fontSize: 'xs',
+                        color: 'gray.400',
+                        backgroundColor: 'gray.800',
+                        border: 'none',
+                        borderRadius: 'sm',
+                        padding: '0.25rem 0.5rem',
+                        cursor: 'pointer',
+                        _hover: { backgroundColor: 'gray.700', color: 'white' },
+                      })}
+                    >
+                      View Prompt ({llm.promptUsed.length.toLocaleString()} chars)
+                    </button>
+                  )}
+                  {llm.rawResponse && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDebugModal({
+                          isOpen: true,
+                          title: 'Raw LLM Response',
+                          content: llm.rawResponse!,
+                          contentType: 'json',
+                        })
+                      }
+                      className={css({
+                        fontSize: 'xs',
+                        color: 'gray.400',
+                        backgroundColor: 'gray.800',
+                        border: 'none',
+                        borderRadius: 'sm',
+                        padding: '0.25rem 0.5rem',
+                        cursor: 'pointer',
+                        _hover: { backgroundColor: 'gray.700', color: 'white' },
+                      })}
+                    >
+                      View Response ({llm.rawResponse.length.toLocaleString()} chars)
+                    </button>
+                  )}
+                  {llm.jsonSchema && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDebugModal({
+                          isOpen: true,
+                          title: 'JSON Schema (with field descriptions)',
+                          content: llm.jsonSchema!,
+                          contentType: 'json',
+                        })
+                      }
+                      className={css({
+                        fontSize: 'xs',
+                        color: 'gray.400',
+                        backgroundColor: 'gray.800',
+                        border: 'none',
+                        borderRadius: 'sm',
+                        padding: '0.25rem 0.5rem',
+                        cursor: 'pointer',
+                        _hover: { backgroundColor: 'gray.700', color: 'white' },
+                      })}
+                    >
+                      View Schema ({llm.jsonSchema.length.toLocaleString()} chars)
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer keyboard hints */}
+        <div
+          data-element="review-footer"
+          className={css({
+            textAlign: 'center',
+            padding: 2,
+            fontSize: 'xs',
+            color: 'gray.600',
+            borderTop: '1px solid',
+            borderColor: 'gray.800',
+          })}
+        >
+          Click a problem to highlight it on the image • Esc to go back
+        </div>
+
+        {/* Debug content modal */}
+        <DebugContentModal
+          title={debugModal.title}
+          content={debugModal.content}
+          contentType={debugModal.contentType}
+          isOpen={debugModal.isOpen}
+          onClose={() => setDebugModal((prev) => ({ ...prev, isOpen: false }))}
+        />
+
+        {/* Re-parse with hints modal */}
+        {showReparseModal && (
+          <div
+            data-element="reparse-modal-overlay"
+            className={css({
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              zIndex: Z_INDEX.MODAL + 1,
+            })}
+            onClick={() => setShowReparseModal(false)}
+          >
+            <div
+              data-element="reparse-modal"
+              className={css({
+                width: '500px',
+                maxWidth: '90vw',
+                backgroundColor: 'gray.800',
+                borderRadius: 'xl',
+                padding: 6,
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+              })}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2
+                className={css({
+                  fontSize: 'lg',
+                  fontWeight: 'semibold',
+                  color: 'white',
+                  marginBottom: 4,
+                })}
+              >
+                🔄 Re-parse with Hints
+              </h2>
+
+              <p
+                className={css({
+                  fontSize: 'sm',
+                  color: 'gray.400',
+                  marginBottom: 4,
+                })}
+              >
+                Provide additional context to help the AI better understand this worksheet. This is
+                useful when problems were mis-parsed or handwriting is difficult to read.
+              </p>
+
+              <textarea
+                value={reparseHints}
+                onChange={(e) => setReparseHints(e.target.value)}
+                placeholder="Example hints:&#10;- Problems #3-5 are subtraction, not addition&#10;- The student writes 7s that look like 1s&#10;- There are 20 problems total, arranged in 4 rows"
+                className={css({
+                  width: '100%',
+                  height: '150px',
+                  px: 3,
+                  py: 2,
+                  fontSize: 'sm',
+                  backgroundColor: 'gray.900',
+                  color: 'white',
+                  border: '1px solid',
+                  borderColor: 'gray.600',
+                  borderRadius: 'lg',
+                  resize: 'vertical',
+                  _focus: {
+                    outline: 'none',
+                    borderColor: 'orange.500',
+                    boxShadow: '0 0 0 2px token(colors.orange.500/20)',
+                  },
+                  _placeholder: {
+                    color: 'gray.500',
+                  },
+                })}
+              />
+
+              <div
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 3,
+                  marginTop: 4,
+                })}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReparseModal(false)
+                    setReparseHints('')
+                  }}
+                  className={css({
+                    px: 4,
+                    py: 2,
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    color: 'white',
+                    backgroundColor: 'gray.700',
+                    border: 'none',
+                    borderRadius: 'lg',
+                    cursor: 'pointer',
+                    _hover: { backgroundColor: 'gray.600' },
+                  })}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onParse && currentPhoto) {
+                      // Pass adjusted bounding boxes if any exist
+                      const preserved =
+                        adjustedBoxes.size > 0
+                          ? Object.fromEntries(adjustedBoxes.entries())
+                          : undefined
+                      onParse(currentPhoto.id, undefined, reparseHints || undefined, preserved)
+                      setShowReparseModal(false)
+                      setReparseHints('')
+                    }
+                  }}
+                  disabled={parsingPhotoId === currentPhoto.id}
+                  className={css({
+                    px: 4,
+                    py: 2,
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    color: 'white',
+                    backgroundColor: 'orange.600',
+                    border: 'none',
+                    borderRadius: 'lg',
+                    cursor: 'pointer',
+                    _hover: { backgroundColor: 'orange.700' },
+                    _disabled: { opacity: 0.5, cursor: 'wait' },
+                  })}
+                >
+                  {parsingPhotoId === currentPhoto.id ? 'Re-parsing...' : 'Re-parse Worksheet'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -423,60 +1591,223 @@ export function PhotoViewerEditor({
           )}
         </button>
 
-        {/* Parse button - show if not parsed OR if failed (to allow retry) */}
+        {/* Parse button - split button with model selection dropdown */}
         {onParse &&
           (!currentPhoto.parsingStatus || currentPhoto.parsingStatus === 'failed') &&
           !currentPhoto.sessionCreated && (
-            <button
-              type="button"
-              data-action="parse-worksheet"
-              onClick={() => onParse(currentPhoto.id)}
-              disabled={parsingPhotoId === currentPhoto.id}
-              className={css({
-                px: 4,
-                py: 2,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                color: 'white',
-                backgroundColor:
-                  currentPhoto.parsingStatus === 'failed' ? 'orange.500' : 'blue.500',
-                border: 'none',
-                borderRadius: 'lg',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                _hover: {
-                  backgroundColor:
-                    currentPhoto.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
-                },
-                _disabled: {
-                  backgroundColor: 'gray.500',
-                  cursor: 'wait',
-                },
-              })}
-              aria-label={
-                currentPhoto.parsingStatus === 'failed' ? 'Retry parsing' : 'Parse worksheet'
-              }
+            <div
+              ref={modelDropdownRef}
+              data-element="parse-split-button"
+              className={css({ position: 'relative', display: 'flex' })}
             >
-              {parsingPhotoId === currentPhoto.id ? (
+              {/* Main parse button */}
+              <button
+                type="button"
+                data-action="parse-worksheet"
+                onClick={() => {
+                  setIsModelDropdownOpen(false)
+                  // Pass adjusted bounding boxes if any exist
+                  const preserved =
+                    adjustedBoxes.size > 0 ? Object.fromEntries(adjustedBoxes.entries()) : undefined
+                  onParse(currentPhoto.id, undefined, undefined, preserved)
+                }}
+                disabled={parsingPhotoId === currentPhoto.id}
+                className={css({
+                  px: 4,
+                  py: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  fontSize: 'sm',
+                  fontWeight: 'medium',
+                  color: 'white',
+                  backgroundColor:
+                    currentPhoto.parsingStatus === 'failed' ? 'orange.500' : 'blue.500',
+                  border: 'none',
+                  borderRadius: modelConfigs.length > 0 ? '8px 0 0 8px' : 'lg',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  _hover: {
+                    backgroundColor:
+                      currentPhoto.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
+                  },
+                  _disabled: {
+                    backgroundColor: 'gray.500',
+                    cursor: 'wait',
+                  },
+                })}
+                aria-label={
+                  currentPhoto.parsingStatus === 'failed' ? 'Retry parsing' : 'Parse worksheet'
+                }
+              >
+                {parsingPhotoId === currentPhoto.id ? (
+                  <>
+                    <span>⏳</span>
+                    <span>Analyzing...</span>
+                  </>
+                ) : currentPhoto.parsingStatus === 'failed' ? (
+                  <>
+                    <span>🔄</span>
+                    <span>Retry Parse</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🔍</span>
+                    <span>Parse Worksheet</span>
+                  </>
+                )}
+              </button>
+
+              {/* Dropdown toggle button - only show if we have model configs */}
+              {modelConfigs.length > 0 && (
                 <>
-                  <span>⏳</span>
-                  <span>Analyzing...</span>
-                </>
-              ) : currentPhoto.parsingStatus === 'failed' ? (
-                <>
-                  <span>🔄</span>
-                  <span>Retry Parse</span>
-                </>
-              ) : (
-                <>
-                  <span>🔍</span>
-                  <span>Parse Worksheet</span>
+                  <button
+                    type="button"
+                    data-action="toggle-model-dropdown"
+                    onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                    disabled={parsingPhotoId === currentPhoto.id}
+                    className={css({
+                      px: 2,
+                      py: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 'sm',
+                      color: 'white',
+                      backgroundColor:
+                        currentPhoto.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
+                      borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
+                      border: 'none',
+                      borderRadius: '0 8px 8px 0',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s',
+                      _hover: {
+                        backgroundColor:
+                          currentPhoto.parsingStatus === 'failed' ? 'orange.700' : 'blue.700',
+                      },
+                      _disabled: {
+                        backgroundColor: 'gray.500',
+                        cursor: 'wait',
+                      },
+                    })}
+                    aria-label="Select model"
+                    aria-expanded={isModelDropdownOpen}
+                  >
+                    <span
+                      className={css({
+                        transform: isModelDropdownOpen ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.2s',
+                      })}
+                    >
+                      ▾
+                    </span>
+                  </button>
+
+                  {/* Dropdown menu */}
+                  {isModelDropdownOpen && (
+                    <div
+                      data-element="model-dropdown"
+                      className={css({
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        marginTop: 1,
+                        minWidth: '280px',
+                        backgroundColor: 'gray.800',
+                        borderRadius: 'lg',
+                        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+                        border: '1px solid',
+                        borderColor: 'gray.700',
+                        overflow: 'hidden',
+                        zIndex: 10,
+                      })}
+                    >
+                      <div
+                        className={css({
+                          px: 3,
+                          py: 2,
+                          fontSize: 'xs',
+                          fontWeight: 'semibold',
+                          color: 'gray.400',
+                          textTransform: 'uppercase',
+                          letterSpacing: 'wide',
+                          borderBottom: '1px solid',
+                          borderColor: 'gray.700',
+                        })}
+                      >
+                        Select Model
+                      </div>
+                      {modelConfigs.map((config) => (
+                        <button
+                          key={config.id}
+                          type="button"
+                          data-action={`parse-with-model-${config.id}`}
+                          onClick={() => {
+                            setIsModelDropdownOpen(false)
+                            // Pass adjusted bounding boxes if any exist
+                            const preserved =
+                              adjustedBoxes.size > 0
+                                ? Object.fromEntries(adjustedBoxes.entries())
+                                : undefined
+                            onParse(currentPhoto.id, config.id, undefined, preserved)
+                          }}
+                          className={css({
+                            width: '100%',
+                            px: 3,
+                            py: 3,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start',
+                            gap: 1,
+                            textAlign: 'left',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.1s',
+                            _hover: { backgroundColor: 'gray.700' },
+                          })}
+                        >
+                          <div
+                            className={css({
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              width: '100%',
+                            })}
+                          >
+                            <span className={css({ color: 'white', fontWeight: 'medium' })}>
+                              {config.name}
+                            </span>
+                            {config.isDefault && (
+                              <span
+                                className={css({
+                                  px: 2,
+                                  py: 0.5,
+                                  fontSize: 'xs',
+                                  backgroundColor: 'blue.600',
+                                  color: 'white',
+                                  borderRadius: 'md',
+                                })}
+                              >
+                                Default
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className={css({
+                              fontSize: 'xs',
+                              color: 'gray.400',
+                            })}
+                          >
+                            {config.description}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
-            </button>
+            </div>
           )}
 
         {/* Parsing status badge - don't show for 'failed' since retry button is shown instead */}
@@ -535,6 +1866,37 @@ export function PhotoViewerEditor({
           >
             ✓ Session Created
           </div>
+        )}
+
+        {/* Review button - show if photo has parsing results */}
+        {currentPhoto.rawParsingResult && !currentPhoto.sessionCreated && (
+          <button
+            type="button"
+            data-action="enter-review-mode"
+            onClick={() => setMode('review')}
+            className={css({
+              px: 4,
+              py: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              color: 'white',
+              backgroundColor: 'purple.500',
+              border: 'none',
+              borderRadius: 'lg',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              _hover: {
+                backgroundColor: 'purple.600',
+              },
+            })}
+            aria-label="Review parsed problems"
+          >
+            <span>📋</span>
+            <span>Review ({currentPhoto.rawParsingResult.problems?.length ?? 0})</span>
+          </button>
         )}
       </div>
 
@@ -673,7 +2035,8 @@ export function PhotoViewerEditor({
             fontSize: 'xs',
           })}
         >
-          Press E to edit • Arrow keys to navigate • Esc to close
+          Press E to edit{currentPhoto.rawParsingResult ? ' • R to review' : ''} • Arrow keys to
+          navigate • Esc to close
         </div>
       </div>
     </div>

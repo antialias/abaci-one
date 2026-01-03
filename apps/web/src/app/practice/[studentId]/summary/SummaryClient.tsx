@@ -20,6 +20,7 @@ import {
   SkillsPanel,
   StartPracticeModal,
 } from '@/components/practice'
+import type { ProblemCorrection } from '@/components/worksheet-parsing'
 import type { ParsingStatus } from '@/db/schema/practice-attachments'
 import { calculateAutoPauseInfo } from '@/components/practice/autoPauseCalculator'
 import { DocumentAdjuster } from '@/components/practice/DocumentAdjuster'
@@ -39,7 +40,13 @@ import type { Player } from '@/db/schema/players'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import { usePlayerAccess, canUploadPhotos } from '@/hooks/usePlayerAccess'
-import { useStartParsing } from '@/hooks/useWorksheetParsing'
+import {
+  useStartParsing,
+  useApproveAndCreateSession,
+  useSubmitCorrections,
+  useReparseSelected,
+} from '@/hooks/useWorksheetParsing'
+import { PARSING_MODEL_CONFIGS } from '@/lib/worksheet-parsing'
 import { computeBktFromHistory, type SkillBktResult } from '@/lib/curriculum/bkt'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { api } from '@/lib/queryClient'
@@ -158,6 +165,21 @@ export function SummaryClient({
     needsReview: boolean
     sessionCreated: boolean
     createdSessionId: string | null
+    // LLM metadata
+    llm: {
+      provider: string | null
+      model: string | null
+      promptUsed: string | null
+      rawResponse: string | null
+      jsonSchema: string | null
+      imageSource: string | null
+      attempts: number | null
+      usage: {
+        promptTokens: number | null
+        completionTokens: number | null
+        totalTokens: number | null
+      }
+    } | null
   }
 
   // Fetch attachments for this session (includes parsing data)
@@ -184,6 +206,34 @@ export function SummaryClient({
 
   // Worksheet parsing mutation
   const startParsing = useStartParsing(studentId, session?.id ?? '')
+
+  // Approve and create session mutation
+  const approveAndCreateSession = useApproveAndCreateSession(studentId, session?.id ?? '')
+
+  // Submit corrections mutation
+  const submitCorrections = useSubmitCorrections(studentId, session?.id ?? '')
+
+  // Re-parse selected problems mutation
+  const reparseSelected = useReparseSelected(studentId, session?.id ?? '')
+
+  // Map attachments to PhotoViewerEditorPhoto type for the viewer
+  const viewerPhotos: PhotoViewerEditorPhoto[] = (attachmentsData?.attachments ?? []).map(
+    (att): PhotoViewerEditorPhoto => ({
+      id: att.id,
+      url: att.url,
+      originalUrl: att.originalUrl,
+      corners: att.corners,
+      rotation: att.rotation,
+      parsingStatus: att.parsingStatus as PhotoViewerEditorPhoto['parsingStatus'],
+      problemCount: (att.rawParsingResult as { problems?: unknown[] } | null)?.problems?.length,
+      sessionCreated: att.sessionCreated,
+      rawParsingResult: att.rawParsingResult
+        ? (att.rawParsingResult as NonNullable<PhotoViewerEditorPhoto['rawParsingResult']>)
+        : null,
+      llm: att.llm as PhotoViewerEditorPhoto['llm'],
+    })
+  )
+
   const hasPhotos = attachments.length > 0
 
   const isInProgress = session?.startedAt && !session?.completedAt
@@ -280,7 +330,7 @@ export function SummaryClient({
 
         // Refresh attachments
         queryClient.invalidateQueries({
-          queryKey: ['session-attachments', studentId, session.id],
+          queryKey: attachmentKeys.session(studentId, session.id),
         })
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'Failed to upload photos')
@@ -390,9 +440,11 @@ export function SummaryClient({
         }
 
         // Refresh attachments
-        queryClient.invalidateQueries({
-          queryKey: ['session-attachments', studentId, session?.id],
-        })
+        if (session?.id) {
+          queryClient.invalidateQueries({
+            queryKey: attachmentKeys.session(studentId, session.id),
+          })
+        }
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'Failed to update photo')
       } finally {
@@ -464,7 +516,7 @@ export function SummaryClient({
 
         // Refresh attachments
         queryClient.invalidateQueries({
-          queryKey: ['session-attachments', studentId, session.id],
+          queryKey: attachmentKeys.session(studentId, session.id),
         })
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'Failed to delete photo')
@@ -626,7 +678,14 @@ export function SummaryClient({
                         isUploading={isUploading}
                         uploadError={uploadError}
                         deletingId={deletingId}
-                        parsingId={startParsing.isPending ? (startParsing.variables ?? null) : null}
+                        parsingId={
+                          startParsing.isPending
+                            ? typeof startParsing.variables === 'string'
+                              ? startParsing.variables
+                              : ((startParsing.variables as { attachmentId: string } | undefined)
+                                  ?.attachmentId ?? null)
+                            : null
+                        }
                         dragOver={dragOver}
                         isDark={isDark}
                         canUpload={canUpload}
@@ -640,7 +699,7 @@ export function SummaryClient({
                         onOpenCamera={() => setShowCamera(true)}
                         onOpenViewer={openViewer}
                         onDeletePhoto={deletePhoto}
-                        onParse={(attachmentId) => startParsing.mutate(attachmentId)}
+                        onParse={(attachmentId) => startParsing.mutate({ attachmentId })}
                       />
                       {/* All Problems - complete session listing */}
                       {hasProblems && (
@@ -727,24 +786,64 @@ export function SummaryClient({
 
         {/* Photo Viewer/Editor */}
         <PhotoViewerEditor
-          photos={(attachmentsData?.attachments ?? []).map((att) => ({
-            id: att.id,
-            url: att.url,
-            originalUrl: att.originalUrl,
-            corners: att.corners,
-            rotation: att.rotation,
-            parsingStatus: att.parsingStatus as PhotoViewerEditorPhoto['parsingStatus'],
-            problemCount: (att.rawParsingResult as { problems?: unknown[] } | null)?.problems
-              ?.length,
-            sessionCreated: att.sessionCreated,
-          }))}
+          photos={viewerPhotos}
           initialIndex={viewerIndex}
           initialMode={viewerMode}
           isOpen={viewerOpen}
           onClose={() => setViewerOpen(false)}
           onEditConfirm={handlePhotoEditConfirm}
-          onParse={(attachmentId) => startParsing.mutate(attachmentId)}
-          parsingPhotoId={startParsing.isPending ? (startParsing.variables ?? null) : null}
+          onParse={(attachmentId, modelConfigId, additionalContext, preservedBoundingBoxes) =>
+            startParsing.mutate({
+              attachmentId,
+              modelConfigId,
+              additionalContext,
+              preservedBoundingBoxes,
+            })
+          }
+          parsingPhotoId={
+            startParsing.isPending
+              ? ((typeof startParsing.variables === 'string'
+                  ? startParsing.variables
+                  : (startParsing.variables as { attachmentId: string })?.attachmentId) ?? null)
+              : null
+          }
+          modelConfigs={PARSING_MODEL_CONFIGS}
+          onApprove={(attachmentId) => approveAndCreateSession.mutate(attachmentId)}
+          approvingPhotoId={
+            approveAndCreateSession.isPending
+              ? ((approveAndCreateSession.variables as string) ?? null)
+              : null
+          }
+          onSubmitCorrection={async (attachmentId, correction) => {
+            await submitCorrections.mutateAsync({
+              attachmentId,
+              corrections: [correction],
+            })
+          }}
+          savingProblemNumber={
+            submitCorrections.isPending
+              ? ((
+                  submitCorrections.variables as {
+                    attachmentId: string
+                    corrections: ProblemCorrection[]
+                  }
+                )?.corrections?.[0]?.problemNumber ?? null)
+              : null
+          }
+          onReparseSelected={async (
+            attachmentId,
+            problemIndices,
+            boundingBoxes,
+            additionalContext
+          ) => {
+            await reparseSelected.mutateAsync({
+              attachmentId,
+              problemIndices,
+              boundingBoxes,
+              additionalContext,
+            })
+          }}
+          isReparsingSelected={reparseSelected.isPending}
         />
 
         {/* Fullscreen Camera Modal */}

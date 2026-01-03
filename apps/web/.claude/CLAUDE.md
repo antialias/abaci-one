@@ -965,10 +965,30 @@ When adding/modifying database schema:
    mcp__sqlite__describe_table table_name
    ```
 
+**CRITICAL: Verify migration timestamp order after generation:**
+
+After running `npx drizzle-kit generate --custom`, check `drizzle/meta/_journal.json`:
+1. Look at the `"when"` timestamp of the new migration
+2. Verify it's GREATER than the previous migration's timestamp
+3. If not, manually edit the journal to use a timestamp after the previous one
+
+Example of broken ordering (0057 before 0056):
+```json
+{ "idx": 56, "when": 1767484800000, "tag": "0056_..." },  // Jan 3
+{ "idx": 57, "when": 1767400331475, "tag": "0057_..." }   // Jan 2 - WRONG!
+```
+
+Fix by setting 0057's timestamp to be after 0056:
+```json
+{ "idx": 57, "when": 1767571200000, "tag": "0057_..." }   // Jan 4 - CORRECT
+```
+
+**Why this happens:** `drizzle-kit generate` uses current system time, but if previous migrations were manually given future timestamps (common in CI/production scenarios), new migrations can get timestamps that sort incorrectly.
+
 **What NOT to do:**
 
 - ❌ DO NOT manually create SQL files in `drizzle/` without using `drizzle-kit generate`
-- ❌ DO NOT manually edit `drizzle/meta/_journal.json`
+- ❌ DO NOT manually edit `drizzle/meta/_journal.json` (except to fix timestamp ordering)
 - ❌ DO NOT run SQL directly with `sqlite3` command
 - ❌ DO NOT use `drizzle-kit generate` without `--custom` flag (it requires interactive prompts)
 

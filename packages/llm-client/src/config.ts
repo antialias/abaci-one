@@ -2,11 +2,16 @@ import type { LLMClientConfig, ProviderConfig } from './types'
 
 /**
  * Known provider defaults
+ *
+ * OpenAI GPT-5.2 variants:
+ * - gpt-5.2 (Thinking) - Best for vision + structured work, reasoning enabled
+ * - gpt-5.2-chat-latest (Instant) - Faster, lower latency
+ * - gpt-5.2-pro - Most accurate, highest quality
  */
 const PROVIDER_DEFAULTS: Record<string, Partial<ProviderConfig>> = {
   openai: {
     baseUrl: 'https://api.openai.com/v1',
-    defaultModel: 'gpt-4o',
+    defaultModel: 'gpt-5.2', // GPT-5.2 Thinking - best for vision + structured outputs
   },
   anthropic: {
     baseUrl: 'https://api.anthropic.com/v1',

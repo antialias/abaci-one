@@ -71,6 +71,18 @@ export const practiceAttachments = sqliteTable('practice_attachments', {
   confidenceScore: real('confidence_score'), // 0-1, from LLM
   needsReview: integer('needs_review', { mode: 'boolean' }), // True if any problems need manual review
 
+  // LLM call metadata (for debugging/transparency)
+  llmProvider: text('llm_provider'), // e.g., "openai", "anthropic"
+  llmModel: text('llm_model'), // e.g., "gpt-4o", "claude-sonnet-4"
+  llmPromptUsed: text('llm_prompt_used'), // The actual prompt sent to the LLM
+  llmRawResponse: text('llm_raw_response'), // Raw JSON response from the LLM (before parsing)
+  llmJsonSchema: text('llm_json_schema'), // JSON Schema sent to the LLM (with field descriptions)
+  llmImageSource: text('llm_image_source').$type<'cropped' | 'original'>(), // Which image was sent
+  llmAttempts: integer('llm_attempts'), // How many retries were needed
+  llmPromptTokens: integer('llm_prompt_tokens'),
+  llmCompletionTokens: integer('llm_completion_tokens'),
+  llmTotalTokens: integer('llm_total_tokens'),
+
   // Session linkage (for parsed worksheets that created sessions)
   sessionCreated: integer('session_created', { mode: 'boolean' }), // True if session was created from this parsing
   createdSessionId: text('created_session_id').references(() => sessionPlans.id, {

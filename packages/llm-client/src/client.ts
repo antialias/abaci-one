@@ -169,6 +169,11 @@ export class LLMClient {
       unrepresentable: 'any', // Convert unrepresentable types to {} instead of throwing
     }) as Record<string, unknown>
 
+    // Determine default reasoning effort for GPT-5.2+ models
+    // Use 'medium' if thinking model and not explicitly set
+    const reasoningEffort = request.reasoningEffort ??
+      (model.includes('5.2') && !model.includes('instant') ? 'medium' : undefined)
+
     // Execute with retry logic
     const { result: providerResponse, attempts } = await executeWithRetry(
       async (validationFeedback?: ValidationFeedback) => {
@@ -178,6 +183,7 @@ export class LLMClient {
           jsonSchema,
           model,
           validationFeedback,
+          reasoningEffort,
         }
 
         return provider.call(providerRequest)
@@ -229,6 +235,8 @@ export class LLMClient {
       attempts,
       provider: providerName,
       model,
+      rawResponse: providerResponse.rawContent,
+      jsonSchema: JSON.stringify(jsonSchema, null, 2),
     }
   }
 

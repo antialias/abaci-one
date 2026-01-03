@@ -56,6 +56,11 @@ export {
   reparseProblems,
   computeParsingStats,
   applyCorrections,
+  // Model configurations
+  PARSING_MODEL_CONFIGS,
+  getDefaultModelConfig,
+  getModelConfig,
+  type ModelConfig,
   type ParseWorksheetOptions,
   type ParseWorksheetResult,
 } from './parser'
@@ -75,3 +80,12 @@ export {
   type ConversionOptions,
   type ConversionResult,
 } from './session-converter'
+
+// Crop Utilities
+export {
+  CROP_PADDING,
+  calculateCropRegion,
+  cropImageWithCanvas,
+  type NormalizedBoundingBox,
+  type CropRegion,
+} from './crop-utils'

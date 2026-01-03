@@ -31,6 +31,12 @@ export interface LLMClientConfig {
 }
 
 /**
+ * Reasoning effort levels for GPT-5.2+ models
+ * Controls depth of reasoning (more = better quality, higher latency/cost)
+ */
+export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
+
+/**
  * Request to make an LLM call with type-safe schema validation
  */
 export interface LLMRequest<T extends z.ZodType> {
@@ -48,6 +54,11 @@ export interface LLMRequest<T extends z.ZodType> {
   maxRetries?: number
   /** Progress callback for UI feedback */
   onProgress?: (progress: LLMProgress) => void
+  /**
+   * Reasoning effort for GPT-5.2+ models (default: 'medium' for thinking models)
+   * Higher values = better reasoning but more tokens/latency
+   */
+  reasoningEffort?: ReasoningEffort
 }
 
 /**
@@ -100,6 +111,10 @@ export interface LLMResponse<T> {
   provider: string
   /** Model that was used */
   model: string
+  /** Raw JSON response from the LLM (before parsing/validation) */
+  rawResponse: string
+  /** JSON Schema sent to the LLM (with field-level descriptions from .describe()) */
+  jsonSchema: string
 }
 
 /**
@@ -116,14 +131,18 @@ export interface ProviderRequest {
   model: string
   /** Validation feedback from previous attempt */
   validationFeedback?: ValidationFeedback
+  /** Reasoning effort level (for GPT-5.2+ models) */
+  reasoningEffort?: ReasoningEffort
 }
 
 /**
  * Internal response from providers
  */
 export interface ProviderResponse {
-  /** Raw content from the LLM (JSON string or parsed object) */
+  /** Parsed content from the LLM */
   content: unknown
+  /** Raw JSON string from the LLM (before parsing) */
+  rawContent: string
   /** Token usage */
   usage: {
     promptTokens: number

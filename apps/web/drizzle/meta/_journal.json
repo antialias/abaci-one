@@ -393,6 +393,27 @@
       "when": 1767398400000,
       "tag": "0055_add_attachment_parsing",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "6",
+      "when": 1767484800000,
+      "tag": "0056_add_llm_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "6",
+      "when": 1767571200000,
+      "tag": "0057_flowery_korath",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "6",
+      "when": 1767657600000,
+      "tag": "0058_blushing_impossible_man",
+      "breakpoints": true
     }
   ]
 }

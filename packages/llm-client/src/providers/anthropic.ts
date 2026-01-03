@@ -149,6 +149,7 @@ export class AnthropicProvider extends BaseProvider {
 
         return {
           content: this.parseJsonResponse(textBlock.text),
+          rawContent: textBlock.text,
           usage: {
             promptTokens: data.usage?.input_tokens ?? 0,
             completionTokens: data.usage?.output_tokens ?? 0,
@@ -161,6 +162,7 @@ export class AnthropicProvider extends BaseProvider {
 
     return {
       content: toolUseBlock.input,
+      rawContent: JSON.stringify(toolUseBlock.input, null, 2),
       usage: {
         promptTokens: data.usage?.input_tokens ?? 0,
         completionTokens: data.usage?.output_tokens ?? 0,
