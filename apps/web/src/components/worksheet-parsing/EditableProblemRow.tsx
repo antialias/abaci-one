@@ -583,29 +583,32 @@ export function EditableProblemRow({
           textAlign: 'left',
         })}
       >
-        {/* Small thumbnail of cropped problem region */}
-        {thumbnailUrl && (
-          <div
-            className={css({
-              width: '48px',
-              height: '32px',
-              flexShrink: 0,
-              borderRadius: 'sm',
-              overflow: 'hidden',
-              backgroundColor: 'gray.900',
-            })}
-          >
+        {/* Small thumbnail of cropped problem region - fixed size container */}
+        <div
+          className={css({
+            width: '48px',
+            height: '32px',
+            flexShrink: 0,
+            borderRadius: 'sm',
+            overflow: 'hidden',
+            backgroundColor: 'gray.900',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          })}
+        >
+          {thumbnailUrl && (
             <img
               src={thumbnailUrl}
               alt=""
               className={css({
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
               })}
             />
-          </div>
-        )}
+          )}
+        </div>
         <div className={css({ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 })}>
           {/* Problem expression */}
           <div

@@ -15,6 +15,7 @@ import {
 
 import type { WorksheetParsingResult, ModelConfig } from '@/lib/worksheet-parsing'
 import { cropImageWithCanvas } from '@/lib/worksheet-parsing'
+import { useVisualDebug } from '@/contexts/VisualDebugContext'
 
 /** LLM metadata for debugging */
 export interface LLMMetadata {
@@ -129,7 +130,7 @@ export function PhotoViewerEditor({
   const [selectedProblemIndex, setSelectedProblemIndex] = useState<number | null>(null)
   const [isLoadingOriginal, setIsLoadingOriginal] = useState(false)
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false)
-  const [showBboxDebug, setShowBboxDebug] = useState(false)
+  const { isVisualDebugEnabled } = useVisualDebug()
   const modelDropdownRef = useRef<HTMLDivElement>(null)
   const reviewImageRef = useRef<HTMLImageElement>(null)
   const [editState, setEditState] = useState<{
@@ -428,13 +429,23 @@ export function PhotoViewerEditor({
     }
   }, [showReparsePreview, currentPhoto, reparsePreviewData])
 
-  // Generate thumbnails for all problems in the list
+  // Track which photo we last generated thumbnails for
+  const lastThumbnailPhotoRef = useRef<string | null>(null)
+
+  // Generate thumbnails for all problems when photo changes
   useEffect(() => {
     const problems = currentPhoto?.rawParsingResult?.problems
     if (!currentPhoto || !problems || problems.length === 0) {
       setProblemThumbnails(new Map())
+      lastThumbnailPhotoRef.current = null
       return
     }
+
+    // Only regenerate all if the photo changed
+    if (lastThumbnailPhotoRef.current === currentPhoto.id) {
+      return
+    }
+    lastThumbnailPhotoRef.current = currentPhoto.id
 
     let cancelled = false
 
@@ -444,8 +455,7 @@ export function PhotoViewerEditor({
       for (let i = 0; i < problems!.length; i++) {
         if (cancelled) break
         const problem = problems![i]
-        // Use adjusted box if available, otherwise original
-        const box = adjustedBoxes.get(i) ?? problem.problemBoundingBox
+        const box = problem.problemBoundingBox
         try {
           const croppedUrl = await cropImageWithCanvas(currentPhoto!.url, box)
           thumbnails.set(i, croppedUrl)
@@ -460,6 +470,53 @@ export function PhotoViewerEditor({
     }
 
     generateAllThumbnails()
+    return () => {
+      cancelled = true
+    }
+  }, [currentPhoto])
+
+  // Track which adjusted boxes we've already regenerated thumbnails for
+  const lastAdjustedBoxesRef = useRef<Map<number, string>>(new Map())
+
+  // Regenerate only the specific thumbnail when a box is adjusted
+  useEffect(() => {
+    if (!currentPhoto) return
+
+    // Find which indices were newly adjusted or changed
+    const indicesToUpdate: number[] = []
+    for (const [index, box] of adjustedBoxes) {
+      const boxKey = JSON.stringify(box)
+      if (lastAdjustedBoxesRef.current.get(index) !== boxKey) {
+        indicesToUpdate.push(index)
+        lastAdjustedBoxesRef.current.set(index, boxKey)
+      }
+    }
+
+    if (indicesToUpdate.length === 0) return
+
+    let cancelled = false
+
+    async function updateAdjustedThumbnails() {
+      for (const index of indicesToUpdate) {
+        if (cancelled) break
+        const box = adjustedBoxes.get(index)
+        if (!box) continue
+        try {
+          const croppedUrl = await cropImageWithCanvas(currentPhoto!.url, box)
+          if (!cancelled) {
+            setProblemThumbnails((prev) => {
+              const next = new Map(prev)
+              next.set(index, croppedUrl)
+              return next
+            })
+          }
+        } catch (err) {
+          console.error(`Failed to update thumbnail for problem ${index}:`, err)
+        }
+      }
+    }
+
+    updateAdjustedThumbnails()
     return () => {
       cancelled = true
     }
@@ -708,27 +765,6 @@ export function PhotoViewerEditor({
           </div>
 
           <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
-            {/* Debug toggle button */}
-            <button
-              type="button"
-              data-action="toggle-bbox-debug"
-              onClick={() => setShowBboxDebug(!showBboxDebug)}
-              className={css({
-                px: 3,
-                py: 2,
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                color: showBboxDebug ? 'cyan.900' : 'white',
-                backgroundColor: showBboxDebug ? 'cyan.400' : 'gray.700',
-                border: 'none',
-                borderRadius: 'lg',
-                cursor: 'pointer',
-                _hover: { backgroundColor: showBboxDebug ? 'cyan.500' : 'gray.600' },
-              })}
-            >
-              🐞 {showBboxDebug ? 'Debug ON' : 'Debug'}
-            </button>
-
             {/* Re-parse button - handles full flow: select → preview → confirm */}
             {onParse && !currentPhoto.sessionCreated && (
               <button
@@ -900,7 +936,7 @@ export function PhotoViewerEditor({
                 selectedIndex={selectedProblemIndex}
                 onSelectProblem={setSelectedProblemIndex}
                 imageRef={reviewImageRef}
-                debug={showBboxDebug}
+                debug={isVisualDebugEnabled}
                 selectedForReparse={selectedForReparse}
                 onToggleReparse={toggleProblemForReparse}
                 adjustedBoxes={adjustedBoxes}
@@ -1178,8 +1214,8 @@ export function PhotoViewerEditor({
               </div>
             )}
 
-            {/* Debug panel - LLM metadata */}
-            {llm && (
+            {/* Debug panel - LLM metadata (only shown when visual debug is enabled) */}
+            {isVisualDebugEnabled && llm && (
               <div
                 data-element="debug-panel"
                 className={css({
