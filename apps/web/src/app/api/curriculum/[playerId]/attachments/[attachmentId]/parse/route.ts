@@ -100,20 +100,34 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Check if already processing
+    // Check if already processing (but allow retry if stuck for > 5 minutes)
     if (attachment.parsingStatus === "processing") {
-      return NextResponse.json({
-        status: "processing",
-        message: "Parsing already in progress",
-      });
+      const STUCK_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+      const parsedAt = attachment.parsedAt
+        ? new Date(attachment.parsedAt).getTime()
+        : 0;
+      const timeSinceUpdate = Date.now() - parsedAt;
+
+      // If recently started processing, don't allow retry
+      if (parsedAt > 0 && timeSinceUpdate < STUCK_THRESHOLD_MS) {
+        return NextResponse.json({
+          status: "processing",
+          message: "Parsing already in progress",
+        });
+      }
+      // Otherwise, it's stuck - allow retry by continuing
+      console.log(
+        `Attachment ${attachmentId} was stuck in processing for ${Math.round(timeSinceUpdate / 1000)}s, allowing retry`,
+      );
     }
 
-    // Update status to processing
+    // Update status to processing (set parsedAt to track when processing started)
     await db
       .update(practiceAttachments)
       .set({
         parsingStatus: "processing",
         parsingError: null,
+        parsedAt: new Date().toISOString(), // Track when processing started
       })
       .where(eq(practiceAttachments.id, attachmentId));
 
@@ -239,6 +253,24 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
   } catch (error) {
     console.error("Error starting parse:", error);
+
+    // Try to mark as failed so it doesn't stay stuck in "processing"
+    try {
+      const { attachmentId } = await params;
+      if (attachmentId) {
+        await db
+          .update(practiceAttachments)
+          .set({
+            parsingStatus: "failed",
+            parsingError:
+              error instanceof Error ? error.message : "Failed to start parsing",
+          })
+          .where(eq(practiceAttachments.id, attachmentId));
+      }
+    } catch (updateError) {
+      console.error("Failed to update attachment status:", updateError);
+    }
+
     return NextResponse.json(
       { error: "Failed to start parsing" },
       { status: 500 },
