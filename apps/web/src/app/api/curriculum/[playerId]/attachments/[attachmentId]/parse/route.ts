@@ -135,6 +135,27 @@ export async function POST(request: Request, { params }: RouteParams) {
         promptOptions,
       })
 
+      // Check if parsing was cancelled while we were processing
+      // Re-read current status from DB to see if user clicked cancel
+      const currentAttachment = await db
+        .select({ parsingStatus: practiceAttachments.parsingStatus })
+        .from(practiceAttachments)
+        .where(eq(practiceAttachments.id, attachmentId))
+        .get()
+
+      if (!currentAttachment || currentAttachment.parsingStatus !== 'processing') {
+        // Parsing was cancelled (status is null) or attachment was deleted
+        // Don't write results - respect the cancellation
+        console.log(
+          `Parsing for ${attachmentId} was cancelled (status: ${currentAttachment?.parsingStatus}), discarding results`
+        )
+        return NextResponse.json({
+          success: false,
+          cancelled: true,
+          message: 'Parsing was cancelled',
+        })
+      }
+
       let parsingResult = result.data
 
       // Merge preserved bounding boxes from user adjustments

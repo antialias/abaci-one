@@ -212,6 +212,13 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const existingResult = attachment.rawParsingResult as WorksheetParsingResult
 
+    // Set status to processing so cancellation can be detected
+    // (mirrors the main parse route behavior)
+    await db
+      .update(practiceAttachments)
+      .set({ parsingStatus: 'processing' })
+      .where(eq(practiceAttachments.id, attachmentId))
+
     // Read the image file
     const uploadDir = join(process.cwd(), 'data', 'uploads', 'players', playerId)
     const filepath = join(uploadDir, attachment.filename)
@@ -264,6 +271,27 @@ export async function POST(request: Request, { params }: RouteParams) {
         console.error(`Failed to re-parse problem ${problemIndex}:`, err)
         // Continue with other problems
       }
+    }
+
+    // Check if re-parsing was cancelled while we were processing
+    // Re-read current status from DB to see if user clicked cancel
+    const currentAttachment = await db
+      .select({ parsingStatus: practiceAttachments.parsingStatus })
+      .from(practiceAttachments)
+      .where(eq(practiceAttachments.id, attachmentId))
+      .get()
+
+    if (!currentAttachment || currentAttachment.parsingStatus !== 'processing') {
+      // Re-parsing was cancelled (status is null) or attachment was deleted
+      // Don't write results - respect the cancellation
+      console.log(
+        `Re-parsing for ${attachmentId} was cancelled (status: ${currentAttachment?.parsingStatus}), discarding results`
+      )
+      return NextResponse.json({
+        success: false,
+        cancelled: true,
+        message: 'Re-parsing was cancelled',
+      })
     }
 
     // Merge results back into existing parsing result

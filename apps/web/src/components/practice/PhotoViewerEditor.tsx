@@ -372,12 +372,13 @@ export function PhotoViewerEditor({
       return
     }
 
-    await onReparseSelected(currentPhoto.id, indices, boundingBoxes)
-
-    // Clear selections after re-parsing
+    // Clear preview mode BEFORE starting the mutation to avoid showing two cancel buttons
+    // (one for "cancel preview" and one for "cancel re-parse in progress")
     setShowReparsePreview(false)
     setSelectedForReparse(new Set())
     setAdjustedBoxes(new Map())
+
+    await onReparseSelected(currentPhoto.id, indices, boundingBoxes)
   }, [currentPhoto, onReparseSelected, selectedForReparse, adjustedBoxes])
 
   // Bulk exclude selected problems
@@ -889,8 +890,8 @@ export function PhotoViewerEditor({
                       : '🔄 Re-parse'}
               </button>
             )}
-            {/* Cancel button - shown in preview mode OR when re-parsing is in progress */}
-            {showReparsePreview && (
+            {/* Cancel button for preview mode - only when NOT already re-parsing */}
+            {showReparsePreview && reparsingPhotoId !== currentPhoto?.id && (
               <button
                 type="button"
                 data-action="cancel-reparse-preview"
