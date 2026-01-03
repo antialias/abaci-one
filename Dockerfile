@@ -27,6 +27,7 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/core/client/node/package.json ./packages/core/client/node/
 COPY packages/abacus-react/package.json ./packages/abacus-react/
 COPY packages/templates/package.json ./packages/templates/
+COPY packages/llm-client/package.json ./packages/llm-client/
 
 # Install ALL dependencies for build stage
 RUN pnpm install --frozen-lockfile
@@ -77,6 +78,7 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/core/client/node/package.json ./packages/core/client/node/
 COPY packages/abacus-react/package.json ./packages/abacus-react/
 COPY packages/templates/package.json ./packages/templates/
+COPY packages/llm-client/package.json ./packages/llm-client/
 
 # Install ONLY production dependencies
 RUN pnpm install --frozen-lockfile --prod
