@@ -384,3 +384,79 @@ export async function GET(_request: Request, { params }: RouteParams) {
     );
   }
 }
+
+/**
+ * DELETE - Cancel/reset parsing status
+ *
+ * Allows user to cancel a stuck or in-progress parsing operation.
+ * Resets the parsing status to null so they can retry.
+ */
+export async function DELETE(_request: Request, { params }: RouteParams) {
+  try {
+    const { playerId, attachmentId } = await params;
+
+    if (!playerId || !attachmentId) {
+      return NextResponse.json(
+        { error: "Player ID and Attachment ID required" },
+        { status: 400 },
+      );
+    }
+
+    // Authorization check
+    const userId = await getDbUserId();
+    const canModify = await canPerformAction(userId, playerId, "start-session");
+    if (!canModify) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    // Get attachment to verify it exists and belongs to player
+    const attachment = await db
+      .select()
+      .from(practiceAttachments)
+      .where(eq(practiceAttachments.id, attachmentId))
+      .get();
+
+    if (!attachment || attachment.playerId !== playerId) {
+      return NextResponse.json(
+        { error: "Attachment not found" },
+        { status: 404 },
+      );
+    }
+
+    // Reset parsing status
+    await db
+      .update(practiceAttachments)
+      .set({
+        parsingStatus: null,
+        parsedAt: null,
+        parsingError: null,
+        rawParsingResult: null,
+        approvedResult: null,
+        confidenceScore: null,
+        needsReview: null,
+        // Clear LLM metadata
+        llmProvider: null,
+        llmModel: null,
+        llmPromptUsed: null,
+        llmRawResponse: null,
+        llmJsonSchema: null,
+        llmImageSource: null,
+        llmAttempts: null,
+        llmPromptTokens: null,
+        llmCompletionTokens: null,
+        llmTotalTokens: null,
+      })
+      .where(eq(practiceAttachments.id, attachmentId));
+
+    return NextResponse.json({
+      success: true,
+      message: "Parsing cancelled",
+    });
+  } catch (error) {
+    console.error("Error cancelling parse:", error);
+    return NextResponse.json(
+      { error: "Failed to cancel parsing" },
+      { status: 500 },
+    );
+  }
+}

@@ -47,6 +47,7 @@ import {
   useApproveAndCreateSession,
   useSubmitCorrections,
   useReparseSelected,
+  useCancelParsing,
 } from "@/hooks/useWorksheetParsing";
 import { PARSING_MODEL_CONFIGS } from "@/lib/worksheet-parsing";
 import {
@@ -223,8 +224,9 @@ export function SummaryClient({
     sessionCreated: att.sessionCreated,
   }));
 
-  // Worksheet parsing mutation
+  // Worksheet parsing mutations
   const startParsing = useStartParsing(studentId, session?.id ?? "");
+  const cancelParsing = useCancelParsing(studentId, session?.id ?? "");
 
   // Approve and create session mutation
   const approveAndCreateSession = useApproveAndCreateSession(
@@ -765,6 +767,9 @@ export function SummaryClient({
                         onDeletePhoto={deletePhoto}
                         onParse={(attachmentId) =>
                           startParsing.mutate({ attachmentId })
+                        }
+                        onCancelParsing={(attachmentId) =>
+                          cancelParsing.mutate(attachmentId)
                         }
                       />
                       {/* All Problems - complete session listing */}

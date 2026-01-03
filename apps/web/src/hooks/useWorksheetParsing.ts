@@ -463,6 +463,72 @@ export function useReparseSelected(playerId: string, sessionId: string) {
 }
 
 /**
+ * Hook to cancel/reset parsing status
+ */
+export function useCancelParsing(playerId: string, sessionId: string) {
+  const queryClient = useQueryClient();
+  const queryKey = attachmentKeys.session(playerId, sessionId);
+
+  return useMutation({
+    mutationFn: async (attachmentId: string) => {
+      const res = await api(
+        `curriculum/${playerId}/attachments/${attachmentId}/parse`,
+        {
+          method: "DELETE",
+        },
+      );
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to cancel parsing");
+      }
+      return res.json();
+    },
+
+    onMutate: async (attachmentId) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot current state
+      const previous = queryClient.getQueryData<AttachmentsCache>(queryKey);
+
+      // Optimistic update: reset to unparsed
+      if (previous) {
+        queryClient.setQueryData<AttachmentsCache>(queryKey, {
+          ...previous,
+          attachments: previous.attachments.map((a) =>
+            a.id === attachmentId
+              ? {
+                  ...a,
+                  parsingStatus: null,
+                  parsedAt: null,
+                  parsingError: null,
+                  rawParsingResult: null,
+                  confidenceScore: null,
+                  needsReview: false,
+                }
+              : a,
+          ),
+        });
+      }
+
+      return { previous };
+    },
+
+    onError: (_err, _attachmentId, context) => {
+      // Revert on error
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+    },
+
+    onSettled: () => {
+      // Always refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+}
+
+/**
  * Get parsing status badge color
  */
 export function getParsingStatusColor(status: ParsingStatus | null): string {
