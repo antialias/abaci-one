@@ -75,4 +75,8 @@ export const attachmentKeys = {
   // Parsing-specific data for an attachment
   parsing: (playerId: string, attachmentId: string) =>
     [...attachmentKeys.detail(playerId, attachmentId), 'parsing'] as const,
+
+  // Review progress for an attachment (resumable review state)
+  reviewProgress: (playerId: string, attachmentId: string) =>
+    [...attachmentKeys.detail(playerId, attachmentId), 'review-progress'] as const,
 }

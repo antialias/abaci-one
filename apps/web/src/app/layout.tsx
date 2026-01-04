@@ -57,9 +57,6 @@ export const metadata: Metadata = {
     apple: '/apple-touch-icon.png',
   },
 
-  // Manifest
-  manifest: '/manifest.json',
-
   // App-specific
   applicationName: 'Abaci.One',
   appleWebApp: {

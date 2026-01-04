@@ -47,6 +47,8 @@ export interface SessionAttachment {
   needsReview: boolean
   sessionCreated: boolean
   createdSessionId: string | null
+  // Review progress (for resumable reviews)
+  reviewProgress: unknown | null
   // LLM metadata (for debugging/transparency)
   llm: {
     provider: string | null
@@ -122,6 +124,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
       needsReview: att.needsReview === true,
       sessionCreated: att.sessionCreated === true,
       createdSessionId: att.createdSessionId ?? null,
+      // Review progress (for resumable reviews)
+      reviewProgress: att.reviewProgress ?? null,
       // LLM metadata (for debugging/transparency)
       llm:
         att.llmProvider || att.llmModel
@@ -330,6 +334,8 @@ export async function POST(request: Request, { params }: RouteParams) {
         needsReview: false,
         sessionCreated: false,
         createdSessionId: null,
+        // No review progress yet
+        reviewProgress: null,
         // No LLM metadata yet
         llm: null,
       })

@@ -11,11 +11,16 @@
  * Includes optimistic updates for immediate UI feedback.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ParsingStatus } from '@/db/schema/practice-attachments'
 import { api } from '@/lib/queryClient'
 import { attachmentKeys, sessionHistoryKeys, sessionPlanKeys } from '@/lib/queryKeys'
-import type { computeParsingStats, WorksheetParsingResult } from '@/lib/worksheet-parsing'
+import type {
+  computeParsingStats,
+  WorksheetParsingResult,
+  ReviewProgress,
+  ParsedProblem,
+} from '@/lib/worksheet-parsing'
 
 /** Stats returned from parsing */
 type ParsingStats = ReturnType<typeof computeParsingStats>
@@ -522,4 +527,155 @@ export function getParsingStatusText(status: ParsingStatus | null, problemCount?
     default:
       return 'Not parsed'
   }
+}
+
+// ============================================================================
+// Review Progress Hooks
+// ============================================================================
+
+/** Response from review progress API */
+interface ReviewProgressResponse {
+  reviewProgress: ReviewProgress
+  problems: ParsedProblem[]
+  totalProblems: number
+}
+
+/**
+ * Hook to fetch review progress for an attachment
+ */
+export function useReviewProgress(playerId: string, attachmentId: string | null) {
+  return useQuery({
+    queryKey: attachmentId ? attachmentKeys.reviewProgress(playerId, attachmentId) : ['disabled'],
+    queryFn: async () => {
+      if (!attachmentId) throw new Error('No attachment ID')
+      const res = await api(`curriculum/${playerId}/attachments/${attachmentId}/review-progress`)
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to fetch review progress')
+      }
+      return res.json() as Promise<ReviewProgressResponse>
+    },
+    enabled: !!attachmentId,
+  })
+}
+
+/** Response from initialize review API */
+interface InitializeReviewResponse {
+  success: boolean
+  reviewProgress: ReviewProgress
+  problems: ParsedProblem[]
+  message: string
+}
+
+/**
+ * Hook to initialize a review session (auto-approves high-confidence problems)
+ */
+export function useInitializeReview(playerId: string, sessionId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (attachmentId: string) => {
+      const res = await api(`curriculum/${playerId}/attachments/${attachmentId}/review-progress`, {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to initialize review')
+      }
+      return res.json() as Promise<InitializeReviewResponse>
+    },
+
+    onSuccess: (_data, attachmentId) => {
+      // Invalidate both review progress and session attachments
+      queryClient.invalidateQueries({
+        queryKey: attachmentKeys.reviewProgress(playerId, attachmentId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: attachmentKeys.session(playerId, sessionId),
+      })
+    },
+  })
+}
+
+/** Options for updating review progress */
+interface UpdateReviewProgressOptions {
+  attachmentId: string
+  currentIndex?: number
+  status?: 'not_started' | 'in_progress' | 'completed'
+  problemUpdate?: {
+    index: number
+    reviewStatus: 'pending' | 'approved' | 'corrected' | 'flagged'
+  }
+}
+
+/**
+ * Hook to update review progress (save position, mark problems reviewed)
+ */
+export function useUpdateReviewProgress(playerId: string, sessionId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (options: UpdateReviewProgressOptions) => {
+      const { attachmentId, ...body } = options
+      const res = await api(`curriculum/${playerId}/attachments/${attachmentId}/review-progress`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to update review progress')
+      }
+      return res.json() as Promise<ReviewProgressResponse>
+    },
+
+    onMutate: async (options) => {
+      const { attachmentId } = options
+      const queryKey = attachmentKeys.reviewProgress(playerId, attachmentId)
+
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey })
+
+      // Snapshot current state for rollback
+      const previous = queryClient.getQueryData<ReviewProgressResponse>(queryKey)
+
+      // Optimistic update
+      if (previous && options.problemUpdate) {
+        const { index, reviewStatus } = options.problemUpdate
+        queryClient.setQueryData<ReviewProgressResponse>(queryKey, {
+          ...previous,
+          problems: previous.problems.map((p, i) =>
+            i === index ? { ...p, reviewStatus, reviewedAt: new Date().toISOString() } : p
+          ),
+          reviewProgress: {
+            ...previous.reviewProgress,
+            status: 'in_progress',
+            lastReviewedAt: new Date().toISOString(),
+          },
+        })
+      }
+
+      return { previous, queryKey }
+    },
+
+    onError: (_err, _options, context) => {
+      // Revert on error
+      if (context?.previous && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previous)
+      }
+    },
+
+    onSuccess: (_data, options) => {
+      // Also invalidate session attachments to keep list in sync
+      queryClient.invalidateQueries({
+        queryKey: attachmentKeys.session(playerId, sessionId),
+      })
+    },
+
+    onSettled: (_data, _error, options) => {
+      // Always refetch to ensure consistency
+      queryClient.invalidateQueries({
+        queryKey: attachmentKeys.reviewProgress(playerId, options.attachmentId),
+      })
+    },
+  })
 }

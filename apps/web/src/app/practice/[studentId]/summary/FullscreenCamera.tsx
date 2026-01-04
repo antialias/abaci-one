@@ -46,6 +46,7 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
   const {
     isLoading: isScannerLoading,
     isReady: isScannerReady,
+    ensureOpenCVLoaded,
     isStable: isDetectionStable,
     isLocked: isDetectionLocked,
     debugInfo: scannerDebugInfo,
@@ -61,6 +62,10 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
 
     const startCamera = async () => {
       try {
+        // Start loading OpenCV in parallel with camera setup
+        // (this component requires OpenCV for document detection)
+        const opencvPromise = ensureOpenCVLoaded()
+
         const constraints: MediaStreamConstraints = {
           video: {
             facingMode: { ideal: 'environment' },
@@ -86,6 +91,9 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
             setIsReady(true)
           }
         }
+
+        // Wait for OpenCV to finish loading (should already be done or almost done)
+        await opencvPromise
       } catch (err) {
         if (cancelled) return
         console.error('Camera access error:', err)
@@ -102,7 +110,7 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
         streamRef.current = null
       }
     }
-  }, [])
+  }, [ensureOpenCVLoaded])
 
   // Detection loop - runs when camera and scanner are ready
   useEffect(() => {

@@ -171,8 +171,9 @@ export function PhotoViewerEditor({
     contentType: 'text' | 'json' | 'markdown'
   }>({ isOpen: false, title: '', content: '', contentType: 'text' })
 
+  // OpenCV is lazy-loaded only when actually needed (when entering edit mode)
   const {
-    isReady: isDetectionReady,
+    ensureOpenCVLoaded,
     detectQuadsInImage,
     loadImageToCanvas,
     cv: opencvRef,
@@ -191,10 +192,10 @@ export function PhotoViewerEditor({
   // Auto-load original for edit mode on open
   // Don't auto-load if edit was completed (user clicked Done) - prevents re-triggering edit mode
   useEffect(() => {
-    if (isOpen && initialMode === 'edit' && !editState && isDetectionReady && !editCompleted) {
+    if (isOpen && initialMode === 'edit' && !editState && !editCompleted) {
       loadOriginalForEditing()
     }
-  }, [isOpen, initialMode, editState, isDetectionReady, editCompleted])
+  }, [isOpen, initialMode, editState, editCompleted])
 
   const currentPhoto = photos[currentIndex]
   const hasMultiple = photos.length > 1
@@ -215,7 +216,7 @@ export function PhotoViewerEditor({
 
   // Load original image for editing
   const loadOriginalForEditing = useCallback(async () => {
-    if (!currentPhoto || !isDetectionReady) return
+    if (!currentPhoto) return
 
     setIsLoadingOriginal(true)
     try {
@@ -227,6 +228,7 @@ export function PhotoViewerEditor({
       const blob = await response.blob()
       const file = new File([blob], 'original.jpg', { type: blob.type })
 
+      // Load image to canvas (doesn't require OpenCV)
       const canvas = await loadImageToCanvas(file)
       if (!canvas) throw new Error('Failed to load image to canvas')
 
@@ -235,6 +237,8 @@ export function PhotoViewerEditor({
       if (currentPhoto.corners && currentPhoto.corners.length === 4) {
         corners = currentPhoto.corners
       } else {
+        // Lazy-load OpenCV before detecting quads
+        await ensureOpenCVLoaded()
         const result = detectQuadsInImage(canvas)
         corners = result.corners
       }
@@ -249,7 +253,7 @@ export function PhotoViewerEditor({
     } finally {
       setIsLoadingOriginal(false)
     }
-  }, [currentPhoto, isDetectionReady, loadImageToCanvas, detectQuadsInImage])
+  }, [currentPhoto, loadImageToCanvas, ensureOpenCVLoaded, detectQuadsInImage])
 
   // Handle entering edit mode
   const handleEnterEditMode = useCallback(() => {
@@ -1768,7 +1772,7 @@ export function PhotoViewerEditor({
           type="button"
           data-action="enter-edit-mode"
           onClick={handleEnterEditMode}
-          disabled={isLoadingOriginal || !isDetectionReady}
+          disabled={isLoadingOriginal}
           className={css({
             px: 4,
             py: 2,

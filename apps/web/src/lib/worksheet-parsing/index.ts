@@ -41,6 +41,8 @@ export {
   WorksheetParsingResultSchema,
   ProblemCorrectionSchema,
   ReparseRequestSchema,
+  ReviewProgressSchema,
+  createInitialReviewProgress,
   type BoundingBox,
   type ProblemFormat,
   type ParsedProblem,
@@ -48,6 +50,7 @@ export {
   type WorksheetParsingResult,
   type ProblemCorrection,
   type ReparseRequest,
+  type ReviewProgress,
 } from './schemas'
 
 // Parser

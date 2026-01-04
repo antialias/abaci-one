@@ -5,9 +5,9 @@ import type { RefObject } from 'react'
 import { useCallback, useState } from 'react'
 import type { ParsingStatus } from '@/db/schema/practice-attachments'
 import { api } from '@/lib/queryClient'
-import type { WorksheetParsingResult } from '@/lib/worksheet-parsing'
+import type { WorksheetParsingResult, ReviewProgress } from '@/lib/worksheet-parsing'
 import { css } from '../../../styled-system/css'
-import { ParsedProblemsList } from '../worksheet-parsing'
+import { WorksheetReviewSummary } from '../worksheet-parsing'
 
 export interface OfflineAttachment {
   id: string
@@ -18,6 +18,8 @@ export interface OfflineAttachment {
   rawParsingResult?: WorksheetParsingResult | null
   needsReview?: boolean
   sessionCreated?: boolean
+  // Review progress (for resumable reviews)
+  reviewProgress?: ReviewProgress | null
 }
 
 export interface OfflineWorkSectionProps {
@@ -52,7 +54,7 @@ export interface OfflineWorkSectionProps {
   onDragLeave: (e: React.DragEvent) => void
   onOpenCamera: () => void
   /** Open photo viewer/editor at index with specified mode */
-  onOpenViewer: (index: number, mode: 'view' | 'edit') => void
+  onOpenViewer: (index: number, mode: 'view' | 'edit' | 'review') => void
   onDeletePhoto: (id: string) => void
   /** Start parsing a worksheet photo */
   onParse?: (id: string) => void
@@ -60,6 +62,14 @@ export interface OfflineWorkSectionProps {
   onCancelParsing?: (id: string) => void
   /** ID of photo currently being re-parsed (from fullscreen view) */
   reparsingPhotoId?: string | null
+  /** Initialize review progress for an attachment (POST to review-progress) */
+  onInitializeReview?: (attachmentId: string) => Promise<void>
+  /** ID of attachment currently being initialized for review */
+  initializingReviewId?: string | null
+  /** Approve all problems and create session (skips review) */
+  onApproveAll?: (attachmentId: string) => Promise<void>
+  /** ID of attachment currently being approved */
+  approvingId?: string | null
 }
 
 /**
@@ -94,6 +104,10 @@ export function OfflineWorkSection({
   onParse,
   onCancelParsing,
   reparsingPhotoId = null,
+  onInitializeReview,
+  initializingReviewId = null,
+  onApproveAll,
+  approvingId = null,
 }: OfflineWorkSectionProps) {
   const photoCount = attachments.length
   // Show add tile unless we have 8+ photos (max reasonable gallery size)
@@ -833,7 +847,7 @@ export function OfflineWorkSection({
               })}
             >
               <span>📊</span>
-              Extracted Problems
+              Review Worksheets
             </h4>
 
             {/* Photo selector tabs when multiple parsed photos */}
@@ -844,7 +858,7 @@ export function OfflineWorkSection({
                   gap: '0.25rem',
                 })}
               >
-                {parsedAttachments.map((att, index) => {
+                {parsedAttachments.map((att) => {
                   const photoIndex = attachments.findIndex((a) => a.id === att.id)
                   return (
                     <button
@@ -890,12 +904,49 @@ export function OfflineWorkSection({
             )}
           </div>
 
-          {/* Show the selected parsed result */}
+          {/* Show WorksheetReviewSummary for the selected worksheet */}
           {parsedAttachments.map((att) => {
             if (att.id !== expandedResultId) return null
             if (!att.rawParsingResult) return null
 
-            return <ParsedProblemsList key={att.id} result={att.rawParsingResult} isDark={isDark} />
+            const photoIndex = attachments.findIndex((a) => a.id === att.id)
+            const worksheetIndex = parsedAttachments.findIndex((a) => a.id === att.id) + 1
+
+            return (
+              <WorksheetReviewSummary
+                key={att.id}
+                thumbnailUrl={att.url}
+                reviewProgress={att.reviewProgress ?? null}
+                problems={att.rawParsingResult.problems}
+                parsingResult={att.rawParsingResult}
+                worksheetIndex={worksheetIndex}
+                totalWorksheets={parsedAttachments.length}
+                onStartReview={async () => {
+                  // Initialize review progress if needed, then open review mode
+                  if (onInitializeReview && !att.reviewProgress) {
+                    await onInitializeReview(att.id)
+                  }
+                  onOpenViewer(photoIndex, 'review')
+                }}
+                onApproveAll={async () => {
+                  if (onApproveAll) {
+                    await onApproveAll(att.id)
+                  }
+                }}
+                onNextWorksheet={
+                  worksheetIndex < parsedAttachments.length
+                    ? () => {
+                        const nextAtt = parsedAttachments[worksheetIndex]
+                        if (nextAtt) {
+                          setExpandedResultId(nextAtt.id)
+                        }
+                      }
+                    : undefined
+                }
+                isApproving={approvingId === att.id}
+                isInitializing={initializingReviewId === att.id}
+              />
+            )
           })}
         </div>
       )}

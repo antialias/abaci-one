@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 /**
  * Hook for document detection using OpenCV.js directly
@@ -182,6 +182,12 @@ export interface UseDocumentDetectionReturn {
   error: string | null
   /** Whether scanner is ready to use */
   isReady: boolean
+  /**
+   * Ensure OpenCV is loaded before using detection functions.
+   * Call this before using highlightDocument, extractDocument, or detectQuadsInImage.
+   * Returns true if OpenCV loaded successfully, false otherwise.
+   */
+  ensureOpenCVLoaded: () => Promise<boolean>
   /** Whether detection is currently stable (good time to capture) */
   isStable: boolean
   /** Whether detection is locked (very stable, ideal to capture) */
@@ -223,9 +229,11 @@ export interface UseDocumentDetectionReturn {
 }
 
 export function useDocumentDetection(): UseDocumentDetectionReturn {
-  const [isLoading, setIsLoading] = useState(true)
+  // Start with isLoading=false since we won't load until requested
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const cvRef = useRef<CV | null>(null)
+  const loadPromiseRef = useRef<Promise<void> | null>(null)
 
   // Multi-quad tracking
   const trackedQuadsRef = useRef<Map<string, TrackedQuad>>(new Map())
@@ -243,19 +251,30 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
     bestQuadFrameCount: 0,
     lastDetectionError: null,
   })
-  const loadStartTimeRef = useRef<number>(Date.now())
+  const loadStartTimeRef = useRef<number>(0)
 
-  // Lazy load OpenCV.js
-  useEffect(() => {
-    let mounted = true
+  // Helper to check if OpenCV is fully initialized
+  const isOpenCVReady = useCallback((): boolean => {
+    const cv = (window as unknown as { cv?: { imread?: unknown } }).cv
+    return !!(cv && typeof cv.imread === 'function')
+  }, [])
 
-    // Helper to check if OpenCV is fully initialized
-    const isOpenCVReady = (): boolean => {
-      const cv = (window as unknown as { cv?: { imread?: unknown } }).cv
-      return !!(cv && typeof cv.imread === 'function')
+  // Lazy load OpenCV.js - only when explicitly requested
+  const ensureOpenCVLoaded = useCallback(async (): Promise<boolean> => {
+    // Already loaded
+    if (cvRef.current) return true
+
+    // Already loading - wait for it
+    if (loadPromiseRef.current) {
+      await loadPromiseRef.current
+      return cvRef.current !== null
     }
 
-    async function loadOpenCV() {
+    // Start loading
+    setIsLoading(true)
+    loadStartTimeRef.current = Date.now()
+
+    loadPromiseRef.current = (async () => {
       try {
         if (typeof window !== 'undefined') {
           if (!isOpenCVReady()) {
@@ -327,27 +346,26 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
           }
         }
 
-        if (!mounted) return
-
         // Store OpenCV reference
         cvRef.current = (window as unknown as { cv: CV }).cv
         const loadTime = Date.now() - loadStartTimeRef.current
         setDebugInfo((prev) => ({ ...prev, loadTimeMs: loadTime }))
         setIsLoading(false)
       } catch (err) {
-        if (!mounted) return
         console.error('Failed to load OpenCV:', err)
         setError(err instanceof Error ? err.message : 'Failed to load OpenCV')
         setIsLoading(false)
+        throw err
       }
-    }
+    })()
 
-    loadOpenCV()
-
-    return () => {
-      mounted = false
+    try {
+      await loadPromiseRef.current
+      return cvRef.current !== null
+    } catch {
+      return false
     }
-  }, [])
+  }, [isOpenCVReady])
 
   // Reusable canvas for video frame capture
   const frameCanvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -1187,6 +1205,7 @@ export function useDocumentDetection(): UseDocumentDetectionReturn {
     isLoading,
     error,
     isReady: !isLoading && !error && cvRef.current !== null,
+    ensureOpenCVLoaded,
     isStable,
     isLocked: !!isLocked,
     debugInfo,

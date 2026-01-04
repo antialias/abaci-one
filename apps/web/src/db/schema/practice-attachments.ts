@@ -3,7 +3,7 @@ import { createId } from '@paralleldrive/cuid2'
 import { players } from './players'
 import { sessionPlans } from './session-plans'
 import { users } from './users'
-import type { WorksheetParsingResult } from '@/lib/worksheet-parsing'
+import type { WorksheetParsingResult, ReviewProgress } from '@/lib/worksheet-parsing'
 
 /**
  * Parsing workflow status
@@ -72,6 +72,12 @@ export const practiceAttachments = sqliteTable('practice_attachments', {
   // Confidence and review indicators
   confidenceScore: real('confidence_score'), // 0-1, from LLM
   needsReview: integer('needs_review', { mode: 'boolean' }), // True if any problems need manual review
+
+  // Review workflow progress (for resumable reviews)
+  // Tracks where the user left off and review statistics
+  reviewProgress: text('review_progress', {
+    mode: 'json',
+  }).$type<ReviewProgress | null>(),
 
   // LLM call metadata (for debugging/transparency)
   llmProvider: text('llm_provider'), // e.g., "openai", "anthropic"

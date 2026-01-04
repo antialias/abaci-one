@@ -59,6 +59,7 @@ import { useSessionMode } from '@/hooks/useSessionMode'
 import {
   useApproveAndCreateSession,
   useCancelParsing,
+  useInitializeReview,
   useReparseSelected,
   useStartParsing,
   useSubmitCorrections,
@@ -140,7 +141,7 @@ export function SummaryClient({
   // Unified photo viewer/editor state
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerIndex, setViewerIndex] = useState(0)
-  const [viewerMode, setViewerMode] = useState<'view' | 'edit'>('view')
+  const [viewerMode, setViewerMode] = useState<'view' | 'edit' | 'review'>('view')
 
   // File upload adjustment state (for processing files through DocumentAdjuster)
   const [fileQueue, setFileQueue] = useState<File[]>([])
@@ -151,8 +152,9 @@ export function SummaryClient({
   } | null>(null)
 
   // Document detection hook for file uploads and gallery edits
+  // OpenCV is lazy-loaded only when actually needed (not on page load)
   const {
-    isReady: isDetectionReady,
+    ensureOpenCVLoaded,
     detectQuadsInImage,
     loadImageToCanvas,
     cv: opencvRef,
@@ -184,6 +186,8 @@ export function SummaryClient({
     needsReview: boolean
     sessionCreated: boolean
     createdSessionId: string | null
+    // Review progress (for resumable reviews)
+    reviewProgress: object | null
     // LLM metadata
     llm: {
       provider: string | null
@@ -225,6 +229,7 @@ export function SummaryClient({
     rawParsingResult: att.rawParsingResult as OfflineAttachment['rawParsingResult'],
     needsReview: att.needsReview,
     sessionCreated: att.sessionCreated,
+    reviewProgress: att.reviewProgress as OfflineAttachment['reviewProgress'],
   }))
 
   // Worksheet parsing mutations
@@ -239,6 +244,9 @@ export function SummaryClient({
 
   // Re-parse selected problems mutation
   const reparseSelected = useReparseSelected(studentId, session?.id ?? '')
+
+  // Initialize review progress mutation (for starting the review workflow)
+  const initializeReview = useInitializeReview(studentId, session?.id ?? '')
 
   // Map attachments to PhotoViewerEditorPhoto type for the viewer
   const viewerPhotos: PhotoViewerEditorPhoto[] = (attachmentsData?.attachments ?? []).map(
@@ -382,7 +390,7 @@ export function SummaryClient({
 
     const nextFile = fileQueue[0]
 
-    // Load file to canvas
+    // Load file to canvas (doesn't require OpenCV)
     const canvas = await loadImageToCanvas(nextFile)
     if (!canvas) {
       console.warn('Failed to load image:', nextFile.name)
@@ -391,7 +399,10 @@ export function SummaryClient({
       return
     }
 
-    // Detect quads (or get fallback corners)
+    // Ensure OpenCV is loaded before detecting quads (lazy load)
+    await ensureOpenCVLoaded()
+
+    // Detect quads (or get fallback corners if OpenCV failed to load)
     const result = detectQuadsInImage(canvas)
 
     // Show adjustment UI
@@ -400,14 +411,14 @@ export function SummaryClient({
       sourceCanvas: result.sourceCanvas,
       corners: result.corners,
     })
-  }, [fileQueue, loadImageToCanvas, detectQuadsInImage])
+  }, [fileQueue, loadImageToCanvas, ensureOpenCVLoaded, detectQuadsInImage])
 
   // Start processing queue when files are added
   useEffect(() => {
-    if (fileQueue.length > 0 && !uploadAdjustmentState && isDetectionReady) {
+    if (fileQueue.length > 0 && !uploadAdjustmentState) {
       processNextFile()
     }
-  }, [fileQueue, uploadAdjustmentState, isDetectionReady, processNextFile])
+  }, [fileQueue, uploadAdjustmentState, processNextFile])
 
   // Handle adjustment confirm - upload cropped + original with corners and rotation, process next
   const handleUploadAdjustmentConfirm = useCallback(
@@ -560,7 +571,7 @@ export function SummaryClient({
   )
 
   // Open photo viewer at specific photo with optional mode
-  const openViewer = useCallback((index: number, mode: 'view' | 'edit') => {
+  const openViewer = useCallback((index: number, mode: 'view' | 'edit' | 'review') => {
     setViewerIndex(index)
     setViewerMode(mode)
     setViewerOpen(true)
@@ -737,6 +748,23 @@ export function SummaryClient({
                           reparseSelected.isPending
                             ? ((reparseSelected.variables as { attachmentId: string })
                                 ?.attachmentId ?? null)
+                            : null
+                        }
+                        onInitializeReview={async (attachmentId) => {
+                          await initializeReview.mutateAsync({ attachmentId })
+                        }}
+                        initializingReviewId={
+                          initializeReview.isPending
+                            ? ((initializeReview.variables as { attachmentId: string })
+                                ?.attachmentId ?? null)
+                            : null
+                        }
+                        onApproveAll={async (attachmentId) => {
+                          await approveAndCreateSession.mutateAsync(attachmentId)
+                        }}
+                        approvingId={
+                          approveAndCreateSession.isPending
+                            ? ((approveAndCreateSession.variables as string) ?? null)
                             : null
                         }
                       />

@@ -143,6 +143,20 @@ export const ParsedProblemSchema = z
       .boolean()
       .default(false)
       .describe('True if user marked this problem to be excluded from the session'),
+
+    // Review workflow state (set by user during review, not LLM)
+    reviewStatus: z
+      .enum(['pending', 'approved', 'corrected', 'flagged'])
+      .default('pending')
+      .describe(
+        'User review status: "pending" = not yet reviewed, "approved" = user confirmed correct, ' +
+          '"corrected" = user made corrections, "flagged" = user marked for re-scan'
+      ),
+    reviewedAt: z
+      .string()
+      .nullable()
+      .default(null)
+      .describe('ISO timestamp when this problem was reviewed. Null if not yet reviewed'),
   })
   .describe('A single arithmetic problem extracted from the worksheet')
 
@@ -286,3 +300,67 @@ export const ReparseRequestSchema = z
   .describe('Request to re-parse specific problems with additional context')
 
 export type ReparseRequest = z.infer<typeof ReparseRequestSchema>
+
+/**
+ * Review progress for resumable worksheet review workflow
+ *
+ * Stored per-attachment to track where the user left off in the review process.
+ * Enables users to close the browser and resume later.
+ */
+export const ReviewProgressSchema = z
+  .object({
+    status: z
+      .enum(['not_started', 'in_progress', 'completed'])
+      .describe('Overall review status for this worksheet'),
+    currentIndex: z
+      .number()
+      .int()
+      .min(0)
+      .describe('Index of the next problem to review (for resuming). 0-based.'),
+    lastReviewedAt: z
+      .string()
+      .nullable()
+      .describe('ISO timestamp of last review action. Null if not started'),
+    // Counts for quick display (avoid recalculating from problems array)
+    autoApprovedCount: z
+      .number()
+      .int()
+      .min(0)
+      .describe('Number of problems auto-approved due to high confidence'),
+    manuallyReviewedCount: z
+      .number()
+      .int()
+      .min(0)
+      .describe('Number of problems manually reviewed by user'),
+    flaggedCount: z
+      .number()
+      .int()
+      .min(0)
+      .describe('Number of problems flagged as needing attention'),
+    correctedCount: z
+      .number()
+      .int()
+      .min(0)
+      .describe('Number of problems that were corrected by user'),
+  })
+  .describe('Review workflow progress state for resumable reviews')
+
+export type ReviewProgress = z.infer<typeof ReviewProgressSchema>
+
+/**
+ * Create initial review progress for a newly parsed worksheet
+ */
+export function createInitialReviewProgress(
+  problemCount: number,
+  autoApprovedCount: number
+): ReviewProgress {
+  return {
+    status: autoApprovedCount === problemCount ? 'completed' : 'not_started',
+    currentIndex: 0,
+    lastReviewedAt: null,
+    autoApprovedCount,
+    manuallyReviewedCount: 0,
+    flaggedCount: problemCount - autoApprovedCount, // Problems that need review
+    correctedCount: 0,
+  }
+}

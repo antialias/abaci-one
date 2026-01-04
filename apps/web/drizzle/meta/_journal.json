@@ -414,6 +414,13 @@
       "when": 1767657600000,
       "tag": "0058_blushing_impossible_man",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "6",
+      "when": 1767744000000,
+      "tag": "0059_steep_shockwave",
+      "breakpoints": true
     }
   ]
 }
