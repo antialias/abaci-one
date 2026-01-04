@@ -1,7 +1,7 @@
 'use client'
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { EnrollChildModal } from '@/components/classroom'
+import { EnrollChildModal } from '@/components/classroom/EnrollChildModal'
 import { FamilyCodeDisplay } from '@/components/family'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'

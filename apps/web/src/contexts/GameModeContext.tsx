@@ -2,16 +2,42 @@
 
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import type { Player as DBPlayer } from '@/db/schema/players'
-import { useRoomData } from '@/hooks/useRoomData'
-import {
-  useCreatePlayer,
-  useDeletePlayer,
-  useUpdatePlayer,
-  useUserPlayers,
-} from '@/hooks/useUserPlayers'
-import { useViewerId } from '@/hooks/useViewerId'
 import { getNextPlayerColor } from '../types/player'
 import { generateUniquePlayerName } from '../utils/playerNames'
+
+// Types for the hook data that will be passed as props
+// This allows GameModeContext to receive data without importing hooks directly
+export interface RoomData {
+  id?: string
+  memberPlayers?: Record<string, Array<{ id: string; name: string; emoji: string; color: string }>>
+}
+
+// Mutation options type for React Query style callbacks
+interface MutationOptions {
+  onSuccess?: () => void
+}
+
+export interface GameModeProviderProps {
+  children: ReactNode
+  // Player data from useUserPlayers
+  dbPlayers: DBPlayer[]
+  isLoading: boolean
+  // Mutations from useUserPlayers (with optional callbacks)
+  createPlayer: (
+    player: { name: string; emoji: string; color: string; isActive: boolean },
+    options?: MutationOptions
+  ) => void
+  updatePlayerMutation: (
+    args: { id: string; updates: Partial<Pick<DBPlayer, 'name' | 'emoji' | 'color' | 'isActive'>> },
+    options?: MutationOptions
+  ) => void
+  deletePlayer: (id: string, options?: MutationOptions) => void
+  // Room data from useRoomData
+  roomData: RoomData | null
+  notifyRoomOfPlayerUpdate: () => void
+  // Viewer ID from useViewerId
+  viewerId: string | null | undefined
+}
 
 // Client-side Player type (compatible with old type)
 export interface Player {
@@ -42,7 +68,25 @@ export interface GameModeContextType {
   isLoading: boolean
 }
 
-const GameModeContext = createContext<GameModeContextType | null>(null)
+// Default no-op context value for when GameModeProvider hasn't loaded yet
+// This allows pages that don't need game mode to work without the provider
+const defaultContextValue: GameModeContextType = {
+  gameMode: 'single',
+  players: new Map(),
+  activePlayers: new Set(),
+  activePlayerCount: 0,
+  addPlayer: () => {},
+  updatePlayer: () => {},
+  removePlayer: () => {},
+  setActive: () => {},
+  getActivePlayers: () => [],
+  getPlayer: () => undefined,
+  getAllPlayers: () => [],
+  resetPlayers: () => {},
+  isLoading: true,
+}
+
+const GameModeContext = createContext<GameModeContextType>(defaultContextValue)
 
 // Default players to create if none exist
 // Names are generated randomly on first initialization
@@ -65,14 +109,17 @@ function toClientPlayer(dbPlayer: DBPlayer): Player {
   }
 }
 
-export function GameModeProvider({ children }: { children: ReactNode }) {
-  const { data: dbPlayers = [], isLoading } = useUserPlayers()
-  const { mutate: createPlayer } = useCreatePlayer()
-  const { mutate: updatePlayerMutation } = useUpdatePlayer()
-  const { mutate: deletePlayer } = useDeletePlayer()
-  const { roomData, notifyRoomOfPlayerUpdate } = useRoomData()
-  const { data: viewerId } = useViewerId()
-
+export function GameModeProvider({
+  children,
+  dbPlayers,
+  isLoading,
+  createPlayer,
+  updatePlayerMutation,
+  deletePlayer,
+  roomData,
+  notifyRoomOfPlayerUpdate,
+  viewerId,
+}: GameModeProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false)
 
   // Convert DB players to Map (local players)
@@ -316,9 +363,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
 }
 
 export function useGameMode(): GameModeContextType {
-  const context = useContext(GameModeContext)
-  if (!context) {
-    throw new Error('useGameMode must be used within a GameModeProvider')
-  }
-  return context
+  // Context now has a default value, so it will return that when no provider exists
+  // This allows pages that don't need game mode to work without errors
+  return useContext(GameModeContext)
 }

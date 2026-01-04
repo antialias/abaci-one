@@ -1,5 +1,5 @@
 import { useCallback, useContext, useRef } from 'react'
-import { PreviewModeContext } from '@/components/GamePreview'
+import { PreviewModeContext } from '@/contexts/PreviewModeContext'
 
 /**
  * Web Audio API sound effects system

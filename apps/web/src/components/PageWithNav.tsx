@@ -1,15 +1,33 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
-import { useGameMode } from '../contexts/GameModeContext'
-import { useRoomData } from '../hooks/useRoomData'
-import { useViewerId } from '../hooks/useViewerId'
 import { AppNavBar } from './AppNavBar'
-import { GameContextNav, type RosterWarning } from './nav/GameContextNav'
+import type { RosterWarning } from './nav/GameContextNav'
 import type { PlayerBadge } from './nav/types'
-import { PlayerConfigDialog } from './nav/PlayerConfigDialog'
-import { ModerationNotifications } from './nav/ModerationNotifications'
-import { PreviewModeContext } from './GamePreview'
+import { PreviewModeContext } from '@/contexts/PreviewModeContext'
+
+// Lazy load GameContextNav - it pulls in game mode hooks and arcade room components
+// Only loaded when navTitle is provided (arcade games, not practice pages)
+const GameContextNav = dynamic(() => import('./nav/GameContextNav').then((m) => m.GameContextNav), {
+  ssr: false,
+})
+
+// Lazy load dialogs and notifications - these are rarely visible initially
+const PlayerConfigDialog = dynamic(
+  () => import('./nav/PlayerConfigDialog').then((m) => m.PlayerConfigDialog),
+  { ssr: false }
+)
+const ModerationNotifications = dynamic(
+  () => import('./nav/ModerationNotifications').then((m) => m.ModerationNotifications),
+  { ssr: false }
+)
+
+// Lazy load the game nav content component - this contains the hooks
+// that pull in GameModeContext and useRoomData (100KB+ of arcade dependencies)
+const GameNavContent = dynamic(() => import('./nav/GameNavContent').then((m) => m.GameNavContent), {
+  ssr: false,
+})
 
 interface PageWithNavProps {
   navTitle?: string
@@ -41,6 +59,16 @@ interface PageWithNavProps {
   customModeColor?: string
 }
 
+/**
+ * PageWithNav - Lightweight wrapper that conditionally loads game features
+ *
+ * For non-game pages (no navTitle): renders just AppNavBar + children
+ * For game pages (with navTitle): lazy-loads GameNavContent which contains
+ * the hooks for GameModeContext, useRoomData, etc.
+ *
+ * This reduces the practice session report page bundle by ~100KB by not
+ * loading arcade game dependencies on non-game pages.
+ */
 export function PageWithNav({
   navTitle,
   navEmoji,
@@ -71,166 +99,44 @@ export function PageWithNav({
     return <>{children}</>
   }
 
-  const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
-  const { roomData, isInRoom, moderationEvent, clearModerationEvent } = useRoomData()
-  const { data: viewerId } = useViewerId()
-  const [mounted, setMounted] = React.useState(false)
-  const [configurePlayerId, setConfigurePlayerId] = React.useState<string | null>(null)
+  // For game pages (with navTitle), render the full GameNavContent
+  // which includes all game-related hooks and components
+  if (navTitle) {
+    return (
+      <GameNavContent
+        navTitle={navTitle}
+        navEmoji={navEmoji}
+        gameName={gameName}
+        emphasizePlayerSelection={emphasizePlayerSelection}
+        disableFullscreenSelection={disableFullscreenSelection}
+        onExitSession={onExitSession}
+        onSetup={onSetup}
+        onNewGame={onNewGame}
+        currentPlayerId={currentPlayerId}
+        playerScores={playerScores}
+        playerStreaks={playerStreaks}
+        playerBadges={playerBadges}
+        rosterWarning={rosterWarning}
+        whitePlayerId={whitePlayerId}
+        blackPlayerId={blackPlayerId}
+        onAssignWhitePlayer={onAssignWhitePlayer}
+        onAssignBlackPlayer={onAssignBlackPlayer}
+        gamePhase={gamePhase}
+        customModeLabel={customModeLabel}
+        customModeEmoji={customModeEmoji}
+        customModeColor={customModeColor}
+      >
+        {children}
+      </GameNavContent>
+    )
+  }
 
-  // Lift AddPlayerButton popover state here to survive GameContextNav remounts
-  const [showPopover, setShowPopover] = React.useState(false)
-  const [activeTab, setActiveTab] = React.useState<'add' | 'invite'>('add')
-
-  // Delay mounting animation slightly for smooth transition
-  React.useEffect(() => {
-    const timer = setTimeout(() => setMounted(true), 50)
-    return () => clearTimeout(timer)
-  }, [])
-
-  const handleRemovePlayer = React.useCallback(
-    (playerId: string) => {
-      setActive(playerId, false)
-    },
-    [setActive]
-  )
-
-  const handleAddPlayer = React.useCallback(
-    (playerId: string) => {
-      setActive(playerId, true)
-    },
-    [setActive]
-  )
-
-  const handleConfigurePlayer = React.useCallback(
-    (playerId: string) => {
-      setConfigurePlayerId(playerId)
-    },
-    [setConfigurePlayerId]
-  )
-
-  // Get active and inactive players as arrays
-  // Only show LOCAL players in the active/inactive lists (remote players shown separately in networkPlayers)
-  // Memoized to prevent unnecessary re-renders
-  const activePlayerList = React.useMemo(
-    () =>
-      Array.from(activePlayers)
-        .map((id) => players.get(id))
-        .filter((p): p is NonNullable<typeof p> => p !== undefined && p.isLocal !== false),
-    [activePlayers, players]
-  )
-
-  const inactivePlayerList = React.useMemo(
-    () =>
-      Array.from(players.values()).filter((p) => !activePlayers.has(p.id) && p.isLocal !== false),
-    [players, activePlayers]
-  )
-
-  // Compute game mode from active player count
-  const gameMode =
-    activePlayerCount === 0
-      ? 'none'
-      : activePlayerCount === 1
-        ? 'single'
-        : activePlayerCount === 2
-          ? 'battle'
-          : activePlayerCount >= 3
-            ? 'tournament'
-            : 'none'
-
-  const shouldEmphasize = emphasizePlayerSelection && mounted
-  const showFullscreenSelection =
-    !disableFullscreenSelection && shouldEmphasize && activePlayerCount === 0
-
-  // Compute arcade session info for display
-  // Memoized to prevent unnecessary re-renders
-  const roomInfo = React.useMemo(
-    () =>
-      isInRoom && roomData
-        ? {
-            roomId: roomData.id,
-            roomName: roomData.name,
-            gameName: roomData.gameName,
-            playerCount: roomData.members?.length ?? 0,
-            joinCode: roomData.code,
-          }
-        : undefined,
-    [isInRoom, roomData]
-  )
-
-  // Compute network players (other players in the room, excluding current user)
-  // Memoized to prevent unnecessary re-renders
-  const networkPlayers = React.useMemo(() => {
-    if (!isInRoom || !roomData?.members || !roomData?.memberPlayers) {
-      return []
-    }
-
-    return roomData.members
-      .filter((member) => member.userId !== viewerId)
-      .flatMap((member) => {
-        const memberPlayerList = roomData.memberPlayers[member.userId] || []
-        return memberPlayerList.map((player) => ({
-          id: player.id,
-          emoji: player.emoji,
-          name: player.name,
-          color: player.color,
-          memberName: member.displayName,
-          userId: member.userId, // Add userId for moderation
-          isOnline: member.isOnline,
-        }))
-      })
-  }, [isInRoom, roomData, viewerId])
-
-  // Create nav content if title is provided
-  // Pass lifted state to preserve popover state across remounts
-  const navContent = navTitle ? (
-    <GameContextNav
-      navTitle={navTitle}
-      navEmoji={navEmoji}
-      gameName={gameName}
-      gameMode={gameMode}
-      activePlayers={activePlayerList}
-      inactivePlayers={inactivePlayerList}
-      shouldEmphasize={shouldEmphasize}
-      showFullscreenSelection={showFullscreenSelection}
-      onAddPlayer={handleAddPlayer}
-      onRemovePlayer={handleRemovePlayer}
-      onConfigurePlayer={handleConfigurePlayer}
-      onExitSession={onExitSession}
-      onSetup={onSetup}
-      onNewGame={onNewGame}
-      roomInfo={roomInfo}
-      networkPlayers={networkPlayers}
-      currentPlayerId={currentPlayerId}
-      playerScores={playerScores}
-      playerStreaks={playerStreaks}
-      playerBadges={playerBadges}
-      showPopover={showPopover}
-      setShowPopover={setShowPopover}
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      rosterWarning={rosterWarning}
-      whitePlayerId={whitePlayerId}
-      blackPlayerId={blackPlayerId}
-      onAssignWhitePlayer={onAssignWhitePlayer}
-      onAssignBlackPlayer={onAssignBlackPlayer}
-      gamePhase={gamePhase}
-      customModeLabel={customModeLabel}
-      customModeEmoji={customModeEmoji}
-      customModeColor={customModeColor}
-    />
-  ) : null
-
+  // For non-game pages, render just the AppNavBar without game features
+  // This avoids loading GameModeContext, useRoomData, etc.
   return (
     <>
-      <AppNavBar navSlot={navContent} />
+      <AppNavBar navSlot={null} />
       {children}
-      {configurePlayerId && (
-        <PlayerConfigDialog
-          playerId={configurePlayerId}
-          onClose={() => setConfigurePlayerId(null)}
-        />
-      )}
-      <ModerationNotifications moderationEvent={moderationEvent} onClose={clearModerationEvent} />
     </>
   )
 }

@@ -3,11 +3,11 @@
 import { AbacusDisplayProvider } from '@soroban/abacus-react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { NextIntlClientProvider } from 'next-intl'
+import dynamic from 'next/dynamic'
 import { type ReactNode, useState } from 'react'
 import { ToastProvider } from '@/components/common/ToastContext'
 import { DeploymentInfoProvider } from '@/contexts/DeploymentInfoContext'
 import { FullscreenProvider } from '@/contexts/FullscreenContext'
-import { GameModeProvider } from '@/contexts/GameModeContext'
 import { HomeHeroProvider } from '@/contexts/HomeHeroContext'
 import { LocaleProvider, useLocaleContext } from '@/contexts/LocaleContext'
 import { MyAbacusProvider } from '@/contexts/MyAbacusContext'
@@ -19,8 +19,13 @@ import type { Locale } from '@/i18n/messages'
 import { createQueryClient } from '@/lib/queryClient'
 import { AbacusSettingsSync } from './AbacusSettingsSync'
 import { DeploymentInfo } from './DeploymentInfo'
-import { MyAbacus } from './MyAbacus'
 import { PageTransitionOverlay } from './PageTransitionOverlay'
+
+// Lazy load MyAbacus - it includes @react-spring/web, AbacusReact, and Vision components
+// Most pages don't need the floating abacus immediately on load
+const MyAbacus = dynamic(() => import('./MyAbacus').then((m) => m.MyAbacus), {
+  ssr: false,
+})
 
 interface ClientProvidersProps {
   children: ReactNode
@@ -37,22 +42,20 @@ function InnerProviders({ children }: { children: ReactNode }) {
         <AbacusDisplayProvider>
           <AbacusSettingsSync />
           <UserProfileProvider>
-            <GameModeProvider>
-              <FullscreenProvider>
-                <HomeHeroProvider>
-                  <MyAbacusProvider>
-                    <DeploymentInfoProvider>
-                      <PageTransitionProvider>
-                        {children}
-                        <PageTransitionOverlay />
-                        <DeploymentInfo />
-                        <MyAbacus />
-                      </PageTransitionProvider>
-                    </DeploymentInfoProvider>
-                  </MyAbacusProvider>
-                </HomeHeroProvider>
-              </FullscreenProvider>
-            </GameModeProvider>
+            <FullscreenProvider>
+              <HomeHeroProvider>
+                <MyAbacusProvider>
+                  <DeploymentInfoProvider>
+                    <PageTransitionProvider>
+                      {children}
+                      <PageTransitionOverlay />
+                      <DeploymentInfo />
+                      <MyAbacus />
+                    </PageTransitionProvider>
+                  </DeploymentInfoProvider>
+                </MyAbacusProvider>
+              </HomeHeroProvider>
+            </FullscreenProvider>
           </UserProfileProvider>
         </AbacusDisplayProvider>
       </ToastProvider>

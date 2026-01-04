@@ -19,7 +19,12 @@ import type { ScrollspySection } from '@/components/practice/ScrollspyNav'
 import { ScrollspyNav } from '@/components/practice/ScrollspyNav'
 import { SessionHero } from '@/components/practice/SessionHero'
 import { SkillsPanel } from '@/components/practice/SkillsPanel'
-import { StartPracticeModal } from '@/components/practice/StartPracticeModal'
+// Dynamic import: StartPracticeModal → SkillTutorialLauncher → TutorialPlayer → @soroban/abacus-react
+// This breaks the dependency chain that pulls the entire abacus library into page.js
+const StartPracticeModal = dynamic(
+  () => import('@/components/practice/StartPracticeModal').then((m) => m.StartPracticeModal),
+  { ssr: false }
+)
 import {
   filterProblemsNeedingAttention,
   getProblemsWithContext,

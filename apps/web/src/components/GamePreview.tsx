@@ -1,18 +1,23 @@
 'use client'
 
-import { Component, createContext, useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
+import { Component, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { GameComponent, GameProviderComponent } from '@/lib/arcade/game-sdk/types'
 import { MockArcadeEnvironment } from './MockArcadeEnvironment'
-import { GameModeProvider } from '@/contexts/GameModeContext'
+import { PreviewModeContext } from '@/contexts/PreviewModeContext'
 import { ViewportProvider } from '@/contexts/ViewportContext'
 import { getMockGameState } from './MockGameStates'
 
-// Export context so useArcadeSession can check for preview mode
-export const PreviewModeContext = createContext<{
-  isPreview: boolean
-  mockState: any
-} | null>(null)
+// Re-export for backwards compatibility
+export { PreviewModeContext } from '@/contexts/PreviewModeContext'
+
+// Dynamic import breaks webpack's import chain, preventing useRoomData
+// from being bundled with useUserPlayers in shared chunks
+const GameModeProviderWithHooks = dynamic(
+  () => import('@/contexts/GameModeProviderWithHooks').then((m) => m.GameModeProviderWithHooks),
+  { ssr: false }
+)
 
 interface GamePreviewProps {
   GameComponent: GameComponent
@@ -98,7 +103,7 @@ export function GamePreview({ GameComponent, Provider, gameName }: GamePreviewPr
     >
       <PreviewModeContext.Provider value={previewModeValue}>
         <MockArcadeEnvironment gameName={gameName}>
-          <GameModeProvider>
+          <GameModeProviderWithHooks>
             {/*
               Mock viewport: Provide 1440x900 dimensions to games via ViewportContext
               This prevents layout issues when games check viewport size
@@ -117,7 +122,7 @@ export function GamePreview({ GameComponent, Provider, gameName }: GamePreviewPr
                 </Provider>
               </div>
             </ViewportProvider>
-          </GameModeProvider>
+          </GameModeProviderWithHooks>
         </MockArcadeEnvironment>
       </PreviewModeContext.Provider>
     </GameErrorBoundary>

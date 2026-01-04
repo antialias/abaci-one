@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { SessionObserverModal } from '@/components/classroom'
+import { SessionObserverModal } from '@/components/classroom/SessionObserverModal'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useIncomingTransition } from '@/contexts/PageTransitionContext'
 import {

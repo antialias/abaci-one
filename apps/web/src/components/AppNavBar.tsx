@@ -2,6 +2,7 @@
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import React, { useContext, useMemo, useState } from 'react'
@@ -16,9 +17,15 @@ import { useVisualDebug } from '../contexts/VisualDebugContext'
 // Import HomeHeroContext for optional usage
 import type { Subtitle } from '../data/abaciOneSubtitles'
 import { getRandomSubtitle } from '../data/abaciOneSubtitles'
-import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 import { LanguageSelector } from './LanguageSelector'
 import { ThemeToggle } from './ThemeToggle'
+
+// Lazy load AbacusDisplayDropdown - it imports @soroban/abacus-react and multiple Radix components
+// Only loaded when user actually opens the settings menu
+const AbacusDisplayDropdown = dynamic(
+  () => import('./AbacusDisplayDropdown').then((m) => m.AbacusDisplayDropdown),
+  { ssr: false }
+)
 
 type HomeHeroContextValue = {
   subtitle: Subtitle

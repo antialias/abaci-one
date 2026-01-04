@@ -1,18 +1,32 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { Fragment, useCallback, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useToast } from '@/components/common/ToastContext'
-import {
-  AddStudentByFamilyCodeModal,
-  AddStudentToClassroomContent,
-  AddStudentToClassroomModal,
-  CreateClassroomForm,
-  PendingApprovalsSection,
-  SessionObserverModal,
-  TeacherEnrollmentSection,
-} from '@/components/classroom'
+// Direct imports to avoid barrel pulling in EmojiPicker (694KB emojibase-data)
+import { AddStudentByFamilyCodeModal } from '@/components/classroom/AddStudentByFamilyCodeModal'
+import { CreateClassroomForm } from '@/components/classroom/CreateClassroomForm'
+import { PendingApprovalsSection } from '@/components/classroom/PendingApprovalsSection'
+import { SessionObserverModal } from '@/components/classroom/SessionObserverModal'
+import { TeacherEnrollmentSection } from '@/components/classroom/TeacherEnrollmentSection'
+
+// Dynamic imports for modals that use EmojiPicker (694KB emojibase-data)
+const AddStudentToClassroomModal = dynamic(
+  () =>
+    import('@/components/classroom/AddStudentToClassroomModal').then(
+      (m) => m.AddStudentToClassroomModal
+    ),
+  { ssr: false }
+)
+const AddStudentToClassroomContent = dynamic(
+  () =>
+    import('@/components/classroom/AddStudentToClassroomModal').then(
+      (m) => m.AddStudentToClassroomContent
+    ),
+  { ssr: false }
+)
 import { useClassroomSocket } from '@/hooks/useClassroomSocket'
 import { api } from '@/lib/queryClient'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -40,7 +54,12 @@ import type { UnifiedStudent } from '@/types/student'
 import type { StudentWithSkillData } from '@/utils/studentGrouping'
 import { filterStudents, getStudentsNeedingAttention, groupStudents } from '@/utils/studentGrouping'
 import { css } from '../../../styled-system/css'
-import { AddStudentModal } from './AddStudentModal'
+
+// Dynamic import: AddStudentModal → EmojiPicker → emojibase-data (694KB)
+// Only loaded when the modal is opened
+const AddStudentModal = dynamic(() => import('./AddStudentModal').then((m) => m.AddStudentModal), {
+  ssr: false,
+})
 
 interface PracticeClientProps {
   initialPlayers: StudentWithSkillData[]

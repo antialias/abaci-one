@@ -1,5 +1,6 @@
-import { knowYourWorldMessages } from '@/arcade-games/know-your-world/messages'
-import { rithmomachiaMessages } from '@/arcade-games/rithmomachia/messages'
+// NOTE: Game-specific messages (knowYourWorld, rithmomachia) are now loaded
+// dynamically on their respective pages to avoid bloating the global bundle.
+// Do NOT import them here - they add 500KB+ of geography hints and game data.
 import { calendarMessages } from '@/i18n/locales/calendar/messages'
 import { createMessages } from '@/i18n/locales/create/messages'
 import { gamesMessages } from '@/i18n/locales/games/messages'
@@ -37,6 +38,8 @@ export async function getMessages(locale: Locale) {
   }
 
   // Merge all co-located feature messages
+  // NOTE: Game-specific messages (knowYourWorld, rithmomachia) are loaded
+  // dynamically on their game pages - not included here to save 500KB+
   return mergeMessages(
     common,
     { home: homeMessages[locale] },
@@ -44,8 +47,6 @@ export async function getMessages(locale: Locale) {
     { guide: guideMessages[locale] },
     { tutorial: tutorialMessages[locale] },
     { calendar: calendarMessages[locale] },
-    { create: createMessages[locale] },
-    rithmomachiaMessages[locale],
-    knowYourWorldMessages[locale]
+    { create: createMessages[locale] }
   )
 }

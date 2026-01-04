@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { SessionObserverView } from '@/components/classroom'
+import { SessionObserverView } from '@/components/classroom/SessionObserverModal'
 import { PageWithNav } from '@/components/PageWithNav'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { css } from '../../../../../styled-system/css'

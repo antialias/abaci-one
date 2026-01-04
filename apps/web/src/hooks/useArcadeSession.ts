@@ -6,7 +6,7 @@ import {
   useOptimisticGameState,
 } from './useOptimisticGameState'
 import type { RetryState } from '@/lib/arcade/error-handling'
-import { PreviewModeContext } from '@/components/GamePreview'
+import { PreviewModeContext } from '@/contexts/PreviewModeContext'
 
 export interface UseArcadeSessionOptions<TState> extends UseOptimisticGameStateOptions<TState> {
   /**

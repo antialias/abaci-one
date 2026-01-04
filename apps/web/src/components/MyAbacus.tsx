@@ -2,6 +2,7 @@
 
 import { animated, useSpring } from '@react-spring/web'
 import { ABACUS_THEMES, AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
+import dynamic from 'next/dynamic'
 import { usePathname } from 'next/navigation'
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { createPortal, flushSync } from 'react-dom'
@@ -9,10 +10,21 @@ import { createRoot } from 'react-dom/client'
 import { HomeHeroContext } from '@/contexts/HomeHeroContext'
 import { type DockAnimationState, useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { DockedVisionFeed } from '@/components/vision/DockedVisionFeed'
-import { VisionIndicator } from '@/components/vision/VisionIndicator'
-import { VisionSetupModal } from '@/components/vision/VisionSetupModal'
 import { css } from '../../styled-system/css'
+
+// Lazy load vision components - only loaded when vision features are actually used
+const DockedVisionFeed = dynamic(
+  () => import('@/components/vision/DockedVisionFeed').then((m) => m.DockedVisionFeed),
+  { ssr: false }
+)
+const VisionIndicator = dynamic(
+  () => import('@/components/vision/VisionIndicator').then((m) => m.VisionIndicator),
+  { ssr: false }
+)
+const VisionSetupModal = dynamic(
+  () => import('@/components/vision/VisionSetupModal').then((m) => m.VisionSetupModal),
+  { ssr: false }
+)
 
 /**
  * Measure the size and position an AbacusReact will have when rendered into a dock element.
