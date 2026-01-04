@@ -310,12 +310,15 @@ export function MapRenderer({
 
   // Sync state machine mode with isTouchDevice after hydration
   // isTouchDevice returns false during SSR, then changes to true after hydration on touch devices
+  // Note: We extract specific values to avoid infinite loop - `interaction` object changes identity on every state change
+  const interactionMode = interaction.state.mode
+  const setInteractionMode = interaction.setMode
   useEffect(() => {
     const targetMode = isTouchDevice ? 'mobile' : 'desktop'
-    if (interaction.state.mode !== targetMode) {
-      interaction.setMode(targetMode)
+    if (interactionMode !== targetMode) {
+      setInteractionMode(targetMode)
     }
-  }, [isTouchDevice, interaction])
+  }, [isTouchDevice, interactionMode, setInteractionMode])
 
   // Derive boolean flags from state machine for compatibility with existing code
   // State machine is the SINGLE SOURCE OF TRUTH for interaction state
@@ -412,28 +415,30 @@ export function MapRenderer({
 
   // Sync pointer lock state to interaction state machine
   // This dispatches events when the native pointer lock state changes
+  // Note: Extract dispatch to avoid infinite loop - `interaction` object changes identity on every state change
+  const interactionDispatch = interaction.dispatch
   const prevPointerLockedRef = useRef(pointerLocked)
   useEffect(() => {
     if (pointerLocked !== prevPointerLockedRef.current) {
       if (pointerLocked) {
-        interaction.dispatch({ type: 'POINTER_LOCK_ACQUIRED' })
+        interactionDispatch({ type: 'POINTER_LOCK_ACQUIRED' })
       } else if (prevPointerLockedRef.current) {
         // Only dispatch if we were previously locked (not on initial mount)
-        interaction.dispatch({ type: 'POINTER_LOCK_RELEASED' })
+        interactionDispatch({ type: 'POINTER_LOCK_RELEASED' })
       }
       prevPointerLockedRef.current = pointerLocked
     }
-  }, [pointerLocked, interaction])
+  }, [pointerLocked, interactionDispatch])
 
   // Sync precision threshold state to interaction state machine
   // This keeps the state machine informed about when precision mode should be recommended
   useEffect(() => {
-    interaction.dispatch({
+    interactionDispatch({
       type: 'PRECISION_THRESHOLD_UPDATE',
       atThreshold: precisionCalcs.isAtThreshold,
       screenPixelRatio: precisionCalcs.screenPixelRatio,
     })
-  }, [precisionCalcs.isAtThreshold, precisionCalcs.screenPixelRatio, interaction])
+  }, [precisionCalcs.isAtThreshold, precisionCalcs.screenPixelRatio, interactionDispatch])
 
   const [svgDimensions, setSvgDimensions] = useState({
     width: 1000,
@@ -1270,7 +1275,7 @@ export function MapRenderer({
       }
 
       if (e.key === 'Shift' && !e.repeat) {
-        interaction.dispatch({ type: 'SHIFT_KEY_DOWN' })
+        interactionDispatch({ type: 'SHIFT_KEY_DOWN' })
       }
 
       // 'H' key to toggle hint bubble
@@ -1281,7 +1286,7 @@ export function MapRenderer({
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'Shift') {
-        interaction.dispatch({ type: 'SHIFT_KEY_UP' })
+        interactionDispatch({ type: 'SHIFT_KEY_UP' })
       }
     }
 
@@ -1292,7 +1297,7 @@ export function MapRenderer({
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [hasHint, interaction])
+  }, [hasHint, interactionDispatch])
 
   // Use the labels feature module for D3 force-based label positioning
   const { labelPositions, smallRegionLabelPositions } = useD3ForceLabels({
