@@ -1,8 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react'
+import { useEffect, useState } from 'react'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import type { ProblemSlot, SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
-import { PracticeSubNav, type SessionHudData, type TimingData } from './PracticeSubNav'
+import {
+  PracticeSubNav,
+  type GameBreakHudData,
+  type SessionHudData,
+  type TimingData,
+} from './PracticeSubNav'
 
 const meta: Meta<typeof PracticeSubNav> = {
   title: 'Practice/PracticeSubNav',
@@ -808,6 +814,279 @@ export const LargeSessionCount: Story = {
           timing: createTimingData(20, 'visualization'),
           health: { overall: 'good', accuracy: 0.94 },
         })}
+      />
+    </NavWrapper>
+  ),
+}
+
+// =============================================================================
+// Game Break HUD Stories
+// =============================================================================
+
+const MAX_DURATION_MS = 5 * 60 * 1000 // 5 minutes
+
+function createGameBreakHud(remainingMs: number): GameBreakHudData {
+  return {
+    startTime: Date.now() - (MAX_DURATION_MS - remainingMs),
+    maxDurationMs: MAX_DURATION_MS,
+    onSkip: () => console.log('Skip game break clicked'),
+  }
+}
+
+/**
+ * Animated game break countdown demo
+ */
+function AnimatedGameBreakNav({
+  startPercent = 100,
+  speedMultiplier = 10,
+  darkMode = false,
+}: {
+  startPercent?: number
+  speedMultiplier?: number
+  darkMode?: boolean
+}) {
+  const [startTime] = useState(() => Date.now() - ((100 - startPercent) / 100) * MAX_DURATION_MS)
+  const [, forceUpdate] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      forceUpdate((n) => n + 1)
+    }, 100)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Simulate time passing faster
+  const elapsed = (Date.now() - startTime) * speedMultiplier
+  const adjustedStartTime = Date.now() - elapsed
+
+  return (
+    <NavWrapper darkMode={darkMode}>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        gameBreakHud={{
+          startTime: adjustedStartTime,
+          maxDurationMs: MAX_DURATION_MS,
+          onSkip: () => alert('Back to Practice clicked!'),
+        }}
+      />
+      {/* Mock game content area */}
+      <div
+        className={css({
+          padding: '2rem',
+          textAlign: 'center',
+        })}
+      >
+        <div className={css({ fontSize: '4rem', marginBottom: '1rem' })}>🎮</div>
+        <div
+          className={css({
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            color: darkMode ? 'gray.200' : 'gray.700',
+            marginBottom: '0.5rem',
+          })}
+        >
+          Game Content Area
+        </div>
+        <div
+          className={css({
+            fontSize: '0.875rem',
+            color: darkMode ? 'gray.400' : 'gray.500',
+          })}
+        >
+          The game break timer is in the sub-nav above
+        </div>
+      </div>
+    </NavWrapper>
+  )
+}
+
+export const GameBreakFullTime: Story = {
+  name: 'Game Break: 100% Time (5:00)',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS)}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakSeventyFive: Story = {
+  name: 'Game Break: 75% Time (3:45)',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS * 0.75)}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakFifty: Story = {
+  name: 'Game Break: 50% Time (2:30) - Yellow',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS * 0.5)}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakThirty: Story = {
+  name: 'Game Break: 30% Time (1:30) - Yellow',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS * 0.3)}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakTwenty: Story = {
+  name: 'Game Break: 20% Time (1:00) - Red',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS * 0.2)}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakTen: Story = {
+  name: 'Game Break: 10% Time (0:30) - Critical Red',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS * 0.1)}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakAnimated: Story = {
+  name: 'Game Break: Animated Countdown (10x speed)',
+  render: () => <AnimatedGameBreakNav speedMultiplier={10} />,
+}
+
+export const GameBreakAnimatedRealtime: Story = {
+  name: 'Game Break: Animated Countdown (Real-time)',
+  render: () => <AnimatedGameBreakNav speedMultiplier={1} />,
+}
+
+export const GameBreakAnimatedFromHalf: Story = {
+  name: 'Game Break: Animated from 50% (10x speed)',
+  render: () => <AnimatedGameBreakNav startPercent={50} speedMultiplier={10} />,
+}
+
+export const GameBreakAnimatedFinalMinute: Story = {
+  name: 'Game Break: Animated Final Minute (10x speed)',
+  render: () => <AnimatedGameBreakNav startPercent={20} speedMultiplier={10} />,
+}
+
+export const GameBreakDarkMode: Story = {
+  name: 'Game Break: Dark Mode - Full Time',
+  render: () => (
+    <NavWrapper darkMode>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS)}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakDarkModeFifty: Story = {
+  name: 'Game Break: Dark Mode - 50% Time',
+  render: () => (
+    <NavWrapper darkMode>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS * 0.5)}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakDarkModeCritical: Story = {
+  name: 'Game Break: Dark Mode - Critical (10%)',
+  render: () => (
+    <NavWrapper darkMode>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS * 0.1)}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakDarkModeAnimated: Story = {
+  name: 'Game Break: Dark Mode - Animated',
+  render: () => <AnimatedGameBreakNav speedMultiplier={10} darkMode />,
+}
+
+export const GameBreakMobile: Story = {
+  name: 'Game Break: Mobile Viewport',
+  parameters: {
+    viewport: {
+      defaultViewport: 'mobile1',
+    },
+  },
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS * 0.65)}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakDifferentStudent: Story = {
+  name: 'Game Break: Different Student (Marcus)',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={{
+          id: 'student-marcus',
+          name: 'Marcus',
+          emoji: '🚀',
+          color: '#3b82f6',
+        }}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS * 0.7)}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakLongName: Story = {
+  name: 'Game Break: Long Student Name',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudentLongName}
+        pageContext="session"
+        gameBreakHud={createGameBreakHud(MAX_DURATION_MS * 0.8)}
       />
     </NavWrapper>
   ),

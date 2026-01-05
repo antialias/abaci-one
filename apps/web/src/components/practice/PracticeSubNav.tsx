@@ -3,7 +3,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as HoverCard from '@radix-ui/react-hover-card'
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavBannerSlot } from './BannerSlots'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -80,6 +80,18 @@ export interface SessionHudData {
   plan?: SessionPlan
 }
 
+/**
+ * Game break HUD data - shown when student is on a game break
+ */
+export interface GameBreakHudData {
+  /** When the game break started (timestamp) */
+  startTime: number
+  /** Maximum duration in milliseconds */
+  maxDurationMs: number
+  /** Callback to end the game break early */
+  onSkip: () => void
+}
+
 interface PracticeSubNavProps {
   /** Student info for the nav */
   student: {
@@ -94,6 +106,8 @@ interface PracticeSubNavProps {
   pageContext?: 'dashboard' | 'configure' | 'session' | 'summary' | 'resume'
   /** Session HUD data (shown when in active session) */
   sessionHud?: SessionHudData
+  /** Game break HUD data (shown when on game break - takes priority over sessionHud) */
+  gameBreakHud?: GameBreakHudData
   /** Optional callback when observe session is clicked */
   onObserveSession?: (sessionId: string) => void
 }
@@ -140,6 +154,7 @@ export function PracticeSubNav({
   student,
   pageContext,
   sessionHud,
+  gameBreakHud,
   onObserveSession,
 }: PracticeSubNavProps) {
   const { resolvedTheme } = useTheme()
@@ -147,6 +162,7 @@ export function PracticeSubNav({
 
   const isOnDashboard = pageContext === 'dashboard'
   const isInActiveSession = !!sessionHud
+  const isOnGameBreak = !!gameBreakHud
 
   // Stakeholder data for relationship popover
   const { data: stakeholdersData } = useStudentStakeholders(student.id)
@@ -227,6 +243,35 @@ export function PracticeSubNav({
     const interval = setInterval(updateTimer, 100)
     return () => clearInterval(interval)
   }, [sessionHud?.timing?.startTime, sessionHud?.timing?.accumulatedPauseMs, sessionHud?.isPaused])
+
+  // Live-updating game break timer
+  const [gameBreakElapsedMs, setGameBreakElapsedMs] = useState(0)
+
+  useEffect(() => {
+    if (!gameBreakHud) {
+      setGameBreakElapsedMs(0)
+      return
+    }
+
+    const updateTimer = () => {
+      const elapsed = Date.now() - gameBreakHud.startTime
+      setGameBreakElapsedMs(elapsed)
+    }
+
+    updateTimer()
+    const interval = setInterval(updateTimer, 100)
+    return () => clearInterval(interval)
+  }, [gameBreakHud?.startTime, gameBreakHud])
+
+  // Calculate game break display values
+  const gameBreakRemainingMs = gameBreakHud
+    ? Math.max(0, gameBreakHud.maxDurationMs - gameBreakElapsedMs)
+    : 0
+  const gameBreakPercentRemaining = gameBreakHud
+    ? (gameBreakRemainingMs / gameBreakHud.maxDurationMs) * 100
+    : 0
+  const gameBreakMinutes = Math.floor(gameBreakRemainingMs / 60000)
+  const gameBreakSeconds = Math.floor((gameBreakRemainingMs % 60000) / 1000)
 
   // Calculate timing stats from results - filtered by current part type
   const timingStats = sessionHud?.timing
@@ -369,104 +414,101 @@ export function PracticeSubNav({
           </Link>
 
           {/* Relationship summary with hover tooltip */}
-          {!sessionHud && (
-            <>
-              {viewerRelationship && viewerRelationship.type !== 'none' ? (
-                <HoverCard.Root openDelay={200} closeDelay={100}>
-                  <HoverCard.Trigger asChild>
-                    <button
-                      type="button"
+          {!sessionHud &&
+            (viewerRelationship && viewerRelationship.type !== 'none' ? (
+              <HoverCard.Root openDelay={200} closeDelay={100}>
+                <HoverCard.Trigger asChild>
+                  <button
+                    type="button"
+                    className={css({
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'help',
+                      background: 'none',
+                      border: 'none',
+                      padding: '2px 0',
+                      textAlign: 'left',
+                      width: 'fit-content',
+                      borderRadius: '4px',
+                      transition: 'background-color 0.15s ease',
+                      _hover: {
+                        backgroundColor: isDark ? 'gray.700/50' : 'gray.100',
+                      },
+                    })}
+                    aria-label="View relationship details"
+                  >
+                    <RelationshipSummary
+                      type={viewerRelationship.type}
+                      classroomName={viewerRelationship.classroomName}
+                      otherStakeholders={
+                        hasOtherStakeholders
+                          ? {
+                              parents: stakeholders?.parents.filter((p) => !p.isMe).length ?? 0,
+                              teachers: stakeholders?.enrolledClassrooms.length ?? 0,
+                            }
+                          : undefined
+                      }
                       className={css({
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        cursor: 'help',
-                        background: 'none',
-                        border: 'none',
-                        padding: '2px 0',
-                        textAlign: 'left',
-                        width: 'fit-content',
-                        borderRadius: '4px',
-                        transition: 'background-color 0.15s ease',
-                        _hover: {
-                          backgroundColor: isDark ? 'gray.700/50' : 'gray.100',
-                        },
+                        fontSize: '0.6875rem !important',
+                        opacity: 0.8,
                       })}
-                      aria-label="View relationship details"
+                    />
+                    {/* Info icon to indicate hover for more */}
+                    <span
+                      className={css({
+                        fontSize: '0.625rem',
+                        opacity: 0.5,
+                        marginLeft: '2px',
+                      })}
+                      aria-hidden="true"
                     >
-                      <RelationshipSummary
-                        type={viewerRelationship.type}
-                        classroomName={viewerRelationship.classroomName}
-                        otherStakeholders={
-                          hasOtherStakeholders
-                            ? {
-                                parents: stakeholders?.parents.filter((p) => !p.isMe).length ?? 0,
-                                teachers: stakeholders?.enrolledClassrooms.length ?? 0,
-                              }
-                            : undefined
-                        }
-                        className={css({
-                          fontSize: '0.6875rem !important',
-                          opacity: 0.8,
-                        })}
-                      />
-                      {/* Info icon to indicate hover for more */}
-                      <span
-                        className={css({
-                          fontSize: '0.625rem',
-                          opacity: 0.5,
-                          marginLeft: '2px',
-                        })}
-                        aria-hidden="true"
-                      >
-                        ⓘ
-                      </span>
-                    </button>
-                  </HoverCard.Trigger>
+                      ⓘ
+                    </span>
+                  </button>
+                </HoverCard.Trigger>
 
-                  {/* Relationship tooltip content */}
-                  <HoverCard.Portal>
-                    <HoverCard.Content
-                      data-component="relationship-tooltip"
-                      side="bottom"
-                      align="start"
-                      sideOffset={8}
+                {/* Relationship tooltip content */}
+                <HoverCard.Portal>
+                  <HoverCard.Content
+                    data-component="relationship-tooltip"
+                    side="bottom"
+                    align="start"
+                    sideOffset={8}
+                    className={css({
+                      width: '320px',
+                      maxWidth: 'calc(100vw - 32px)',
+                      padding: '12px',
+                      borderRadius: '12px',
+                      backgroundColor: isDark ? 'gray.800' : 'white',
+                      border: '1px solid',
+                      borderColor: isDark ? 'gray.700' : 'gray.200',
+                      boxShadow: 'lg',
+                      zIndex: Z_INDEX.POPOVER,
+                      animation: 'fadeIn 0.15s ease',
+                    })}
+                  >
+                    <RelationshipCard playerId={student.id} compact />
+                    <HoverCard.Arrow
                       className={css({
-                        width: '320px',
-                        maxWidth: 'calc(100vw - 32px)',
-                        padding: '12px',
-                        borderRadius: '12px',
-                        backgroundColor: isDark ? 'gray.800' : 'white',
-                        border: '1px solid',
-                        borderColor: isDark ? 'gray.700' : 'gray.200',
-                        boxShadow: 'lg',
-                        zIndex: Z_INDEX.POPOVER,
-                        animation: 'fadeIn 0.15s ease',
+                        fill: isDark ? 'gray.800' : 'white',
                       })}
-                    >
-                      <RelationshipCard playerId={student.id} compact />
-                      <HoverCard.Arrow
-                        className={css({
-                          fill: isDark ? 'gray.800' : 'white',
-                        })}
-                      />
-                    </HoverCard.Content>
-                  </HoverCard.Portal>
-                </HoverCard.Root>
-              ) : (
-                <span
-                  className={css({
-                    fontSize: '0.6875rem',
-                    color: isDark ? 'gray.500' : 'gray.500',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  })}
-                >
-                  {isOnDashboard ? 'Dashboard' : 'Back to dashboard'}
-                </span>
-              )}
-            </>
-          )}
+                    />
+                  </HoverCard.Content>
+                </HoverCard.Portal>
+              </HoverCard.Root>
+            ) : (
+              <span
+                className={css({
+                  fontSize: '0.6875rem',
+                  color: isDark ? 'gray.500' : 'gray.500',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                })}
+              >
+                {isOnDashboard ? 'Dashboard' : 'Back to dashboard'}
+              </span>
+            ))}
         </div>
 
         {/* Zone 3: Actions menu button - separate, clearly clickable */}
@@ -697,8 +739,146 @@ export function PracticeSubNav({
         )}
       </div>
 
+      {/* Game Break HUD - shown when student is on a game break */}
+      {isOnGameBreak && gameBreakHud && (
+        <div
+          data-section="game-break-hud"
+          className={css({
+            position: 'relative',
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: { base: '0.5rem', md: '1rem' },
+            overflow: 'hidden',
+          })}
+        >
+          {/* Progress bar that shrinks as time runs out */}
+          <div
+            data-element="game-break-progress-bar"
+            className={css({
+              position: 'absolute',
+              bottom: '-0.5rem',
+              left: 0,
+              right: 0,
+              height: '3px',
+              backgroundColor: isDark ? 'gray.800' : 'gray.300',
+              borderRadius: '2px',
+              overflow: 'hidden',
+            })}
+          >
+            <div
+              className={css({
+                height: '100%',
+                transition: 'width 0.5s linear, background-color 0.3s ease',
+                borderRadius: '2px',
+              })}
+              style={{
+                width: `${gameBreakPercentRemaining}%`,
+                backgroundColor:
+                  gameBreakPercentRemaining > 50
+                    ? '#22c55e' // green
+                    : gameBreakPercentRemaining > 20
+                      ? '#eab308' // yellow
+                      : '#ef4444', // red
+              }}
+            />
+          </div>
+
+          {/* Game break label with emoji */}
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              flexShrink: 0,
+            })}
+          >
+            <span className={css({ fontSize: '1.25rem' })}>🎮</span>
+            <span
+              className={css({
+                fontWeight: '600',
+                fontSize: { base: '0.75rem', sm: '0.875rem' },
+                color: isDark ? 'gray.200' : 'gray.700',
+                display: { base: 'none', sm: 'inline' },
+              })}
+            >
+              Game Break
+            </span>
+          </div>
+
+          {/* Timer display */}
+          <div
+            data-element="game-break-timer"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              padding: '0.25rem 0.5rem',
+              borderRadius: '6px',
+            })}
+            style={{
+              backgroundColor:
+                gameBreakPercentRemaining > 30
+                  ? isDark
+                    ? 'rgba(34, 197, 94, 0.2)'
+                    : 'rgba(34, 197, 94, 0.1)'
+                  : isDark
+                    ? 'rgba(234, 179, 8, 0.2)'
+                    : 'rgba(234, 179, 8, 0.1)',
+            }}
+          >
+            <span className={css({ fontSize: '0.875rem' })}>⏱️</span>
+            <span
+              className={css({
+                fontFamily: 'var(--font-mono, monospace)',
+                fontWeight: '600',
+                fontSize: '0.875rem',
+              })}
+              style={{
+                color:
+                  gameBreakPercentRemaining > 30
+                    ? isDark
+                      ? '#86efac'
+                      : '#16a34a'
+                    : isDark
+                      ? '#fde047'
+                      : '#ca8a04',
+              }}
+            >
+              {gameBreakMinutes}:{gameBreakSeconds.toString().padStart(2, '0')}
+            </span>
+          </div>
+
+          {/* Back to Practice button */}
+          <button
+            type="button"
+            data-action="skip-game-break"
+            onClick={gameBreakHud.onSkip}
+            className={css({
+              padding: '0.375rem 0.75rem',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              color: isDark ? 'gray.300' : 'gray.600',
+              backgroundColor: isDark ? 'gray.700' : 'gray.200',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              flexShrink: 0,
+              _hover: {
+                backgroundColor: isDark ? 'gray.600' : 'gray.300',
+              },
+            })}
+          >
+            Back to Practice →
+          </button>
+        </div>
+      )}
+
       {/* Session HUD - takes full remaining width when in active session */}
-      {sessionHud && (
+      {sessionHud && !isOnGameBreak && (
         <div
           data-section="session-hud"
           className={css({

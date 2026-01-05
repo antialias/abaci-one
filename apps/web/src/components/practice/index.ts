@@ -58,7 +58,7 @@ export {
 export type { RelationshipCardProps } from './RelationshipCard'
 export { RelationshipCard } from './RelationshipCard'
 export { PurposeBadge } from './PurposeBadge'
-export type { SessionHudData } from './PracticeSubNav'
+export type { SessionHudData, GameBreakHudData } from './PracticeSubNav'
 export { PracticeSubNav } from './PracticeSubNav'
 export { PracticeTimingDisplay } from './PracticeTimingDisplay'
 export {

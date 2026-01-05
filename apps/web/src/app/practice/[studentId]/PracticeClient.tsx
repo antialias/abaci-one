@@ -9,6 +9,7 @@ import {
   ActiveSession,
   type AttemptTimingData,
   type BroadcastState,
+  type GameBreakHudData,
   PracticeErrorBoundary,
   PracticeSubNav,
   type SessionHudData,
@@ -311,10 +312,24 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
       }
     : undefined
 
+  // Build game break HUD data for PracticeSubNav (when on game break)
+  const gameBreakHud: GameBreakHudData | undefined = showGameBreak
+    ? {
+        startTime: gameBreakStartTime,
+        maxDurationMs: (gameBreakSettings?.maxDurationMinutes ?? 5) * 60 * 1000,
+        onSkip: handleGameBreakEnd,
+      }
+    : undefined
+
   return (
     <PageWithNav>
-      {/* Practice Sub-Navigation with Session HUD */}
-      <PracticeSubNav student={player} pageContext="session" sessionHud={sessionHud} />
+      {/* Practice Sub-Navigation with Session HUD or Game Break HUD */}
+      <PracticeSubNav
+        student={player}
+        pageContext="session"
+        sessionHud={sessionHud}
+        gameBreakHud={gameBreakHud}
+      />
 
       <main
         data-component="practice-page"

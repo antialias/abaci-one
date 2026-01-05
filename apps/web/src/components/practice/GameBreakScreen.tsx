@@ -139,153 +139,29 @@ export function GameBreakScreen({
 
   if (phase === 'playing' && selectedGame && room?.gameName) {
     const { Provider, GameComponent } = selectedGame
+    // Game break timer/progress bar is now shown in PracticeSubNav via gameBreakHud prop
+    // This component just renders the game itself
     return (
       <div
         data-component="game-break-screen"
         data-phase="playing"
+        data-element="game-container"
         className={css({
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'column',
+          // Fill the available space (parent handles positioning)
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden',
         })}
       >
-        <div
-          data-element="game-break-header"
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0.5rem 1rem',
-            backgroundColor: isDark ? 'gray.900' : 'gray.100',
-            borderBottom: '1px solid',
-            borderColor: isDark ? 'gray.700' : 'gray.200',
-          })}
+        <PracticeGameModeProvider
+          student={student}
+          roomData={room}
+          onGameComplete={() => handleComplete('gameFinished')}
         >
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            })}
-          >
-            <span
-              className={css({
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.25rem',
-              })}
-              style={{ backgroundColor: student.color }}
-            >
-              {student.emoji}
-            </span>
-            <span
-              className={css({
-                fontWeight: '600',
-                fontSize: '0.875rem',
-                color: isDark ? 'gray.200' : 'gray.700',
-              })}
-            >
-              {student.name}&apos;s Game Break
-            </span>
-          </div>
-
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem',
-            })}
-          >
-            <div
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                padding: '0.25rem 0.5rem',
-                borderRadius: '6px',
-              })}
-              style={{
-                backgroundColor:
-                  percentRemaining > 30
-                    ? isDark
-                      ? 'rgba(34, 197, 94, 0.2)'
-                      : 'rgba(34, 197, 94, 0.1)'
-                    : isDark
-                      ? 'rgba(234, 179, 8, 0.2)'
-                      : 'rgba(234, 179, 8, 0.1)',
-              }}
-            >
-              <span className={css({ fontSize: '0.875rem' })}>⏱️</span>
-              <span
-                className={css({
-                  fontFamily: 'var(--font-mono, monospace)',
-                  fontWeight: '600',
-                  fontSize: '0.875rem',
-                })}
-                style={{
-                  color:
-                    percentRemaining > 30
-                      ? isDark
-                        ? '#86efac'
-                        : '#16a34a'
-                      : isDark
-                        ? '#fde047'
-                        : '#ca8a04',
-                }}
-              >
-                {remainingMinutes}:{remainingSeconds.toString().padStart(2, '0')}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSkip}
-              className={css({
-                padding: '0.375rem 0.75rem',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                color: isDark ? 'gray.300' : 'gray.600',
-                backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                _hover: {
-                  backgroundColor: isDark ? 'gray.600' : 'gray.300',
-                },
-              })}
-            >
-              Back to Practice →
-            </button>
-          </div>
-        </div>
-
-        <div
-          data-element="game-container"
-          className={css({
-            flex: 1,
-            overflow: 'hidden',
-          })}
-        >
-          <PracticeGameModeProvider
-            student={student}
-            roomData={room}
-            onGameComplete={() => handleComplete('gameFinished')}
-          >
-            <Provider>
-              <GameComponent />
-            </Provider>
-          </PracticeGameModeProvider>
-        </div>
+          <Provider>
+            <GameComponent />
+          </Provider>
+        </PracticeGameModeProvider>
       </div>
     )
   }
