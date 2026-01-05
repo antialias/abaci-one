@@ -421,6 +421,13 @@
       "when": 1767744000000,
       "tag": "0059_steep_shockwave",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "6",
+      "when": 1767655540629,
+      "tag": "0060_conscious_wolf_cub",
+      "breakpoints": true
     }
   ]
 }
