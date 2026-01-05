@@ -49,6 +49,7 @@ import {
   BKT_INTEGRATION_CONFIG,
   CHALLENGE_RATIO_BY_PART_TYPE,
   DEFAULT_PROBLEM_GENERATION_MODE,
+  MIN_SECONDS_PER_PROBLEM,
   WEAK_SKILL_THRESHOLDS,
   type ProblemGenerationMode,
 } from './config'
@@ -233,8 +234,12 @@ export async function generateSessionPlan(
   const currentPhase = getPhase(currentPhaseId)
 
   // 2. Calculate personalized timing
-  const avgTimeSeconds =
+  // Clamp to MIN_SECONDS_PER_PROBLEM to prevent generating excessive problems
+  // when student timing data is anomalously low (see session-timing.ts for rationale)
+  const avgTimeSeconds = Math.max(
+    MIN_SECONDS_PER_PROBLEM,
     calculateAvgTimePerProblem(recentSessions) || config.defaultSecondsPerProblem
+  )
 
   // 3. Build skill constraints from the student's ACTUAL practicing skills
   const practicingSkills = skillMastery.filter((s) => s.isPracticing)
