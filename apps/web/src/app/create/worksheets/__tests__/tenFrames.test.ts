@@ -97,7 +97,7 @@ describe("Ten-frames rendering", () => {
   });
 
   describe("Typst template generation", () => {
-    it("should pass showTenFrames: true to Typst template for regrouping problems", () => {
+    it("should pass showTenFrames: true to Typst template for regrouping problems", async () => {
       const config: WorksheetConfig = {
         version: 4,
         mode: "custom",
@@ -110,6 +110,7 @@ describe("Ten-frames rendering", () => {
         name: "Test Student",
         date: "2025-11-10",
         seed: 12345,
+        prngAlgorithm: "xorshift128",
         fontSize: 12,
         digitRange: { min: 2, max: 2 },
         operator: "addition",
@@ -126,6 +127,8 @@ describe("Ten-frames rendering", () => {
           borrowingHints: "never",
         },
         interpolate: false,
+        includeAnswerKey: false,
+        includeQRCode: false,
         page: { wIn: 8.5, hIn: 11 },
         margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
       };
@@ -135,7 +138,7 @@ describe("Ten-frames rendering", () => {
         { operator: "add", a: 38, b: 54 }, // Has regrouping
       ];
 
-      const typstPages = generateTypstSource(config, problems);
+      const typstPages = await generateTypstSource(config, problems);
 
       // Should generate at least one page
       expect(typstPages.length).toBeGreaterThan(0);
@@ -149,7 +152,7 @@ describe("Ten-frames rendering", () => {
       expect(firstPage).not.toContain("showTenFrames: false");
     });
 
-    it("should include ten-frames rendering code when showTenFrames: true", () => {
+    it("should include ten-frames rendering code when showTenFrames: true", async () => {
       const config: WorksheetConfig = {
         version: 4,
         mode: "custom",
@@ -162,6 +165,7 @@ describe("Ten-frames rendering", () => {
         name: "Test Student",
         date: "2025-11-10",
         seed: 12345,
+        prngAlgorithm: "xorshift128",
         fontSize: 12,
         digitRange: { min: 1, max: 1 },
         operator: "addition",
@@ -178,6 +182,8 @@ describe("Ten-frames rendering", () => {
           borrowingHints: "never",
         },
         interpolate: false,
+        includeAnswerKey: false,
+        includeQRCode: false,
         page: { wIn: 8.5, hIn: 11 },
         margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
       };
@@ -186,7 +192,7 @@ describe("Ten-frames rendering", () => {
         { operator: "add", a: 8, b: 7 }, // 8 + 7 = 15, has regrouping
       ];
 
-      const typstPages = generateTypstSource(config, problems);
+      const typstPages = await generateTypstSource(config, problems);
       const firstPage = typstPages[0];
 
       // Should include the ten-frames function
@@ -199,7 +205,8 @@ describe("Ten-frames rendering", () => {
       expect(firstPage).toContain(".contains(");
     });
 
-    it("should handle manual mode with showTenFrames: true", () => {
+    it("should handle manual mode with showTenFrames: always", async () => {
+      // V4 manual mode also uses displayRules (same as custom/mastery)
       const config: WorksheetConfig = {
         version: 4,
         mode: "manual",
@@ -212,20 +219,26 @@ describe("Ten-frames rendering", () => {
         name: "Test Student",
         date: "2025-11-10",
         seed: 12345,
+        prngAlgorithm: "xorshift128",
         fontSize: 12,
         digitRange: { min: 2, max: 2 },
         operator: "addition",
         pAnyStart: 0.5,
         pAllStart: 0,
-        // Manual mode uses boolean flags
-        showCarryBoxes: true,
-        showAnswerBoxes: true,
-        showPlaceValueColors: true,
-        showTenFrames: true, // ← Explicitly enabled
-        showProblemNumbers: true,
-        showCellBorder: true,
-        showTenFramesForAll: false,
+        // V4 manual mode uses displayRules (same structure as custom/mastery)
+        displayRules: {
+          carryBoxes: "always",
+          answerBoxes: "always",
+          placeValueColors: "always",
+          tenFrames: "always", // ← Explicitly enabled for all problems
+          problemNumbers: "always",
+          cellBorders: "always",
+          borrowNotation: "never",
+          borrowingHints: "never",
+        },
         interpolate: false,
+        includeAnswerKey: false,
+        includeQRCode: false,
         page: { wIn: 8.5, hIn: 11 },
         margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
       };
@@ -235,7 +248,7 @@ describe("Ten-frames rendering", () => {
         { operator: "add", a: 12, b: 23 }, // No regrouping, but should still show frames
       ];
 
-      const typstPages = generateTypstSource(config, problems);
+      const typstPages = await generateTypstSource(config, problems);
       const firstPage = typstPages[0];
 
       // All problems should have showTenFrames: true in manual mode
@@ -245,7 +258,7 @@ describe("Ten-frames rendering", () => {
   });
 
   describe("Mastery progression mode", () => {
-    it("should use displayRules when in mastery mode (step 0: full scaffolding)", () => {
+    it("should use displayRules when in mastery mode (step 0: full scaffolding)", async () => {
       // Simulating mastery mode step 0 with full scaffolding
       const config: WorksheetConfig = {
         version: 4,
@@ -259,6 +272,7 @@ describe("Ten-frames rendering", () => {
         name: "Test Student",
         date: "2025-11-10",
         seed: 12345,
+        prngAlgorithm: "xorshift128",
         fontSize: 12,
         digitRange: { min: 1, max: 1 },
         operator: "addition",
@@ -275,6 +289,8 @@ describe("Ten-frames rendering", () => {
           borrowingHints: "never",
         },
         interpolate: false,
+        includeAnswerKey: false,
+        includeQRCode: false,
         page: { wIn: 8.5, hIn: 11 },
         margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
       };
@@ -284,7 +300,7 @@ describe("Ten-frames rendering", () => {
         { operator: "add", a: 9, b: 6 }, // Has regrouping
       ];
 
-      const typstPages = generateTypstSource(config, problems);
+      const typstPages = await generateTypstSource(config, problems);
       const firstPage = typstPages[0];
 
       // Should include ten-frames for all regrouping problems
@@ -292,7 +308,7 @@ describe("Ten-frames rendering", () => {
       expect(firstPage).toContain("ten-frames-stacked");
     });
 
-    it("should not show ten-frames in mastery mode step 1 (scaffolding faded)", () => {
+    it("should not show ten-frames in mastery mode step 1 (scaffolding faded)", async () => {
       const config: WorksheetConfig = {
         version: 4,
         mode: "mastery",
@@ -305,6 +321,7 @@ describe("Ten-frames rendering", () => {
         name: "Test Student",
         date: "2025-11-10",
         seed: 12345,
+        prngAlgorithm: "xorshift128",
         fontSize: 12,
         digitRange: { min: 1, max: 1 },
         operator: "addition",
@@ -321,6 +338,8 @@ describe("Ten-frames rendering", () => {
           borrowingHints: "never",
         },
         interpolate: false,
+        includeAnswerKey: false,
+        includeQRCode: false,
         page: { wIn: 8.5, hIn: 11 },
         margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
       };
@@ -329,7 +348,7 @@ describe("Ten-frames rendering", () => {
         { operator: "add", a: 8, b: 7 }, // Has regrouping
       ];
 
-      const typstPages = generateTypstSource(config, problems);
+      const typstPages = await generateTypstSource(config, problems);
       const firstPage = typstPages[0];
 
       // Should NOT show ten-frames (rule is 'never')
@@ -338,7 +357,7 @@ describe("Ten-frames rendering", () => {
   });
 
   describe("Mixed mode operator-specific scaffolding", () => {
-    it("should apply additionDisplayRules to addition problems in mixed mode", () => {
+    it("should apply additionDisplayRules to addition problems in mixed mode", async () => {
       const config: WorksheetConfig = {
         version: 4,
         mode: "mastery",
@@ -351,6 +370,7 @@ describe("Ten-frames rendering", () => {
         name: "Test Student",
         date: "2025-11-10",
         seed: 12345,
+        prngAlgorithm: "xorshift128",
         fontSize: 12,
         digitRange: { min: 2, max: 2 },
         operator: "mixed",
@@ -389,6 +409,8 @@ describe("Ten-frames rendering", () => {
           borrowingHints: "never",
         },
         interpolate: false,
+        includeAnswerKey: false,
+        includeQRCode: false,
         page: { wIn: 8.5, hIn: 11 },
         margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
       } as any; // Cast to any to allow operator-specific rules
@@ -398,7 +420,7 @@ describe("Ten-frames rendering", () => {
         { operator: "sub", minuend: 52, subtrahend: 18 }, // Subtraction with borrowing
       ];
 
-      const typstPages = generateTypstSource(config, problems);
+      const typstPages = await generateTypstSource(config, problems);
       const firstPage = typstPages[0];
 
       // Should contain both showTenFrames: true and showTenFrames: false
@@ -410,7 +432,7 @@ describe("Ten-frames rendering", () => {
       expect(firstPage).toContain('operator: "−"');
     });
 
-    it("should apply subtractionDisplayRules to subtraction problems in mixed mode", () => {
+    it("should apply subtractionDisplayRules to subtraction problems in mixed mode", async () => {
       const config: WorksheetConfig = {
         version: 4,
         mode: "mastery",
@@ -423,6 +445,7 @@ describe("Ten-frames rendering", () => {
         name: "Test Student",
         date: "2025-11-10",
         seed: 12345,
+        prngAlgorithm: "xorshift128",
         fontSize: 12,
         digitRange: { min: 2, max: 2 },
         operator: "mixed",
@@ -459,6 +482,8 @@ describe("Ten-frames rendering", () => {
           borrowingHints: "whenRegrouping",
         },
         interpolate: false,
+        includeAnswerKey: false,
+        includeQRCode: false,
         page: { wIn: 8.5, hIn: 11 },
         margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
       } as any;
@@ -467,7 +492,7 @@ describe("Ten-frames rendering", () => {
         { operator: "sub", minuend: 52, subtrahend: 18 }, // Subtraction with borrowing
       ];
 
-      const typstPages = generateTypstSource(config, problems);
+      const typstPages = await generateTypstSource(config, problems);
       const firstPage = typstPages[0];
 
       // Subtraction with borrowing should show ten-frames
@@ -476,7 +501,7 @@ describe("Ten-frames rendering", () => {
       expect(firstPage).toContain("showBorrowingHints: true");
     });
 
-    it('should handle subtraction problems with operator "sub" correctly', () => {
+    it('should handle subtraction problems with operator "sub" correctly', async () => {
       // This test verifies the fix for the Unicode operator bug
       const config: WorksheetConfig = {
         version: 4,
@@ -490,6 +515,7 @@ describe("Ten-frames rendering", () => {
         name: "Test Student",
         date: "2025-11-10",
         seed: 12345,
+        prngAlgorithm: "xorshift128",
         fontSize: 12,
         digitRange: { min: 2, max: 2 },
         operator: "mixed",
@@ -526,6 +552,8 @@ describe("Ten-frames rendering", () => {
           borrowingHints: "always",
         },
         interpolate: false,
+        includeAnswerKey: false,
+        includeQRCode: false,
         page: { wIn: 8.5, hIn: 11 },
         margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
       } as any;
@@ -535,7 +563,7 @@ describe("Ten-frames rendering", () => {
         { operator: "add", a: 45, b: 27 }, // operator: 'add' (alphanumeric)
       ];
 
-      const typstPages = generateTypstSource(config, problems);
+      const typstPages = await generateTypstSource(config, problems);
       const firstPage = typstPages[0];
 
       // Both problems should show scaffolding (not zero scaffolding bug)
@@ -547,7 +575,7 @@ describe("Ten-frames rendering", () => {
       expect(firstPage).toContain('operator: "+"'); // Addition
     });
 
-    it("should fallback to default displayRules when operator-specific rules are missing", () => {
+    it("should fallback to default displayRules when operator-specific rules are missing", async () => {
       const config: WorksheetConfig = {
         version: 4,
         mode: "mastery",
@@ -560,6 +588,7 @@ describe("Ten-frames rendering", () => {
         name: "Test Student",
         date: "2025-11-10",
         seed: 12345,
+        prngAlgorithm: "xorshift128",
         fontSize: 12,
         digitRange: { min: 2, max: 2 },
         operator: "mixed",
@@ -577,6 +606,8 @@ describe("Ten-frames rendering", () => {
           borrowingHints: "never",
         },
         interpolate: false,
+        includeAnswerKey: false,
+        includeQRCode: false,
         page: { wIn: 8.5, hIn: 11 },
         margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5 },
       };
@@ -586,7 +617,7 @@ describe("Ten-frames rendering", () => {
         { operator: "sub", minuend: 52, subtrahend: 18 }, // Has borrowing
       ];
 
-      const typstPages = generateTypstSource(config, problems);
+      const typstPages = await generateTypstSource(config, problems);
       const firstPage = typstPages[0];
 
       // Both should use default rules and show scaffolding

@@ -171,74 +171,56 @@ function generatePageTypst(
   const maxDigits = calculateMaxDigits(pageProblems);
 
   // Enrich problems with display options based on mode
+  // All V4 modes (custom, mastery, manual) use displayRules for conditional scaffolding
   const enrichedProblems = pageProblems.map((p, index) => {
-    if (config.mode === "custom" || config.mode === "mastery") {
-      // Custom & Mastery modes: Per-problem conditional display based on problem complexity
-      // Both modes use displayRules for conditional scaffolding
-      const meta =
-        p.operator === "add"
-          ? analyzeProblem(p.a, p.b)
-          : analyzeSubtractionProblem(p.minuend, p.subtrahend);
+    // Analyze problem complexity for conditional display rules
+    const meta =
+      p.operator === "add"
+        ? analyzeProblem(p.a, p.b)
+        : analyzeSubtractionProblem(p.minuend, p.subtrahend);
 
-      // Choose display rules based on operator (for mastery+mixed mode)
-      let rulesForProblem = config.displayRules as any;
+    // Choose display rules based on operator (for mastery+mixed mode)
+    let rulesForProblem = config.displayRules as any;
 
-      if (config.mode === "mastery") {
-        const masteryConfig = config as any;
-        // If we have operator-specific rules (mastery+mixed), use them
-        if (p.operator === "add" && masteryConfig.additionDisplayRules) {
-          console.log(
-            `[typstGenerator] Problem ${index}: Using additionDisplayRules for ${p.operator} problem`,
-          );
-          rulesForProblem = masteryConfig.additionDisplayRules;
-        } else if (
-          p.operator === "sub" &&
-          masteryConfig.subtractionDisplayRules
-        ) {
-          console.log(
-            `[typstGenerator] Problem ${index}: Using subtractionDisplayRules for ${p.operator} problem`,
-          );
-          rulesForProblem = masteryConfig.subtractionDisplayRules;
-        } else {
-          console.log(
-            `[typstGenerator] Problem ${index}: Using global displayRules for ${p.operator} problem`,
-          );
-        }
+    if (config.mode === "mastery") {
+      const masteryConfig = config as any;
+      // If we have operator-specific rules (mastery+mixed), use them
+      if (p.operator === "add" && masteryConfig.additionDisplayRules) {
+        console.log(
+          `[typstGenerator] Problem ${index}: Using additionDisplayRules for ${p.operator} problem`,
+        );
+        rulesForProblem = masteryConfig.additionDisplayRules;
+      } else if (
+        p.operator === "sub" &&
+        masteryConfig.subtractionDisplayRules
+      ) {
+        console.log(
+          `[typstGenerator] Problem ${index}: Using subtractionDisplayRules for ${p.operator} problem`,
+        );
+        rulesForProblem = masteryConfig.subtractionDisplayRules;
+      } else {
+        console.log(
+          `[typstGenerator] Problem ${index}: Using global displayRules for ${p.operator} problem`,
+        );
       }
-
-      console.log(`[typstGenerator] Problem ${index} display rules:`, {
-        operator: p.operator,
-        rulesForProblem,
-      });
-
-      const displayOptions = resolveDisplayForProblem(rulesForProblem, meta);
-
-      console.log(
-        `[typstGenerator] Problem ${index} resolved display options:`,
-        displayOptions,
-      );
-
-      return {
-        ...p,
-        ...displayOptions, // Now includes showBorrowNotation and showBorrowingHints from resolved rules
-      };
-    } else {
-      // Manual mode: Per-problem conditional display using displayRules (same as Custom/Mastery)
-      const meta =
-        p.operator === "add"
-          ? analyzeProblem(p.a, p.b)
-          : analyzeSubtractionProblem(p.minuend, p.subtrahend);
-
-      const displayOptions = resolveDisplayForProblem(
-        config.displayRules as any,
-        meta,
-      );
-
-      return {
-        ...p,
-        ...displayOptions,
-      };
     }
+
+    console.log(`[typstGenerator] Problem ${index} display rules:`, {
+      operator: p.operator,
+      rulesForProblem,
+    });
+
+    const displayOptions = resolveDisplayForProblem(rulesForProblem, meta);
+
+    console.log(
+      `[typstGenerator] Problem ${index} resolved display options:`,
+      displayOptions,
+    );
+
+    return {
+      ...p,
+      ...displayOptions, // Now includes showBorrowNotation and showBorrowingHints from resolved rules
+    };
   });
 
   // Generate Typst problem data with per-problem display flags
@@ -302,15 +284,8 @@ function generatePageTypst(
 #block(breakable: false)[
 
 #let heavy-stroke = 0.8pt
-#let show-ten-frames-for-all = ${
-    config.mode === "manual"
-      ? config.showTenFramesForAll
-        ? "true"
-        : "false"
-      : config.displayRules.tenFrames === "always"
-        ? "true"
-        : "false"
-  }
+// In V4, all modes use displayRules - check if tenFrames is set to "always"
+#let show-ten-frames-for-all = ${config.displayRules.tenFrames === "always" ? "true" : "false"}
 
 ${generatePlaceValueColors()}
 

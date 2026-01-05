@@ -27,7 +27,7 @@ exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lea
       },
     },
     {
-      "english": "remove 2 earth beads",
+      "english": "remove 2 earth beads in ones column",
       "expectedValue": 107,
       "isValid": true,
       "term": "-2",
@@ -89,7 +89,7 @@ exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lea
       },
     },
     {
-      "english": "remove 2 earth beads",
+      "english": "remove 2 earth beads in ones column",
       "expectedValue": 10007,
       "isValid": true,
       "term": "-2",
@@ -111,7 +111,7 @@ exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lea
   "startValue": 0,
   "steps": [
     {
-      "english": "add 3 earth beads",
+      "english": "add 3 earth beads in ones column",
       "expectedValue": 3,
       "isValid": true,
       "term": "3",
@@ -143,7 +143,7 @@ exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lea
       },
     },
     {
-      "english": "remove 2 earth beads",
+      "english": "remove 2 earth beads in ones column",
       "expectedValue": 7,
       "isValid": true,
       "term": "-2",
@@ -175,7 +175,7 @@ exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lea
       },
     },
     {
-      "english": "remove 2 earth beads",
+      "english": "remove 2 earth beads in ones column",
       "expectedValue": 51,
       "isValid": true,
       "term": "-2",
@@ -207,7 +207,7 @@ exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lea
       },
     },
     {
-      "english": "remove 2 earth beads",
+      "english": "remove 2 earth beads in ones column",
       "expectedValue": 15,
       "isValid": true,
       "term": "-2",
