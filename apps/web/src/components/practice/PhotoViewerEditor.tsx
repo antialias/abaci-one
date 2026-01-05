@@ -249,13 +249,15 @@ export function PhotoViewerEditor({
       const canvas = await loadImageToCanvas(file)
       if (!canvas) throw new Error('Failed to load image to canvas')
 
+      // Always load OpenCV - DocumentAdjuster needs it for perspective transform preview
+      await ensureOpenCVLoaded()
+
       // Use saved corners if available, otherwise detect
       let corners: Array<{ x: number; y: number }>
       if (currentPhoto.corners && currentPhoto.corners.length === 4) {
         corners = currentPhoto.corners
       } else {
-        // Lazy-load OpenCV before detecting quads
-        await ensureOpenCVLoaded()
+        // Detect quads (OpenCV already loaded above)
         const result = detectQuadsInImage(canvas)
         corners = result.corners
       }
