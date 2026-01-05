@@ -127,24 +127,37 @@ Currently no explicit distinction, but rooms serve different purposes:
 
 ### Game Completion Detection
 
-The practice system needs to know when a student finishes a game to end the break early. This is done by listening for `gamePhase` transitions:
+The practice system needs to know when a student finishes a game to end the break early. This is done by listening for `gamePhase` transitions.
+
+**Critical Socket Event Distinction:**
+
+| Event | When Emitted | Contains Game State? |
+|-------|--------------|---------------------|
+| `session-state` | Only when client **joins** a session | Yes |
+| `move-accepted` | After every game move during play | Yes |
+
+**Common Mistake:** Listening only to `session-state` for game completion. This won't work because `session-state` is only sent on join - during gameplay, all state updates come through `move-accepted`.
 
 **Implementation:**
 
 ```typescript
 // In PracticeGameModeProvider.tsx
+// MUST listen to BOTH events to catch game completion
 useArcadeSocket({
-  onSessionState: (data) => {
-    const currentPhase = (data.gameState as { gamePhase?: string })?.gamePhase
-
-    // Detect transition TO 'results' phase
-    if (currentPhase === 'results' && previousPhase !== 'results') {
-      onGameComplete?.()  // End the game break
-    }
-
-    previousPhase = currentPhase
-  },
+  onSessionState: handleStateUpdate,   // Initial state on join
+  onMoveAccepted: handleStateUpdate,   // State changes during gameplay
 })
+
+function handleStateUpdate(data: { gameState: unknown }) {
+  const currentPhase = (data.gameState as { gamePhase?: string })?.gamePhase
+
+  // Detect transition TO 'results' phase
+  if (currentPhase === 'results' && previousPhase !== 'results') {
+    onGameComplete?.()  // End the game break
+  }
+
+  previousPhase = currentPhase
+}
 ```
 
 **Why socket events?**
@@ -251,3 +264,9 @@ When debugging room-related issues:
 4. **Leave not working?**
    - Endpoint is idempotent - check `alreadyLeft` in response
    - Verify room ID is correct (not stale reference)
+
+5. **Game completion not detected?**
+   - Are you listening to `move-accepted`? (NOT just `session-state`)
+   - `session-state` only fires on join, not during gameplay
+   - Check if game emits `gamePhase: 'results'` (endless games don't)
+   - Verify socket joined the session (`joinSession(viewerId, roomId)`)
