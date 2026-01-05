@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react";
-import { useCallback, useState } from "react";
+import type { Meta, StoryObj } from '@storybook/react'
+import { useCallback, useState } from 'react'
 import type {
   GeneratedProblem,
   ProblemSlot,
@@ -8,89 +8,101 @@ import type {
   SessionPlan,
   SessionSummary,
   SlotResult,
-} from "@/db/schema/session-plans";
-import { createBasicSkillSet } from "@/types/tutorial";
+} from '@/db/schema/session-plans'
+import { createBasicSkillSet } from '@/types/tutorial'
 import {
   analyzeRequiredSkills,
   type ProblemConstraints as GeneratorConstraints,
   generateSingleProblem,
-} from "@/utils/problemGenerator";
-import { css } from "../../../styled-system/css";
-import { ActiveSession, type StudentInfo } from "./ActiveSession";
+} from '@/utils/problemGenerator'
+import { css } from '../../../styled-system/css'
+import { ActiveSession, type StudentInfo } from './ActiveSession'
 
 /**
  * Create a mock student for stories
  */
 function createMockStudent(name: string): StudentInfo {
   const students: Record<string, StudentInfo> = {
-    Sonia: { name: "Sonia", emoji: "🌟", color: "purple" },
-    Marcus: { name: "Marcus", emoji: "🚀", color: "blue" },
-    Luna: { name: "Luna", emoji: "🌙", color: "indigo" },
-    Kai: { name: "Kai", emoji: "🌊", color: "cyan" },
-  };
-  return students[name] ?? { name, emoji: "🎓", color: "gray" };
+    Sonia: { id: 'student-sonia', name: 'Sonia', emoji: '🌟', color: 'purple' },
+    Marcus: {
+      id: 'student-marcus',
+      name: 'Marcus',
+      emoji: '🚀',
+      color: 'blue',
+    },
+    Luna: { id: 'student-luna', name: 'Luna', emoji: '🌙', color: 'indigo' },
+    Kai: { id: 'student-kai', name: 'Kai', emoji: '🌊', color: 'cyan' },
+  }
+  return (
+    students[name] ?? {
+      id: `student-${name.toLowerCase()}`,
+      name,
+      emoji: '🎓',
+      color: 'gray',
+    }
+  )
 }
 
 const meta: Meta<typeof ActiveSession> = {
-  title: "Practice/ActiveSession",
+  title: 'Practice/ActiveSession',
   component: ActiveSession,
   parameters: {
-    layout: "fullscreen",
+    layout: 'fullscreen',
   },
-  tags: ["autodocs"],
-};
+  tags: ['autodocs'],
+}
 
-export default meta;
-type Story = StoryObj<typeof ActiveSession>;
+export default meta
+type Story = StoryObj<typeof ActiveSession>
 
 /**
  * Generate a skill-appropriate problem
  */
 function generateProblemWithSkills(
-  skillLevel: "basic" | "fiveComplements" | "tenComplements",
+  skillLevel: 'basic' | 'fiveComplements' | 'tenComplements'
 ): GeneratedProblem {
-  const baseSkills = createBasicSkillSet();
+  const baseSkills = createBasicSkillSet()
 
-  baseSkills.basic.directAddition = true;
-  baseSkills.basic.heavenBead = true;
-  baseSkills.basic.simpleCombinations = true;
+  baseSkills.basic.directAddition = true
+  baseSkills.basic.heavenBead = true
+  baseSkills.basic.simpleCombinations = true
 
-  if (skillLevel === "fiveComplements" || skillLevel === "tenComplements") {
-    baseSkills.fiveComplements["4=5-1"] = true;
-    baseSkills.fiveComplements["3=5-2"] = true;
-    baseSkills.fiveComplements["2=5-3"] = true;
-    baseSkills.fiveComplements["1=5-4"] = true;
+  if (skillLevel === 'fiveComplements' || skillLevel === 'tenComplements') {
+    baseSkills.fiveComplements['4=5-1'] = true
+    baseSkills.fiveComplements['3=5-2'] = true
+    baseSkills.fiveComplements['2=5-3'] = true
+    baseSkills.fiveComplements['1=5-4'] = true
   }
 
-  if (skillLevel === "tenComplements") {
-    baseSkills.tenComplements["9=10-1"] = true;
-    baseSkills.tenComplements["8=10-2"] = true;
-    baseSkills.tenComplements["7=10-3"] = true;
+  if (skillLevel === 'tenComplements') {
+    baseSkills.tenComplements['9=10-1'] = true
+    baseSkills.tenComplements['8=10-2'] = true
+    baseSkills.tenComplements['7=10-3'] = true
   }
 
   const constraints: GeneratorConstraints = {
-    numberRange: { min: 1, max: skillLevel === "tenComplements" ? 99 : 9 },
+    numberRange: { min: 1, max: skillLevel === 'tenComplements' ? 99 : 9 },
     maxTerms: 4,
     problemCount: 1,
-  };
+  }
 
-  const problem = generateSingleProblem(constraints, baseSkills);
+  const problem = generateSingleProblem(constraints, baseSkills)
 
   if (problem) {
     return {
       terms: problem.terms,
       answer: problem.answer,
       skillsRequired: problem.skillsUsed,
-    };
+    }
   }
 
   // Fallback
-  const terms = [3, 4, 2];
+  const terms = [3, 4, 2]
   return {
     terms,
     answer: terms.reduce((a, b) => a + b, 0),
     skillsRequired: analyzeRequiredSkills(terms, 9),
-  };
+  }
 }
 
 /**
@@ -98,132 +110,113 @@ function generateProblemWithSkills(
  */
 function createMockSlotsWithProblems(
   count: number,
-  skillLevel: "basic" | "fiveComplements" | "tenComplements",
-  purposes: Array<"focus" | "reinforce" | "review" | "challenge"> = [
-    "focus",
-    "reinforce",
-    "review",
-  ],
+  skillLevel: 'basic' | 'fiveComplements' | 'tenComplements',
+  purposes: Array<'focus' | 'reinforce' | 'review' | 'challenge'> = ['focus', 'reinforce', 'review']
 ): ProblemSlot[] {
   return Array.from({ length: count }, (_, i) => {
     // Build required skills based on skill level
     // Using type assertion since we're building mock data with partial values
-    const allowedSkills: ProblemSlot["constraints"]["allowedSkills"] = {
+    const allowedSkills: ProblemSlot['constraints']['allowedSkills'] = {
       basic: { directAddition: true, heavenBead: true },
-      ...(skillLevel !== "basic" && {
-        fiveComplements: { "4=5-1": true, "3=5-2": true },
+      ...(skillLevel !== 'basic' && {
+        fiveComplements: { '4=5-1': true, '3=5-2': true },
       }),
-      ...(skillLevel === "tenComplements" && {
-        tenComplements: { "9=10-1": true, "8=10-2": true },
+      ...(skillLevel === 'tenComplements' && {
+        tenComplements: { '9=10-1': true, '8=10-2': true },
       }),
-    } as ProblemSlot["constraints"]["allowedSkills"];
+    } as ProblemSlot['constraints']['allowedSkills']
 
     return {
       index: i,
       purpose: purposes[i % purposes.length],
       constraints: {
         allowedSkills,
-        digitRange: { min: 1, max: skillLevel === "tenComplements" ? 2 : 1 },
+        digitRange: { min: 1, max: skillLevel === 'tenComplements' ? 2 : 1 },
         termCount: { min: 3, max: 4 },
       },
       problem: generateProblemWithSkills(skillLevel),
-    };
-  });
+    }
+  })
 }
 
 /**
  * Create a complete mock session plan with generated problems
  */
 function createMockSessionPlanWithProblems(config: {
-  totalProblems?: number;
-  skillLevel?: "basic" | "fiveComplements" | "tenComplements";
-  currentPartIndex?: number;
-  currentSlotIndex?: number;
-  sessionHealth?: SessionHealth | null;
+  totalProblems?: number
+  skillLevel?: 'basic' | 'fiveComplements' | 'tenComplements'
+  currentPartIndex?: number
+  currentSlotIndex?: number
+  sessionHealth?: SessionHealth | null
 }): SessionPlan {
-  const totalProblems = config.totalProblems || 15;
-  const skillLevel = config.skillLevel || "basic";
+  const totalProblems = config.totalProblems || 15
+  const skillLevel = config.skillLevel || 'basic'
 
-  const part1Count = Math.round(totalProblems * 0.5);
-  const part2Count = Math.round(totalProblems * 0.3);
-  const part3Count = totalProblems - part1Count - part2Count;
+  const part1Count = Math.round(totalProblems * 0.5)
+  const part2Count = Math.round(totalProblems * 0.3)
+  const part3Count = totalProblems - part1Count - part2Count
 
   const parts: SessionPart[] = [
     {
       partNumber: 1,
-      type: "abacus",
-      format: "vertical",
+      type: 'abacus',
+      format: 'vertical',
       useAbacus: true,
-      slots: createMockSlotsWithProblems(part1Count, skillLevel, [
-        "focus",
-        "focus",
-        "reinforce",
-      ]),
+      slots: createMockSlotsWithProblems(part1Count, skillLevel, ['focus', 'focus', 'reinforce']),
       estimatedMinutes: 5,
     },
     {
       partNumber: 2,
-      type: "visualization",
-      format: "vertical",
+      type: 'visualization',
+      format: 'vertical',
       useAbacus: false,
-      slots: createMockSlotsWithProblems(part2Count, skillLevel, [
-        "focus",
-        "reinforce",
-        "review",
-      ]),
+      slots: createMockSlotsWithProblems(part2Count, skillLevel, ['focus', 'reinforce', 'review']),
       estimatedMinutes: 3,
     },
     {
       partNumber: 3,
-      type: "linear",
-      format: "linear",
+      type: 'linear',
+      format: 'linear',
       useAbacus: false,
-      slots: createMockSlotsWithProblems(part3Count, skillLevel, [
-        "review",
-        "challenge",
-      ]),
+      slots: createMockSlotsWithProblems(part3Count, skillLevel, ['review', 'challenge']),
       estimatedMinutes: 2,
     },
-  ];
+  ]
 
   const summary: SessionSummary = {
     focusDescription:
-      skillLevel === "tenComplements"
-        ? "Ten Complements"
-        : skillLevel === "fiveComplements"
-          ? "Five Complements"
-          : "Basic Addition",
+      skillLevel === 'tenComplements'
+        ? 'Ten Complements'
+        : skillLevel === 'fiveComplements'
+          ? 'Five Complements'
+          : 'Basic Addition',
     totalProblemCount: totalProblems,
     estimatedMinutes: 10,
     parts: parts.map((p) => ({
       partNumber: p.partNumber,
       type: p.type,
       description:
-        p.type === "abacus"
-          ? "Use Abacus"
-          : p.type === "visualization"
-            ? "Mental Math (Visualization)"
-            : "Mental Math (Linear)",
+        p.type === 'abacus'
+          ? 'Use Abacus'
+          : p.type === 'visualization'
+            ? 'Mental Math (Visualization)'
+            : 'Mental Math (Linear)',
       problemCount: p.slots.length,
       estimatedMinutes: p.estimatedMinutes,
     })),
-  };
+  }
 
   return {
-    id: "plan-active-123",
-    playerId: "player-1",
+    id: 'plan-active-123',
+    playerId: 'player-1',
     targetDurationMinutes: 10,
     estimatedProblemCount: totalProblems,
     avgTimePerProblemSeconds: 40,
+    gameBreakSettings: { enabled: false, maxDurationMinutes: 5 },
     parts,
     summary,
-    masteredSkillIds: [
-      "basic.+1",
-      "basic.+2",
-      "basic.+3",
-      "fiveComplements.4=5-1",
-    ],
-    status: "in_progress",
+    masteredSkillIds: ['basic.+1', 'basic.+2', 'basic.+3', 'fiveComplements.4=5-1'],
+    status: 'in_progress',
     currentPartIndex: config.currentPartIndex ?? 0,
     currentSlotIndex: config.currentSlotIndex ?? 0,
     sessionHealth: config.sessionHealth ?? null,
@@ -238,20 +231,20 @@ function createMockSessionPlanWithProblems(config: {
     pausedBy: null,
     pauseReason: null,
     retryState: null,
-  };
+  }
 }
 
 const defaultHandlers = {
-  onAnswer: async (result: Omit<SlotResult, "timestamp" | "partNumber">) => {
-    console.log("Answer recorded:", result);
+  onAnswer: async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>) => {
+    console.log('Answer recorded:', result)
   },
   onEndEarly: (reason?: string) => {
-    alert(`Session ended early: ${reason || "No reason given"}`);
+    alert(`Session ended early: ${reason || 'No reason given'}`)
   },
-  onPause: () => console.log("Session paused"),
-  onResume: () => console.log("Session resumed"),
-  onComplete: () => alert("Session completed!"),
-};
+  onPause: () => console.log('Session paused'),
+  onResume: () => console.log('Session resumed'),
+  onComplete: () => alert('Session completed!'),
+}
 
 /**
  * Wrapper for consistent styling
@@ -260,14 +253,14 @@ function SessionWrapper({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={css({
-        backgroundColor: "gray.100",
-        minHeight: "100vh",
-        padding: "1rem",
+        backgroundColor: 'gray.100',
+        minHeight: '100vh',
+        padding: '1rem',
       })}
     >
       {children}
     </div>
-  );
+  )
 }
 
 export const Part1Abacus: Story = {
@@ -275,117 +268,117 @@ export const Part1Abacus: Story = {
     <SessionWrapper>
       <ActiveSession
         plan={createMockSessionPlanWithProblems({
-          skillLevel: "basic",
+          skillLevel: 'basic',
           currentPartIndex: 0,
           currentSlotIndex: 0,
         })}
-        student={createMockStudent("Sonia")}
+        student={createMockStudent('Sonia')}
         {...defaultHandlers}
       />
     </SessionWrapper>
   ),
-};
+}
 
 export const Part2Visualization: Story = {
   render: () => (
     <SessionWrapper>
       <ActiveSession
         plan={createMockSessionPlanWithProblems({
-          skillLevel: "fiveComplements",
+          skillLevel: 'fiveComplements',
           currentPartIndex: 1,
           currentSlotIndex: 0,
         })}
-        student={createMockStudent("Marcus")}
+        student={createMockStudent('Marcus')}
         {...defaultHandlers}
       />
     </SessionWrapper>
   ),
-};
+}
 
 export const Part3Linear: Story = {
   render: () => (
     <SessionWrapper>
       <ActiveSession
         plan={createMockSessionPlanWithProblems({
-          skillLevel: "tenComplements",
+          skillLevel: 'tenComplements',
           currentPartIndex: 2,
           currentSlotIndex: 0,
         })}
-        student={createMockStudent("Luna")}
+        student={createMockStudent('Luna')}
         {...defaultHandlers}
       />
     </SessionWrapper>
   ),
-};
+}
 
 export const WithHealthIndicator: Story = {
   render: () => (
     <SessionWrapper>
       <ActiveSession
         plan={createMockSessionPlanWithProblems({
-          skillLevel: "basic",
+          skillLevel: 'basic',
           currentPartIndex: 0,
           currentSlotIndex: 3,
           sessionHealth: {
-            overall: "good",
+            overall: 'good',
             accuracy: 0.85,
             pacePercent: 110,
             currentStreak: 4,
             avgResponseTimeMs: 3500,
           },
         })}
-        student={createMockStudent("Sonia")}
+        student={createMockStudent('Sonia')}
         {...defaultHandlers}
       />
     </SessionWrapper>
   ),
-};
+}
 
 export const Struggling: Story = {
   render: () => (
     <SessionWrapper>
       <ActiveSession
         plan={createMockSessionPlanWithProblems({
-          skillLevel: "tenComplements",
+          skillLevel: 'tenComplements',
           currentPartIndex: 0,
           currentSlotIndex: 5,
           sessionHealth: {
-            overall: "struggling",
+            overall: 'struggling',
             accuracy: 0.45,
             pacePercent: 65,
             currentStreak: -3,
             avgResponseTimeMs: 8500,
           },
         })}
-        student={createMockStudent("Kai")}
+        student={createMockStudent('Kai')}
         {...defaultHandlers}
       />
     </SessionWrapper>
   ),
-};
+}
 
 export const Warning: Story = {
   render: () => (
     <SessionWrapper>
       <ActiveSession
         plan={createMockSessionPlanWithProblems({
-          skillLevel: "fiveComplements",
+          skillLevel: 'fiveComplements',
           currentPartIndex: 1,
           currentSlotIndex: 2,
           sessionHealth: {
-            overall: "warning",
+            overall: 'warning',
             accuracy: 0.72,
             pacePercent: 85,
             currentStreak: -1,
             avgResponseTimeMs: 5000,
           },
         })}
-        student={createMockStudent("Luna")}
+        student={createMockStudent('Luna')}
         {...defaultHandlers}
       />
     </SessionWrapper>
   ),
-};
+}
 
 /**
  * Interactive demo with simulated answering
@@ -394,20 +387,20 @@ function InteractiveSessionDemo() {
   const [plan, setPlan] = useState(() =>
     createMockSessionPlanWithProblems({
       totalProblems: 6,
-      skillLevel: "basic",
+      skillLevel: 'basic',
       sessionHealth: {
-        overall: "good",
+        overall: 'good',
         accuracy: 1,
         pacePercent: 100,
         currentStreak: 0,
         avgResponseTimeMs: 0,
       },
-    }),
-  );
-  const [results, setResults] = useState<SlotResult[]>([]);
+    })
+  )
+  const [results, setResults] = useState<SlotResult[]>([])
 
   const handleAnswer = useCallback(
-    async (result: Omit<SlotResult, "timestamp" | "partNumber">) => {
+    async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>) => {
       const fullResult: SlotResult = {
         ...result,
         partNumber: (plan.currentPartIndex + 1) as 1 | 2 | 3,
@@ -415,14 +408,14 @@ function InteractiveSessionDemo() {
         // Default help tracking fields if not provided
         hadHelp: result.hadHelp ?? false,
         incorrectAttempts: result.incorrectAttempts ?? 0,
-        helpTrigger: result.helpTrigger ?? "none",
-      };
-      setResults((prev) => [...prev, fullResult]);
+        helpTrigger: result.helpTrigger ?? 'none',
+      }
+      setResults((prev) => [...prev, fullResult])
 
       // Advance to next problem
       setPlan((prev) => {
-        const currentPart = prev.parts[prev.currentPartIndex];
-        const nextSlotIndex = prev.currentSlotIndex + 1;
+        const currentPart = prev.parts[prev.currentPartIndex]
+        const nextSlotIndex = prev.currentSlotIndex + 1
 
         if (nextSlotIndex >= currentPart.slots.length) {
           // Move to next part
@@ -430,40 +423,40 @@ function InteractiveSessionDemo() {
             ...prev,
             currentPartIndex: prev.currentPartIndex + 1,
             currentSlotIndex: 0,
-          };
+          }
         }
 
         return {
           ...prev,
           currentSlotIndex: nextSlotIndex,
-        };
-      });
+        }
+      })
     },
-    [plan.currentPartIndex],
-  );
+    [plan.currentPartIndex]
+  )
 
   const handleComplete = useCallback(() => {
     alert(
-      `Session complete! Results: ${results.filter((r) => r.isCorrect).length}/${results.length} correct`,
-    );
-  }, [results]);
+      `Session complete! Results: ${results.filter((r) => r.isCorrect).length}/${results.length} correct`
+    )
+  }, [results])
 
   return (
     <SessionWrapper>
       <ActiveSession
         plan={plan}
-        student={createMockStudent("Interactive Demo")}
+        student={createMockStudent('Interactive Demo')}
         onAnswer={handleAnswer}
         onEndEarly={(reason) => alert(`Ended: ${reason}`)}
         onComplete={handleComplete}
       />
     </SessionWrapper>
-  );
+  )
 }
 
 export const Interactive: Story = {
   render: () => <InteractiveSessionDemo />,
-};
+}
 
 export const MidSession: Story = {
   render: () => (
@@ -471,20 +464,20 @@ export const MidSession: Story = {
       <ActiveSession
         plan={createMockSessionPlanWithProblems({
           totalProblems: 15,
-          skillLevel: "fiveComplements",
+          skillLevel: 'fiveComplements',
           currentPartIndex: 0,
           currentSlotIndex: 4,
           sessionHealth: {
-            overall: "good",
+            overall: 'good',
             accuracy: 0.8,
             pacePercent: 95,
             currentStreak: 2,
             avgResponseTimeMs: 4200,
           },
         })}
-        student={createMockStudent("Sonia")}
+        student={createMockStudent('Sonia')}
         {...defaultHandlers}
       />
     </SessionWrapper>
   ),
-};
+}

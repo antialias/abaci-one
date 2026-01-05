@@ -13,14 +13,16 @@
  * - Spaced repetition needs (when skills were last practiced)
  */
 
-import { createId } from "@paralleldrive/cuid2";
-import { and, eq, inArray, isNull } from "drizzle-orm";
-import { db, schema } from "@/db";
-import type { PlayerSkillMastery } from "@/db/schema/player-skill-mastery";
+import { createId } from '@paralleldrive/cuid2'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { db, schema } from '@/db'
+import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import {
   calculateMasteryWeight,
   calculateSessionHealth,
+  DEFAULT_GAME_BREAK_SETTINGS,
   DEFAULT_PLAN_CONFIG,
+  type GameBreakSettings,
   initRetryState,
   isInRetryEpoch,
   MAX_RETRY_EPOCHS,
@@ -35,36 +37,36 @@ import {
   type SessionRetryState,
   type SessionSummary,
   type SlotResult,
-} from "@/db/schema/session-plans";
+} from '@/db/schema/session-plans'
 import {
   buildStudentSkillHistoryFromRecords,
   calculateMaxSkillCost,
   createSkillCostCalculator,
   type SkillCostCalculator,
-} from "@/utils/skillComplexity";
-import { computeBktFromHistory, type SkillBktResult } from "./bkt";
+} from '@/utils/skillComplexity'
+import { computeBktFromHistory, type SkillBktResult } from './bkt'
 import {
   BKT_INTEGRATION_CONFIG,
   CHALLENGE_RATIO_BY_PART_TYPE,
   DEFAULT_PROBLEM_GENERATION_MODE,
   WEAK_SKILL_THRESHOLDS,
   type ProblemGenerationMode,
-} from "./config";
+} from './config'
 import {
   type CurriculumPhase,
   getPhase,
   getPhaseDisplayInfo,
   type getPhaseSkillConstraints,
-} from "./definitions";
-import { generateProblemFromConstraints } from "./problem-generator";
+} from './definitions'
+import { generateProblemFromConstraints } from './problem-generator'
 import {
   getAllSkillMastery,
   getPlayerCurriculum,
   getRecentSessions,
   recordSkillAttemptsWithHelp,
-} from "./progress-manager";
-import { getWeakSkillIds, type SessionMode } from "./session-mode";
-import { revokeSharesForSession } from "@/lib/session-share";
+} from './progress-manager'
+import { getWeakSkillIds, type SessionMode } from './session-mode'
+import { revokeSharesForSession } from '@/lib/session-share'
 
 // ============================================================================
 // Plan Generation
@@ -74,48 +76,33 @@ import { revokeSharesForSession } from "@/lib/session-share";
  * Which session parts to include in the generated plan
  */
 export interface EnabledParts {
-  abacus: boolean;
-  visualization: boolean;
-  linear: boolean;
+  abacus: boolean
+  visualization: boolean
+  linear: boolean
 }
 
 export interface GenerateSessionPlanOptions {
-  playerId: string;
-  durationMinutes: number;
-  config?: Partial<PlanGenerationConfig>;
-  /** Which parts to include (default: all enabled) */
-  enabledParts?: EnabledParts;
-  /**
-   * BKT confidence threshold for identifying struggling skills.
-   * Skills need this level of confidence before being classified.
-   * Default: WEAK_SKILL_THRESHOLDS.confidenceThreshold (0.3)
-   */
-  confidenceThreshold?: number;
-  /**
-   * Problem generation mode:
-   * - 'adaptive': BKT-based continuous scaling (default)
-   * - 'classic': Fluency-based discrete states
-   */
-  problemGenerationMode?: ProblemGenerationMode;
-  /**
-   * Pre-computed session mode from getSessionMode().
-   * When provided, skips duplicate BKT computation and uses the mode's weak skills directly.
-   * This ensures the session targets exactly what was shown in the UI (no "rug-pulling").
-   */
-  sessionMode?: SessionMode;
+  playerId: string
+  durationMinutes: number
+  config?: Partial<PlanGenerationConfig>
+  enabledParts?: EnabledParts
+  confidenceThreshold?: number
+  problemGenerationMode?: ProblemGenerationMode
+  sessionMode?: SessionMode
+  gameBreakSettings?: GameBreakSettings
 }
 
 /**
  * Error thrown when a player already has an active session
  */
 export class ActiveSessionExistsError extends Error {
-  code = "ACTIVE_SESSION_EXISTS" as const;
-  existingSession: SessionPlan;
+  code = 'ACTIVE_SESSION_EXISTS' as const
+  existingSession: SessionPlan
 
   constructor(existingSession: SessionPlan) {
-    super("An active session already exists for this player");
-    this.name = "ActiveSessionExistsError";
-    this.existingSession = existingSession;
+    super('An active session already exists for this player')
+    this.name = 'ActiveSessionExistsError'
+    this.existingSession = existingSession
   }
 }
 
@@ -123,14 +110,14 @@ export class ActiveSessionExistsError extends Error {
  * Error thrown when trying to generate a session for a student with no skills enabled
  */
 export class NoSkillsEnabledError extends Error {
-  code = "NO_SKILLS_ENABLED" as const;
+  code = 'NO_SKILLS_ENABLED' as const
 
   constructor() {
     super(
-      "Cannot generate a practice session: no skills are enabled for this student. " +
-        "Please enable at least one skill in the skill selector before starting a session.",
-    );
-    this.name = "NoSkillsEnabledError";
+      'Cannot generate a practice session: no skills are enabled for this student. ' +
+        'Please enable at least one skill in the skill selector before starting a session.'
+    )
+    this.name = 'NoSkillsEnabledError'
   }
 }
 
@@ -141,7 +128,7 @@ export class NoSkillsEnabledError extends Error {
  * @throws {NoSkillsEnabledError} If the player has no skills enabled for practice
  */
 export async function generateSessionPlan(
-  options: GenerateSessionPlanOptions,
+  options: GenerateSessionPlanOptions
 ): Promise<SessionPlan> {
   const {
     playerId,
@@ -150,182 +137,159 @@ export async function generateSessionPlan(
     enabledParts,
     problemGenerationMode = DEFAULT_PROBLEM_GENERATION_MODE,
     sessionMode,
-  } = options;
+    gameBreakSettings = DEFAULT_GAME_BREAK_SETTINGS,
+  } = options
 
-  const config = { ...DEFAULT_PLAN_CONFIG, ...configOverrides };
+  const config = { ...DEFAULT_PLAN_CONFIG, ...configOverrides }
 
   // Default: all parts enabled
   const partsToInclude: EnabledParts = enabledParts ?? {
     abacus: true,
     visualization: true,
     linear: true,
-  };
+  }
 
   // Check for existing active session (one active session per kid rule)
-  const existingActive = await getActiveSessionPlan(playerId);
+  const existingActive = await getActiveSessionPlan(playerId)
   if (existingActive) {
-    const sessionAgeMs =
-      Date.now() - new Date(existingActive.createdAt).getTime();
-    const timeoutMs = config.sessionTimeoutHours * 60 * 60 * 1000;
+    const sessionAgeMs = Date.now() - new Date(existingActive.createdAt).getTime()
+    const timeoutMs = config.sessionTimeoutHours * 60 * 60 * 1000
 
     if (sessionAgeMs > timeoutMs) {
       // Session has timed out - auto-abandon it
-      await abandonSessionPlan(existingActive.id);
+      await abandonSessionPlan(existingActive.id)
     } else {
       // Session is still active - throw error with session data
-      throw new ActiveSessionExistsError(existingActive);
+      throw new ActiveSessionExistsError(existingActive)
     }
   }
 
   // 1. Load student state (in parallel for performance)
-  const [curriculum, skillMastery, recentSessions, problemHistory] =
-    await Promise.all([
-      getPlayerCurriculum(playerId),
-      getAllSkillMastery(playerId),
-      getRecentSessions(playerId, 10),
-      // Only load problem history for BKT in adaptive modes
-      problemGenerationMode === "adaptive" ||
-      problemGenerationMode === "adaptive-bkt"
-        ? getRecentSessionResults(
-            playerId,
-            BKT_INTEGRATION_CONFIG.sessionHistoryDepth,
-          )
-        : Promise.resolve([]),
-    ]);
+  const [curriculum, skillMastery, recentSessions, problemHistory] = await Promise.all([
+    getPlayerCurriculum(playerId),
+    getAllSkillMastery(playerId),
+    getRecentSessions(playerId, 10),
+    // Only load problem history for BKT in adaptive modes
+    problemGenerationMode === 'adaptive' || problemGenerationMode === 'adaptive-bkt'
+      ? getRecentSessionResults(playerId, BKT_INTEGRATION_CONFIG.sessionHistoryDepth)
+      : Promise.resolve([]),
+  ])
 
   // Compute BKT if in adaptive modes and we have problem history
-  let bktResults: Map<string, SkillBktResult> | undefined;
+  let bktResults: Map<string, SkillBktResult> | undefined
   const usesBktTargeting =
-    problemGenerationMode === "adaptive" ||
-    problemGenerationMode === "adaptive-bkt";
+    problemGenerationMode === 'adaptive' || problemGenerationMode === 'adaptive-bkt'
   if (usesBktTargeting && problemHistory.length > 0) {
-    const bktResult = computeBktFromHistory(problemHistory);
-    bktResults = new Map(bktResult.skills.map((s) => [s.skillId, s]));
+    const bktResult = computeBktFromHistory(problemHistory)
+    bktResults = new Map(bktResult.skills.map((s) => [s.skillId, s]))
 
     // Debug: Log BKT usage
-    if (process.env.DEBUG_SESSION_PLANNER === "true") {
+    if (process.env.DEBUG_SESSION_PLANNER === 'true') {
       console.log(
-        `[SessionPlanner] Mode: ${problemGenerationMode}, BKT skills: ${bktResult.skills.length}`,
-      );
+        `[SessionPlanner] Mode: ${problemGenerationMode}, BKT skills: ${bktResult.skills.length}`
+      )
       for (const skill of bktResult.skills.slice(0, 3)) {
         console.log(
           `  ${skill.skillId}: pKnown=${(skill.pKnown * 100).toFixed(0)}%, ` +
-            `confidence=${skill.confidence.toFixed(2)}, opportunities=${skill.opportunities}`,
-        );
+            `confidence=${skill.confidence.toFixed(2)}, opportunities=${skill.opportunities}`
+        )
       }
     }
-  } else if (process.env.DEBUG_SESSION_PLANNER === "true") {
+  } else if (process.env.DEBUG_SESSION_PLANNER === 'true') {
     console.log(
-      `[SessionPlanner] Mode: ${problemGenerationMode}, no BKT (usesBktTargeting=${usesBktTargeting}, history=${problemHistory.length})`,
-    );
+      `[SessionPlanner] Mode: ${problemGenerationMode}, no BKT (usesBktTargeting=${usesBktTargeting}, history=${problemHistory.length})`
+    )
   }
 
   // Build student-aware cost calculator for complexity budgeting
-  const studentHistory = buildStudentSkillHistoryFromRecords(skillMastery);
+  const studentHistory = buildStudentSkillHistoryFromRecords(skillMastery)
   const costCalculator = createSkillCostCalculator(studentHistory, {
     bktResults,
     mode: problemGenerationMode,
-  });
+  })
 
   // Debug: Show multipliers for all modes (not just when BKT data exists)
-  if (process.env.DEBUG_SESSION_PLANNER === "true") {
-    console.log(
-      `[SessionPlanner] Multiplier comparison (mode=${problemGenerationMode}):`,
-    );
-    const practicingIds = skillMastery
-      .filter((s) => s.isPracticing)
-      .map((s) => s.skillId);
+  if (process.env.DEBUG_SESSION_PLANNER === 'true') {
+    console.log(`[SessionPlanner] Multiplier comparison (mode=${problemGenerationMode}):`)
+    const practicingIds = skillMastery.filter((s) => s.isPracticing).map((s) => s.skillId)
     for (const skillId of practicingIds.slice(0, 5)) {
-      const multiplier = costCalculator.getMultiplier(skillId);
-      const isPracticing = costCalculator.getIsPracticing(skillId);
-      const bkt = costCalculator.getBktResult(skillId);
+      const multiplier = costCalculator.getMultiplier(skillId)
+      const isPracticing = costCalculator.getIsPracticing(skillId)
+      const bkt = costCalculator.getBktResult(skillId)
       console.log(
         `  ${skillId}: mult=${multiplier.toFixed(2)} inRotation=${isPracticing} ` +
-          `bkt_pKnown=${bkt?.pKnown.toFixed(2) ?? "N/A"} bkt_conf=${bkt?.confidence.toFixed(2) ?? "N/A"}`,
-      );
+          `bkt_pKnown=${bkt?.pKnown.toFixed(2) ?? 'N/A'} bkt_conf=${bkt?.confidence.toFixed(2) ?? 'N/A'}`
+      )
     }
   }
 
   // Calculate max skill cost for dynamic visualization budget
   // This ensures the student's most expensive skill can appear in visualization
-  const practicingSkillIds = skillMastery
-    .filter((s) => s.isPracticing)
-    .map((s) => s.skillId);
-  const studentMaxSkillCost = calculateMaxSkillCost(
-    costCalculator,
-    practicingSkillIds,
-  );
+  const practicingSkillIds = skillMastery.filter((s) => s.isPracticing).map((s) => s.skillId)
+  const studentMaxSkillCost = calculateMaxSkillCost(costCalculator, practicingSkillIds)
 
   // Get current phase
-  const currentPhaseId = curriculum?.currentPhaseId || "L1.add.+1.direct";
-  const currentPhase = getPhase(currentPhaseId);
+  const currentPhaseId = curriculum?.currentPhaseId || 'L1.add.+1.direct'
+  const currentPhase = getPhase(currentPhaseId)
 
   // 2. Calculate personalized timing
   const avgTimeSeconds =
-    calculateAvgTimePerProblem(recentSessions) ||
-    config.defaultSecondsPerProblem;
+    calculateAvgTimePerProblem(recentSessions) || config.defaultSecondsPerProblem
 
   // 3. Build skill constraints from the student's ACTUAL practicing skills
-  const practicingSkills = skillMastery.filter((s) => s.isPracticing);
+  const practicingSkills = skillMastery.filter((s) => s.isPracticing)
 
   // Cannot generate a session without any skills enabled
   if (practicingSkills.length === 0) {
-    throw new NoSkillsEnabledError();
+    throw new NoSkillsEnabledError()
   }
 
-  const practicingSkillConstraints =
-    buildConstraintsFromPracticingSkills(practicingSkills);
+  const practicingSkillConstraints = buildConstraintsFromPracticingSkills(practicingSkills)
 
   // Find skills needing spaced repetition review
-  const needsReview = findSkillsNeedingReview(
-    skillMastery,
-    config.reviewIntervalDays,
-  );
+  const needsReview = findSkillsNeedingReview(skillMastery, config.reviewIntervalDays)
 
   // Identify weak skills for targeting
   // When sessionMode is provided, use its pre-computed weak skills (single source of truth)
   // This ensures the session targets exactly what was shown in the UI (no "rug-pulling")
-  let weakSkills: string[];
+  let weakSkills: string[]
   if (sessionMode) {
     // Use pre-computed weak skills from sessionMode
-    weakSkills = getWeakSkillIds(sessionMode);
-    if (process.env.DEBUG_SESSION_PLANNER === "true") {
+    weakSkills = getWeakSkillIds(sessionMode)
+    if (process.env.DEBUG_SESSION_PLANNER === 'true') {
       console.log(
-        `[SessionPlanner] Using weak skills from sessionMode (${sessionMode.type}): ${weakSkills.length}`,
-      );
+        `[SessionPlanner] Using weak skills from sessionMode (${sessionMode.type}): ${weakSkills.length}`
+      )
     }
   } else {
     // Fallback: compute locally (for backwards compatibility)
-    weakSkills = usesBktTargeting ? identifyWeakSkills(bktResults) : [];
+    weakSkills = usesBktTargeting ? identifyWeakSkills(bktResults) : []
   }
 
-  if (process.env.DEBUG_SESSION_PLANNER === "true" && weakSkills.length > 0) {
-    console.log(`[SessionPlanner] Targeting ${weakSkills.length} weak skills:`);
+  if (process.env.DEBUG_SESSION_PLANNER === 'true' && weakSkills.length > 0) {
+    console.log(`[SessionPlanner] Targeting ${weakSkills.length} weak skills:`)
     for (const skillId of weakSkills) {
-      const bkt = bktResults?.get(skillId);
-      console.log(
-        `  ${skillId}: pKnown=${(bkt?.pKnown ?? 0 * 100).toFixed(0)}%`,
-      );
+      const bkt = bktResults?.get(skillId)
+      console.log(`  ${skillId}: pKnown=${(bkt?.pKnown ?? 0 * 100).toFixed(0)}%`)
     }
   }
 
   // 4. Build parts using STUDENT'S MASTERED SKILLS (only enabled parts)
   // Normalize part time weights based on which parts are enabled
-  const enabledPartTypes = (
-    ["abacus", "visualization", "linear"] as const
-  ).filter((type) => partsToInclude[type]);
+  const enabledPartTypes = (['abacus', 'visualization', 'linear'] as const).filter(
+    (type) => partsToInclude[type]
+  )
   const totalEnabledWeight = enabledPartTypes.reduce(
     (sum, type) => sum + config.partTimeWeights[type],
-    0,
-  );
+    0
+  )
 
   // Build only enabled parts with normalized time weights
-  const parts: SessionPart[] = [];
-  let partNumber = 1 as 1 | 2 | 3;
+  const parts: SessionPart[] = []
+  let partNumber = 1 as 1 | 2 | 3
 
   for (const partType of enabledPartTypes) {
-    const normalizedWeight =
-      config.partTimeWeights[partType] / totalEnabledWeight;
+    const normalizedWeight = config.partTimeWeights[partType] / totalEnabledWeight
     parts.push(
       buildSessionPart(
         partNumber,
@@ -345,45 +309,39 @@ export async function generateSessionPlan(
         normalizedWeight,
         costCalculator,
         studentMaxSkillCost,
-        weakSkills,
-      ),
-    );
-    partNumber = (partNumber + 1) as 1 | 2 | 3;
+        weakSkills
+      )
+    )
+    partNumber = (partNumber + 1) as 1 | 2 | 3
   }
 
   // 5. Build summary
-  const summary = buildSummary(parts, currentPhase, durationMinutes);
+  const summary = buildSummary(parts, currentPhase, durationMinutes)
 
   // 6. Calculate total problems
-  const totalProblemCount = parts.reduce(
-    (sum, part) => sum + part.slots.length,
-    0,
-  );
+  const totalProblemCount = parts.reduce((sum, part) => sum + part.slots.length, 0)
 
-  // 7. Create and save the plan
   const plan: NewSessionPlan = {
     id: createId(),
     playerId,
     targetDurationMinutes: durationMinutes,
     estimatedProblemCount: totalProblemCount,
     avgTimePerProblemSeconds: avgTimeSeconds,
+    gameBreakSettings,
     parts,
     summary,
     masteredSkillIds: practicingSkills.map((s) => s.skillId),
-    status: "draft",
+    status: 'draft',
     currentPartIndex: 0,
     currentSlotIndex: 0,
     sessionHealth: null,
     adjustments: [],
     results: [],
     createdAt: new Date(),
-  };
+  }
 
-  const [savedPlan] = await db
-    .insert(schema.sessionPlans)
-    .values(plan)
-    .returning();
-  return savedPlan;
+  const [savedPlan] = await db.insert(schema.sessionPlans).values(plan).returning()
+  return savedPlan
 }
 
 /**
@@ -404,15 +362,12 @@ function buildSessionPart(
   normalizedWeight?: number,
   costCalculator?: SkillCostCalculator,
   studentMaxSkillCost?: number,
-  weakSkills?: string[],
+  weakSkills?: string[]
 ): SessionPart {
   // Get time allocation for this part (use normalized weight if provided)
-  const partWeight = normalizedWeight ?? config.partTimeWeights[type];
-  const partDurationMinutes = totalDurationMinutes * partWeight;
-  const partProblemCount = Math.max(
-    2,
-    Math.floor((partDurationMinutes * 60) / avgTimeSeconds),
-  );
+  const partWeight = normalizedWeight ?? config.partTimeWeights[type]
+  const partDurationMinutes = totalDurationMinutes * partWeight
+  const partProblemCount = Math.max(2, Math.floor((partDurationMinutes * 60) / avgTimeSeconds))
 
   // Calculate slot distribution with part-type-specific challenge ratios
   // (See config/slot-distribution.ts for rationale)
@@ -420,64 +375,45 @@ function buildSessionPart(
   // IMPORTANT: Challenge slots require min complexity budget of 1.
   // Basic skills have cost 0, so students with ONLY basic skills can't generate challenge problems.
   // Skip challenge slots for these students and give them more focus/reinforce/review instead.
-  const challengeMinBudget =
-    config.purposeComplexityBounds.challenge[type].min ?? 0;
+  const challengeMinBudget = config.purposeComplexityBounds.challenge[type].min ?? 0
   const canDoChallenge =
-    studentMaxSkillCost !== undefined &&
-    studentMaxSkillCost >= challengeMinBudget;
+    studentMaxSkillCost !== undefined && studentMaxSkillCost >= challengeMinBudget
 
-  const challengeRatio = canDoChallenge
-    ? CHALLENGE_RATIO_BY_PART_TYPE[type]
-    : 0;
+  const challengeRatio = canDoChallenge ? CHALLENGE_RATIO_BY_PART_TYPE[type] : 0
   const minChallengeCount = canDoChallenge
     ? Math.max(1, Math.round(partProblemCount * challengeRatio))
-    : 0;
-  const availableForOthers = partProblemCount - minChallengeCount;
+    : 0
+  const availableForOthers = partProblemCount - minChallengeCount
 
-  const focusCount = Math.round(availableForOthers * config.focusWeight);
-  const reinforceCount = Math.round(
-    availableForOthers * config.reinforceWeight,
-  );
-  const reviewCount = Math.round(availableForOthers * config.reviewWeight);
+  const focusCount = Math.round(availableForOthers * config.focusWeight)
+  const reinforceCount = Math.round(availableForOthers * config.reinforceWeight)
+  const reviewCount = Math.round(availableForOthers * config.reviewWeight)
   // Challenge gets the remainder, but at least minChallengeCount (or 0 if can't do challenge)
   const challengeCount = canDoChallenge
-    ? Math.max(
-        minChallengeCount,
-        partProblemCount - focusCount - reinforceCount - reviewCount,
-      )
-    : 0;
+    ? Math.max(minChallengeCount, partProblemCount - focusCount - reinforceCount - reviewCount)
+    : 0
   // If no challenge, distribute remainder to focus
   const adjustedFocusCount =
-    focusCount +
-    (canDoChallenge
-      ? 0
-      : partProblemCount - focusCount - reinforceCount - reviewCount);
+    focusCount + (canDoChallenge ? 0 : partProblemCount - focusCount - reinforceCount - reviewCount)
 
   // Build slots
-  const slots: ProblemSlot[] = [];
+  const slots: ProblemSlot[] = []
 
   // Build constraints for focus slots that prioritize weak skills
   // This adds BKT-identified weak skills to targetSkills so problem generator prefers them
   const focusConstraints =
     weakSkills && weakSkills.length > 0
       ? addWeakSkillsToTargets(phaseConstraints, weakSkills)
-      : phaseConstraints;
+      : phaseConstraints
 
-  if (
-    process.env.DEBUG_SESSION_PLANNER === "true" &&
-    weakSkills &&
-    weakSkills.length > 0
-  ) {
-    const targetSkillsList = Object.entries(
-      focusConstraints.targetSkills || {},
-    ).flatMap(([cat, skills]) =>
-      Object.entries(skills)
-        .filter(([, v]) => v)
-        .map(([s]) => `${cat}.${s}`),
-    );
-    console.log(
-      `[SessionPlanner] Focus slots will target: ${targetSkillsList.join(", ")}`,
-    );
+  if (process.env.DEBUG_SESSION_PLANNER === 'true' && weakSkills && weakSkills.length > 0) {
+    const targetSkillsList = Object.entries(focusConstraints.targetSkills || {}).flatMap(
+      ([cat, skills]) =>
+        Object.entries(skills)
+          .filter(([, v]) => v)
+          .map(([s]) => `${cat}.${s}`)
+    )
+    console.log(`[SessionPlanner] Focus slots will target: ${targetSkillsList.join(', ')}`)
   }
 
   // Focus slots: current phase, primary skill (with weak skill targeting)
@@ -486,14 +422,14 @@ function buildSessionPart(
     slots.push(
       createSlot(
         slots.length,
-        "focus",
+        'focus',
         focusConstraints,
         type,
         config,
         costCalculator,
-        studentMaxSkillCost,
-      ),
-    );
+        studentMaxSkillCost
+      )
+    )
   }
 
   // Reinforce slots: weak skills (from BKT) get extra practice
@@ -502,32 +438,30 @@ function buildSessionPart(
     slots.push(
       createSlot(
         slots.length,
-        "reinforce",
+        'reinforce',
         focusConstraints, // Same weak skill targeting as focus slots
         type,
         config,
         costCalculator,
-        studentMaxSkillCost,
-      ),
-    );
+        studentMaxSkillCost
+      )
+    )
   }
 
   // Review slots: spaced repetition of mastered skills
   for (let i = 0; i < reviewCount; i++) {
-    const skill = needsReview[i % Math.max(1, needsReview.length)];
+    const skill = needsReview[i % Math.max(1, needsReview.length)]
     slots.push(
       createSlot(
         slots.length,
-        "review",
-        skill
-          ? buildConstraintsForSkill(skill, phaseConstraints)
-          : phaseConstraints,
+        'review',
+        skill ? buildConstraintsForSkill(skill, phaseConstraints) : phaseConstraints,
         type,
         config,
         costCalculator,
-        studentMaxSkillCost,
-      ),
-    );
+        studentMaxSkillCost
+      )
+    )
   }
 
   // Challenge slots: use same mastered skills constraints (all problems should use student's skills)
@@ -535,33 +469,33 @@ function buildSessionPart(
     slots.push(
       createSlot(
         slots.length,
-        "challenge",
+        'challenge',
         phaseConstraints,
         type,
         config,
         costCalculator,
-        studentMaxSkillCost,
-      ),
-    );
+        studentMaxSkillCost
+      )
+    )
   }
 
   // Shuffle to interleave purposes
-  const shuffledSlots = intelligentShuffle(slots);
+  const shuffledSlots = intelligentShuffle(slots)
 
   // Generate problems for each slot (persisted in DB for resume capability)
   const slotsWithProblems = shuffledSlots.map((slot) => ({
     ...slot,
     problem: generateProblemFromConstraints(slot.constraints, costCalculator),
-  }));
+  }))
 
   return {
     partNumber,
     type,
-    format: type === "linear" ? "linear" : "vertical",
-    useAbacus: type === "abacus",
+    format: type === 'linear' ? 'linear' : 'vertical',
+    useAbacus: type === 'abacus',
     slots: slotsWithProblems,
     estimatedMinutes: Math.round(partDurationMinutes),
-  };
+  }
 }
 
 // ============================================================================
@@ -571,13 +505,11 @@ function buildSessionPart(
 /**
  * Get a session plan by ID
  */
-export async function getSessionPlan(
-  planId: string,
-): Promise<SessionPlan | null> {
+export async function getSessionPlan(planId: string): Promise<SessionPlan | null> {
   const result = await db.query.sessionPlans.findFirst({
     where: eq(schema.sessionPlans.id, planId),
-  });
-  return result ?? null;
+  })
+  return result ?? null
 }
 
 /**
@@ -588,11 +520,11 @@ function sessionHasPreGeneratedProblems(plan: SessionPlan): boolean {
   for (const part of plan.parts) {
     for (const slot of part.slots) {
       if (!slot.problem) {
-        return false;
+        return false
       }
     }
   }
-  return true;
+  return true
 }
 
 /**
@@ -600,9 +532,7 @@ function sessionHasPreGeneratedProblems(plan: SessionPlan): boolean {
  * Returns the most recent in_progress session if multiple exist
  * Auto-abandons sessions that are missing pre-generated problems (legacy data)
  */
-export async function getActiveSessionPlan(
-  playerId: string,
-): Promise<SessionPlan | null> {
+export async function getActiveSessionPlan(playerId: string): Promise<SessionPlan | null> {
   // Find any session that's not completed or abandoned
   // This includes: draft, approved, in_progress
   // IMPORTANT: Also check completedAt IS NULL to handle inconsistent data
@@ -610,45 +540,43 @@ export async function getActiveSessionPlan(
   const result = await db.query.sessionPlans.findFirst({
     where: and(
       eq(schema.sessionPlans.playerId, playerId),
-      inArray(schema.sessionPlans.status, ["draft", "approved", "in_progress"]),
-      isNull(schema.sessionPlans.completedAt),
+      inArray(schema.sessionPlans.status, ['draft', 'approved', 'in_progress']),
+      isNull(schema.sessionPlans.completedAt)
     ),
     orderBy: (plans, { desc }) => [desc(plans.createdAt)],
-  });
+  })
 
   if (!result) {
-    return null;
+    return null
   }
 
   // Validate session has pre-generated problems
   // Old sessions may not have them - auto-abandon those
   if (!sessionHasPreGeneratedProblems(result)) {
     console.warn(
-      `[getActiveSessionPlan] Session ${result.id} missing pre-generated problems, auto-abandoning`,
-    );
-    await abandonSessionPlan(result.id);
+      `[getActiveSessionPlan] Session ${result.id} missing pre-generated problems, auto-abandoning`
+    )
+    await abandonSessionPlan(result.id)
     // Recursively check for another active session
-    return getActiveSessionPlan(playerId);
+    return getActiveSessionPlan(playerId)
   }
 
-  return result;
+  return result
 }
 
 /**
  * Get the most recently completed session plan for a player
  * Used for the summary page after completing a session
  */
-export async function getMostRecentCompletedSession(
-  playerId: string,
-): Promise<SessionPlan | null> {
+export async function getMostRecentCompletedSession(playerId: string): Promise<SessionPlan | null> {
   const result = await db.query.sessionPlans.findFirst({
     where: and(
       eq(schema.sessionPlans.playerId, playerId),
-      eq(schema.sessionPlans.status, "completed"),
+      eq(schema.sessionPlans.status, 'completed')
     ),
     orderBy: (plans, { desc }) => [desc(plans.completedAt)],
-  });
-  return result ?? null;
+  })
+  return result ?? null
 }
 
 /**
@@ -656,11 +584,11 @@ export async function getMostRecentCompletedSession(
  */
 export interface ProblemResultWithContext extends SlotResult {
   /** Session ID this result came from */
-  sessionId: string;
+  sessionId: string
   /** When the session was completed */
-  sessionCompletedAt: Date;
+  sessionCompletedAt: Date
   /** Part type (abacus/visualization/linear) */
-  partType: SessionPartType;
+  partType: SessionPartType
 }
 
 /**
@@ -674,7 +602,7 @@ export interface ProblemResultWithContext extends SlotResult {
  */
 export async function getRecentSessionResults(
   playerId: string,
-  sessionCount = 50,
+  sessionCount = 50
 ): Promise<ProblemResultWithContext[]> {
   // Include both 'completed' sessions and 'recency-refresh' sentinels
   // Recency-refresh sessions contain sentinel records that update lastPracticedAt
@@ -682,81 +610,77 @@ export async function getRecentSessionResults(
   const sessions = await db.query.sessionPlans.findMany({
     where: and(
       eq(schema.sessionPlans.playerId, playerId),
-      inArray(schema.sessionPlans.status, ["completed", "recency-refresh"]),
+      inArray(schema.sessionPlans.status, ['completed', 'recency-refresh'])
     ),
     orderBy: (plans, { desc }) => [desc(plans.completedAt)],
     limit: sessionCount,
-  });
+  })
 
   // Flatten results with session context
-  const results: ProblemResultWithContext[] = [];
+  const results: ProblemResultWithContext[] = []
 
   for (const session of sessions) {
-    if (!session.completedAt) continue;
+    if (!session.completedAt) continue
 
     for (const result of session.results) {
       // Find the part type for this result
-      const part = session.parts.find(
-        (p) => p.partNumber === result.partNumber,
-      );
-      const partType = part?.type ?? "linear";
+      const part = session.parts.find((p) => p.partNumber === result.partNumber)
+      const partType = part?.type ?? 'linear'
 
       results.push({
         ...result,
         sessionId: session.id,
         sessionCompletedAt: session.completedAt,
         partType,
-      });
+      })
     }
   }
 
   // Sort by timestamp descending (most recent first)
-  results.sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-  );
+  results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-  return results;
+  return results
 }
 
 /**
  * Approve a plan (teacher says "Let's Go!")
  */
 export async function approveSessionPlan(planId: string): Promise<SessionPlan> {
-  const now = new Date();
+  const now = new Date()
   const [updated] = await db
     .update(schema.sessionPlans)
     .set({
-      status: "approved",
+      status: 'approved',
       approvedAt: now,
     })
     .where(eq(schema.sessionPlans.id, planId))
-    .returning();
-  return updated;
+    .returning()
+  return updated
 }
 
 /**
  * Start a session (first problem displayed)
  */
 export async function startSessionPlan(planId: string): Promise<SessionPlan> {
-  const now = new Date();
+  const now = new Date()
   const initialHealth: SessionHealth = {
-    overall: "good",
+    overall: 'good',
     accuracy: 1,
     pacePercent: 100,
     currentStreak: 0,
     avgResponseTimeMs: 0,
-  };
+  }
 
   const [updated] = await db
     .update(schema.sessionPlans)
     .set({
-      status: "in_progress",
+      status: 'in_progress',
       startedAt: now,
       sessionHealth: initialHealth,
     })
     .where(eq(schema.sessionPlans.id, planId))
-    .returning();
-  return updated;
+    .returning()
+  return updated
 }
 
 /**
@@ -766,83 +690,72 @@ export async function recordSlotResult(
   planId: string,
   result: Omit<
     SlotResult,
-    | "timestamp"
-    | "partNumber"
-    | "epochNumber"
-    | "masteryWeight"
-    | "isRetry"
-    | "originalSlotIndex"
-  >,
+    'timestamp' | 'partNumber' | 'epochNumber' | 'masteryWeight' | 'isRetry' | 'originalSlotIndex'
+  >
 ): Promise<SessionPlan> {
-  let plan: SessionPlan | null;
+  let plan: SessionPlan | null
   try {
-    plan = await getSessionPlan(planId);
+    plan = await getSessionPlan(planId)
   } catch (error) {
-    console.error(`[recordSlotResult] Failed to get plan ${planId}:`, error);
+    console.error(`[recordSlotResult] Failed to get plan ${planId}:`, error)
     throw new Error(
-      `Failed to retrieve plan ${planId}: ${error instanceof Error ? error.message : String(error)}`,
-    );
+      `Failed to retrieve plan ${planId}: ${error instanceof Error ? error.message : String(error)}`
+    )
   }
 
-  if (!plan) throw new Error(`Plan not found: ${planId}`);
+  if (!plan) throw new Error(`Plan not found: ${planId}`)
 
   // Defensive check: ensure parts array exists and is valid
   if (!plan.parts || !Array.isArray(plan.parts)) {
     throw new Error(
-      `Plan ${planId} has invalid parts: ${typeof plan.parts} (status: ${plan.status}, partIndex: ${plan.currentPartIndex})`,
-    );
+      `Plan ${planId} has invalid parts: ${typeof plan.parts} (status: ${plan.status}, partIndex: ${plan.currentPartIndex})`
+    )
   }
 
   if (plan.parts.length === 0) {
-    throw new Error(`Plan ${planId} has empty parts array`);
+    throw new Error(`Plan ${planId} has empty parts array`)
   }
 
   if (plan.currentPartIndex < 0 || plan.currentPartIndex >= plan.parts.length) {
     throw new Error(
-      `Plan ${planId} has invalid currentPartIndex: ${plan.currentPartIndex} (parts.length: ${plan.parts.length})`,
-    );
+      `Plan ${planId} has invalid currentPartIndex: ${plan.currentPartIndex} (parts.length: ${plan.parts.length})`
+    )
   }
 
-  const currentPart = plan.parts[plan.currentPartIndex];
-  if (!currentPart)
-    throw new Error(`Invalid part index: ${plan.currentPartIndex}`);
+  const currentPart = plan.parts[plan.currentPartIndex]
+  if (!currentPart) throw new Error(`Invalid part index: ${plan.currentPartIndex}`)
 
   // Defensive check: ensure slots array exists
   if (!currentPart.slots || !Array.isArray(currentPart.slots)) {
     throw new Error(
-      `Plan ${planId} part ${plan.currentPartIndex} has invalid slots: ${typeof currentPart.slots}`,
-    );
+      `Plan ${planId} part ${plan.currentPartIndex} has invalid slots: ${typeof currentPart.slots}`
+    )
   }
 
   // Defensive check: ensure results array exists
   if (!plan.results || !Array.isArray(plan.results)) {
-    throw new Error(
-      `Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`,
-    );
+    throw new Error(`Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`)
   }
 
   // Initialize mutable copy of retry state
-  const updatedRetryState: SessionRetryState = plan.retryState
-    ? { ...plan.retryState }
-    : {};
-  const partIndex = plan.currentPartIndex;
+  const updatedRetryState: SessionRetryState = plan.retryState ? { ...plan.retryState } : {}
+  const partIndex = plan.currentPartIndex
 
   // Determine if we're in a retry epoch or working original slots
-  const inRetryEpoch = isInRetryEpoch(plan, partIndex);
-  let epochNumber = 0;
-  let originalSlotIndex = result.slotIndex;
+  const inRetryEpoch = isInRetryEpoch(plan, partIndex)
+  let epochNumber = 0
+  let originalSlotIndex = result.slotIndex
 
   if (inRetryEpoch) {
     // In retry epoch
-    const retryState = updatedRetryState[partIndex]!;
-    const currentRetryItem =
-      retryState.currentEpochItems[retryState.currentRetryIndex];
-    epochNumber = currentRetryItem.epochNumber;
-    originalSlotIndex = currentRetryItem.originalSlotIndex;
+    const retryState = updatedRetryState[partIndex]!
+    const currentRetryItem = retryState.currentEpochItems[retryState.currentRetryIndex]
+    epochNumber = currentRetryItem.epochNumber
+    originalSlotIndex = currentRetryItem.originalSlotIndex
   }
 
   // Calculate mastery weight based on epoch and correctness
-  const masteryWeight = calculateMasteryWeight(result.isCorrect, epochNumber);
+  const masteryWeight = calculateMasteryWeight(result.isCorrect, epochNumber)
 
   const newResult: SlotResult = {
     ...result,
@@ -852,113 +765,103 @@ export async function recordSlotResult(
     masteryWeight,
     isRetry: epochNumber > 0,
     originalSlotIndex,
-  };
+  }
 
-  const updatedResults = [...plan.results, newResult];
+  const updatedResults = [...plan.results, newResult]
 
   // Handle wrong answers: queue for retry
   if (!result.isCorrect) {
     if (inRetryEpoch) {
       // In retry epoch - queue for next epoch if under max
-      const retryState = updatedRetryState[partIndex]!;
+      const retryState = updatedRetryState[partIndex]!
       if (retryState.currentEpoch < MAX_RETRY_EPOCHS) {
-        const currentRetryItem =
-          retryState.currentEpochItems[retryState.currentRetryIndex];
+        const currentRetryItem = retryState.currentEpochItems[retryState.currentRetryIndex]
         retryState.pendingRetries.push({
           originalSlotIndex: currentRetryItem.originalSlotIndex,
           problem: currentRetryItem.problem,
           epochNumber: retryState.currentEpoch + 1,
           originalPurpose: currentRetryItem.originalPurpose,
-        });
+        })
       }
       // If at max epoch, don't re-queue (counted as definitively wrong)
     } else {
       // Original attempt wrong - queue for first retry epoch
-      const retryState = initRetryState(
-        { ...plan, retryState: updatedRetryState },
-        partIndex,
-      );
-      updatedRetryState[partIndex] = retryState;
-      const slot = currentPart.slots[plan.currentSlotIndex];
+      const retryState = initRetryState({ ...plan, retryState: updatedRetryState }, partIndex)
+      updatedRetryState[partIndex] = retryState
+      const slot = currentPart.slots[plan.currentSlotIndex]
       retryState.pendingRetries.push({
         originalSlotIndex: plan.currentSlotIndex,
         problem: slot.problem!,
         epochNumber: 1,
         originalPurpose: slot.purpose,
-      });
+      })
     }
   }
 
   // Advance to next problem
-  let nextPartIndex = plan.currentPartIndex;
-  let nextSlotIndex = plan.currentSlotIndex;
-  let isComplete = false;
+  let nextPartIndex = plan.currentPartIndex
+  let nextSlotIndex = plan.currentSlotIndex
+  let isComplete = false
 
   if (inRetryEpoch) {
     // Advance within retry epoch
-    const retryState = updatedRetryState[partIndex]!;
-    retryState.currentRetryIndex += 1;
+    const retryState = updatedRetryState[partIndex]!
+    retryState.currentRetryIndex += 1
 
     if (retryState.currentRetryIndex >= retryState.currentEpochItems.length) {
       // Finished current retry epoch
-      if (
-        retryState.pendingRetries.length > 0 &&
-        retryState.currentEpoch < MAX_RETRY_EPOCHS
-      ) {
+      if (retryState.pendingRetries.length > 0 && retryState.currentEpoch < MAX_RETRY_EPOCHS) {
         // Start next retry epoch
-        retryState.currentEpoch += 1;
-        retryState.currentEpochItems = [...retryState.pendingRetries];
-        retryState.pendingRetries = [];
-        retryState.currentRetryIndex = 0;
+        retryState.currentEpoch += 1
+        retryState.currentEpochItems = [...retryState.pendingRetries]
+        retryState.pendingRetries = []
+        retryState.currentRetryIndex = 0
       } else {
         // No more retries (either all correct or max epochs reached)
         // Clear retry state and advance to next part
-        retryState.currentEpochItems = [];
-        retryState.currentRetryIndex = 0;
-        retryState.pendingRetries = [];
-        nextPartIndex += 1;
-        nextSlotIndex = 0;
+        retryState.currentEpochItems = []
+        retryState.currentRetryIndex = 0
+        retryState.pendingRetries = []
+        nextPartIndex += 1
+        nextSlotIndex = 0
 
         if (nextPartIndex >= plan.parts.length) {
-          isComplete = true;
+          isComplete = true
         }
       }
     }
   } else {
     // Advance within original slots
-    nextSlotIndex += 1;
+    nextSlotIndex += 1
 
     if (nextSlotIndex >= currentPart.slots.length) {
       // Finished original slots for this part
-      const retryState = updatedRetryState[partIndex];
+      const retryState = updatedRetryState[partIndex]
 
       if (retryState && retryState.pendingRetries.length > 0) {
         // Start retry epoch 1
-        retryState.currentEpoch = 1;
-        retryState.currentEpochItems = [...retryState.pendingRetries];
-        retryState.pendingRetries = [];
-        retryState.currentRetryIndex = 0;
+        retryState.currentEpoch = 1
+        retryState.currentEpochItems = [...retryState.pendingRetries]
+        retryState.pendingRetries = []
+        retryState.currentRetryIndex = 0
         // Stay on same part, slot index stays at end (indicates original slots done)
       } else {
         // No retries needed, advance to next part
-        nextPartIndex += 1;
-        nextSlotIndex = 0;
+        nextPartIndex += 1
+        nextSlotIndex = 0
 
         if (nextPartIndex >= plan.parts.length) {
-          isComplete = true;
+          isComplete = true
         }
       }
     }
   }
 
   // Calculate elapsed time since start
-  const elapsedMs = plan.startedAt ? Date.now() - plan.startedAt.getTime() : 0;
-  const updatedHealth = calculateSessionHealth(
-    { ...plan, results: updatedResults },
-    elapsedMs,
-  );
+  const elapsedMs = plan.startedAt ? Date.now() - plan.startedAt.getTime() : 0
+  const updatedHealth = calculateSessionHealth({ ...plan, results: updatedResults }, elapsedMs)
 
-  let dbResult;
+  let dbResult
   try {
     dbResult = await db
       .update(schema.sessionPlans)
@@ -968,23 +871,23 @@ export async function recordSlotResult(
         currentSlotIndex: nextSlotIndex,
         sessionHealth: updatedHealth,
         retryState: updatedRetryState,
-        status: isComplete ? "completed" : "in_progress",
+        status: isComplete ? 'completed' : 'in_progress',
         completedAt: isComplete ? new Date() : null,
       })
       .where(eq(schema.sessionPlans.id, planId))
-      .returning();
+      .returning()
   } catch (dbError) {
-    console.error(`[recordSlotResult] Drizzle update FAILED:`, dbError);
-    throw dbError;
+    console.error(`[recordSlotResult] Drizzle update FAILED:`, dbError)
+    throw dbError
   }
 
-  const [updated] = dbResult;
+  const [updated] = dbResult
 
   // Defensive check: ensure update succeeded
   if (!updated) {
     throw new Error(
-      `Failed to update plan ${planId}: no rows returned (may have been deleted during update)`,
-    );
+      `Failed to update plan ${planId}: no rows returned (may have been deleted during update)`
+    )
   }
 
   // Update global skill mastery timestamps with help tracking
@@ -993,37 +896,31 @@ export async function recordSlotResult(
     const skillResults = result.skillsExercised.map((skillId) => ({
       skillId,
       isCorrect: result.isCorrect,
-    }));
+    }))
     try {
       await recordSkillAttemptsWithHelp(
         plan.playerId,
         skillResults,
         result.hadHelp,
-        result.responseTimeMs,
-      );
+        result.responseTimeMs
+      )
     } catch (skillError) {
-      console.error(
-        `[recordSlotResult] recordSkillAttemptsWithHelp FAILED:`,
-        skillError,
-      );
-      throw skillError;
+      console.error(`[recordSlotResult] recordSkillAttemptsWithHelp FAILED:`, skillError)
+      throw skillError
     }
   }
 
   // Revoke any active share links when session completes
   if (isComplete) {
     try {
-      await revokeSharesForSession(planId);
+      await revokeSharesForSession(planId)
     } catch (shareError) {
       // Non-critical: log and continue (session already completed successfully)
-      console.error(
-        `[recordSlotResult] revokeSharesForSession FAILED:`,
-        shareError,
-      );
+      console.error(`[recordSlotResult] revokeSharesForSession FAILED:`, shareError)
     }
   }
 
-  return updated;
+  return updated
 }
 
 /**
@@ -1031,45 +928,42 @@ export async function recordSlotResult(
  */
 export async function completeSessionPlanEarly(
   planId: string,
-  reason?: string,
+  reason?: string
 ): Promise<SessionPlan> {
-  const plan = await getSessionPlan(planId);
-  if (!plan) throw new Error(`Plan not found: ${planId}`);
+  const plan = await getSessionPlan(planId)
+  if (!plan) throw new Error(`Plan not found: ${planId}`)
 
   const adjustment = {
     timestamp: new Date(),
-    type: "ended_early" as const,
+    type: 'ended_early' as const,
     reason,
     previousHealth: plan.sessionHealth || {
-      overall: "good" as const,
+      overall: 'good' as const,
       accuracy: 1,
       pacePercent: 100,
       currentStreak: 0,
       avgResponseTimeMs: 0,
     },
-  };
+  }
 
   const [updated] = await db
     .update(schema.sessionPlans)
     .set({
-      status: "completed",
+      status: 'completed',
       completedAt: new Date(),
       adjustments: [...plan.adjustments, adjustment],
     })
     .where(eq(schema.sessionPlans.id, planId))
-    .returning();
+    .returning()
 
   // Revoke any active share links
   try {
-    await revokeSharesForSession(planId);
+    await revokeSharesForSession(planId)
   } catch (shareError) {
-    console.error(
-      `[completeSessionPlanEarly] revokeSharesForSession FAILED:`,
-      shareError,
-    );
+    console.error(`[completeSessionPlanEarly] revokeSharesForSession FAILED:`, shareError)
   }
 
-  return updated;
+  return updated
 }
 
 /**
@@ -1079,23 +973,20 @@ export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
   const [updated] = await db
     .update(schema.sessionPlans)
     .set({
-      status: "abandoned",
+      status: 'abandoned',
       completedAt: new Date(),
     })
     .where(eq(schema.sessionPlans.id, planId))
-    .returning();
+    .returning()
 
   // Revoke any active share links
   try {
-    await revokeSharesForSession(planId);
+    await revokeSharesForSession(planId)
   } catch (shareError) {
-    console.error(
-      `[abandonSessionPlan] revokeSharesForSession FAILED:`,
-      shareError,
-    );
+    console.error(`[abandonSessionPlan] revokeSharesForSession FAILED:`, shareError)
   }
 
-  return updated;
+  return updated
 }
 
 // ============================================================================
@@ -1111,25 +1002,20 @@ export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
  * @param bktResults - BKT results keyed by skillId
  * @returns Array of skillIds that are weak and should be prioritized
  */
-function identifyWeakSkills(
-  bktResults: Map<string, SkillBktResult> | undefined,
-): string[] {
-  if (!bktResults) return [];
+function identifyWeakSkills(bktResults: Map<string, SkillBktResult> | undefined): string[] {
+  if (!bktResults) return []
 
-  const weakSkills: string[] = [];
-  const { confidenceThreshold, pKnownThreshold } = WEAK_SKILL_THRESHOLDS;
+  const weakSkills: string[] = []
+  const { confidenceThreshold, pKnownThreshold } = WEAK_SKILL_THRESHOLDS
 
   for (const [skillId, result] of bktResults) {
     // Weak = confident that P(known) is low
-    if (
-      result.confidence >= confidenceThreshold &&
-      result.pKnown < pKnownThreshold
-    ) {
-      weakSkills.push(skillId);
+    if (result.confidence >= confidenceThreshold && result.pKnown < pKnownThreshold) {
+      weakSkills.push(skillId)
     }
   }
 
-  return weakSkills;
+  return weakSkills
 }
 
 /**
@@ -1141,31 +1027,31 @@ function identifyWeakSkills(
  */
 function getTermCountForPartType(
   partType: SessionPartType,
-  config: PlanGenerationConfig,
+  config: PlanGenerationConfig
 ): { min: number; max: number } {
   // abacusTermCount can be null in the type, but we default to a safe value
-  const abacusTerms = config.abacusTermCount ?? { min: 3, max: 6 };
+  const abacusTerms = config.abacusTermCount ?? { min: 3, max: 6 }
 
-  if (partType === "abacus") {
-    return abacusTerms;
+  if (partType === 'abacus') {
+    return abacusTerms
   }
 
-  if (partType === "visualization") {
+  if (partType === 'visualization') {
     // Use explicit config if set, otherwise 75% of abacus
     if (config.visualizationTermCount) {
-      return config.visualizationTermCount;
+      return config.visualizationTermCount
     }
     return {
       min: Math.max(2, Math.round(abacusTerms.min * 0.75)),
       max: Math.max(2, Math.round(abacusTerms.max * 0.75)),
-    };
+    }
   }
 
   // linear: use explicit config if set, otherwise same as abacus
   if (config.linearTermCount) {
-    return config.linearTermCount;
+    return config.linearTermCount
   }
-  return abacusTerms;
+  return abacusTerms
 }
 
 /**
@@ -1183,51 +1069,51 @@ function getTermCountForPartType(
  *                              visualization budget.
  */
 function getComplexityBoundsForSlot(
-  purpose: ProblemSlot["purpose"],
+  purpose: ProblemSlot['purpose'],
   partType: SessionPartType,
   config: PlanGenerationConfig,
-  studentMaxSkillCost?: number,
+  studentMaxSkillCost?: number
 ): { min?: number; max?: number } {
-  const purposeBounds = config.purposeComplexityBounds?.[purpose];
+  const purposeBounds = config.purposeComplexityBounds?.[purpose]
   if (!purposeBounds) {
-    return {};
+    return {}
   }
 
-  const partBounds = purposeBounds[partType];
+  const partBounds = purposeBounds[partType]
   if (!partBounds) {
-    return {};
+    return {}
   }
 
-  let maxBudget = partBounds.max ?? undefined;
+  let maxBudget = partBounds.max ?? undefined
 
   // For visualization mode with non-challenge purposes, use dynamic max budget
   // This ensures skills the student is learning can appear in visualization
   if (
-    partType === "visualization" &&
-    purpose !== "challenge" &&
+    partType === 'visualization' &&
+    purpose !== 'challenge' &&
     studentMaxSkillCost !== undefined
   ) {
     // Use the higher of: static config max, or student's max skill cost
     // This allows learning skills to surface while still respecting config if higher
     if (maxBudget === undefined || studentMaxSkillCost > maxBudget) {
-      maxBudget = studentMaxSkillCost;
+      maxBudget = studentMaxSkillCost
     }
   }
 
   return {
     min: partBounds.min ?? undefined,
     max: maxBudget,
-  };
+  }
 }
 
 function createSlot(
   index: number,
-  purpose: ProblemSlot["purpose"],
+  purpose: ProblemSlot['purpose'],
   baseConstraints: ReturnType<typeof getPhaseSkillConstraints>,
   partType: SessionPartType,
   config: PlanGenerationConfig,
   costCalculator?: SkillCostCalculator,
-  studentMaxSkillCost?: number,
+  studentMaxSkillCost?: number
 ): ProblemSlot {
   // Get complexity bounds for this purpose + part type combination
   // Pass studentMaxSkillCost for dynamic visualization budget
@@ -1235,8 +1121,8 @@ function createSlot(
     purpose,
     partType,
     config,
-    studentMaxSkillCost,
-  );
+    studentMaxSkillCost
+  )
 
   const constraints = {
     allowedSkills: baseConstraints.allowedSkills,
@@ -1251,11 +1137,11 @@ function createSlot(
     ...(complexityBounds.max !== undefined && {
       maxComplexityBudgetPerTerm: complexityBounds.max,
     }),
-  };
+  }
 
   // Pre-generate the problem so it's persisted with the plan
   // This ensures page reloads show the same problem
-  const problem = generateProblemFromConstraints(constraints, costCalculator);
+  const problem = generateProblemFromConstraints(constraints, costCalculator)
 
   return {
     index,
@@ -1263,45 +1149,40 @@ function createSlot(
     constraints,
     problem,
     complexityBounds,
-  };
+  }
 }
 
 function calculateAvgTimePerProblem(
-  sessions: Array<{ averageTimeMs: number | null; problemsAttempted: number }>,
+  sessions: Array<{ averageTimeMs: number | null; problemsAttempted: number }>
 ): number | null {
-  const validSessions = sessions.filter(
-    (s) => s.averageTimeMs !== null && s.problemsAttempted > 0,
-  );
-  if (validSessions.length === 0) return null;
+  const validSessions = sessions.filter((s) => s.averageTimeMs !== null && s.problemsAttempted > 0)
+  if (validSessions.length === 0) return null
 
-  const totalProblems = validSessions.reduce(
-    (sum, s) => sum + s.problemsAttempted,
-    0,
-  );
+  const totalProblems = validSessions.reduce((sum, s) => sum + s.problemsAttempted, 0)
   const weightedSum = validSessions.reduce(
     (sum, s) => sum + s.averageTimeMs! * s.problemsAttempted,
-    0,
-  );
+    0
+  )
 
-  return Math.round(weightedSum / totalProblems / 1000); // Convert ms to seconds
+  return Math.round(weightedSum / totalProblems / 1000) // Convert ms to seconds
 }
 
 function findSkillsNeedingReview(
   mastery: PlayerSkillMastery[],
-  intervals: { mastered: number; practicing: number },
+  intervals: { mastered: number; practicing: number }
 ): PlayerSkillMastery[] {
-  const now = Date.now();
+  const now = Date.now()
   return mastery.filter((s) => {
     // Only consider skills that are being practiced
-    if (!s.isPracticing) return false;
-    if (!s.lastPracticedAt) return false;
+    if (!s.isPracticing) return false
+    if (!s.lastPracticedAt) return false
 
     const daysSinceLastPractice =
-      (now - new Date(s.lastPracticedAt).getTime()) / (1000 * 60 * 60 * 24);
+      (now - new Date(s.lastPracticedAt).getTime()) / (1000 * 60 * 60 * 24)
 
     // Use the mastered interval for practicing skills (they're all "practicing" now)
-    return daysSinceLastPractice > intervals.mastered;
-  });
+    return daysSinceLastPractice > intervals.mastered
+  })
 }
 
 /**
@@ -1318,19 +1199,19 @@ function findSkillsNeedingReview(
  * - Adaptive: addWeakSkillsToTargets() adds only weak skills → focused practice
  */
 function buildConstraintsFromPracticingSkills(
-  practicingSkills: PlayerSkillMastery[],
+  practicingSkills: PlayerSkillMastery[]
 ): ReturnType<typeof getPhaseSkillConstraints> {
-  const skills: Record<string, Record<string, boolean>> = {};
+  const skills: Record<string, Record<string, boolean>> = {}
 
   for (const skill of practicingSkills) {
     // Parse skill ID format: "category.skillKey" like "fiveComplements.4=5-1" or "basic.+3"
-    const [category, skillKey] = skill.skillId.split(".");
+    const [category, skillKey] = skill.skillId.split('.')
 
     if (category && skillKey) {
       if (!skills[category]) {
-        skills[category] = {};
+        skills[category] = {}
       }
-      skills[category][skillKey] = true;
+      skills[category][skillKey] = true
     }
   }
 
@@ -1352,7 +1233,7 @@ function buildConstraintsFromPracticingSkills(
     allowedSkills: skills,
     targetSkills: {}, // Empty by default - targeting added by addWeakSkillsToTargets()
     forbiddenSkills: {},
-  } as ReturnType<typeof getPhaseSkillConstraints>;
+  } as ReturnType<typeof getPhaseSkillConstraints>
 }
 
 /**
@@ -1372,11 +1253,11 @@ function buildConstraintsFromPracticingSkills(
  */
 function buildConstraintsForSkill(
   skill: PlayerSkillMastery,
-  baseConstraints: ReturnType<typeof getPhaseSkillConstraints>,
+  baseConstraints: ReturnType<typeof getPhaseSkillConstraints>
 ): ReturnType<typeof getPhaseSkillConstraints> {
   // Parse skill ID to determine target
   // Format: "category.skillKey" like "fiveComplements.4=5-1"
-  const [category, skillKey] = skill.skillId.split(".");
+  const [category, skillKey] = skill.skillId.split('.')
 
   const constraints = {
     // Use ALL practicing skills as the allowed set (whitelist)
@@ -1384,13 +1265,13 @@ function buildConstraintsForSkill(
     // Target just the specific skill we want to reinforce/review
     targetSkills: {} as Record<string, Record<string, boolean>>,
     forbiddenSkills: baseConstraints.forbiddenSkills,
-  };
-
-  if (category && skillKey) {
-    constraints.targetSkills[category] = { [skillKey]: true };
   }
 
-  return constraints as ReturnType<typeof getPhaseSkillConstraints>;
+  if (category && skillKey) {
+    constraints.targetSkills[category] = { [skillKey]: true }
+  }
+
+  return constraints as ReturnType<typeof getPhaseSkillConstraints>
 }
 
 /**
@@ -1411,20 +1292,20 @@ function buildConstraintsForSkill(
  */
 function addWeakSkillsToTargets(
   baseConstraints: ReturnType<typeof getPhaseSkillConstraints>,
-  weakSkillIds: string[],
+  weakSkillIds: string[]
 ): ReturnType<typeof getPhaseSkillConstraints> {
   // Start with EMPTY targetSkills - we ONLY want to target weak skills
   // This makes the problem generator specifically prefer weak skill problems
-  const targetSkills: Record<string, Record<string, boolean>> = {};
+  const targetSkills: Record<string, Record<string, boolean>> = {}
 
   // Add ONLY weak skills as targets
   for (const skillId of weakSkillIds) {
-    const [category, skillKey] = skillId.split(".");
+    const [category, skillKey] = skillId.split('.')
     if (category && skillKey) {
       if (!targetSkills[category]) {
-        targetSkills[category] = {};
+        targetSkills[category] = {}
       }
-      targetSkills[category][skillKey] = true;
+      targetSkills[category][skillKey] = true
     }
   }
 
@@ -1432,7 +1313,7 @@ function addWeakSkillsToTargets(
     allowedSkills: baseConstraints.allowedSkills,
     targetSkills,
     forbiddenSkills: baseConstraints.forbiddenSkills,
-  } as ReturnType<typeof getPhaseSkillConstraints>;
+  } as ReturnType<typeof getPhaseSkillConstraints>
 }
 
 /**
@@ -1441,25 +1322,25 @@ function addWeakSkillsToTargets(
  */
 function intelligentShuffle(slots: ProblemSlot[]): ProblemSlot[] {
   // Group slots by purpose
-  const focus = slots.filter((s) => s.purpose === "focus");
-  const reinforce = slots.filter((s) => s.purpose === "reinforce");
-  const review = slots.filter((s) => s.purpose === "review");
-  const challenge = slots.filter((s) => s.purpose === "challenge");
+  const focus = slots.filter((s) => s.purpose === 'focus')
+  const reinforce = slots.filter((s) => s.purpose === 'reinforce')
+  const review = slots.filter((s) => s.purpose === 'review')
+  const challenge = slots.filter((s) => s.purpose === 'challenge')
 
   // Shuffle within each group
-  const shuffledFocus = shuffleArray(focus);
-  const shuffledReinforce = shuffleArray(reinforce);
-  const shuffledReview = shuffleArray(review);
-  const shuffledChallenge = shuffleArray(challenge);
+  const shuffledFocus = shuffleArray(focus)
+  const shuffledReinforce = shuffleArray(reinforce)
+  const shuffledReview = shuffleArray(review)
+  const shuffledChallenge = shuffleArray(challenge)
 
   // Interleave: start with focus, mix in others throughout
-  const result: ProblemSlot[] = [];
+  const result: ProblemSlot[] = []
 
   // Strategy: 3 focus, then 1 other, repeat
-  let focusIdx = 0;
-  let reinforceIdx = 0;
-  let reviewIdx = 0;
-  let challengeIdx = 0;
+  let focusIdx = 0
+  let reinforceIdx = 0
+  let reviewIdx = 0
+  let challengeIdx = 0
 
   while (
     focusIdx < shuffledFocus.length ||
@@ -1469,32 +1350,32 @@ function intelligentShuffle(slots: ProblemSlot[]): ProblemSlot[] {
   ) {
     // Add up to 3 focus problems
     for (let i = 0; i < 3 && focusIdx < shuffledFocus.length; i++) {
-      result.push(shuffledFocus[focusIdx++]);
+      result.push(shuffledFocus[focusIdx++])
     }
 
     // Add one from each other category
     if (reinforceIdx < shuffledReinforce.length) {
-      result.push(shuffledReinforce[reinforceIdx++]);
+      result.push(shuffledReinforce[reinforceIdx++])
     }
     if (reviewIdx < shuffledReview.length) {
-      result.push(shuffledReview[reviewIdx++]);
+      result.push(shuffledReview[reviewIdx++])
     }
     if (challengeIdx < shuffledChallenge.length) {
-      result.push(shuffledChallenge[challengeIdx++]);
+      result.push(shuffledChallenge[challengeIdx++])
     }
   }
 
   // Re-index
-  return result.map((slot, i) => ({ ...slot, index: i }));
+  return result.map((slot, i) => ({ ...slot, index: i }))
 }
 
 function shuffleArray<T>(array: T[]): T[] {
-  const result = [...array];
+  const result = [...array]
   for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[result[i], result[j]] = [result[j], result[i]]
   }
-  return result;
+  return result
 }
 
 /**
@@ -1502,21 +1383,21 @@ function shuffleArray<T>(array: T[]): T[] {
  */
 function getPartDescription(type: SessionPartType): string {
   switch (type) {
-    case "abacus":
-      return "Use Abacus";
-    case "visualization":
-      return "Mental Math (Visualization)";
-    case "linear":
-      return "Mental Math (Linear)";
+    case 'abacus':
+      return 'Use Abacus'
+    case 'visualization':
+      return 'Mental Math (Visualization)'
+    case 'linear':
+      return 'Mental Math (Linear)'
   }
 }
 
 function buildSummary(
   parts: SessionPart[],
   phase: CurriculumPhase | undefined,
-  durationMinutes: number,
+  durationMinutes: number
 ): SessionSummary {
-  const phaseInfo = phase ? getPhaseDisplayInfo(phase.id) : null;
+  const phaseInfo = phase ? getPhaseDisplayInfo(phase.id) : null
 
   const partSummaries: PartSummary[] = parts.map((part) => ({
     partNumber: part.partNumber,
@@ -1524,17 +1405,14 @@ function buildSummary(
     description: getPartDescription(part.type),
     problemCount: part.slots.length,
     estimatedMinutes: part.estimatedMinutes,
-  }));
+  }))
 
-  const totalProblemCount = parts.reduce(
-    (sum, part) => sum + part.slots.length,
-    0,
-  );
+  const totalProblemCount = parts.reduce((sum, part) => sum + part.slots.length, 0)
 
   return {
-    focusDescription: phaseInfo?.phaseName || "General practice",
+    focusDescription: phaseInfo?.phaseName || 'General practice',
     totalProblemCount,
     estimatedMinutes: durationMinutes,
     parts: partSummaries,
-  };
+  }
 }
