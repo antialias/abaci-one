@@ -61,6 +61,7 @@ import {
   useStartParsing,
   useSubmitCorrections,
   useUnapproveWorksheet,
+  useUpdateReviewProgress,
 } from '@/hooks/useWorksheetParsing'
 import { computeBktFromHistory, type SkillBktResult } from '@/lib/curriculum/bkt'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
@@ -194,6 +195,9 @@ export function SummaryClient({
 
   // Unapprove/revert worksheet mutation (for testing/corrections)
   const unapproveWorksheet = useUnapproveWorksheet(studentId, session?.id ?? '')
+
+  // Update review progress (for focus review mode individual problem updates)
+  const updateReviewProgress = useUpdateReviewProgress(studentId, session?.id ?? '')
 
   // Map attachments to PhotoViewerEditorPhoto type for the viewer
   const viewerPhotos: PhotoViewerEditorPhoto[] = (attachmentsData?.attachments ?? []).map(
@@ -608,6 +612,26 @@ export function SummaryClient({
           }}
           reparsingPhotoId={getPendingAttachmentId(reparseSelected)}
           onCancelParsing={(attachmentId) => cancelParsing.mutate(attachmentId)}
+          onApproveProblem={async (photoId, problemIndex) => {
+            await updateReviewProgress.mutateAsync({
+              attachmentId: photoId,
+              problemUpdate: { index: problemIndex, reviewStatus: 'approved' },
+            })
+          }}
+          onFlagProblem={async (photoId, problemIndex) => {
+            await updateReviewProgress.mutateAsync({
+              attachmentId: photoId,
+              problemUpdate: { index: problemIndex, reviewStatus: 'flagged' },
+            })
+          }}
+          onFocusReviewComplete={async (photoId) => {
+            // Mark review as completed and trigger approval flow
+            await updateReviewProgress.mutateAsync({
+              attachmentId: photoId,
+              status: 'completed',
+            })
+            showSuccess('Review complete', 'All problems have been reviewed')
+          }}
         />
 
         {/* Fullscreen Camera Modal */}
