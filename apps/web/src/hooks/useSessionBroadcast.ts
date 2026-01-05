@@ -1,9 +1,9 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useRef } from 'react'
-import { io, type Socket } from 'socket.io-client'
-import type { BroadcastState } from '@/components/practice'
-import type { SessionPartType } from '@/db/schema/session-plans'
+import { useCallback, useEffect, useRef } from "react";
+import { io, type Socket } from "socket.io-client";
+import type { BroadcastState } from "@/components/practice";
+import type { SessionPartType } from "@/db/schema/session-plans";
 import type {
   AbacusControlEvent,
   PartTransitionCompleteEvent,
@@ -12,22 +12,22 @@ import type {
   SessionPausedEvent,
   SessionResumedEvent,
   VisionFrameEvent,
-} from '@/lib/classroom/socket-events'
+} from "@/lib/classroom/socket-events";
 
 /**
  * Abacus control action received from teacher
  */
 export type ReceivedAbacusControl =
-  | { type: 'show-abacus' }
-  | { type: 'hide-abacus' }
-  | { type: 'set-value'; value: number }
+  | { type: "show-abacus" }
+  | { type: "hide-abacus" }
+  | { type: "set-value"; value: number };
 
 /**
  * Pause request from teacher
  */
 export interface TeacherPauseRequest {
   /** Optional message from teacher to display on pause screen */
-  message?: string
+  message?: string;
 }
 
 /**
@@ -35,11 +35,11 @@ export interface TeacherPauseRequest {
  */
 export interface UseSessionBroadcastOptions {
   /** Callback when an abacus control event is received from teacher */
-  onAbacusControl?: (control: ReceivedAbacusControl) => void
+  onAbacusControl?: (control: ReceivedAbacusControl) => void;
   /** Callback when teacher pauses the session */
-  onTeacherPause?: (request: TeacherPauseRequest) => void
+  onTeacherPause?: (request: TeacherPauseRequest) => void;
   /** Callback when teacher resumes the session */
-  onTeacherResume?: () => void
+  onTeacherResume?: () => void;
 }
 
 /**
@@ -54,42 +54,51 @@ export interface UseSessionBroadcastOptions {
  * @param options - Optional callbacks for receiving observer control events
  */
 export interface UseSessionBroadcastResult {
-  isConnected: boolean
-  isBroadcasting: boolean
+  isConnected: boolean;
+  isBroadcasting: boolean;
   /** Send part transition event to observers */
   sendPartTransition: (
     previousPartType: SessionPartType | null,
     nextPartType: SessionPartType,
     countdownStartTime: number,
-    countdownDurationMs: number
-  ) => void
+    countdownDurationMs: number,
+  ) => void;
   /** Send part transition complete event to observers */
-  sendPartTransitionComplete: () => void
+  sendPartTransitionComplete: () => void;
   /** Send vision frame to observers (when student has vision mode enabled) */
-  sendVisionFrame: (imageData: string, detectedValue: number | null, confidence: number) => void
+  sendVisionFrame: (
+    imageData: string,
+    detectedValue: number | null,
+    confidence: number,
+  ) => void;
 }
 
 export function useSessionBroadcast(
   sessionId: string | undefined,
   playerId: string | undefined,
   state: BroadcastState | null,
-  options?: UseSessionBroadcastOptions
+  options?: UseSessionBroadcastOptions,
 ): UseSessionBroadcastResult {
-  const socketRef = useRef<Socket | null>(null)
-  const isConnectedRef = useRef(false)
+  const socketRef = useRef<Socket | null>(null);
+  const isConnectedRef = useRef(false);
   // Keep state in a ref so socket event handlers can access current state
-  const stateRef = useRef<BroadcastState | null>(null)
-  stateRef.current = state
+  const stateRef = useRef<BroadcastState | null>(null);
+  stateRef.current = state;
 
   // Keep options in a ref so socket event handlers can access current callbacks
-  const optionsRef = useRef(options)
-  optionsRef.current = options
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   // Helper to broadcast current state
   const broadcastState = useCallback(() => {
-    const currentState = stateRef.current
-    if (!socketRef.current || !isConnectedRef.current || !sessionId || !currentState) {
-      return
+    const currentState = stateRef.current;
+    if (
+      !socketRef.current ||
+      !isConnectedRef.current ||
+      !sessionId ||
+      !currentState
+    ) {
+      return;
     }
 
     const event: PracticeStateEvent = {
@@ -111,15 +120,15 @@ export function useSessionBroadcast(
       currentPartIndex: currentState.currentPartIndex,
       currentSlotIndex: currentState.currentSlotIndex,
       slotResults: currentState.slotResults,
-    }
+    };
 
-    socketRef.current.emit('practice-state', event)
-    console.log('[SessionBroadcast] Emitted practice-state:', {
+    socketRef.current.emit("practice-state", event);
+    console.log("[SessionBroadcast] Emitted practice-state:", {
       phase: currentState.phase,
       answer: currentState.studentAnswer,
       isCorrect: currentState.isCorrect,
-    })
-  }, [sessionId])
+    });
+  }, [sessionId]);
 
   // Connect to socket and join session channel when there's an active session
   // This enables both teachers (classroom) and parents (home) to observe
@@ -128,99 +137,106 @@ export function useSessionBroadcast(
     if (!sessionId || !playerId) {
       // Clean up if we were connected
       if (socketRef.current) {
-        console.log('[SessionBroadcast] Disconnecting - session ended')
-        socketRef.current.disconnect()
-        socketRef.current = null
-        isConnectedRef.current = false
+        console.log("[SessionBroadcast] Disconnecting - session ended");
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        isConnectedRef.current = false;
       }
-      return
+      return;
     }
 
     // Create socket connection
     const socket = io({
-      path: '/api/socket',
+      path: "/api/socket",
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
-    })
-    socketRef.current = socket
+    });
+    socketRef.current = socket;
 
-    socket.on('connect', () => {
-      console.log('[SessionBroadcast] Connected, joining session channel:', sessionId)
-      isConnectedRef.current = true
+    socket.on("connect", () => {
+      console.log(
+        "[SessionBroadcast] Connected, joining session channel:",
+        sessionId,
+      );
+      isConnectedRef.current = true;
       // Join the session channel so we can receive 'observer-joined' events
-      socket.emit('join-session', { sessionId })
+      socket.emit("join-session", { sessionId });
       // Broadcast current state immediately so any waiting observers get it
-      broadcastState()
-    })
+      broadcastState();
+    });
 
-    socket.on('disconnect', () => {
-      console.log('[SessionBroadcast] Disconnected')
-      isConnectedRef.current = false
-    })
+    socket.on("disconnect", () => {
+      console.log("[SessionBroadcast] Disconnected");
+      isConnectedRef.current = false;
+    });
 
     // When an observer joins, re-broadcast current state so they see it immediately
-    socket.on('observer-joined', (data: { observerId: string }) => {
-      console.log('[SessionBroadcast] Observer joined:', data.observerId, '- re-broadcasting state')
-      broadcastState()
-    })
+    socket.on("observer-joined", (data: { observerId: string }) => {
+      console.log(
+        "[SessionBroadcast] Observer joined:",
+        data.observerId,
+        "- re-broadcasting state",
+      );
+      broadcastState();
+    });
 
     // Listen for abacus control events from teacher
-    socket.on('abacus-control', (data: AbacusControlEvent) => {
-      console.log('[SessionBroadcast] Received abacus-control:', data)
+    socket.on("abacus-control", (data: AbacusControlEvent) => {
+      console.log("[SessionBroadcast] Received abacus-control:", data);
       // Only handle controls for our session and the main practice abacus ('hero')
-      if (data.sessionId !== sessionId || data.target !== 'hero') {
-        return
+      if (data.sessionId !== sessionId || data.target !== "hero") {
+        return;
       }
 
       // Map the socket event to our ReceivedAbacusControl type
-      let control: ReceivedAbacusControl
+      let control: ReceivedAbacusControl;
       switch (data.action) {
-        case 'show':
-          control = { type: 'show-abacus' }
-          break
-        case 'hide':
-          control = { type: 'hide-abacus' }
-          break
-        case 'set-value':
-          if (data.value === undefined) return // Invalid event
-          control = { type: 'set-value', value: data.value }
-          break
+        case "show":
+          control = { type: "show-abacus" };
+          break;
+        case "hide":
+          control = { type: "hide-abacus" };
+          break;
+        case "set-value":
+          if (data.value === undefined) return; // Invalid event
+          control = { type: "set-value", value: data.value };
+          break;
         default:
-          return // Unknown action
+          return; // Unknown action
       }
 
       // Call the callback if provided
-      optionsRef.current?.onAbacusControl?.(control)
-    })
+      optionsRef.current?.onAbacusControl?.(control);
+    });
 
     // Listen for pause events from teacher
-    socket.on('session-paused', (data: SessionPausedEvent) => {
-      console.log('[SessionBroadcast] Received session-paused:', data)
-      if (data.sessionId !== sessionId) return
+    socket.on("session-paused", (data: SessionPausedEvent) => {
+      console.log("[SessionBroadcast] Received session-paused:", data);
+      if (data.sessionId !== sessionId) return;
 
-      optionsRef.current?.onTeacherPause?.({ message: data.message })
-    })
+      optionsRef.current?.onTeacherPause?.({ message: data.message });
+    });
 
     // Listen for resume events from teacher
-    socket.on('session-resumed', (data: SessionResumedEvent) => {
-      console.log('[SessionBroadcast] Received session-resumed:', data)
-      if (data.sessionId !== sessionId) return
+    socket.on("session-resumed", (data: SessionResumedEvent) => {
+      console.log("[SessionBroadcast] Received session-resumed:", data);
+      if (data.sessionId !== sessionId) return;
 
-      optionsRef.current?.onTeacherResume?.()
-    })
+      optionsRef.current?.onTeacherResume?.();
+    });
 
     return () => {
-      console.log('[SessionBroadcast] Cleaning up socket connection')
-      socket.disconnect()
-      socketRef.current = null
-      isConnectedRef.current = false
-    }
-  }, [sessionId, playerId, broadcastState])
+      console.log("[SessionBroadcast] Cleaning up socket connection");
+      socket.disconnect();
+      socketRef.current = null;
+      isConnectedRef.current = false;
+    };
+  }, [sessionId, playerId, broadcastState]);
 
   // Broadcast state changes
   useEffect(() => {
-    broadcastState()
+    broadcastState();
   }, [
     broadcastState,
     state?.currentProblem?.answer, // New problem
@@ -228,7 +244,7 @@ export function useSessionBroadcast(
     state?.studentAnswer, // Answer submitted
     state?.isCorrect, // Result received
     state?.purpose, // Purpose change
-  ])
+  ]);
 
   // Broadcast part transition to observers
   const sendPartTransition = useCallback(
@@ -236,10 +252,10 @@ export function useSessionBroadcast(
       previousPartType: SessionPartType | null,
       nextPartType: SessionPartType,
       countdownStartTime: number,
-      countdownDurationMs: number
+      countdownDurationMs: number,
     ) => {
       if (!socketRef.current || !isConnectedRef.current || !sessionId) {
-        return
+        return;
       }
 
       const event: PartTransitionEvent = {
@@ -248,37 +264,37 @@ export function useSessionBroadcast(
         nextPartType,
         countdownStartTime,
         countdownDurationMs,
-      }
+      };
 
-      socketRef.current.emit('part-transition', event)
-      console.log('[SessionBroadcast] Emitted part-transition:', {
+      socketRef.current.emit("part-transition", event);
+      console.log("[SessionBroadcast] Emitted part-transition:", {
         previousPartType,
         nextPartType,
         countdownDurationMs,
-      })
+      });
     },
-    [sessionId]
-  )
+    [sessionId],
+  );
 
   // Broadcast part transition complete to observers
   const sendPartTransitionComplete = useCallback(() => {
     if (!socketRef.current || !isConnectedRef.current || !sessionId) {
-      return
+      return;
     }
 
     const event: PartTransitionCompleteEvent = {
       sessionId,
-    }
+    };
 
-    socketRef.current.emit('part-transition-complete', event)
-    console.log('[SessionBroadcast] Emitted part-transition-complete')
-  }, [sessionId])
+    socketRef.current.emit("part-transition-complete", event);
+    console.log("[SessionBroadcast] Emitted part-transition-complete");
+  }, [sessionId]);
 
   // Broadcast vision frame to observers
   const sendVisionFrame = useCallback(
     (imageData: string, detectedValue: number | null, confidence: number) => {
       if (!socketRef.current || !isConnectedRef.current || !sessionId) {
-        return
+        return;
       }
 
       const event: VisionFrameEvent = {
@@ -287,12 +303,12 @@ export function useSessionBroadcast(
         detectedValue,
         confidence,
         timestamp: Date.now(),
-      }
+      };
 
-      socketRef.current.emit('vision-frame', event)
+      socketRef.current.emit("vision-frame", event);
     },
-    [sessionId]
-  )
+    [sessionId],
+  );
 
   return {
     isConnected: isConnectedRef.current,
@@ -300,5 +316,5 @@ export function useSessionBroadcast(
     sendPartTransition,
     sendPartTransitionComplete,
     sendVisionFrame,
-  }
+  };
 }

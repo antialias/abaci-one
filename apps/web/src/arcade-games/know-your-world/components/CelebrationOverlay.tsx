@@ -8,30 +8,30 @@
  * - Notifies when complete to advance game
  */
 
-'use client'
+"use client";
 
-import { css } from '@styled/css'
-import { useEffect, useState, useCallback, useRef } from 'react'
-import type { CelebrationState } from '../Provider'
-import { ConfettiBurst } from './Confetti'
-import { useMusicOptional } from '../music/MusicContext'
-import { CELEBRATION_TIMING } from '../utils/celebration'
+import { css } from "@styled/css";
+import { useEffect, useState, useCallback, useRef } from "react";
+import type { CelebrationState } from "../Provider";
+import { ConfettiBurst } from "./Confetti";
+import { useMusicOptional } from "../music/MusicContext";
+import { CELEBRATION_TIMING } from "../utils/celebration";
 
 interface CelebrationOverlayProps {
-  celebration: CelebrationState
-  regionCenter: { x: number; y: number }
-  onComplete: () => void
-  reducedMotion?: boolean
+  celebration: CelebrationState;
+  regionCenter: { x: number; y: number };
+  onComplete: () => void;
+  reducedMotion?: boolean;
 }
 
 // Encouraging messages for hard-earned finds
 const HARD_EARNED_MESSAGES = [
-  'You found it!',
-  'Great perseverance!',
-  'Never gave up!',
-  'You did it!',
-  'Amazing effort!',
-]
+  "You found it!",
+  "Great perseverance!",
+  "Never gave up!",
+  "You did it!",
+  "Amazing effort!",
+];
 
 export function CelebrationOverlay({
   celebration,
@@ -39,44 +39,47 @@ export function CelebrationOverlay({
   onComplete,
   reducedMotion = false,
 }: CelebrationOverlayProps) {
-  const [confettiComplete, setConfettiComplete] = useState(false)
-  const music = useMusicOptional()
-  const timing = CELEBRATION_TIMING[celebration.type]
+  const [confettiComplete, setConfettiComplete] = useState(false);
+  const music = useMusicOptional();
+  const timing = CELEBRATION_TIMING[celebration.type];
 
   // Pick a random message for hard-earned
   const [message] = useState(
-    () => HARD_EARNED_MESSAGES[Math.floor(Math.random() * HARD_EARNED_MESSAGES.length)]
-  )
+    () =>
+      HARD_EARNED_MESSAGES[
+        Math.floor(Math.random() * HARD_EARNED_MESSAGES.length)
+      ],
+  );
 
   // Store onComplete in a ref so the timer doesn't restart when the callback changes
   // This fixes a bug where mouse movement during celebration would restart the timer
-  const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   // NOTE: Celebration sound is handled by MusicContext (via the celebration prop)
   // We don't play it here to avoid duplicate sounds
   useEffect(() => {
-    console.log('[CelebrationOverlay] Celebration rendered:', {
+    console.log("[CelebrationOverlay] Celebration rendered:", {
       type: celebration.type,
       startTime: celebration.startTime,
-    })
-  }, [celebration.type, celebration.startTime])
+    });
+  }, [celebration.type, celebration.startTime]);
 
   // Handle confetti completion
   const handleConfettiComplete = useCallback(() => {
-    setConfettiComplete(true)
-    onComplete()
-  }, [onComplete])
+    setConfettiComplete(true);
+    onComplete();
+  }, [onComplete]);
 
   // For reduced motion, just show a brief message then complete
   useEffect(() => {
     if (reducedMotion) {
       const timer = setTimeout(() => {
-        onCompleteRef.current()
-      }, 500) // Brief delay for reduced motion
-      return () => clearTimeout(timer)
+        onCompleteRef.current();
+      }, 500); // Brief delay for reduced motion
+      return () => clearTimeout(timer);
     }
-  }, [reducedMotion])
+  }, [reducedMotion]);
 
   // Reduced motion: simple notification only
   if (reducedMotion) {
@@ -84,40 +87,40 @@ export function CelebrationOverlay({
       <div
         data-component="celebration-overlay-reduced"
         className={css({
-          position: 'fixed',
+          position: "fixed",
           inset: 0,
-          pointerEvents: 'none',
+          pointerEvents: "none",
           zIndex: 10000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         })}
       >
         <div
           className={css({
-            bg: 'rgba(34, 197, 94, 0.9)',
-            color: 'white',
+            bg: "rgba(34, 197, 94, 0.9)",
+            color: "white",
             px: 6,
             py: 3,
-            borderRadius: 'xl',
-            fontSize: 'xl',
-            fontWeight: 'bold',
-            boxShadow: 'lg',
+            borderRadius: "xl",
+            fontSize: "xl",
+            fontWeight: "bold",
+            boxShadow: "lg",
           })}
         >
           Found!
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div
       data-component="celebration-overlay"
       className={css({
-        position: 'fixed',
+        position: "fixed",
         inset: 0,
-        pointerEvents: 'none',
+        pointerEvents: "none",
         zIndex: 10000,
       })}
     >
@@ -156,18 +159,19 @@ export function CelebrationOverlay({
       )}
 
       {/* Encouraging text for hard-earned finds */}
-      {celebration.type === 'hard-earned' && (
+      {celebration.type === "hard-earned" && (
         <div
           className={css({
-            position: 'absolute',
-            left: '50%',
-            top: '40%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: '2xl',
-            fontWeight: 'bold',
-            color: 'white',
-            textShadow: '0 2px 8px rgba(0,0,0,0.5), 0 0 20px rgba(251, 191, 36, 0.5)',
-            whiteSpace: 'nowrap',
+            position: "absolute",
+            left: "50%",
+            top: "40%",
+            transform: "translate(-50%, -50%)",
+            fontSize: "2xl",
+            fontWeight: "bold",
+            color: "white",
+            textShadow:
+              "0 2px 8px rgba(0,0,0,0.5), 0 0 20px rgba(251, 191, 36, 0.5)",
+            whiteSpace: "nowrap",
           })}
           style={{
             animation: `textAppear ${timing.totalDuration}ms ease-out forwards`,
@@ -177,5 +181,5 @@ export function CelebrationOverlay({
         </div>
       )}
     </div>
-  )
+  );
 }

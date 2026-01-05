@@ -29,11 +29,11 @@ export type {
   ValidationContext,
   ValidationResult,
   TeamMoveSentinel,
-} from './types'
+} from "./types";
 
-export { TEAM_MOVE } from './types'
+export { TEAM_MOVE } from "./types";
 
-export type { GameManifest } from '../manifest-schema'
+export type { GameManifest } from "../manifest-schema";
 
 // ============================================================================
 // React Hooks (Controlled API)
@@ -43,22 +43,22 @@ export type { GameManifest } from '../manifest-schema'
  * Arcade session management hook
  * Handles state synchronization, move validation, and multiplayer sync
  */
-export { useArcadeSession } from '@/hooks/useArcadeSession'
+export { useArcadeSession } from "@/hooks/useArcadeSession";
 
 /**
  * Room data hook - access current room information
  */
-export { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
+export { useRoomData, useUpdateGameConfig } from "@/hooks/useRoomData";
 
 /**
  * Game mode context - access players and game mode
  */
-export { useGameMode } from '@/contexts/GameModeContext'
+export { useGameMode } from "@/contexts/GameModeContext";
 
 /**
  * Viewer ID hook - get current user's ID
  */
-export { useViewerId } from '@/hooks/useViewerId'
+export { useViewerId } from "@/hooks/useViewerId";
 
 // ============================================================================
 // Utilities
@@ -70,24 +70,24 @@ export { useViewerId } from '@/hooks/useViewerId'
 export {
   buildPlayerMetadata,
   buildPlayerOwnershipFromRoomData,
-} from '@/lib/arcade/player-ownership.client'
+} from "@/lib/arcade/player-ownership.client";
 
 /**
  * Helper for loading and validating game manifests
  */
-export { loadManifest } from './load-manifest'
+export { loadManifest } from "./load-manifest";
 
 /**
  * Game definition helper
  */
-export { defineGame } from './define-game'
+export { defineGame } from "./define-game";
 
 /**
  * Standard color themes for game cards
  * Use these to ensure consistent appearance across all games
  */
-export { getGameTheme, GAME_THEMES } from '../game-themes'
-export type { GameTheme, GameThemeName } from '../game-themes'
+export { getGameTheme, GAME_THEMES } from "../game-themes";
+export type { GameTheme, GameThemeName } from "../game-themes";
 
 // ============================================================================
 // Re-exports for convenience
@@ -96,4 +96,4 @@ export type { GameTheme, GameThemeName } from '../game-themes'
 /**
  * Common types from contexts
  */
-export type { Player } from '@/contexts/GameModeContext'
+export type { Player } from "@/contexts/GameModeContext";

@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 /**
  * GameModeProviderWithHooks - Wrapper that wires up hooks to GameModeProvider
@@ -13,29 +13,31 @@
  * - useViewerId
  */
 
-import type { ReactNode } from 'react'
-import { useRoomData } from '@/hooks/useRoomData'
+import type { ReactNode } from "react";
+import { useRoomData } from "@/hooks/useRoomData";
 import {
   useCreatePlayer,
   useDeletePlayer,
   useUpdatePlayer,
   useUserPlayers,
-} from '@/hooks/useUserPlayers'
-import { useViewerId } from '@/hooks/useViewerId'
-import { GameModeProvider } from './GameModeContext'
+} from "@/hooks/useUserPlayers";
+import { useViewerId } from "@/hooks/useViewerId";
+import { GameModeProvider } from "./GameModeContext";
 
 interface GameModeProviderWithHooksProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
-export function GameModeProviderWithHooks({ children }: GameModeProviderWithHooksProps) {
+export function GameModeProviderWithHooks({
+  children,
+}: GameModeProviderWithHooksProps) {
   // All hooks are called here, keeping them out of GameModeContext.tsx
-  const { data: dbPlayers = [], isLoading } = useUserPlayers()
-  const { mutate: createPlayer } = useCreatePlayer()
-  const { mutate: updatePlayerMutation } = useUpdatePlayer()
-  const { mutate: deletePlayer } = useDeletePlayer()
-  const { roomData, notifyRoomOfPlayerUpdate } = useRoomData()
-  const { data: viewerId } = useViewerId()
+  const { data: dbPlayers = [], isLoading } = useUserPlayers();
+  const { mutate: createPlayer } = useCreatePlayer();
+  const { mutate: updatePlayerMutation } = useUpdatePlayer();
+  const { mutate: deletePlayer } = useDeletePlayer();
+  const { roomData, notifyRoomOfPlayerUpdate } = useRoomData();
+  const { data: viewerId } = useViewerId();
 
   return (
     <GameModeProvider
@@ -50,5 +52,5 @@ export function GameModeProviderWithHooks({ children }: GameModeProviderWithHook
     >
       {children}
     </GameModeProvider>
-  )
+  );
 }

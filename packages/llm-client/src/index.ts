@@ -43,6 +43,15 @@ export type {
   ProviderResponse,
   ValidationFeedback,
   ReasoningEffort,
+  // Streaming types
+  LLMStreamRequest,
+  ReasoningConfig,
+  StreamEvent,
+  StreamEventStarted,
+  StreamEventReasoning,
+  StreamEventOutputDelta,
+  StreamEventError,
+  StreamEventComplete,
 } from "./types";
 
 // Errors
@@ -52,6 +61,8 @@ export {
   LLMTruncationError,
   LLMContentFilterError,
   LLMJsonParseError,
+  LLMTimeoutError,
+  LLMNetworkError,
   ProviderNotConfiguredError,
 } from "./types";
 
@@ -76,3 +87,4 @@ export type { RetryOptions } from "./retry";
 export { BaseProvider } from "./providers/base";
 export { OpenAIProvider } from "./providers/openai";
 export { AnthropicProvider } from "./providers/anthropic";
+export { OpenAIResponsesProvider } from "./providers/openai-responses";

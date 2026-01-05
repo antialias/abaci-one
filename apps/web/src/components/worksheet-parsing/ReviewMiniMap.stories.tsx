@@ -4,29 +4,32 @@
  * Stories for the spatial context minimap showing worksheet with problem locations.
  */
 
-import type { Meta, StoryObj } from '@storybook/react'
-import type { ParsedProblem } from '@/lib/worksheet-parsing'
-import { ReviewMiniMap } from './ReviewMiniMap'
+import type { Meta, StoryObj } from "@storybook/react";
+import type { ParsedProblem } from "@/lib/worksheet-parsing";
+import { ReviewMiniMap } from "./ReviewMiniMap";
 
 /** Worksheet image for testing */
-const WORKSHEET_URL = '/storybook-assets/worksheets/worksheet-20-problems.jpg'
+const WORKSHEET_URL = "/storybook-assets/worksheets/worksheet-20-problems.jpg";
 
 /** Helper to create complete problem objects */
 function completeProblem(
-  raw: Omit<ParsedProblem, 'notes' | 'excluded' | 'reviewStatus' | 'reviewedAt'> & {
-    notes?: string | null
-    excluded?: boolean
-    reviewStatus?: 'pending' | 'approved' | 'corrected' | 'flagged'
-    reviewedAt?: string | null
-  }
+  raw: Omit<
+    ParsedProblem,
+    "notes" | "excluded" | "reviewStatus" | "reviewedAt"
+  > & {
+    notes?: string | null;
+    excluded?: boolean;
+    reviewStatus?: "pending" | "approved" | "corrected" | "flagged";
+    reviewedAt?: string | null;
+  },
 ): ParsedProblem {
   return {
     ...raw,
     notes: raw.notes ?? null,
     excluded: raw.excluded ?? false,
-    reviewStatus: raw.reviewStatus ?? 'pending',
+    reviewStatus: raw.reviewStatus ?? "pending",
     reviewedAt: raw.reviewedAt ?? null,
-  }
+  };
 }
 
 /** Sample 20-problem dataset */
@@ -35,7 +38,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 1,
     row: 1,
     column: 1,
-    format: 'vertical',
+    format: "vertical",
     terms: [57, 52, 14, 5],
     correctAnswer: 128,
     studentAnswer: 100,
@@ -48,7 +51,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 2,
     row: 1,
     column: 2,
-    format: 'vertical',
+    format: "vertical",
     terms: [94, 65, 5, 14],
     correctAnswer: 178,
     studentAnswer: 150,
@@ -61,7 +64,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 3,
     row: 1,
     column: 3,
-    format: 'vertical',
+    format: "vertical",
     terms: [91, 19, 1, 10],
     correctAnswer: 121,
     studentAnswer: 99,
@@ -74,7 +77,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 4,
     row: 1,
     column: 4,
-    format: 'vertical',
+    format: "vertical",
     terms: [29, 47, 80, -50],
     correctAnswer: 106,
     studentAnswer: 106,
@@ -87,7 +90,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 5,
     row: 1,
     column: 5,
-    format: 'vertical',
+    format: "vertical",
     terms: [53, 72, 35, 41],
     correctAnswer: 201,
     studentAnswer: 149,
@@ -100,7 +103,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 6,
     row: 1,
     column: 6,
-    format: 'vertical',
+    format: "vertical",
     terms: [12, 43, 5, 11],
     correctAnswer: 71,
     studentAnswer: 49,
@@ -113,7 +116,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 7,
     row: 1,
     column: 7,
-    format: 'vertical',
+    format: "vertical",
     terms: [76, 34, 1, 90],
     correctAnswer: 201,
     studentAnswer: 19,
@@ -126,7 +129,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 8,
     row: 1,
     column: 8,
-    format: 'vertical',
+    format: "vertical",
     terms: [51, 2, 53, 10],
     correctAnswer: 116,
     studentAnswer: 93,
@@ -139,7 +142,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 9,
     row: 1,
     column: 9,
-    format: 'vertical',
+    format: "vertical",
     terms: [69, 51, 70, 1],
     correctAnswer: 191,
     studentAnswer: 49,
@@ -152,7 +155,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 10,
     row: 1,
     column: 10,
-    format: 'vertical',
+    format: "vertical",
     terms: [93, 31, 23, 18],
     correctAnswer: 165,
     studentAnswer: 83,
@@ -165,7 +168,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 11,
     row: 2,
     column: 1,
-    format: 'vertical',
+    format: "vertical",
     terms: [98, 13, 6, 11, 49],
     correctAnswer: 177,
     studentAnswer: 45,
@@ -178,7 +181,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 12,
     row: 2,
     column: 2,
-    format: 'vertical',
+    format: "vertical",
     terms: [39, 11, -40, 60, 21],
     correctAnswer: 91,
     studentAnswer: 49,
@@ -191,7 +194,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 13,
     row: 2,
     column: 3,
-    format: 'vertical',
+    format: "vertical",
     terms: [79, 85, 30, 28, 10],
     correctAnswer: 232,
     studentAnswer: 96,
@@ -204,7 +207,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 14,
     row: 2,
     column: 4,
-    format: 'vertical',
+    format: "vertical",
     terms: [27, 26, 79, 56, 76],
     correctAnswer: 264,
     studentAnswer: 56,
@@ -217,7 +220,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 15,
     row: 2,
     column: 5,
-    format: 'vertical',
+    format: "vertical",
     terms: [59, 41, 10, 41, 18],
     correctAnswer: 169,
     studentAnswer: 67,
@@ -230,7 +233,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 16,
     row: 2,
     column: 6,
-    format: 'vertical',
+    format: "vertical",
     terms: [67, 53, 1, 79, 11],
     correctAnswer: 211,
     studentAnswer: 29,
@@ -243,7 +246,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 17,
     row: 2,
     column: 7,
-    format: 'vertical',
+    format: "vertical",
     terms: [77, 49, 5, 81, 1],
     correctAnswer: 213,
     studentAnswer: 59,
@@ -256,7 +259,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 18,
     row: 2,
     column: 8,
-    format: 'vertical',
+    format: "vertical",
     terms: [94, 60, 7, 3, 21],
     correctAnswer: 185,
     studentAnswer: 129,
@@ -269,7 +272,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 19,
     row: 2,
     column: 9,
-    format: 'vertical',
+    format: "vertical",
     terms: [299, 7, 23, 33, 4],
     correctAnswer: 366,
     studentAnswer: 366,
@@ -282,7 +285,7 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemNumber: 20,
     row: 2,
     column: 10,
-    format: 'vertical',
+    format: "vertical",
     terms: [189, 11, 56, -44, -51],
     correctAnswer: 161,
     studentAnswer: 49,
@@ -291,27 +294,29 @@ const SAMPLE_PROBLEMS: ParsedProblem[] = [
     problemBoundingBox: { x: 0.887, y: 0.268, width: 0.083, height: 0.186 },
     answerBoundingBox: { x: 0.876, y: 0.45, width: 0.094, height: 0.05 },
   },
-].map(completeProblem)
+].map(completeProblem);
 
 const meta: Meta<typeof ReviewMiniMap> = {
-  title: 'WorksheetParsing/ReviewMiniMap',
+  title: "WorksheetParsing/ReviewMiniMap",
   component: ReviewMiniMap,
   parameters: {
-    layout: 'centered',
-    backgrounds: { default: 'dark' },
+    layout: "centered",
+    backgrounds: { default: "dark" },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   decorators: [
     (Story) => (
-      <div style={{ width: '500px', backgroundColor: '#1a1a2e', padding: '16px' }}>
+      <div
+        style={{ width: "500px", backgroundColor: "#1a1a2e", padding: "16px" }}
+      >
         <Story />
       </div>
     ),
   ],
-}
+};
 
-export default meta
-type Story = StoryObj<typeof ReviewMiniMap>
+export default meta;
+type Story = StoryObj<typeof ReviewMiniMap>;
 
 /** Full size mini-map with all problems pending */
 export const Default: Story = {
@@ -319,11 +324,11 @@ export const Default: Story = {
     worksheetImageUrl: WORKSHEET_URL,
     problems: SAMPLE_PROBLEMS,
     currentIndex: 5,
-    onSelectProblem: (index) => console.log('Selected problem:', index),
+    onSelectProblem: (index) => console.log("Selected problem:", index),
     isDark: true,
     compact: false,
   },
-}
+};
 
 /** Compact mini-map (smaller height) */
 export const Compact: Story = {
@@ -331,11 +336,11 @@ export const Compact: Story = {
     worksheetImageUrl: WORKSHEET_URL,
     problems: SAMPLE_PROBLEMS,
     currentIndex: 3,
-    onSelectProblem: (index) => console.log('Selected problem:', index),
+    onSelectProblem: (index) => console.log("Selected problem:", index),
     isDark: true,
     compact: true,
   },
-}
+};
 
 /** Mini-map with mixed review statuses */
 export const MixedStatuses: Story = {
@@ -343,14 +348,21 @@ export const MixedStatuses: Story = {
     worksheetImageUrl: WORKSHEET_URL,
     problems: SAMPLE_PROBLEMS.map((p, i) => ({
       ...p,
-      reviewStatus: i < 5 ? 'approved' : i < 8 ? 'corrected' : i < 10 ? 'flagged' : 'pending',
+      reviewStatus:
+        i < 5
+          ? "approved"
+          : i < 8
+            ? "corrected"
+            : i < 10
+              ? "flagged"
+              : "pending",
     })) as ParsedProblem[],
     currentIndex: 10,
-    onSelectProblem: (index) => console.log('Selected problem:', index),
+    onSelectProblem: (index) => console.log("Selected problem:", index),
     isDark: true,
     compact: false,
   },
-}
+};
 
 /** Light mode */
 export const LightMode: Story = {
@@ -358,11 +370,11 @@ export const LightMode: Story = {
     worksheetImageUrl: WORKSHEET_URL,
     problems: SAMPLE_PROBLEMS,
     currentIndex: 5,
-    onSelectProblem: (index) => console.log('Selected problem:', index),
+    onSelectProblem: (index) => console.log("Selected problem:", index),
     isDark: false,
     compact: false,
   },
   parameters: {
-    backgrounds: { default: 'light' },
+    backgrounds: { default: "light" },
   },
-}
+};

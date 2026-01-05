@@ -4,7 +4,9 @@ import type {
   LLMProvider,
   LLMRequest,
   LLMResponse,
+  LLMStreamRequest,
   ProviderRequest,
+  StreamEvent,
   ValidationFeedback,
 } from "./types";
 import { ProviderNotConfiguredError } from "./types";
@@ -17,6 +19,7 @@ import {
 import { executeWithRetry } from "./retry";
 import { OpenAIProvider } from "./providers/openai";
 import { AnthropicProvider } from "./providers/anthropic";
+import { OpenAIResponsesProvider } from "./providers/openai-responses";
 
 /**
  * Factory function type for creating providers
@@ -122,6 +125,86 @@ export class LLMClient {
   }
 
   /**
+   * Stream an LLM response with reasoning summaries
+   *
+   * Uses the OpenAI Responses API to stream responses with:
+   * - Reasoning summaries (shows the model's thinking process)
+   * - Output text deltas (partial response text)
+   * - Final validated response
+   *
+   * @param request - The stream request configuration
+   * @returns AsyncGenerator yielding stream events
+   *
+   * @example
+   * ```typescript
+   * const stream = llm.stream({
+   *   prompt: 'Analyze this worksheet',
+   *   images: [imageDataUrl],
+   *   schema: WorksheetSchema,
+   *   reasoning: { effort: 'medium', summary: 'auto' },
+   * });
+   *
+   * for await (const event of stream) {
+   *   if (event.type === 'reasoning') {
+   *     console.log('Thinking:', event.text);
+   *   } else if (event.type === 'complete') {
+   *     console.log('Result:', event.data);
+   *   }
+   * }
+   * ```
+   */
+  async *stream<T extends z.ZodType>(
+    request: LLMStreamRequest<T>,
+  ): AsyncGenerator<StreamEvent<z.infer<T>>, void, unknown> {
+    const providerName = request.provider ?? this.config.defaultProvider;
+    const model = request.model ?? this.getDefaultModel(providerName);
+
+    // Currently only OpenAI Responses API supports streaming with reasoning
+    if (providerName.toLowerCase() !== "openai") {
+      throw new Error(
+        `Streaming with reasoning is only supported for OpenAI. ` +
+          `Provider '${providerName}' does not support the Responses API.`,
+      );
+    }
+
+    // Get provider config
+    const providerConfig = getProviderConfig(this.config, providerName);
+    if (!providerConfig) {
+      throw new ProviderNotConfiguredError(providerName);
+    }
+
+    // Create responses provider (separate from chat completions provider)
+    const responsesProvider = new OpenAIResponsesProvider(providerConfig);
+
+    // Convert Zod schema to JSON Schema
+    const jsonSchema = z.toJSONSchema(request.schema, {
+      unrepresentable: "any",
+    }) as Record<string, unknown>;
+
+    // Default reasoning config for streaming
+    const reasoning = request.reasoning ?? {
+      effort:
+        model.includes("5.2") && !model.includes("instant")
+          ? ("medium" as const)
+          : ("low" as const),
+      summary: "auto" as const,
+    };
+
+    // Stream the response
+    yield* responsesProvider.stream<z.infer<T>>(
+      {
+        prompt: request.prompt,
+        images: request.images,
+        jsonSchema,
+        model,
+        reasoning,
+        timeoutMs: request.timeoutMs,
+      },
+      request.schema as z.ZodType<z.infer<T>>,
+    );
+  }
+
+  /**
    * Get list of configured providers
    */
   getProviders(): string[] {
@@ -180,6 +263,9 @@ export class LLMClient {
         ? "medium"
         : undefined);
 
+    // Timeout for LLM requests (default 2 minutes)
+    const timeoutMs = request.timeoutMs ?? 120_000;
+
     // Execute with retry logic
     const { result: providerResponse, attempts } = await executeWithRetry(
       async (validationFeedback?: ValidationFeedback) => {
@@ -190,6 +276,7 @@ export class LLMClient {
           model,
           validationFeedback,
           reasoningEffort,
+          timeoutMs,
         };
 
         return provider.call(providerRequest);

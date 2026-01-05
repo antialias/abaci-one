@@ -9,16 +9,16 @@
  */
 
 // Components
-export { LabelLayer } from './LabelLayer'
-export type { LabelLayerProps } from './LabelLayer'
+export { LabelLayer } from "./LabelLayer";
+export type { LabelLayerProps } from "./LabelLayer";
 
 // Hooks
-export { useD3ForceLabels } from './useD3ForceLabels'
+export { useD3ForceLabels } from "./useD3ForceLabels";
 export type {
   GuessHistoryItem,
   UseD3ForceLabelsParams,
   UseD3ForceLabelsReturn,
-} from './useD3ForceLabels'
+} from "./useD3ForceLabels";
 
 // Utilities
 export {
@@ -27,7 +27,7 @@ export {
   getRenderedViewport,
   LABEL_FADE_RADIUS,
   LABEL_MIN_OPACITY,
-} from './labelUtils'
+} from "./labelUtils";
 
 // Types
 export type {
@@ -36,4 +36,4 @@ export type {
   RegionLabelPosition,
   RenderedViewport,
   SmallRegionLabelPosition,
-} from './types'
+} from "./types";

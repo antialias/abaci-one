@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
-import { db } from '@/db'
-import { worksheetAttempts } from '@/db/schema'
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { worksheetAttempts } from "@/db/schema";
 
 /**
  * GET /api/worksheets/sessions/[sessionId]
@@ -9,12 +9,15 @@ import { worksheetAttempts } from '@/db/schema'
  * Returns all worksheet attempts for a given session ID
  * Used by desktop to poll for new uploads from smartphone QR scan workflow
  */
-export async function GET(request: NextRequest, { params }: { params: { sessionId: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { sessionId: string } },
+) {
   try {
-    const { sessionId } = params
+    const { sessionId } = params;
 
     if (!sessionId) {
-      return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 })
+      return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
     }
 
     // Get all attempts for this session
@@ -22,7 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: { sessionI
       .select()
       .from(worksheetAttempts)
       .where(eq(worksheetAttempts.sessionId, sessionId))
-      .orderBy(worksheetAttempts.createdAt)
+      .orderBy(worksheetAttempts.createdAt);
 
     return NextResponse.json({
       sessionId,
@@ -36,15 +39,15 @@ export async function GET(request: NextRequest, { params }: { params: { sessionI
         accuracy: attempt.accuracy,
         suggestedStepId: attempt.suggestedStepId,
       })),
-    })
+    });
   } catch (error) {
-    console.error('Session fetch error:', error)
+    console.error("Session fetch error:", error);
     return NextResponse.json(
       {
-        error: 'Failed to fetch session uploads',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to fetch session uploads",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }

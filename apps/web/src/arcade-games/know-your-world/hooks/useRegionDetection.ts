@@ -11,65 +11,65 @@
  * - Whether there are small regions requiring magnifier zoom
  */
 
-import { useCallback, useRef, useEffect, type RefObject } from 'react'
-import type { MapData } from '../types'
+import { useCallback, useRef, useEffect, type RefObject } from "react";
+import type { MapData } from "../types";
 
 export interface DetectionBox {
-  left: number
-  right: number
-  top: number
-  bottom: number
-  size: number
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  size: number;
 }
 
 export interface DetectedRegion {
-  id: string
-  pixelWidth: number
-  pixelHeight: number
-  pixelArea: number
-  isVerySmall: boolean
-  screenSize: number
+  id: string;
+  pixelWidth: number;
+  pixelHeight: number;
+  pixelArea: number;
+  isVerySmall: boolean;
+  screenSize: number;
 }
 
 export interface RegionDetectionResult {
   /** Regions detected in the detection box, sorted by size (smallest first) */
-  detectedRegions: DetectedRegion[]
+  detectedRegions: DetectedRegion[];
   /** The region directly under the cursor (closest to center) */
-  regionUnderCursor: string | null
+  regionUnderCursor: string | null;
   /** Area of the region under cursor */
-  regionUnderCursorArea: number
+  regionUnderCursorArea: number;
   /** Total number of regions in detection box */
-  regionsInBox: number
+  regionsInBox: number;
   /** Whether at least one small region was detected */
-  hasSmallRegion: boolean
+  hasSmallRegion: boolean;
   /** Smallest detected region size (for cursor dampening) */
-  detectedSmallestSize: number
+  detectedSmallestSize: number;
   /** Total area of all detected regions */
-  totalRegionArea: number
+  totalRegionArea: number;
 }
 
 export interface UseRegionDetectionOptions {
   /** The SVG element containing the regions */
-  svgRef: RefObject<SVGSVGElement>
+  svgRef: RefObject<SVGSVGElement>;
   /** The container element (for coordinate conversion) */
-  containerRef: RefObject<HTMLDivElement>
+  containerRef: RefObject<HTMLDivElement>;
   /** Map data containing regions */
-  mapData: MapData
+  mapData: MapData;
   /** Size of the detection box (default: 50px) */
-  detectionBoxSize?: number
+  detectionBoxSize?: number;
   /** Threshold for considering a region "very small" (default: 15px) */
-  smallRegionThreshold?: number
+  smallRegionThreshold?: number;
   /** Area threshold for small regions (default: 200px²) */
-  smallRegionAreaThreshold?: number
+  smallRegionAreaThreshold?: number;
   /** Cache of pre-computed sizes for multi-piece regions (mainland only) */
-  largestPieceSizesCache?: Map<string, { width: number; height: number }>
+  largestPieceSizesCache?: Map<string, { width: number; height: number }>;
   /** Regions that have been found - excluded from zoom level calculations */
-  regionsFound?: string[]
+  regionsFound?: string[];
 }
 
 export interface UseRegionDetectionReturn {
   /** Detect regions at the given cursor position */
-  detectRegions: (cursorX: number, cursorY: number) => RegionDetectionResult
+  detectRegions: (cursorX: number, cursorY: number) => RegionDetectionResult;
   // Note: hoveredRegion and setHoveredRegion were removed.
   // The interaction state machine is now authoritative for hovered region state.
   // Consumers should use interaction.hoveredRegionId instead.
@@ -87,7 +87,9 @@ export interface UseRegionDetectionReturn {
  * @param options - Configuration options
  * @returns Region detection methods and state
  */
-export function useRegionDetection(options: UseRegionDetectionOptions): UseRegionDetectionReturn {
+export function useRegionDetection(
+  options: UseRegionDetectionOptions,
+): UseRegionDetectionReturn {
   const {
     svgRef,
     containerRef,
@@ -97,24 +99,26 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
     smallRegionAreaThreshold = 200,
     largestPieceSizesCache,
     regionsFound = [],
-  } = options
+  } = options;
 
   // Cache path elements to avoid repeated querySelector calls
-  const pathElementCache = useRef<Map<string, SVGGeometryElement>>(new Map())
+  const pathElementCache = useRef<Map<string, SVGGeometryElement>>(new Map());
 
   // Populate path element cache when SVG is available
   useEffect(() => {
-    const svgElement = svgRef.current
-    if (!svgElement) return
+    const svgElement = svgRef.current;
+    if (!svgElement) return;
 
-    pathElementCache.current.clear()
+    pathElementCache.current.clear();
     for (const region of mapData.regions) {
-      const path = svgElement.querySelector(`path[data-region-id="${region.id}"]`)
+      const path = svgElement.querySelector(
+        `path[data-region-id="${region.id}"]`,
+      );
       if (path && path instanceof SVGGeometryElement) {
-        pathElementCache.current.set(region.id, path)
+        pathElementCache.current.set(region.id, path);
       }
     }
-  }, [svgRef, mapData])
+  }, [svgRef, mapData]);
 
   /**
    * Detect regions at the given cursor position.
@@ -124,8 +128,8 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
    */
   const detectRegions = useCallback(
     (cursorX: number, cursorY: number): RegionDetectionResult => {
-      const svgElement = svgRef.current
-      const containerElement = containerRef.current
+      const svgElement = svgRef.current;
+      const containerElement = containerRef.current;
 
       if (!svgElement || !containerElement) {
         return {
@@ -136,33 +140,33 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
           hasSmallRegion: false,
           detectedSmallestSize: Infinity,
           totalRegionArea: 0,
-        }
+        };
       }
 
-      const containerRect = containerElement.getBoundingClientRect()
-      const halfBox = detectionBoxSize / 2
+      const containerRect = containerElement.getBoundingClientRect();
+      const halfBox = detectionBoxSize / 2;
 
       // Convert cursor position to client coordinates
-      const cursorClientX = containerRect.left + cursorX
-      const cursorClientY = containerRect.top + cursorY
+      const cursorClientX = containerRect.left + cursorX;
+      const cursorClientY = containerRect.top + cursorY;
 
       // Detection box bounds
-      const boxLeft = cursorClientX - halfBox
-      const boxRight = cursorClientX + halfBox
-      const boxTop = cursorClientY - halfBox
-      const boxBottom = cursorClientY + halfBox
+      const boxLeft = cursorClientX - halfBox;
+      const boxRight = cursorClientX + halfBox;
+      const boxTop = cursorClientY - halfBox;
+      const boxBottom = cursorClientY + halfBox;
 
       // Track detected regions
-      const detected: DetectedRegion[] = []
-      let regionUnderCursor: string | null = null
-      let regionUnderCursorArea = 0
-      let smallestDistanceToCenter = Infinity
-      let hasSmallRegion = false
-      let totalRegionArea = 0
-      let detectedSmallestSize = Infinity
+      const detected: DetectedRegion[] = [];
+      let regionUnderCursor: string | null = null;
+      let regionUnderCursorArea = 0;
+      let smallestDistanceToCenter = Infinity;
+      let hasSmallRegion = false;
+      let totalRegionArea = 0;
+      let detectedSmallestSize = Infinity;
 
       // Get SVG transformation for converting region centers to screen coords
-      const screenCTM = svgElement.getScreenCTM()
+      const screenCTM = svgElement.getScreenCTM();
       if (!screenCTM) {
         return {
           detectedRegions: [],
@@ -172,88 +176,89 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
           hasSmallRegion: false,
           detectedSmallestSize: Infinity,
           totalRegionArea: 0,
-        }
+        };
       }
 
       mapData.regions.forEach((region) => {
         // Get cached path element (populated in useEffect)
-        const regionPath = pathElementCache.current.get(region.id)
-        if (!regionPath) return
+        const regionPath = pathElementCache.current.get(region.id);
+        if (!regionPath) return;
 
-        const pathRect = regionPath.getBoundingClientRect()
+        const pathRect = regionPath.getBoundingClientRect();
 
         // Check if bounding box overlaps with detection box
         // This is efficient and works correctly for regions of all sizes
         // (unlike center-distance checks which fail for large regions like Russia)
-        const regionLeft = pathRect.left
-        const regionRight = pathRect.right
-        const regionTop = pathRect.top
-        const regionBottom = pathRect.bottom
+        const regionLeft = pathRect.left;
+        const regionRight = pathRect.right;
+        const regionTop = pathRect.top;
+        const regionBottom = pathRect.bottom;
 
         const boundingBoxOverlaps =
           regionLeft < boxRight &&
           regionRight > boxLeft &&
           regionTop < boxBottom &&
-          regionBottom > boxTop
+          regionBottom > boxTop;
 
         if (!boundingBoxOverlaps) {
           // Bounding box doesn't overlap, so actual path definitely doesn't
-          return
+          return;
         }
 
         // SIMPLE AND FAST: Use bounding box overlap for detection
         // If bounding box overlaps, the region is detected
-        const overlaps = boundingBoxOverlaps
+        const overlaps = boundingBoxOverlaps;
 
         // Use the screenCTM we already got at the top (guaranteed non-null)
-        const inverseMatrix = screenCTM.inverse()
+        const inverseMatrix = screenCTM.inverse();
 
         // Check if cursor point is inside the actual region path (for "region under cursor")
-        let svgPoint = svgElement.createSVGPoint()
-        svgPoint.x = cursorClientX
-        svgPoint.y = cursorClientY
-        svgPoint = svgPoint.matrixTransform(inverseMatrix)
-        const cursorInRegion = regionPath.isPointInFill(svgPoint)
+        let svgPoint = svgElement.createSVGPoint();
+        svgPoint.x = cursorClientX;
+        svgPoint.y = cursorClientY;
+        svgPoint = svgPoint.matrixTransform(inverseMatrix);
+        const cursorInRegion = regionPath.isPointInFill(svgPoint);
 
         // If cursor is inside region, track it as region under cursor
         if (cursorInRegion) {
           // Calculate distance from cursor to region center (using bounding box center as approximation)
-          const regionCenterX = (regionLeft + regionRight) / 2
-          const regionCenterY = (regionTop + regionBottom) / 2
+          const regionCenterX = (regionLeft + regionRight) / 2;
+          const regionCenterY = (regionTop + regionBottom) / 2;
           const distanceToCenter = Math.sqrt(
-            (cursorClientX - regionCenterX) ** 2 + (cursorClientY - regionCenterY) ** 2
-          )
+            (cursorClientX - regionCenterX) ** 2 +
+              (cursorClientY - regionCenterY) ** 2,
+          );
 
           if (distanceToCenter < smallestDistanceToCenter) {
-            smallestDistanceToCenter = distanceToCenter
-            regionUnderCursor = region.id
-            regionUnderCursorArea = pathRect.width * pathRect.height
+            smallestDistanceToCenter = distanceToCenter;
+            regionUnderCursor = region.id;
+            regionUnderCursorArea = pathRect.width * pathRect.height;
           }
         }
 
         // If detection box overlaps with actual path geometry, add to detected regions
         if (overlaps) {
           // Use cached size for multi-piece regions (mainland only, not full bounding box)
-          const cachedSize = largestPieceSizesCache?.get(region.id)
-          const pixelWidth = cachedSize?.width ?? pathRect.width
-          const pixelHeight = cachedSize?.height ?? pathRect.height
-          const pixelArea = pixelWidth * pixelHeight
+          const cachedSize = largestPieceSizesCache?.get(region.id);
+          const pixelWidth = cachedSize?.width ?? pathRect.width;
+          const pixelHeight = cachedSize?.height ?? pathRect.height;
+          const pixelArea = pixelWidth * pixelHeight;
           const isVerySmall =
             pixelWidth < smallRegionThreshold ||
             pixelHeight < smallRegionThreshold ||
-            pixelArea < smallRegionAreaThreshold
+            pixelArea < smallRegionAreaThreshold;
 
-          const screenSize = Math.min(pixelWidth, pixelHeight)
+          const screenSize = Math.min(pixelWidth, pixelHeight);
 
           // Only count unfound regions toward zoom calculations
           // Found regions shouldn't influence hasSmallRegion or detectedSmallestSize
-          const isFound = regionsFound.includes(region.id)
+          const isFound = regionsFound.includes(region.id);
           if (!isFound) {
             if (isVerySmall) {
-              hasSmallRegion = true
+              hasSmallRegion = true;
             }
-            totalRegionArea += pixelArea
-            detectedSmallestSize = Math.min(detectedSmallestSize, screenSize)
+            totalRegionArea += pixelArea;
+            detectedSmallestSize = Math.min(detectedSmallestSize, screenSize);
           }
 
           detected.push({
@@ -263,12 +268,12 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
             pixelArea,
             isVerySmall,
             screenSize,
-          })
+          });
         }
-      })
+      });
 
       // Sort detected regions by size (smallest first)
-      detected.sort((a, b) => a.screenSize - b.screenSize)
+      detected.sort((a, b) => a.screenSize - b.screenSize);
 
       return {
         detectedRegions: detected,
@@ -278,7 +283,7 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
         hasSmallRegion,
         detectedSmallestSize,
         totalRegionArea,
-      }
+      };
     },
     [
       svgRef,
@@ -289,10 +294,10 @@ export function useRegionDetection(options: UseRegionDetectionOptions): UseRegio
       smallRegionAreaThreshold,
       largestPieceSizesCache,
       regionsFound,
-    ]
-  )
+    ],
+  );
 
   return {
     detectRegions,
-  }
+  };
 }

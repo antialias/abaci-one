@@ -1,17 +1,17 @@
-'use client'
+"use client";
 
-import { useMemo } from 'react'
-import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
+import { useMemo } from "react";
+import type { SessionPart, SlotResult } from "@/db/schema/session-plans";
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 /** Minimum samples needed for reliable statistical estimates */
-export const MIN_SAMPLES_FOR_STATS = 5
+export const MIN_SAMPLES_FOR_STATS = 5;
 
 /** Default time per problem in ms when not enough data (10 seconds) */
-export const DEFAULT_TIME_PER_PROBLEM_MS = 10_000
+export const DEFAULT_TIME_PER_PROBLEM_MS = 10_000;
 
 // ============================================================================
 // Types
@@ -19,30 +19,30 @@ export const DEFAULT_TIME_PER_PROBLEM_MS = 10_000
 
 export interface TimingStats {
   /** Mean response time in milliseconds */
-  mean: number
+  mean: number;
   /** Standard deviation of response times */
-  stdDev: number
+  stdDev: number;
   /** Number of samples used */
-  count: number
+  count: number;
   /** Whether we have enough data for reliable estimates */
-  hasEnoughData: boolean
+  hasEnoughData: boolean;
   /** Auto-pause threshold in milliseconds */
-  threshold: number
+  threshold: number;
 }
 
 export interface SessionTimeEstimate {
   /** Timing statistics from results */
-  timingStats: TimingStats
+  timingStats: TimingStats;
   /** Number of problems remaining */
-  problemsRemaining: number
+  problemsRemaining: number;
   /** Total problems in session */
-  totalProblems: number
+  totalProblems: number;
   /** Number of completed problems */
-  completedProblems: number
+  completedProblems: number;
   /** Estimated time remaining in milliseconds */
-  estimatedTimeRemainingMs: number
+  estimatedTimeRemainingMs: number;
   /** Formatted estimated time remaining (e.g., "~5 min") */
-  estimatedTimeRemainingFormatted: string
+  estimatedTimeRemainingFormatted: string;
 }
 
 // ============================================================================
@@ -53,21 +53,22 @@ export interface SessionTimeEstimate {
  * Calculate mean and standard deviation from an array of numbers
  */
 function calculateStats(times: number[]): {
-  mean: number
-  stdDev: number
-  count: number
+  mean: number;
+  stdDev: number;
+  count: number;
 } {
-  const count = times.length
-  if (count === 0) return { mean: 0, stdDev: 0, count: 0 }
+  const count = times.length;
+  if (count === 0) return { mean: 0, stdDev: 0, count: 0 };
 
-  const mean = times.reduce((sum, t) => sum + t, 0) / count
+  const mean = times.reduce((sum, t) => sum + t, 0) / count;
 
-  if (count < 2) return { mean, stdDev: 0, count }
+  if (count < 2) return { mean, stdDev: 0, count };
 
-  const variance = times.reduce((sum, t) => sum + (t - mean) ** 2, 0) / (count - 1)
-  const stdDev = Math.sqrt(variance)
+  const variance =
+    times.reduce((sum, t) => sum + (t - mean) ** 2, 0) / (count - 1);
+  const stdDev = Math.sqrt(variance);
 
-  return { mean, stdDev, count }
+  return { mean, stdDev, count };
 }
 
 /**
@@ -79,46 +80,46 @@ function calculateStats(times: number[]): {
 export function calculateTimingStats(
   results: SlotResult[],
   parts?: SessionPart[],
-  currentPartType?: SessionPart['type']
+  currentPartType?: SessionPart["type"],
 ): TimingStats {
-  let times: number[]
+  let times: number[];
 
   if (currentPartType && parts) {
     // Filter results by part type for current-part-specific estimates
     times = results
       .filter((r) => {
-        const partIndex = parts.findIndex((p) => p.partNumber === r.partNumber)
-        return partIndex >= 0 && parts[partIndex].type === currentPartType
+        const partIndex = parts.findIndex((p) => p.partNumber === r.partNumber);
+        return partIndex >= 0 && parts[partIndex].type === currentPartType;
       })
-      .map((r) => r.responseTimeMs)
+      .map((r) => r.responseTimeMs);
   } else {
     // Use all results
-    times = results.map((r) => r.responseTimeMs)
+    times = results.map((r) => r.responseTimeMs);
   }
 
-  const stats = calculateStats(times)
-  const hasEnoughData = stats.count >= MIN_SAMPLES_FOR_STATS
+  const stats = calculateStats(times);
+  const hasEnoughData = stats.count >= MIN_SAMPLES_FOR_STATS;
 
   // Calculate auto-pause threshold: mean + 2*stdDev, clamped between 30s and 5min
   const threshold = hasEnoughData
     ? Math.max(30_000, Math.min(stats.mean + 2 * stats.stdDev, 5 * 60 * 1000))
-    : 60_000 // Default 1 minute when not enough data
+    : 60_000; // Default 1 minute when not enough data
 
   return {
     ...stats,
     hasEnoughData,
     threshold,
-  }
+  };
 }
 
 /**
  * Format estimated time remaining as human-readable string
  */
 export function formatEstimatedTimeRemaining(ms: number): string {
-  const minutes = Math.round(ms / 60_000)
-  if (minutes < 1) return '< 1 min'
-  if (minutes === 1) return '~1 min'
-  return `~${minutes} min`
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 1) return "< 1 min";
+  if (minutes === 1) return "~1 min";
+  return `~${minutes} min`;
 }
 
 /**
@@ -126,11 +127,13 @@ export function formatEstimatedTimeRemaining(ms: number): string {
  */
 export function calculateEstimatedTimeRemainingMs(
   timingStats: TimingStats,
-  problemsRemaining: number
+  problemsRemaining: number,
 ): number {
-  const timePerProblem = timingStats.hasEnoughData ? timingStats.mean : DEFAULT_TIME_PER_PROBLEM_MS
+  const timePerProblem = timingStats.hasEnoughData
+    ? timingStats.mean
+    : DEFAULT_TIME_PER_PROBLEM_MS;
 
-  return timePerProblem * problemsRemaining
+  return timePerProblem * problemsRemaining;
 }
 
 // ============================================================================
@@ -139,11 +142,11 @@ export function calculateEstimatedTimeRemainingMs(
 
 export interface UseSessionTimeEstimateOptions {
   /** Session results array */
-  results: SlotResult[]
+  results: SlotResult[];
   /** Session parts array */
-  parts: SessionPart[]
+  parts: SessionPart[];
   /** Optional: current part type to filter stats by (for more accurate current-part estimates) */
-  currentPartType?: SessionPart['type']
+  currentPartType?: SessionPart["type"];
 }
 
 /**
@@ -169,18 +172,21 @@ export function useSessionTimeEstimate({
 }: UseSessionTimeEstimateOptions): SessionTimeEstimate {
   return useMemo(() => {
     // Calculate total and completed problems
-    const totalProblems = parts.reduce((sum, p) => sum + (p.slots?.length ?? 0), 0)
-    const completedProblems = results.length
-    const problemsRemaining = totalProblems - completedProblems
+    const totalProblems = parts.reduce(
+      (sum, p) => sum + (p.slots?.length ?? 0),
+      0,
+    );
+    const completedProblems = results.length;
+    const problemsRemaining = totalProblems - completedProblems;
 
     // Calculate timing stats
-    const timingStats = calculateTimingStats(results, parts, currentPartType)
+    const timingStats = calculateTimingStats(results, parts, currentPartType);
 
     // Calculate estimated time remaining
     const estimatedTimeRemainingMs = calculateEstimatedTimeRemainingMs(
       timingStats,
-      problemsRemaining
-    )
+      problemsRemaining,
+    );
 
     return {
       timingStats,
@@ -188,9 +194,11 @@ export function useSessionTimeEstimate({
       totalProblems,
       completedProblems,
       estimatedTimeRemainingMs,
-      estimatedTimeRemainingFormatted: formatEstimatedTimeRemaining(estimatedTimeRemainingMs),
-    }
-  }, [results, parts, currentPartType])
+      estimatedTimeRemainingFormatted: formatEstimatedTimeRemaining(
+        estimatedTimeRemainingMs,
+      ),
+    };
+  }, [results, parts, currentPartType]);
 }
 
 /**
@@ -201,14 +209,20 @@ export function useSessionTimeEstimate({
 export function getSessionTimeEstimate(
   results: SlotResult[],
   parts: SessionPart[],
-  currentPartType?: SessionPart['type']
+  currentPartType?: SessionPart["type"],
 ): SessionTimeEstimate {
-  const totalProblems = parts.reduce((sum, p) => sum + (p.slots?.length ?? 0), 0)
-  const completedProblems = results.length
-  const problemsRemaining = totalProblems - completedProblems
+  const totalProblems = parts.reduce(
+    (sum, p) => sum + (p.slots?.length ?? 0),
+    0,
+  );
+  const completedProblems = results.length;
+  const problemsRemaining = totalProblems - completedProblems;
 
-  const timingStats = calculateTimingStats(results, parts, currentPartType)
-  const estimatedTimeRemainingMs = calculateEstimatedTimeRemainingMs(timingStats, problemsRemaining)
+  const timingStats = calculateTimingStats(results, parts, currentPartType);
+  const estimatedTimeRemainingMs = calculateEstimatedTimeRemainingMs(
+    timingStats,
+    problemsRemaining,
+  );
 
   return {
     timingStats,
@@ -216,6 +230,8 @@ export function getSessionTimeEstimate(
     totalProblems,
     completedProblems,
     estimatedTimeRemainingMs,
-    estimatedTimeRemainingFormatted: formatEstimatedTimeRemaining(estimatedTimeRemainingMs),
-  }
+    estimatedTimeRemainingFormatted: formatEstimatedTimeRemaining(
+      estimatedTimeRemainingMs,
+    ),
+  };
 }

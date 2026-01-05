@@ -14,41 +14,47 @@
  *   }
  */
 
-import { NextResponse } from 'next/server'
-import { and, desc, eq, lt } from 'drizzle-orm'
-import { db } from '@/db'
-import { sessionPlans } from '@/db/schema/session-plans'
-import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { NextResponse } from "next/server";
+import { and, desc, eq, lt } from "drizzle-orm";
+import { db } from "@/db";
+import { sessionPlans } from "@/db/schema/session-plans";
+import { canPerformAction } from "@/lib/classroom";
+import { getDbUserId } from "@/lib/viewer";
 
 interface RouteParams {
-  params: Promise<{ playerId: string }>
+  params: Promise<{ playerId: string }>;
 }
 
 export async function GET(request: Request, { params }: RouteParams) {
-  const routeStart = performance.now()
-  const timings: Record<string, number> = {}
+  const routeStart = performance.now();
+  const timings: Record<string, number> = {};
 
   try {
-    const { playerId } = await params
-    const { searchParams } = new URL(request.url)
+    const { playerId } = await params;
+    const { searchParams } = new URL(request.url);
 
-    const cursor = searchParams.get('cursor')
-    const limitParam = searchParams.get('limit')
-    const limit = Math.min(Math.max(parseInt(limitParam ?? '20', 10) || 20, 1), 100)
+    const cursor = searchParams.get("cursor");
+    const limitParam = searchParams.get("limit");
+    const limit = Math.min(
+      Math.max(parseInt(limitParam ?? "20", 10) || 20, 1),
+      100,
+    );
 
     if (!playerId) {
-      return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
+      return NextResponse.json(
+        { error: "Player ID required" },
+        { status: 400 },
+      );
     }
 
     // Authorization check
-    let t = performance.now()
-    const userId = await getDbUserId()
-    const canView = await canPerformAction(userId, playerId, 'view')
-    timings.auth = performance.now() - t
+    let t = performance.now();
+    const userId = await getDbUserId();
+    const canView = await canPerformAction(userId, playerId, "view");
+    timings.auth = performance.now() - t;
 
     if (!canView) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
     // Build query conditions
@@ -56,37 +62,39 @@ export async function GET(request: Request, { params }: RouteParams) {
       eq(sessionPlans.playerId, playerId),
       // Only include completed sessions
       // completedAt is not null check done via ordering
-    ]
+    ];
 
     // If cursor provided, get sessions older than the cursor session
     if (cursor) {
-      t = performance.now()
+      t = performance.now();
       // Get the cursor session's completedAt to paginate from there
       const cursorSession = await db.query.sessionPlans.findFirst({
         where: eq(sessionPlans.id, cursor),
         columns: { completedAt: true },
-      })
-      timings.cursorLookup = performance.now() - t
+      });
+      timings.cursorLookup = performance.now() - t;
 
       if (cursorSession?.completedAt) {
-        conditions.push(lt(sessionPlans.completedAt, cursorSession.completedAt))
+        conditions.push(
+          lt(sessionPlans.completedAt, cursorSession.completedAt),
+        );
       }
     }
 
     // Fetch limit + 1 to check if there are more
-    t = performance.now()
+    t = performance.now();
     const sessions = await db.query.sessionPlans.findMany({
       where: and(...conditions),
       orderBy: [desc(sessionPlans.completedAt)],
       limit: limit + 1,
-    })
-    timings.dbQuery = performance.now() - t
+    });
+    timings.dbQuery = performance.now() - t;
 
     // Filter to only completed sessions and check for more
-    t = performance.now()
-    const completedSessions = sessions.filter((s) => s.completedAt !== null)
-    const hasMore = completedSessions.length > limit
-    const returnSessions = completedSessions.slice(0, limit)
+    t = performance.now();
+    const completedSessions = sessions.filter((s) => s.completedAt !== null);
+    const hasMore = completedSessions.length > limit;
+    const returnSessions = completedSessions.slice(0, limit);
 
     // Transform to match PracticeSession interface expected by client
     const transformedSessions = returnSessions.map((session) => ({
@@ -95,39 +103,43 @@ export async function GET(request: Request, { params }: RouteParams) {
       startedAt: session.startedAt,
       completedAt: session.completedAt,
       problemsAttempted: (JSON.parse(session.results) as unknown[]).length,
-      problemsCorrect: (JSON.parse(session.results) as Array<{ isCorrect: boolean }>).filter(
-        (r) => r.isCorrect
-      ).length,
-      totalTimeMs: (JSON.parse(session.results) as Array<{ responseTimeMs?: number }>).reduce(
-        (sum, r) => sum + (r.responseTimeMs ?? 0),
-        0
-      ),
+      problemsCorrect: (
+        JSON.parse(session.results) as Array<{ isCorrect: boolean }>
+      ).filter((r) => r.isCorrect).length,
+      totalTimeMs: (
+        JSON.parse(session.results) as Array<{ responseTimeMs?: number }>
+      ).reduce((sum, r) => sum + (r.responseTimeMs ?? 0), 0),
       skillsUsed: [
         ...new Set(
-          (JSON.parse(session.results) as Array<{ skillsExercised?: string[] }>).flatMap(
-            (r) => r.skillsExercised ?? []
-          )
+          (
+            JSON.parse(session.results) as Array<{ skillsExercised?: string[] }>
+          ).flatMap((r) => r.skillsExercised ?? []),
         ),
       ],
-    }))
-    timings.transform = performance.now() - t
+    }));
+    timings.transform = performance.now() - t;
 
-    const total = performance.now() - routeStart
+    const total = performance.now() - routeStart;
     console.log(
       `[PERF] /api/curriculum/.../sessions/history: ${total.toFixed(1)}ms | ` +
         `auth=${timings.auth.toFixed(1)}ms, ` +
         `db=${timings.dbQuery.toFixed(1)}ms, ` +
         `transform=${timings.transform.toFixed(1)}ms | ` +
-        `sessions=${returnSessions.length}`
-    )
+        `sessions=${returnSessions.length}`,
+    );
 
     return NextResponse.json({
       sessions: transformedSessions,
-      nextCursor: hasMore ? returnSessions[returnSessions.length - 1]?.id : null,
+      nextCursor: hasMore
+        ? returnSessions[returnSessions.length - 1]?.id
+        : null,
       hasMore,
-    })
+    });
   } catch (error) {
-    console.error('Error fetching session history:', error)
-    return NextResponse.json({ error: 'Failed to fetch session history' }, { status: 500 })
+    console.error("Error fetching session history:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch session history" },
+      { status: 500 },
+    );
   }
 }

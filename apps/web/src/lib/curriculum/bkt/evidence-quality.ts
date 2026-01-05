@@ -15,7 +15,7 @@
  * @returns Weight multiplier [0.5, 1.0]
  */
 export function helpWeight(hadHelp: boolean): number {
-  return hadHelp ? 0.5 : 1.0
+  return hadHelp ? 0.5 : 1.0;
 }
 
 /**
@@ -35,27 +35,27 @@ export function helpWeight(hadHelp: boolean): number {
 export function responseTimeWeight(
   responseTimeMs: number,
   isCorrect: boolean,
-  expectedTimeMs: number = 5000
+  expectedTimeMs: number = 5000,
 ): number {
   // Guard against invalid values that would produce NaN
   if (
-    typeof responseTimeMs !== 'number' ||
+    typeof responseTimeMs !== "number" ||
     !Number.isFinite(responseTimeMs) ||
     responseTimeMs <= 0
   ) {
-    return 1.0 // Neutral weight for invalid data
+    return 1.0; // Neutral weight for invalid data
   }
 
-  const ratio = responseTimeMs / expectedTimeMs
+  const ratio = responseTimeMs / expectedTimeMs;
 
   if (isCorrect) {
-    if (ratio < 0.5) return 1.2 // Very fast - strong mastery
-    if (ratio > 2.0) return 0.8 // Very slow - struggled
-    return 1.0
+    if (ratio < 0.5) return 1.2; // Very fast - strong mastery
+    if (ratio > 2.0) return 0.8; // Very slow - struggled
+    return 1.0;
   } else {
-    if (ratio < 0.3) return 0.5 // Very fast error - careless slip
-    if (ratio > 2.0) return 1.2 // Very slow error - genuine confusion
-    return 1.0
+    if (ratio < 0.3) return 0.5; // Very fast error - careless slip
+    if (ratio > 2.0) return 1.2; // Very slow error - genuine confusion
+    return 1.0;
   }
 }
 
@@ -66,7 +66,10 @@ export function combinedEvidenceWeight(
   hadHelp: boolean,
   responseTimeMs: number,
   isCorrect: boolean,
-  expectedTimeMs: number = 5000
+  expectedTimeMs: number = 5000,
 ): number {
-  return helpWeight(hadHelp) * responseTimeWeight(responseTimeMs, isCorrect, expectedTimeMs)
+  return (
+    helpWeight(hadHelp) *
+    responseTimeWeight(responseTimeMs, isCorrect, expectedTimeMs)
+  );
 }

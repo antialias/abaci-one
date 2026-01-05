@@ -5,6 +5,8 @@ import {
   LLMTruncationError,
   LLMContentFilterError,
   LLMJsonParseError,
+  LLMTimeoutError,
+  LLMNetworkError,
 } from "./types";
 
 /**
@@ -42,6 +44,16 @@ export function isRetryableError(error: unknown): boolean {
 
   // JSON parse errors are retryable - LLM might return valid JSON next time
   if (error instanceof LLMJsonParseError) {
+    return true;
+  }
+
+  // Timeout errors are retryable - server may be temporarily overloaded
+  if (error instanceof LLMTimeoutError) {
+    return true;
+  }
+
+  // Network errors are retryable - connection may be temporarily unstable
+  if (error instanceof LLMNetworkError) {
     return true;
   }
 

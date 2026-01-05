@@ -12,17 +12,20 @@
  * This is the single source of truth for session planning decisions.
  */
 
-import { NextResponse } from 'next/server'
-import { canPerformAction } from '@/lib/classroom'
-import { getSessionMode, type SessionMode } from '@/lib/curriculum/session-mode'
-import { getDbUserId } from '@/lib/viewer'
+import { NextResponse } from "next/server";
+import { canPerformAction } from "@/lib/classroom";
+import {
+  getSessionMode,
+  type SessionMode,
+} from "@/lib/curriculum/session-mode";
+import { getDbUserId } from "@/lib/viewer";
 
 interface RouteParams {
-  params: Promise<{ playerId: string }>
+  params: Promise<{ playerId: string }>;
 }
 
 export interface SessionModeResponse {
-  sessionMode: SessionMode
+  sessionMode: SessionMode;
 }
 
 /**
@@ -30,26 +33,32 @@ export interface SessionModeResponse {
  */
 export async function GET(_request: Request, { params }: RouteParams) {
   try {
-    const { playerId } = await params
+    const { playerId } = await params;
 
     if (!playerId) {
-      return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
+      return NextResponse.json(
+        { error: "Player ID required" },
+        { status: 400 },
+      );
     }
 
     // Authorization check
-    const userId = await getDbUserId()
-    const canView = await canPerformAction(userId, playerId, 'view')
+    const userId = await getDbUserId();
+    const canView = await canPerformAction(userId, playerId, "view");
     if (!canView) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
-    const sessionMode = await getSessionMode(playerId)
+    const sessionMode = await getSessionMode(playerId);
 
     return NextResponse.json({
       sessionMode,
-    } satisfies SessionModeResponse)
+    } satisfies SessionModeResponse);
   } catch (error) {
-    console.error('Error fetching session mode:', error)
-    return NextResponse.json({ error: 'Failed to fetch session mode' }, { status: 500 })
+    console.error("Error fetching session mode:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch session mode" },
+      { status: 500 },
+    );
   }
 }

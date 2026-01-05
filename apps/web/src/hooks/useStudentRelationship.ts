@@ -1,9 +1,13 @@
-'use client'
+"use client";
 
-import { useMemo } from 'react'
-import type { StudentRelationship, EnrollmentStatus } from '@/types/student'
-import { useMyClassroom, useEnrolledStudents, useClassroomPresence } from '@/hooks/useClassroom'
-import { usePlayersWithSkillData } from '@/hooks/useUserPlayers'
+import { useMemo } from "react";
+import type { StudentRelationship, EnrollmentStatus } from "@/types/student";
+import {
+  useMyClassroom,
+  useEnrolledStudents,
+  useClassroomPresence,
+} from "@/hooks/useClassroom";
+import { usePlayersWithSkillData } from "@/hooks/useUserPlayers";
 
 /**
  * Hook to compute the current user's relationship with a specific student/player.
@@ -18,46 +22,52 @@ import { usePlayersWithSkillData } from '@/hooks/useUserPlayers'
  * @returns StudentRelationship object with all relationship indicators
  */
 export function useStudentRelationship(playerId: string): {
-  relationship: StudentRelationship
-  isLoading: boolean
+  relationship: StudentRelationship;
+  isLoading: boolean;
 } {
   // Get current user's classroom (if they're a teacher)
-  const { data: classroom, isLoading: isLoadingClassroom } = useMyClassroom()
+  const { data: classroom, isLoading: isLoadingClassroom } = useMyClassroom();
 
   // Get current user's children (players linked to them)
-  const { data: myChildren = [], isLoading: isLoadingChildren } = usePlayersWithSkillData()
+  const { data: myChildren = [], isLoading: isLoadingChildren } =
+    usePlayersWithSkillData();
 
   // Get enrolled students in the teacher's classroom
-  const { data: enrolledStudents = [], isLoading: isLoadingEnrolled } = useEnrolledStudents(
-    classroom?.id
-  )
+  const { data: enrolledStudents = [], isLoading: isLoadingEnrolled } =
+    useEnrolledStudents(classroom?.id);
 
   // Get present students in the classroom
-  const { data: presentStudents = [], isLoading: isLoadingPresence } = useClassroomPresence(
-    classroom?.id
-  )
+  const { data: presentStudents = [], isLoading: isLoadingPresence } =
+    useClassroomPresence(classroom?.id);
 
   const relationship = useMemo<StudentRelationship>(() => {
-    const isMyChild = myChildren.some((child) => child.id === playerId)
-    const isEnrolled = enrolledStudents.some((student) => student.id === playerId)
-    const isPresent = presentStudents.some((student) => student.id === playerId)
+    const isMyChild = myChildren.some((child) => child.id === playerId);
+    const isEnrolled = enrolledStudents.some(
+      (student) => student.id === playerId,
+    );
+    const isPresent = presentStudents.some(
+      (student) => student.id === playerId,
+    );
 
     // TODO: Look up pending enrollment requests for this player
-    const enrollmentStatus: EnrollmentStatus = isEnrolled ? 'enrolled' : null
+    const enrollmentStatus: EnrollmentStatus = isEnrolled ? "enrolled" : null;
 
     return {
       isMyChild,
       isEnrolled,
       isPresent,
       enrollmentStatus,
-    }
-  }, [playerId, myChildren, enrolledStudents, presentStudents])
+    };
+  }, [playerId, myChildren, enrolledStudents, presentStudents]);
 
   const isLoading =
-    isLoadingClassroom || isLoadingChildren || isLoadingEnrolled || isLoadingPresence
+    isLoadingClassroom ||
+    isLoadingChildren ||
+    isLoadingEnrolled ||
+    isLoadingPresence;
 
   return {
     relationship,
     isLoading,
-  }
+  };
 }

@@ -6,7 +6,7 @@
  * state management, and component interfaces.
  */
 
-import type { RefObject } from 'react'
+import type { RefObject } from "react";
 
 // ============================================================================
 // Coordinate & Position Types
@@ -16,26 +16,26 @@ import type { RefObject } from 'react'
  * Screen/container-relative cursor position in pixels
  */
 export interface CursorPosition {
-  x: number
-  y: number
+  x: number;
+  y: number;
 }
 
 /**
  * Position in SVG coordinate space (viewBox units)
  */
 export interface SVGPosition {
-  svgX: number
-  svgY: number
+  svgX: number;
+  svgY: number;
 }
 
 /**
  * Bounding box in SVG coordinate space
  */
 export interface SVGBoundingBox {
-  x: number
-  y: number
-  width: number
-  height: number
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 // ============================================================================
@@ -48,29 +48,29 @@ export interface SVGBoundingBox {
  */
 export interface ViewportInfo {
   /** Offset from container left edge to rendered content */
-  letterboxX: number
+  letterboxX: number;
   /** Offset from container top edge to rendered content */
-  letterboxY: number
+  letterboxY: number;
   /** Pixels per viewBox unit */
-  scale: number
+  scale: number;
   /** Actual rendered width in pixels */
-  renderedWidth: number
+  renderedWidth: number;
   /** Actual rendered height in pixels */
-  renderedHeight: number
+  renderedHeight: number;
   /** ViewBox X origin */
-  viewBoxX: number
+  viewBoxX: number;
   /** ViewBox Y origin */
-  viewBoxY: number
+  viewBoxY: number;
 }
 
 /**
  * Parsed viewBox components
  */
 export interface ViewBoxComponents {
-  x: number
-  y: number
-  width: number
-  height: number
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 // ============================================================================
@@ -82,26 +82,26 @@ export interface ViewBoxComponents {
  */
 export interface GameStateSlice {
   /** IDs of regions that have been found */
-  regionsFound: string[]
+  regionsFound: string[];
   /** Currently hovered region ID */
-  hoveredRegion: string | null
+  hoveredRegion: string | null;
   /** Current target region ID to find */
-  currentPrompt: string | null
+  currentPrompt: string | null;
   /** Region currently celebrating (just found) */
-  celebration: { regionId: string } | null
+  celebration: { regionId: string } | null;
   /** Region being revealed in give-up animation */
-  giveUpReveal: { regionId: string } | null
+  giveUpReveal: { regionId: string } | null;
   /** Whether give-up animation is playing */
-  isGiveUpAnimating: boolean
+  isGiveUpAnimating: boolean;
 }
 
 /**
  * Player metadata for multiplayer display
  */
 export interface PlayerMetadata {
-  id: string
-  emoji?: string
-  color?: string
+  id: string;
+  emoji?: string;
+  color?: string;
 }
 
 // ============================================================================
@@ -112,16 +112,16 @@ export interface PlayerMetadata {
  * Basic region data from map
  */
 export interface MapRegion {
-  id: string
-  name: string
-  path: string
+  id: string;
+  name: string;
+  path: string;
 }
 
 /**
  * Region with computed bounding box
  */
 export interface RegionWithBounds extends MapRegion {
-  bounds: SVGBoundingBox
+  bounds: SVGBoundingBox;
 }
 
 // ============================================================================
@@ -132,8 +132,8 @@ export interface RegionWithBounds extends MapRegion {
  * Common refs needed by multiple features
  */
 export interface SharedRefs {
-  containerRef: RefObject<HTMLDivElement>
-  svgRef: RefObject<SVGSVGElement>
+  containerRef: RefObject<HTMLDivElement>;
+  svgRef: RefObject<SVGSVGElement>;
 }
 
 // ============================================================================
@@ -144,18 +144,18 @@ export interface SharedRefs {
  * Container dimensions
  */
 export interface Dimensions {
-  width: number
-  height: number
+  width: number;
+  height: number;
 }
 
 /**
  * Safe zone margins - areas reserved for UI elements
  */
 export interface SafeZoneMargins {
-  top: number
-  right: number
-  bottom: number
-  left: number
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
 }
 
 // ============================================================================
@@ -166,8 +166,8 @@ export interface SafeZoneMargins {
  * Flash progress for pulsing animations (0-1)
  */
 export interface FlashProgress {
-  giveUpFlash: number
-  celebrationFlash: number
+  giveUpFlash: number;
+  celebrationFlash: number;
 }
 
 // ============================================================================
@@ -177,22 +177,29 @@ export interface FlashProgress {
 /**
  * Hot/cold feedback type for visual indicators
  */
-export type HotColdFeedbackType = 'freezing' | 'cold' | 'cool' | 'warm' | 'hot' | 'burning' | null
+export type HotColdFeedbackType =
+  | "freezing"
+  | "cold"
+  | "cool"
+  | "warm"
+  | "hot"
+  | "burning"
+  | null;
 
 /**
  * Heat-based styling for borders and glows
  */
 export interface HeatColors {
-  border: string
-  glow: string
-  width: number
+  border: string;
+  glow: string;
+  width: number;
 }
 
 /**
  * Crosshair styling based on hot/cold feedback
  */
 export interface CrosshairStyle {
-  color: string
-  strokeWidth: number
-  opacity: number
+  color: string;
+  strokeWidth: number;
+  opacity: number;
 }

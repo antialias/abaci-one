@@ -6,4 +6,4 @@ declare global {
   // This file ensures TypeScript recognizes describe, it, expect, etc.
 }
 
-export {}
+export {};

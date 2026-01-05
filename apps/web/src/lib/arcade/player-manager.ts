@@ -3,15 +3,15 @@
  * Handles fetching and validating player participation in rooms
  */
 
-import { and, eq } from 'drizzle-orm'
-import { db, schema } from '@/db'
-import type { Player } from '@/db/schema/players'
+import { and, eq } from "drizzle-orm";
+import { db, schema } from "@/db";
+import type { Player } from "@/db/schema/players";
 
 // Re-export ownership utilities for convenience
 export {
   buildPlayerOwnershipMap,
   type PlayerOwnershipMap,
-} from './player-ownership'
+} from "./player-ownership";
 
 /**
  * Get all players for a user (regardless of isActive status)
@@ -21,17 +21,17 @@ export async function getAllPlayers(viewerId: string): Promise<Player[]> {
   // First get the user record by guestId
   const user = await db.query.users.findFirst({
     where: eq(schema.users.guestId, viewerId),
-  })
+  });
 
   if (!user) {
-    return []
+    return [];
   }
 
   // Now query all players by the actual user.id (no isActive filter)
   return await db.query.players.findMany({
     where: eq(schema.players.userId, user.id),
     orderBy: schema.players.createdAt,
-  })
+  });
 }
 
 /**
@@ -43,17 +43,20 @@ export async function getActivePlayers(viewerId: string): Promise<Player[]> {
   // First get the user record by guestId
   const user = await db.query.users.findFirst({
     where: eq(schema.users.guestId, viewerId),
-  })
+  });
 
   if (!user) {
-    return []
+    return [];
   }
 
   // Now query players by the actual user.id
   return await db.query.players.findMany({
-    where: and(eq(schema.players.userId, user.id), eq(schema.players.isActive, true)),
+    where: and(
+      eq(schema.players.userId, user.id),
+      eq(schema.players.isActive, true),
+    ),
     orderBy: schema.players.createdAt,
-  })
+  });
 }
 
 /**
@@ -61,20 +64,22 @@ export async function getActivePlayers(viewerId: string): Promise<Player[]> {
  * Returns only players marked isActive=true from each room member
  * Returns a map of userId -> Player[]
  */
-export async function getRoomActivePlayers(roomId: string): Promise<Map<string, Player[]>> {
+export async function getRoomActivePlayers(
+  roomId: string,
+): Promise<Map<string, Player[]>> {
   // Get all room members
   const members = await db.query.roomMembers.findMany({
     where: eq(schema.roomMembers.roomId, roomId),
-  })
+  });
 
   // Fetch active players for each member (respects isActive flag)
-  const playerMap = new Map<string, Player[]>()
+  const playerMap = new Map<string, Player[]>();
   for (const member of members) {
-    const players = await getActivePlayers(member.userId)
-    playerMap.set(member.userId, players)
+    const players = await getActivePlayers(member.userId);
+    playerMap.set(member.userId, players);
   }
 
-  return playerMap
+  return playerMap;
 }
 
 /**
@@ -82,33 +87,39 @@ export async function getRoomActivePlayers(roomId: string): Promise<Map<string, 
  * Flattens the player lists from all room members
  */
 export async function getRoomPlayerIds(roomId: string): Promise<string[]> {
-  const playerMap = await getRoomActivePlayers(roomId)
-  const allPlayers: string[] = []
+  const playerMap = await getRoomActivePlayers(roomId);
+  const allPlayers: string[] = [];
 
   for (const players of playerMap.values()) {
-    allPlayers.push(...players.map((p) => p.id))
+    allPlayers.push(...players.map((p) => p.id));
   }
 
-  return allPlayers
+  return allPlayers;
 }
 
 /**
  * Validate that a player ID belongs to a user who is a member of a room
  */
-export async function validatePlayerInRoom(playerId: string, roomId: string): Promise<boolean> {
+export async function validatePlayerInRoom(
+  playerId: string,
+  roomId: string,
+): Promise<boolean> {
   // Get the player
   const player = await db.query.players.findFirst({
     where: eq(schema.players.id, playerId),
-  })
+  });
 
-  if (!player) return false
+  if (!player) return false;
 
   // Check if the player's user is a member of the room
   const member = await db.query.roomMembers.findFirst({
-    where: and(eq(schema.roomMembers.roomId, roomId), eq(schema.roomMembers.userId, player.userId)),
-  })
+    where: and(
+      eq(schema.roomMembers.roomId, roomId),
+      eq(schema.roomMembers.userId, player.userId),
+    ),
+  });
 
-  return !!member
+  return !!member;
 }
 
 /**
@@ -117,22 +128,22 @@ export async function validatePlayerInRoom(playerId: string, roomId: string): Pr
 export async function getPlayer(playerId: string): Promise<Player | undefined> {
   return await db.query.players.findFirst({
     where: eq(schema.players.id, playerId),
-  })
+  });
 }
 
 /**
  * Get multiple players by IDs
  */
 export async function getPlayers(playerIds: string[]): Promise<Player[]> {
-  if (playerIds.length === 0) return []
+  if (playerIds.length === 0) return [];
 
-  const players: Player[] = []
+  const players: Player[] = [];
   for (const id of playerIds) {
-    const player = await getPlayer(id)
-    if (player) players.push(player)
+    const player = await getPlayer(id);
+    if (player) players.push(player);
   }
 
-  return players
+  return players;
 }
 
 /**
@@ -143,9 +154,12 @@ export async function getPlayers(playerIds: string[]): Promise<Player[]> {
  */
 export async function setPlayerActiveStatus(
   playerId: string,
-  isActive: boolean
+  isActive: boolean,
 ): Promise<Player | undefined> {
-  await db.update(schema.players).set({ isActive }).where(eq(schema.players.id, playerId))
+  await db
+    .update(schema.players)
+    .set({ isActive })
+    .where(eq(schema.players.id, playerId));
 
-  return await getPlayer(playerId)
+  return await getPlayer(playerId);
 }

@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
-import { getAccessiblePlayers } from '@/lib/classroom'
-import { getViewerId } from '@/lib/viewer'
+import { NextResponse } from "next/server";
+import { getAccessiblePlayers } from "@/lib/classroom";
+import { getViewerId } from "@/lib/viewer";
 
 /**
  * GET /api/players/accessible
@@ -14,13 +14,16 @@ import { getViewerId } from '@/lib/viewer'
  */
 export async function GET() {
   try {
-    const viewerId = await getViewerId()
+    const viewerId = await getViewerId();
 
-    const accessible = await getAccessiblePlayers(viewerId)
+    const accessible = await getAccessiblePlayers(viewerId);
 
-    return NextResponse.json(accessible)
+    return NextResponse.json(accessible);
   } catch (error) {
-    console.error('Failed to fetch accessible players:', error)
-    return NextResponse.json({ error: 'Failed to fetch accessible players' }, { status: 500 })
+    console.error("Failed to fetch accessible players:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch accessible players" },
+      { status: 500 },
+    );
   }
 }

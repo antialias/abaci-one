@@ -520,7 +520,10 @@
       "Bash(if [ \"$found\" = false ])",
       "Bash(then echo \"No arcade-specific code found in practice summary chunks!\" fi)",
       "Bash(do if strings $chunk)",
-      "Bash(npx chrome-devtools-mcp@latest --help)"
+      "Bash(npx chrome-devtools-mcp@latest --help)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:www.mikeborozdin.com)",
+      "WebFetch(domain:community.openai.com)"
     ],
     "deny": [],
     "ask": []

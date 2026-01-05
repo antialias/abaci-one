@@ -7,51 +7,56 @@
  * Uses React Query for data fetching and caching, enabling SSR prefetching.
  */
 
-'use client'
+"use client";
 
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { api } from '@/lib/queryClient'
-import { curriculumKeys } from '@/lib/queryKeys'
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import { api } from "@/lib/queryClient";
+import { curriculumKeys } from "@/lib/queryKeys";
 
 // Re-export query keys for consumers
-export { curriculumKeys } from '@/lib/queryKeys'
+export { curriculumKeys } from "@/lib/queryKeys";
 
 // ============================================================================
 // Types
 // ============================================================================
 
 export interface CurriculumPosition {
-  playerId: string
-  currentLevel: number
-  currentPhaseId: string
-  worksheetPreset: string | null
-  visualizationMode: boolean
+  playerId: string;
+  currentLevel: number;
+  currentPhaseId: string;
+  worksheetPreset: string | null;
+  visualizationMode: boolean;
 }
 
 export interface SkillMasteryData {
-  skillId: string
-  attempts: number
-  correct: number
+  skillId: string;
+  attempts: number;
+  correct: number;
   /** Whether this skill is in the student's active practice rotation */
-  isPracticing: boolean
-  lastPracticedAt: Date | null
+  isPracticing: boolean;
+  lastPracticedAt: Date | null;
 }
 
 export interface PracticeSessionData {
-  id: string
-  phaseId: string
-  problemsAttempted: number
-  problemsCorrect: number
-  skillsUsed: string[]
-  visualizationMode: boolean
-  startedAt: Date
-  completedAt: Date | null
+  id: string;
+  phaseId: string;
+  problemsAttempted: number;
+  problemsCorrect: number;
+  skillsUsed: string[];
+  visualizationMode: boolean;
+  startedAt: Date;
+  completedAt: Date | null;
 }
 
 export interface CurriculumData {
-  curriculum: CurriculumPosition | null
-  skills: SkillMasteryData[]
-  recentSessions: PracticeSessionData[]
+  curriculum: CurriculumPosition | null;
+  skills: SkillMasteryData[];
+  recentSessions: PracticeSessionData[];
 }
 
 // ============================================================================
@@ -59,19 +64,19 @@ export interface CurriculumData {
 // ============================================================================
 
 async function fetchCurriculum(playerId: string): Promise<CurriculumData> {
-  const response = await api(`curriculum/${playerId}`)
+  const response = await api(`curriculum/${playerId}`);
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch curriculum: ${response.statusText}`)
+    throw new Error(`Failed to fetch curriculum: ${response.statusText}`);
   }
 
-  const data = await response.json()
+  const data = await response.json();
 
   return {
     curriculum: data.curriculum,
     skills: data.skills || [],
     recentSessions: data.recentSessions || [],
-  }
+  };
 }
 
 // ============================================================================
@@ -84,10 +89,10 @@ async function fetchCurriculum(playerId: string): Promise<CurriculumData> {
  */
 export function usePlayerCurriculumQuery(playerId: string | null) {
   return useQuery({
-    queryKey: curriculumKeys.detail(playerId ?? ''),
+    queryKey: curriculumKeys.detail(playerId ?? ""),
     queryFn: () => fetchCurriculum(playerId!),
     enabled: !!playerId,
-  })
+  });
 }
 
 /**
@@ -98,95 +103,114 @@ export function usePlayerCurriculumSuspense(playerId: string) {
   return useSuspenseQuery({
     queryKey: curriculumKeys.detail(playerId),
     queryFn: () => fetchCurriculum(playerId),
-  })
+  });
 }
 
 /**
  * Hook for curriculum mutations (advance phase, record attempts, etc.)
  */
 export function usePlayerCurriculumMutations(playerId: string | null) {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   const invalidate = () => {
     if (playerId) {
       queryClient.invalidateQueries({
         queryKey: curriculumKeys.detail(playerId),
-      })
+      });
     }
-  }
+  };
 
   // Advance to next phase
   const advancePhase = useMutation({
-    mutationFn: async ({ nextPhaseId, nextLevel }: { nextPhaseId: string; nextLevel?: number }) => {
-      if (!playerId) throw new Error('No player selected')
+    mutationFn: async ({
+      nextPhaseId,
+      nextLevel,
+    }: {
+      nextPhaseId: string;
+      nextLevel?: number;
+    }) => {
+      if (!playerId) throw new Error("No player selected");
 
       const response = await api(`curriculum/${playerId}/advance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nextPhaseId, nextLevel }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`Failed to advance phase: ${response.statusText}`)
+        throw new Error(`Failed to advance phase: ${response.statusText}`);
       }
 
-      return response.json()
+      return response.json();
     },
     onSuccess: invalidate,
-  })
+  });
 
   // Record a single skill attempt
   const recordAttempt = useMutation({
-    mutationFn: async ({ skillId, isCorrect }: { skillId: string; isCorrect: boolean }) => {
-      if (!playerId) throw new Error('No player selected')
+    mutationFn: async ({
+      skillId,
+      isCorrect,
+    }: {
+      skillId: string;
+      isCorrect: boolean;
+    }) => {
+      if (!playerId) throw new Error("No player selected");
 
       const response = await api(`curriculum/${playerId}/skills`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skillId, isCorrect }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`Failed to record attempt: ${response.statusText}`)
+        throw new Error(`Failed to record attempt: ${response.statusText}`);
       }
 
-      return response.json()
+      return response.json();
     },
     onSuccess: (updatedSkill) => {
       // Optimistically update the skill in cache
       if (playerId) {
-        queryClient.setQueryData<CurriculumData>(curriculumKeys.detail(playerId), (old) => {
-          if (!old) return old
-          return {
-            ...old,
-            skills: old.skills.some((s) => s.skillId === updatedSkill.skillId)
-              ? old.skills.map((s) => (s.skillId === updatedSkill.skillId ? updatedSkill : s))
-              : [...old.skills, updatedSkill],
-          }
-        })
+        queryClient.setQueryData<CurriculumData>(
+          curriculumKeys.detail(playerId),
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              skills: old.skills.some((s) => s.skillId === updatedSkill.skillId)
+                ? old.skills.map((s) =>
+                    s.skillId === updatedSkill.skillId ? updatedSkill : s,
+                  )
+                : [...old.skills, updatedSkill],
+            };
+          },
+        );
       }
     },
-  })
+  });
 
   // Record multiple skill attempts
   const recordAttempts = useMutation({
-    mutationFn: async (results: Array<{ skillId: string; isCorrect: boolean }>) => {
-      if (!playerId) throw new Error('No player selected')
+    mutationFn: async (
+      results: Array<{ skillId: string; isCorrect: boolean }>,
+    ) => {
+      if (!playerId) throw new Error("No player selected");
 
       const response = await api(`curriculum/${playerId}/skills/batch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ results }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`Failed to record attempts: ${response.statusText}`)
+        throw new Error(`Failed to record attempts: ${response.statusText}`);
       }
 
-      return response.json()
+      return response.json();
     },
     onSuccess: invalidate,
-  })
+  });
 
   // Start a practice session
   const startSession = useMutation({
@@ -194,35 +218,38 @@ export function usePlayerCurriculumMutations(playerId: string | null) {
       phaseId,
       visualizationMode = false,
     }: {
-      phaseId: string
-      visualizationMode?: boolean
+      phaseId: string;
+      visualizationMode?: boolean;
     }) => {
-      if (!playerId) throw new Error('No player selected')
+      if (!playerId) throw new Error("No player selected");
 
       const response = await api(`curriculum/${playerId}/sessions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phaseId, visualizationMode }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`Failed to start session: ${response.statusText}`)
+        throw new Error(`Failed to start session: ${response.statusText}`);
       }
 
-      return response.json()
+      return response.json();
     },
     onSuccess: (session) => {
       if (playerId) {
-        queryClient.setQueryData<CurriculumData>(curriculumKeys.detail(playerId), (old) => {
-          if (!old) return old
-          return {
-            ...old,
-            recentSessions: [session, ...old.recentSessions].slice(0, 200),
-          }
-        })
+        queryClient.setQueryData<CurriculumData>(
+          curriculumKeys.detail(playerId),
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              recentSessions: [session, ...old.recentSessions].slice(0, 200),
+            };
+          },
+        );
       }
     },
-  })
+  });
 
   // Complete a practice session
   const completeSession = useMutation({
@@ -230,59 +257,65 @@ export function usePlayerCurriculumMutations(playerId: string | null) {
       sessionId,
       data,
     }: {
-      sessionId: string
+      sessionId: string;
       data?: {
-        problemsAttempted?: number
-        problemsCorrect?: number
-        skillsUsed?: string[]
-      }
+        problemsAttempted?: number;
+        problemsCorrect?: number;
+        skillsUsed?: string[];
+      };
     }) => {
-      if (!playerId) throw new Error('No player selected')
+      if (!playerId) throw new Error("No player selected");
 
-      const response = await api(`curriculum/${playerId}/sessions/${sessionId}/complete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data || {}),
-      })
+      const response = await api(
+        `curriculum/${playerId}/sessions/${sessionId}/complete`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data || {}),
+        },
+      );
 
       if (!response.ok) {
-        throw new Error(`Failed to complete session: ${response.statusText}`)
+        throw new Error(`Failed to complete session: ${response.statusText}`);
       }
 
-      return response.json()
+      return response.json();
     },
     onSuccess: invalidate,
-  })
+  });
 
   // Update curriculum settings (worksheet preset, visualization mode)
   const updateSettings = useMutation({
     mutationFn: async (settings: {
-      worksheetPreset?: string | null
-      visualizationMode?: boolean
+      worksheetPreset?: string | null;
+      visualizationMode?: boolean;
     }) => {
-      if (!playerId) throw new Error('No player selected')
+      if (!playerId) throw new Error("No player selected");
 
       const response = await api(`curriculum/${playerId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`Failed to update settings: ${response.statusText}`)
+        throw new Error(`Failed to update settings: ${response.statusText}`);
       }
 
-      return response.json()
+      return response.json();
     },
     onSuccess: (updated) => {
       if (playerId) {
-        queryClient.setQueryData<CurriculumData>(curriculumKeys.detail(playerId), (old) => {
-          if (!old) return old
-          return { ...old, curriculum: updated }
-        })
+        queryClient.setQueryData<CurriculumData>(
+          curriculumKeys.detail(playerId),
+          (old) => {
+            if (!old) return old;
+            return { ...old, curriculum: updated };
+          },
+        );
       }
     },
-  })
+  });
 
   return {
     advancePhase,
@@ -291,7 +324,7 @@ export function usePlayerCurriculumMutations(playerId: string | null) {
     startSession,
     completeSession,
     updateSettings,
-  }
+  };
 }
 
 /**
@@ -299,66 +332,68 @@ export function usePlayerCurriculumMutations(playerId: string | null) {
  * This maintains backwards compatibility with existing code
  */
 export function usePlayerCurriculum(playerId: string | null) {
-  const query = usePlayerCurriculumQuery(playerId)
-  const mutations = usePlayerCurriculumMutations(playerId)
-  const queryClient = useQueryClient()
+  const query = usePlayerCurriculumQuery(playerId);
+  const mutations = usePlayerCurriculumMutations(playerId);
+  const queryClient = useQueryClient();
 
   // Refresh function for backwards compatibility
   const refresh = async () => {
     if (playerId) {
       await queryClient.invalidateQueries({
         queryKey: curriculumKeys.detail(playerId),
-      })
+      });
     }
-  }
+  };
 
   // Convenience wrappers for backwards compatibility
   const advancePhase = async (nextPhaseId: string, nextLevel?: number) => {
-    await mutations.advancePhase.mutateAsync({ nextPhaseId, nextLevel })
-  }
+    await mutations.advancePhase.mutateAsync({ nextPhaseId, nextLevel });
+  };
 
   const recordAttempt = async (skillId: string, isCorrect: boolean) => {
-    await mutations.recordAttempt.mutateAsync({ skillId, isCorrect })
-  }
+    await mutations.recordAttempt.mutateAsync({ skillId, isCorrect });
+  };
 
-  const recordAttempts = async (results: Array<{ skillId: string; isCorrect: boolean }>) => {
-    await mutations.recordAttempts.mutateAsync(results)
-  }
+  const recordAttempts = async (
+    results: Array<{ skillId: string; isCorrect: boolean }>,
+  ) => {
+    await mutations.recordAttempts.mutateAsync(results);
+  };
 
   const startSession = async (
     phaseId: string,
-    visualizationMode: boolean = false
+    visualizationMode: boolean = false,
   ): Promise<string | null> => {
     try {
       const session = await mutations.startSession.mutateAsync({
         phaseId,
         visualizationMode,
-      })
-      return session.id
+      });
+      return session.id;
     } catch {
-      return null
+      return null;
     }
-  }
+  };
 
   const completeSession = async (
     sessionId: string,
     data?: {
-      problemsAttempted?: number
-      problemsCorrect?: number
-      skillsUsed?: string[]
-    }
+      problemsAttempted?: number;
+      problemsCorrect?: number;
+      skillsUsed?: string[];
+    },
   ) => {
-    await mutations.completeSession.mutateAsync({ sessionId, data })
-  }
+    await mutations.completeSession.mutateAsync({ sessionId, data });
+  };
 
   const updateWorksheetPreset = async (preset: string | null) => {
-    await mutations.updateSettings.mutateAsync({ worksheetPreset: preset })
-  }
+    await mutations.updateSettings.mutateAsync({ worksheetPreset: preset });
+  };
 
   const toggleVisualizationMode = async () => {
-    const current = query.data?.curriculum?.visualizationMode ?? false
-    await mutations.updateSettings.mutateAsync({ visualizationMode: !current })
-  }
+    const current = query.data?.curriculum?.visualizationMode ?? false;
+    await mutations.updateSettings.mutateAsync({ visualizationMode: !current });
+  };
 
   return {
     // Data from query
@@ -377,7 +412,7 @@ export function usePlayerCurriculum(playerId: string | null) {
     completeSession,
     updateWorksheetPreset,
     toggleVisualizationMode,
-  }
+  };
 }
 
 // ============================================================================
@@ -394,28 +429,28 @@ export function usePlayerCurriculum(playerId: string | null) {
  * - Refetched on settle to ensure sync with server
  */
 export function useSetMasteredSkills() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
       playerId,
       masteredSkillIds,
     }: {
-      playerId: string
-      masteredSkillIds: string[]
+      playerId: string;
+      masteredSkillIds: string[];
     }) => {
       const response = await api(`curriculum/${playerId}/skills`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ masteredSkillIds }),
-      })
+      });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}))
-        throw new Error(error.error || 'Failed to set mastered skills')
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to set mastered skills");
       }
 
-      return response.json()
+      return response.json();
     },
 
     // Optimistic update: update cache immediately before API call
@@ -423,35 +458,40 @@ export function useSetMasteredSkills() {
       // Cancel any outgoing refetches so they don't overwrite our optimistic update
       await queryClient.cancelQueries({
         queryKey: curriculumKeys.detail(playerId),
-      })
+      });
 
       // Snapshot the previous value for rollback
-      const previousData = queryClient.getQueryData(curriculumKeys.detail(playerId))
+      const previousData = queryClient.getQueryData(
+        curriculumKeys.detail(playerId),
+      );
 
       // Optimistically update the cache
       queryClient.setQueryData(
         curriculumKeys.detail(playerId),
         (old: CurriculumData | undefined) => {
-          if (!old?.skills) return old
-          const masteredSet = new Set(masteredSkillIds)
+          if (!old?.skills) return old;
+          const masteredSet = new Set(masteredSkillIds);
           return {
             ...old,
             skills: old.skills.map((skill) => ({
               ...skill,
               isPracticing: masteredSet.has(skill.skillId),
             })),
-          }
-        }
-      )
+          };
+        },
+      );
 
       // Return context with the previous value for rollback
-      return { previousData }
+      return { previousData };
     },
 
     // Rollback on error
     onError: (_err, { playerId }, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(curriculumKeys.detail(playerId), context.previousData)
+        queryClient.setQueryData(
+          curriculumKeys.detail(playerId),
+          context.previousData,
+        );
       }
     },
 
@@ -459,9 +499,9 @@ export function useSetMasteredSkills() {
     onSettled: (_, __, { playerId }) => {
       queryClient.invalidateQueries({
         queryKey: curriculumKeys.detail(playerId),
-      })
+      });
     },
-  })
+  });
 }
 
 /**
@@ -469,29 +509,35 @@ export function useSetMasteredSkills() {
  * Used by dashboard to clear staleness warnings
  */
 export function useRefreshSkillRecency() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ playerId, skillId }: { playerId: string; skillId: string }) => {
+    mutationFn: async ({
+      playerId,
+      skillId,
+    }: {
+      playerId: string;
+      skillId: string;
+    }) => {
       const response = await api(`curriculum/${playerId}/skills`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skillId }),
-      })
+      });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}))
-        throw new Error(error.error || 'Failed to refresh skill')
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to refresh skill");
       }
 
-      return response.json()
+      return response.json();
     },
     onSuccess: (_, { playerId }) => {
       queryClient.invalidateQueries({
         queryKey: curriculumKeys.detail(playerId),
-      })
+      });
     },
-  })
+  });
 }
 
-export default usePlayerCurriculum
+export default usePlayerCurriculum;

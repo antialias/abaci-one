@@ -5,16 +5,16 @@
 // for backward compatibility. New code should import from typstHelpers/ directly.
 
 // Import types for internal use
-import type { DisplayOptions } from './typstHelpers/shared/types'
+import type { DisplayOptions } from "./typstHelpers/shared/types";
 
-export { generatePlaceValueColors } from './typstHelpers/shared/colors'
-export { generateTypstHelpers } from './typstHelpers/shared/helpers'
+export { generatePlaceValueColors } from "./typstHelpers/shared/colors";
+export { generateTypstHelpers } from "./typstHelpers/shared/helpers";
 // Re-export everything from modular structure
 export type {
   CellDimensions,
   DisplayOptions,
-} from './typstHelpers/shared/types'
-export { generateSubtractionProblemStackFunction } from './typstHelpers/subtraction/problemStack'
+} from "./typstHelpers/shared/types";
+export { generateSubtractionProblemStackFunction } from "./typstHelpers/subtraction/problemStack";
 
 /**
  * Generate Typst function for rendering problem stack/grid
@@ -24,20 +24,23 @@ export { generateSubtractionProblemStackFunction } from './typstHelpers/subtract
  * @param cellSize Size of each digit cell in inches
  * @param maxDigits Maximum number of digits in any problem on this page (1-6)
  */
-export function generateProblemStackFunction(cellSize: number, maxDigits: number = 3): string {
-  const cellSizeIn = `${cellSize}in`
-  const cellSizePt = cellSize * 72
+export function generateProblemStackFunction(
+  cellSize: number,
+  maxDigits: number = 3,
+): string {
+  const cellSizeIn = `${cellSize}in`;
+  const cellSizePt = cellSize * 72;
 
   // Generate place value color assignments (unique color per place value)
   // Index 0 = ones, 1 = tens, 2 = hundreds, 3 = thousands, 4 = ten-thousands, 5 = hundred-thousands
   const placeColors = [
-    'color-ones', // 0: ones (light blue)
-    'color-tens', // 1: tens (light green)
-    'color-hundreds', // 2: hundreds (light yellow)
-    'color-thousands', // 3: thousands (light pink/rose)
-    'color-ten-thousands', // 4: ten-thousands (light purple/lavender)
-    'color-hundred-thousands', // 5: hundred-thousands (light peach/orange)
-  ]
+    "color-ones", // 0: ones (light blue)
+    "color-tens", // 1: tens (light green)
+    "color-hundreds", // 2: hundreds (light yellow)
+    "color-thousands", // 3: thousands (light pink/rose)
+    "color-ten-thousands", // 4: ten-thousands (light purple/lavender)
+    "color-hundred-thousands", // 5: hundred-thousands (light peach/orange)
+  ];
 
   return String.raw`
 // Problem rendering function for addition worksheets (supports 1-${maxDigits} digit problems)
@@ -45,7 +48,7 @@ export function generateProblemStackFunction(cellSize: number, maxDigits: number
 // Per-problem display flags: show-carries, show-answers, show-colors, show-ten-frames, show-numbers
 #let problem-stack(a, b, index-or-none, show-carries, show-answers, show-colors, show-ten-frames, show-numbers) = {
   // Place value colors array for dynamic lookup (index 0 = ones, 1 = tens, ...)
-  let place-colors = (${placeColors.join(', ')})
+  let place-colors = (${placeColors.join(", ")})
 
   // Extract digits dynamically based on problem size
   let max-digits = ${maxDigits}
@@ -245,7 +248,7 @@ export function generateProblemStackFunction(cellSize: number, maxDigits: number
       )
     ]
 }
-`
+`;
 }
 
 /**
@@ -273,10 +276,10 @@ export function generateProblemTypst(
   addend2: number,
   cellSize: number,
   options: DisplayOptions,
-  problemNumber?: number
+  problemNumber?: number,
 ): string {
-  const cellSizeIn = `${cellSize}in`
-  const cellSizePt = cellSize * 72
+  const cellSizeIn = `${cellSize}in`;
+  const cellSizePt = cellSize * 72;
 
   return String.raw`
 #let a = ${addend1}
@@ -298,7 +301,7 @@ export function generateProblemTypst(
       #text(size: ${(cellSizePt * 0.6).toFixed(1)}pt, weight: "bold", font: "New Computer Modern Math")[\\#${problemNumber}.]
     ]
   ],`
-      : ''
+      : ""
   }
   grid(
     columns: (0.5em, ${cellSizeIn}, ${cellSizeIn}, ${cellSizeIn}),
@@ -309,31 +312,41 @@ export function generateProblemTypst(
     ${
       options.showCarryBoxes
         ? options.showPlaceValueColors
-          ? 'diagonal-split-box(' + cellSizeIn + ', color-tens, color-hundreds),'
-          : 'box(width: ' + cellSizeIn + ', height: ' + cellSizeIn + ', stroke: 0.5pt)[],'
-        : 'v(' + cellSizeIn + '),'
+          ? "diagonal-split-box(" +
+            cellSizeIn +
+            ", color-tens, color-hundreds),"
+          : "box(width: " +
+            cellSizeIn +
+            ", height: " +
+            cellSizeIn +
+            ", stroke: 0.5pt)[],"
+        : "v(" + cellSizeIn + "),"
     }
     // Tens carry box: shows carry FROM ones (blue) TO tens (green)
     ${
       options.showCarryBoxes
         ? options.showPlaceValueColors
-          ? 'diagonal-split-box(' + cellSizeIn + ', color-ones, color-tens),'
-          : 'box(width: ' + cellSizeIn + ', height: ' + cellSizeIn + ', stroke: 0.5pt)[],'
-        : 'v(' + cellSizeIn + '),'
+          ? "diagonal-split-box(" + cellSizeIn + ", color-ones, color-tens),"
+          : "box(width: " +
+            cellSizeIn +
+            ", height: " +
+            cellSizeIn +
+            ", stroke: 0.5pt)[],"
+        : "v(" + cellSizeIn + "),"
     }
     [],
 
     // First addend
     [],
-    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? 'color-hundreds' : 'color-none'})[#align(center + horizon)[#if aH > 0 [#aH] else [#h(0pt)]]],
-    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? 'color-tens' : 'color-none'})[#align(center + horizon)[#aT]],
-    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? 'color-ones' : 'color-none'})[#align(center + horizon)[#aO]],
+    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? "color-hundreds" : "color-none"})[#align(center + horizon)[#if aH > 0 [#aH] else [#h(0pt)]]],
+    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? "color-tens" : "color-none"})[#align(center + horizon)[#aT]],
+    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? "color-ones" : "color-none"})[#align(center + horizon)[#aO]],
 
     // Second addend with + sign
     [+],
-    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? 'color-hundreds' : 'color-none'})[#align(center + horizon)[#if bH > 0 [#bH] else [#h(0pt)]]],
-    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? 'color-tens' : 'color-none'})[#align(center + horizon)[#bT]],
-    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? 'color-ones' : 'color-none'})[#align(center + horizon)[#bO]],
+    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? "color-hundreds" : "color-none"})[#align(center + horizon)[#if bH > 0 [#bH] else [#h(0pt)]]],
+    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? "color-tens" : "color-none"})[#align(center + horizon)[#bT]],
+    box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: ${options.showPlaceValueColors ? "color-ones" : "color-none"})[#align(center + horizon)[#bO]],
 
     // Horizontal line
     [],
@@ -348,7 +361,7 @@ export function generateProblemTypst(
     box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: color-none, stroke: grid-stroke, inset: 0pt)[],
     box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: color-none, stroke: grid-stroke, inset: 0pt)[],
     box(width: ${cellSizeIn}, height: ${cellSizeIn}, fill: color-none, stroke: grid-stroke, inset: 0pt)[],`
-        : ''
+        : ""
     }
   )${
     options.showTenFrames || options.showTenFramesForAll
@@ -357,8 +370,8 @@ export function generateProblemTypst(
   box(inset: 2pt)[
     #ten-frames-stacked(${cellSizeIn}, color-ones, color-tens)
   ]`
-      : ''
+      : ""
   }
 )
-`
+`;
 }

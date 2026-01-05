@@ -5,25 +5,30 @@
  * Used by the worksheet generator to mix current skill practice with review problems.
  */
 
-import type { WorksheetMastery } from '@/db/schema'
-import { SKILL_DEFINITIONS, type SkillDefinition, type SkillId, getSkillById } from './skills'
-import type { WorksheetConfig } from '@/app/create/worksheets/types'
+import type { WorksheetMastery } from "@/db/schema";
+import {
+  SKILL_DEFINITIONS,
+  type SkillDefinition,
+  type SkillId,
+  getSkillById,
+} from "./skills";
+import type { WorksheetConfig } from "@/app/create/worksheets/types";
 
 /**
  * Mastery state map: skill ID -> mastery record
  */
-export type MasteryStateMap = Map<SkillId, WorksheetMastery>
+export type MasteryStateMap = Map<SkillId, WorksheetMastery>;
 
 /**
  * Review selection result
  */
 export interface ReviewSelection {
   /** Skills to include in review */
-  skills: SkillDefinition[]
+  skills: SkillDefinition[];
   /** Number of problems per skill */
-  problemsPerSkill: Map<SkillId, number>
+  problemsPerSkill: Map<SkillId, number>;
   /** Total review problems */
-  totalProblems: number
+  totalProblems: number;
 }
 
 /**
@@ -31,15 +36,15 @@ export interface ReviewSelection {
  */
 export interface MasteryWorksheetMix {
   /** Current skill being practiced */
-  currentSkill: SkillDefinition
+  currentSkill: SkillDefinition;
   /** Number of current skill problems */
-  currentSkillProblems: number
+  currentSkillProblems: number;
   /** Review selection */
-  review: ReviewSelection
+  review: ReviewSelection;
   /** Total problems in worksheet */
-  totalProblems: number
+  totalProblems: number;
   /** Mix ratio (0-1, where 0.25 = 25% review) */
-  mixRatio: number
+  mixRatio: number;
 }
 
 /**
@@ -53,27 +58,27 @@ export interface MasteryWorksheetMix {
 export function getReviewSkills(
   currentSkill: SkillDefinition,
   masteryStates: MasteryStateMap,
-  selectedReviewSkills?: SkillId[]
+  selectedReviewSkills?: SkillId[],
 ): SkillDefinition[] {
   // If user manually selected review skills, use those (filtered by mastery)
   if (selectedReviewSkills && selectedReviewSkills.length > 0) {
     return selectedReviewSkills
       .filter((skillId) => {
-        const masteryState = masteryStates.get(skillId)
-        return masteryState?.isMastered === true
+        const masteryState = masteryStates.get(skillId);
+        return masteryState?.isMastered === true;
       })
       .map((skillId) => getSkillById(skillId))
-      .filter((skill): skill is SkillDefinition => skill !== undefined)
+      .filter((skill): skill is SkillDefinition => skill !== undefined);
   }
 
   // Otherwise, use recommended review skills (filtered by mastery)
   return currentSkill.recommendedReview
     .filter((skillId) => {
-      const masteryState = masteryStates.get(skillId)
-      return masteryState?.isMastered === true
+      const masteryState = masteryStates.get(skillId);
+      return masteryState?.isMastered === true;
     })
     .map((skillId) => getSkillById(skillId))
-    .filter((skill): skill is SkillDefinition => skill !== undefined)
+    .filter((skill): skill is SkillDefinition => skill !== undefined);
 }
 
 /**
@@ -85,26 +90,26 @@ export function getReviewSkills(
  */
 export function distributeReviewProblems(
   reviewSkills: SkillDefinition[],
-  totalReviewProblems: number
+  totalReviewProblems: number,
 ): Map<SkillId, number> {
-  const distribution = new Map<SkillId, number>()
+  const distribution = new Map<SkillId, number>();
 
   if (reviewSkills.length === 0) {
-    return distribution
+    return distribution;
   }
 
   // Simple strategy: distribute evenly, with remainder going to first skills
-  const baseCount = Math.floor(totalReviewProblems / reviewSkills.length)
-  const remainder = totalReviewProblems % reviewSkills.length
+  const baseCount = Math.floor(totalReviewProblems / reviewSkills.length);
+  const remainder = totalReviewProblems % reviewSkills.length;
 
   reviewSkills.forEach((skill, index) => {
-    const count = baseCount + (index < remainder ? 1 : 0)
+    const count = baseCount + (index < remainder ? 1 : 0);
     if (count > 0) {
-      distribution.set(skill.id, count)
+      distribution.set(skill.id, count);
     }
-  })
+  });
 
-  return distribution
+  return distribution;
 }
 
 /**
@@ -122,25 +127,32 @@ export function calculateMasteryMix(
   masteryStates: MasteryStateMap,
   totalProblems: number,
   mixRatio: number = 0.25,
-  selectedReviewSkills?: SkillId[]
+  selectedReviewSkills?: SkillId[],
 ): MasteryWorksheetMix {
-  const currentSkill = getSkillById(currentSkillId)
+  const currentSkill = getSkillById(currentSkillId);
   if (!currentSkill) {
-    throw new Error(`Skill not found: ${currentSkillId}`)
+    throw new Error(`Skill not found: ${currentSkillId}`);
   }
 
   // Clamp mix ratio to 0-1
-  const clampedRatio = Math.max(0, Math.min(1, mixRatio))
+  const clampedRatio = Math.max(0, Math.min(1, mixRatio));
 
   // Calculate problem counts
-  const reviewProblemCount = Math.floor(totalProblems * clampedRatio)
-  const currentProblemCount = totalProblems - reviewProblemCount
+  const reviewProblemCount = Math.floor(totalProblems * clampedRatio);
+  const currentProblemCount = totalProblems - reviewProblemCount;
 
   // Get review skills
-  const reviewSkills = getReviewSkills(currentSkill, masteryStates, selectedReviewSkills)
+  const reviewSkills = getReviewSkills(
+    currentSkill,
+    masteryStates,
+    selectedReviewSkills,
+  );
 
   // Distribute review problems
-  const problemsPerSkill = distributeReviewProblems(reviewSkills, reviewProblemCount)
+  const problemsPerSkill = distributeReviewProblems(
+    reviewSkills,
+    reviewProblemCount,
+  );
 
   return {
     currentSkill,
@@ -152,7 +164,7 @@ export function calculateMasteryMix(
     },
     totalProblems,
     mixRatio: clampedRatio,
-  }
+  };
 }
 
 /**
@@ -168,11 +180,11 @@ export function calculateMasteryMix(
  */
 export function skillToConfig(
   skill: SkillDefinition,
-  problemCount: number
+  problemCount: number,
 ): Partial<WorksheetConfig> {
   return {
     version: 4,
-    mode: 'custom',
+    mode: "custom",
 
     // Digit range from skill
     digitRange: skill.digitRange,
@@ -189,7 +201,7 @@ export function skillToConfig(
 
     // Operator from skill
     operator: skill.operator,
-  }
+  };
 }
 
 /**
@@ -202,19 +214,19 @@ export function skillToConfig(
  * @returns WorksheetConfig for the entire worksheet
  */
 export function generateMasteryWorksheetConfig(
-  mix: MasteryWorksheetMix
+  mix: MasteryWorksheetMix,
 ): Partial<WorksheetConfig> & {
   _masteryMix?: {
-    currentSkillId: SkillId
-    currentSkillProblems: number
-    reviewProblems: number
-    reviewSkills: SkillId[]
-    reviewProblemCounts: Record<string, number>
-    mixRatio: number
-  }
+    currentSkillId: SkillId;
+    currentSkillProblems: number;
+    reviewProblems: number;
+    reviewSkills: SkillId[];
+    reviewProblemCounts: Record<string, number>;
+    mixRatio: number;
+  };
 } {
   // Start with current skill config
-  const config = skillToConfig(mix.currentSkill, mix.totalProblems)
+  const config = skillToConfig(mix.currentSkill, mix.totalProblems);
 
   // Add mastery-specific metadata for UI observability
   // (This is stored separately and not persisted to the schema)
@@ -231,7 +243,7 @@ export function generateMasteryWorksheetConfig(
       reviewProblemCounts: Object.fromEntries(mix.review.problemsPerSkill),
       mixRatio: mix.mixRatio,
     },
-  }
+  };
 }
 
 /**
@@ -243,9 +255,9 @@ export function generateMasteryWorksheetConfig(
  */
 export function getMasteryState(
   skillId: SkillId,
-  masteryStates: MasteryStateMap
+  masteryStates: MasteryStateMap,
 ): WorksheetMastery | { isMastered: false } {
-  return masteryStates.get(skillId) || { isMastered: false }
+  return masteryStates.get(skillId) || { isMastered: false };
 }
 
 /**
@@ -257,12 +269,12 @@ export function getMasteryState(
  */
 export function arePrerequisitesMet(
   skill: SkillDefinition,
-  masteryStates: MasteryStateMap
+  masteryStates: MasteryStateMap,
 ): boolean {
   return skill.prerequisites.every((prereqId) => {
-    const state = getMasteryState(prereqId, masteryStates)
-    return state.isMastered === true
-  })
+    const state = getMasteryState(prereqId, masteryStates);
+    return state.isMastered === true;
+  });
 }
 
 /**
@@ -273,14 +285,14 @@ export function arePrerequisitesMet(
  * @returns Next skill to practice, or undefined if all mastered
  */
 export function getNextAvailableSkill(
-  operator: 'addition' | 'subtraction',
-  masteryStates: MasteryStateMap
+  operator: "addition" | "subtraction",
+  masteryStates: MasteryStateMap,
 ): SkillDefinition | undefined {
-  const skills = SKILL_DEFINITIONS.filter((s) => s.operator === operator)
+  const skills = SKILL_DEFINITIONS.filter((s) => s.operator === operator);
 
   // Find first skill that is not mastered
   return skills.find((skill) => {
-    const state = getMasteryState(skill.id, masteryStates)
-    return state.isMastered !== true
-  })
+    const state = getMasteryState(skill.id, masteryStates);
+    return state.isMastered !== true;
+  });
 }

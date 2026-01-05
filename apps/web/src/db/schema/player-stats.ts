@@ -1,5 +1,5 @@
-import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import { players } from './players'
+import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { players } from "./players";
 
 /**
  * Player stats table - game statistics per player
@@ -7,29 +7,29 @@ import { players } from './players'
  * Tracks aggregate performance and per-game breakdowns for each player.
  * One-to-one with players table. Deleted when player is deleted (cascade).
  */
-export const playerStats = sqliteTable('player_stats', {
+export const playerStats = sqliteTable("player_stats", {
   /** Primary key and foreign key to players table */
-  playerId: text('player_id')
+  playerId: text("player_id")
     .primaryKey()
-    .references(() => players.id, { onDelete: 'cascade' }),
+    .references(() => players.id, { onDelete: "cascade" }),
 
   /** Total number of games played across all game types */
-  gamesPlayed: integer('games_played').notNull().default(0),
+  gamesPlayed: integer("games_played").notNull().default(0),
 
   /** Total number of games won */
-  totalWins: integer('total_wins').notNull().default(0),
+  totalWins: integer("total_wins").notNull().default(0),
 
   /** Total number of games lost */
-  totalLosses: integer('total_losses').notNull().default(0),
+  totalLosses: integer("total_losses").notNull().default(0),
 
   /** Best completion time in milliseconds (across all games) */
-  bestTime: integer('best_time'),
+  bestTime: integer("best_time"),
 
   /** Highest accuracy percentage (0.0 - 1.0, across all games) */
-  highestAccuracy: real('highest_accuracy').notNull().default(0),
+  highestAccuracy: real("highest_accuracy").notNull().default(0),
 
   /** Player's most-played game type */
-  favoriteGameType: text('favorite_game_type'),
+  favoriteGameType: text("favorite_game_type"),
 
   /**
    * Per-game statistics breakdown (JSON)
@@ -49,37 +49,37 @@ export const playerStats = sqliteTable('player_stats', {
    *   ...
    * }
    */
-  gameStats: text('game_stats', { mode: 'json' })
+  gameStats: text("game_stats", { mode: "json" })
     .notNull()
-    .default('{}')
+    .default("{}")
     .$type<Record<string, GameStatsBreakdown>>(),
 
   /** When this player last played any game */
-  lastPlayedAt: integer('last_played_at', { mode: 'timestamp' }),
+  lastPlayedAt: integer("last_played_at", { mode: "timestamp" }),
 
   /** When this record was created */
-  createdAt: integer('created_at', { mode: 'timestamp' })
+  createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
 
   /** When this record was last updated */
-  updatedAt: integer('updated_at', { mode: 'timestamp' })
+  updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
-})
+});
 
 /**
  * Per-game stats breakdown stored in JSON
  */
 export interface GameStatsBreakdown {
-  gamesPlayed: number
-  wins: number
-  losses: number
-  bestTime: number | null
-  highestAccuracy: number
-  averageScore: number
-  lastPlayed: number // timestamp
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  bestTime: number | null;
+  highestAccuracy: number;
+  averageScore: number;
+  lastPlayed: number; // timestamp
 }
 
-export type PlayerStats = typeof playerStats.$inferSelect
-export type NewPlayerStats = typeof playerStats.$inferInsert
+export type PlayerStats = typeof playerStats.$inferSelect;
+export type NewPlayerStats = typeof playerStats.$inferInsert;

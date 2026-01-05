@@ -1,5 +1,5 @@
-import { type DefaultOptions, QueryClient } from '@tanstack/react-query'
-import { cache } from 'react'
+import { type DefaultOptions, QueryClient } from "@tanstack/react-query";
+import { cache } from "react";
 
 const queryConfig: DefaultOptions = {
   queries: {
@@ -8,9 +8,9 @@ const queryConfig: DefaultOptions = {
     // Retry failed requests once
     retry: 1,
     // Refetch on window focus in production only
-    refetchOnWindowFocus: process.env.NODE_ENV === 'production',
+    refetchOnWindowFocus: process.env.NODE_ENV === "production",
   },
-}
+};
 
 /**
  * Creates a new QueryClient instance with default configuration.
@@ -19,7 +19,7 @@ const queryConfig: DefaultOptions = {
 export function createQueryClient() {
   return new QueryClient({
     defaultOptions: queryConfig,
-  })
+  });
 }
 
 /**
@@ -41,7 +41,7 @@ export function createQueryClient() {
  * )
  * ```
  */
-export const getQueryClient = cache(() => createQueryClient())
+export const getQueryClient = cache(() => createQueryClient());
 
 /**
  * Helper function to construct API URLs with the /api prefix.
@@ -58,8 +58,8 @@ export const getQueryClient = cache(() => createQueryClient())
  */
 export function apiUrl(path: string): string {
   // Remove leading slash if present to avoid double slashes
-  const cleanPath = path.startsWith('/') ? path.slice(1) : path
-  return `/api/${cleanPath}`
+  const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+  return `/api/${cleanPath}`;
 }
 
 /**
@@ -85,5 +85,5 @@ export function apiUrl(path: string): string {
  * ```
  */
 export function api(path: string, options?: RequestInit): Promise<Response> {
-  return fetch(apiUrl(path), options)
+  return fetch(apiUrl(path), options);
 }

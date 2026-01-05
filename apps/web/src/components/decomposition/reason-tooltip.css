@@ -56,7 +56,10 @@
   min-width: 200px;
   z-index: 50;
   animation: fadeIn 0.2s ease-out;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .reason-tooltip__content {

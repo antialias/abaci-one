@@ -1,24 +1,24 @@
-import { Clock, GitBranch, GitCommit, Package, Server } from 'lucide-react'
-import type React from 'react'
-import buildInfo from '@/generated/build-info.json'
-import { css } from '../../styled-system/css'
-import { hstack, vstack } from '../../styled-system/patterns'
+import { Clock, GitBranch, GitCommit, Package, Server } from "lucide-react";
+import type React from "react";
+import buildInfo from "@/generated/build-info.json";
+import { css } from "../../styled-system/css";
+import { hstack, vstack } from "../../styled-system/patterns";
 
 function formatTimestamp(timestamp: number) {
-  const date = new Date(timestamp)
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    timeZoneName: 'short',
-  })
+  const date = new Date(timestamp);
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  });
 }
 
 function getTimeAgo(timestamp: number) {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
 
   const intervals = {
     year: 31536000,
@@ -28,29 +28,33 @@ function getTimeAgo(timestamp: number) {
     hour: 3600,
     minute: 60,
     second: 1,
-  }
+  };
 
   for (const [unit, secondsInUnit] of Object.entries(intervals)) {
-    const interval = Math.floor(seconds / secondsInUnit)
+    const interval = Math.floor(seconds / secondsInUnit);
     if (interval >= 1) {
-      return `${interval} ${unit}${interval === 1 ? '' : 's'} ago`
+      return `${interval} ${unit}${interval === 1 ? "" : "s"} ago`;
     }
   }
-  return 'just now'
+  return "just now";
 }
 
 export function DeploymentInfoContent() {
   return (
-    <div className={vstack({ alignItems: 'stretch', gap: '4' })}>
-      <InfoRow icon={<Package size={18} />} label="Version" value={buildInfo.version} />
+    <div className={vstack({ alignItems: "stretch", gap: "4" })}>
+      <InfoRow
+        icon={<Package size={18} />}
+        label="Version"
+        value={buildInfo.version}
+      />
 
       <InfoRow
         icon={<Clock size={18} />}
         label="Build Time"
         value={
-          <div className={vstack({ alignItems: 'flex-start', gap: '1' })}>
+          <div className={vstack({ alignItems: "flex-start", gap: "1" })}>
             <span>{formatTimestamp(buildInfo.buildTimestamp)}</span>
-            <span className={css({ fontSize: 'sm', color: 'gray.600' })}>
+            <span className={css({ fontSize: "sm", color: "gray.600" })}>
               {getTimeAgo(buildInfo.buildTimestamp)}
             </span>
           </div>
@@ -64,16 +68,18 @@ export function DeploymentInfoContent() {
           value={
             <span
               className={css({
-                fontFamily: 'mono',
-                fontSize: 'sm',
-                backgroundColor: 'gray.100',
-                padding: '1 2',
-                borderRadius: 'sm',
+                fontFamily: "mono",
+                fontSize: "sm",
+                backgroundColor: "gray.100",
+                padding: "1 2",
+                borderRadius: "sm",
               })}
             >
               {buildInfo.git.branch}
               {buildInfo.git.isDirty && (
-                <span className={css({ color: 'orange.600', marginLeft: '2' })}>(dirty)</span>
+                <span className={css({ color: "orange.600", marginLeft: "2" })}>
+                  (dirty)
+                </span>
               )}
             </span>
           }
@@ -85,14 +91,14 @@ export function DeploymentInfoContent() {
           icon={<GitCommit size={18} />}
           label="Commit"
           value={
-            <div className={vstack({ alignItems: 'flex-start', gap: '1' })}>
+            <div className={vstack({ alignItems: "flex-start", gap: "1" })}>
               <span
                 className={css({
-                  fontFamily: 'mono',
-                  fontSize: 'sm',
-                  backgroundColor: 'gray.100',
-                  padding: '1 2',
-                  borderRadius: 'sm',
+                  fontFamily: "mono",
+                  fontSize: "sm",
+                  backgroundColor: "gray.100",
+                  padding: "1 2",
+                  borderRadius: "sm",
                 })}
               >
                 {buildInfo.git.commitShort}
@@ -100,9 +106,9 @@ export function DeploymentInfoContent() {
               {buildInfo.git.commit && (
                 <span
                   className={css({
-                    fontFamily: 'mono',
-                    fontSize: 'xs',
-                    color: 'gray.500',
+                    fontFamily: "mono",
+                    fontSize: "xs",
+                    color: "gray.500",
                   })}
                 >
                   {buildInfo.git.commit}
@@ -120,12 +126,12 @@ export function DeploymentInfoContent() {
           value={
             <span
               className={css({
-                fontFamily: 'mono',
-                fontSize: 'sm',
-                backgroundColor: 'blue.100',
-                color: 'blue.700',
-                padding: '1 2',
-                borderRadius: 'sm',
+                fontFamily: "mono",
+                fontSize: "sm",
+                backgroundColor: "blue.100",
+                color: "blue.700",
+                padding: "1 2",
+                borderRadius: "sm",
               })}
             >
               {buildInfo.git.tag}
@@ -140,12 +146,18 @@ export function DeploymentInfoContent() {
         value={
           <span
             className={css({
-              fontFamily: 'mono',
-              fontSize: 'sm',
-              backgroundColor: buildInfo.environment === 'production' ? 'green.100' : 'yellow.100',
-              color: buildInfo.environment === 'production' ? 'green.700' : 'yellow.700',
-              padding: '1 2',
-              borderRadius: 'sm',
+              fontFamily: "mono",
+              fontSize: "sm",
+              backgroundColor:
+                buildInfo.environment === "production"
+                  ? "green.100"
+                  : "yellow.100",
+              color:
+                buildInfo.environment === "production"
+                  ? "green.700"
+                  : "yellow.700",
+              padding: "1 2",
+              borderRadius: "sm",
             })}
           >
             {buildInfo.environment}
@@ -153,18 +165,20 @@ export function DeploymentInfoContent() {
         }
       />
 
-      {buildInfo.buildNumber && <InfoRow label="Build Number" value={buildInfo.buildNumber} />}
+      {buildInfo.buildNumber && (
+        <InfoRow label="Build Number" value={buildInfo.buildNumber} />
+      )}
 
       <InfoRow
         label="Node Version"
         value={
-          <span className={css({ fontFamily: 'mono', fontSize: 'sm' })}>
+          <span className={css({ fontFamily: "mono", fontSize: "sm" })}>
             {buildInfo.nodeVersion}
           </span>
         }
       />
     </div>
-  )
+  );
 }
 
 function InfoRow({
@@ -172,25 +186,25 @@ function InfoRow({
   label,
   value,
 }: {
-  icon?: React.ReactNode
-  label: string
-  value: React.ReactNode
+  icon?: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
 }) {
   return (
     <div
       className={hstack({
-        justifyContent: 'space-between',
-        gap: '4',
-        paddingY: '2',
-        borderBottom: '1px solid',
-        borderColor: 'gray.100',
+        justifyContent: "space-between",
+        gap: "4",
+        paddingY: "2",
+        borderBottom: "1px solid",
+        borderColor: "gray.100",
       })}
     >
-      <div className={hstack({ gap: '2', color: 'gray.700' })}>
+      <div className={hstack({ gap: "2", color: "gray.700" })}>
         {icon}
-        <span className={css({ fontWeight: 'medium' })}>{label}</span>
+        <span className={css({ fontWeight: "medium" })}>{label}</span>
       </div>
-      <div className={css({ textAlign: 'right', flex: '1' })}>{value}</div>
+      <div className={css({ textAlign: "right", flex: "1" })}>{value}</div>
     </div>
-  )
+  );
 }

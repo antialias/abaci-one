@@ -34,6 +34,7 @@ const [uploadAdjustmentState, setUploadAdjustmentState] = useState<{...} | null>
 ### Callback Sprawl (~15 callbacks)
 
 **Photo Management (10 callbacks to extract):**
+
 - `uploadPhotos`
 - `processNextFile`
 - `handleUploadAdjustmentConfirm`
@@ -47,6 +48,7 @@ const [uploadAdjustmentState, setUploadAdjustmentState] = useState<{...} | null>
 - `deletePhoto`
 
 **Photo Viewer (1 callback to extract):**
+
 - `openViewer`
 
 ### Mutation State Derivation Pattern (repeated 6x)
@@ -71,38 +73,38 @@ parsingId={
 **Create:** `src/types/attachments.ts`
 
 ```typescript
-import type { ParsingStatus } from '@/db/schema/practice-attachments'
+import type { ParsingStatus } from "@/db/schema/practice-attachments";
 
 export interface SessionAttachmentResponse {
-  id: string
-  url: string
-  originalUrl: string | null
-  corners: Array<{ x: number; y: number }> | null
-  rotation: 0 | 90 | 180 | 270
-  parsingStatus: string | null
-  parsedAt: string | null
-  parsingError: string | null
-  rawParsingResult: object | null
-  approvedResult: object | null
-  confidenceScore: number | null
-  needsReview: boolean
-  sessionCreated: boolean
-  createdSessionId: string | null
-  reviewProgress: object | null
+  id: string;
+  url: string;
+  originalUrl: string | null;
+  corners: Array<{ x: number; y: number }> | null;
+  rotation: 0 | 90 | 180 | 270;
+  parsingStatus: string | null;
+  parsedAt: string | null;
+  parsingError: string | null;
+  rawParsingResult: object | null;
+  approvedResult: object | null;
+  confidenceScore: number | null;
+  needsReview: boolean;
+  sessionCreated: boolean;
+  createdSessionId: string | null;
+  reviewProgress: object | null;
   llm: {
-    provider: string | null
-    model: string | null
-    promptUsed: string | null
-    rawResponse: string | null
-    jsonSchema: string | null
-    imageSource: string | null
-    attempts: number | null
+    provider: string | null;
+    model: string | null;
+    promptUsed: string | null;
+    rawResponse: string | null;
+    jsonSchema: string | null;
+    imageSource: string | null;
+    attempts: number | null;
     usage: {
-      promptTokens: number | null
-      completionTokens: number | null
-      totalTokens: number | null
-    }
-  } | null
+      promptTokens: number | null;
+      completionTokens: number | null;
+      totalTokens: number | null;
+    };
+  } | null;
 }
 ```
 
@@ -113,6 +115,7 @@ export interface SessionAttachmentResponse {
 This hook consolidates all photo upload, deletion, and adjustment logic.
 
 **State it manages:**
+
 - `showCamera`
 - `dragOver`
 - `isUploading`
@@ -122,6 +125,7 @@ This hook consolidates all photo upload, deletion, and adjustment logic.
 - `uploadAdjustmentState`
 
 **Callbacks it provides:**
+
 - `uploadPhotos(photos, originals?, corners?, rotations?)`
 - `deletePhoto(attachmentId)`
 - `handleFileSelect(event)`
@@ -139,45 +143,54 @@ This hook consolidates all photo upload, deletion, and adjustment logic.
 
 ```typescript
 interface UsePhotoManagementOptions {
-  studentId: string
-  sessionId: string | undefined
-  onError?: (message: string) => void
+  studentId: string;
+  sessionId: string | undefined;
+  onError?: (message: string) => void;
 }
 
 interface UsePhotoManagementReturn {
   // Camera state
-  showCamera: boolean
-  openCamera: () => void
-  closeCamera: () => void
-  handleCameraCapture: (cropped: File, original: File, corners: Corner[], rotation: Rotation) => void
+  showCamera: boolean;
+  openCamera: () => void;
+  closeCamera: () => void;
+  handleCameraCapture: (
+    cropped: File,
+    original: File,
+    corners: Corner[],
+    rotation: Rotation,
+  ) => void;
 
   // Drag-drop state
-  dragOver: boolean
-  handleDrop: (e: React.DragEvent) => void
-  handleDragOver: (e: React.DragEvent) => void
-  handleDragLeave: () => void
+  dragOver: boolean;
+  handleDrop: (e: React.DragEvent) => void;
+  handleDragOver: (e: React.DragEvent) => void;
+  handleDragLeave: () => void;
 
   // File input
-  handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
+  handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
 
   // Upload state
-  isUploading: boolean
-  uploadError: string | null
+  isUploading: boolean;
+  uploadError: string | null;
 
   // Delete state
-  deletingId: string | null
-  deletePhoto: (attachmentId: string) => Promise<void>
+  deletingId: string | null;
+  deletePhoto: (attachmentId: string) => Promise<void>;
 
   // Document adjustment modal state
-  adjustmentState: AdjustmentState | null
-  handleAdjustmentConfirm: (cropped: File, corners: Corner[], rotation: Rotation) => Promise<void>
-  handleAdjustmentSkip: () => Promise<void>
-  handleAdjustmentCancel: () => void
-  queueLength: number  // For showing "1 of N" in modal
+  adjustmentState: AdjustmentState | null;
+  handleAdjustmentConfirm: (
+    cropped: File,
+    corners: Corner[],
+    rotation: Rotation,
+  ) => Promise<void>;
+  handleAdjustmentSkip: () => Promise<void>;
+  handleAdjustmentCancel: () => void;
+  queueLength: number; // For showing "1 of N" in modal
 
   // OpenCV reference (needed by DocumentAdjuster)
-  opencvRef: typeof cv | null
-  detectQuadsInImage: (canvas: HTMLCanvasElement) => QuadResult
+  opencvRef: typeof cv | null;
+  detectQuadsInImage: (canvas: HTMLCanvasElement) => QuadResult;
 }
 ```
 
@@ -189,28 +202,31 @@ Simpler hook for managing the photo viewer modal state.
 
 ```typescript
 interface UsePhotoViewerReturn {
-  isOpen: boolean
-  index: number
-  mode: 'view' | 'edit' | 'review'
-  open: (index: number, mode?: 'view' | 'edit' | 'review') => void
-  close: () => void
-  setMode: (mode: 'view' | 'edit' | 'review') => void
+  isOpen: boolean;
+  index: number;
+  mode: "view" | "edit" | "review";
+  open: (index: number, mode?: "view" | "edit" | "review") => void;
+  close: () => void;
+  setMode: (mode: "view" | "edit" | "review") => void;
 }
 
 export function usePhotoViewer(): UsePhotoViewerReturn {
-  const [isOpen, setIsOpen] = useState(false)
-  const [index, setIndex] = useState(0)
-  const [mode, setMode] = useState<'view' | 'edit' | 'review'>('view')
+  const [isOpen, setIsOpen] = useState(false);
+  const [index, setIndex] = useState(0);
+  const [mode, setMode] = useState<"view" | "edit" | "review">("view");
 
-  const open = useCallback((idx: number, m: 'view' | 'edit' | 'review' = 'view') => {
-    setIndex(idx)
-    setMode(m)
-    setIsOpen(true)
-  }, [])
+  const open = useCallback(
+    (idx: number, m: "view" | "edit" | "review" = "view") => {
+      setIndex(idx);
+      setMode(m);
+      setIsOpen(true);
+    },
+    [],
+  );
 
-  const close = useCallback(() => setIsOpen(false), [])
+  const close = useCallback(() => setIsOpen(false), []);
 
-  return { isOpen, index, mode, open, close, setMode }
+  return { isOpen, index, mode, open, close, setMode };
 }
 ```
 
@@ -220,9 +236,14 @@ export function usePhotoViewer(): UsePhotoViewerReturn {
 
 ```typescript
 interface CameraModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onCapture: (cropped: File, original: File, corners: Corner[], rotation: Rotation) => void
+  isOpen: boolean;
+  onClose: () => void;
+  onCapture: (
+    cropped: File,
+    original: File,
+    corners: Corner[],
+    rotation: Rotation,
+  ) => void;
 }
 ```
 
@@ -230,13 +251,17 @@ interface CameraModalProps {
 
 ```typescript
 interface DocumentAdjustmentModalProps {
-  state: AdjustmentState | null
-  queueLength: number
-  opencvRef: typeof cv | null
-  detectQuadsInImage: (canvas: HTMLCanvasElement) => QuadResult
-  onConfirm: (cropped: File, corners: Corner[], rotation: Rotation) => Promise<void>
-  onSkip: () => Promise<void>
-  onCancel: () => void
+  state: AdjustmentState | null;
+  queueLength: number;
+  opencvRef: typeof cv | null;
+  detectQuadsInImage: (canvas: HTMLCanvasElement) => QuadResult;
+  onConfirm: (
+    cropped: File,
+    corners: Corner[],
+    rotation: Rotation,
+  ) => Promise<void>;
+  onSkip: () => Promise<void>;
+  onCancel: () => void;
 }
 ```
 
@@ -250,12 +275,17 @@ interface DocumentAdjustmentModalProps {
  * Handles both string and object variable types
  */
 export function getPendingAttachmentId(
-  mutation: UseMutationResult<unknown, unknown, string | { attachmentId: string }, unknown>
+  mutation: UseMutationResult<
+    unknown,
+    unknown,
+    string | { attachmentId: string },
+    unknown
+  >,
 ): string | null {
-  if (!mutation.isPending) return null
-  const vars = mutation.variables
-  if (typeof vars === 'string') return vars
-  return (vars as { attachmentId: string } | undefined)?.attachmentId ?? null
+  if (!mutation.isPending) return null;
+  const vars = mutation.variables;
+  if (typeof vars === "string") return vars;
+  return (vars as { attachmentId: string } | undefined)?.attachmentId ?? null;
 }
 ```
 
@@ -390,14 +420,14 @@ export function SummaryClient({ studentId, player, session, ... }: SummaryClient
 
 ## Expected Results
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Lines in SummaryClient | 1047 | ~450 |
-| useState calls | 15 | 2 |
-| useCallback functions | 15 | 2-3 |
-| Concerns mixed | 7 | 2-3 |
-| Inline types | 1 | 0 |
-| Modal JSX inline | 2 | 0 |
+| Metric                 | Before | After |
+| ---------------------- | ------ | ----- |
+| Lines in SummaryClient | 1047   | ~450  |
+| useState calls         | 15     | 2     |
+| useCallback functions  | 15     | 2-3   |
+| Concerns mixed         | 7      | 2-3   |
+| Inline types           | 1      | 0     |
+| Modal JSX inline       | 2      | 0     |
 
 ---
 

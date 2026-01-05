@@ -14,9 +14,9 @@
  */
 export interface LetterInfo {
   /** The character at this position */
-  char: string
+  char: string;
   /** The actual index in the full string (including spaces) */
-  index: number
+  index: number;
 }
 
 // ============================================================================
@@ -26,7 +26,7 @@ export interface LetterInfo {
 /**
  * Status of a letter in the confirmation sequence.
  */
-export type LetterStatus = 'confirmed' | 'next' | 'pending' | 'beyond-required'
+export type LetterStatus = "confirmed" | "next" | "pending" | "beyond-required";
 
 // ============================================================================
 // Hook Options and Return Types
@@ -37,19 +37,19 @@ export type LetterStatus = 'confirmed' | 'next' | 'pending' | 'beyond-required'
  */
 export interface UseLetterConfirmationOptions {
   /** The current region name to confirm */
-  regionName: string | null
+  regionName: string | null;
   /** Number of letters required to confirm (from assistance config) */
-  requiredLetters: number
+  requiredLetters: number;
   /** Current confirmation progress from shared state */
-  confirmedCount: number
+  confirmedCount: number;
   /** Whether it's this player's turn (for turn-based mode) */
-  isMyTurn: boolean
+  isMyTurn: boolean;
   /** Game mode (affects turn restrictions) */
-  gameMode: 'cooperative' | 'race' | 'turn-based'
+  gameMode: "cooperative" | "race" | "turn-based";
   /** Callback when a letter is confirmed */
-  onConfirmLetter: (letter: string, letterIndex: number) => void
+  onConfirmLetter: (letter: string, letterIndex: number) => void;
   /** Callback when user tries to type but it's not their turn */
-  onNotYourTurn?: () => void
+  onNotYourTurn?: () => void;
 }
 
 /**
@@ -58,17 +58,17 @@ export interface UseLetterConfirmationOptions {
 export interface UseLetterConfirmationReturn {
   // State
   /** Whether all required letters have been confirmed */
-  isComplete: boolean
+  isComplete: boolean;
   /** The next expected letter (for keyboard highlight) */
-  nextExpectedLetter: string | null
+  nextExpectedLetter: string | null;
   /** Progress as a number 0-1 */
-  progress: number
+  progress: number;
   /** Whether name confirmation is required */
-  isRequired: boolean
+  isRequired: boolean;
 
   // For display
   /** Get the status of a letter at a given non-space index */
-  getLetterStatus: (nonSpaceIndex: number) => LetterStatus
+  getLetterStatus: (nonSpaceIndex: number) => LetterStatus;
 }
 
 // ============================================================================
@@ -80,17 +80,17 @@ export interface UseLetterConfirmationReturn {
  */
 export interface LetterDisplayProps {
   /** Region name to display */
-  regionName: string
+  regionName: string;
   /** Number of letters required to confirm */
-  requiredLetters: number
+  requiredLetters: number;
   /** Number of letters already confirmed */
-  confirmedCount: number
+  confirmedCount: number;
   /** Whether all required letters are confirmed */
-  isComplete: boolean
+  isComplete: boolean;
   /** Whether dark mode is active */
-  isDark: boolean
+  isDark: boolean;
   /** Font size for the letters */
-  fontSize?: string | number
+  fontSize?: string | number;
   /** Additional CSS styles */
-  style?: React.CSSProperties
+  style?: React.CSSProperties;
 }

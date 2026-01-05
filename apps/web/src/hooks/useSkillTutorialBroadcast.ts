@@ -1,22 +1,22 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
-import { useStudentPresence } from './useClassroom'
+import { useCallback, useEffect, useRef, useState } from "react";
+import { io, type Socket } from "socket.io-client";
+import { useStudentPresence } from "./useClassroom";
 import type {
   SkillTutorialStateEvent,
   SkillTutorialControlEvent,
   SkillTutorialControlAction,
-} from '@/lib/classroom/socket-events'
-import type { SkillTutorialBroadcastState } from '@/components/tutorial/SkillTutorialLauncher'
+} from "@/lib/classroom/socket-events";
+import type { SkillTutorialBroadcastState } from "@/components/tutorial/SkillTutorialLauncher";
 
-export type { SkillTutorialBroadcastState }
+export type { SkillTutorialBroadcastState };
 
 interface UseSkillTutorialBroadcastResult {
   /** Whether connected to the socket */
-  isConnected: boolean
+  isConnected: boolean;
   /** Whether actively broadcasting */
-  isBroadcasting: boolean
+  isBroadcasting: boolean;
 }
 
 /**
@@ -34,36 +34,36 @@ export function useSkillTutorialBroadcast(
   playerId: string | undefined,
   playerName: string | undefined,
   state: SkillTutorialBroadcastState | null,
-  onControlReceived?: (action: SkillTutorialControlAction) => void
+  onControlReceived?: (action: SkillTutorialControlAction) => void,
 ): UseSkillTutorialBroadcastResult {
-  const socketRef = useRef<Socket | null>(null)
-  const [isConnected, setIsConnected] = useState(false)
+  const socketRef = useRef<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
   // Keep state in a ref so socket event handlers can access current state
-  const stateRef = useRef<SkillTutorialBroadcastState | null>(null)
-  stateRef.current = state
+  const stateRef = useRef<SkillTutorialBroadcastState | null>(null);
+  stateRef.current = state;
 
   // Keep callback in ref to avoid effect re-runs when callback changes
-  const onControlReceivedRef = useRef(onControlReceived)
-  onControlReceivedRef.current = onControlReceived
+  const onControlReceivedRef = useRef(onControlReceived);
+  onControlReceivedRef.current = onControlReceived;
 
   // Keep player info in refs for stable socket event handlers
-  const playerIdRef = useRef(playerId)
-  playerIdRef.current = playerId
-  const playerNameRef = useRef(playerName)
-  playerNameRef.current = playerName
+  const playerIdRef = useRef(playerId);
+  playerIdRef.current = playerId;
+  const playerNameRef = useRef(playerName);
+  playerNameRef.current = playerName;
 
   // Check if student is present in a classroom
-  const { data: presence } = useStudentPresence(playerId)
-  const isInClassroom = !!presence?.classroomId
-  const classroomId = presence?.classroomId
+  const { data: presence } = useStudentPresence(playerId);
+  const isInClassroom = !!presence?.classroomId;
+  const classroomId = presence?.classroomId;
 
   // Helper to broadcast current state (uses refs, no dependencies that change)
   const broadcastState = useCallback(() => {
-    const currentState = stateRef.current
-    const pid = playerIdRef.current
-    const pname = playerNameRef.current
+    const currentState = stateRef.current;
+    const pid = playerIdRef.current;
+    const pname = playerNameRef.current;
     if (!socketRef.current?.connected || !pid || !pname || !currentState) {
-      return
+      return;
     }
 
     const event: SkillTutorialStateEvent = {
@@ -73,118 +73,125 @@ export function useSkillTutorialBroadcast(
       skillId: currentState.skillId,
       skillTitle: currentState.skillTitle,
       tutorialState: currentState.tutorialState,
-    }
+    };
 
-    socketRef.current.emit('skill-tutorial-state', event)
-    console.log('[SkillTutorialBroadcast] Emitted skill-tutorial-state:', {
+    socketRef.current.emit("skill-tutorial-state", event);
+    console.log("[SkillTutorialBroadcast] Emitted skill-tutorial-state:", {
       launcherState: currentState.launcherState,
       skillId: currentState.skillId,
       hasTutorialState: !!currentState.tutorialState,
       tutorialStep: currentState.tutorialState?.currentStepIndex,
-    })
-  }, []) // No dependencies - uses refs
+    });
+  }, []); // No dependencies - uses refs
 
   // Connect to socket and join classroom channel when in classroom with active tutorial
   // Only depends on: whether we have a state, whether we're in classroom, and classroom ID
-  const shouldConnect = !!state && !!playerId && !!playerName && isInClassroom && !!classroomId
+  const shouldConnect =
+    !!state && !!playerId && !!playerName && isInClassroom && !!classroomId;
 
   // Store classroomId in ref for use in socket handlers
-  const classroomIdRef = useRef(classroomId)
-  classroomIdRef.current = classroomId
+  const classroomIdRef = useRef(classroomId);
+  classroomIdRef.current = classroomId;
 
   useEffect(() => {
     // Track if this effect is still mounted
-    let isMounted = true
+    let isMounted = true;
 
     if (!shouldConnect || !classroomId) {
       // Clean up if we were connected
       if (socketRef.current) {
         console.log(
-          '[SkillTutorialBroadcast] Disconnecting - no longer in classroom or tutorial ended'
-        )
-        socketRef.current.disconnect()
-        socketRef.current = null
-        setIsConnected(false)
+          "[SkillTutorialBroadcast] Disconnecting - no longer in classroom or tutorial ended",
+        );
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setIsConnected(false);
       }
-      return
+      return;
     }
 
     // Already connected to the same classroom? Don't create a new socket
     if (socketRef.current?.connected) {
-      console.log('[SkillTutorialBroadcast] Already connected, skipping socket creation')
-      return
+      console.log(
+        "[SkillTutorialBroadcast] Already connected, skipping socket creation",
+      );
+      return;
     }
 
     // Clean up any existing socket before creating a new one
     if (socketRef.current) {
-      console.log('[SkillTutorialBroadcast] Cleaning up existing disconnected socket')
-      socketRef.current.disconnect()
-      socketRef.current = null
+      console.log(
+        "[SkillTutorialBroadcast] Cleaning up existing disconnected socket",
+      );
+      socketRef.current.disconnect();
+      socketRef.current = null;
     }
 
     // Create socket connection
     console.log(
-      '[SkillTutorialBroadcast] Creating new socket connection for classroom:',
-      classroomId
-    )
+      "[SkillTutorialBroadcast] Creating new socket connection for classroom:",
+      classroomId,
+    );
     const socket = io({
-      path: '/api/socket',
+      path: "/api/socket",
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
-    })
-    socketRef.current = socket
+    });
+    socketRef.current = socket;
 
-    const currentClassroomId = classroomId // Capture for closure
+    const currentClassroomId = classroomId; // Capture for closure
 
-    socket.on('connect', () => {
+    socket.on("connect", () => {
       // Only proceed if still mounted
       if (!isMounted) {
-        console.log('[SkillTutorialBroadcast] Connected but effect unmounted, ignoring')
-        return
+        console.log(
+          "[SkillTutorialBroadcast] Connected but effect unmounted, ignoring",
+        );
+        return;
       }
       console.log(
-        '[SkillTutorialBroadcast] Connected, joining classroom channel:',
-        currentClassroomId
-      )
-      setIsConnected(true)
+        "[SkillTutorialBroadcast] Connected, joining classroom channel:",
+        currentClassroomId,
+      );
+      setIsConnected(true);
       // Join the classroom channel for skill tutorial events
-      socket.emit('join-classroom', { classroomId: currentClassroomId })
+      socket.emit("join-classroom", { classroomId: currentClassroomId });
       // Broadcast current state immediately
-      broadcastState()
-    })
+      broadcastState();
+    });
 
-    socket.on('disconnect', () => {
-      if (!isMounted) return
-      console.log('[SkillTutorialBroadcast] Disconnected')
-      setIsConnected(false)
-    })
+    socket.on("disconnect", () => {
+      if (!isMounted) return;
+      console.log("[SkillTutorialBroadcast] Disconnected");
+      setIsConnected(false);
+    });
 
     // Listen for control events from teacher
-    socket.on('skill-tutorial-control', (data: SkillTutorialControlEvent) => {
-      if (!isMounted) return
+    socket.on("skill-tutorial-control", (data: SkillTutorialControlEvent) => {
+      if (!isMounted) return;
       // Only handle events for this player - use ref for current value
-      if (data.playerId !== playerIdRef.current) return
+      if (data.playerId !== playerIdRef.current) return;
 
-      console.log('[SkillTutorialBroadcast] Received control:', data.action)
-      onControlReceivedRef.current?.(data.action)
-    })
+      console.log("[SkillTutorialBroadcast] Received control:", data.action);
+      onControlReceivedRef.current?.(data.action);
+    });
 
     return () => {
-      isMounted = false
-      console.log('[SkillTutorialBroadcast] Cleaning up socket connection')
-      socket.emit('leave-classroom', { classroomId: currentClassroomId })
-      socket.disconnect()
-      socketRef.current = null
-      setIsConnected(false)
-    }
+      isMounted = false;
+      console.log("[SkillTutorialBroadcast] Cleaning up socket connection");
+      socket.emit("leave-classroom", { classroomId: currentClassroomId });
+      socket.disconnect();
+      socketRef.current = null;
+      setIsConnected(false);
+    };
     // Only re-run when shouldConnect or classroomId actually changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldConnect, classroomId])
+  }, [shouldConnect, classroomId]);
 
   // Broadcast state changes
   useEffect(() => {
-    broadcastState()
+    broadcastState();
   }, [
     broadcastState,
     state?.launcherState,
@@ -193,10 +200,10 @@ export function useSkillTutorialBroadcast(
     state?.tutorialState?.currentMultiStep,
     state?.tutorialState?.currentValue,
     state?.tutorialState?.isStepCompleted,
-  ])
+  ]);
 
   return {
     isConnected,
     isBroadcasting: isConnected && isInClassroom && !!state,
-  }
+  };
 }

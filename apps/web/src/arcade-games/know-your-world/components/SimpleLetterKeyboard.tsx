@@ -1,23 +1,23 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useRef } from 'react'
-import Keyboard from 'react-simple-keyboard'
-import 'react-simple-keyboard/build/css/index.css'
-import { css } from '@styled/css'
-import { useIsTouchDevice } from '../hooks/useDeviceCapabilities'
+import { useCallback, useEffect, useRef } from "react";
+import Keyboard from "react-simple-keyboard";
+import "react-simple-keyboard/build/css/index.css";
+import { css } from "@styled/css";
+import { useIsTouchDevice } from "../hooks/useDeviceCapabilities";
 
 // Re-export for backwards compatibility
-export { useIsTouchDevice } from '../hooks/useDeviceCapabilities'
+export { useIsTouchDevice } from "../hooks/useDeviceCapabilities";
 
 interface SimpleLetterKeyboardProps {
   /** Whether to show uppercase or lowercase letters */
-  uppercase: boolean
+  uppercase: boolean;
   /** Called when a letter is pressed */
-  onKeyPress: (letter: string) => void
+  onKeyPress: (letter: string) => void;
   /** Whether the keyboard is in dark mode */
-  isDark?: boolean
+  isDark?: boolean;
   /** Force show keyboard even on non-touch devices (for testing/storybook) */
-  forceShow?: boolean
+  forceShow?: boolean;
 }
 
 /**
@@ -32,57 +32,57 @@ export function SimpleLetterKeyboard({
   isDark = false,
   forceShow = false,
 }: SimpleLetterKeyboardProps) {
-  const keyboardRef = useRef<any>(null)
-  const isTouchDevice = useIsTouchDevice()
+  const keyboardRef = useRef<any>(null);
+  const isTouchDevice = useIsTouchDevice();
 
   // Define a letters-only layout (no space bar - region names don't have spaces in first 3 chars)
   const layout = {
     default: uppercase
-      ? ['Q W E R T Y U I O P', 'A S D F G H J K L', 'Z X C V B N M']
-      : ['q w e r t y u i o p', 'a s d f g h j k l', 'z x c v b n m'],
-  }
+      ? ["Q W E R T Y U I O P", "A S D F G H J K L", "Z X C V B N M"]
+      : ["q w e r t y u i o p", "a s d f g h j k l", "z x c v b n m"],
+  };
 
   const handleKeyPress = useCallback(
     (button: string) => {
-      onKeyPress(button)
+      onKeyPress(button);
     },
-    [onKeyPress]
-  )
+    [onKeyPress],
+  );
 
   // Prevent keyboard from stealing focus and causing issues
   useEffect(() => {
     // The keyboard should not focus anything
-    const keyboard = keyboardRef.current
+    const keyboard = keyboardRef.current;
     if (keyboard?.keyboardDOM) {
-      keyboard.keyboardDOM.addEventListener('mousedown', (e: MouseEvent) => {
-        e.preventDefault()
-      })
-      keyboard.keyboardDOM.addEventListener('touchstart', (e: TouchEvent) => {
-        e.preventDefault()
-      })
+      keyboard.keyboardDOM.addEventListener("mousedown", (e: MouseEvent) => {
+        e.preventDefault();
+      });
+      keyboard.keyboardDOM.addEventListener("touchstart", (e: TouchEvent) => {
+        e.preventDefault();
+      });
     }
-  }, [])
+  }, []);
 
   // Don't render on non-touch devices (desktop with mouse/keyboard) unless forceShow is true
   if (!isTouchDevice && !forceShow) {
-    return null
+    return null;
   }
 
   // Use actual CSS color values since Panda tokens don't work in nested selectors
   const colors = {
-    keyboardBg: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-    keyboardBorder: isDark ? '#475569' : '#cbd5e1',
-    buttonBg: isDark ? '#334155' : '#f1f5f9',
-    buttonColor: isDark ? '#ffffff' : '#0f172a',
-    buttonBorder: isDark ? '#475569' : '#cbd5e1',
-    buttonActiveBg: isDark ? '#2563eb' : '#3b82f6',
-  }
+    keyboardBg: isDark ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.98)",
+    keyboardBorder: isDark ? "#475569" : "#cbd5e1",
+    buttonBg: isDark ? "#334155" : "#f1f5f9",
+    buttonColor: isDark ? "#ffffff" : "#0f172a",
+    buttonBorder: isDark ? "#475569" : "#cbd5e1",
+    buttonActiveBg: isDark ? "#2563eb" : "#3b82f6",
+  };
 
   return (
     <div
       data-element="simple-letter-keyboard"
       className={css({
-        width: '100%',
+        width: "100%",
       })}
     >
       <style>{`
@@ -131,5 +131,5 @@ export function SimpleLetterKeyboard({
         />
       </div>
     </div>
-  )
+  );
 }

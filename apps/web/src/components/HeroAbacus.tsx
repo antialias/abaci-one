@@ -1,9 +1,13 @@
-'use client'
+"use client";
 
-import { useEffect, useRef } from 'react'
-import { AbacusReact, useAbacusConfig, ABACUS_THEMES } from '@soroban/abacus-react'
-import { css } from '../../styled-system/css'
-import { useHomeHero } from '../contexts/HomeHeroContext'
+import { useEffect, useRef } from "react";
+import {
+  AbacusReact,
+  useAbacusConfig,
+  ABACUS_THEMES,
+} from "@soroban/abacus-react";
+import { css } from "../../styled-system/css";
+import { useHomeHero } from "../contexts/HomeHeroContext";
 
 export function HeroAbacus() {
   const {
@@ -13,91 +17,92 @@ export function HeroAbacus() {
     setIsHeroVisible,
     isAbacusLoaded,
     isSubtitleLoaded,
-  } = useHomeHero()
-  const appConfig = useAbacusConfig()
-  const heroRef = useRef<HTMLDivElement>(null)
+  } = useHomeHero();
+  const appConfig = useAbacusConfig();
+  const heroRef = useRef<HTMLDivElement>(null);
 
   // Use theme preset from abacus-react instead of manual definition
-  const structuralStyles = ABACUS_THEMES.light
+  const structuralStyles = ABACUS_THEMES.light;
 
   // Detect when hero scrolls out of view
   useEffect(() => {
-    if (!heroRef.current) return
+    if (!heroRef.current) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         // Hero is visible if more than 20% is in viewport
-        setIsHeroVisible(entry.intersectionRatio > 0.2)
+        setIsHeroVisible(entry.intersectionRatio > 0.2);
       },
       {
         threshold: [0, 0.2, 0.5, 1],
-      }
-    )
+      },
+    );
 
-    observer.observe(heroRef.current)
+    observer.observe(heroRef.current);
 
-    return () => observer.disconnect()
-  }, [setIsHeroVisible])
+    return () => observer.disconnect();
+  }, [setIsHeroVisible]);
 
   return (
     <div
       ref={heroRef}
       className={css({
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        bg: 'gray.900',
-        position: 'relative',
-        overflow: 'hidden',
-        px: '4',
-        py: '12',
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "space-between",
+        bg: "gray.900",
+        position: "relative",
+        overflow: "hidden",
+        px: "4",
+        py: "12",
       })}
     >
       {/* Background pattern */}
       <div
         className={css({
-          position: 'absolute',
+          position: "absolute",
           inset: 0,
           opacity: 0.1,
           backgroundImage:
-            'radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.15) 1px, transparent 0)',
-          backgroundSize: '40px 40px',
+            "radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.15) 1px, transparent 0)",
+          backgroundSize: "40px 40px",
         })}
       />
 
       {/* Title and Subtitle Section - DIRECT CHILD */}
       <div
         className={css({
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '2',
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "2",
           zIndex: 10,
         })}
       >
         <h1
           className={css({
-            fontSize: { base: '4xl', md: '6xl', lg: '7xl' },
-            fontWeight: 'bold',
-            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
-            backgroundClip: 'text',
-            color: 'transparent',
+            fontSize: { base: "4xl", md: "6xl", lg: "7xl" },
+            fontWeight: "bold",
+            background:
+              "linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)",
+            backgroundClip: "text",
+            color: "transparent",
           })}
         >
           Abaci One
         </h1>
         <p
           className={css({
-            fontSize: { base: 'xl', md: '2xl' },
-            fontWeight: 'medium',
-            color: 'purple.300',
-            fontStyle: 'italic',
-            marginBottom: '8',
+            fontSize: { base: "xl", md: "2xl" },
+            fontWeight: "medium",
+            color: "purple.300",
+            fontStyle: "italic",
+            marginBottom: "8",
             opacity: isSubtitleLoaded ? 1 : 0,
-            transition: 'opacity 0.5s ease-in-out',
+            transition: "opacity 0.5s ease-in-out",
           })}
         >
           {subtitle.text}
@@ -107,26 +112,26 @@ export function HeroAbacus() {
       {/* Large Interactive Abacus - DIRECT CHILD */}
       <div
         className={css({
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flex: '1',
-          width: '100%',
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flex: "1",
+          width: "100%",
           zIndex: 10,
           opacity: isAbacusLoaded ? 1 : 0,
-          transition: 'opacity 0.5s ease-in-out',
+          transition: "opacity 0.5s ease-in-out",
         })}
       >
         <div
           className={css({
             transform: {
-              base: 'scale(3.5)',
-              md: 'scale(3.5)',
-              lg: 'scale(4.25)',
+              base: "scale(3.5)",
+              md: "scale(3.5)",
+              lg: "scale(4.25)",
             },
-            transformOrigin: 'center center',
-            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            transformOrigin: "center center",
+            transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
           })}
         >
           <AbacusReact
@@ -145,14 +150,14 @@ export function HeroAbacus() {
       {/* Subtle hint to scroll - DIRECT CHILD */}
       <div
         className={css({
-          position: 'relative',
-          fontSize: 'sm',
-          color: 'gray.400',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '2',
-          animation: 'bounce 2s ease-in-out infinite',
+          position: "relative",
+          fontSize: "sm",
+          color: "gray.400",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "2",
+          animation: "bounce 2s ease-in-out infinite",
           zIndex: 10,
         })}
       >
@@ -178,5 +183,5 @@ export function HeroAbacus() {
         }}
       />
     </div>
-  )
+  );
 }

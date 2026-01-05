@@ -1,7 +1,7 @@
 // Operator overlay for subtraction problems
 // Rendered last to ensure proper layering over all other elements
 
-import type { CellDimensions } from '../shared/types'
+import type { CellDimensions } from "../shared/types";
 
 /**
  * Generate Typst code for the operator overlay
@@ -13,8 +13,10 @@ import type { CellDimensions } from '../shared/types'
  * @param cellDimensions - Cell sizing information
  * @returns Typst code for operator overlay using place()
  */
-export function generateOperatorOverlay(cellDimensions: CellDimensions): string {
-  const { cellSizeIn, cellSizePt } = cellDimensions
+export function generateOperatorOverlay(
+  cellDimensions: CellDimensions,
+): string {
+  const { cellSizeIn, cellSizePt } = cellDimensions;
 
   // The operator should be positioned at the subtrahend row level
   // Borrow boxes row height + minuend row height = 2 * cellSize from top
@@ -35,5 +37,5 @@ export function generateOperatorOverlay(cellDimensions: CellDimensions): string 
           #text(size: ${(cellSizePt * 0.8).toFixed(1)}pt)[−]
         ]
       ]
-    )`
+    )`;
 }

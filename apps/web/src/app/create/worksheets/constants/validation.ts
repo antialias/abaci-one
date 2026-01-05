@@ -32,7 +32,7 @@ export const WORKSHEET_LIMITS = {
     MIN: 8,
     MAX: 32,
   },
-} as const
+} as const;
 
 /**
  * Validate that worksheet config doesn't exceed limits
@@ -41,33 +41,33 @@ export const WORKSHEET_LIMITS = {
  */
 export function validateWorksheetLimits(
   problemsPerPage: number,
-  pages: number
+  pages: number,
 ): {
-  valid: boolean
-  error?: string
+  valid: boolean;
+  error?: string;
 } {
-  const total = problemsPerPage * pages
+  const total = problemsPerPage * pages;
 
   if (total > WORKSHEET_LIMITS.MAX_TOTAL_PROBLEMS) {
     return {
       valid: false,
       error: `Total problems (${total}) exceeds maximum of ${WORKSHEET_LIMITS.MAX_TOTAL_PROBLEMS}`,
-    }
+    };
   }
 
   if (problemsPerPage > WORKSHEET_LIMITS.MAX_PROBLEMS_PER_PAGE) {
     return {
       valid: false,
       error: `Problems per page (${problemsPerPage}) exceeds maximum of ${WORKSHEET_LIMITS.MAX_PROBLEMS_PER_PAGE}`,
-    }
+    };
   }
 
   if (pages > WORKSHEET_LIMITS.MAX_PAGES) {
     return {
       valid: false,
       error: `Pages (${pages}) exceeds maximum of ${WORKSHEET_LIMITS.MAX_PAGES}`,
-    }
+    };
   }
 
-  return { valid: true }
+  return { valid: true };
 }

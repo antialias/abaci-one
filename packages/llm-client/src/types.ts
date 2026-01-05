@@ -65,6 +65,11 @@ export interface LLMRequest<T extends z.ZodType> {
    * Higher values = better reasoning but more tokens/latency
    */
   reasoningEffort?: ReasoningEffort;
+  /**
+   * Request timeout in milliseconds (default: 120000 = 2 minutes)
+   * Set to 0 for no timeout (not recommended)
+   */
+  timeoutMs?: number;
 }
 
 /**
@@ -139,6 +144,8 @@ export interface ProviderRequest {
   validationFeedback?: ValidationFeedback;
   /** Reasoning effort level (for GPT-5.2+ models) */
   reasoningEffort?: ReasoningEffort;
+  /** Request timeout in milliseconds */
+  timeoutMs?: number;
 }
 
 /**
@@ -264,3 +271,148 @@ export class LLMJsonParseError extends Error {
     this.name = "LLMJsonParseError";
   }
 }
+
+/**
+ * Error thrown when LLM request times out
+ */
+export class LLMTimeoutError extends Error {
+  constructor(
+    public readonly provider: string,
+    public readonly timeoutMs: number,
+  ) {
+    super(
+      `${provider} request timed out after ${Math.round(timeoutMs / 1000)}s. The API server may be overloaded.`,
+    );
+    this.name = "LLMTimeoutError";
+  }
+}
+
+/**
+ * Error thrown when network connection fails
+ */
+export class LLMNetworkError extends Error {
+  constructor(
+    public readonly provider: string,
+    public readonly cause?: Error,
+  ) {
+    const causeMessage = cause?.message ?? "Unknown network error";
+    super(`${provider} network error: ${causeMessage}`);
+    this.name = "LLMNetworkError";
+  }
+}
+
+// ============================================================================
+// Streaming Types (for Responses API)
+// ============================================================================
+
+/**
+ * Configuration for reasoning in streaming requests
+ */
+export interface ReasoningConfig {
+  /** How much reasoning effort to apply */
+  effort: ReasoningEffort;
+  /** Whether to include reasoning summaries ("auto" = detailed summaries) */
+  summary?: "auto" | "concise" | "detailed";
+}
+
+/**
+ * Request for streaming LLM call
+ */
+export interface LLMStreamRequest<T extends z.ZodType> {
+  /** The prompt to send to the LLM */
+  prompt: string;
+  /** Base64 data URLs for vision requests */
+  images?: string[];
+  /** Zod schema for response validation */
+  schema: T;
+  /** Override default provider */
+  provider?: string;
+  /** Override default model */
+  model?: string;
+  /** Reasoning configuration (enables reasoning summaries when set) */
+  reasoning?: ReasoningConfig;
+  /**
+   * Request timeout in milliseconds (default: 300000 = 5 minutes for streaming)
+   * Streaming requests typically take longer, so default is higher
+   */
+  timeoutMs?: number;
+}
+
+/**
+ * Base streaming event
+ */
+interface StreamEventBase {
+  /** Sequence number for ordering */
+  sequence?: number;
+}
+
+/**
+ * Event when stream starts
+ */
+export interface StreamEventStarted extends StreamEventBase {
+  type: "started";
+  /** Response ID from the API */
+  responseId: string;
+}
+
+/**
+ * Event for reasoning summary text (the "thinking" process)
+ */
+export interface StreamEventReasoning extends StreamEventBase {
+  type: "reasoning";
+  /** The reasoning summary text */
+  text: string;
+  /** Index of the summary part (for multi-step reasoning) */
+  summaryIndex: number;
+  /** Whether this is a delta (partial) or complete text */
+  isDelta: boolean;
+}
+
+/**
+ * Event for output text delta
+ */
+export interface StreamEventOutputDelta extends StreamEventBase {
+  type: "output_delta";
+  /** The partial output text */
+  text: string;
+  /** Index of the output item */
+  outputIndex: number;
+}
+
+/**
+ * Event when an error occurs during streaming
+ */
+export interface StreamEventError extends StreamEventBase {
+  type: "error";
+  /** Error message */
+  message: string;
+  /** Error code if available */
+  code?: string;
+}
+
+/**
+ * Event when streaming completes successfully
+ */
+export interface StreamEventComplete<T> extends StreamEventBase {
+  type: "complete";
+  /** The validated response data */
+  data: T;
+  /** Token usage statistics */
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    reasoningTokens?: number;
+  };
+  /** Raw JSON response */
+  rawResponse: string;
+}
+
+/**
+ * Union of all streaming event types
+ */
+export type StreamEvent<T> =
+  | StreamEventStarted
+  | StreamEventReasoning
+  | StreamEventOutputDelta
+  | StreamEventError
+  | StreamEventComplete<T>;

@@ -1,15 +1,18 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useDocumentDetection } from '@/components/practice/useDocumentDetection'
-import { css } from '../../../../../styled-system/css'
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useDocumentDetection } from "@/components/practice/useDocumentDetection";
+import { css } from "../../../../../styled-system/css";
 
 // Dynamic import for DocumentAdjuster (pulls in OpenCV)
 const DocumentAdjuster = dynamic(
-  () => import('@/components/practice/DocumentAdjuster').then((m) => m.DocumentAdjuster),
-  { ssr: false }
-)
+  () =>
+    import("@/components/practice/DocumentAdjuster").then(
+      (m) => m.DocumentAdjuster,
+    ),
+  { ssr: false },
+);
 
 interface FullscreenCameraProps {
   /** Called with cropped file, original file, corners, and rotation for later re-editing */
@@ -17,30 +20,33 @@ interface FullscreenCameraProps {
     croppedFile: File,
     originalFile: File,
     corners: Array<{ x: number; y: number }>,
-    rotation: 0 | 90 | 180 | 270
-  ) => void
-  onClose: () => void
+    rotation: 0 | 90 | 180 | 270,
+  ) => void;
+  onClose: () => void;
 }
 
-export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const overlayCanvasRef = useRef<HTMLCanvasElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const animationFrameRef = useRef<number | null>(null)
-  const lastDetectionRef = useRef<number>(0)
-  const autoCaptureTriggeredRef = useRef(false)
+export function FullscreenCamera({
+  onCapture,
+  onClose,
+}: FullscreenCameraProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastDetectionRef = useRef<number>(0);
+  const autoCaptureTriggeredRef = useRef(false);
 
-  const [isReady, setIsReady] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [isCapturing, setIsCapturing] = useState(false)
-  const [documentDetected, setDocumentDetected] = useState(false)
+  const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [documentDetected, setDocumentDetected] = useState(false);
 
   // Adjustment mode state
   const [adjustmentMode, setAdjustmentMode] = useState<{
-    sourceCanvas: HTMLCanvasElement
-    corners: Array<{ x: number; y: number }>
-  } | null>(null)
+    sourceCanvas: HTMLCanvasElement;
+    corners: Array<{ x: number; y: number }>;
+  } | null>(null);
 
   // Document detection hook (lazy loads OpenCV.js)
   const {
@@ -55,123 +61,125 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
     captureSourceFrame,
     highlightDocument,
     detectQuadsInImage: detectQuadsInCamera,
-  } = useDocumentDetection()
+  } = useDocumentDetection();
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     const startCamera = async () => {
       try {
         // Start loading OpenCV in parallel with camera setup
         // (this component requires OpenCV for document detection)
-        const opencvPromise = ensureOpenCVLoaded()
+        const opencvPromise = ensureOpenCVLoaded();
 
         const constraints: MediaStreamConstraints = {
           video: {
-            facingMode: { ideal: 'environment' },
+            facingMode: { ideal: "environment" },
             width: { ideal: 1920 },
             height: { ideal: 1080 },
           },
           audio: false,
-        }
+        };
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints)
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
         if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop())
-          return
+          stream.getTracks().forEach((track) => track.stop());
+          return;
         }
 
-        streamRef.current = stream
+        streamRef.current = stream;
 
         if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          await videoRef.current.play()
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
           if (!cancelled) {
-            setIsReady(true)
+            setIsReady(true);
           }
         }
 
         // Wait for OpenCV to finish loading (should already be done or almost done)
-        await opencvPromise
+        await opencvPromise;
       } catch (err) {
-        if (cancelled) return
-        console.error('Camera access error:', err)
-        setError('Camera access denied. Please allow camera access and try again.')
+        if (cancelled) return;
+        console.error("Camera access error:", err);
+        setError(
+          "Camera access denied. Please allow camera access and try again.",
+        );
       }
-    }
+    };
 
-    startCamera()
+    startCamera();
 
     return () => {
-      cancelled = true
+      cancelled = true;
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop())
-        streamRef.current = null
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
-    }
-  }, [ensureOpenCVLoaded])
+    };
+  }, [ensureOpenCVLoaded]);
 
   // Detection loop - runs when camera and scanner are ready
   useEffect(() => {
-    if (!isReady || !isScannerReady) return
+    if (!isReady || !isScannerReady) return;
 
-    const video = videoRef.current
-    const overlay = overlayCanvasRef.current
-    if (!video || !overlay) return
+    const video = videoRef.current;
+    const overlay = overlayCanvasRef.current;
+    if (!video || !overlay) return;
 
     // Sync overlay canvas size with video
     const syncCanvasSize = () => {
       if (overlay && video) {
-        overlay.width = video.clientWidth
-        overlay.height = video.clientHeight
+        overlay.width = video.clientWidth;
+        overlay.height = video.clientHeight;
       }
-    }
-    syncCanvasSize()
+    };
+    syncCanvasSize();
 
     const detectLoop = () => {
-      const now = Date.now()
+      const now = Date.now();
       // Throttle detection to every 150ms for performance
       if (now - lastDetectionRef.current > 150) {
         if (video && overlay) {
-          const detected = highlightDocument(video, overlay)
-          setDocumentDetected(detected)
+          const detected = highlightDocument(video, overlay);
+          setDocumentDetected(detected);
         }
-        lastDetectionRef.current = now
+        lastDetectionRef.current = now;
       }
-      animationFrameRef.current = requestAnimationFrame(detectLoop)
-    }
+      animationFrameRef.current = requestAnimationFrame(detectLoop);
+    };
 
     // Start detection loop
-    animationFrameRef.current = requestAnimationFrame(detectLoop)
+    animationFrameRef.current = requestAnimationFrame(detectLoop);
 
     // Sync on resize
-    window.addEventListener('resize', syncCanvasSize)
+    window.addEventListener("resize", syncCanvasSize);
 
     return () => {
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-        animationFrameRef.current = null
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
-      window.removeEventListener('resize', syncCanvasSize)
-    }
-  }, [isReady, isScannerReady, highlightDocument])
+      window.removeEventListener("resize", syncCanvasSize);
+    };
+  }, [isReady, isScannerReady, highlightDocument]);
 
   // Enter adjustment mode with captured frame and detected corners
   // Always shows the adjustment UI - uses fallback corners if no quad detected
   const enterAdjustmentMode = useCallback(() => {
-    if (!videoRef.current) return
+    if (!videoRef.current) return;
 
-    const video = videoRef.current
-    const sourceCanvas = captureSourceFrame(video)
-    const detectedCorners = getBestQuadCorners()
+    const video = videoRef.current;
+    const sourceCanvas = captureSourceFrame(video);
+    const detectedCorners = getBestQuadCorners();
 
-    if (!sourceCanvas) return
+    if (!sourceCanvas) return;
 
     // Stop detection loop while adjusting
     if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
 
     // Use detected corners if available, otherwise use full image bounds as fallback
@@ -181,18 +189,18 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
       { x: sourceCanvas.width, y: 0 },
       { x: sourceCanvas.width, y: sourceCanvas.height },
       { x: 0, y: sourceCanvas.height },
-    ]
+    ];
 
-    setAdjustmentMode({ sourceCanvas, corners })
-  }, [captureSourceFrame, getBestQuadCorners])
+    setAdjustmentMode({ sourceCanvas, corners });
+  }, [captureSourceFrame, getBestQuadCorners]);
 
   // Handle capture button - enters adjustment mode if document detected
   const capturePhoto = () => {
-    if (isCapturing) return
-    setIsCapturing(true)
-    enterAdjustmentMode()
-    setIsCapturing(false)
-  }
+    if (isCapturing) return;
+    setIsCapturing(true);
+    enterAdjustmentMode();
+    setIsCapturing(false);
+  };
 
   // Auto-capture when detection is locked and stable
   useEffect(() => {
@@ -207,66 +215,80 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
       // Add a small delay to ensure stability
       const timeout = setTimeout(() => {
         if (isDetectionLocked && !autoCaptureTriggeredRef.current) {
-          autoCaptureTriggeredRef.current = true
-          console.log('Auto-capturing document...')
-          enterAdjustmentMode()
+          autoCaptureTriggeredRef.current = true;
+          console.log("Auto-capturing document...");
+          enterAdjustmentMode();
         }
-      }, 500) // 500ms delay after lock to ensure stability
+      }, 500); // 500ms delay after lock to ensure stability
 
-      return () => clearTimeout(timeout)
+      return () => clearTimeout(timeout);
     }
-  }, [isDetectionLocked, isReady, isScannerReady, isCapturing, adjustmentMode, enterAdjustmentMode])
+  }, [
+    isDetectionLocked,
+    isReady,
+    isScannerReady,
+    isCapturing,
+    adjustmentMode,
+    enterAdjustmentMode,
+  ]);
 
   // Handle adjustment confirm - pass cropped file, original file, corners, and rotation for later re-editing
   const handleAdjustmentConfirm = useCallback(
     async (
       croppedFile: File,
       corners: Array<{ x: number; y: number }>,
-      rotation: 0 | 90 | 180 | 270
+      rotation: 0 | 90 | 180 | 270,
     ) => {
-      if (!adjustmentMode) return
+      if (!adjustmentMode) return;
 
       // Convert source canvas to file for original preservation
       const originalBlob = await new Promise<Blob>((resolve, reject) => {
         adjustmentMode.sourceCanvas.toBlob(
           (b) => {
-            if (b) resolve(b)
-            else reject(new Error('Failed to create original blob'))
+            if (b) resolve(b);
+            else reject(new Error("Failed to create original blob"));
           },
-          'image/jpeg',
-          0.95
-        )
-      })
-      const originalFile = new File([originalBlob], `original-${Date.now()}.jpg`, {
-        type: 'image/jpeg',
-      })
+          "image/jpeg",
+          0.95,
+        );
+      });
+      const originalFile = new File(
+        [originalBlob],
+        `original-${Date.now()}.jpg`,
+        {
+          type: "image/jpeg",
+        },
+      );
 
-      setAdjustmentMode(null)
-      onCapture(croppedFile, originalFile, corners, rotation)
+      setAdjustmentMode(null);
+      onCapture(croppedFile, originalFile, corners, rotation);
     },
-    [onCapture, adjustmentMode]
-  )
+    [onCapture, adjustmentMode],
+  );
 
   // Handle adjustment cancel - return to camera
   const handleAdjustmentCancel = useCallback(() => {
-    setAdjustmentMode(null)
-    autoCaptureTriggeredRef.current = false // Allow auto-capture again
+    setAdjustmentMode(null);
+    autoCaptureTriggeredRef.current = false; // Allow auto-capture again
     // Restart detection loop
     if (videoRef.current && overlayCanvasRef.current && isScannerReady) {
       const detectLoop = () => {
-        const now = Date.now()
+        const now = Date.now();
         if (now - lastDetectionRef.current > 150) {
           if (videoRef.current && overlayCanvasRef.current) {
-            const detected = highlightDocument(videoRef.current, overlayCanvasRef.current)
-            setDocumentDetected(detected)
+            const detected = highlightDocument(
+              videoRef.current,
+              overlayCanvasRef.current,
+            );
+            setDocumentDetected(detected);
           }
-          lastDetectionRef.current = now
+          lastDetectionRef.current = now;
         }
-        animationFrameRef.current = requestAnimationFrame(detectLoop)
-      }
-      animationFrameRef.current = requestAnimationFrame(detectLoop)
+        animationFrameRef.current = requestAnimationFrame(detectLoop);
+      };
+      animationFrameRef.current = requestAnimationFrame(detectLoop);
     }
-  }, [isScannerReady, highlightDocument])
+  }, [isScannerReady, highlightDocument]);
 
   // Show adjustment UI if in adjustment mode
   if (adjustmentMode && opencvRef) {
@@ -279,16 +301,16 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
         cv={opencvRef}
         detectQuadsInImage={detectQuadsInCamera}
       />
-    )
+    );
   }
 
   return (
     <div
       data-component="fullscreen-camera"
       className={css({
-        position: 'absolute',
+        position: "absolute",
         inset: 0,
-        bg: 'black',
+        bg: "black",
       })}
     >
       <video
@@ -296,11 +318,11 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
         playsInline
         muted
         className={css({
-          position: 'absolute',
+          position: "absolute",
           inset: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
         })}
       />
 
@@ -308,49 +330,51 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
       <canvas
         ref={overlayCanvasRef}
         className={css({
-          position: 'absolute',
+          position: "absolute",
           inset: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none",
         })}
       />
 
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
+      <canvas ref={canvasRef} style={{ display: "none" }} />
 
       {!isReady && !error && (
         <div
           className={css({
-            position: 'absolute',
+            position: "absolute",
             inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bg: 'black',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bg: "black",
           })}
         >
-          <div className={css({ color: 'white', fontSize: 'xl' })}>Starting camera...</div>
+          <div className={css({ color: "white", fontSize: "xl" })}>
+            Starting camera...
+          </div>
         </div>
       )}
 
       {error && (
         <div
           className={css({
-            position: 'absolute',
+            position: "absolute",
             inset: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bg: 'black',
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            bg: "black",
             p: 6,
           })}
         >
           <div
             className={css({
-              color: 'red.400',
-              fontSize: 'lg',
-              textAlign: 'center',
+              color: "red.400",
+              fontSize: "lg",
+              textAlign: "center",
               mb: 4,
             })}
           >
@@ -362,12 +386,12 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
             className={css({
               px: 6,
               py: 3,
-              bg: 'white',
-              color: 'black',
-              borderRadius: 'full',
-              fontSize: 'lg',
-              fontWeight: 'bold',
-              cursor: 'pointer',
+              bg: "white",
+              color: "black",
+              borderRadius: "full",
+              fontSize: "lg",
+              fontWeight: "bold",
+              cursor: "pointer",
             })}
           >
             Close
@@ -381,22 +405,22 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
             type="button"
             onClick={onClose}
             className={css({
-              position: 'absolute',
+              position: "absolute",
               top: 4,
               right: 4,
-              width: '48px',
-              height: '48px',
-              bg: 'rgba(0, 0, 0, 0.5)',
-              color: 'white',
-              borderRadius: 'full',
-              fontSize: '2xl',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backdropFilter: 'blur(4px)',
-              _hover: { bg: 'rgba(0, 0, 0, 0.7)' },
+              width: "48px",
+              height: "48px",
+              bg: "rgba(0, 0, 0, 0.5)",
+              color: "white",
+              borderRadius: "full",
+              fontSize: "2xl",
+              fontWeight: "bold",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backdropFilter: "blur(4px)",
+              _hover: { bg: "rgba(0, 0, 0, 0.7)" },
             })}
           >
             ×
@@ -406,84 +430,88 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
           <div
             data-element="scanner-debug-panel"
             className={css({
-              position: 'absolute',
+              position: "absolute",
               top: 4,
               left: 4,
               p: 3,
-              bg: 'rgba(0, 0, 0, 0.8)',
-              backdropFilter: 'blur(4px)',
-              borderRadius: 'lg',
-              color: 'white',
-              fontSize: 'xs',
-              fontFamily: 'monospace',
-              maxWidth: '280px',
+              bg: "rgba(0, 0, 0, 0.8)",
+              backdropFilter: "blur(4px)",
+              borderRadius: "lg",
+              color: "white",
+              fontSize: "xs",
+              fontFamily: "monospace",
+              maxWidth: "280px",
               zIndex: 10,
             })}
           >
             <div
               className={css({
-                fontWeight: 'bold',
+                fontWeight: "bold",
                 mb: 2,
-                color: 'yellow.400',
+                color: "yellow.400",
               })}
             >
               Document Scanner Debug
             </div>
             <div
               className={css({
-                display: 'flex',
-                flexDirection: 'column',
+                display: "flex",
+                flexDirection: "column",
                 gap: 1,
               })}
             >
               <div>
-                Scanner:{' '}
+                Scanner:{" "}
                 <span
                   className={css({
-                    color: isScannerReady ? 'green.400' : 'orange.400',
+                    color: isScannerReady ? "green.400" : "orange.400",
                   })}
                 >
-                  {isScannerLoading ? 'Loading...' : isScannerReady ? 'Ready' : 'Failed'}
+                  {isScannerLoading
+                    ? "Loading..."
+                    : isScannerReady
+                      ? "Ready"
+                      : "Failed"}
                 </span>
               </div>
               <div>
-                Camera:{' '}
+                Camera:{" "}
                 <span
                   className={css({
-                    color: isReady ? 'green.400' : 'orange.400',
+                    color: isReady ? "green.400" : "orange.400",
                   })}
                 >
-                  {isReady ? 'Ready' : 'Starting...'}
+                  {isReady ? "Ready" : "Starting..."}
                 </span>
               </div>
               <div>
-                Document:{' '}
+                Document:{" "}
                 <span
                   className={css({
                     color: isDetectionLocked
-                      ? 'green.400'
+                      ? "green.400"
                       : isDetectionStable
-                        ? 'green.300'
+                        ? "green.300"
                         : documentDetected
-                          ? 'yellow.400'
-                          : 'gray.400',
+                          ? "yellow.400"
+                          : "gray.400",
                   })}
                 >
                   {isDetectionLocked
-                    ? 'LOCKED'
+                    ? "LOCKED"
                     : isDetectionStable
-                      ? 'Stable'
+                      ? "Stable"
                       : documentDetected
-                        ? 'Unstable'
-                        : 'Not detected'}
+                        ? "Unstable"
+                        : "Not detected"}
                 </span>
               </div>
               <div>
-                Quads: {scannerDebugInfo.quadsDetected} detected, {scannerDebugInfo.trackedQuads}{' '}
-                tracked
+                Quads: {scannerDebugInfo.quadsDetected} detected,{" "}
+                {scannerDebugInfo.trackedQuads} tracked
               </div>
               <div>
-                Best: {scannerDebugInfo.bestQuadFrameCount} frames,{' '}
+                Best: {scannerDebugInfo.bestQuadFrameCount} frames,{" "}
                 {Math.round(scannerDebugInfo.bestQuadStability * 100)}% stable
               </div>
               {scannerDebugInfo.loadTimeMs !== null && (
@@ -493,7 +521,9 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
                 <div>Detection: {scannerDebugInfo.lastDetectionMs}ms</div>
               )}
               {scannerDebugInfo.lastDetectionError && (
-                <div className={css({ color: 'red.400', wordBreak: 'break-word' })}>
+                <div
+                  className={css({ color: "red.400", wordBreak: "break-word" })}
+                >
                   Error: {scannerDebugInfo.lastDetectionError}
                 </div>
               )}
@@ -502,13 +532,13 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
 
           <div
             className={css({
-              position: 'absolute',
+              position: "absolute",
               bottom: 8,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
               gap: 3,
             })}
           >
@@ -518,32 +548,34 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
               className={css({
                 px: 4,
                 py: 2,
-                bg: 'rgba(0, 0, 0, 0.6)',
-                backdropFilter: 'blur(4px)',
-                borderRadius: 'full',
-                color: 'white',
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                textAlign: 'center',
-                transition: 'all 0.2s',
+                bg: "rgba(0, 0, 0, 0.6)",
+                backdropFilter: "blur(4px)",
+                borderRadius: "full",
+                color: "white",
+                fontSize: "sm",
+                fontWeight: "medium",
+                textAlign: "center",
+                transition: "all 0.2s",
               })}
             >
               {isScannerLoading ? (
-                'Loading scanner...'
+                "Loading scanner..."
               ) : isDetectionLocked ? (
-                <span className={css({ color: 'green.400', fontWeight: 'bold' })}>
+                <span
+                  className={css({ color: "green.400", fontWeight: "bold" })}
+                >
                   ✓ Hold steady - Ready to capture!
                 </span>
               ) : isDetectionStable ? (
-                <span className={css({ color: 'green.300' })}>
+                <span className={css({ color: "green.300" })}>
                   Document detected - Hold steady...
                 </span>
               ) : documentDetected ? (
-                <span className={css({ color: 'yellow.400' })}>
+                <span className={css({ color: "yellow.400" })}>
                   Detecting... hold camera steady
                 </span>
               ) : (
-                'Point camera at document'
+                "Point camera at document"
               )}
             </div>
 
@@ -552,48 +584,50 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
               onClick={capturePhoto}
               disabled={isCapturing || !isReady}
               className={css({
-                width: '80px',
-                height: '80px',
-                bg: 'white',
-                borderRadius: 'full',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                width: "80px",
+                height: "80px",
+                bg: "white",
+                borderRadius: "full",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 boxShadow: isDetectionLocked
-                  ? '0 4px 30px rgba(0, 255, 100, 0.5)'
-                  : '0 4px 20px rgba(0, 0, 0, 0.3)',
-                border: '4px solid',
+                  ? "0 4px 30px rgba(0, 255, 100, 0.5)"
+                  : "0 4px 20px rgba(0, 0, 0, 0.3)",
+                border: "4px solid",
                 borderColor: isDetectionLocked
-                  ? 'green.400'
+                  ? "green.400"
                   : isDetectionStable
-                    ? 'green.300'
+                    ? "green.300"
                     : documentDetected
-                      ? 'yellow.400'
-                      : 'gray.300',
-                transition: 'all 0.15s',
-                _hover: { transform: 'scale(1.05)' },
-                _active: { transform: 'scale(0.95)' },
-                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                      ? "yellow.400"
+                      : "gray.300",
+                transition: "all 0.15s",
+                _hover: { transform: "scale(1.05)" },
+                _active: { transform: "scale(0.95)" },
+                _disabled: { opacity: 0.5, cursor: "not-allowed" },
               })}
             >
               {isCapturing ? (
-                <div className={css({ fontSize: 'sm', color: 'gray.600' })}>...</div>
+                <div className={css({ fontSize: "sm", color: "gray.600" })}>
+                  ...
+                </div>
               ) : (
                 <div
                   className={css({
-                    width: '64px',
-                    height: '64px',
-                    bg: 'white',
-                    borderRadius: 'full',
-                    border: '2px solid',
+                    width: "64px",
+                    height: "64px",
+                    bg: "white",
+                    borderRadius: "full",
+                    border: "2px solid",
                     borderColor: isDetectionLocked
-                      ? 'green.400'
+                      ? "green.400"
                       : isDetectionStable
-                        ? 'green.300'
+                        ? "green.300"
                         : documentDetected
-                          ? 'yellow.400'
-                          : 'gray.400',
+                          ? "yellow.400"
+                          : "gray.400",
                   })}
                 />
               )}
@@ -602,7 +636,7 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
         </>
       )}
     </div>
-  )
+  );
 }
 
-export default FullscreenCamera
+export default FullscreenCamera;

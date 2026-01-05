@@ -12,7 +12,7 @@
  * - P(G) = pGuess: probability of correct despite not knowing
  */
 
-import type { BktParams } from './types'
+import type { BktParams } from "./types";
 
 /**
  * Standard BKT update for a SINGLE skill given an observation.
@@ -34,36 +34,48 @@ import type { BktParams } from './types'
  * @param params - BKT parameters (pInit, pLearn, pSlip, pGuess)
  * @returns Updated P(known) after the observation
  */
-export function bktUpdate(priorPKnown: number, isCorrect: boolean, params: BktParams): number {
-  const { pSlip, pGuess } = params
+export function bktUpdate(
+  priorPKnown: number,
+  isCorrect: boolean,
+  params: BktParams,
+): number {
+  const { pSlip, pGuess } = params;
 
   // Surface data issues - log warning and let NaN propagate so UI can show error state
   if (!Number.isFinite(priorPKnown)) {
-    console.warn('[BKT] Invalid priorPKnown detected:', priorPKnown, '- letting NaN propagate')
-    return Number.NaN // Let NaN propagate for UI error boundaries
+    console.warn(
+      "[BKT] Invalid priorPKnown detected:",
+      priorPKnown,
+      "- letting NaN propagate",
+    );
+    return Number.NaN; // Let NaN propagate for UI error boundaries
   }
   if (!Number.isFinite(pSlip) || !Number.isFinite(pGuess)) {
-    console.warn('[BKT] Invalid params detected:', { pSlip, pGuess }, '- letting NaN propagate')
-    return Number.NaN // Let NaN propagate for UI error boundaries
+    console.warn(
+      "[BKT] Invalid params detected:",
+      { pSlip, pGuess },
+      "- letting NaN propagate",
+    );
+    return Number.NaN; // Let NaN propagate for UI error boundaries
   }
 
   // Guard against division by zero
-  const safeSlip = Math.max(0.001, Math.min(0.999, pSlip))
-  const safeGuess = Math.max(0.001, Math.min(0.999, pGuess))
-  const safePrior = Math.max(0.001, Math.min(0.999, priorPKnown))
+  const safeSlip = Math.max(0.001, Math.min(0.999, pSlip));
+  const safeGuess = Math.max(0.001, Math.min(0.999, pGuess));
+  const safePrior = Math.max(0.001, Math.min(0.999, priorPKnown));
 
   if (isCorrect) {
     // P(correct) = P(known) × (1 - pSlip) + P(¬known) × pGuess
-    const pCorrect = safePrior * (1 - safeSlip) + (1 - safePrior) * safeGuess
+    const pCorrect = safePrior * (1 - safeSlip) + (1 - safePrior) * safeGuess;
     // P(known | correct) via Bayes
-    const pKnownGivenCorrect = (safePrior * (1 - safeSlip)) / pCorrect
-    return pKnownGivenCorrect
+    const pKnownGivenCorrect = (safePrior * (1 - safeSlip)) / pCorrect;
+    return pKnownGivenCorrect;
   } else {
     // P(incorrect) = P(known) × pSlip + P(¬known) × (1 - pGuess)
-    const pIncorrect = safePrior * safeSlip + (1 - safePrior) * (1 - safeGuess)
+    const pIncorrect = safePrior * safeSlip + (1 - safePrior) * (1 - safeGuess);
     // P(known | incorrect) via Bayes
-    const pKnownGivenIncorrect = (safePrior * safeSlip) / pIncorrect
-    return pKnownGivenIncorrect
+    const pKnownGivenIncorrect = (safePrior * safeSlip) / pIncorrect;
+    return pKnownGivenIncorrect;
   }
 }
 
@@ -83,13 +95,21 @@ export function bktUpdate(priorPKnown: number, isCorrect: boolean, params: BktPa
 export function applyLearning(pKnown: number, pLearn: number): number {
   // Surface data issues - log warning and let NaN propagate
   if (!Number.isFinite(pKnown)) {
-    console.warn('[BKT] applyLearning: Invalid pKnown:', pKnown, '- letting NaN propagate')
-    return Number.NaN
+    console.warn(
+      "[BKT] applyLearning: Invalid pKnown:",
+      pKnown,
+      "- letting NaN propagate",
+    );
+    return Number.NaN;
   }
   if (!Number.isFinite(pLearn)) {
-    console.warn('[BKT] applyLearning: Invalid pLearn:', pLearn, '- letting NaN propagate')
-    return Number.NaN
+    console.warn(
+      "[BKT] applyLearning: Invalid pLearn:",
+      pLearn,
+      "- letting NaN propagate",
+    );
+    return Number.NaN;
   }
 
-  return pKnown + (1 - pKnown) * pLearn
+  return pKnown + (1 - pKnown) * pLearn;
 }

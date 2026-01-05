@@ -9,9 +9,9 @@
  * - Delete classroom
  */
 
-import { createId } from '@paralleldrive/cuid2'
-import { eq } from 'drizzle-orm'
-import { db } from '@/db'
+import { createId } from "@paralleldrive/cuid2";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
 import {
   classrooms,
   generateClassroomCode,
@@ -19,21 +19,21 @@ import {
   type NewClassroom,
   type User,
   users,
-} from '@/db/schema'
+} from "@/db/schema";
 
 // ============================================================================
 // Create Classroom
 // ============================================================================
 
 export interface CreateClassroomParams {
-  teacherId: string
-  name: string
+  teacherId: string;
+  name: string;
 }
 
 export interface CreateClassroomResult {
-  success: boolean
-  classroom?: Classroom
-  error?: string
+  success: boolean;
+  classroom?: Classroom;
+  error?: string;
 }
 
 /**
@@ -43,40 +43,40 @@ export interface CreateClassroomResult {
  * Returns error if teacher already has a classroom.
  */
 export async function createClassroom(
-  params: CreateClassroomParams
+  params: CreateClassroomParams,
 ): Promise<CreateClassroomResult> {
-  const { teacherId, name } = params
+  const { teacherId, name } = params;
 
   // Check if teacher already has a classroom
   const existing = await db.query.classrooms.findFirst({
     where: eq(classrooms.teacherId, teacherId),
-  })
+  });
 
   if (existing) {
-    return { success: false, error: 'Teacher already has a classroom' }
+    return { success: false, error: "Teacher already has a classroom" };
   }
 
   // Generate unique code with collision handling
-  let code = generateClassroomCode()
-  let attempts = 0
-  const maxAttempts = 10
+  let code = generateClassroomCode();
+  let attempts = 0;
+  const maxAttempts = 10;
 
   while (attempts < maxAttempts) {
     const codeExists = await db.query.classrooms.findFirst({
       where: eq(classrooms.code, code),
-    })
+    });
 
-    if (!codeExists) break
+    if (!codeExists) break;
 
-    code = generateClassroomCode()
-    attempts++
+    code = generateClassroomCode();
+    attempts++;
   }
 
   if (attempts >= maxAttempts) {
     return {
       success: false,
-      error: 'Failed to generate unique classroom code',
-    }
+      error: "Failed to generate unique classroom code",
+    };
   }
 
   // Create classroom
@@ -88,9 +88,9 @@ export async function createClassroom(
       name,
       code,
     })
-    .returning()
+    .returning();
 
-  return { success: true, classroom }
+  return { success: true, classroom };
 }
 
 // ============================================================================
@@ -100,11 +100,13 @@ export async function createClassroom(
 /**
  * Get a classroom by ID
  */
-export async function getClassroom(classroomId: string): Promise<Classroom | null> {
+export async function getClassroom(
+  classroomId: string,
+): Promise<Classroom | null> {
   const classroom = await db.query.classrooms.findFirst({
     where: eq(classrooms.id, classroomId),
-  })
-  return classroom ?? null
+  });
+  return classroom ?? null;
 }
 
 /**
@@ -112,23 +114,25 @@ export async function getClassroom(classroomId: string): Promise<Classroom | nul
  *
  * Returns null if the user doesn't have a classroom (not a teacher).
  */
-export async function getTeacherClassroom(teacherId: string): Promise<Classroom | null> {
+export async function getTeacherClassroom(
+  teacherId: string,
+): Promise<Classroom | null> {
   const classroom = await db.query.classrooms.findFirst({
     where: eq(classrooms.teacherId, teacherId),
-  })
-  return classroom ?? null
+  });
+  return classroom ?? null;
 }
 
 /**
  * Check if a user is a teacher (has a classroom)
  */
 export async function isTeacher(userId: string): Promise<boolean> {
-  const classroom = await getTeacherClassroom(userId)
-  return classroom !== null
+  const classroom = await getTeacherClassroom(userId);
+  return classroom !== null;
 }
 
 export interface ClassroomWithTeacher extends Classroom {
-  teacher?: User
+  teacher?: User;
 }
 
 /**
@@ -136,20 +140,22 @@ export interface ClassroomWithTeacher extends Classroom {
  *
  * Used when a parent wants to enroll their child using the code.
  */
-export async function getClassroomByCode(code: string): Promise<ClassroomWithTeacher | null> {
-  const normalizedCode = code.toUpperCase().trim()
+export async function getClassroomByCode(
+  code: string,
+): Promise<ClassroomWithTeacher | null> {
+  const normalizedCode = code.toUpperCase().trim();
 
   const classroom = await db.query.classrooms.findFirst({
     where: eq(classrooms.code, normalizedCode),
-  })
+  });
 
-  if (!classroom) return null
+  if (!classroom) return null;
 
   const teacher = await db.query.users.findFirst({
     where: eq(users.id, classroom.teacherId),
-  })
+  });
 
-  return { ...classroom, teacher }
+  return { ...classroom, teacher };
 }
 
 // ============================================================================
@@ -157,9 +163,9 @@ export async function getClassroomByCode(code: string): Promise<ClassroomWithTea
 // ============================================================================
 
 export interface UpdateClassroomParams {
-  name?: string
+  name?: string;
   /** Entry prompt expiry time in minutes. Null = use system default (30 min) */
-  entryPromptExpiryMinutes?: number | null
+  entryPromptExpiryMinutes?: number | null;
 }
 
 /**
@@ -170,24 +176,24 @@ export interface UpdateClassroomParams {
 export async function updateClassroom(
   classroomId: string,
   teacherId: string,
-  updates: UpdateClassroomParams
+  updates: UpdateClassroomParams,
 ): Promise<Classroom | null> {
   // Verify ownership
   const classroom = await db.query.classrooms.findFirst({
     where: eq(classrooms.id, classroomId),
-  })
+  });
 
   if (!classroom || classroom.teacherId !== teacherId) {
-    return null
+    return null;
   }
 
   const [updated] = await db
     .update(classrooms)
     .set(updates)
     .where(eq(classrooms.id, classroomId))
-    .returning()
+    .returning();
 
-  return updated
+  return updated;
 }
 
 /**
@@ -197,40 +203,43 @@ export async function updateClassroom(
  */
 export async function regenerateClassroomCode(
   classroomId: string,
-  teacherId: string
+  teacherId: string,
 ): Promise<string | null> {
   // Verify ownership
   const classroom = await db.query.classrooms.findFirst({
     where: eq(classrooms.id, classroomId),
-  })
+  });
 
   if (!classroom || classroom.teacherId !== teacherId) {
-    return null
+    return null;
   }
 
   // Generate unique code
-  let code = generateClassroomCode()
-  let attempts = 0
-  const maxAttempts = 10
+  let code = generateClassroomCode();
+  let attempts = 0;
+  const maxAttempts = 10;
 
   while (attempts < maxAttempts) {
     const codeExists = await db.query.classrooms.findFirst({
       where: eq(classrooms.code, code),
-    })
+    });
 
-    if (!codeExists) break
+    if (!codeExists) break;
 
-    code = generateClassroomCode()
-    attempts++
+    code = generateClassroomCode();
+    attempts++;
   }
 
   if (attempts >= maxAttempts) {
-    return null
+    return null;
   }
 
-  await db.update(classrooms).set({ code }).where(eq(classrooms.id, classroomId))
+  await db
+    .update(classrooms)
+    .set({ code })
+    .where(eq(classrooms.id, classroomId));
 
-  return code
+  return code;
 }
 
 // ============================================================================
@@ -243,20 +252,23 @@ export async function regenerateClassroomCode(
  * Only the teacher can delete their classroom.
  * All enrollments, requests, and presence records will be cascade deleted.
  */
-export async function deleteClassroom(classroomId: string, teacherId: string): Promise<boolean> {
+export async function deleteClassroom(
+  classroomId: string,
+  teacherId: string,
+): Promise<boolean> {
   // Verify ownership
   const classroom = await db.query.classrooms.findFirst({
     where: eq(classrooms.id, classroomId),
-  })
+  });
 
   if (!classroom || classroom.teacherId !== teacherId) {
-    return false
+    return false;
   }
 
-  await db.delete(classrooms).where(eq(classrooms.id, classroomId))
+  await db.delete(classrooms).where(eq(classrooms.id, classroomId));
 
-  return true
+  return true;
 }
 
 // Re-export code generation function
-export { generateClassroomCode } from '@/db/schema'
+export { generateClassroomCode } from "@/db/schema";

@@ -1,11 +1,14 @@
-import { describe, expect, it } from 'vitest'
-import type { SkillSet } from '../../types/tutorial'
+import { describe, expect, it } from "vitest";
+import type { SkillSet } from "../../types/tutorial";
 import {
   analyzeStepSkills,
   generateSingleProblem,
   generateSingleProblemWithDiagnostics,
-} from '../problemGenerator'
-import { createSkillCostCalculator, type StudentSkillHistory } from '../skillComplexity'
+} from "../problemGenerator";
+import {
+  createSkillCostCalculator,
+  type StudentSkillHistory,
+} from "../skillComplexity";
 
 /**
  * Tests for the state-aware complexity selection algorithm.
@@ -35,44 +38,44 @@ function createFullSkillSet(): SkillSet {
       simpleCombinationsSub: true,
     },
     fiveComplements: {
-      '4=5-1': true,
-      '3=5-2': true,
-      '2=5-3': true,
-      '1=5-4': true,
+      "4=5-1": true,
+      "3=5-2": true,
+      "2=5-3": true,
+      "1=5-4": true,
     },
     fiveComplementsSub: {
-      '-4=-5+1': true,
-      '-3=-5+2': true,
-      '-2=-5+3': true,
-      '-1=-5+4': true,
+      "-4=-5+1": true,
+      "-3=-5+2": true,
+      "-2=-5+3": true,
+      "-1=-5+4": true,
     },
     tenComplements: {
-      '9=10-1': true,
-      '8=10-2': true,
-      '7=10-3': true,
-      '6=10-4': true,
-      '5=10-5': true,
-      '4=10-6': true,
-      '3=10-7': true,
-      '2=10-8': true,
-      '1=10-9': true,
+      "9=10-1": true,
+      "8=10-2": true,
+      "7=10-3": true,
+      "6=10-4": true,
+      "5=10-5": true,
+      "4=10-6": true,
+      "3=10-7": true,
+      "2=10-8": true,
+      "1=10-9": true,
     },
     tenComplementsSub: {
-      '-9=+1-10': true,
-      '-8=+2-10': true,
-      '-7=+3-10': true,
-      '-6=+4-10': true,
-      '-5=+5-10': true,
-      '-4=+6-10': true,
-      '-3=+7-10': true,
-      '-2=+8-10': true,
-      '-1=+9-10': true,
+      "-9=+1-10": true,
+      "-8=+2-10": true,
+      "-7=+3-10": true,
+      "-6=+4-10": true,
+      "-5=+5-10": true,
+      "-4=+6-10": true,
+      "-3=+7-10": true,
+      "-2=+8-10": true,
+      "-1=+9-10": true,
     },
     advanced: {
       cascadingCarry: true,
       cascadingBorrow: true,
     },
-  }
+  };
 }
 
 function createBasicOnlySkillSet(): SkillSet {
@@ -86,151 +89,151 @@ function createBasicOnlySkillSet(): SkillSet {
       simpleCombinationsSub: false,
     },
     fiveComplements: {
-      '4=5-1': false,
-      '3=5-2': false,
-      '2=5-3': false,
-      '1=5-4': false,
+      "4=5-1": false,
+      "3=5-2": false,
+      "2=5-3": false,
+      "1=5-4": false,
     },
     fiveComplementsSub: {
-      '-4=-5+1': false,
-      '-3=-5+2': false,
-      '-2=-5+3': false,
-      '-1=-5+4': false,
+      "-4=-5+1": false,
+      "-3=-5+2": false,
+      "-2=-5+3": false,
+      "-1=-5+4": false,
     },
     tenComplements: {
-      '9=10-1': false,
-      '8=10-2': false,
-      '7=10-3': false,
-      '6=10-4': false,
-      '5=10-5': false,
-      '4=10-6': false,
-      '3=10-7': false,
-      '2=10-8': false,
-      '1=10-9': false,
+      "9=10-1": false,
+      "8=10-2": false,
+      "7=10-3": false,
+      "6=10-4": false,
+      "5=10-5": false,
+      "4=10-6": false,
+      "3=10-7": false,
+      "2=10-8": false,
+      "1=10-9": false,
     },
     tenComplementsSub: {
-      '-9=+1-10': false,
-      '-8=+2-10': false,
-      '-7=+3-10': false,
-      '-6=+4-10': false,
-      '-5=+5-10': false,
-      '-4=+6-10': false,
-      '-3=+7-10': false,
-      '-2=+8-10': false,
-      '-1=+9-10': false,
+      "-9=+1-10": false,
+      "-8=+2-10": false,
+      "-7=+3-10": false,
+      "-6=+4-10": false,
+      "-5=+5-10": false,
+      "-4=+6-10": false,
+      "-3=+7-10": false,
+      "-2=+8-10": false,
+      "-1=+9-10": false,
     },
     advanced: {
       cascadingCarry: false,
       cascadingBorrow: false,
     },
-  }
+  };
 }
 
 function createFiveComplementSkillSet(): SkillSet {
-  const basic = createBasicOnlySkillSet()
+  const basic = createBasicOnlySkillSet();
   return {
     ...basic,
     fiveComplements: {
-      '4=5-1': true,
-      '3=5-2': true,
-      '2=5-3': true,
-      '1=5-4': true,
+      "4=5-1": true,
+      "3=5-2": true,
+      "2=5-3": true,
+      "1=5-4": true,
     },
-  }
+  };
 }
 
 // =============================================================================
 // State-Dependent Skill Detection Tests
 // =============================================================================
 
-describe('State-dependent skill detection', () => {
-  describe('five complement triggering depends on abacus state', () => {
-    it('adding +4 from 0 uses only basic skills (cost 0)', () => {
-      const skills = analyzeStepSkills(0, 4, 4)
-      expect(skills).toContain('basic.directAddition')
-      expect(skills.some((s) => s.includes('fiveComplements'))).toBe(false)
-    })
+describe("State-dependent skill detection", () => {
+  describe("five complement triggering depends on abacus state", () => {
+    it("adding +4 from 0 uses only basic skills (cost 0)", () => {
+      const skills = analyzeStepSkills(0, 4, 4);
+      expect(skills).toContain("basic.directAddition");
+      expect(skills.some((s) => s.includes("fiveComplements"))).toBe(false);
+    });
 
-    it('adding +4 from 1 gives currentValue=5 (uses fiveComplements.4=5-1)', () => {
-      const skills = analyzeStepSkills(1, 4, 5)
+    it("adding +4 from 1 gives currentValue=5 (uses fiveComplements.4=5-1)", () => {
+      const skills = analyzeStepSkills(1, 4, 5);
       // 1 + 4 = 5: need to add 5 and subtract 1 from ones column
       // This triggers five complement because we need to "make 5" from 4 available
-      expect(skills).toContain('fiveComplements.4=5-1')
-    })
+      expect(skills).toContain("fiveComplements.4=5-1");
+    });
 
-    it('adding +4 from 2 triggers five complement (cost 1)', () => {
-      const skills = analyzeStepSkills(2, 4, 6)
+    it("adding +4 from 2 triggers five complement (cost 1)", () => {
+      const skills = analyzeStepSkills(2, 4, 6);
       // 2 + 4 = 6 might need +5-1 = five complement
       // Actually depends on implementation - let's check what happens
       // The point is some states trigger complements, some don't
-    })
+    });
 
-    it('adding +4 from 3 triggers five complement (cost 1)', () => {
-      const skills = analyzeStepSkills(3, 4, 7)
+    it("adding +4 from 3 triggers five complement (cost 1)", () => {
+      const skills = analyzeStepSkills(3, 4, 7);
       // 3 + 4 = 7: need to add 5 and subtract 1 → fiveComplements.4=5-1
-      expect(skills).toContain('fiveComplements.4=5-1')
-    })
+      expect(skills).toContain("fiveComplements.4=5-1");
+    });
 
-    it('adding +4 from 4 triggers five complement (cost 1)', () => {
-      const skills = analyzeStepSkills(4, 4, 8)
+    it("adding +4 from 4 triggers five complement (cost 1)", () => {
+      const skills = analyzeStepSkills(4, 4, 8);
       // 4 + 4 = 8: need to add 5 and subtract 1 → fiveComplements.4=5-1
-      expect(skills).toContain('fiveComplements.4=5-1')
-    })
+      expect(skills).toContain("fiveComplements.4=5-1");
+    });
 
-    it('adding +1 from 4 triggers fiveComplements.1=5-4 (need to add 5, subtract 4)', () => {
+    it("adding +1 from 4 triggers fiveComplements.1=5-4 (need to add 5, subtract 4)", () => {
       // When currentValue=4 and adding +1, we can't just add an earth bead
       // (there are already 4). We need to add 5 and subtract 4 → fiveComplements.1=5-4
-      const skills = analyzeStepSkills(4, 1, 5)
-      expect(skills).toContain('fiveComplements.1=5-4')
-    })
+      const skills = analyzeStepSkills(4, 1, 5);
+      expect(skills).toContain("fiveComplements.1=5-4");
+    });
 
-    it('adding +1 from 0 uses basic skills (direct add)', () => {
+    it("adding +1 from 0 uses basic skills (direct add)", () => {
       // When currentValue=0, adding +1 is simple direct addition
-      const skills = analyzeStepSkills(0, 1, 1)
-      expect(skills).toContain('basic.directAddition')
-    })
-  })
+      const skills = analyzeStepSkills(0, 1, 1);
+      expect(skills).toContain("basic.directAddition");
+    });
+  });
 
-  describe('ten complement triggering depends on abacus state', () => {
-    it('adding +9 from 0 uses basic skills (no carry needed)', () => {
-      const skills = analyzeStepSkills(0, 9, 9)
+  describe("ten complement triggering depends on abacus state", () => {
+    it("adding +9 from 0 uses basic skills (no carry needed)", () => {
+      const skills = analyzeStepSkills(0, 9, 9);
       // 0 + 9 = 9: just basic operations
-      expect(skills.some((s) => s.includes('tenComplements'))).toBe(false)
-    })
+      expect(skills.some((s) => s.includes("tenComplements"))).toBe(false);
+    });
 
-    it('adding +9 from 1 triggers ten complement (carry to tens)', () => {
-      const skills = analyzeStepSkills(1, 9, 10)
+    it("adding +9 from 1 triggers ten complement (carry to tens)", () => {
+      const skills = analyzeStepSkills(1, 9, 10);
       // 1 + 9 = 10: needs ten complement
-      expect(skills).toContain('tenComplements.9=10-1')
-    })
+      expect(skills).toContain("tenComplements.9=10-1");
+    });
 
-    it('adding +9 from 5 triggers ten complement (carry to tens)', () => {
-      const skills = analyzeStepSkills(5, 9, 14)
+    it("adding +9 from 5 triggers ten complement (carry to tens)", () => {
+      const skills = analyzeStepSkills(5, 9, 14);
       // 5 + 9 = 14: needs ten complement
-      expect(skills).toContain('tenComplements.9=10-1')
-    })
-  })
-})
+      expect(skills).toContain("tenComplements.9=10-1");
+    });
+  });
+});
 
 // =============================================================================
 // Graceful Fallback Tests - The Core Fix
 // =============================================================================
 
-describe('Graceful fallback when minBudget cannot be met', () => {
-  const fullSkillSet = createFullSkillSet()
+describe("Graceful fallback when minBudget cannot be met", () => {
+  const fullSkillSet = createFullSkillSet();
 
-  it('CRITICAL: should always generate a problem even with impossible minBudget', () => {
+  it("CRITICAL: should always generate a problem even with impossible minBudget", () => {
     // This was the original bug - minBudget=1 from currentValue=0 is impossible
     // because all first terms from 0 use basic skills (cost 0)
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': {
-          skillId: 'fiveComplements.4=5-1',
+        "fiveComplements.4=5-1": {
+          skillId: "fiveComplements.4=5-1",
           isPracticing: true,
         },
       },
-    }
-    const calculator = createSkillCostCalculator(history)
+    };
+    const calculator = createSkillCostCalculator(history);
 
     // minBudget=1 should NOT fail, even though first term from 0 can't meet it
     for (let i = 0; i < 10; i++) {
@@ -245,27 +248,27 @@ describe('Graceful fallback when minBudget cannot be met', () => {
         allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 100,
-      })
+      });
 
       // Should NEVER fail
-      expect(result.problem).not.toBeNull()
-      expect(result.problem!.terms.length).toBeGreaterThanOrEqual(3)
+      expect(result.problem).not.toBeNull();
+      expect(result.problem!.terms.length).toBeGreaterThanOrEqual(3);
     }
-  })
+  });
 
-  it('should generate problems even with minBudget=1 and basic-only skills', () => {
+  it("should generate problems even with minBudget=1 and basic-only skills", () => {
     // With only basic skills enabled, NO term can ever have cost > 0
     // But we should still generate valid problems (graceful fallback)
-    const basicSkills = createBasicOnlySkillSet()
+    const basicSkills = createBasicOnlySkillSet();
     const history: StudentSkillHistory = {
       skills: {
-        'basic.directAddition': {
-          skillId: 'basic.directAddition',
+        "basic.directAddition": {
+          skillId: "basic.directAddition",
           isPracticing: true,
         },
       },
-    }
-    const calculator = createSkillCostCalculator(history)
+    };
+    const calculator = createSkillCostCalculator(history);
 
     for (let i = 0; i < 10; i++) {
       const problem = generateSingleProblem({
@@ -279,16 +282,16 @@ describe('Graceful fallback when minBudget cannot be met', () => {
         allowedSkills: basicSkills,
         costCalculator: calculator,
         attempts: 100,
-      })
+      });
 
       // Should still generate a problem (fallback to basic skills)
-      expect(problem).not.toBeNull()
+      expect(problem).not.toBeNull();
     }
-  })
+  });
 
-  it('should generate problems even with extremely high minBudget', () => {
-    const history: StudentSkillHistory = { skills: {} }
-    const calculator = createSkillCostCalculator(history)
+  it("should generate problems even with extremely high minBudget", () => {
+    const history: StudentSkillHistory = { skills: {} };
+    const calculator = createSkillCostCalculator(history);
 
     for (let i = 0; i < 5; i++) {
       const problem = generateSingleProblem({
@@ -302,39 +305,39 @@ describe('Graceful fallback when minBudget cannot be met', () => {
         allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 100,
-      })
+      });
 
       // Should still work (graceful fallback)
-      expect(problem).not.toBeNull()
+      expect(problem).not.toBeNull();
     }
-  })
-})
+  });
+});
 
 // =============================================================================
 // Budget Preference Tests
 // =============================================================================
 
-describe('Budget preference behavior', () => {
-  const fullSkillSet = createFullSkillSet()
+describe("Budget preference behavior", () => {
+  const fullSkillSet = createFullSkillSet();
 
-  it('should prefer terms that meet minBudget when available', () => {
+  it("should prefer terms that meet minBudget when available", () => {
     // Create a calculator where five complements are tracked
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': {
-          skillId: 'fiveComplements.4=5-1',
+        "fiveComplements.4=5-1": {
+          skillId: "fiveComplements.4=5-1",
           isPracticing: true,
         },
-        'fiveComplements.3=5-2': {
-          skillId: 'fiveComplements.3=5-2',
+        "fiveComplements.3=5-2": {
+          skillId: "fiveComplements.3=5-2",
           isPracticing: true,
         },
       },
-    }
-    const calculator = createSkillCostCalculator(history)
+    };
+    const calculator = createSkillCostCalculator(history);
 
     // With minBudget=1, problems should eventually include five complements
-    let foundFiveComplement = false
+    let foundFiveComplement = false;
     for (let i = 0; i < 50; i++) {
       const problem = generateSingleProblem({
         constraints: {
@@ -347,22 +350,22 @@ describe('Budget preference behavior', () => {
         allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 100,
-      })
+      });
 
-      if (problem?.skillsUsed.some((s) => s.includes('fiveComplements'))) {
-        foundFiveComplement = true
-        break
+      if (problem?.skillsUsed.some((s) => s.includes("fiveComplements"))) {
+        foundFiveComplement = true;
+        break;
       }
     }
 
     // Should eventually find problems with five complements
     // (This may be flaky but with 50 attempts and preference for minBudget, should work)
-    expect(foundFiveComplement).toBe(true)
-  })
+    expect(foundFiveComplement).toBe(true);
+  });
 
-  it('should respect maxBudget constraint strictly', () => {
-    const history: StudentSkillHistory = { skills: {} } // All skills are expensive
-    const calculator = createSkillCostCalculator(history)
+  it("should respect maxBudget constraint strictly", () => {
+    const history: StudentSkillHistory = { skills: {} }; // All skills are expensive
+    const calculator = createSkillCostCalculator(history);
 
     for (let i = 0; i < 20; i++) {
       const problem = generateSingleProblem({
@@ -376,28 +379,30 @@ describe('Budget preference behavior', () => {
         allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 100,
-      })
+      });
 
       if (problem) {
         // With maxBudget=0, should only have basic skills
         const hasNonBasic = problem.skillsUsed.some(
           (s) =>
-            s.includes('fiveComplements') || s.includes('tenComplements') || s.includes('advanced')
-        )
-        expect(hasNonBasic).toBe(false)
+            s.includes("fiveComplements") ||
+            s.includes("tenComplements") ||
+            s.includes("advanced"),
+        );
+        expect(hasNonBasic).toBe(false);
       }
     }
-  })
-})
+  });
+});
 
 // =============================================================================
 // Edge Cases and Stress Tests
 // =============================================================================
 
-describe('Edge cases', () => {
-  const fullSkillSet = createFullSkillSet()
+describe("Edge cases", () => {
+  const fullSkillSet = createFullSkillSet();
 
-  it('should handle single-term problems', () => {
+  it("should handle single-term problems", () => {
     const problem = generateSingleProblem({
       constraints: {
         numberRange: { min: 1, max: 9 },
@@ -407,13 +412,13 @@ describe('Edge cases', () => {
       },
       allowedSkills: fullSkillSet,
       attempts: 50,
-    })
+    });
 
-    expect(problem).not.toBeNull()
-    expect(problem!.terms.length).toBe(1)
-  })
+    expect(problem).not.toBeNull();
+    expect(problem!.terms.length).toBe(1);
+  });
 
-  it('should handle narrow number ranges', () => {
+  it("should handle narrow number ranges", () => {
     for (let i = 0; i < 10; i++) {
       const problem = generateSingleProblem({
         constraints: {
@@ -424,14 +429,16 @@ describe('Edge cases', () => {
         },
         allowedSkills: fullSkillSet,
         attempts: 100,
-      })
+      });
 
-      expect(problem).not.toBeNull()
-      expect(problem!.terms.every((t) => Math.abs(t) >= 1 && Math.abs(t) <= 2)).toBe(true)
+      expect(problem).not.toBeNull();
+      expect(
+        problem!.terms.every((t) => Math.abs(t) >= 1 && Math.abs(t) <= 2),
+      ).toBe(true);
     }
-  })
+  });
 
-  it('should handle wide number ranges', () => {
+  it("should handle wide number ranges", () => {
     const problem = generateSingleProblem({
       constraints: {
         numberRange: { min: 1, max: 99 },
@@ -441,12 +448,12 @@ describe('Edge cases', () => {
       },
       allowedSkills: fullSkillSet,
       attempts: 100,
-    })
+    });
 
-    expect(problem).not.toBeNull()
-  })
+    expect(problem).not.toBeNull();
+  });
 
-  it('should handle many terms', () => {
+  it("should handle many terms", () => {
     const problem = generateSingleProblem({
       constraints: {
         numberRange: { min: 1, max: 9 },
@@ -456,19 +463,19 @@ describe('Edge cases', () => {
       },
       allowedSkills: fullSkillSet,
       attempts: 100,
-    })
+    });
 
-    expect(problem).not.toBeNull()
-    expect(problem!.terms.length).toBe(10)
-  })
-})
+    expect(problem).not.toBeNull();
+    expect(problem!.terms.length).toBe(10);
+  });
+});
 
-describe('Robustness stress tests', () => {
-  const fullSkillSet = createFullSkillSet()
+describe("Robustness stress tests", () => {
+  const fullSkillSet = createFullSkillSet();
 
-  it('should NEVER return null with valid skill set (100 iterations)', () => {
-    const history: StudentSkillHistory = { skills: {} }
-    const calculator = createSkillCostCalculator(history)
+  it("should NEVER return null with valid skill set (100 iterations)", () => {
+    const history: StudentSkillHistory = { skills: {} };
+    const calculator = createSkillCostCalculator(history);
 
     for (let i = 0; i < 100; i++) {
       const problem = generateSingleProblem({
@@ -481,22 +488,22 @@ describe('Robustness stress tests', () => {
         allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 50,
-      })
+      });
 
-      expect(problem).not.toBeNull()
+      expect(problem).not.toBeNull();
     }
-  })
+  });
 
-  it('should NEVER fail with minBudget constraint (100 iterations)', () => {
+  it("should NEVER fail with minBudget constraint (100 iterations)", () => {
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': {
-          skillId: 'fiveComplements.4=5-1',
+        "fiveComplements.4=5-1": {
+          skillId: "fiveComplements.4=5-1",
           isPracticing: true,
         },
       },
-    }
-    const calculator = createSkillCostCalculator(history)
+    };
+    const calculator = createSkillCostCalculator(history);
 
     for (let i = 0; i < 100; i++) {
       const result = generateSingleProblemWithDiagnostics({
@@ -510,26 +517,26 @@ describe('Robustness stress tests', () => {
         allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 50,
-      })
+      });
 
-      expect(result.problem).not.toBeNull()
+      expect(result.problem).not.toBeNull();
     }
-  })
+  });
 
-  it('should NEVER fail with both min and max budget (100 iterations)', () => {
+  it("should NEVER fail with both min and max budget (100 iterations)", () => {
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': {
-          skillId: 'fiveComplements.4=5-1',
+        "fiveComplements.4=5-1": {
+          skillId: "fiveComplements.4=5-1",
           isPracticing: true,
         },
-        'tenComplements.9=10-1': {
-          skillId: 'tenComplements.9=10-1',
+        "tenComplements.9=10-1": {
+          skillId: "tenComplements.9=10-1",
           isPracticing: true,
         },
       },
-    }
-    const calculator = createSkillCostCalculator(history)
+    };
+    const calculator = createSkillCostCalculator(history);
 
     for (let i = 0; i < 100; i++) {
       const problem = generateSingleProblem({
@@ -544,17 +551,17 @@ describe('Robustness stress tests', () => {
         allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 50,
-      })
+      });
 
-      expect(problem).not.toBeNull()
+      expect(problem).not.toBeNull();
     }
-  })
+  });
 
-  it('should handle rapid sequential generation (500 problems)', () => {
-    const history: StudentSkillHistory = { skills: {} }
-    const calculator = createSkillCostCalculator(history)
+  it("should handle rapid sequential generation (500 problems)", () => {
+    const history: StudentSkillHistory = { skills: {} };
+    const calculator = createSkillCostCalculator(history);
 
-    const problems = []
+    const problems = [];
     for (let i = 0; i < 500; i++) {
       const problem = generateSingleProblem({
         constraints: {
@@ -566,23 +573,23 @@ describe('Robustness stress tests', () => {
         allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 20, // Fewer attempts to stress test fallback
-      })
+      });
 
-      expect(problem).not.toBeNull()
-      problems.push(problem)
+      expect(problem).not.toBeNull();
+      problems.push(problem);
     }
 
-    expect(problems.length).toBe(500)
-    expect(problems.every((p) => p !== null)).toBe(true)
-  })
-})
+    expect(problems.length).toBe(500);
+    expect(problems.every((p) => p !== null)).toBe(true);
+  });
+});
 
 // =============================================================================
 // Regression Tests for the Original Bug
 // =============================================================================
 
-describe('Regression: Original ProblemGenerationError bug', () => {
-  it('should NOT throw with the exact constraints from the bug report', () => {
+describe("Regression: Original ProblemGenerationError bug", () => {
+  it("should NOT throw with the exact constraints from the bug report", () => {
     /**
      * Original error:
      * ProblemGenerationError: Failed to generate problem with constraints:
@@ -591,20 +598,20 @@ describe('Regression: Original ProblemGenerationError bug', () => {
      *   minComplexityBudget: 1
      *   maxComplexityBudget: none
      */
-    const fullSkillSet = createFullSkillSet()
+    const fullSkillSet = createFullSkillSet();
     const history: StudentSkillHistory = {
       skills: {
-        'fiveComplements.4=5-1': {
-          skillId: 'fiveComplements.4=5-1',
+        "fiveComplements.4=5-1": {
+          skillId: "fiveComplements.4=5-1",
           isPracticing: true,
         },
-        'fiveComplements.3=5-2': {
-          skillId: 'fiveComplements.3=5-2',
+        "fiveComplements.3=5-2": {
+          skillId: "fiveComplements.3=5-2",
           isPracticing: true,
         },
       },
-    }
-    const calculator = createSkillCostCalculator(history)
+    };
+    const calculator = createSkillCostCalculator(history);
 
     // Run many times to ensure no failures
     for (let i = 0; i < 50; i++) {
@@ -619,34 +626,34 @@ describe('Regression: Original ProblemGenerationError bug', () => {
         allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 100,
-      })
+      });
 
       // The key assertion: should NEVER fail
-      expect(result.problem).not.toBeNull()
-      expect(result.diagnostics.sequenceFailures).toBeLessThan(100)
+      expect(result.problem).not.toBeNull();
+      expect(result.diagnostics.sequenceFailures).toBeLessThan(100);
     }
-  })
+  });
 
-  it('should succeed even if all attempts would have failed under old algorithm', () => {
+  it("should succeed even if all attempts would have failed under old algorithm", () => {
     // Create a scenario where:
     // 1. minBudget = 1
     // 2. Only basic skills enabled (all have cost 0)
     // Under old algorithm: ALL 100 attempts would fail
     // Under new algorithm: should gracefully fall back
-    const basicSkills = createBasicOnlySkillSet()
+    const basicSkills = createBasicOnlySkillSet();
     const history: StudentSkillHistory = {
       skills: {
-        'basic.directAddition': {
-          skillId: 'basic.directAddition',
+        "basic.directAddition": {
+          skillId: "basic.directAddition",
           isPracticing: true,
         },
-        'basic.heavenBead': {
-          skillId: 'basic.heavenBead',
+        "basic.heavenBead": {
+          skillId: "basic.heavenBead",
           isPracticing: true,
         },
       },
-    }
-    const calculator = createSkillCostCalculator(history)
+    };
+    const calculator = createSkillCostCalculator(history);
 
     const result = generateSingleProblemWithDiagnostics({
       constraints: {
@@ -659,47 +666,29 @@ describe('Regression: Original ProblemGenerationError bug', () => {
       allowedSkills: basicSkills,
       costCalculator: calculator,
       attempts: 100,
-    })
+    });
 
     // Should still succeed via graceful fallback
-    expect(result.problem).not.toBeNull()
+    expect(result.problem).not.toBeNull();
     // All terms should have basic skills only
     expect(
-      result.problem!.skillsUsed.every((s) => s.startsWith('basic.') || s.includes('Combinations'))
-    ).toBe(true)
-  })
-})
+      result.problem!.skillsUsed.every(
+        (s) => s.startsWith("basic.") || s.includes("Combinations"),
+      ),
+    ).toBe(true);
+  });
+});
 
 // =============================================================================
 // Diagnostics Tests
 // =============================================================================
 
-describe('Generation diagnostics', () => {
-  const fullSkillSet = createFullSkillSet()
+describe("Generation diagnostics", () => {
+  const fullSkillSet = createFullSkillSet();
 
-  it('should report enabled skills in diagnostics', () => {
-    const history: StudentSkillHistory = { skills: {} }
-    const calculator = createSkillCostCalculator(history)
-
-    const result = generateSingleProblemWithDiagnostics({
-      constraints: {
-        numberRange: { min: 1, max: 9 },
-        minTerms: 3,
-        maxTerms: 5,
-        problemCount: 1,
-      },
-      allowedSkills: fullSkillSet,
-      costCalculator: calculator,
-      attempts: 50,
-    })
-
-    expect(result.diagnostics.enabledAllowedSkills.length).toBeGreaterThan(0)
-    expect(result.diagnostics.enabledAllowedSkills).toContain('basic.directAddition')
-  })
-
-  it('should report attempt counts', () => {
-    const history: StudentSkillHistory = { skills: {} }
-    const calculator = createSkillCostCalculator(history)
+  it("should report enabled skills in diagnostics", () => {
+    const history: StudentSkillHistory = { skills: {} };
+    const calculator = createSkillCostCalculator(history);
 
     const result = generateSingleProblemWithDiagnostics({
       constraints: {
@@ -711,15 +700,17 @@ describe('Generation diagnostics', () => {
       allowedSkills: fullSkillSet,
       costCalculator: calculator,
       attempts: 50,
-    })
+    });
 
-    expect(result.diagnostics.totalAttempts).toBeGreaterThanOrEqual(1)
-    expect(result.diagnostics.totalAttempts).toBeLessThanOrEqual(50)
-  })
+    expect(result.diagnostics.enabledAllowedSkills.length).toBeGreaterThan(0);
+    expect(result.diagnostics.enabledAllowedSkills).toContain(
+      "basic.directAddition",
+    );
+  });
 
-  it('should report last generated skills', () => {
-    const history: StudentSkillHistory = { skills: {} }
-    const calculator = createSkillCostCalculator(history)
+  it("should report attempt counts", () => {
+    const history: StudentSkillHistory = { skills: {} };
+    const calculator = createSkillCostCalculator(history);
 
     const result = generateSingleProblemWithDiagnostics({
       constraints: {
@@ -731,25 +722,45 @@ describe('Generation diagnostics', () => {
       allowedSkills: fullSkillSet,
       costCalculator: calculator,
       attempts: 50,
-    })
+    });
+
+    expect(result.diagnostics.totalAttempts).toBeGreaterThanOrEqual(1);
+    expect(result.diagnostics.totalAttempts).toBeLessThanOrEqual(50);
+  });
+
+  it("should report last generated skills", () => {
+    const history: StudentSkillHistory = { skills: {} };
+    const calculator = createSkillCostCalculator(history);
+
+    const result = generateSingleProblemWithDiagnostics({
+      constraints: {
+        numberRange: { min: 1, max: 9 },
+        minTerms: 3,
+        maxTerms: 5,
+        problemCount: 1,
+      },
+      allowedSkills: fullSkillSet,
+      costCalculator: calculator,
+      attempts: 50,
+    });
 
     // If a problem was generated, should have skills
     if (result.problem) {
-      expect(result.diagnostics.lastGeneratedSkills).toBeDefined()
-      expect(result.diagnostics.lastGeneratedSkills!.length).toBeGreaterThan(0)
+      expect(result.diagnostics.lastGeneratedSkills).toBeDefined();
+      expect(result.diagnostics.lastGeneratedSkills!.length).toBeGreaterThan(0);
     }
-  })
-})
+  });
+});
 
 // =============================================================================
 // Subtraction Tests
 // =============================================================================
 
-describe('Subtraction with budget constraints', () => {
-  it('should handle mixed addition/subtraction with budget', () => {
-    const fullSkillSet = createFullSkillSet()
-    const history: StudentSkillHistory = { skills: {} }
-    const calculator = createSkillCostCalculator(history)
+describe("Subtraction with budget constraints", () => {
+  it("should handle mixed addition/subtraction with budget", () => {
+    const fullSkillSet = createFullSkillSet();
+    const history: StudentSkillHistory = { skills: {} };
+    const calculator = createSkillCostCalculator(history);
 
     for (let i = 0; i < 20; i++) {
       const problem = generateSingleProblem({
@@ -763,15 +774,15 @@ describe('Subtraction with budget constraints', () => {
         allowedSkills: fullSkillSet, // Includes subtraction skills
         costCalculator: calculator,
         attempts: 100,
-      })
+      });
 
-      expect(problem).not.toBeNull()
-      expect(problem!.answer).toBeGreaterThanOrEqual(0) // No negative results
+      expect(problem).not.toBeNull();
+      expect(problem!.answer).toBeGreaterThanOrEqual(0); // No negative results
     }
-  })
+  });
 
-  it('should never produce negative answers', () => {
-    const fullSkillSet = createFullSkillSet()
+  it("should never produce negative answers", () => {
+    const fullSkillSet = createFullSkillSet();
 
     for (let i = 0; i < 50; i++) {
       const problem = generateSingleProblem({
@@ -783,26 +794,26 @@ describe('Subtraction with budget constraints', () => {
         },
         allowedSkills: fullSkillSet,
         attempts: 100,
-      })
+      });
 
       if (problem) {
-        expect(problem.answer).toBeGreaterThanOrEqual(0)
+        expect(problem.answer).toBeGreaterThanOrEqual(0);
       }
     }
-  })
-})
+  });
+});
 
 // =============================================================================
 // Performance Tests
 // =============================================================================
 
-describe('Performance', () => {
-  it('should complete 1000 generations in reasonable time', () => {
-    const fullSkillSet = createFullSkillSet()
-    const history: StudentSkillHistory = { skills: {} }
-    const calculator = createSkillCostCalculator(history)
+describe("Performance", () => {
+  it("should complete 1000 generations in reasonable time", () => {
+    const fullSkillSet = createFullSkillSet();
+    const history: StudentSkillHistory = { skills: {} };
+    const calculator = createSkillCostCalculator(history);
 
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     for (let i = 0; i < 1000; i++) {
       generateSingleProblem({
@@ -815,14 +826,16 @@ describe('Performance', () => {
         allowedSkills: fullSkillSet,
         costCalculator: calculator,
         attempts: 20,
-      })
+      });
     }
 
-    const elapsed = Date.now() - startTime
+    const elapsed = Date.now() - startTime;
 
     // Should complete in under 10 seconds (generous for CI)
-    expect(elapsed).toBeLessThan(10000)
+    expect(elapsed).toBeLessThan(10000);
     // Should be much faster - typically < 1 second
-    console.log(`Generated 1000 problems in ${elapsed}ms (${elapsed / 1000}ms per problem)`)
-  })
-})
+    console.log(
+      `Generated 1000 problems in ${elapsed}ms (${elapsed / 1000}ms per problem)`,
+    );
+  });
+});

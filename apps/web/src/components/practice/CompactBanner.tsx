@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import type { SessionMode } from '@/lib/curriculum/session-mode'
-import { css } from '../../../styled-system/css'
+import type { SessionMode } from "@/lib/curriculum/session-mode";
+import { css } from "../../../styled-system/css";
 
 // ============================================================================
 // Types
@@ -9,13 +9,13 @@ import { css } from '../../../styled-system/css'
 
 interface CompactBannerProps {
   /** The session mode to display */
-  sessionMode: SessionMode
+  sessionMode: SessionMode;
   /** Callback when user clicks the action button */
-  onAction: () => void
+  onAction: () => void;
   /** Whether an action is in progress */
-  isLoading?: boolean
+  isLoading?: boolean;
   /** Dark mode */
-  isDark: boolean
+  isDark: boolean;
 }
 
 // ============================================================================
@@ -23,51 +23,54 @@ interface CompactBannerProps {
 // ============================================================================
 
 type ColorScheme = {
-  bg: string
-  border: string
-  text: string
-  buttonBg: string
-  buttonText: string
-}
+  bg: string;
+  border: string;
+  text: string;
+  buttonBg: string;
+  buttonText: string;
+};
 
-function getColorScheme(mode: SessionMode['type'], isDark: boolean): ColorScheme {
+function getColorScheme(
+  mode: SessionMode["type"],
+  isDark: boolean,
+): ColorScheme {
   switch (mode) {
-    case 'remediation':
+    case "remediation":
       return {
         bg: isDark
-          ? 'linear-gradient(90deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%)'
-          : 'linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.06) 100%)',
-        border: isDark ? 'rgba(245, 158, 11, 0.4)' : 'rgba(217, 119, 6, 0.3)',
-        text: isDark ? '#fcd34d' : '#b45309',
+          ? "linear-gradient(90deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%)"
+          : "linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.06) 100%)",
+        border: isDark ? "rgba(245, 158, 11, 0.4)" : "rgba(217, 119, 6, 0.3)",
+        text: isDark ? "#fcd34d" : "#b45309",
         buttonBg: isDark
-          ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)'
-          : 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)',
-        buttonText: 'white',
-      }
-    case 'progression':
+          ? "linear-gradient(90deg, #f59e0b 0%, #d97706 100%)"
+          : "linear-gradient(90deg, #f59e0b 0%, #d97706 100%)",
+        buttonText: "white",
+      };
+    case "progression":
       return {
         bg: isDark
-          ? 'linear-gradient(90deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.1) 100%)'
-          : 'linear-gradient(90deg, rgba(34, 197, 94, 0.08) 0%, rgba(22, 163, 74, 0.05) 100%)',
-        border: isDark ? 'rgba(34, 197, 94, 0.4)' : 'rgba(34, 197, 94, 0.3)',
-        text: isDark ? '#86efac' : '#166534',
+          ? "linear-gradient(90deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.1) 100%)"
+          : "linear-gradient(90deg, rgba(34, 197, 94, 0.08) 0%, rgba(22, 163, 74, 0.05) 100%)",
+        border: isDark ? "rgba(34, 197, 94, 0.4)" : "rgba(34, 197, 94, 0.3)",
+        text: isDark ? "#86efac" : "#166534",
         buttonBg: isDark
-          ? 'linear-gradient(90deg, #22c55e 0%, #16a34a 100%)'
-          : 'linear-gradient(90deg, #22c55e 0%, #16a34a 100%)',
-        buttonText: 'white',
-      }
-    case 'maintenance':
+          ? "linear-gradient(90deg, #22c55e 0%, #16a34a 100%)"
+          : "linear-gradient(90deg, #22c55e 0%, #16a34a 100%)",
+        buttonText: "white",
+      };
+    case "maintenance":
       return {
         bg: isDark
-          ? 'linear-gradient(90deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)'
-          : 'linear-gradient(90deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%)',
-        border: isDark ? 'rgba(59, 130, 246, 0.4)' : 'rgba(59, 130, 246, 0.3)',
-        text: isDark ? '#93c5fd' : '#1d4ed8',
+          ? "linear-gradient(90deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)"
+          : "linear-gradient(90deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%)",
+        border: isDark ? "rgba(59, 130, 246, 0.4)" : "rgba(59, 130, 246, 0.3)",
+        text: isDark ? "#93c5fd" : "#1d4ed8",
         buttonBg: isDark
-          ? 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)'
-          : 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
-        buttonText: 'white',
-      }
+          ? "linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)"
+          : "linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)",
+        buttonText: "white",
+      };
   }
 }
 
@@ -77,42 +80,42 @@ function getColorScheme(mode: SessionMode['type'], isDark: boolean): ColorScheme
 
 function getIcon(mode: SessionMode): string {
   switch (mode.type) {
-    case 'remediation':
-      return mode.blockedPromotion ? '🔒' : '💪'
-    case 'progression':
-      return '🌟'
-    case 'maintenance':
-      return '✨'
+    case "remediation":
+      return mode.blockedPromotion ? "🔒" : "💪";
+    case "progression":
+      return "🌟";
+    case "maintenance":
+      return "✨";
   }
 }
 
 function getLabel(mode: SessionMode): string {
   switch (mode.type) {
-    case 'remediation': {
-      const skills = mode.weakSkills.slice(0, 2).map((s) => s.displayName)
+    case "remediation": {
+      const skills = mode.weakSkills.slice(0, 2).map((s) => s.displayName);
       if (mode.blockedPromotion) {
-        return `Strengthen ${skills.join(', ')} to unlock ${mode.blockedPromotion.nextSkill.displayName}`
+        return `Strengthen ${skills.join(", ")} to unlock ${mode.blockedPromotion.nextSkill.displayName}`;
       }
-      return `Targeting: ${skills.join(', ')}${mode.weakSkills.length > 2 ? '...' : ''}`
+      return `Targeting: ${skills.join(", ")}${mode.weakSkills.length > 2 ? "..." : ""}`;
     }
-    case 'progression':
+    case "progression":
       return mode.tutorialRequired
         ? `Ready: ${mode.nextSkill.displayName}`
-        : `Practice: ${mode.nextSkill.displayName}`
-    case 'maintenance':
-      return `All ${mode.skillCount} skills strong`
+        : `Practice: ${mode.nextSkill.displayName}`;
+    case "maintenance":
+      return `All ${mode.skillCount} skills strong`;
   }
 }
 
 function getButtonText(mode: SessionMode, isLoading: boolean): string {
-  if (isLoading) return '...'
+  if (isLoading) return "...";
   switch (mode.type) {
-    case 'remediation':
-      return 'Practice'
-    case 'progression':
-      return mode.tutorialRequired ? 'Tutorial' : 'Practice'
-    case 'maintenance':
-      return 'Practice'
+    case "remediation":
+      return "Practice";
+    case "progression":
+      return mode.tutorialRequired ? "Tutorial" : "Practice";
+    case "maintenance":
+      return "Practice";
   }
 }
 
@@ -132,23 +135,23 @@ export function CompactBanner({
   isLoading = false,
   isDark,
 }: CompactBannerProps) {
-  const colors = getColorScheme(sessionMode.type, isDark)
-  const icon = getIcon(sessionMode)
-  const label = getLabel(sessionMode)
-  const buttonText = getButtonText(sessionMode, isLoading)
+  const colors = getColorScheme(sessionMode.type, isDark);
+  const icon = getIcon(sessionMode);
+  const label = getLabel(sessionMode);
+  const buttonText = getButtonText(sessionMode, isLoading);
 
   return (
     <div
       data-component="compact-banner"
       data-mode={sessionMode.type}
       className={css({
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        padding: '0.375rem 0.5rem',
-        borderRadius: '8px',
-        border: '1px solid',
-        transition: 'all 0.2s ease',
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem",
+        padding: "0.375rem 0.5rem",
+        borderRadius: "8px",
+        border: "1px solid",
+        transition: "all 0.2s ease",
       })}
       style={{
         background: colors.bg,
@@ -158,7 +161,7 @@ export function CompactBanner({
       {/* Icon */}
       <span
         className={css({
-          fontSize: '1rem',
+          fontSize: "1rem",
           lineHeight: 1,
           flexShrink: 0,
         })}
@@ -169,13 +172,13 @@ export function CompactBanner({
       {/* Label */}
       <span
         className={css({
-          fontSize: '0.8125rem',
-          fontWeight: '500',
+          fontSize: "0.8125rem",
+          fontWeight: "500",
           flex: 1,
           minWidth: 0,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
         })}
         style={{ color: colors.text }}
       >
@@ -189,23 +192,23 @@ export function CompactBanner({
         onClick={onAction}
         disabled={isLoading}
         className={css({
-          padding: '0.375rem 0.625rem',
-          fontSize: '0.75rem',
-          fontWeight: '600',
-          borderRadius: '6px',
-          border: 'none',
-          cursor: isLoading ? 'not-allowed' : 'pointer',
-          transition: 'all 0.15s ease',
+          padding: "0.375rem 0.625rem",
+          fontSize: "0.75rem",
+          fontWeight: "600",
+          borderRadius: "6px",
+          border: "none",
+          cursor: isLoading ? "not-allowed" : "pointer",
+          transition: "all 0.15s ease",
           flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.25rem',
+          display: "flex",
+          alignItems: "center",
+          gap: "0.25rem",
           _hover: {
-            filter: isLoading ? 'none' : 'brightness(1.1)',
+            filter: isLoading ? "none" : "brightness(1.1)",
           },
         })}
         style={{
-          background: isLoading ? '#9ca3af' : colors.buttonBg,
+          background: isLoading ? "#9ca3af" : colors.buttonBg,
           color: colors.buttonText,
         }}
       >
@@ -213,7 +216,7 @@ export function CompactBanner({
         {!isLoading && <span>→</span>}
       </button>
     </div>
-  )
+  );
 }
 
-export default CompactBanner
+export default CompactBanner;

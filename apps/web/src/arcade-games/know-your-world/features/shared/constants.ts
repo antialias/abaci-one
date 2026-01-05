@@ -5,7 +5,7 @@
  * are used across multiple features.
  */
 
-import type { SafeZoneMargins } from './types'
+import type { SafeZoneMargins } from "./types";
 
 // ============================================================================
 // Precision Mode Constants
@@ -16,7 +16,7 @@ import type { SafeZoneMargins } from './types'
  * When the magnifier shows ≥20 screen pixels per map pixel, precision mode
  * becomes necessary for accurate selection.
  */
-export const PRECISION_MODE_THRESHOLD = 20
+export const PRECISION_MODE_THRESHOLD = 20;
 
 // ============================================================================
 // Zoom Constants
@@ -26,18 +26,18 @@ export const PRECISION_MODE_THRESHOLD = 20
  * Maximum zoom level for the magnifier.
  * Allows zooming in on tiny regions like Gibraltar (0.08px).
  */
-export const MAX_ZOOM = 1000
+export const MAX_ZOOM = 1000;
 
 /**
  * Zoom level above which the magnifier shows gold styling.
  * Indicates high magnification where precision may be needed.
  */
-export const HIGH_ZOOM_THRESHOLD = 100
+export const HIGH_ZOOM_THRESHOLD = 100;
 
 /**
  * Minimum zoom level (1:1 with map)
  */
-export const MIN_ZOOM = 1
+export const MIN_ZOOM = 1;
 
 // ============================================================================
 // Safe Zone Constants
@@ -56,12 +56,12 @@ export const SAFE_ZONE_MARGINS: SafeZoneMargins = {
   bottom: 0,
   /** Progress at top-left is small, doesn't need full-height margin */
   left: 0,
-}
+};
 
 /**
  * Navigation bar height offset for button positioning
  */
-export const NAV_HEIGHT_OFFSET = 150
+export const NAV_HEIGHT_OFFSET = 150;
 
 // ============================================================================
 // Animation Constants
@@ -70,17 +70,17 @@ export const NAV_HEIGHT_OFFSET = 150
 /**
  * Duration in ms for laser effect after all letters confirmed
  */
-export const LASER_EFFECT_DURATION = 750
+export const LASER_EFFECT_DURATION = 750;
 
 /**
  * Duration in ms for name attention animation
  */
-export const NAME_ATTENTION_DURATION = 3000
+export const NAME_ATTENTION_DURATION = 3000;
 
 /**
  * Auto-exit expanded magnifier when zoom drops below this threshold
  */
-export const AUTO_EXIT_ZOOM_THRESHOLD = 1.5
+export const AUTO_EXIT_ZOOM_THRESHOLD = 1.5;
 
 // ============================================================================
 // Detection Constants
@@ -89,12 +89,12 @@ export const AUTO_EXIT_ZOOM_THRESHOLD = 1.5
 /**
  * Detection box size in pixels for region hit testing
  */
-export const DETECTION_BOX_SIZE = 50
+export const DETECTION_BOX_SIZE = 50;
 
 /**
  * Threshold distance for dismissing magnifier after drag
  */
-export const DRAG_DISMISS_THRESHOLD = 20
+export const DRAG_DISMISS_THRESHOLD = 20;
 
 // ============================================================================
 // Debug Flags
@@ -103,14 +103,14 @@ export const DRAG_DISMISS_THRESHOLD = 20
 /**
  * Show technical info in magnifier (gated by isVisualDebugEnabled at runtime)
  */
-export const SHOW_MAGNIFIER_DEBUG_INFO = true
+export const SHOW_MAGNIFIER_DEBUG_INFO = true;
 
 /**
  * Show bounding boxes with importance scores (gated by isVisualDebugEnabled)
  */
-export const SHOW_DEBUG_BOUNDING_BOXES = true
+export const SHOW_DEBUG_BOUNDING_BOXES = true;
 
 /**
  * Show safe zone rectangles (gated by isVisualDebugEnabled)
  */
-export const SHOW_SAFE_ZONE_DEBUG = true
+export const SHOW_SAFE_ZONE_DEBUG = true;

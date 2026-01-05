@@ -1,17 +1,17 @@
-export { AddStudentByFamilyCodeModal } from './AddStudentByFamilyCodeModal'
+export { AddStudentByFamilyCodeModal } from "./AddStudentByFamilyCodeModal";
 export {
   AddStudentToClassroomModal,
   AddStudentToClassroomContent,
-} from './AddStudentToClassroomModal'
-export { ClassroomCodeShare } from './ClassroomCodeShare'
-export { CreateClassroomForm } from './CreateClassroomForm'
-export { EnrollChildFlow } from './EnrollChildFlow'
-export { EnrollChildModal } from './EnrollChildModal'
-export { EnterClassroomButton } from './EnterClassroomButton'
-export { PendingApprovalsSection } from './PendingApprovalsSection'
+} from "./AddStudentToClassroomModal";
+export { ClassroomCodeShare } from "./ClassroomCodeShare";
+export { CreateClassroomForm } from "./CreateClassroomForm";
+export { EnrollChildFlow } from "./EnrollChildFlow";
+export { EnrollChildModal } from "./EnrollChildModal";
+export { EnterClassroomButton } from "./EnterClassroomButton";
+export { PendingApprovalsSection } from "./PendingApprovalsSection";
 export {
   SessionObserverModal,
   SessionObserverView,
-} from './SessionObserverModal'
-export { SessionShareButton } from './SessionShareButton'
-export { TeacherEnrollmentSection } from './TeacherEnrollmentSection'
+} from "./SessionObserverModal";
+export { SessionShareButton } from "./SessionShareButton";
+export { TeacherEnrollmentSection } from "./TeacherEnrollmentSection";

@@ -1,5 +1,5 @@
-import type { AdditionConfigV4 } from '../config-schemas'
-import type { WorksheetFormState } from '../types'
+import type { AdditionConfigV4 } from "../config-schemas";
+import type { WorksheetFormState } from "../types";
 
 /**
  * Extract only the persisted config fields from formState
@@ -65,22 +65,22 @@ import type { WorksheetFormState } from '../types'
  */
 export function extractConfigFields(formState: WorksheetFormState): Omit<
   AdditionConfigV4,
-  'version'
+  "version"
 > & {
-  seed?: number
-  prngAlgorithm?: string
+  seed?: number;
+  prngAlgorithm?: string;
 } {
   // Blacklist approach: Exclude only derived/ephemeral fields
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { rows, total, date, ...persistedFields } = formState
+  const { rows, total, date, ...persistedFields } = formState;
 
   // Ensure prngAlgorithm has a default (critical for reproducibility)
   const config = {
     ...persistedFields,
-    prngAlgorithm: persistedFields.prngAlgorithm ?? 'mulberry32',
-  }
+    prngAlgorithm: persistedFields.prngAlgorithm ?? "mulberry32",
+  };
 
-  console.log('[extractConfigFields] Extracted config:', {
+  console.log("[extractConfigFields] Extracted config:", {
     fieldCount: Object.keys(config).length,
     seed: config.seed,
     prngAlgorithm: config.prngAlgorithm,
@@ -91,8 +91,8 @@ export function extractConfigFields(formState: WorksheetFormState): Omit<
     displayRules: (config as any).displayRules,
     additionDisplayRules: (config as any).additionDisplayRules,
     subtractionDisplayRules: (config as any).subtractionDisplayRules,
-    excludedFields: ['rows', 'total', 'date'],
-  })
+    excludedFields: ["rows", "total", "date"],
+  });
 
-  return config
+  return config;
 }

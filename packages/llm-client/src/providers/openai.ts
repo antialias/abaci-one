@@ -7,8 +7,13 @@ import {
   LLMApiError,
   LLMTruncationError,
   LLMContentFilterError,
+  LLMTimeoutError,
+  LLMNetworkError,
 } from "../types";
 import { BaseProvider } from "./base";
+
+/** Default timeout for LLM requests (2 minutes) */
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 /**
  * OpenAI message content item
@@ -101,14 +106,44 @@ export class OpenAIProvider extends BaseProvider {
       requestBody.reasoning_effort = request.reasoningEffort;
     }
 
-    const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.config.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
+    // Set up timeout with AbortController
+    const timeoutMs = request.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    if (timeoutMs > 0) {
+      timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.config.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.config.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      // Clear timeout on error
+      if (timeoutId) clearTimeout(timeoutId);
+
+      // Handle abort (timeout)
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new LLMTimeoutError(this.name, timeoutMs);
+      }
+
+      // Handle network errors (socket closed, connection refused, etc.)
+      throw new LLMNetworkError(
+        this.name,
+        error instanceof Error ? error : undefined,
+      );
+    } finally {
+      // Clear timeout on success
+      if (timeoutId) clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

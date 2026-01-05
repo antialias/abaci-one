@@ -7,66 +7,73 @@
 
 // Player query keys
 export const playerKeys = {
-  all: ['players'] as const,
-  lists: () => [...playerKeys.all, 'list'] as const,
+  all: ["players"] as const,
+  lists: () => [...playerKeys.all, "list"] as const,
   list: () => [...playerKeys.lists()] as const,
-  listWithSkillData: () => [...playerKeys.all, 'listWithSkillData'] as const,
-  detail: (id: string) => [...playerKeys.all, 'detail', id] as const,
+  listWithSkillData: () => [...playerKeys.all, "listWithSkillData"] as const,
+  detail: (id: string) => [...playerKeys.all, "detail", id] as const,
   enrolledClassrooms: (playerId: string) =>
-    [...playerKeys.all, playerId, 'enrolled-classrooms'] as const,
-  presence: (playerId: string) => [...playerKeys.all, playerId, 'presence'] as const,
-}
+    [...playerKeys.all, playerId, "enrolled-classrooms"] as const,
+  presence: (playerId: string) =>
+    [...playerKeys.all, playerId, "presence"] as const,
+};
 
 // Curriculum query keys
 export const curriculumKeys = {
-  all: ['curriculum'] as const,
+  all: ["curriculum"] as const,
   detail: (playerId: string) => [...curriculumKeys.all, playerId] as const,
-}
+};
 
 // Session plan query keys
 export const sessionPlanKeys = {
-  all: ['sessionPlans'] as const,
-  lists: () => [...sessionPlanKeys.all, 'list'] as const,
+  all: ["sessionPlans"] as const,
+  lists: () => [...sessionPlanKeys.all, "list"] as const,
   list: (playerId: string) => [...sessionPlanKeys.lists(), playerId] as const,
-  active: (playerId: string) => [...sessionPlanKeys.all, 'active', playerId] as const,
-  detail: (planId: string) => [...sessionPlanKeys.all, 'detail', planId] as const,
-}
+  active: (playerId: string) =>
+    [...sessionPlanKeys.all, "active", playerId] as const,
+  detail: (planId: string) =>
+    [...sessionPlanKeys.all, "detail", planId] as const,
+};
 
 // Session history query keys (for paginated history)
 export const sessionHistoryKeys = {
-  all: ['sessionHistory'] as const,
+  all: ["sessionHistory"] as const,
   list: (playerId: string) => [...sessionHistoryKeys.all, playerId] as const,
-}
+};
 
 // Classroom query keys
 export const classroomKeys = {
-  all: ['classrooms'] as const,
-  mine: () => [...classroomKeys.all, 'mine'] as const,
-  byCode: (code: string) => [...classroomKeys.all, 'byCode', code] as const,
-  detail: (id: string) => [...classroomKeys.all, 'detail', id] as const,
-  enrollments: (id: string) => [...classroomKeys.all, 'enrollments', id] as const,
-  presence: (id: string) => [...classroomKeys.all, 'presence', id] as const,
-  activeSessions: (id: string) => [...classroomKeys.all, 'activeSessions', id] as const,
-  pendingParentApprovals: () => [...classroomKeys.all, 'pendingParentApprovals'] as const,
-  pendingRequests: (id: string) => [...classroomKeys.detail(id), 'pending-requests'] as const,
+  all: ["classrooms"] as const,
+  mine: () => [...classroomKeys.all, "mine"] as const,
+  byCode: (code: string) => [...classroomKeys.all, "byCode", code] as const,
+  detail: (id: string) => [...classroomKeys.all, "detail", id] as const,
+  enrollments: (id: string) =>
+    [...classroomKeys.all, "enrollments", id] as const,
+  presence: (id: string) => [...classroomKeys.all, "presence", id] as const,
+  activeSessions: (id: string) =>
+    [...classroomKeys.all, "activeSessions", id] as const,
+  pendingParentApprovals: () =>
+    [...classroomKeys.all, "pendingParentApprovals"] as const,
+  pendingRequests: (id: string) =>
+    [...classroomKeys.detail(id), "pending-requests"] as const,
   awaitingParentApproval: (id: string) =>
-    [...classroomKeys.detail(id), 'awaiting-parent-approval'] as const,
-}
+    [...classroomKeys.detail(id), "awaiting-parent-approval"] as const,
+};
 
 // Entry prompt query keys
 export const entryPromptKeys = {
-  all: ['entry-prompts'] as const,
-  pending: () => [...entryPromptKeys.all, 'pending'] as const,
-}
+  all: ["entry-prompts"] as const,
+  pending: () => [...entryPromptKeys.all, "pending"] as const,
+};
 
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player
-  all: (playerId: string) => ['attachments', playerId] as const,
+  all: (playerId: string) => ["attachments", playerId] as const,
 
   // Attachments for a specific session
   session: (playerId: string, sessionId: string) =>
-    [...attachmentKeys.all(playerId), 'session', sessionId] as const,
+    [...attachmentKeys.all(playerId), "session", sessionId] as const,
 
   // Single attachment detail (includes parsing data)
   detail: (playerId: string, attachmentId: string) =>
@@ -74,9 +81,12 @@ export const attachmentKeys = {
 
   // Parsing-specific data for an attachment
   parsing: (playerId: string, attachmentId: string) =>
-    [...attachmentKeys.detail(playerId, attachmentId), 'parsing'] as const,
+    [...attachmentKeys.detail(playerId, attachmentId), "parsing"] as const,
 
   // Review progress for an attachment (resumable review state)
   reviewProgress: (playerId: string, attachmentId: string) =>
-    [...attachmentKeys.detail(playerId, attachmentId), 'review-progress'] as const,
-}
+    [
+      ...attachmentKeys.detail(playerId, attachmentId),
+      "review-progress",
+    ] as const,
+};

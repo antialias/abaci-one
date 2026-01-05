@@ -6,15 +6,15 @@ export interface RoomDisplayData {
   /**
    * The room's custom name if provided
    */
-  name: string | null
+  name: string | null;
   /**
    * The room's unique code (e.g., "ABC123")
    */
-  code: string
+  code: string;
   /**
    * The game type (optional, for emoji selection)
    */
-  gameName?: string
+  gameName?: string;
 }
 
 export interface RoomDisplay {
@@ -22,36 +22,36 @@ export interface RoomDisplay {
    * Plain text representation - ALWAYS available
    * Use this for: document titles, logs, notifications, plaintext contexts
    */
-  plaintext: string
+  plaintext: string;
 
   /**
    * Primary display text (without emoji)
    */
-  primary: string
+  primary: string;
 
   /**
    * Secondary/subtitle text (optional)
    */
-  secondary?: string
+  secondary?: string;
 
   /**
    * Emoji/icon for the room (optional)
    */
-  emoji?: string
+  emoji?: string;
 
   /**
    * Whether the name was auto-generated (vs. custom)
    */
-  isGenerated: boolean
+  isGenerated: boolean;
 }
 
 const GAME_EMOJIS: Record<string, string> = {
-  matching: '🃏',
-  'memory-quiz': '🧠',
-  'complement-race': '⚡',
-}
+  matching: "🃏",
+  "memory-quiz": "🧠",
+  "complement-race": "⚡",
+};
 
-const DEFAULT_EMOJI = '🎮'
+const DEFAULT_EMOJI = "🎮";
 
 /**
  * Get structured room display information
@@ -75,11 +75,11 @@ export function getRoomDisplay(room: RoomDisplayData): RoomDisplay {
       secondary: room.code,
       emoji: undefined,
       isGenerated: false,
-    }
+    };
   }
 
   // Auto-generate display
-  const emoji = GAME_EMOJIS[room.gameName || ''] || DEFAULT_EMOJI
+  const emoji = GAME_EMOJIS[room.gameName || ""] || DEFAULT_EMOJI;
 
   return {
     plaintext: `Room ${room.code}`, // Always plaintext fallback
@@ -87,7 +87,7 @@ export function getRoomDisplay(room: RoomDisplayData): RoomDisplay {
     secondary: undefined,
     emoji,
     isGenerated: true,
-  }
+  };
 }
 
 /**
@@ -103,7 +103,7 @@ export function getRoomDisplay(room: RoomDisplayData): RoomDisplay {
  * // => "Room ABC123"
  */
 export function getRoomDisplayName(room: RoomDisplayData): string {
-  return getRoomDisplay(room).plaintext
+  return getRoomDisplay(room).plaintext;
 }
 
 /**
@@ -118,9 +118,9 @@ export function getRoomDisplayName(room: RoomDisplayData): string {
  * // => "🃏 ABC123"
  */
 export function getRoomDisplayWithEmoji(room: RoomDisplayData): string {
-  const display = getRoomDisplay(room)
+  const display = getRoomDisplay(room);
   if (display.emoji) {
-    return `${display.emoji} ${display.primary}`
+    return `${display.emoji} ${display.primary}`;
   }
-  return display.primary
+  return display.primary;
 }

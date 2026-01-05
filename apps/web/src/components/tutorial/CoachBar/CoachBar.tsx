@@ -1,28 +1,33 @@
-'use client'
+"use client";
 
-import { useTranslations } from 'next-intl'
-import type { PedagogicalSegment } from '../DecompositionWithReasons'
-import { useTutorialUI } from '../TutorialUIContext'
+import { useTranslations } from "next-intl";
+import type { PedagogicalSegment } from "../DecompositionWithReasons";
+import { useTutorialUI } from "../TutorialUIContext";
 
 export function CoachBar() {
-  const ui = useTutorialUI()
-  const t = useTranslations('tutorial.coachBar')
-  const seg: PedagogicalSegment | null = ui.activeSegment
+  const ui = useTutorialUI();
+  const t = useTranslations("tutorial.coachBar");
+  const seg: PedagogicalSegment | null = ui.activeSegment;
 
-  if (!ui.showCoachBar || !seg || !seg.readable?.summary) return null
+  if (!ui.showCoachBar || !seg || !seg.readable?.summary) return null;
 
-  const r = seg.readable
+  const r = seg.readable;
 
   return (
-    <aside className="coachbar" role="status" aria-live="polite" data-test-id="coachbar">
+    <aside
+      className="coachbar"
+      role="status"
+      aria-live="polite"
+      data-test-id="coachbar"
+    >
       <div className="coachbar__row">
-        <div className="coachbar__title">{r.title ?? t('titleFallback')}</div>
+        <div className="coachbar__title">{r.title ?? t("titleFallback")}</div>
         {ui.canHideCoachBar && (
           <button
             type="button"
             className="coachbar__hide"
             onClick={() => ui.setShowCoachBar(false)}
-            aria-label={t('hideAria')}
+            aria-label={t("hideAria")}
           >
             ✕
           </button>
@@ -39,5 +44,5 @@ export function CoachBar() {
         </div>
       )}
     </aside>
-  )
+  );
 }

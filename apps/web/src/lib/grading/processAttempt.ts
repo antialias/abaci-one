@@ -1,34 +1,37 @@
-import { randomUUID } from 'crypto'
-import { eq } from 'drizzle-orm'
-import { join } from 'path'
-import { db } from '@/db'
-import { problemAttempts, worksheetAttempts } from '@/db/schema'
-import { gradeWorksheetWithVision } from '@/lib/ai/gradeWorksheet'
-import { updateMasteryFromGrading } from './updateMasteryProfile'
+import { randomUUID } from "crypto";
+import { eq } from "drizzle-orm";
+import { join } from "path";
+import { db } from "@/db";
+import { problemAttempts, worksheetAttempts } from "@/db/schema";
+import { gradeWorksheetWithVision } from "@/lib/ai/gradeWorksheet";
+import { updateMasteryFromGrading } from "./updateMasteryProfile";
 
 /**
  * Map AI error patterns to database error types
  */
 function inferErrorType(
-  errorPatterns: string[]
-): 'computation' | 'carry' | 'borrow' | 'alignment' | 'ocr-uncertain' {
+  errorPatterns: string[],
+): "computation" | "carry" | "borrow" | "alignment" | "ocr-uncertain" {
   // Check for carry/borrow errors first (most specific)
-  if (errorPatterns.some((p) => p.toLowerCase().includes('carry'))) {
-    return 'carry'
+  if (errorPatterns.some((p) => p.toLowerCase().includes("carry"))) {
+    return "carry";
   }
-  if (errorPatterns.some((p) => p.toLowerCase().includes('borrow'))) {
-    return 'borrow'
+  if (errorPatterns.some((p) => p.toLowerCase().includes("borrow"))) {
+    return "borrow";
   }
-  if (errorPatterns.some((p) => p.toLowerCase().includes('align'))) {
-    return 'alignment'
+  if (errorPatterns.some((p) => p.toLowerCase().includes("align"))) {
+    return "alignment";
   }
   if (
-    errorPatterns.some((p) => p.toLowerCase().includes('ocr') || p.toLowerCase().includes('read'))
+    errorPatterns.some(
+      (p) =>
+        p.toLowerCase().includes("ocr") || p.toLowerCase().includes("read"),
+    )
   ) {
-    return 'ocr-uncertain'
+    return "ocr-uncertain";
   }
   // Default to computation error
-  return 'computation'
+  return "computation";
 }
 
 /**
@@ -49,51 +52,61 @@ export async function processWorksheetAttempt(attemptId: string) {
     // Update status to processing
     await db
       .update(worksheetAttempts)
-      .set({ gradingStatus: 'processing', updatedAt: new Date() })
-      .where(eq(worksheetAttempts.id, attemptId))
+      .set({ gradingStatus: "processing", updatedAt: new Date() })
+      .where(eq(worksheetAttempts.id, attemptId));
 
     // Get attempt record
     const [attempt] = await db
       .select()
       .from(worksheetAttempts)
-      .where(eq(worksheetAttempts.id, attemptId))
+      .where(eq(worksheetAttempts.id, attemptId));
 
     if (!attempt) {
-      throw new Error(`Attempt ${attemptId} not found`)
+      throw new Error(`Attempt ${attemptId} not found`);
     }
 
     // 1. Build image path
-    const imagePath = join(process.cwd(), 'data', attempt.uploadedImageUrl)
+    const imagePath = join(process.cwd(), "data", attempt.uploadedImageUrl);
 
     // 2. Grade with GPT-5 Vision (single-pass: OCR + grading + analysis)
-    const gradingResult = await gradeWorksheetWithVision(imagePath)
+    const gradingResult = await gradeWorksheetWithVision(imagePath);
 
     // Extract data for database storage
-    const gradedProblems = gradingResult.problems
+    const gradedProblems = gradingResult.problems;
     const aiAnalysis = {
       errorPatterns: gradingResult.errorPatterns,
       currentStepEstimate: gradingResult.currentStepEstimate,
       suggestedStepId: gradingResult.suggestedStepId,
       reasoning: gradingResult.reasoning,
       feedback: gradingResult.feedback,
-    }
+    };
 
     // 3. Store individual problem results
-    const now = new Date()
+    const now = new Date();
     for (const problem of gradedProblems) {
       // Determine regroup places
-      const regroupPlaces: string[] = []
+      const regroupPlaces: string[] = [];
       if (problem.requiresRegrouping) {
         // Check each place value for regrouping
-        const aStr = problem.operandA.toString().padStart(problem.digitCount, '0')
-        const bStr = problem.operandB.toString().padStart(problem.digitCount, '0')
-        const places = ['ones', 'tens', 'hundreds', 'thousands', 'ten-thousands']
+        const aStr = problem.operandA
+          .toString()
+          .padStart(problem.digitCount, "0");
+        const bStr = problem.operandB
+          .toString()
+          .padStart(problem.digitCount, "0");
+        const places = [
+          "ones",
+          "tens",
+          "hundreds",
+          "thousands",
+          "ten-thousands",
+        ];
 
         for (let i = problem.digitCount - 1; i >= 0; i--) {
-          const digitA = Number.parseInt(aStr[aStr.length - 1 - i], 10)
-          const digitB = Number.parseInt(bStr[bStr.length - 1 - i], 10)
+          const digitA = Number.parseInt(aStr[aStr.length - 1 - i], 10);
+          const digitB = Number.parseInt(bStr[bStr.length - 1 - i], 10);
           if (digitA + digitB >= 10) {
-            regroupPlaces.push(places[problem.digitCount - 1 - i])
+            regroupPlaces.push(places[problem.digitCount - 1 - i]);
           }
         }
       }
@@ -105,24 +118,27 @@ export async function processWorksheetAttempt(attemptId: string) {
         problemIndex: problem.index,
         operandA: problem.operandA,
         operandB: problem.operandB,
-        operator: 'addition',
+        operator: "addition",
         correctAnswer: problem.correctAnswer,
         studentAnswer: problem.studentAnswer,
         isCorrect: problem.isCorrect,
-        errorType: problem.isCorrect ? null : inferErrorType(aiAnalysis.errorPatterns),
+        errorType: problem.isCorrect
+          ? null
+          : inferErrorType(aiAnalysis.errorPatterns),
         digitCount: problem.digitCount,
         requiresRegrouping: problem.requiresRegrouping,
-        regroupsInPlaces: regroupPlaces.length > 0 ? JSON.stringify(regroupPlaces) : null,
+        regroupsInPlaces:
+          regroupPlaces.length > 0 ? JSON.stringify(regroupPlaces) : null,
         createdAt: now,
-      })
+      });
     }
 
     // 4. Update attempt with results
-    const correctCount = gradedProblems.filter((p) => p.isCorrect).length
+    const correctCount = gradedProblems.filter((p) => p.isCorrect).length;
     await db
       .update(worksheetAttempts)
       .set({
-        gradingStatus: 'completed',
+        gradingStatus: "completed",
         gradedAt: now,
         totalProblems: gradedProblems.length,
         correctCount,
@@ -133,31 +149,35 @@ export async function processWorksheetAttempt(attemptId: string) {
         aiResponseRaw: JSON.stringify(aiAnalysis),
         updatedAt: now,
       })
-      .where(eq(worksheetAttempts.id, attemptId))
+      .where(eq(worksheetAttempts.id, attemptId));
 
     // 5. Update mastery profile
-    const masteryResult = await updateMasteryFromGrading(attempt.userId, gradingResult)
+    const masteryResult = await updateMasteryFromGrading(
+      attempt.userId,
+      gradingResult,
+    );
     console.log(
-      `Mastery update for ${masteryResult.stepId}: ${masteryResult.mastered ? 'MASTERED' : 'in progress'}`
-    )
+      `Mastery update for ${masteryResult.stepId}: ${masteryResult.mastered ? "MASTERED" : "in progress"}`,
+    );
 
-    return { success: true, attemptId, mastered: masteryResult.mastered }
+    return { success: true, attemptId, mastered: masteryResult.mastered };
   } catch (error) {
-    console.error('Grading failed:', error)
+    console.error("Grading failed:", error);
 
     // Extract error message
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error during grading'
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error during grading";
 
     // Mark as failed with error message
     await db
       .update(worksheetAttempts)
       .set({
-        gradingStatus: 'failed',
+        gradingStatus: "failed",
         errorMessage,
         updatedAt: new Date(),
       })
-      .where(eq(worksheetAttempts.id, attemptId))
+      .where(eq(worksheetAttempts.id, attemptId));
 
-    throw error
+    throw error;
   }
 }

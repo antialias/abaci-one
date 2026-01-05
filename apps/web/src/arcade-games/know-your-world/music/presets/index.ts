@@ -9,12 +9,12 @@ export {
   getPreset,
   getPresetIds,
   type ContinentalPreset,
-} from './continental'
-export { getPresetForRegion, getPresetIdForRegion } from './regionMapping'
+} from "./continental";
+export { getPresetForRegion, getPresetIdForRegion } from "./regionMapping";
 export {
   worldHints,
   usaHints,
   getHintForRegion,
   hasHintForRegion,
   type RegionMusicHint,
-} from './hyperLocal'
+} from "./hyperLocal";

@@ -1,39 +1,41 @@
-'use client'
+"use client";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { UserStats } from '@/db/schema/user-stats'
-import { api } from '@/lib/queryClient'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { UserStats } from "@/db/schema/user-stats";
+import { api } from "@/lib/queryClient";
 
 /**
  * Query key factory for user stats
  */
 export const statsKeys = {
-  all: ['user-stats'] as const,
-  detail: () => [...statsKeys.all, 'detail'] as const,
-}
+  all: ["user-stats"] as const,
+  detail: () => [...statsKeys.all, "detail"] as const,
+};
 
 /**
  * Fetch user statistics
  */
 async function fetchUserStats(): Promise<UserStats> {
-  const res = await api('user-stats')
-  if (!res.ok) throw new Error('Failed to fetch user stats')
-  const data = await res.json()
-  return data.stats
+  const res = await api("user-stats");
+  if (!res.ok) throw new Error("Failed to fetch user stats");
+  const data = await res.json();
+  return data.stats;
 }
 
 /**
  * Update user statistics
  */
-async function updateUserStats(updates: Partial<Omit<UserStats, 'userId'>>): Promise<UserStats> {
-  const res = await api('user-stats', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+async function updateUserStats(
+  updates: Partial<Omit<UserStats, "userId">>,
+): Promise<UserStats> {
+  const res = await api("user-stats", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),
-  })
-  if (!res.ok) throw new Error('Failed to update user stats')
-  const data = await res.json()
-  return data.stats
+  });
+  if (!res.ok) throw new Error("Failed to update user stats");
+  const data = await res.json();
+  return data.stats;
 }
 
 /**
@@ -43,69 +45,74 @@ export function useUserStats() {
   return useQuery({
     queryKey: statsKeys.detail(),
     queryFn: fetchUserStats,
-  })
+  });
 }
 
 /**
  * Hook: Update user statistics
  */
 export function useUpdateUserStats() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: updateUserStats,
     onMutate: async (updates) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: statsKeys.detail() })
+      await queryClient.cancelQueries({ queryKey: statsKeys.detail() });
 
       // Snapshot previous value
-      const previousStats = queryClient.getQueryData<UserStats>(statsKeys.detail())
+      const previousStats = queryClient.getQueryData<UserStats>(
+        statsKeys.detail(),
+      );
 
       // Optimistically update
       if (previousStats) {
-        const optimisticStats = { ...previousStats, ...updates }
-        queryClient.setQueryData<UserStats>(statsKeys.detail(), optimisticStats)
+        const optimisticStats = { ...previousStats, ...updates };
+        queryClient.setQueryData<UserStats>(
+          statsKeys.detail(),
+          optimisticStats,
+        );
       }
 
-      return { previousStats }
+      return { previousStats };
     },
     onError: (_err, _updates, context) => {
       // Rollback on error
       if (context?.previousStats) {
-        queryClient.setQueryData(statsKeys.detail(), context.previousStats)
+        queryClient.setQueryData(statsKeys.detail(), context.previousStats);
       }
     },
     onSettled: (updatedStats) => {
       // Update with server data on success
       if (updatedStats) {
-        queryClient.setQueryData(statsKeys.detail(), updatedStats)
+        queryClient.setQueryData(statsKeys.detail(), updatedStats);
       }
     },
-  })
+  });
 }
 
 /**
  * Hook: Increment games played
  */
 export function useIncrementGamesPlayed() {
-  const { data: stats } = useUserStats()
-  const { mutate: updateStats } = useUpdateUserStats()
+  const { data: stats } = useUserStats();
+  const { mutate: updateStats } = useUpdateUserStats();
 
   return {
     incrementGamesPlayed: () => {
       if (stats) {
-        updateStats({ gamesPlayed: stats.gamesPlayed + 1 })
+        updateStats({ gamesPlayed: stats.gamesPlayed + 1 });
       }
     },
-  }
+  };
 }
 
 /**
  * Hook: Record a win
  */
 export function useRecordWin() {
-  const { data: stats } = useUserStats()
-  const { mutate: updateStats } = useUpdateUserStats()
+  const { data: stats } = useUserStats();
+  const { mutate: updateStats } = useUpdateUserStats();
 
   return {
     recordWin: () => {
@@ -113,40 +120,40 @@ export function useRecordWin() {
         updateStats({
           gamesPlayed: stats.gamesPlayed + 1,
           totalWins: stats.totalWins + 1,
-        })
+        });
       }
     },
-  }
+  };
 }
 
 /**
  * Hook: Update best time if faster
  */
 export function useUpdateBestTime() {
-  const { data: stats } = useUserStats()
-  const { mutate: updateStats } = useUpdateUserStats()
+  const { data: stats } = useUserStats();
+  const { mutate: updateStats } = useUpdateUserStats();
 
   return {
     updateBestTime: (newTime: number) => {
       if (stats && (stats.bestTime === null || newTime < stats.bestTime)) {
-        updateStats({ bestTime: newTime })
+        updateStats({ bestTime: newTime });
       }
     },
-  }
+  };
 }
 
 /**
  * Hook: Update highest accuracy if better
  */
 export function useUpdateHighestAccuracy() {
-  const { data: stats } = useUserStats()
-  const { mutate: updateStats } = useUpdateUserStats()
+  const { data: stats } = useUserStats();
+  const { mutate: updateStats } = useUpdateUserStats();
 
   return {
     updateHighestAccuracy: (newAccuracy: number) => {
       if (stats && newAccuracy > stats.highestAccuracy) {
-        updateStats({ highestAccuracy: newAccuracy })
+        updateStats({ highestAccuracy: newAccuracy });
       }
     },
-  }
+  };
 }

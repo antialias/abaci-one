@@ -4,7 +4,7 @@
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2,
-    "lineWidth": 100
+    "lineWidth": 100,
   },
   "linter": {
     "enabled": true,
@@ -16,19 +16,19 @@
         "noLabelWithoutControl": "off",
         "noStaticElementInteractions": "off",
         "useKeyWithClickEvents": "off",
-        "useSemanticElements": "off"
+        "useSemanticElements": "off",
       },
       "suspicious": {
         "noExplicitAny": "off",
         "noArrayIndexKey": "off",
         "noImplicitAnyLet": "off",
         "noAssignInExpressions": "off",
-        "useIterableCallbackReturn": "off"
+        "useIterableCallbackReturn": "off",
       },
       "style": {
         "useNodejsImportProtocol": "off",
         "noNonNullAssertion": "off",
-        "noDescendingSpecificity": "off"
+        "noDescendingSpecificity": "off",
       },
       "correctness": {
         "noUnusedVariables": "off",
@@ -39,31 +39,31 @@
         "noInvalidUseBeforeDeclaration": "off",
         "useHookAtTopLevel": "off",
         "noNestedComponentDefinitions": "off",
-        "noUnreachable": "off"
+        "noUnreachable": "off",
       },
       "security": {
-        "noDangerouslySetInnerHtml": "off"
+        "noDangerouslySetInnerHtml": "off",
       },
       "performance": {
-        "noAccumulatingSpread": "off"
-      }
-    }
+        "noAccumulatingSpread": "off",
+      },
+    },
   },
   "files": {
-    "ignoreUnknown": true
+    "ignoreUnknown": true,
   },
   "vcs": {
     "enabled": true,
     "clientKind": "git",
     "useIgnoreFile": true,
-    "defaultBranch": "main"
+    "defaultBranch": "main",
   },
   "javascript": {
     "formatter": {
       "quoteStyle": "single",
       "jsxQuoteStyle": "double",
       "semicolons": "asNeeded",
-      "trailingCommas": "es5"
-    }
-  }
+      "trailingCommas": "es5",
+    },
+  },
 }

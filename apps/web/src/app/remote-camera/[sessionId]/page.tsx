@@ -1,15 +1,19 @@
-'use client'
+"use client";
 
-import { useParams } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { VisionCameraFeed } from '@/components/vision/VisionCameraFeed'
-import { usePhoneCamera } from '@/hooks/usePhoneCamera'
-import { useRemoteCameraPhone } from '@/hooks/useRemoteCameraPhone'
-import { detectMarkers, initArucoDetector, loadAruco } from '@/lib/vision/arucoDetection'
-import type { CalibrationGrid } from '@/types/vision'
-import { css } from '../../../../styled-system/css'
+import { useParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { VisionCameraFeed } from "@/components/vision/VisionCameraFeed";
+import { usePhoneCamera } from "@/hooks/usePhoneCamera";
+import { useRemoteCameraPhone } from "@/hooks/useRemoteCameraPhone";
+import {
+  detectMarkers,
+  initArucoDetector,
+  loadAruco,
+} from "@/lib/vision/arucoDetection";
+import type { CalibrationGrid } from "@/types/vision";
+import { css } from "../../../../styled-system/css";
 
-type ConnectionStatus = 'connecting' | 'connected' | 'error' | 'expired'
+type ConnectionStatus = "connecting" | "connected" | "error" | "expired";
 
 /**
  * Phone Camera Page
@@ -19,12 +23,13 @@ type ConnectionStatus = 'connecting' | 'connected' | 'error' | 'expired'
  * Desktop can override with manual calibration.
  */
 export default function RemoteCameraPage() {
-  const params = useParams<{ sessionId: string }>()
-  const sessionId = params.sessionId
+  const params = useParams<{ sessionId: string }>();
+  const sessionId = params.sessionId;
 
   // Session validation state
-  const [sessionStatus, setSessionStatus] = useState<ConnectionStatus>('connecting')
-  const [sessionError, setSessionError] = useState<string | null>(null)
+  const [sessionStatus, setSessionStatus] =
+    useState<ConnectionStatus>("connecting");
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   // Camera state - defaults to back camera (environment)
   const {
@@ -40,7 +45,7 @@ export default function RemoteCameraPage() {
     flipCamera,
     toggleTorch,
     setTorch,
-  } = usePhoneCamera({ initialFacingMode: 'environment' })
+  } = usePhoneCamera({ initialFacingMode: "environment" });
 
   // Remote camera connection - pass setTorch for desktop control
   const {
@@ -58,166 +63,194 @@ export default function RemoteCameraPage() {
     emitTorchState,
   } = useRemoteCameraPhone({
     onTorchRequest: setTorch,
-  })
+  });
 
   // Auto-detection state
-  const [calibration, setCalibration] = useState<CalibrationGrid | null>(null)
-  const [markersDetected, setMarkersDetected] = useState(0)
-  const [arucoReady, setArucoReady] = useState(false)
-  const [isVideoReady, setIsVideoReady] = useState(false)
+  const [calibration, setCalibration] = useState<CalibrationGrid | null>(null);
+  const [markersDetected, setMarkersDetected] = useState(0);
+  const [arucoReady, setArucoReady] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
 
   // Track if we're using desktop calibration (to show in UI)
-  const [usingDesktopCalibration, setUsingDesktopCalibration] = useState(false)
+  const [usingDesktopCalibration, setUsingDesktopCalibration] = useState(false);
 
   // Track if desktop is actively calibrating (has requested raw mode)
   // When true, we don't auto-switch to cropped even if markers are detected
-  const [desktopIsCalibrating, setDesktopIsCalibrating] = useState(false)
+  const [desktopIsCalibrating, setDesktopIsCalibrating] = useState(false);
 
   // Track previous frame mode to detect changes (not just initial state)
-  const prevFrameModeRef = useRef<typeof frameMode | null>(null)
+  const prevFrameModeRef = useRef<typeof frameMode | null>(null);
 
   // Video element ref
-  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Refs for cleanup functions (to avoid stale closures in unmount effect)
-  const stopSendingRef = useRef(stopSending)
-  const disconnectRef = useRef(disconnect)
-  const stopCameraRef = useRef(stopCamera)
+  const stopSendingRef = useRef(stopSending);
+  const disconnectRef = useRef(disconnect);
+  const stopCameraRef = useRef(stopCamera);
 
   // Keep refs in sync
   useEffect(() => {
-    stopSendingRef.current = stopSending
-    disconnectRef.current = disconnect
-    stopCameraRef.current = stopCamera
-  }, [stopSending, disconnect, stopCamera])
+    stopSendingRef.current = stopSending;
+    disconnectRef.current = disconnect;
+    stopCameraRef.current = stopCamera;
+  }, [stopSending, disconnect, stopCamera]);
 
   // Validate session on mount
   useEffect(() => {
     async function validateSession() {
-      console.log('[RemoteCameraPage] Validating session:', sessionId)
+      console.log("[RemoteCameraPage] Validating session:", sessionId);
       try {
-        const response = await fetch(`/api/remote-camera?sessionId=${sessionId}`)
-        console.log('[RemoteCameraPage] Session validation response:', response.status)
+        const response = await fetch(
+          `/api/remote-camera?sessionId=${sessionId}`,
+        );
+        console.log(
+          "[RemoteCameraPage] Session validation response:",
+          response.status,
+        );
         if (response.ok) {
-          const data = await response.json()
-          console.log('[RemoteCameraPage] Session valid:', data)
-          setSessionStatus('connected')
+          const data = await response.json();
+          console.log("[RemoteCameraPage] Session valid:", data);
+          setSessionStatus("connected");
         } else if (response.status === 404) {
-          setSessionStatus('expired')
-          setSessionError('Session not found or expired')
+          setSessionStatus("expired");
+          setSessionError("Session not found or expired");
         } else {
-          setSessionStatus('error')
-          const data = await response.json()
-          setSessionError(data.error || 'Failed to validate session')
+          setSessionStatus("error");
+          const data = await response.json();
+          setSessionError(data.error || "Failed to validate session");
         }
       } catch (err) {
-        console.error('[RemoteCameraPage] Session validation error:', err)
-        setSessionStatus('error')
-        setSessionError('Network error')
+        console.error("[RemoteCameraPage] Session validation error:", err);
+        setSessionStatus("error");
+        setSessionError("Network error");
       }
     }
 
-    validateSession()
-  }, [sessionId])
+    validateSession();
+  }, [sessionId]);
 
   // Load ArUco library
   useEffect(() => {
     loadAruco()
       .then(() => {
-        initArucoDetector()
-        setArucoReady(true)
+        initArucoDetector();
+        setArucoReady(true);
       })
       .catch((err) => {
-        console.error('Failed to load ArUco:', err)
-      })
-  }, [])
+        console.error("Failed to load ArUco:", err);
+      });
+  }, []);
 
   // Connect to session when validated
   useEffect(() => {
-    if (sessionStatus === 'connected' && !isConnected) {
-      connect(sessionId)
+    if (sessionStatus === "connected" && !isConnected) {
+      connect(sessionId);
     }
-  }, [sessionStatus, isConnected, sessionId, connect])
+  }, [sessionStatus, isConnected, sessionId, connect]);
 
   // Request camera when connected
   useEffect(() => {
     if (isConnected && !videoStream && !isCameraLoading) {
-      startCamera()
+      startCamera();
     }
-  }, [isConnected, videoStream, isCameraLoading, startCamera])
+  }, [isConnected, videoStream, isCameraLoading, startCamera]);
 
   // Emit torch state to desktop when it changes or when connected
   useEffect(() => {
     if (isConnected) {
-      emitTorchState(isTorchOn, isTorchAvailable)
+      emitTorchState(isTorchOn, isTorchAvailable);
     }
-  }, [isConnected, isTorchOn, isTorchAvailable, emitTorchState])
+  }, [isConnected, isTorchOn, isTorchAvailable, emitTorchState]);
 
   // Handle video ready - start sending immediately
   const handleVideoReady = useCallback(
     (width: number, height: number) => {
-      setIsVideoReady(true)
+      setIsVideoReady(true);
       // Start sending as soon as video is ready
       if (isConnected && videoRef.current && !isSending) {
-        startSending(videoRef.current)
+        startSending(videoRef.current);
       }
     },
-    [isConnected, isSending, startSending]
-  )
+    [isConnected, isSending, startSending],
+  );
 
   // Also try to start sending when connection is established (if video already ready)
   useEffect(() => {
     if (isConnected && isVideoReady && videoRef.current && !isSending) {
-      startSending(videoRef.current)
+      startSending(videoRef.current);
     }
-  }, [isConnected, isVideoReady, isSending, startSending])
+  }, [isConnected, isVideoReady, isSending, startSending]);
 
   // Sync desktop calibration to local state
   useEffect(() => {
     if (desktopCalibration) {
       const grid: CalibrationGrid = {
         roi: {
-          x: Math.min(desktopCalibration.topLeft.x, desktopCalibration.bottomLeft.x),
-          y: Math.min(desktopCalibration.topLeft.y, desktopCalibration.topRight.y),
+          x: Math.min(
+            desktopCalibration.topLeft.x,
+            desktopCalibration.bottomLeft.x,
+          ),
+          y: Math.min(
+            desktopCalibration.topLeft.y,
+            desktopCalibration.topRight.y,
+          ),
           width:
-            Math.max(desktopCalibration.topRight.x, desktopCalibration.bottomRight.x) -
-            Math.min(desktopCalibration.topLeft.x, desktopCalibration.bottomLeft.x),
+            Math.max(
+              desktopCalibration.topRight.x,
+              desktopCalibration.bottomRight.x,
+            ) -
+            Math.min(
+              desktopCalibration.topLeft.x,
+              desktopCalibration.bottomLeft.x,
+            ),
           height:
-            Math.max(desktopCalibration.bottomLeft.y, desktopCalibration.bottomRight.y) -
-            Math.min(desktopCalibration.topLeft.y, desktopCalibration.topRight.y),
+            Math.max(
+              desktopCalibration.bottomLeft.y,
+              desktopCalibration.bottomRight.y,
+            ) -
+            Math.min(
+              desktopCalibration.topLeft.y,
+              desktopCalibration.topRight.y,
+            ),
         },
         corners: desktopCalibration,
         columnCount: 13,
         columnDividers: Array.from({ length: 12 }, (_, i) => (i + 1) / 13),
         rotation: 0,
-      }
-      setCalibration(grid)
-      setUsingDesktopCalibration(true)
-      setDesktopIsCalibrating(false) // Desktop finished calibrating
+      };
+      setCalibration(grid);
+      setUsingDesktopCalibration(true);
+      setDesktopIsCalibrating(false); // Desktop finished calibrating
       // Update the calibration for the sending loop
       if (isSending) {
-        updateCalibration(desktopCalibration)
+        updateCalibration(desktopCalibration);
       }
     } else if (usingDesktopCalibration) {
       // Desktop cleared calibration - go back to auto-detection
-      setUsingDesktopCalibration(false)
-      setCalibration(null)
+      setUsingDesktopCalibration(false);
+      setCalibration(null);
     }
-  }, [desktopCalibration, isSending, updateCalibration, usingDesktopCalibration])
+  }, [
+    desktopCalibration,
+    isSending,
+    updateCalibration,
+    usingDesktopCalibration,
+  ]);
 
   // Auto-detect markers (always runs unless using desktop calibration)
   useEffect(() => {
     // Don't run auto-detection if using desktop calibration
-    if (usingDesktopCalibration) return
-    if (!videoStream || !arucoReady || !videoRef.current) return
+    if (usingDesktopCalibration) return;
+    if (!videoStream || !arucoReady || !videoRef.current) return;
 
-    const video = videoRef.current
-    let animationId: number
+    const video = videoRef.current;
+    let animationId: number;
 
     const detectLoop = () => {
       if (video.readyState >= 2) {
-        const result = detectMarkers(video)
-        setMarkersDetected(result.markersFound)
+        const result = detectMarkers(video);
+        setMarkersDetected(result.markersFound);
 
         if (result.allMarkersFound && result.quadCorners) {
           // Auto-calibration successful!
@@ -230,7 +263,7 @@ export default function RemoteCameraPage() {
             topRight: result.quadCorners.bottomLeft, // marker 1 (physical TR)
             bottomRight: result.quadCorners.topLeft, // marker 2 (physical BR)
             bottomLeft: result.quadCorners.topRight, // marker 3 (physical BL)
-          }
+          };
           const grid: CalibrationGrid = {
             roi: {
               x: Math.min(phoneCorners.topLeft.x, phoneCorners.bottomLeft.x),
@@ -239,20 +272,22 @@ export default function RemoteCameraPage() {
                 Math.max(phoneCorners.topRight.x, phoneCorners.bottomRight.x) -
                 Math.min(phoneCorners.topLeft.x, phoneCorners.bottomLeft.x),
               height:
-                Math.max(phoneCorners.bottomLeft.y, phoneCorners.bottomRight.y) -
-                Math.min(phoneCorners.topLeft.y, phoneCorners.topRight.y),
+                Math.max(
+                  phoneCorners.bottomLeft.y,
+                  phoneCorners.bottomRight.y,
+                ) - Math.min(phoneCorners.topLeft.y, phoneCorners.topRight.y),
             },
             corners: phoneCorners,
             columnCount: 13,
             columnDividers: Array.from({ length: 12 }, (_, i) => (i + 1) / 13),
             rotation: 0,
-          }
-          setCalibration(grid)
+          };
+          setCalibration(grid);
           // Update the calibration for the sending loop and switch to cropped mode
           // BUT: don't switch to cropped if desktop is actively calibrating (they need raw frames)
           if (isSending && !desktopIsCalibrating) {
-            updateCalibration(phoneCorners)
-            setFrameMode('cropped')
+            updateCalibration(phoneCorners);
+            setFrameMode("cropped");
           }
         }
         // Note: We intentionally do NOT clear calibration when markers are lost.
@@ -262,14 +297,14 @@ export default function RemoteCameraPage() {
         // 3. Desktop requests raw mode (for manual recalibration)
       }
 
-      animationId = requestAnimationFrame(detectLoop)
-    }
+      animationId = requestAnimationFrame(detectLoop);
+    };
 
-    detectLoop()
+    detectLoop();
 
     return () => {
-      if (animationId) cancelAnimationFrame(animationId)
-    }
+      if (animationId) cancelAnimationFrame(animationId);
+    };
   }, [
     videoStream,
     arucoReady,
@@ -278,125 +313,129 @@ export default function RemoteCameraPage() {
     setFrameMode,
     usingDesktopCalibration,
     desktopIsCalibrating,
-  ])
+  ]);
 
   // When frameMode CHANGES to 'raw' from 'cropped', mark desktop as calibrating
   // This prevents auto-switching back to cropped when markers are detected
   // We check prevFrameModeRef to avoid triggering on initial render
   useEffect(() => {
-    const prevMode = prevFrameModeRef.current
-    prevFrameModeRef.current = frameMode
+    const prevMode = prevFrameModeRef.current;
+    prevFrameModeRef.current = frameMode;
 
     // Only trigger when changing from cropped to raw (not on initial load)
-    if (frameMode === 'raw' && prevMode === 'cropped') {
+    if (frameMode === "raw" && prevMode === "cropped") {
       // Desktop requested raw mode - they're calibrating
-      setDesktopIsCalibrating(true)
+      setDesktopIsCalibrating(true);
       if (usingDesktopCalibration) {
-        setUsingDesktopCalibration(false)
-        setCalibration(null)
+        setUsingDesktopCalibration(false);
+        setCalibration(null);
       }
     }
-  }, [frameMode, usingDesktopCalibration])
+  }, [frameMode, usingDesktopCalibration]);
 
   // Cleanup on unmount only (use refs to avoid stale closures)
   useEffect(() => {
     return () => {
-      stopSendingRef.current()
-      disconnectRef.current()
-      stopCameraRef.current()
-    }
-  }, [])
+      stopSendingRef.current();
+      disconnectRef.current();
+      stopCameraRef.current();
+    };
+  }, []);
 
   // Render based on session status
-  if (sessionStatus === 'connecting') {
+  if (sessionStatus === "connecting") {
     return (
       <div
         className={css({
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bg: 'gray.900',
-          color: 'white',
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bg: "gray.900",
+          color: "white",
         })}
       >
-        <div className={css({ textAlign: 'center' })}>
+        <div className={css({ textAlign: "center" })}>
           <div
             className={css({
               width: 10,
               height: 10,
-              border: '3px solid',
-              borderColor: 'gray.600',
-              borderTopColor: 'blue.400',
-              borderRadius: 'full',
-              mx: 'auto',
+              border: "3px solid",
+              borderColor: "gray.600",
+              borderTopColor: "blue.400",
+              borderRadius: "full",
+              mx: "auto",
               mb: 4,
             })}
-            style={{ animation: 'spin 1s linear infinite' }}
+            style={{ animation: "spin 1s linear infinite" }}
           />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           <p>Connecting to session...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  if (sessionStatus === 'expired' || sessionStatus === 'error') {
+  if (sessionStatus === "expired" || sessionStatus === "error") {
     return (
       <div
         className={css({
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bg: 'gray.900',
-          color: 'white',
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bg: "gray.900",
+          color: "white",
           px: 4,
         })}
       >
-        <div className={css({ textAlign: 'center', maxWidth: '400px' })}>
-          <div className={css({ fontSize: '4xl', mb: 4 })}>
-            {sessionStatus === 'expired' ? '⏰' : '❌'}
+        <div className={css({ textAlign: "center", maxWidth: "400px" })}>
+          <div className={css({ fontSize: "4xl", mb: 4 })}>
+            {sessionStatus === "expired" ? "⏰" : "❌"}
           </div>
-          <h1 className={css({ fontSize: 'xl', fontWeight: 'bold', mb: 2 })}>
-            {sessionStatus === 'expired' ? 'Session Expired' : 'Connection Error'}
+          <h1 className={css({ fontSize: "xl", fontWeight: "bold", mb: 2 })}>
+            {sessionStatus === "expired"
+              ? "Session Expired"
+              : "Connection Error"}
           </h1>
-          <p className={css({ color: 'gray.400', mb: 4 })}>
-            {sessionError || 'Please scan the QR code again on your desktop.'}
+          <p className={css({ color: "gray.400", mb: 4 })}>
+            {sessionError || "Please scan the QR code again on your desktop."}
           </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div
       className={css({
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        bg: 'gray.900',
-        color: 'white',
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        bg: "gray.900",
+        color: "white",
       })}
       data-component="remote-camera-page"
     >
       {/* Header */}
       <header
         className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
           px: 4,
           py: 3,
-          borderBottom: '1px solid',
-          borderColor: 'gray.800',
+          borderBottom: "1px solid",
+          borderColor: "gray.800",
         })}
       >
-        <h1 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>Remote Camera</h1>
+        <h1 className={css({ fontSize: "lg", fontWeight: "semibold" })}>
+          Remote Camera
+        </h1>
         <div
           className={css({
-            display: 'flex',
-            alignItems: 'center',
+            display: "flex",
+            alignItems: "center",
             gap: 3,
           })}
         >
@@ -404,8 +443,8 @@ export default function RemoteCameraPage() {
           {videoStream && (
             <div
               className={css({
-                display: 'flex',
-                alignItems: 'center',
+                display: "flex",
+                alignItems: "center",
                 gap: 2,
               })}
             >
@@ -416,16 +455,16 @@ export default function RemoteCameraPage() {
                   onClick={flipCamera}
                   className={css({
                     p: 2,
-                    bg: 'gray.700',
-                    borderRadius: 'full',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    _hover: { bg: 'gray.600' },
+                    bg: "gray.700",
+                    borderRadius: "full",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    _hover: { bg: "gray.600" },
                   })}
-                  title={`Switch to ${facingMode === 'environment' ? 'front' : 'back'} camera`}
+                  title={`Switch to ${facingMode === "environment" ? "front" : "back"} camera`}
                   data-action="flip-camera"
                 >
                   <svg
@@ -454,24 +493,24 @@ export default function RemoteCameraPage() {
                   onClick={toggleTorch}
                   className={css({
                     p: 2,
-                    bg: isTorchOn ? 'yellow.500' : 'gray.700',
-                    borderRadius: 'full',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: isTorchOn ? 'gray.900' : 'white',
-                    _hover: { bg: isTorchOn ? 'yellow.400' : 'gray.600' },
+                    bg: isTorchOn ? "yellow.500" : "gray.700",
+                    borderRadius: "full",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: isTorchOn ? "gray.900" : "white",
+                    _hover: { bg: isTorchOn ? "yellow.400" : "gray.600" },
                   })}
-                  title={isTorchOn ? 'Turn off flash' : 'Turn on flash'}
+                  title={isTorchOn ? "Turn off flash" : "Turn on flash"}
                   data-action="toggle-torch"
                 >
                   <svg
                     width="20"
                     height="20"
                     viewBox="0 0 24 24"
-                    fill={isTorchOn ? 'currentColor' : 'none'}
+                    fill={isTorchOn ? "currentColor" : "none"}
                     stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
@@ -487,28 +526,32 @@ export default function RemoteCameraPage() {
           {/* Status indicator */}
           <div
             className={css({
-              display: 'flex',
-              alignItems: 'center',
+              display: "flex",
+              alignItems: "center",
               gap: 2,
-              fontSize: 'sm',
+              fontSize: "sm",
             })}
           >
             <span
               className={css({
                 width: 2,
                 height: 2,
-                borderRadius: 'full',
-                bg: isConnected ? (isSending ? 'green.500' : 'yellow.500') : 'red.500',
+                borderRadius: "full",
+                bg: isConnected
+                  ? isSending
+                    ? "green.500"
+                    : "yellow.500"
+                  : "red.500",
               })}
             />
-            <span className={css({ color: 'gray.400' })}>
+            <span className={css({ color: "gray.400" })}>
               {isConnected
                 ? isSending
-                  ? frameMode === 'raw'
-                    ? 'Streaming (Raw)'
-                    : 'Streaming (Cropped)'
-                  : 'Connected'
-                : 'Connecting...'}
+                  ? frameMode === "raw"
+                    ? "Streaming (Raw)"
+                    : "Streaming (Cropped)"
+                  : "Connected"
+                : "Connecting..."}
             </span>
           </div>
         </div>
@@ -518,8 +561,8 @@ export default function RemoteCameraPage() {
       <div
         className={css({
           flex: 1,
-          position: 'relative',
-          minHeight: '300px',
+          position: "relative",
+          minHeight: "300px",
         })}
       >
         <VisionCameraFeed
@@ -528,7 +571,7 @@ export default function RemoteCameraPage() {
           calibration={calibration}
           showCalibrationGrid={!!calibration}
           videoRef={(el) => {
-            videoRef.current = el
+            videoRef.current = el;
           }}
           onVideoReady={handleVideoReady}
         />
@@ -537,29 +580,29 @@ export default function RemoteCameraPage() {
         {cameraError && (
           <div
             className={css({
-              position: 'absolute',
+              position: "absolute",
               inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bg: 'rgba(0, 0, 0, 0.8)',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bg: "rgba(0, 0, 0, 0.8)",
               p: 4,
             })}
           >
-            <div className={css({ textAlign: 'center' })}>
-              <p className={css({ color: 'red.400', mb: 4 })}>{cameraError}</p>
+            <div className={css({ textAlign: "center" })}>
+              <p className={css({ color: "red.400", mb: 4 })}>{cameraError}</p>
               <button
                 type="button"
                 onClick={() => startCamera()}
                 className={css({
                   px: 4,
                   py: 2,
-                  bg: 'blue.600',
-                  color: 'white',
-                  borderRadius: 'lg',
-                  fontWeight: 'medium',
-                  border: 'none',
-                  cursor: 'pointer',
+                  bg: "blue.600",
+                  color: "white",
+                  borderRadius: "lg",
+                  fontWeight: "medium",
+                  border: "none",
+                  cursor: "pointer",
                 })}
               >
                 Retry Camera
@@ -574,45 +617,51 @@ export default function RemoteCameraPage() {
         className={css({
           px: 4,
           py: 3,
-          borderTop: '1px solid',
-          borderColor: 'gray.800',
+          borderTop: "1px solid",
+          borderColor: "gray.800",
         })}
       >
         {/* Marker detection status */}
         <div
           className={css({
-            display: 'flex',
-            alignItems: 'center',
+            display: "flex",
+            alignItems: "center",
             gap: 2,
             p: 3,
-            bg: 'gray.800',
-            borderRadius: 'lg',
+            bg: "gray.800",
+            borderRadius: "lg",
           })}
         >
-          <span className={css({ fontSize: 'lg' })}>
-            {usingDesktopCalibration ? '🎯' : markersDetected === 4 ? '✅' : '🔍'}
+          <span className={css({ fontSize: "lg" })}>
+            {usingDesktopCalibration
+              ? "🎯"
+              : markersDetected === 4
+                ? "✅"
+                : "🔍"}
           </span>
           <div>
-            <p className={css({ fontWeight: 'medium' })}>
+            <p className={css({ fontWeight: "medium" })}>
               {usingDesktopCalibration
-                ? 'Using Desktop Calibration'
+                ? "Using Desktop Calibration"
                 : `${markersDetected}/4 Markers Detected`}
             </p>
-            <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
+            <p className={css({ fontSize: "sm", color: "gray.400" })}>
               {usingDesktopCalibration
-                ? 'Cropping set by desktop'
+                ? "Cropping set by desktop"
                 : calibration
-                  ? 'Auto-cropping active'
-                  : 'Point camera at abacus markers'}
+                  ? "Auto-cropping active"
+                  : "Point camera at abacus markers"}
             </p>
           </div>
         </div>
 
         {/* Connection error */}
         {connectionError && (
-          <p className={css({ color: 'red.400', fontSize: 'sm', mt: 2 })}>{connectionError}</p>
+          <p className={css({ color: "red.400", fontSize: "sm", mt: 2 })}>
+            {connectionError}
+          </p>
         )}
       </div>
     </div>
-  )
+  );
 }

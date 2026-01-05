@@ -10,28 +10,28 @@
  * - Session planner problem generation
  */
 
-import { useQuery } from '@tanstack/react-query'
-import type { SessionMode } from '@/lib/curriculum/session-mode'
-import type { SessionModeResponse } from '@/app/api/curriculum/[playerId]/session-mode/route'
+import { useQuery } from "@tanstack/react-query";
+import type { SessionMode } from "@/lib/curriculum/session-mode";
+import type { SessionModeResponse } from "@/app/api/curriculum/[playerId]/session-mode/route";
 
 export const sessionModeKeys = {
-  all: ['sessionMode'] as const,
+  all: ["sessionMode"] as const,
   forPlayer: (playerId: string) => [...sessionModeKeys.all, playerId] as const,
-}
+};
 
 /**
  * Fetch the session mode for a player
  */
 async function fetchSessionMode(playerId: string): Promise<SessionMode> {
-  const response = await fetch(`/api/curriculum/${playerId}/session-mode`)
+  const response = await fetch(`/api/curriculum/${playerId}/session-mode`);
 
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.message || 'Failed to fetch session mode')
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch session mode");
   }
 
-  const data: SessionModeResponse = await response.json()
-  return data.sessionMode
+  const data: SessionModeResponse = await response.json();
+  return data.sessionMode;
 }
 
 /**
@@ -53,7 +53,7 @@ export function useSessionMode(playerId: string, enabled = true) {
     enabled: enabled && !!playerId,
     staleTime: 30_000, // 30 seconds - skill state doesn't change frequently
     refetchOnWindowFocus: false,
-  })
+  });
 }
 
 /**
@@ -63,5 +63,5 @@ export function prefetchSessionMode(playerId: string) {
   return {
     queryKey: sessionModeKeys.forPlayer(playerId),
     queryFn: () => fetchSessionMode(playerId),
-  }
+  };
 }

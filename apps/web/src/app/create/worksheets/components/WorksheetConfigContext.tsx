@@ -1,38 +1,41 @@
-'use client'
+"use client";
 
-import { createContext, useContext, useMemo } from 'react'
-import type { WorksheetFormState } from '@/app/create/worksheets/types'
+import { createContext, useContext, useMemo } from "react";
+import type { WorksheetFormState } from "@/app/create/worksheets/types";
 
 /**
  * Context for worksheet configuration state
  * Eliminates prop drilling for formState, onChange, and operator
  */
 export interface WorksheetConfigContextValue {
-  formState: WorksheetFormState
-  onChange: (updates: Partial<WorksheetFormState>) => void
-  operator: 'addition' | 'subtraction' | 'mixed'
-  isReadOnly?: boolean
+  formState: WorksheetFormState;
+  onChange: (updates: Partial<WorksheetFormState>) => void;
+  operator: "addition" | "subtraction" | "mixed";
+  isReadOnly?: boolean;
 }
 
-export const WorksheetConfigContext = createContext<WorksheetConfigContextValue | null>(null)
+export const WorksheetConfigContext =
+  createContext<WorksheetConfigContextValue | null>(null);
 
 /**
  * Hook to access worksheet configuration context
  * @throws Error if used outside of WorksheetConfigProvider
  */
 export function useWorksheetConfig() {
-  const context = useContext(WorksheetConfigContext)
+  const context = useContext(WorksheetConfigContext);
   if (!context) {
-    throw new Error('useWorksheetConfig must be used within WorksheetConfigProvider')
+    throw new Error(
+      "useWorksheetConfig must be used within WorksheetConfigProvider",
+    );
   }
-  return context
+  return context;
 }
 
 export interface WorksheetConfigProviderProps {
-  formState: WorksheetFormState
-  updateFormState: (updates: Partial<WorksheetFormState>) => void
-  children: React.ReactNode
-  isReadOnly?: boolean
+  formState: WorksheetFormState;
+  updateFormState: (updates: Partial<WorksheetFormState>) => void;
+  children: React.ReactNode;
+  isReadOnly?: boolean;
 }
 
 /**
@@ -49,11 +52,15 @@ export function WorksheetConfigProvider({
     () => ({
       formState,
       onChange: updateFormState,
-      operator: formState.operator || 'addition',
+      operator: formState.operator || "addition",
       isReadOnly,
     }),
-    [formState, updateFormState, isReadOnly]
-  )
+    [formState, updateFormState, isReadOnly],
+  );
 
-  return <WorksheetConfigContext.Provider value={value}>{children}</WorksheetConfigContext.Provider>
+  return (
+    <WorksheetConfigContext.Provider value={value}>
+      {children}
+    </WorksheetConfigContext.Provider>
+  );
 }

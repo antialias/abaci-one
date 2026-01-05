@@ -14,30 +14,30 @@
  * - Multiplayer state
  */
 
-'use client'
+"use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 
-import type { MapData, MapRegion } from '../../types'
-import type { BoundingBox } from '../../utils/adaptiveZoomSearch'
-import type { CrosshairStyle } from '../magnifier/types'
+import type { MapData, MapRegion } from "../../types";
+import type { BoundingBox } from "../../utils/adaptiveZoomSearch";
+import type { CrosshairStyle } from "../magnifier/types";
 
 // ============================================================================
 // Types
 // ============================================================================
 
 export interface CelebrationState {
-  regionId: string
+  regionId: string;
 }
 
 export interface GiveUpRevealState {
-  regionId: string
+  regionId: string;
 }
 
 export interface MagnifierBorderStyle {
-  border: string
-  glow: string
-  width: number
+  border: string;
+  glow: string;
+  width: number;
 }
 
 // ============================================================================
@@ -49,96 +49,99 @@ export interface MapGameContextValue {
   // Map Data
   // -------------------------------------------------------------------------
   /** Full map data including regions and viewBox */
-  mapData: MapData
+  mapData: MapData;
   /** Original viewBox string */
-  displayViewBox: string
+  displayViewBox: string;
 
   // -------------------------------------------------------------------------
   // Game Progress
   // -------------------------------------------------------------------------
   /** IDs of regions that have been found */
-  regionsFound: string[]
+  regionsFound: string[];
   /** Currently hovered region ID */
-  hoveredRegion: string | null
+  hoveredRegion: string | null;
   /** Set hovered region */
-  setHoveredRegion: (regionId: string | null) => void
+  setHoveredRegion: (regionId: string | null) => void;
   /** Current prompt (region to find) */
-  currentPrompt: string | null
+  currentPrompt: string | null;
 
   // -------------------------------------------------------------------------
   // Celebration & Give-up Animations
   // -------------------------------------------------------------------------
   /** Current celebration state */
-  celebration: CelebrationState | null
+  celebration: CelebrationState | null;
   /** Current give-up reveal state */
-  giveUpReveal: GiveUpRevealState | null
+  giveUpReveal: GiveUpRevealState | null;
   /** Whether give-up animation is in progress */
-  isGiveUpAnimating: boolean
+  isGiveUpAnimating: boolean;
   /** Celebration flash progress (0-1) */
-  celebrationFlashProgress: number
+  celebrationFlashProgress: number;
   /** Give-up flash progress (0-1) */
-  giveUpFlashProgress: number
+  giveUpFlashProgress: number;
 
   // -------------------------------------------------------------------------
   // Hot/Cold Feedback
   // -------------------------------------------------------------------------
   /** Whether hot/cold feedback is enabled */
-  effectiveHotColdEnabled: boolean
+  effectiveHotColdEnabled: boolean;
   /** Current hot/cold feedback type */
-  hotColdFeedbackType: string | null
+  hotColdFeedbackType: string | null;
   /** Magnifier border style based on heat */
-  magnifierBorderStyle: MagnifierBorderStyle
+  magnifierBorderStyle: MagnifierBorderStyle;
   /** Crosshair style based on heat */
-  crosshairHeatStyle: CrosshairStyle
+  crosshairHeatStyle: CrosshairStyle;
 
   // -------------------------------------------------------------------------
   // Debug
   // -------------------------------------------------------------------------
   /** Whether to show debug bounding boxes */
-  effectiveShowDebugBoundingBoxes: boolean
+  effectiveShowDebugBoundingBoxes: boolean;
   /** Whether to show magnifier debug info */
-  effectiveShowMagnifierDebugInfo: boolean
+  effectiveShowMagnifierDebugInfo: boolean;
   /** Debug bounding boxes for visualization */
-  debugBoundingBoxes: BoundingBox[]
+  debugBoundingBoxes: BoundingBox[];
 
   // -------------------------------------------------------------------------
   // Multiplayer
   // -------------------------------------------------------------------------
   /** Game mode */
-  gameMode?: 'cooperative' | 'race' | 'turn-based'
+  gameMode?: "cooperative" | "race" | "turn-based";
   /** Current player (for turn-based) */
-  currentPlayer?: string | null
+  currentPlayer?: string | null;
   /** Local player ID */
-  localPlayerId?: string
+  localPlayerId?: string;
 
   // -------------------------------------------------------------------------
   // Callbacks
   // -------------------------------------------------------------------------
   /** Get player who found a region */
-  getPlayerWhoFoundRegion: (regionId: string) => string | null
+  getPlayerWhoFoundRegion: (regionId: string) => string | null;
   /** Whether to show outline for a region */
-  showOutline: (region: MapRegion) => boolean
+  showOutline: (region: MapRegion) => boolean;
   /** Handle region click with celebration */
-  handleRegionClickWithCelebration: (regionId: string, regionName: string) => void
+  handleRegionClickWithCelebration: (
+    regionId: string,
+    regionName: string,
+  ) => void;
   /** Select region at crosshairs (center of magnifier) */
-  selectRegionAtCrosshairs: () => void
+  selectRegionAtCrosshairs: () => void;
   /** Request pointer lock for precision mode */
-  requestPointerLock: () => void
+  requestPointerLock: () => void;
 }
 
 // ============================================================================
 // Context Creation
 // ============================================================================
 
-const MapGameContext = createContext<MapGameContextValue | null>(null)
+const MapGameContext = createContext<MapGameContextValue | null>(null);
 
 // ============================================================================
 // Provider Component
 // ============================================================================
 
 export interface MapGameProviderProps {
-  children: ReactNode
-  value: MapGameContextValue
+  children: ReactNode;
+  value: MapGameContextValue;
 }
 
 /**
@@ -193,10 +196,14 @@ export function MapGameProvider({ children, value }: MapGameProviderProps) {
       value.handleRegionClickWithCelebration,
       value.selectRegionAtCrosshairs,
       value.requestPointerLock,
-    ]
-  )
+    ],
+  );
 
-  return <MapGameContext.Provider value={memoizedValue}>{children}</MapGameContext.Provider>
+  return (
+    <MapGameContext.Provider value={memoizedValue}>
+      {children}
+    </MapGameContext.Provider>
+  );
 }
 
 // ============================================================================
@@ -218,13 +225,13 @@ export function MapGameProvider({ children, value }: MapGameProviderProps) {
  * ```
  */
 export function useMapGameContext(): MapGameContextValue {
-  const context = useContext(MapGameContext)
+  const context = useContext(MapGameContext);
 
   if (!context) {
-    throw new Error('useMapGameContext must be used within a MapGameProvider')
+    throw new Error("useMapGameContext must be used within a MapGameProvider");
   }
 
-  return context
+  return context;
 }
 
 /**
@@ -235,5 +242,5 @@ export function useMapGameContext(): MapGameContextValue {
  * @returns Map Game context value or null
  */
 export function useMapGameContextSafe(): MapGameContextValue | null {
-  return useContext(MapGameContext)
+  return useContext(MapGameContext);
 }

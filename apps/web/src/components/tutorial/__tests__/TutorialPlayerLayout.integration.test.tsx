@@ -1,25 +1,32 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Tutorial } from '../../../types/tutorial'
-import { getTutorialForEditor } from '../../../utils/tutorialConverter'
-import { TutorialPlayer } from '../TutorialPlayer'
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Tutorial } from "../../../types/tutorial";
+import { getTutorialForEditor } from "../../../utils/tutorialConverter";
+import { TutorialPlayer } from "../TutorialPlayer";
 
 // Mock the AbacusReact component for integration tests
-vi.mock('@soroban/abacus-react', () => ({
-  AbacusReact: ({ value, onValueChange, callbacks, stepBeadHighlights }: any) => (
+vi.mock("@soroban/abacus-react", () => ({
+  AbacusReact: ({
+    value,
+    onValueChange,
+    callbacks,
+    stepBeadHighlights,
+  }: any) => (
     <div data-testid="mock-abacus">
       <div data-testid="abacus-value">{value}</div>
-      <div data-testid="step-bead-highlights">{stepBeadHighlights?.length || 0} arrows</div>
+      <div data-testid="step-bead-highlights">
+        {stepBeadHighlights?.length || 0} arrows
+      </div>
       <button
         data-testid="mock-bead-0"
         onClick={() => {
-          onValueChange?.(value + 1)
+          onValueChange?.(value + 1);
           callbacks?.onBeadClick?.({
             placeValue: 0,
-            beadType: 'earth',
+            beadType: "earth",
             position: 0,
             active: false,
-          })
+          });
         }}
       >
         Mock Earth Bead
@@ -27,33 +34,33 @@ vi.mock('@soroban/abacus-react', () => ({
       <button
         data-testid="mock-bead-heaven"
         onClick={() => {
-          onValueChange?.(value + 5)
+          onValueChange?.(value + 5);
           callbacks?.onBeadClick?.({
             placeValue: 0,
-            beadType: 'heaven',
+            beadType: "heaven",
             active: false,
-          })
+          });
         }}
       >
         Mock Heaven Bead
       </button>
     </div>
   ),
-}))
+}));
 
-describe('TutorialPlayer New Layout Integration Tests', () => {
-  let mockTutorial: Tutorial
-  let mockOnStepChange: ReturnType<typeof vi.fn>
-  let mockOnStepComplete: ReturnType<typeof vi.fn>
-  let mockOnEvent: ReturnType<typeof vi.fn>
+describe("TutorialPlayer New Layout Integration Tests", () => {
+  let mockTutorial: Tutorial;
+  let mockOnStepChange: ReturnType<typeof vi.fn>;
+  let mockOnStepComplete: ReturnType<typeof vi.fn>;
+  let mockOnEvent: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockTutorial = getTutorialForEditor()
-    mockOnStepChange = vi.fn()
-    mockOnStepComplete = vi.fn()
-    mockOnEvent = vi.fn()
-  })
+    vi.clearAllMocks();
+    mockTutorial = getTutorialForEditor();
+    mockOnStepChange = vi.fn();
+    mockOnStepComplete = vi.fn();
+    mockOnEvent = vi.fn();
+  });
 
   const renderTutorialPlayer = (props = {}) => {
     return render(
@@ -63,163 +70,172 @@ describe('TutorialPlayer New Layout Integration Tests', () => {
         onStepComplete={mockOnStepComplete}
         onEvent={mockOnEvent}
         {...props}
-      />
-    )
-  }
+      />,
+    );
+  };
 
-  describe('New Layout Structure', () => {
-    it('should render tutorial step title instead of problem field', () => {
-      renderTutorialPlayer()
+  describe("New Layout Structure", () => {
+    it("should render tutorial step title instead of problem field", () => {
+      renderTutorialPlayer();
 
-      const firstStep = mockTutorial.steps[0]
-      expect(screen.getByText(firstStep.title)).toBeInTheDocument()
+      const firstStep = mockTutorial.steps[0];
+      expect(screen.getByText(firstStep.title)).toBeInTheDocument();
 
       // Should NOT display the raw problem field
-      expect(screen.queryByText(firstStep.problem)).not.toBeInTheDocument()
-    })
+      expect(screen.queryByText(firstStep.problem)).not.toBeInTheDocument();
+    });
 
-    it('should display computed problem string from start/target values', () => {
-      renderTutorialPlayer()
+    it("should display computed problem string from start/target values", () => {
+      renderTutorialPlayer();
 
-      const firstStep = mockTutorial.steps[0]
-      const expectedProblem = `${firstStep.startValue} + ${firstStep.targetValue - firstStep.startValue} = ${firstStep.targetValue}`
+      const firstStep = mockTutorial.steps[0];
+      const expectedProblem = `${firstStep.startValue} + ${firstStep.targetValue - firstStep.startValue} = ${firstStep.targetValue}`;
 
-      expect(screen.getByText(expectedProblem)).toBeInTheDocument()
-    })
+      expect(screen.getByText(expectedProblem)).toBeInTheDocument();
+    });
 
-    it('should show inline guidance with fixed height layout', () => {
-      renderTutorialPlayer()
+    it("should show inline guidance with fixed height layout", () => {
+      renderTutorialPlayer();
 
       // Should show current instruction in inline guidance area
-      const _firstStep = mockTutorial.steps[0]
-      expect(screen.getByText('Click the earth bead to add 1')).toBeInTheDocument()
-    })
+      const _firstStep = mockTutorial.steps[0];
+      expect(
+        screen.getByText("Click the earth bead to add 1"),
+      ).toBeInTheDocument();
+    });
 
-    it('should keep abacus always visible and centered', () => {
-      renderTutorialPlayer()
+    it("should keep abacus always visible and centered", () => {
+      renderTutorialPlayer();
 
-      const abacus = screen.getByTestId('mock-abacus')
-      expect(abacus).toBeInTheDocument()
+      const abacus = screen.getByTestId("mock-abacus");
+      expect(abacus).toBeInTheDocument();
 
       // Abacus should be present and visible
-      expect(abacus).toBeVisible()
-    })
+      expect(abacus).toBeVisible();
+    });
 
-    it('should show bead diff tooltip instead of error messages', async () => {
-      renderTutorialPlayer()
+    it("should show bead diff tooltip instead of error messages", async () => {
+      renderTutorialPlayer();
 
       // With new design, no error toasts are shown - only bead diff tooltip
-      const abacus = screen.getByTestId('mock-abacus')
-      expect(abacus).toBeInTheDocument()
+      const abacus = screen.getByTestId("mock-abacus");
+      expect(abacus).toBeInTheDocument();
 
       // Bead diff tooltip should appear when there are highlights
-      const highlights = screen.getByTestId('step-bead-highlights')
-      expect(highlights).toHaveTextContent('1 arrows')
-    })
+      const highlights = screen.getByTestId("step-bead-highlights");
+      expect(highlights).toHaveTextContent("1 arrows");
+    });
 
-    it('should display success message as toast when step completed', async () => {
-      renderTutorialPlayer()
+    it("should display success message as toast when step completed", async () => {
+      renderTutorialPlayer();
 
-      const firstStep = mockTutorial.steps[0]
-      const targetValue = firstStep.targetValue
+      const firstStep = mockTutorial.steps[0];
+      const targetValue = firstStep.targetValue;
 
       // Simulate correct interaction to complete step
       for (let i = 0; i < targetValue; i++) {
-        const bead = screen.getByTestId('mock-bead-0')
-        fireEvent.click(bead)
+        const bead = screen.getByTestId("mock-bead-0");
+        fireEvent.click(bead);
       }
 
       // Should show success message as toast
       await waitFor(() => {
-        expect(screen.getByText(/great! you completed this step correctly/i)).toBeInTheDocument()
-      })
-    })
-  })
+        expect(
+          screen.getByText(/great! you completed this step correctly/i),
+        ).toBeInTheDocument();
+      });
+    });
+  });
 
-  describe('Bead Tooltip Functionality', () => {
-    it('should show bead diff tooltip when user needs help', async () => {
-      renderTutorialPlayer()
+  describe("Bead Tooltip Functionality", () => {
+    it("should show bead diff tooltip when user needs help", async () => {
+      renderTutorialPlayer();
 
       // Wait for help timer (8 seconds in real code, but we can test the logic)
       // Since we're mocking, we'll simulate the conditions
 
-      const abacus = screen.getByTestId('mock-abacus')
-      expect(abacus).toBeInTheDocument()
+      const abacus = screen.getByTestId("mock-abacus");
+      expect(abacus).toBeInTheDocument();
 
       // Tooltip should appear when there are step bead highlights
-      const highlights = screen.getByTestId('step-bead-highlights')
-      expect(highlights).toBeInTheDocument()
-    })
+      const highlights = screen.getByTestId("step-bead-highlights");
+      expect(highlights).toBeInTheDocument();
+    });
 
-    it('should position tooltip near topmost bead with arrows', () => {
-      renderTutorialPlayer()
+    it("should position tooltip near topmost bead with arrows", () => {
+      renderTutorialPlayer();
 
       // This tests the integration of our helper functions
       // The tooltip positioning logic should work with mock abacus
-      const abacus = screen.getByTestId('mock-abacus')
-      expect(abacus).toBeInTheDocument()
-    })
-  })
+      const abacus = screen.getByTestId("mock-abacus");
+      expect(abacus).toBeInTheDocument();
+    });
+  });
 
-  describe('Navigation and Multi-step Flow', () => {
-    it('should maintain abacus position during navigation', async () => {
-      renderTutorialPlayer()
+  describe("Navigation and Multi-step Flow", () => {
+    it("should maintain abacus position during navigation", async () => {
+      renderTutorialPlayer();
 
-      const abacus = screen.getByTestId('mock-abacus')
-      const initialPosition = abacus.getBoundingClientRect()
+      const abacus = screen.getByTestId("mock-abacus");
+      const initialPosition = abacus.getBoundingClientRect();
 
       // Navigate to next step
-      const nextButton = screen.getByText(/next/i)
-      fireEvent.click(nextButton)
+      const nextButton = screen.getByText(/next/i);
+      fireEvent.click(nextButton);
 
       await waitFor(() => {
-        const newPosition = abacus.getBoundingClientRect()
+        const newPosition = abacus.getBoundingClientRect();
         // Abacus should remain in same position
-        expect(newPosition.top).toBe(initialPosition.top)
-        expect(newPosition.left).toBe(initialPosition.left)
-      })
-    })
+        expect(newPosition.top).toBe(initialPosition.top);
+        expect(newPosition.left).toBe(initialPosition.left);
+      });
+    });
 
-    it('should update guidance content during multi-step instructions', async () => {
-      renderTutorialPlayer()
+    it("should update guidance content during multi-step instructions", async () => {
+      renderTutorialPlayer();
 
-      const firstStep = mockTutorial.steps[0]
-      if (firstStep.multiStepInstructions && firstStep.multiStepInstructions.length > 1) {
+      const firstStep = mockTutorial.steps[0];
+      if (
+        firstStep.multiStepInstructions &&
+        firstStep.multiStepInstructions.length > 1
+      ) {
         // Should show first instruction initially
-        expect(screen.getByText(firstStep.multiStepInstructions[0])).toBeInTheDocument()
+        expect(
+          screen.getByText(firstStep.multiStepInstructions[0]),
+        ).toBeInTheDocument();
 
         // After user interaction, should advance to next instruction
         // (This would need proper multi-step interaction simulation)
       }
-    })
+    });
 
-    it('should show pedagogical decomposition with highlighting', () => {
-      renderTutorialPlayer()
+    it("should show pedagogical decomposition with highlighting", () => {
+      renderTutorialPlayer();
 
       // Should show mathematical decomposition
       // This tests integration with the unified step generator
-      const firstStep = mockTutorial.steps[0]
+      const firstStep = mockTutorial.steps[0];
       if (firstStep.startValue !== firstStep.targetValue) {
         // Should show some form of mathematical representation
-        const abacusValue = screen.getByTestId('abacus-value')
-        expect(abacusValue).toBeInTheDocument()
+        const abacusValue = screen.getByTestId("abacus-value");
+        expect(abacusValue).toBeInTheDocument();
       }
-    })
-  })
+    });
+  });
 
-  describe('Responsive Layout Behavior', () => {
-    it('should not require scrolling to see abacus', () => {
-      renderTutorialPlayer()
+  describe("Responsive Layout Behavior", () => {
+    it("should not require scrolling to see abacus", () => {
+      renderTutorialPlayer();
 
-      const abacus = screen.getByTestId('mock-abacus')
-      expect(abacus).toBeInTheDocument()
-      expect(abacus).toBeVisible()
+      const abacus = screen.getByTestId("mock-abacus");
+      expect(abacus).toBeInTheDocument();
+      expect(abacus).toBeVisible();
 
       // In a real e2e test, we'd check viewport constraints
       // Here we ensure abacus is always rendered
-    })
+    });
 
-    it('should handle guidance content overflow gracefully', () => {
+    it("should handle guidance content overflow gracefully", () => {
       // Test with a tutorial step that has very long instructions
       const longInstructionTutorial = {
         ...mockTutorial,
@@ -227,11 +243,11 @@ describe('TutorialPlayer New Layout Integration Tests', () => {
           {
             ...mockTutorial.steps[0],
             multiStepInstructions: [
-              'This is a very long instruction that should be handled gracefully within the fixed height guidance area without breaking the layout or causing the abacus to move from its fixed position',
+              "This is a very long instruction that should be handled gracefully within the fixed height guidance area without breaking the layout or causing the abacus to move from its fixed position",
             ],
           },
         ],
-      }
+      };
 
       render(
         <TutorialPlayer
@@ -239,41 +255,41 @@ describe('TutorialPlayer New Layout Integration Tests', () => {
           onStepChange={mockOnStepChange}
           onStepComplete={mockOnStepComplete}
           onEvent={mockOnEvent}
-        />
-      )
+        />,
+      );
 
-      const abacus = screen.getByTestId('mock-abacus')
-      expect(abacus).toBeInTheDocument()
-      expect(abacus).toBeVisible()
-    })
-  })
+      const abacus = screen.getByTestId("mock-abacus");
+      expect(abacus).toBeInTheDocument();
+      expect(abacus).toBeVisible();
+    });
+  });
 
-  describe('Accessibility and UX', () => {
-    it('should maintain proper heading hierarchy', () => {
-      renderTutorialPlayer()
+  describe("Accessibility and UX", () => {
+    it("should maintain proper heading hierarchy", () => {
+      renderTutorialPlayer();
 
       // Should have proper h1 for tutorial title
-      const tutorialTitle = screen.getByRole('heading', { level: 1 })
-      expect(tutorialTitle).toBeInTheDocument()
+      const tutorialTitle = screen.getByRole("heading", { level: 1 });
+      expect(tutorialTitle).toBeInTheDocument();
 
       // Should have h2 for computed problem
-      const problemHeading = screen.getByRole('heading', { level: 2 })
-      expect(problemHeading).toBeInTheDocument()
-    })
+      const problemHeading = screen.getByRole("heading", { level: 2 });
+      expect(problemHeading).toBeInTheDocument();
+    });
 
-    it('should provide clear visual feedback for user actions', async () => {
-      renderTutorialPlayer()
+    it("should provide clear visual feedback for user actions", async () => {
+      renderTutorialPlayer();
 
-      const earthBead = screen.getByTestId('mock-bead-0')
-      fireEvent.click(earthBead)
+      const earthBead = screen.getByTestId("mock-bead-0");
+      fireEvent.click(earthBead);
 
       // Should update abacus value
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('1')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("1");
+      });
 
       // Should call event handlers
-      expect(mockOnEvent).toHaveBeenCalled()
-    })
-  })
-})
+      expect(mockOnEvent).toHaveBeenCalled();
+    });
+  });
+});

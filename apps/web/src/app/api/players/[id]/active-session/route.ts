@@ -1,12 +1,16 @@
-import { NextResponse } from 'next/server'
-import { and, eq, inArray } from 'drizzle-orm'
-import { db } from '@/db'
-import { sessionPlans, type SessionPart, type SlotResult } from '@/db/schema/session-plans'
-import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { NextResponse } from "next/server";
+import { and, eq, inArray } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  sessionPlans,
+  type SessionPart,
+  type SlotResult,
+} from "@/db/schema/session-plans";
+import { canPerformAction } from "@/lib/classroom";
+import { getDbUserId } from "@/lib/viewer";
 
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -21,21 +25,24 @@ interface RouteParams {
  */
 export async function GET(_request: Request, { params }: RouteParams) {
   try {
-    const { id: playerId } = await params
+    const { id: playerId } = await params;
 
     if (!playerId) {
-      return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
+      return NextResponse.json(
+        { error: "Player ID required" },
+        { status: 400 },
+      );
     }
 
     // Authorization: require 'view' permission (parent or teacher)
-    const userId = await getDbUserId()
-    const canView = await canPerformAction(userId, playerId, 'view')
+    const userId = await getDbUserId();
+    const canView = await canPerformAction(userId, playerId, "view");
     if (!canView) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
     // Find active session (started but not completed/abandoned)
-    const activeStatuses = ['approved', 'in_progress'] as const
+    const activeStatuses = ["approved", "in_progress"] as const;
     const activePlan = await db
       .select({
         id: sessionPlans.id,
@@ -45,21 +52,27 @@ export async function GET(_request: Request, { params }: RouteParams) {
       })
       .from(sessionPlans)
       .where(
-        and(eq(sessionPlans.playerId, playerId), inArray(sessionPlans.status, [...activeStatuses]))
+        and(
+          eq(sessionPlans.playerId, playerId),
+          inArray(sessionPlans.status, [...activeStatuses]),
+        ),
       )
       .orderBy(sessionPlans.createdAt)
       .limit(1)
-      .then((rows) => rows[0])
+      .then((rows) => rows[0]);
 
     if (!activePlan) {
-      return NextResponse.json({ session: null })
+      return NextResponse.json({ session: null });
     }
 
     // Calculate progress - parts is an array of SessionPart, each with slots
-    const parts = (activePlan.parts as SessionPart[]) || []
-    const results = (activePlan.results as SlotResult[]) || []
-    const totalProblems = parts.reduce((sum, part) => sum + part.slots.length, 0)
-    const completedProblems = results.length
+    const parts = (activePlan.parts as SessionPart[]) || [];
+    const results = (activePlan.results as SlotResult[]) || [];
+    const totalProblems = parts.reduce(
+      (sum, part) => sum + part.slots.length,
+      0,
+    );
+    const completedProblems = results.length;
 
     return NextResponse.json({
       session: {
@@ -68,9 +81,12 @@ export async function GET(_request: Request, { params }: RouteParams) {
         completedProblems,
         totalProblems,
       },
-    })
+    });
   } catch (error) {
-    console.error('Error fetching active session:', error)
-    return NextResponse.json({ error: 'Failed to fetch active session' }, { status: 500 })
+    console.error("Error fetching active session:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch active session" },
+      { status: 500 },
+    );
   }
 }

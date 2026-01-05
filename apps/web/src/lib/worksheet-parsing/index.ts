@@ -51,11 +51,12 @@ export {
   type ProblemCorrection,
   type ReparseRequest,
   type ReviewProgress,
-} from './schemas'
+} from "./schemas";
 
 // Parser
 export {
   parseWorksheetImage,
+  streamParseWorksheetImage,
   reparseProblems,
   computeParsingStats,
   applyCorrections,
@@ -66,14 +67,16 @@ export {
   type ModelConfig,
   type ParseWorksheetOptions,
   type ParseWorksheetResult,
-} from './parser'
+  type StreamParseWorksheetOptions,
+  type WorksheetParseStreamEvent,
+} from "./parser";
 
 // Prompt Builder
 export {
   buildWorksheetParsingPrompt,
   buildReparsePrompt,
   type PromptOptions,
-} from './prompt-builder'
+} from "./prompt-builder";
 
 // Session Converter
 export {
@@ -82,7 +85,7 @@ export {
   computeSkillStats,
   type ConversionOptions,
   type ConversionResult,
-} from './session-converter'
+} from "./session-converter";
 
 // Crop Utilities
 export {
@@ -91,4 +94,27 @@ export {
   cropImageWithCanvas,
   type NormalizedBoundingBox,
   type CropRegion,
-} from './crop-utils'
+} from "./crop-utils";
+
+// State Machine (for context provider)
+export {
+  parsingReducer,
+  initialParsingState,
+  isParsingAttachment,
+  isAnyParsingActive,
+  getStreamingStatus,
+  type ParsingContextState,
+  type ParsingAction,
+  type ParsingStats,
+  type CompletedProblem,
+  type StreamType,
+  type StreamingStatus,
+  type StreamingState,
+} from "./state-machine";
+
+// SSE Parser (shared streaming utility)
+export {
+  parseSSEStream,
+  extractCompletedProblemsFromPartialJson,
+  type SSECallbacks,
+} from "./sse-parser";
