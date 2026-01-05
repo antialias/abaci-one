@@ -69,8 +69,6 @@ import {
   useInitializeReview,
   useReparseSelected,
   useStartParsing,
-  useStreamingParse,
-  useStreamingReparse,
   useSubmitCorrections,
   useUnapproveWorksheet,
   useUpdateReviewProgress,
@@ -148,13 +146,6 @@ export function SummaryClient({
   // UI state
   const [showStartPracticeModal, setShowStartPracticeModal] = useState(false);
 
-  // Streaming parsing UI state
-  const [isStreamingPanelExpanded, setIsStreamingPanelExpanded] =
-    useState(false);
-  const [streamingAttachmentId, setStreamingAttachmentId] = useState<
-    string | null
-  >(null);
-
   // Photo management hook (camera, upload, drag-drop, document adjustment)
   const photoManagement = usePhotoManagement({
     studentId,
@@ -211,15 +202,6 @@ export function SummaryClient({
   const startParsing = useStartParsing(studentId, session?.id ?? "");
   const cancelParsing = useCancelParsing(studentId, session?.id ?? "");
 
-  // Streaming parsing hook (for real-time progress display)
-  const {
-    streamingState,
-    startStreaming,
-    cancelStreaming,
-    resetState: resetStreamingState,
-    isStreaming,
-  } = useStreamingParse(studentId, session?.id ?? "");
-
   // Approve and create session mutation
   const approveAndCreateSession = useApproveAndCreateSession(
     studentId,
@@ -231,15 +213,6 @@ export function SummaryClient({
 
   // Re-parse selected problems mutation (non-streaming fallback)
   const reparseSelected = useReparseSelected(studentId, session?.id ?? "");
-
-  // Streaming re-parse hook (for real-time progress display during re-parse)
-  const {
-    reparseState: streamingReparseState,
-    startReparse: startStreamingReparse,
-    cancelReparse: cancelStreamingReparse,
-    resetState: resetStreamingReparseState,
-    isReparsing: isStreamingReparsing,
-  } = useStreamingReparse(studentId, session?.id ?? "");
 
   // Initialize review progress mutation (for starting the review workflow)
   const initializeReview = useInitializeReview(studentId, session?.id ?? "");
@@ -341,58 +314,6 @@ export function SummaryClient({
   const handlePracticeAgain = useCallback(() => {
     setShowStartPracticeModal(true);
   }, []);
-
-  // Handle streaming parse with progress display
-  const handleStreamingParse = useCallback(
-    (attachmentId: string) => {
-      setStreamingAttachmentId(attachmentId);
-      setIsStreamingPanelExpanded(false); // Start collapsed
-      startStreaming({ attachmentId });
-    },
-    [startStreaming],
-  );
-
-  // Handle cancel streaming parse
-  const handleCancelStreaming = useCallback(() => {
-    cancelStreaming();
-    setStreamingAttachmentId(null);
-    setIsStreamingPanelExpanded(false);
-    resetStreamingState();
-  }, [cancelStreaming, resetStreamingState]);
-
-  // Toggle streaming panel expanded state
-  const handleToggleStreamingPanel = useCallback(() => {
-    setIsStreamingPanelExpanded((prev) => !prev);
-  }, []);
-
-  // Reset streaming state when streaming completes
-  useEffect(() => {
-    if (
-      streamingState.status === "complete" ||
-      streamingState.status === "error"
-    ) {
-      // Keep the attachment ID visible briefly, then reset
-      const timer = setTimeout(() => {
-        setStreamingAttachmentId(null);
-        resetStreamingState();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [streamingState.status, resetStreamingState]);
-
-  // Reset streaming reparse state when it completes
-  useEffect(() => {
-    if (
-      streamingReparseState.status === "complete" ||
-      streamingReparseState.status === "error"
-    ) {
-      // Brief delay before reset to show final state
-      const timer = setTimeout(() => {
-        resetStreamingReparseState();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [streamingReparseState.status, resetStreamingReparseState]);
 
   // Determine header text based on session state
   // Only shown for photo-only sessions and no-session state
@@ -554,21 +475,12 @@ export function SummaryClient({
                         onOpenCamera={photoManagement.openCamera}
                         onOpenViewer={photoViewer.open}
                         onDeletePhoto={photoManagement.deletePhoto}
-                        onParse={handleStreamingParse}
                         onCancelParsing={(attachmentId) =>
                           cancelParsing.mutate(attachmentId)
                         }
                         reparsingPhotoId={getPendingAttachmentId(
                           reparseSelected,
                         )}
-                        // Streaming parsing props
-                        streamingState={
-                          streamingAttachmentId ? streamingState : null
-                        }
-                        streamingAttachmentId={streamingAttachmentId}
-                        onCancelStreaming={handleCancelStreaming}
-                        isStreamingPanelExpanded={isStreamingPanelExpanded}
-                        onToggleStreamingPanel={handleToggleStreamingPanel}
                         onInitializeReview={async (attachmentId) => {
                           await initializeReview.mutateAsync(attachmentId);
                         }}
@@ -705,26 +617,6 @@ export function SummaryClient({
           isOpen={photoViewer.isOpen}
           onClose={photoViewer.close}
           onEditConfirm={photoManagement.handlePhotoEditConfirm}
-          onParse={(
-            attachmentId,
-            modelConfigId,
-            additionalContext,
-            preservedBoundingBoxes,
-          ) => {
-            // Use streaming parse for real-time progress in lightbox
-            setStreamingAttachmentId(attachmentId);
-            startStreaming({
-              attachmentId,
-              modelConfigId,
-              additionalContext,
-              preservedBoundingBoxes,
-            });
-          }}
-          parsingPhotoId={
-            streamingAttachmentId ?? getPendingAttachmentId(startParsing)
-          }
-          streamingParseState={streamingState}
-          onCancelStreamingParse={handleCancelStreaming}
           modelConfigs={PARSING_MODEL_CONFIGS}
           onApprove={async (attachmentId) => {
             try {
@@ -761,31 +653,7 @@ export function SummaryClient({
                 )?.corrections?.[0]?.problemNumber ?? null)
               : null
           }
-          onReparseSelected={async (
-            attachmentId,
-            problemIndices,
-            boundingBoxes,
-            additionalContext,
-          ) => {
-            // Use streaming re-parse for real-time progress
-            startStreamingReparse({
-              attachmentId,
-              problemIndices,
-              boundingBoxes,
-              additionalContext,
-            });
-          }}
-          reparsingPhotoId={
-            isStreamingReparsing
-              ? streamingReparseState.currentProblemWorksheetIndex !== null
-                ? "streaming"
-                : null
-              : getPendingAttachmentId(reparseSelected)
-          }
-          streamingReparseState={
-            isStreamingReparsing ? streamingReparseState : null
-          }
-          onCancelStreamingReparse={cancelStreamingReparse}
+          reparsingPhotoId={getPendingAttachmentId(reparseSelected)}
           onCancelParsing={(attachmentId) => cancelParsing.mutate(attachmentId)}
           onApproveProblem={async (photoId, problemIndex) => {
             await updateReviewProgress.mutateAsync({

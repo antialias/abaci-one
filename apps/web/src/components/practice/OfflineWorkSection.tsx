@@ -145,13 +145,24 @@ export function OfflineWorkSection({
   // ============================================================================
   const parsingContext = useWorksheetParsingContextOptional();
 
+  // Local state for streaming panel expansion (used when context is available)
+  const [localIsStreamingPanelExpanded, setLocalIsStreamingPanelExpanded] =
+    useState(false);
+
   // Derive effective streaming state from context or props
   const effectiveStreamingState = useMemo<StreamingParseState | null>(() => {
     if (parsingContext?.state.streaming) {
       // Map context state to StreamingParseState format for backward compat
       const { streaming } = parsingContext.state;
+      // Map statuses that don't exist in StreamingParseState
+      let mappedStatus: StreamingParseState["status"] = streaming.status as StreamingParseState["status"];
+      if (streaming.status === "cancelled") {
+        mappedStatus = "idle";
+      } else if (streaming.status === "processing") {
+        mappedStatus = "generating"; // processing is similar to generating
+      }
       return {
-        status: streaming.status === "cancelled" ? "idle" : streaming.status,
+        status: mappedStatus,
         reasoningText: streaming.reasoningText,
         outputText: streaming.outputText,
         error: null,
@@ -212,6 +223,35 @@ export function OfflineWorkSection({
     },
     [parsingContext, onUnapprove],
   );
+
+  // Effective panel expansion state - use local state when context available, otherwise props
+  const effectiveIsStreamingPanelExpanded = parsingContext
+    ? localIsStreamingPanelExpanded
+    : isStreamingPanelExpanded;
+
+  // Effective toggle handler - use local setter when context available, otherwise prop
+  const handleToggleStreamingPanel = useCallback(() => {
+    if (parsingContext) {
+      setLocalIsStreamingPanelExpanded((prev) => !prev);
+    } else if (onToggleStreamingPanel) {
+      onToggleStreamingPanel();
+    }
+  }, [parsingContext, onToggleStreamingPanel]);
+
+  // Reset local panel expansion when streaming completes
+  useEffect(() => {
+    if (
+      parsingContext?.state.streaming?.status === "complete" ||
+      parsingContext?.state.streaming?.status === "error" ||
+      parsingContext?.state.streaming?.status === "cancelled"
+    ) {
+      // Reset expansion after streaming ends
+      const timer = setTimeout(() => {
+        setLocalIsStreamingPanelExpanded(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [parsingContext?.state.streaming?.status]);
 
   // Check if any parsing operation is active (via context or props)
   const isParsingActive = parsingContext
@@ -764,13 +804,12 @@ export function OfflineWorkSection({
                 {/* Streaming: Progress overlay */}
                 {streamingActive &&
                   effectiveStreamingState &&
-                  (onCancelStreaming || parsingContext) &&
-                  onToggleStreamingPanel && (
+                  (onCancelStreaming || parsingContext) && (
                     <ParsingProgressOverlay
                       progressMessage={effectiveStreamingState.progressMessage}
                       completedCount={effectiveStreamingState.completedProblems.length}
-                      isPanelExpanded={isStreamingPanelExpanded}
-                      onTogglePanel={onToggleStreamingPanel}
+                      isPanelExpanded={effectiveIsStreamingPanelExpanded}
+                      onTogglePanel={handleToggleStreamingPanel}
                       onCancel={handleCancelStreaming}
                       hasReasoningText={effectiveStreamingState.reasoningText.length > 0}
                     />
@@ -780,7 +819,7 @@ export function OfflineWorkSection({
               {/* Streaming: Reasoning panel below tile */}
               {isStreaming && effectiveStreamingState && (
                 <ParsingProgressPanel
-                  isExpanded={isStreamingPanelExpanded}
+                  isExpanded={effectiveIsStreamingPanelExpanded}
                   reasoningText={effectiveStreamingState.reasoningText}
                   status={effectiveStreamingState.status}
                   isDark={isDark}

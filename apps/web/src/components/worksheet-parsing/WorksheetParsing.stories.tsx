@@ -1147,7 +1147,9 @@ function FullFlowDemo() {
               photos={viewerPhotos}
               initialIndex={viewerIndex}
               initialMode={viewerMode}
+              isOpen={true}
               onClose={handleCloseViewer}
+              onEditConfirm={async () => {}}
               onApprove={handleApproveAll}
               approvingPhotoId={approvingId}
               onApproveProblem={handleApproveProblem}

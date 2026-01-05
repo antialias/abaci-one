@@ -240,54 +240,65 @@ export function PhotoViewerEditor({
   const parsingContext = useWorksheetParsingContextOptional();
 
   // Derive effective streaming state from context or props
-  const effectiveStreamingState = useMemo<StreamingParseState | null>(() => {
+  const effectiveStreamingState = useMemo((): StreamingParseState | null => {
     if (
       parsingContext?.state.streaming &&
       parsingContext.state.streaming.streamType === "initial"
     ) {
       const { streaming } = parsingContext.state;
+      // Map context status to StreamingParseState status
+      let mappedStatus: StreamingParseState["status"];
+      if (streaming.status === "cancelled") {
+        mappedStatus = "idle";
+      } else if (streaming.status === "processing") {
+        mappedStatus = "generating";
+      } else {
+        mappedStatus = streaming.status as StreamingParseState["status"];
+      }
       return {
-        status: streaming.status as
-          | "connecting"
-          | "reasoning"
-          | "generating"
-          | "complete"
-          | "error"
-          | "cancelled",
+        status: mappedStatus,
         reasoningText: streaming.reasoningText ?? "",
         outputText: streaming.outputText ?? "",
+        error: parsingContext.state.lastError,
+        progressMessage: streaming.progressMessage,
+        result: parsingContext.state.lastResult,
+        // Context uses different ParsingStats type - pass null since stats isn't used in this component
+        stats: null,
         completedProblems: streaming.completedProblems ?? [],
-        error: parsingContext.state.lastError ?? undefined,
       };
     }
-    return streamingParseState;
-  }, [parsingContext?.state.streaming, parsingContext?.state.lastError, streamingParseState]);
+    return streamingParseState ?? null;
+  }, [parsingContext?.state.streaming, parsingContext?.state.lastError, parsingContext?.state.lastResult, streamingParseState]);
 
-  const effectiveStreamingReparseState = useMemo<StreamingReparseState | null>(
-    () => {
+  const effectiveStreamingReparseState = useMemo(
+    (): StreamingReparseState | null => {
       if (
         parsingContext?.state.streaming &&
         parsingContext.state.streaming.streamType === "reparse"
       ) {
         const { streaming } = parsingContext.state;
+        // Map context status to StreamingReparseState status
+        let mappedStatus: StreamingReparseState["status"];
+        if (streaming.status === "generating" || streaming.status === "reasoning") {
+          mappedStatus = "processing"; // These map to processing in reparse
+        } else {
+          mappedStatus = streaming.status as StreamingReparseState["status"];
+        }
         return {
-          status: streaming.status as
-            | "connecting"
-            | "processing"
-            | "complete"
-            | "error"
-            | "cancelled",
+          status: mappedStatus,
           reasoningText: streaming.reasoningText ?? "",
           currentProblemIndex: streaming.currentProblemIndex ?? 0,
           totalProblems: streaming.totalProblems ?? 0,
+          currentProblemWorksheetIndex: null, // Not tracked in context state
           completedIndices: streaming.completedIndices ?? [],
           progressMessage: streaming.progressMessage ?? "",
-          error: parsingContext.state.lastError ?? undefined,
+          error: parsingContext.state.lastError ?? null,
+          result: parsingContext.state.lastResult,
         };
       }
-      return streamingReparseState;
+      return streamingReparseState ?? null;
     },
-    [parsingContext?.state.streaming, parsingContext?.state.lastError, streamingReparseState],
+    [parsingContext?.state.streaming, parsingContext?.state.lastError, parsingContext?.state.lastResult, streamingReparseState],
   );
 
   // Derive effective parsing state
@@ -356,7 +367,7 @@ export function PhotoViewerEditor({
   const handleApprove = useCallback(
     (photoId: string) => {
       if (parsingContext) {
-        parsingContext.approve({ attachmentId: photoId });
+        parsingContext.approve(photoId);
       } else if (onApprove) {
         onApprove(photoId);
       }
@@ -367,10 +378,7 @@ export function PhotoViewerEditor({
   const handleSubmitCorrection = useCallback(
     async (photoId: string, correction: ProblemCorrection) => {
       if (parsingContext) {
-        await parsingContext.submitCorrection({
-          attachmentId: photoId,
-          correction,
-        });
+        await parsingContext.submitCorrection(photoId, [correction]);
       } else if (onSubmitCorrection) {
         await onSubmitCorrection(photoId, correction);
       }
