@@ -977,3 +977,114 @@ A: Store `startTime` in state, use client-side countdown, server validates elaps
 
 **Q: What's the difference between `playerId` and `userId`?**
 A: `userId` is the user account, `playerId` is the avatar/character in the game. One user can control multiple players.
+
+---
+
+## Practice System Integration
+
+Arcade games can be used during **Game Breaks** in the practice system. This section documents how the integration works and what game developers need to know.
+
+### Overview
+
+The practice system offers students periodic game breaks as a reward for focused work. During a game break:
+
+1. A temporary arcade room is created for the student
+2. The student selects a game to play
+3. The break ends when **either**:
+   - The break timer expires (timeout)
+   - The student finishes a game round (game completion)
+   - The student clicks "Back to Practice" (skip)
+
+### Game Completion Detection
+
+The practice system automatically detects when a game finishes by listening for the `gamePhase` transition to `'results'`.
+
+**How it works:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  PracticeGameModeProvider                    │
+│                                                              │
+│   Listens for 'session-state' socket events                 │
+│   Tracks gamePhase transitions                              │
+│   When gamePhase → 'results', calls onGameComplete()        │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     GameBreakScreen                          │
+│                                                              │
+│   Receives onGameComplete callback                          │
+│   Ends game break with reason: 'gameFinished'               │
+│   Cleans up room and returns to practice                    │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Requirements for Practice Integration
+
+**For games with definite endings:**
+
+Games that have a natural completion point (matching all pairs, finishing all rounds, etc.) should:
+
+1. **Use `gamePhase: 'results'`** when the game ends
+2. Transition to this phase in the validator when `isGameComplete()` returns true
+
+```typescript
+// In Validator.ts
+isGameComplete(state: MyGameState): boolean {
+  return state.gamePhase === 'results'
+}
+
+validateMove(state: MyGameState, move: MyGameMove): ValidationResult {
+  // When game ends, transition to 'results' phase
+  if (allPairsMatched) {
+    return {
+      valid: true,
+      newState: {
+        ...state,
+        gamePhase: 'results',  // ← This triggers practice integration!
+      }
+    }
+  }
+}
+```
+
+**For endless/infinite games:**
+
+Some games don't have natural endings (e.g., complement-race, infinite runners). These games:
+
+- Will only end via timeout or manual skip during game breaks
+- **No changes needed** - the practice system handles this gracefully
+- Game breaks have a maximum duration that acts as a safety net
+
+### Testing Practice Integration
+
+To verify your game integrates correctly with the practice system:
+
+1. Start a practice session with a student
+2. Wait for (or trigger) a game break
+3. Select your game
+4. Complete a game round
+5. Verify the break ends automatically with log: `[PracticeGameModeProvider] Game completed - phase transitioned to results`
+
+**Debug checklist:**
+
+- [ ] Does your game have a `'results'` phase?
+- [ ] Does `isGameComplete()` return `true` when `gamePhase === 'results'`?
+- [ ] Does your validator set `gamePhase: 'results'` when the game ends?
+- [ ] Check browser console for socket events containing `gamePhase`
+
+### Architecture Notes
+
+**Key files:**
+
+| File | Purpose |
+|------|---------|
+| `src/components/practice/GameBreakScreen.tsx` | Game break UI, timer, game selection |
+| `src/components/practice/PracticeGameModeProvider.tsx` | Wraps games, listens for completion |
+| `src/hooks/useGameBreakRoom.ts` | Creates temporary room for game break |
+| `src/hooks/useGameBreakTimer.ts` | Break duration timer |
+
+**See also:** `.claude/ARCADE_ROOM_ARCHITECTURE.md` for complete integration documentation.
