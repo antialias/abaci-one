@@ -1,7 +1,8 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import React, { useContext } from 'react'
+import type React from 'react'
+import { useContext } from 'react'
 import { AppNavBar } from './AppNavBar'
 import type { RosterWarning } from './nav/GameContextNav'
 import type { PlayerBadge } from './nav/types'

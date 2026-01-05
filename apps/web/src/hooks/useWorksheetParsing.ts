@@ -322,6 +322,82 @@ export function useApproveAndCreateSession(playerId: string, sessionId: string) 
   })
 }
 
+/** Response from unapprove API */
+interface UnapproveResponse {
+  success: boolean
+  message: string
+  problemsRemoved: number
+}
+
+/**
+ * Hook to unapprove/revert a processed worksheet back to review state
+ */
+export function useUnapproveWorksheet(playerId: string, sessionId: string) {
+  const queryClient = useQueryClient()
+  const queryKey = attachmentKeys.session(playerId, sessionId)
+
+  return useMutation({
+    mutationFn: async (attachmentId: string) => {
+      const res = await api(`curriculum/${playerId}/attachments/${attachmentId}/unapprove`, {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to unapprove worksheet')
+      }
+      return (await res.json()) as UnapproveResponse
+    },
+
+    onMutate: async (attachmentId) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey })
+
+      // Snapshot current state
+      const previous = queryClient.getQueryData<AttachmentsCache>(queryKey)
+
+      // Optimistic update: revert to needs_review
+      if (previous) {
+        queryClient.setQueryData<AttachmentsCache>(queryKey, {
+          ...previous,
+          attachments: previous.attachments.map((a) =>
+            a.id === attachmentId
+              ? {
+                  ...a,
+                  sessionCreated: false,
+                  parsingStatus: 'needs_review' as ParsingStatus,
+                }
+              : a
+          ),
+        })
+      }
+
+      return { previous }
+    },
+
+    onError: (_err, _attachmentId, context) => {
+      // Revert on error
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous)
+      }
+    },
+
+    onSuccess: () => {
+      // Invalidate session-related queries so changes appear
+      queryClient.invalidateQueries({
+        queryKey: sessionPlanKeys.list(playerId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: sessionHistoryKeys.list(playerId),
+      })
+    },
+
+    onSettled: () => {
+      // Always refetch attachments to ensure consistency
+      queryClient.invalidateQueries({ queryKey })
+    },
+  })
+}
+
 /** Options for selective re-parsing */
 export interface ReparseSelectedOptions {
   attachmentId: string
@@ -678,4 +754,33 @@ export function useUpdateReviewProgress(playerId: string, sessionId: string) {
       })
     },
   })
+}
+
+// ============================================================================
+// Mutation State Helpers
+// ============================================================================
+
+/**
+ * Extract the pending attachment ID from a worksheet parsing mutation
+ *
+ * Handles both string and object variable types that different mutations use.
+ * Returns null if mutation is not pending.
+ *
+ * Usage:
+ * ```typescript
+ * const startParsing = useStartParsing(...)
+ * const parsingId = getPendingAttachmentId(startParsing)
+ * ```
+ */
+export function getPendingAttachmentId(mutation: {
+  isPending: boolean
+  variables?: unknown
+}): string | null {
+  if (!mutation.isPending) return null
+  const vars = mutation.variables
+  if (typeof vars === 'string') return vars
+  if (vars && typeof vars === 'object' && 'attachmentId' in vars) {
+    return (vars as { attachmentId: string }).attachmentId
+  }
+  return null
 }

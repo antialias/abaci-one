@@ -519,7 +519,8 @@
       "Bash(then if strings $chunk)",
       "Bash(if [ \"$found\" = false ])",
       "Bash(then echo \"No arcade-specific code found in practice summary chunks!\" fi)",
-      "Bash(do if strings $chunk)"
+      "Bash(do if strings $chunk)",
+      "Bash(npx chrome-devtools-mcp@latest --help)"
     ],
     "deny": [],
     "ask": []

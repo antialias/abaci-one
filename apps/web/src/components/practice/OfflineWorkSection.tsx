@@ -2,7 +2,7 @@
 
 import { useMutation } from '@tanstack/react-query'
 import type { RefObject } from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ParsingStatus } from '@/db/schema/practice-attachments'
 import { api } from '@/lib/queryClient'
 import type { WorksheetParsingResult, ReviewProgress } from '@/lib/worksheet-parsing'
@@ -70,6 +70,10 @@ export interface OfflineWorkSectionProps {
   onApproveAll?: (attachmentId: string) => Promise<void>
   /** ID of attachment currently being approved */
   approvingId?: string | null
+  /** Revert a processed worksheet back to review state */
+  onUnapprove?: (attachmentId: string) => Promise<void>
+  /** ID of attachment currently being unapproved */
+  unaprovingId?: string | null
 }
 
 /**
@@ -108,6 +112,8 @@ export function OfflineWorkSection({
   initializingReviewId = null,
   onApproveAll,
   approvingId = null,
+  onUnapprove,
+  unaprovingId = null,
 }: OfflineWorkSectionProps) {
   const photoCount = attachments.length
   // Show add tile unless we have 8+ photos (max reasonable gallery size)
@@ -149,18 +155,37 @@ export function OfflineWorkSection({
     }
   }, [sendEntryPrompt, studentId])
 
-  // Find all attachments with parsing results
+  // Find all attachments with parsing results that haven't been processed yet
   const parsedAttachments = attachments.filter(
     (att) =>
       att.rawParsingResult?.problems &&
       att.rawParsingResult.problems.length > 0 &&
-      (att.parsingStatus === 'needs_review' || att.parsingStatus === 'approved')
+      (att.parsingStatus === 'needs_review' || att.parsingStatus === 'approved') &&
+      !att.sessionCreated // Exclude already-processed worksheets
   )
 
-  // Track which parsed result is currently expanded (default to first one)
-  const [expandedResultId, setExpandedResultId] = useState<string | null>(
-    parsedAttachments[0]?.id ?? null
-  )
+  // Track which parsed result is currently expanded
+  const [expandedResultId, setExpandedResultId] = useState<string | null>(null)
+
+  // Auto-select first parsed attachment if current selection is no longer valid
+  const validExpandedId =
+    expandedResultId && parsedAttachments.some((a) => a.id === expandedResultId)
+      ? expandedResultId
+      : (parsedAttachments[0]?.id ?? null)
+
+  // Auto-select first parsed attachment when data loads or selection becomes invalid
+  useEffect(() => {
+    // If we have parsed attachments but current selection is invalid, update it
+    if (parsedAttachments.length > 0) {
+      const isCurrentValid = parsedAttachments.some((a) => a.id === expandedResultId)
+      if (!isCurrentValid) {
+        setExpandedResultId(parsedAttachments[0].id)
+      }
+    } else if (expandedResultId !== null) {
+      // No more parsed attachments, clear selection
+      setExpandedResultId(null)
+    }
+  }, [parsedAttachments, expandedResultId])
 
   return (
     <div
@@ -518,7 +543,7 @@ export function OfflineWorkSection({
               </div>
             ) : null}
 
-            {/* Session created indicator */}
+            {/* Session created indicator with revert option */}
             {att.sessionCreated && (
               <div
                 data-element="session-created"
@@ -538,7 +563,40 @@ export function OfflineWorkSection({
                   color: 'white',
                 })}
               >
-                ✓ Session Created
+                ✓ Done
+                {/* Revert button */}
+                {onUnapprove && (
+                  <button
+                    type="button"
+                    data-action="unapprove-worksheet"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onUnapprove(att.id)
+                    }}
+                    disabled={unaprovingId === att.id}
+                    className={css({
+                      marginLeft: '0.25rem',
+                      padding: '0.125rem 0.25rem',
+                      borderRadius: 'sm',
+                      backgroundColor: 'rgba(255,255,255,0.2)',
+                      color: 'white',
+                      fontSize: '0.625rem',
+                      lineHeight: '1',
+                      cursor: 'pointer',
+                      border: 'none',
+                      _hover: {
+                        backgroundColor: 'rgba(255,255,255,0.4)',
+                      },
+                      _disabled: {
+                        opacity: 0.5,
+                        cursor: 'wait',
+                      },
+                    })}
+                    title="Revert to review (remove problems from session)"
+                  >
+                    {unaprovingId === att.id ? '...' : 'Undo'}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -875,7 +933,7 @@ export function OfflineWorkSection({
                         cursor: 'pointer',
                         transition: 'all 0.15s',
                         backgroundColor:
-                          expandedResultId === att.id
+                          validExpandedId === att.id
                             ? isDark
                               ? 'blue.600'
                               : 'blue.500'
@@ -883,10 +941,10 @@ export function OfflineWorkSection({
                               ? 'gray.700'
                               : 'gray.100',
                         color:
-                          expandedResultId === att.id ? 'white' : isDark ? 'gray.300' : 'gray.700',
+                          validExpandedId === att.id ? 'white' : isDark ? 'gray.300' : 'gray.700',
                         _hover: {
                           backgroundColor:
-                            expandedResultId === att.id
+                            validExpandedId === att.id
                               ? isDark
                                 ? 'blue.500'
                                 : 'blue.600'
@@ -906,7 +964,7 @@ export function OfflineWorkSection({
 
           {/* Show WorksheetReviewSummary for the selected worksheet */}
           {parsedAttachments.map((att) => {
-            if (att.id !== expandedResultId) return null
+            if (att.id !== validExpandedId) return null
             if (!att.rawParsingResult) return null
 
             const photoIndex = attachments.findIndex((a) => a.id === att.id)

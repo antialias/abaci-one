@@ -250,7 +250,13 @@ export function WorksheetReviewSummary({
             textAlign: 'center',
           })}
         >
-          <div className={css({ fontSize: '2xl', fontWeight: 'bold', marginBottom: 1 })}>
+          <div
+            className={css({
+              fontSize: '2xl',
+              fontWeight: 'bold',
+              marginBottom: 1,
+            })}
+          >
             Found {stats.active} problem{stats.active === 1 ? '' : 's'}
           </div>
           {stats.excluded > 0 && (
@@ -370,10 +376,22 @@ export function WorksheetReviewSummary({
               textAlign: 'center',
             })}
           >
-            <div className={css({ fontWeight: 'semibold', marginBottom: 2, color: 'red.300' })}>
+            <div
+              className={css({
+                fontWeight: 'semibold',
+                marginBottom: 2,
+                color: 'red.300',
+              })}
+            >
               ⚠️ Hard to Read
             </div>
-            <div className={css({ fontSize: 'sm', color: 'red.200', marginBottom: 3 })}>
+            <div
+              className={css({
+                fontSize: 'sm',
+                color: 'red.200',
+                marginBottom: 3,
+              })}
+            >
               This photo is blurry or poorly lit. Consider retaking it for better results.
             </div>
             {onRetakePhoto && (

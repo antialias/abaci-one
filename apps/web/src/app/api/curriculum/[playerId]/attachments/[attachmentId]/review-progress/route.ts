@@ -229,7 +229,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       body = UpdateReviewProgressSchema.parse(rawBody)
     } catch (err) {
       return NextResponse.json(
-        { error: 'Invalid request body', details: err instanceof Error ? err.message : 'Unknown' },
+        {
+          error: 'Invalid request body',
+          details: err instanceof Error ? err.message : 'Unknown',
+        },
         { status: 400 }
       )
     }
@@ -325,14 +328,20 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
         // Increment new count
         if (reviewStatus === 'pending' || reviewStatus === 'flagged') {
-          reviewProgress = { ...reviewProgress, flaggedCount: reviewProgress.flaggedCount + 1 }
+          reviewProgress = {
+            ...reviewProgress,
+            flaggedCount: reviewProgress.flaggedCount + 1,
+          }
         } else if (reviewStatus === 'approved') {
           reviewProgress = {
             ...reviewProgress,
             manuallyReviewedCount: reviewProgress.manuallyReviewedCount + 1,
           }
         } else if (reviewStatus === 'corrected') {
-          reviewProgress = { ...reviewProgress, correctedCount: reviewProgress.correctedCount + 1 }
+          reviewProgress = {
+            ...reviewProgress,
+            correctedCount: reviewProgress.correctedCount + 1,
+          }
         }
       }
 

@@ -28,7 +28,10 @@ export interface GameModeProviderProps {
     options?: MutationOptions
   ) => void
   updatePlayerMutation: (
-    args: { id: string; updates: Partial<Pick<DBPlayer, 'name' | 'emoji' | 'color' | 'isActive'>> },
+    args: {
+      id: string
+      updates: Partial<Pick<DBPlayer, 'name' | 'emoji' | 'color' | 'isActive'>>
+    },
     options?: MutationOptions
   ) => void
   deletePlayer: (id: string, options?: MutationOptions) => void

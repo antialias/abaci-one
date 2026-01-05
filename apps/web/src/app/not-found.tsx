@@ -18,7 +18,13 @@ function SimpleFallback() {
         padding: '2rem',
       })}
     >
-      <div className={stack({ gap: '1rem', alignItems: 'center', textAlign: 'center' })}>
+      <div
+        className={stack({
+          gap: '1rem',
+          alignItems: 'center',
+          textAlign: 'center',
+        })}
+      >
         <h1
           className={css({
             fontSize: '4rem',
