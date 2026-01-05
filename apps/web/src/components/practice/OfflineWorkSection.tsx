@@ -2,9 +2,9 @@
 
 import { useMutation } from "@tanstack/react-query";
 import type { RefObject } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ParsingStatus } from "@/db/schema/practice-attachments";
-import { useWorksheetParsingContextOptional } from "@/contexts/WorksheetParsingContext";
+import { useWorksheetParsingContext } from "@/contexts/WorksheetParsingContext";
 import { api } from "@/lib/queryClient";
 import type {
   WorksheetParsingResult,
@@ -12,7 +12,6 @@ import type {
 } from "@/lib/worksheet-parsing";
 import { css } from "../../../styled-system/css";
 import { WorksheetReviewSummary } from "../worksheet-parsing";
-import type { StreamingParseState } from "@/hooks/useWorksheetParsing";
 import { ParsingProgressOverlay } from "./ParsingProgressOverlay";
 import { ParsingProgressPanel } from "./ParsingProgressPanel";
 import { ProgressiveHighlightOverlayCompact } from "./ProgressiveHighlightOverlay";
@@ -82,17 +81,6 @@ export interface OfflineWorkSectionProps {
   onUnapprove?: (attachmentId: string) => Promise<void>;
   /** ID of attachment currently being unapproved */
   unaprovingId?: string | null;
-  // === Streaming parsing props ===
-  /** Streaming parsing state (when using streaming mode) */
-  streamingState?: StreamingParseState | null;
-  /** ID of attachment currently being streamed */
-  streamingAttachmentId?: string | null;
-  /** Cancel streaming parsing */
-  onCancelStreaming?: () => void;
-  /** Toggle expanded state for streaming panel */
-  isStreamingPanelExpanded?: boolean;
-  /** Callback to toggle streaming panel */
-  onToggleStreamingPanel?: () => void;
 }
 
 /**
@@ -133,130 +121,59 @@ export function OfflineWorkSection({
   approvingId = null,
   onUnapprove,
   unaprovingId = null,
-  // Streaming props
-  streamingState = null,
-  streamingAttachmentId = null,
-  onCancelStreaming,
-  isStreamingPanelExpanded = false,
-  onToggleStreamingPanel,
 }: OfflineWorkSectionProps) {
   // ============================================================================
-  // Context Integration (optional - falls back to props if not in provider)
+  // Context Integration (required - must be wrapped in WorksheetParsingProvider)
   // ============================================================================
-  const parsingContext = useWorksheetParsingContextOptional();
+  const parsingContext = useWorksheetParsingContext();
 
-  // Local state for streaming panel expansion (used when context is available)
-  const [localIsStreamingPanelExpanded, setLocalIsStreamingPanelExpanded] =
+  // Local state for streaming panel expansion
+  const [isStreamingPanelExpanded, setIsStreamingPanelExpanded] =
     useState(false);
 
-  // Derive effective streaming state from context or props
-  const effectiveStreamingState = useMemo<StreamingParseState | null>(() => {
-    if (parsingContext?.state.streaming) {
-      // Map context state to StreamingParseState format for backward compat
-      const { streaming } = parsingContext.state;
-      // Map statuses that don't exist in StreamingParseState
-      let mappedStatus: StreamingParseState["status"] = streaming.status as StreamingParseState["status"];
-      if (streaming.status === "cancelled") {
-        mappedStatus = "idle";
-      } else if (streaming.status === "processing") {
-        mappedStatus = "generating"; // processing is similar to generating
-      }
-      return {
-        status: mappedStatus,
-        reasoningText: streaming.reasoningText,
-        outputText: streaming.outputText,
-        error: null,
-        progressMessage: streaming.progressMessage,
-        result: null, // Result is in context state
-        stats: null,
-        completedProblems: streaming.completedProblems,
-      };
-    }
-    return streamingState;
-  }, [parsingContext?.state.streaming, streamingState]);
-
-  const effectiveStreamingAttachmentId = useMemo(() => {
-    if (parsingContext) {
-      return parsingContext.state.activeAttachmentId;
-    }
-    return streamingAttachmentId;
-  }, [parsingContext, streamingAttachmentId]);
-
-  // Effective handlers - use context if available, otherwise props
+  // Handlers that delegate to context
   const handleParse = useCallback(
     (attachmentId: string) => {
-      if (parsingContext) {
-        parsingContext.startParse({ attachmentId });
-      } else if (onParse) {
-        onParse(attachmentId);
-      }
+      parsingContext.startParse({ attachmentId });
     },
-    [parsingContext, onParse],
+    [parsingContext],
   );
 
   const handleCancelStreaming = useCallback(() => {
-    if (parsingContext) {
-      parsingContext.cancel();
-    } else if (onCancelStreaming) {
-      onCancelStreaming();
-    }
-  }, [parsingContext, onCancelStreaming]);
+    parsingContext.cancel();
+  }, [parsingContext]);
 
   const handleApproveAll = useCallback(
     async (attachmentId: string) => {
-      if (parsingContext) {
-        await parsingContext.approve(attachmentId);
-      } else if (onApproveAll) {
-        await onApproveAll(attachmentId);
-      }
+      await parsingContext.approve(attachmentId);
     },
-    [parsingContext, onApproveAll],
+    [parsingContext],
   );
 
   const handleUnapprove = useCallback(
     async (attachmentId: string) => {
-      if (parsingContext) {
-        await parsingContext.unapprove(attachmentId);
-      } else if (onUnapprove) {
-        await onUnapprove(attachmentId);
-      }
+      await parsingContext.unapprove(attachmentId);
     },
-    [parsingContext, onUnapprove],
+    [parsingContext],
   );
 
-  // Effective panel expansion state - use local state when context available, otherwise props
-  const effectiveIsStreamingPanelExpanded = parsingContext
-    ? localIsStreamingPanelExpanded
-    : isStreamingPanelExpanded;
-
-  // Effective toggle handler - use local setter when context available, otherwise prop
   const handleToggleStreamingPanel = useCallback(() => {
-    if (parsingContext) {
-      setLocalIsStreamingPanelExpanded((prev) => !prev);
-    } else if (onToggleStreamingPanel) {
-      onToggleStreamingPanel();
-    }
-  }, [parsingContext, onToggleStreamingPanel]);
+    setIsStreamingPanelExpanded((prev) => !prev);
+  }, []);
 
-  // Reset local panel expansion when streaming completes
+  // Reset panel expansion when streaming completes
   useEffect(() => {
-    if (
-      parsingContext?.state.streaming?.status === "complete" ||
-      parsingContext?.state.streaming?.status === "error" ||
-      parsingContext?.state.streaming?.status === "cancelled"
-    ) {
-      // Reset expansion after streaming ends
+    const status = parsingContext.state.streaming?.status;
+    if (status === "complete" || status === "error" || status === "cancelled") {
       const timer = setTimeout(() => {
-        setLocalIsStreamingPanelExpanded(false);
+        setIsStreamingPanelExpanded(false);
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [parsingContext?.state.streaming?.status]);
+  }, [parsingContext.state.streaming?.status]);
 
-  // Check if any parsing operation is active (via context or props)
-  const isParsingActive = parsingContext
-    ? parsingContext.isAnyParsingActive()
-    : streamingAttachmentId !== null;
+  // Check if any parsing operation is active
+  const isParsingActive = parsingContext.isAnyParsingActive();
 
   // ============================================================================
   // Original Component Logic
@@ -426,13 +343,14 @@ export function OfflineWorkSection({
         {/* Existing photos */}
         {attachments.map((att, index) => {
           // Check if this tile is currently streaming
+          const streamingState = parsingContext.state.streaming;
           const isStreaming =
-            effectiveStreamingAttachmentId === att.id && effectiveStreamingState !== null;
+            parsingContext.state.activeAttachmentId === att.id && streamingState !== null;
           const streamingActive =
             isStreaming &&
-            (effectiveStreamingState?.status === "connecting" ||
-              effectiveStreamingState?.status === "reasoning" ||
-              effectiveStreamingState?.status === "generating");
+            (streamingState?.status === "connecting" ||
+              streamingState?.status === "reasoning" ||
+              streamingState?.status === "generating");
 
           return (
             <div
@@ -794,34 +712,32 @@ export function OfflineWorkSection({
                 )}
 
                 {/* Streaming: Progressive highlight overlay */}
-                {streamingActive && effectiveStreamingState && (
+                {streamingActive && streamingState && (
                   <ProgressiveHighlightOverlayCompact
-                    completedProblems={effectiveStreamingState.completedProblems}
+                    completedProblems={streamingState.completedProblems}
                     staggerDelay={30}
                   />
                 )}
 
                 {/* Streaming: Progress overlay */}
-                {streamingActive &&
-                  effectiveStreamingState &&
-                  (onCancelStreaming || parsingContext) && (
-                    <ParsingProgressOverlay
-                      progressMessage={effectiveStreamingState.progressMessage}
-                      completedCount={effectiveStreamingState.completedProblems.length}
-                      isPanelExpanded={effectiveIsStreamingPanelExpanded}
-                      onTogglePanel={handleToggleStreamingPanel}
-                      onCancel={handleCancelStreaming}
-                      hasReasoningText={effectiveStreamingState.reasoningText.length > 0}
-                    />
-                  )}
+                {streamingActive && streamingState && (
+                  <ParsingProgressOverlay
+                    progressMessage={streamingState.progressMessage}
+                    completedCount={streamingState.completedProblems.length}
+                    isPanelExpanded={isStreamingPanelExpanded}
+                    onTogglePanel={handleToggleStreamingPanel}
+                    onCancel={handleCancelStreaming}
+                    hasReasoningText={streamingState.reasoningText.length > 0}
+                  />
+                )}
               </div>
 
               {/* Streaming: Reasoning panel below tile */}
-              {isStreaming && effectiveStreamingState && (
+              {isStreaming && streamingState && (
                 <ParsingProgressPanel
-                  isExpanded={effectiveIsStreamingPanelExpanded}
-                  reasoningText={effectiveStreamingState.reasoningText}
-                  status={effectiveStreamingState.status}
+                  isExpanded={isStreamingPanelExpanded}
+                  reasoningText={streamingState.reasoningText}
+                  status={streamingState.status}
                   isDark={isDark}
                 />
               )}

@@ -229,70 +229,12 @@ export function useStartParsing(playerId: string, sessionId: string) {
 }
 
 // ============================================================================
-// Streaming Parsing Hook
+// Streaming State Management
 // ============================================================================
 
-/** Streaming parsing state */
-export interface StreamingParseState {
-  /** Current status */
-  status:
-    | "idle"
-    | "connecting"
-    | "reasoning"
-    | "generating"
-    | "complete"
-    | "error";
-  /** Accumulated reasoning text (model's thinking process) */
-  reasoningText: string;
-  /** Accumulated output text (partial JSON) */
-  outputText: string;
-  /** Error message if failed */
-  error: string | null;
-  /** Progress stage message */
-  progressMessage: string | null;
-  /** Final result when complete */
-  result: WorksheetParsingResult | null;
-  /** Final stats when complete */
-  stats: ParsingStats | null;
-  /** Problems that have been fully streamed (for progressive highlighting) */
-  completedProblems: CompletedProblem[];
-}
-
-// NOTE: useStreamingParse hook was removed - use WorksheetParsingContext instead
-
-// ============================================================================
-// Streaming Re-parse State Types
-// ============================================================================
-
-/** Streaming re-parse state */
-export interface StreamingReparseState {
-  /** Current status */
-  status:
-    | "idle"
-    | "connecting"
-    | "processing"
-    | "complete"
-    | "error"
-    | "cancelled";
-  /** Current problem being processed (index in problemIndices array) */
-  currentProblemIndex: number;
-  /** Total problems to process */
-  totalProblems: number;
-  /** Current problem's worksheet index */
-  currentProblemWorksheetIndex: number | null;
-  /** Accumulated reasoning text for current problem */
-  reasoningText: string;
-  /** Error message if failed */
-  error: string | null;
-  /** Progress message */
-  progressMessage: string | null;
-  /** Completed problem indices */
-  completedIndices: number[];
-  /** Final result when complete */
-  result: WorksheetParsingResult | null;
-}
-
-// NOTE: useStreamingReparse hook was removed - use WorksheetParsingContext instead
+// NOTE: Streaming state is now managed via WorksheetParsingContext.
+// See src/contexts/WorksheetParsingContext.tsx for the context provider
+// and src/lib/worksheet-parsing/state-machine.ts for the state types.
 
 /**
  * Hook to submit corrections to parsed problems

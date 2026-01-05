@@ -10,13 +10,9 @@ import {
   type ProblemCorrection,
 } from "@/components/worksheet-parsing";
 import type { ReviewProgress } from "@/lib/worksheet-parsing";
-import type {
-  StreamingParseState,
-  StreamingReparseState,
-} from "@/hooks/useWorksheetParsing";
 import { Z_INDEX } from "@/constants/zIndex";
 import { useVisualDebug } from "@/contexts/VisualDebugContext";
-import { useWorksheetParsingContextOptional } from "@/contexts/WorksheetParsingContext";
+import { useWorksheetParsingContext } from "@/contexts/WorksheetParsingContext";
 import type {
   ModelConfig,
   WorksheetParsingResult,
@@ -89,22 +85,6 @@ export interface PhotoViewerEditorProps {
     corners: Array<{ x: number; y: number }>,
     rotation: 0 | 90 | 180 | 270,
   ) => Promise<void>;
-  /** Callback to parse worksheet (optional - if not provided, no parse button shown) */
-  onParse?: (
-    photoId: string,
-    modelConfigId?: string,
-    additionalContext?: string,
-    preservedBoundingBoxes?: Record<
-      number,
-      { x: number; y: number; width: number; height: number }
-    >,
-  ) => void;
-  /** ID of the photo currently being parsed (null if none) */
-  parsingPhotoId?: string | null;
-  /** Streaming parse state (null if not streaming) */
-  streamingParseState?: StreamingParseState | null;
-  /** Callback to cancel streaming parse */
-  onCancelStreamingParse?: () => void;
   /** Available model configurations for parsing */
   modelConfigs?: ModelConfig[];
   /** Callback to approve parsed worksheet and create session */
@@ -118,24 +98,6 @@ export interface PhotoViewerEditorProps {
   ) => Promise<void>;
   /** Problem number currently being saved (null if none) */
   savingProblemNumber?: number | null;
-  /** Callback to re-parse selected problems */
-  onReparseSelected?: (
-    photoId: string,
-    problemIndices: number[],
-    boundingBoxes: Array<{
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    }>,
-    additionalContext?: string,
-  ) => Promise<void>;
-  /** ID of photo currently being re-parsed (null if none) */
-  reparsingPhotoId?: string | null;
-  /** Streaming re-parse state (null if not streaming) */
-  streamingReparseState?: StreamingReparseState | null;
-  /** Callback to cancel streaming re-parse */
-  onCancelStreamingReparse?: () => void;
   /** Callback to cancel parsing in progress */
   onCancelParsing?: (photoId: string) => void;
   /** Callback when a single problem is approved in focus review mode */
@@ -162,19 +124,11 @@ export function PhotoViewerEditor({
   isOpen,
   onClose,
   onEditConfirm,
-  onParse,
-  parsingPhotoId = null,
-  streamingParseState = null,
-  onCancelStreamingParse,
   modelConfigs = [],
   onApprove,
   approvingPhotoId = null,
   onSubmitCorrection,
   savingProblemNumber = null,
-  onReparseSelected,
-  reparsingPhotoId = null,
-  streamingReparseState = null,
-  onCancelStreamingReparse,
   onCancelParsing,
   onApproveProblem,
   onFlagProblem,
@@ -236,94 +190,23 @@ export function PhotoViewerEditor({
     cv: opencvRef,
   } = useDocumentDetection();
 
-  // Try to use context if available (for centralized parsing state management)
-  const parsingContext = useWorksheetParsingContextOptional();
+  // Use the worksheet parsing context (required)
+  const parsingContext = useWorksheetParsingContext();
 
-  // Derive effective streaming state from context or props
-  const effectiveStreamingState = useMemo((): StreamingParseState | null => {
-    if (
-      parsingContext?.state.streaming &&
-      parsingContext.state.streaming.streamType === "initial"
-    ) {
-      const { streaming } = parsingContext.state;
-      // Map context status to StreamingParseState status
-      let mappedStatus: StreamingParseState["status"];
-      if (streaming.status === "cancelled") {
-        mappedStatus = "idle";
-      } else if (streaming.status === "processing") {
-        mappedStatus = "generating";
-      } else {
-        mappedStatus = streaming.status as StreamingParseState["status"];
-      }
-      return {
-        status: mappedStatus,
-        reasoningText: streaming.reasoningText ?? "",
-        outputText: streaming.outputText ?? "",
-        error: parsingContext.state.lastError,
-        progressMessage: streaming.progressMessage,
-        result: parsingContext.state.lastResult,
-        // Context uses different ParsingStats type - pass null since stats isn't used in this component
-        stats: null,
-        completedProblems: streaming.completedProblems ?? [],
-      };
-    }
-    return streamingParseState ?? null;
-  }, [parsingContext?.state.streaming, parsingContext?.state.lastError, parsingContext?.state.lastResult, streamingParseState]);
+  // Derive streaming state from context
+  const streamingState = parsingContext.state.streaming;
+  const isInitialParsing =
+    streamingState?.streamType === "initial" &&
+    (streamingState.status === "connecting" ||
+      streamingState.status === "reasoning" ||
+      streamingState.status === "generating");
+  const isReparsing =
+    streamingState?.streamType === "reparse" &&
+    (streamingState.status === "connecting" ||
+      streamingState.status === "processing");
+  const activeAttachmentId = parsingContext.state.activeAttachmentId;
 
-  const effectiveStreamingReparseState = useMemo(
-    (): StreamingReparseState | null => {
-      if (
-        parsingContext?.state.streaming &&
-        parsingContext.state.streaming.streamType === "reparse"
-      ) {
-        const { streaming } = parsingContext.state;
-        // Map context status to StreamingReparseState status
-        let mappedStatus: StreamingReparseState["status"];
-        if (streaming.status === "generating" || streaming.status === "reasoning") {
-          mappedStatus = "processing"; // These map to processing in reparse
-        } else {
-          mappedStatus = streaming.status as StreamingReparseState["status"];
-        }
-        return {
-          status: mappedStatus,
-          reasoningText: streaming.reasoningText ?? "",
-          currentProblemIndex: streaming.currentProblemIndex ?? 0,
-          totalProblems: streaming.totalProblems ?? 0,
-          currentProblemWorksheetIndex: null, // Not tracked in context state
-          completedIndices: streaming.completedIndices ?? [],
-          progressMessage: streaming.progressMessage ?? "",
-          error: parsingContext.state.lastError ?? null,
-          result: parsingContext.state.lastResult,
-        };
-      }
-      return streamingReparseState ?? null;
-    },
-    [parsingContext?.state.streaming, parsingContext?.state.lastError, parsingContext?.state.lastResult, streamingReparseState],
-  );
-
-  // Derive effective parsing state
-  const effectiveParsingPhotoId = useMemo(() => {
-    if (parsingContext?.state.activeAttachmentId) {
-      return parsingContext.state.activeAttachmentId;
-    }
-    return parsingPhotoId;
-  }, [parsingContext?.state.activeAttachmentId, parsingPhotoId]);
-
-  const effectiveReparsingPhotoId = useMemo(() => {
-    if (
-      parsingContext?.state.activeAttachmentId &&
-      parsingContext.state.streaming?.streamType === "reparse"
-    ) {
-      return parsingContext.state.activeAttachmentId;
-    }
-    return reparsingPhotoId;
-  }, [
-    parsingContext?.state.activeAttachmentId,
-    parsingContext?.state.streaming?.streamType,
-    reparsingPhotoId,
-  ]);
-
-  // Effective handlers - prefer context if available
+  // Handlers using context directly
   const handleParse = useCallback(
     (
       photoId: string,
@@ -334,56 +217,36 @@ export function PhotoViewerEditor({
         { x: number; y: number; width: number; height: number }
       >,
     ) => {
-      if (parsingContext) {
-        parsingContext.startParse({
-          attachmentId: photoId,
-          modelConfigId,
-          additionalContext,
-          preservedBoundingBoxes,
-        });
-      } else if (onParse) {
-        onParse(photoId, modelConfigId, additionalContext, preservedBoundingBoxes);
-      }
+      parsingContext.startParse({
+        attachmentId: photoId,
+        modelConfigId,
+        additionalContext,
+        preservedBoundingBoxes,
+      });
     },
-    [parsingContext, onParse],
+    [parsingContext],
   );
 
   const handleCancelStreaming = useCallback(() => {
-    if (parsingContext) {
-      parsingContext.cancel();
-    } else if (onCancelStreamingParse) {
-      onCancelStreamingParse();
-    }
-  }, [parsingContext, onCancelStreamingParse]);
+    parsingContext.cancel();
+  }, [parsingContext]);
 
   const handleCancelStreamingReparse = useCallback(() => {
-    if (parsingContext) {
-      parsingContext.cancel();
-    } else if (onCancelStreamingReparse) {
-      onCancelStreamingReparse();
-    }
-  }, [parsingContext, onCancelStreamingReparse]);
+    parsingContext.cancel();
+  }, [parsingContext]);
 
   const handleApprove = useCallback(
     (photoId: string) => {
-      if (parsingContext) {
-        parsingContext.approve(photoId);
-      } else if (onApprove) {
-        onApprove(photoId);
-      }
+      parsingContext.approve(photoId);
     },
-    [parsingContext, onApprove],
+    [parsingContext],
   );
 
   const handleSubmitCorrection = useCallback(
     async (photoId: string, correction: ProblemCorrection) => {
-      if (parsingContext) {
-        await parsingContext.submitCorrection(photoId, [correction]);
-      } else if (onSubmitCorrection) {
-        await onSubmitCorrection(photoId, correction);
-      }
+      await parsingContext.submitCorrection(photoId, [correction]);
     },
-    [parsingContext, onSubmitCorrection],
+    [parsingContext],
   );
 
   const executeReparseSelected = useCallback(
@@ -398,23 +261,14 @@ export function PhotoViewerEditor({
       }>,
       additionalContext?: string,
     ) => {
-      if (parsingContext) {
-        await parsingContext.startReparse({
-          attachmentId: photoId,
-          problemIndices,
-          boundingBoxes,
-          additionalContext,
-        });
-      } else if (onReparseSelected) {
-        await onReparseSelected(
-          photoId,
-          problemIndices,
-          boundingBoxes,
-          additionalContext,
-        );
-      }
+      await parsingContext.startReparse({
+        attachmentId: photoId,
+        problemIndices,
+        boundingBoxes,
+        additionalContext,
+      });
     },
-    [parsingContext, onReparseSelected],
+    [parsingContext],
   );
 
   // Reset state when opening
@@ -595,10 +449,7 @@ export function PhotoViewerEditor({
 
   // Confirm and execute re-parse
   const confirmReparseSelected = useCallback(async () => {
-    // Check if we can execute - need either context or prop handler
-    const canExecute = parsingContext || onReparseSelected;
-    if (!currentPhoto || !canExecute || selectedForReparse.size === 0)
-      return;
+    if (!currentPhoto || selectedForReparse.size === 0) return;
 
     const problems = currentPhoto.rawParsingResult?.problems ?? [];
     const indices = Array.from(selectedForReparse).sort((a, b) => a - b);
@@ -629,13 +480,11 @@ export function PhotoViewerEditor({
     setAdjustedBoxes(new Map());
 
     await executeReparseSelected(currentPhoto.id, indices, boundingBoxes);
-  }, [currentPhoto, parsingContext, onReparseSelected, selectedForReparse, adjustedBoxes, executeReparseSelected]);
+  }, [currentPhoto, selectedForReparse, adjustedBoxes, executeReparseSelected]);
 
   // Bulk exclude selected problems
   const handleExcludeSelected = useCallback(async () => {
-    const canSubmit = parsingContext || onSubmitCorrection;
-    if (!currentPhoto || !canSubmit || selectedForReparse.size === 0)
-      return;
+    if (!currentPhoto || selectedForReparse.size === 0) return;
 
     const problems = currentPhoto.rawParsingResult?.problems ?? [];
     const indices = Array.from(selectedForReparse).sort((a, b) => a - b);
@@ -654,13 +503,11 @@ export function PhotoViewerEditor({
     // Clear selections after excluding
     setSelectedForReparse(new Set());
     setAdjustedBoxes(new Map());
-  }, [currentPhoto, parsingContext, onSubmitCorrection, selectedForReparse, handleSubmitCorrection]);
+  }, [currentPhoto, selectedForReparse, handleSubmitCorrection]);
 
   // Bulk restore selected problems
   const handleRestoreSelected = useCallback(async () => {
-    const canSubmit = parsingContext || onSubmitCorrection;
-    if (!currentPhoto || !canSubmit || selectedForReparse.size === 0)
-      return;
+    if (!currentPhoto || selectedForReparse.size === 0) return;
 
     const problems = currentPhoto.rawParsingResult?.problems ?? [];
     const indices = Array.from(selectedForReparse).sort((a, b) => a - b);
@@ -679,7 +526,7 @@ export function PhotoViewerEditor({
     // Clear selections after restoring
     setSelectedForReparse(new Set());
     setAdjustedBoxes(new Map());
-  }, [currentPhoto, parsingContext, onSubmitCorrection, selectedForReparse, handleSubmitCorrection]);
+  }, [currentPhoto, selectedForReparse, handleSubmitCorrection]);
 
   // Count how many selected problems are excluded vs non-excluded
   const selectedExcludedCount = useMemo(() => {
@@ -1047,16 +894,11 @@ export function PhotoViewerEditor({
           onReviewSubModeChange={setReviewSubMode}
           showReparsePreview={showReparsePreview}
           selectedForReparseCount={selectedForReparse.size}
-          canParse={!!(parsingContext || onParse)}
-          isParsing={effectiveParsingPhotoId === currentPhoto.id}
-          isReparsing={
-            effectiveReparsingPhotoId === currentPhoto.id ||
-            effectiveStreamingReparseState?.status === "connecting" ||
-            effectiveStreamingReparseState?.status === "processing" ||
-            false
-          }
+          canParse={true}
+          isParsing={activeAttachmentId === currentPhoto.id && isInitialParsing}
+          isReparsing={activeAttachmentId === currentPhoto.id && isReparsing}
           isApproving={approvingPhotoId === currentPhoto.id}
-          canApprove={!!(parsingContext || onApprove)}
+          canApprove={true}
           onBack={() => {
             setMode("view");
             setSelectedProblemIndex(null);
@@ -1077,7 +919,7 @@ export function PhotoViewerEditor({
             }
           }}
           onApprove={() => {
-            if ((parsingContext || onApprove) && currentPhoto) {
+            if (currentPhoto) {
               handleApprove(currentPhoto.id);
             }
           }}
@@ -1115,7 +957,7 @@ export function PhotoViewerEditor({
                   }
                 }}
                 onCorrectProblem={async (problemIndex, correction) => {
-                  if ((parsingContext || onSubmitCorrection) && currentPhoto) {
+                  if (currentPhoto) {
                     await handleSubmitCorrection(currentPhoto.id, correction);
                   }
                 }}
@@ -1226,9 +1068,7 @@ export function PhotoViewerEditor({
                   </h3>
 
                   {/* Streaming re-parse progress */}
-                  {effectiveStreamingReparseState &&
-                  (effectiveStreamingReparseState.status === "connecting" ||
-                    effectiveStreamingReparseState.status === "processing") ? (
+                  {isReparsing && streamingState ? (
                     <div
                       data-element="streaming-reparse-progress"
                       className={css({
@@ -1275,33 +1115,31 @@ export function PhotoViewerEditor({
                               color: "blue.300",
                             })}
                           >
-                            {effectiveStreamingReparseState.progressMessage ||
-                              `Problem ${effectiveStreamingReparseState.currentProblemIndex + 1} of ${effectiveStreamingReparseState.totalProblems}`}
+                            {streamingState.progressMessage ||
+                              `Problem ${(streamingState.currentProblemIndex ?? 0) + 1} of ${streamingState.totalProblems ?? 0}`}
                           </div>
                         </div>
                         {/* Cancel button */}
-                        {(parsingContext || onCancelStreamingReparse) && (
-                          <button
-                            type="button"
-                            onClick={handleCancelStreamingReparse}
-                            className={css({
-                              marginLeft: "auto",
-                              padding: "4px 12px",
-                              fontSize: "xs",
-                              fontWeight: "medium",
-                              color: "blue.300",
-                              backgroundColor: "transparent",
-                              border: "1px solid token(colors.blue.500)",
-                              borderRadius: "md",
-                              cursor: "pointer",
-                              _hover: {
-                                backgroundColor: "blue.800",
-                              },
-                            })}
-                          >
-                            Cancel
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={handleCancelStreamingReparse}
+                          className={css({
+                            marginLeft: "auto",
+                            padding: "4px 12px",
+                            fontSize: "xs",
+                            fontWeight: "medium",
+                            color: "blue.300",
+                            backgroundColor: "transparent",
+                            border: "1px solid token(colors.blue.500)",
+                            borderRadius: "md",
+                            cursor: "pointer",
+                            _hover: {
+                              backgroundColor: "blue.800",
+                            },
+                          })}
+                        >
+                          Cancel
+                        </button>
                       </div>
 
                       {/* Progress bar */}
@@ -1321,9 +1159,9 @@ export function PhotoViewerEditor({
                           })}
                           style={{
                             width: `${
-                              effectiveStreamingReparseState.totalProblems > 0
-                                ? (effectiveStreamingReparseState.currentProblemIndex /
-                                    effectiveStreamingReparseState.totalProblems) *
+                              (streamingState.totalProblems ?? 0) > 0
+                                ? ((streamingState.currentProblemIndex ?? 0) /
+                                    (streamingState.totalProblems ?? 1)) *
                                   100
                                 : 0
                             }%`,
@@ -1332,7 +1170,7 @@ export function PhotoViewerEditor({
                       </div>
 
                       {/* Reasoning text panel */}
-                      {effectiveStreamingReparseState.reasoningText && (
+                      {streamingState.reasoningText && (
                         <div
                           className={css({
                             flex: 1,
@@ -1363,13 +1201,13 @@ export function PhotoViewerEditor({
                               fontFamily: "monospace",
                             })}
                           >
-                            {effectiveStreamingReparseState.reasoningText}
+                            {streamingState.reasoningText}
                           </pre>
                         </div>
                       )}
 
                       {/* Completed problems list */}
-                      {effectiveStreamingReparseState.completedIndices.length > 0 && (
+                      {(streamingState.completedIndices?.length ?? 0) > 0 && (
                         <div
                           className={css({
                             fontSize: "xs",
@@ -1377,7 +1215,7 @@ export function PhotoViewerEditor({
                           })}
                         >
                           Completed:{" "}
-                          {effectiveStreamingReparseState.completedIndices
+                          {(streamingState.completedIndices ?? [])
                             .map((i) => `#${i + 1}`)
                             .join(", ")}
                         </div>
@@ -1581,7 +1419,7 @@ export function PhotoViewerEditor({
                             )
                           }
                           onSubmitCorrection={(correction) => {
-                            if ((parsingContext || onSubmitCorrection) && currentPhoto) {
+                            if (currentPhoto) {
                               handleSubmitCorrection(currentPhoto.id, correction);
                             }
                           }}
@@ -1755,7 +1593,7 @@ export function PhotoViewerEditor({
           isOpen={showReparseModal}
           onClose={() => setShowReparseModal(false)}
           onConfirm={(hints) => {
-            if ((parsingContext || onParse) && currentPhoto) {
+            if (currentPhoto) {
               // Pass adjusted bounding boxes if any exist
               const preserved =
                 adjustedBoxes.size > 0
@@ -1765,7 +1603,7 @@ export function PhotoViewerEditor({
               setShowReparseModal(false);
             }
           }}
-          isProcessing={effectiveParsingPhotoId === currentPhoto.id}
+          isProcessing={activeAttachmentId === currentPhoto.id && isInitialParsing}
         />
       </div>
     );
@@ -1872,8 +1710,7 @@ export function PhotoViewerEditor({
         </button>
 
         {/* Parse button - split button with model selection dropdown */}
-        {(parsingContext || onParse) &&
-          (!currentPhoto.parsingStatus ||
+        {(!currentPhoto.parsingStatus ||
             currentPhoto.parsingStatus === "failed") &&
           !currentPhoto.sessionCreated && (
             <div
@@ -1894,12 +1731,7 @@ export function PhotoViewerEditor({
                       : undefined;
                   handleParse(currentPhoto.id, undefined, undefined, preserved);
                 }}
-                disabled={
-                  effectiveParsingPhotoId === currentPhoto.id ||
-                  effectiveStreamingState?.status === "connecting" ||
-                  effectiveStreamingState?.status === "reasoning" ||
-                  effectiveStreamingState?.status === "generating"
-                }
+                disabled={isInitialParsing}
                 className={css({
                   px: 4,
                   py: 2,
@@ -1934,10 +1766,7 @@ export function PhotoViewerEditor({
                     : "Parse worksheet"
                 }
               >
-                {effectiveParsingPhotoId === currentPhoto.id ||
-                effectiveStreamingState?.status === "connecting" ||
-                effectiveStreamingState?.status === "reasoning" ||
-                effectiveStreamingState?.status === "generating" ? (
+                {isInitialParsing ? (
                   <>
                     <span
                       className={css({
@@ -1947,11 +1776,11 @@ export function PhotoViewerEditor({
                       ⏳
                     </span>
                     <span>
-                      {effectiveStreamingState?.status === "connecting"
+                      {streamingState?.status === "connecting"
                         ? "Connecting..."
-                        : effectiveStreamingState?.status === "reasoning"
+                        : streamingState?.status === "reasoning"
                           ? "Thinking..."
-                          : effectiveStreamingState?.status === "generating"
+                          : streamingState?.status === "generating"
                             ? "Extracting..."
                             : "Analyzing..."}
                     </span>
@@ -1976,12 +1805,7 @@ export function PhotoViewerEditor({
                     type="button"
                     data-action="toggle-model-dropdown"
                     onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-                    disabled={
-                      effectiveParsingPhotoId === currentPhoto.id ||
-                      effectiveStreamingState?.status === "connecting" ||
-                      effectiveStreamingState?.status === "reasoning" ||
-                      effectiveStreamingState?.status === "generating"
-                    }
+                    disabled={isInitialParsing}
                     className={css({
                       px: 2,
                       py: 2,
@@ -2143,10 +1967,7 @@ export function PhotoViewerEditor({
           )}
 
         {/* Streaming Parse Progress Panel */}
-        {effectiveStreamingState &&
-          (effectiveStreamingState.status === "connecting" ||
-            effectiveStreamingState.status === "reasoning" ||
-            effectiveStreamingState.status === "generating") && (
+        {isInitialParsing && streamingState && (
             <div
               data-element="streaming-parse-progress"
               className={css({
@@ -2194,39 +2015,37 @@ export function PhotoViewerEditor({
                       color: "blue.300",
                     })}
                   >
-                    {effectiveStreamingState.status === "connecting"
+                    {streamingState.status === "connecting"
                       ? "Connecting to AI..."
-                      : effectiveStreamingState.status === "reasoning"
+                      : streamingState.status === "reasoning"
                         ? "AI is analyzing worksheet..."
                         : "Extracting problems..."}
                   </span>
                 </div>
-                {(parsingContext || onCancelStreamingParse) && (
-                  <button
-                    type="button"
-                    onClick={handleCancelStreaming}
-                    className={css({
-                      padding: "4px 12px",
-                      fontSize: "xs",
-                      fontWeight: "medium",
-                      color: "gray.400",
-                      backgroundColor: "transparent",
-                      border: "1px solid token(colors.gray.600)",
-                      borderRadius: "md",
-                      cursor: "pointer",
-                      _hover: {
-                        backgroundColor: "gray.700",
-                        color: "white",
-                      },
-                    })}
-                  >
-                    Cancel
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleCancelStreaming}
+                  className={css({
+                    padding: "4px 12px",
+                    fontSize: "xs",
+                    fontWeight: "medium",
+                    color: "gray.400",
+                    backgroundColor: "transparent",
+                    border: "1px solid token(colors.gray.600)",
+                    borderRadius: "md",
+                    cursor: "pointer",
+                    _hover: {
+                      backgroundColor: "gray.700",
+                      color: "white",
+                    },
+                  })}
+                >
+                  Cancel
+                </button>
               </div>
 
               {/* Reasoning text - collapsible */}
-              {effectiveStreamingState.reasoningText && (
+              {streamingState.reasoningText && (
                 <div
                   className={css({
                     maxHeight: "120px",
@@ -2240,12 +2059,12 @@ export function PhotoViewerEditor({
                     fontFamily: "monospace",
                   })}
                 >
-                  {effectiveStreamingState.reasoningText}
+                  {streamingState.reasoningText}
                 </div>
               )}
 
               {/* Progress indicator for problems found */}
-              {effectiveStreamingState.completedProblems.length > 0 && (
+              {(streamingState.completedProblems?.length ?? 0) > 0 && (
                 <div
                   className={css({
                     marginTop: 2,
@@ -2253,7 +2072,7 @@ export function PhotoViewerEditor({
                     color: "green.400",
                   })}
                 >
-                  Found {effectiveStreamingState.completedProblems.length}{" "}
+                  Found {streamingState.completedProblems?.length ?? 0}{" "}
                   problems...
                 </div>
               )}

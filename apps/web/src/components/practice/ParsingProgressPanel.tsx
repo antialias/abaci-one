@@ -15,14 +15,16 @@ export interface ParsingProgressPanelProps {
   isExpanded: boolean;
   /** The reasoning text from the LLM */
   reasoningText: string;
-  /** Current parsing status */
+  /** Current parsing status (from StreamingStatus) */
   status:
+    | "idle"
     | "connecting"
     | "reasoning"
+    | "processing"
     | "generating"
     | "complete"
     | "error"
-    | "idle";
+    | "cancelled";
   /** Dark mode */
   isDark?: boolean;
 }

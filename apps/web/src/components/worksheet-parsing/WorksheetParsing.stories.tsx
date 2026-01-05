@@ -38,6 +38,7 @@ import {
   type PhotoViewerEditorPhoto,
 } from "../practice/PhotoViewerEditor";
 import { VisualDebugProvider } from "@/contexts/VisualDebugContext";
+import { MockWorksheetParsingProvider } from "@/contexts/WorksheetParsingContext.mock";
 
 // Create a fresh query client for stories
 function createQueryClient() {
@@ -1170,7 +1171,9 @@ function FullFlowDemo() {
 export const FullFlow: SummaryStory = {
   render: () => (
     <QueryClientProvider client={createQueryClient()}>
-      <FullFlowDemo />
+      <MockWorksheetParsingProvider>
+        <FullFlowDemo />
+      </MockWorksheetParsingProvider>
     </QueryClientProvider>
   ),
   parameters: {

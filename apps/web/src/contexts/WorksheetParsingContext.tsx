@@ -92,7 +92,7 @@ export interface StartReparseOptions {
 }
 
 /** Response from approve API */
-interface ApproveResponse {
+export interface ApproveResponse {
   success: boolean;
   sessionId: string;
   problemCount: number;

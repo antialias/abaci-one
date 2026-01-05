@@ -653,7 +653,6 @@ export function SummaryClient({
                 )?.corrections?.[0]?.problemNumber ?? null)
               : null
           }
-          reparsingPhotoId={getPendingAttachmentId(reparseSelected)}
           onCancelParsing={(attachmentId) => cancelParsing.mutate(attachmentId)}
           onApproveProblem={async (photoId, problemIndex) => {
             await updateReviewProgress.mutateAsync({
