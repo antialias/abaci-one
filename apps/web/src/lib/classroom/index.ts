@@ -25,7 +25,7 @@ export {
   isParentOf,
   isTeacherOf,
   generateAuthorizationError,
-} from "./access-control";
+} from './access-control'
 
 // Family Management
 export {
@@ -39,7 +39,7 @@ export {
   regenerateFamilyCode,
   isParent,
   generateFamilyCode,
-} from "./family-manager";
+} from './family-manager'
 
 // Enrollment Management
 export {
@@ -61,7 +61,7 @@ export {
   getRequiredApprovals,
   isFullyApproved,
   isDenied,
-} from "./enrollment-manager";
+} from './enrollment-manager'
 
 // Presence Management
 export {
@@ -79,7 +79,7 @@ export {
   getClassroomPresence,
   getPresenceCount,
   getPresentPlayerIds,
-} from "./presence-manager";
+} from './presence-manager'
 
 // Classroom Management
 export {
@@ -96,4 +96,4 @@ export {
   regenerateClassroomCode,
   deleteClassroom,
   generateClassroomCode,
-} from "./classroom-manager";
+} from './classroom-manager'

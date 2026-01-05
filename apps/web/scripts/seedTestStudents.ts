@@ -2502,11 +2502,13 @@ async function createTestStudent(
       effectiveSkillHistory = [...effectiveSkillHistory, ...missingSkills]
     }
   }
-  // Delete existing player with this name
+  // Delete existing player with this name (and their parent_child relationship)
   const existing = await db.query.players.findFirst({
     where: eq(schema.players.name, profile.name),
   })
   if (existing) {
+    // Delete parent_child first (foreign key constraint)
+    await db.delete(schema.parentChild).where(eq(schema.parentChild.childPlayerId, existing.id))
     await db.delete(schema.players).where(eq(schema.players.id, existing.id))
   }
 
@@ -2520,6 +2522,12 @@ async function createTestStudent(
     color: profile.color,
     isActive: true,
     notes: profile.intentionNotes,
+  })
+
+  // Create parent-child relationship so access control works
+  await db.insert(schema.parentChild).values({
+    parentUserId: userId,
+    childPlayerId: playerId,
   })
 
   // Build a map of skill -> age from skill history

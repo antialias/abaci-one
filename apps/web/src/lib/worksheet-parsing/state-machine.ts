@@ -5,7 +5,7 @@
  * Replaces scattered state across multiple hooks with a single source of truth.
  */
 
-import type { BoundingBox, WorksheetParsingResult } from "./schemas";
+import type { BoundingBox, WorksheetParsingResult } from './schemas'
 
 // ============================================================================
 // Types
@@ -13,33 +13,33 @@ import type { BoundingBox, WorksheetParsingResult } from "./schemas";
 
 /** Stats returned from parsing */
 export interface ParsingStats {
-  totalProblems: number;
-  correctCount: number;
-  incorrectCount: number;
-  unansweredCount: number;
-  accuracy: number | null;
-  skillsDetected: string[];
+  totalProblems: number
+  correctCount: number
+  incorrectCount: number
+  unansweredCount: number
+  accuracy: number | null
+  skillsDetected: string[]
 }
 
 /** Completed problem for progressive highlighting */
 export interface CompletedProblem {
-  problemNumber: number;
-  problemBoundingBox: BoundingBox;
+  problemNumber: number
+  problemBoundingBox: BoundingBox
 }
 
 /** Stream type for distinguishing parse operations */
-export type StreamType = "initial" | "reparse";
+export type StreamType = 'initial' | 'reparse'
 
 /** Streaming status */
 export type StreamingStatus =
-  | "idle"
-  | "connecting"
-  | "reasoning"
-  | "processing" // Used during reparse
-  | "generating"
-  | "complete"
-  | "error"
-  | "cancelled";
+  | 'idle'
+  | 'connecting'
+  | 'reasoning'
+  | 'processing' // Used during reparse
+  | 'generating'
+  | 'complete'
+  | 'error'
+  | 'cancelled'
 
 /**
  * Streaming sub-state (active during parsing phase)
@@ -48,23 +48,23 @@ export type StreamingStatus =
  */
 export interface StreamingState {
   /** Current streaming status */
-  status: StreamingStatus;
+  status: StreamingStatus
   /** Type of streaming operation */
-  streamType: StreamType;
+  streamType: StreamType
   /** Accumulated reasoning text (model's thinking process) */
-  reasoningText: string;
+  reasoningText: string
   /** Accumulated output text (partial JSON) */
-  outputText: string;
+  outputText: string
   /** Progress message for display */
-  progressMessage: string | null;
+  progressMessage: string | null
   /** Problems that have been fully streamed (for progressive highlighting) */
-  completedProblems: CompletedProblem[];
+  completedProblems: CompletedProblem[]
   /** For reparse: current problem index being processed */
-  currentProblemIndex?: number;
+  currentProblemIndex?: number
   /** For reparse: total problems to process */
-  totalProblems?: number;
+  totalProblems?: number
   /** For reparse: completed problem indices */
-  completedIndices?: number[];
+  completedIndices?: number[]
 }
 
 /**
@@ -74,15 +74,15 @@ export interface StreamingState {
  */
 export interface ParsingContextState {
   /** ID of the attachment currently being operated on (null if idle) */
-  activeAttachmentId: string | null;
+  activeAttachmentId: string | null
   /** Current streaming state (null if not streaming) */
-  streaming: StreamingState | null;
+  streaming: StreamingState | null
   /** Last successful result (persists after streaming completes) */
-  lastResult: WorksheetParsingResult | null;
+  lastResult: WorksheetParsingResult | null
   /** Last parsing stats */
-  lastStats: ParsingStats | null;
+  lastStats: ParsingStats | null
   /** Last error message */
-  lastError: string | null;
+  lastError: string | null
 }
 
 // ============================================================================
@@ -92,33 +92,33 @@ export interface ParsingContextState {
 export type ParsingAction =
   // Start/Stop operations
   | {
-      type: "START_STREAMING";
-      attachmentId: string;
-      streamType: StreamType;
-      totalProblems?: number;
+      type: 'START_STREAMING'
+      attachmentId: string
+      streamType: StreamType
+      totalProblems?: number
     }
-  | { type: "CANCEL" }
-  | { type: "RESET" }
+  | { type: 'CANCEL' }
+  | { type: 'RESET' }
 
   // Streaming updates
-  | { type: "STREAM_CONNECTING" }
-  | { type: "STREAM_REASONING"; text: string; append?: boolean }
-  | { type: "STREAM_OUTPUT"; text: string }
+  | { type: 'STREAM_CONNECTING' }
+  | { type: 'STREAM_REASONING'; text: string; append?: boolean }
+  | { type: 'STREAM_OUTPUT'; text: string }
   | {
-      type: "STREAM_PROBLEM_COMPLETE";
-      problem: CompletedProblem;
-      problemIndex?: number;
+      type: 'STREAM_PROBLEM_COMPLETE'
+      problem: CompletedProblem
+      problemIndex?: number
     }
-  | { type: "STREAM_REPARSE_PROGRESS"; current: number; total: number }
-  | { type: "STREAM_PROGRESS_MESSAGE"; message: string }
+  | { type: 'STREAM_REPARSE_PROGRESS'; current: number; total: number }
+  | { type: 'STREAM_PROGRESS_MESSAGE'; message: string }
 
   // Completion
   | {
-      type: "PARSE_COMPLETE";
-      result: WorksheetParsingResult;
-      stats?: ParsingStats;
+      type: 'PARSE_COMPLETE'
+      result: WorksheetParsingResult
+      stats?: ParsingStats
     }
-  | { type: "PARSE_FAILED"; error: string };
+  | { type: 'PARSE_FAILED'; error: string }
 
 // ============================================================================
 // Initial State
@@ -130,7 +130,7 @@ export const initialParsingState: ParsingContextState = {
   lastResult: null,
   lastStats: null,
   lastError: null,
-};
+}
 
 // ============================================================================
 // Reducer
@@ -138,165 +138,155 @@ export const initialParsingState: ParsingContextState = {
 
 export function parsingReducer(
   state: ParsingContextState,
-  action: ParsingAction,
+  action: ParsingAction
 ): ParsingContextState {
   switch (action.type) {
-    case "START_STREAMING":
+    case 'START_STREAMING':
       return {
         ...state,
         activeAttachmentId: action.attachmentId,
         streaming: {
-          status: "connecting",
+          status: 'connecting',
           streamType: action.streamType,
-          reasoningText: "",
-          outputText: "",
-          progressMessage: "Connecting to AI...",
+          reasoningText: '',
+          outputText: '',
+          progressMessage: 'Connecting to AI...',
           completedProblems: [],
-          currentProblemIndex:
-            action.streamType === "reparse" ? 0 : undefined,
+          currentProblemIndex: action.streamType === 'reparse' ? 0 : undefined,
           totalProblems: action.totalProblems,
-          completedIndices: action.streamType === "reparse" ? [] : undefined,
+          completedIndices: action.streamType === 'reparse' ? [] : undefined,
         },
         lastError: null,
-      };
+      }
 
-    case "STREAM_CONNECTING":
-      if (!state.streaming) return state;
+    case 'STREAM_CONNECTING':
+      if (!state.streaming) return state
       return {
         ...state,
         streaming: {
           ...state.streaming,
-          status: "connecting",
-          progressMessage: "Connecting to AI...",
+          status: 'connecting',
+          progressMessage: 'Connecting to AI...',
         },
-      };
+      }
 
-    case "STREAM_REASONING":
-      if (!state.streaming) return state;
+    case 'STREAM_REASONING':
+      if (!state.streaming) return state
       return {
         ...state,
         streaming: {
           ...state.streaming,
           // For initial parse: set status to "reasoning"
           // For reparse: keep current status (should be "processing" from problem_start)
-          status:
-            state.streaming.streamType === "initial"
-              ? "reasoning"
-              : state.streaming.status,
-          reasoningText: action.append
-            ? state.streaming.reasoningText + action.text
-            : action.text,
+          status: state.streaming.streamType === 'initial' ? 'reasoning' : state.streaming.status,
+          reasoningText: action.append ? state.streaming.reasoningText + action.text : action.text,
           progressMessage:
-            state.streaming.streamType === "initial"
-              ? "AI is thinking..."
+            state.streaming.streamType === 'initial'
+              ? 'AI is thinking...'
               : state.streaming.progressMessage,
         },
-      };
+      }
 
-    case "STREAM_OUTPUT":
-      if (!state.streaming) return state;
+    case 'STREAM_OUTPUT':
+      if (!state.streaming) return state
       return {
         ...state,
         streaming: {
           ...state.streaming,
-          status: "generating",
+          status: 'generating',
           outputText: state.streaming.outputText + action.text,
           progressMessage:
             state.streaming.completedProblems.length > 0
               ? `Extracting problems... ${state.streaming.completedProblems.length} found`
-              : "Generating results...",
+              : 'Generating results...',
         },
-      };
+      }
 
-    case "STREAM_PROBLEM_COMPLETE":
-      if (!state.streaming) return state;
+    case 'STREAM_PROBLEM_COMPLETE':
+      if (!state.streaming) return state
       return {
         ...state,
         streaming: {
           ...state.streaming,
-          completedProblems: [
-            ...state.streaming.completedProblems,
-            action.problem,
-          ],
+          completedProblems: [...state.streaming.completedProblems, action.problem],
           completedIndices:
-            action.problemIndex !== undefined &&
-            state.streaming.completedIndices
+            action.problemIndex !== undefined && state.streaming.completedIndices
               ? [...state.streaming.completedIndices, action.problemIndex]
               : state.streaming.completedIndices,
         },
-      };
+      }
 
-    case "STREAM_REPARSE_PROGRESS":
-      if (!state.streaming) return state;
+    case 'STREAM_REPARSE_PROGRESS':
+      if (!state.streaming) return state
       return {
         ...state,
         streaming: {
           ...state.streaming,
           // Use "processing" for reparse to match expected UI state
-          status: "processing",
+          status: 'processing',
           currentProblemIndex: action.current,
           totalProblems: action.total,
           progressMessage: `Analyzing problem ${action.current + 1} of ${action.total}...`,
         },
-      };
+      }
 
-    case "STREAM_PROGRESS_MESSAGE":
-      if (!state.streaming) return state;
+    case 'STREAM_PROGRESS_MESSAGE':
+      if (!state.streaming) return state
       return {
         ...state,
         streaming: {
           ...state.streaming,
           progressMessage: action.message,
         },
-      };
+      }
 
-    case "PARSE_COMPLETE":
+    case 'PARSE_COMPLETE':
       return {
         ...state,
         activeAttachmentId: null,
         streaming: state.streaming
           ? {
               ...state.streaming,
-              status: "complete",
+              status: 'complete',
               progressMessage: null,
             }
           : null,
         lastResult: action.result,
         lastStats: action.stats ?? null,
-      };
+      }
 
-    case "PARSE_FAILED":
+    case 'PARSE_FAILED':
       return {
         ...state,
         activeAttachmentId: null,
         streaming: state.streaming
           ? {
               ...state.streaming,
-              status: "error",
+              status: 'error',
               progressMessage: null,
             }
           : null,
         lastError: action.error,
-      };
+      }
 
-    case "CANCEL":
+    case 'CANCEL':
       return {
         ...state,
         activeAttachmentId: null,
         streaming: state.streaming
           ? {
               ...state.streaming,
-              status: "cancelled",
-              progressMessage: "Cancelled",
+              status: 'cancelled',
+              progressMessage: 'Cancelled',
             }
           : null,
-      };
+      }
 
-    case "RESET":
-      return initialParsingState;
+    case 'RESET':
+      return initialParsingState
 
     default:
-      return state;
+      return state
   }
 }
 
@@ -307,17 +297,14 @@ export function parsingReducer(
 /**
  * Check if currently parsing a specific attachment
  */
-export function isParsingAttachment(
-  state: ParsingContextState,
-  attachmentId: string,
-): boolean {
+export function isParsingAttachment(state: ParsingContextState, attachmentId: string): boolean {
   return (
     state.activeAttachmentId === attachmentId &&
     state.streaming !== null &&
-    state.streaming.status !== "complete" &&
-    state.streaming.status !== "error" &&
-    state.streaming.status !== "cancelled"
-  );
+    state.streaming.status !== 'complete' &&
+    state.streaming.status !== 'error' &&
+    state.streaming.status !== 'cancelled'
+  )
 }
 
 /**
@@ -326,10 +313,10 @@ export function isParsingAttachment(
 export function isAnyParsingActive(state: ParsingContextState): boolean {
   return (
     state.streaming !== null &&
-    state.streaming.status !== "complete" &&
-    state.streaming.status !== "error" &&
-    state.streaming.status !== "cancelled"
-  );
+    state.streaming.status !== 'complete' &&
+    state.streaming.status !== 'error' &&
+    state.streaming.status !== 'cancelled'
+  )
 }
 
 /**
@@ -337,8 +324,8 @@ export function isAnyParsingActive(state: ParsingContextState): boolean {
  */
 export function getStreamingStatus(
   state: ParsingContextState,
-  attachmentId: string,
+  attachmentId: string
 ): StreamingStatus | null {
-  if (state.activeAttachmentId !== attachmentId) return null;
-  return state.streaming?.status ?? null;
+  if (state.activeAttachmentId !== attachmentId) return null
+  return state.streaming?.status ?? null
 }

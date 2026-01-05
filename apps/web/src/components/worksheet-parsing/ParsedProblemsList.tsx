@@ -1,4 +1,4 @@
-"use client";
+'use client'
 
 /**
  * ParsedProblemsList - Displays extracted problems from worksheet parsing
@@ -10,39 +10,36 @@
  * - Needs review badge
  */
 
-import { css } from "../../../styled-system/css";
-import type {
-  ParsedProblem,
-  WorksheetParsingResult,
-} from "@/lib/worksheet-parsing";
+import { css } from '../../../styled-system/css'
+import type { ParsedProblem, WorksheetParsingResult } from '@/lib/worksheet-parsing'
 
 export interface ParsedProblemsListProps {
   /** The parsed result from worksheet parsing */
-  result: WorksheetParsingResult;
+  result: WorksheetParsingResult
   /** Whether to use dark mode styling */
-  isDark: boolean;
+  isDark: boolean
   /** Optional callback when a problem is clicked (for highlighting on image) */
-  onProblemClick?: (problem: ParsedProblem) => void;
+  onProblemClick?: (problem: ParsedProblem) => void
   /** Currently selected problem index (for highlighting) */
-  selectedProblemIndex?: number | null;
+  selectedProblemIndex?: number | null
   /** Threshold below which confidence is considered "low" */
-  lowConfidenceThreshold?: number;
+  lowConfidenceThreshold?: number
 }
 
 /**
  * Format terms into a readable string like "45 + 27 - 12"
  */
 function formatTerms(terms: number[]): string {
-  if (terms.length === 0) return "";
-  if (terms.length === 1) return terms[0].toString();
+  if (terms.length === 0) return ''
+  if (terms.length === 1) return terms[0].toString()
 
   return terms
     .map((term, i) => {
-      if (i === 0) return term.toString();
-      if (term >= 0) return `+ ${term}`;
-      return `- ${Math.abs(term)}`;
+      if (i === 0) return term.toString()
+      if (term >= 0) return `+ ${term}`
+      return `- ${Math.abs(term)}`
     })
-    .join(" ");
+    .join(' ')
 }
 
 /**
@@ -51,9 +48,9 @@ function formatTerms(terms: number[]): string {
 function getMinConfidence(problem: ParsedProblem): number {
   // If student answer is null, only consider terms confidence
   if (problem.studentAnswer === null) {
-    return problem.termsConfidence;
+    return problem.termsConfidence
   }
-  return Math.min(problem.termsConfidence, problem.studentAnswerConfidence);
+  return Math.min(problem.termsConfidence, problem.studentAnswerConfidence)
 }
 
 export function ParsedProblemsList({
@@ -63,58 +60,56 @@ export function ParsedProblemsList({
   selectedProblemIndex,
   lowConfidenceThreshold = 0.7,
 }: ParsedProblemsListProps) {
-  const { problems, needsReview, overallConfidence } = result;
+  const { problems, needsReview, overallConfidence } = result
 
   // Calculate summary stats
-  const totalProblems = problems.length;
-  const answeredProblems = problems.filter(
-    (p) => p.studentAnswer !== null,
-  ).length;
+  const totalProblems = problems.length
+  const answeredProblems = problems.filter((p) => p.studentAnswer !== null).length
   const correctProblems = problems.filter(
-    (p) => p.studentAnswer !== null && p.studentAnswer === p.correctAnswer,
-  ).length;
+    (p) => p.studentAnswer !== null && p.studentAnswer === p.correctAnswer
+  ).length
   const lowConfidenceCount = problems.filter(
-    (p) => getMinConfidence(p) < lowConfidenceThreshold,
-  ).length;
+    (p) => getMinConfidence(p) < lowConfidenceThreshold
+  ).length
 
   return (
     <div
       data-component="parsed-problems-list"
       className={css({
-        borderRadius: "12px",
-        border: "1px solid",
-        borderColor: isDark ? "gray.700" : "gray.200",
-        backgroundColor: isDark ? "gray.800" : "white",
-        overflow: "hidden",
+        borderRadius: '12px',
+        border: '1px solid',
+        borderColor: isDark ? 'gray.700' : 'gray.200',
+        backgroundColor: isDark ? 'gray.800' : 'white',
+        overflow: 'hidden',
       })}
     >
       {/* Header with summary */}
       <div
         data-element="header"
         className={css({
-          padding: "0.75rem 1rem",
-          backgroundColor: isDark ? "gray.750" : "gray.50",
-          borderBottom: "1px solid",
-          borderColor: isDark ? "gray.700" : "gray.200",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: "0.5rem",
+          padding: '0.75rem 1rem',
+          backgroundColor: isDark ? 'gray.750' : 'gray.50',
+          borderBottom: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
         })}
       >
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
           })}
         >
           <span
             className={css({
-              fontSize: "0.875rem",
-              fontWeight: "bold",
-              color: isDark ? "white" : "gray.800",
+              fontSize: '0.875rem',
+              fontWeight: 'bold',
+              color: isDark ? 'white' : 'gray.800',
             })}
           >
             {totalProblems} Problems
@@ -122,8 +117,8 @@ export function ParsedProblemsList({
           {answeredProblems > 0 && (
             <span
               className={css({
-                fontSize: "0.75rem",
-                color: isDark ? "gray.400" : "gray.600",
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.400' : 'gray.600',
               })}
             >
               {correctProblems}/{answeredProblems} correct
@@ -132,9 +127,9 @@ export function ParsedProblemsList({
         </div>
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
           })}
         >
           {/* Needs review badge */}
@@ -144,14 +139,14 @@ export function ParsedProblemsList({
               className={css({
                 px: 2,
                 py: 0.5,
-                fontSize: "0.6875rem",
-                fontWeight: "600",
-                borderRadius: "full",
-                backgroundColor: "yellow.100",
-                color: "yellow.800",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.25rem",
+                fontSize: '0.6875rem',
+                fontWeight: '600',
+                borderRadius: 'full',
+                backgroundColor: 'yellow.100',
+                color: 'yellow.800',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
               })}
             >
               <span>⚠️</span> Needs Review
@@ -163,11 +158,11 @@ export function ParsedProblemsList({
               className={css({
                 px: 2,
                 py: 0.5,
-                fontSize: "0.6875rem",
-                fontWeight: "500",
-                borderRadius: "full",
-                backgroundColor: isDark ? "yellow.900/30" : "yellow.50",
-                color: isDark ? "yellow.400" : "yellow.700",
+                fontSize: '0.6875rem',
+                fontWeight: '500',
+                borderRadius: 'full',
+                backgroundColor: isDark ? 'yellow.900/30' : 'yellow.50',
+                color: isDark ? 'yellow.400' : 'yellow.700',
               })}
             >
               {lowConfidenceCount} low confidence
@@ -176,19 +171,19 @@ export function ParsedProblemsList({
           {/* Confidence indicator */}
           <span
             className={css({
-              fontSize: "0.6875rem",
+              fontSize: '0.6875rem',
               color:
                 overallConfidence >= 0.9
                   ? isDark
-                    ? "green.400"
-                    : "green.600"
+                    ? 'green.400'
+                    : 'green.600'
                   : overallConfidence >= 0.7
                     ? isDark
-                      ? "yellow.400"
-                      : "yellow.600"
+                      ? 'yellow.400'
+                      : 'yellow.600'
                     : isDark
-                      ? "red.400"
-                      : "red.600",
+                      ? 'red.400'
+                      : 'red.600',
             })}
           >
             {Math.round(overallConfidence * 100)}% confidence
@@ -200,20 +195,17 @@ export function ParsedProblemsList({
       <div
         data-element="problems-list"
         className={css({
-          maxHeight: "300px",
-          overflowY: "auto",
+          maxHeight: '300px',
+          overflowY: 'auto',
         })}
       >
         {problems.map((problem, index) => {
           const isCorrect =
-            problem.studentAnswer !== null &&
-            problem.studentAnswer === problem.correctAnswer;
+            problem.studentAnswer !== null && problem.studentAnswer === problem.correctAnswer
           const isIncorrect =
-            problem.studentAnswer !== null &&
-            problem.studentAnswer !== problem.correctAnswer;
-          const isLowConfidence =
-            getMinConfidence(problem) < lowConfidenceThreshold;
-          const isSelected = selectedProblemIndex === index;
+            problem.studentAnswer !== null && problem.studentAnswer !== problem.correctAnswer
+          const isLowConfidence = getMinConfidence(problem) < lowConfidenceThreshold
+          const isSelected = selectedProblemIndex === index
 
           return (
             <button
@@ -225,47 +217,47 @@ export function ParsedProblemsList({
               data-is-low-confidence={isLowConfidence}
               onClick={() => onProblemClick?.(problem)}
               className={css({
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                padding: "0.5rem 1rem",
-                gap: "0.75rem",
-                borderBottom: "1px solid",
-                borderColor: isDark ? "gray.700" : "gray.100",
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0.5rem 1rem',
+                gap: '0.75rem',
+                borderBottom: '1px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.100',
                 backgroundColor: isSelected
                   ? isDark
-                    ? "blue.900/30"
-                    : "blue.50"
+                    ? 'blue.900/30'
+                    : 'blue.50'
                   : isLowConfidence
                     ? isDark
-                      ? "yellow.900/20"
-                      : "yellow.50"
-                    : "transparent",
-                cursor: onProblemClick ? "pointer" : "default",
-                transition: "background-color 0.15s",
-                border: "none",
-                textAlign: "left",
+                      ? 'yellow.900/20'
+                      : 'yellow.50'
+                    : 'transparent',
+                cursor: onProblemClick ? 'pointer' : 'default',
+                transition: 'background-color 0.15s',
+                border: 'none',
+                textAlign: 'left',
                 _hover: {
                   backgroundColor: isSelected
                     ? isDark
-                      ? "blue.900/40"
-                      : "blue.100"
+                      ? 'blue.900/40'
+                      : 'blue.100'
                     : isDark
-                      ? "gray.750"
-                      : "gray.50",
+                      ? 'gray.750'
+                      : 'gray.50',
                 },
                 _last: {
-                  borderBottom: "none",
+                  borderBottom: 'none',
                 },
               })}
             >
               {/* Problem number */}
               <span
                 className={css({
-                  minWidth: "24px",
-                  fontSize: "0.75rem",
-                  fontWeight: "600",
-                  color: isDark ? "gray.500" : "gray.400",
+                  minWidth: '24px',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  color: isDark ? 'gray.500' : 'gray.400',
                 })}
               >
                 #{problem.problemNumber}
@@ -275,9 +267,9 @@ export function ParsedProblemsList({
               <span
                 className={css({
                   flex: 1,
-                  fontSize: "0.875rem",
-                  fontFamily: "monospace",
-                  color: isDark ? "gray.200" : "gray.700",
+                  fontSize: '0.875rem',
+                  fontFamily: 'monospace',
+                  color: isDark ? 'gray.200' : 'gray.700',
                 })}
               >
                 {formatTerms(problem.terms)}
@@ -286,8 +278,8 @@ export function ParsedProblemsList({
               {/* Equals sign and answer */}
               <span
                 className={css({
-                  fontSize: "0.875rem",
-                  color: isDark ? "gray.400" : "gray.500",
+                  fontSize: '0.875rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
                 })}
               >
                 =
@@ -296,51 +288,43 @@ export function ParsedProblemsList({
               {/* Student answer */}
               <span
                 className={css({
-                  minWidth: "48px",
-                  fontSize: "0.875rem",
-                  fontFamily: "monospace",
-                  fontWeight: "500",
-                  textAlign: "right",
+                  minWidth: '48px',
+                  fontSize: '0.875rem',
+                  fontFamily: 'monospace',
+                  fontWeight: '500',
+                  textAlign: 'right',
                   color:
                     problem.studentAnswer === null
                       ? isDark
-                        ? "gray.500"
-                        : "gray.400"
+                        ? 'gray.500'
+                        : 'gray.400'
                       : isCorrect
                         ? isDark
-                          ? "green.400"
-                          : "green.600"
+                          ? 'green.400'
+                          : 'green.600'
                         : isDark
-                          ? "red.400"
-                          : "red.600",
+                          ? 'red.400'
+                          : 'red.600',
                 })}
               >
-                {problem.studentAnswer ?? "—"}
+                {problem.studentAnswer ?? '—'}
               </span>
 
               {/* Correct/incorrect indicator */}
               <span
                 className={css({
-                  width: "20px",
-                  height: "20px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.875rem",
+                  width: '20px',
+                  height: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.875rem',
                 })}
               >
-                {isCorrect && (
-                  <span className={css({ color: "green.500" })}>✓</span>
-                )}
-                {isIncorrect && (
-                  <span className={css({ color: "red.500" })}>✗</span>
-                )}
+                {isCorrect && <span className={css({ color: 'green.500' })}>✓</span>}
+                {isIncorrect && <span className={css({ color: 'red.500' })}>✗</span>}
                 {problem.studentAnswer === null && (
-                  <span
-                    className={css({ color: isDark ? "gray.600" : "gray.300" })}
-                  >
-                    —
-                  </span>
+                  <span className={css({ color: isDark ? 'gray.600' : 'gray.300' })}>—</span>
                 )}
               </span>
 
@@ -348,8 +332,8 @@ export function ParsedProblemsList({
               {isLowConfidence && (
                 <span
                   className={css({
-                    fontSize: "0.6875rem",
-                    color: isDark ? "yellow.400" : "yellow.600",
+                    fontSize: '0.6875rem',
+                    color: isDark ? 'yellow.400' : 'yellow.600',
                   })}
                   title={`${Math.round(getMinConfidence(problem) * 100)}% confidence`}
                 >
@@ -357,7 +341,7 @@ export function ParsedProblemsList({
                 </span>
               )}
             </button>
-          );
+          )
         })}
       </div>
 
@@ -366,18 +350,18 @@ export function ParsedProblemsList({
         <div
           data-element="warnings"
           className={css({
-            padding: "0.75rem 1rem",
-            backgroundColor: isDark ? "yellow.900/20" : "yellow.50",
-            borderTop: "1px solid",
-            borderColor: isDark ? "yellow.800/30" : "yellow.200",
+            padding: '0.75rem 1rem',
+            backgroundColor: isDark ? 'yellow.900/20' : 'yellow.50',
+            borderTop: '1px solid',
+            borderColor: isDark ? 'yellow.800/30' : 'yellow.200',
           })}
         >
           <div
             className={css({
-              fontSize: "0.75rem",
-              fontWeight: "600",
-              color: isDark ? "yellow.400" : "yellow.700",
-              marginBottom: "0.25rem",
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              color: isDark ? 'yellow.400' : 'yellow.700',
+              marginBottom: '0.25rem',
             })}
           >
             Warnings:
@@ -386,20 +370,20 @@ export function ParsedProblemsList({
             className={css({
               margin: 0,
               padding: 0,
-              listStyle: "none",
+              listStyle: 'none',
             })}
           >
             {result.warnings.map((warning, i) => (
               <li
                 key={i}
                 className={css({
-                  fontSize: "0.6875rem",
-                  color: isDark ? "yellow.300" : "yellow.800",
-                  paddingLeft: "0.75rem",
-                  position: "relative",
+                  fontSize: '0.6875rem',
+                  color: isDark ? 'yellow.300' : 'yellow.800',
+                  paddingLeft: '0.75rem',
+                  position: 'relative',
                   _before: {
                     content: '"•"',
-                    position: "absolute",
+                    position: 'absolute',
                     left: 0,
                   },
                 })}
@@ -411,7 +395,7 @@ export function ParsedProblemsList({
         </div>
       )}
     </div>
-  );
+  )
 }
 
-export default ParsedProblemsList;
+export default ParsedProblemsList

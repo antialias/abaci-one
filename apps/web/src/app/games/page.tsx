@@ -1,65 +1,62 @@
-"use client";
+'use client'
 
-import Autoplay from "embla-carousel-autoplay";
-import useEmblaCarousel from "embla-carousel-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { PageWithNav } from "@/components/PageWithNav";
-import { GamePreview } from "@/components/GamePreview";
-import { getAvailableGames } from "@/lib/arcade/game-registry";
-import { css } from "../../../styled-system/css";
-import { useFullscreen } from "../../contexts/FullscreenContext";
-import { useGameMode } from "../../contexts/GameModeContext";
-import { useUserProfile } from "../../contexts/UserProfileContext";
-import { useAllPlayerStats } from "@/hooks/usePlayerStats";
+import Autoplay from 'embla-carousel-autoplay'
+import useEmblaCarousel from 'embla-carousel-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { PageWithNav } from '@/components/PageWithNav'
+import { GamePreview } from '@/components/GamePreview'
+import { getAvailableGames } from '@/lib/arcade/game-registry'
+import { css } from '../../../styled-system/css'
+import { useFullscreen } from '../../contexts/FullscreenContext'
+import { useGameMode } from '../../contexts/GameModeContext'
+import { useUserProfile } from '../../contexts/UserProfileContext'
+import { useAllPlayerStats } from '@/hooks/usePlayerStats'
 
 function GamesPageContent() {
-  const t = useTranslations("games");
-  const { profile } = useUserProfile();
-  const { gameMode, getAllPlayers } = useGameMode();
-  const { enterFullscreen } = useFullscreen();
-  const router = useRouter();
+  const t = useTranslations('games')
+  const { profile } = useUserProfile()
+  const { gameMode, getAllPlayers } = useGameMode()
+  const { enterFullscreen } = useFullscreen()
+  const router = useRouter()
 
   // Get all players sorted by creation time
   const allPlayers = getAllPlayers().sort((a, b) => {
-    const aTime =
-      a.createdAt instanceof Date ? a.createdAt.getTime() : a.createdAt;
-    const bTime =
-      b.createdAt instanceof Date ? b.createdAt.getTime() : b.createdAt;
-    return aTime - bTime;
-  });
+    const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : a.createdAt
+    const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : b.createdAt
+    return aTime - bTime
+  })
 
   // Fetch per-player stats
-  const { data: playerStatsArray, isLoading: statsLoading } =
-    useAllPlayerStats();
+  const { data: playerStatsArray, isLoading: statsLoading } = useAllPlayerStats()
 
   // Create a map of playerId -> stats for easy lookup
   const playerStatsMap = useMemo(() => {
-    const map = new Map();
+    const map = new Map()
     if (playerStatsArray) {
       for (const stats of playerStatsArray) {
-        map.set(stats.playerId, stats);
+        map.set(stats.playerId, stats)
       }
     }
-    return map;
-  }, [playerStatsArray]);
+    return map
+  }, [playerStatsArray])
 
   // Get available games
-  const availableGames = getAvailableGames();
+  const availableGames = getAvailableGames()
 
   // Check if user has any stats to show (check if ANY player has stats)
   const hasStats =
     playerStatsArray &&
     playerStatsArray.length > 0 &&
-    playerStatsArray.some((s) => s.gamesPlayed > 0);
+    playerStatsArray.some((s) => s.gamesPlayed > 0)
 
   // Embla carousel setup for games hero carousel with autoplay
   const [gamesEmblaRef, gamesEmblaApi] = useEmblaCarousel(
     {
       loop: true,
-      align: "center",
+      align: 'center',
       slidesToScroll: 1,
       skipSnaps: false,
     },
@@ -69,152 +66,150 @@ function GamesPageContent() {
         stopOnInteraction: true,
         stopOnMouseEnter: true,
       }),
-    ],
-  );
-  const [gamesSelectedIndex, setGamesSelectedIndex] = useState(0);
+    ]
+  )
+  const [gamesSelectedIndex, setGamesSelectedIndex] = useState(0)
 
   // Embla carousel setup for player carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,
-    align: "center",
-    containScroll: "trimSnaps",
-  });
-  const [selectedIndex, setSelectedIndex] = useState(0);
+    align: 'center',
+    containScroll: 'trimSnaps',
+  })
+  const [selectedIndex, setSelectedIndex] = useState(0)
 
   // Games carousel callbacks
   const onGamesSelect = useCallback(() => {
-    if (!gamesEmblaApi) return;
-    setGamesSelectedIndex(gamesEmblaApi.selectedScrollSnap());
-  }, [gamesEmblaApi]);
+    if (!gamesEmblaApi) return
+    setGamesSelectedIndex(gamesEmblaApi.selectedScrollSnap())
+  }, [gamesEmblaApi])
 
   useEffect(() => {
-    if (!gamesEmblaApi) return;
-    onGamesSelect();
-    gamesEmblaApi.on("select", onGamesSelect);
-    gamesEmblaApi.on("reInit", onGamesSelect);
+    if (!gamesEmblaApi) return
+    onGamesSelect()
+    gamesEmblaApi.on('select', onGamesSelect)
+    gamesEmblaApi.on('reInit', onGamesSelect)
 
     return () => {
-      gamesEmblaApi.off("select", onGamesSelect);
-      gamesEmblaApi.off("reInit", onGamesSelect);
-    };
-  }, [gamesEmblaApi, onGamesSelect]);
+      gamesEmblaApi.off('select', onGamesSelect)
+      gamesEmblaApi.off('reInit', onGamesSelect)
+    }
+  }, [gamesEmblaApi, onGamesSelect])
 
   // Player carousel callbacks
   const onSelect = useCallback(() => {
-    if (!emblaApi) return;
-    setSelectedIndex(emblaApi.selectedScrollSnap());
-  }, [emblaApi]);
+    if (!emblaApi) return
+    setSelectedIndex(emblaApi.selectedScrollSnap())
+  }, [emblaApi])
 
   useEffect(() => {
-    if (!emblaApi) return;
-    onSelect();
-    emblaApi.on("select", onSelect);
-    emblaApi.on("reInit", onSelect);
+    if (!emblaApi) return
+    onSelect()
+    emblaApi.on('select', onSelect)
+    emblaApi.on('reInit', onSelect)
 
     return () => {
-      emblaApi.off("select", onSelect);
-      emblaApi.off("reInit", onSelect);
-    };
-  }, [emblaApi, onSelect]);
+      emblaApi.off('select', onSelect)
+      emblaApi.off('reInit', onSelect)
+    }
+  }, [emblaApi, onSelect])
 
   return (
     <div
       className={css({
-        minH: "screen",
-        bg: "bg.canvas",
-        py: "8",
-        position: "relative",
-        overflowX: "hidden",
+        minH: 'screen',
+        bg: 'bg.canvas',
+        py: '8',
+        position: 'relative',
+        overflowX: 'hidden',
       })}
     >
       {/* Subtle background pattern */}
       <div
         className={css({
-          position: "absolute",
+          position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
           backgroundImage:
-            "radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.05) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(139, 92, 246, 0.05) 0%, transparent 50%)",
-          pointerEvents: "none",
+            'radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.05) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(139, 92, 246, 0.05) 0%, transparent 50%)',
+          pointerEvents: 'none',
         })}
       />
 
       {/* Enter Arcade Button */}
       <div
         className={css({
-          mb: "12",
-          pt: "20",
-          textAlign: "center",
-          px: { base: "4", md: "12" },
+          mb: '12',
+          pt: '20',
+          textAlign: 'center',
+          px: { base: '4', md: '12' },
         })}
       >
         <button
           onClick={async () => {
             try {
-              await enterFullscreen();
-              sessionStorage.setItem("enterArcadeFullscreen", "true");
-              router.push("/arcade");
+              await enterFullscreen()
+              sessionStorage.setItem('enterArcadeFullscreen', 'true')
+              router.push('/arcade')
             } catch (error) {
-              console.error("Failed to enter fullscreen:", error);
-              sessionStorage.setItem("enterArcadeFullscreen", "true");
-              router.push("/arcade");
+              console.error('Failed to enter fullscreen:', error)
+              sessionStorage.setItem('enterArcadeFullscreen', 'true')
+              router.push('/arcade')
             }
           }}
           className={css({
-            px: { base: "12", md: "20" },
-            py: { base: "8", md: "12" },
-            minH: { base: "60px", md: "80px" },
-            minW: { base: "200px", md: "300px" },
-            background: "linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899)",
-            color: "white",
-            fontSize: { base: "3xl", md: "5xl" },
-            fontWeight: "black",
-            rounded: "3xl",
-            border: "none",
-            cursor: "pointer",
-            boxShadow:
-              "0 20px 60px rgba(139, 92, 246, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.3)",
-            transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-            position: "relative",
-            overflow: "hidden",
-            touchAction: "manipulation",
-            textTransform: "uppercase",
-            letterSpacing: "wider",
+            px: { base: '12', md: '20' },
+            py: { base: '8', md: '12' },
+            minH: { base: '60px', md: '80px' },
+            minW: { base: '200px', md: '300px' },
+            background: 'linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899)',
+            color: 'white',
+            fontSize: { base: '3xl', md: '5xl' },
+            fontWeight: 'black',
+            rounded: '3xl',
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 20px 60px rgba(139, 92, 246, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.3)',
+            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            position: 'relative',
+            overflow: 'hidden',
+            touchAction: 'manipulation',
+            textTransform: 'uppercase',
+            letterSpacing: 'wider',
             _hover: {
               transform: {
-                base: "translateY(-4px) scale(1.02)",
-                md: "translateY(-8px) scale(1.08)",
+                base: 'translateY(-4px) scale(1.02)',
+                md: 'translateY(-8px) scale(1.08)',
               },
-              boxShadow:
-                "0 30px 80px rgba(139, 92, 246, 0.6), 0 0 0 6px rgba(255, 255, 255, 0.5)",
-              "& .button-glow": {
+              boxShadow: '0 30px 80px rgba(139, 92, 246, 0.6), 0 0 0 6px rgba(255, 255, 255, 0.5)',
+              '& .button-glow': {
                 opacity: 1,
               },
             },
             _active: {
-              transform: "translateY(-2px) scale(1.03)",
+              transform: 'translateY(-2px) scale(1.03)',
             },
           })}
         >
           {/* Button glow effect */}
           <div
             className={`${css({
-              position: "absolute",
+              position: 'absolute',
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
               background:
-                "linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1))",
+                'linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1))',
               opacity: 0,
-              transition: "opacity 0.3s ease",
+              transition: 'opacity 0.3s ease',
             })} button-glow`}
           />
 
-          <span className={css({ position: "relative", zIndex: 1 })}>
-            {t("enterArcade.button")}
+          <span className={css({ position: 'relative', zIndex: 1 })}>
+            {t('enterArcade.button')}
           </span>
         </button>
       </div>
@@ -222,61 +217,61 @@ function GamesPageContent() {
       {/* Games Hero Carousel - Full Width */}
       <div
         className={css({
-          mb: "16",
-          px: { base: "4", md: "12" },
+          mb: '16',
+          px: { base: '4', md: '12' },
         })}
       >
         <div
           className={css({
-            position: "relative",
-            overflow: "visible",
-            py: "12",
-            userSelect: "none",
+            position: 'relative',
+            overflow: 'visible',
+            py: '12',
+            userSelect: 'none',
           })}
           data-component="games-carousel"
         >
           <div
             ref={gamesEmblaRef}
             className={css({
-              overflow: "visible",
-              cursor: "grab",
+              overflow: 'visible',
+              cursor: 'grab',
               _active: {
-                cursor: "grabbing",
+                cursor: 'grabbing',
               },
             })}
           >
             <div
               className={css({
-                display: "flex",
+                display: 'flex',
               })}
             >
               {/* Dynamic Game Cards */}
               {availableGames.map((game, index) => {
-                const isActive = index === gamesSelectedIndex;
-                const manifest = game.manifest;
-                const GameComp = game.GameComponent;
-                const Provider = game.Provider;
+                const isActive = index === gamesSelectedIndex
+                const manifest = game.manifest
+                const GameComp = game.GameComponent
+                const Provider = game.Provider
 
                 return (
                   <div
                     key={manifest.name}
                     className={css({
-                      position: "relative",
-                      rounded: "2xl",
-                      overflow: "hidden",
-                      border: "2px solid rgba(255, 255, 255, 0.9)",
+                      position: 'relative',
+                      rounded: '2xl',
+                      overflow: 'hidden',
+                      border: '2px solid rgba(255, 255, 255, 0.9)',
                       boxShadow: isActive
-                        ? "0 30px 60px rgba(0, 0, 0, 0.2)"
-                        : "0 20px 40px rgba(0, 0, 0, 0.15)",
-                      cursor: "pointer",
-                      flex: "0 0 500px",
-                      minWidth: "500px",
-                      height: "312px", // Match scaled game height (900px * 0.347 = 312px)
-                      mr: "6",
+                        ? '0 30px 60px rgba(0, 0, 0, 0.2)'
+                        : '0 20px 40px rgba(0, 0, 0, 0.15)',
+                      cursor: 'pointer',
+                      flex: '0 0 500px',
+                      minWidth: '500px',
+                      height: '312px', // Match scaled game height (900px * 0.347 = 312px)
+                      mr: '6',
                       opacity: isActive ? 1 : 0.8,
-                      transitionProperty: "opacity, box-shadow",
-                      transitionDuration: "0.3s",
-                      transitionTimingFunction: "ease-out",
+                      transitionProperty: 'opacity, box-shadow',
+                      transitionDuration: '0.3s',
+                      transitionTimingFunction: 'ease-out',
                       _hover: {
                         opacity: 1,
                       },
@@ -287,16 +282,16 @@ function GamesPageContent() {
                     {/* Live Game Demo */}
                     <div
                       className={css({
-                        position: "absolute",
+                        position: 'absolute',
                         top: 0,
                         left: 0,
                         right: 0,
                         bottom: 0,
                         // Scale 1440×900 viewport to fit 500×600 card
                         // Scale factor: 500/1440 ≈ 0.347
-                        transform: "scale(0.347)",
-                        transformOrigin: "top left",
-                        pointerEvents: "none",
+                        transform: 'scale(0.347)',
+                        transformOrigin: 'top left',
+                        pointerEvents: 'none',
                       })}
                     >
                       <GamePreview
@@ -309,23 +304,23 @@ function GamesPageContent() {
                     {/* Overlay with game info - shorter gradient that overlaps game */}
                     <div
                       className={css({
-                        position: "absolute",
+                        position: 'absolute',
                         bottom: 0,
                         left: 0,
                         right: 0,
                         background:
-                          "linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 35%, transparent 100%)",
-                        px: "6",
-                        py: "4",
-                        pointerEvents: "none",
+                          'linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 35%, transparent 100%)',
+                        px: '6',
+                        py: '4',
+                        pointerEvents: 'none',
                       })}
                     >
                       {/* Game Icon */}
                       <div
                         className={css({
-                          fontSize: "3xl",
-                          mb: "2",
-                          textAlign: "center",
+                          fontSize: '3xl',
+                          mb: '2',
+                          textAlign: 'center',
                         })}
                       >
                         {manifest.icon}
@@ -334,12 +329,12 @@ function GamesPageContent() {
                       {/* Game Title */}
                       <h3
                         className={css({
-                          fontSize: "xl",
-                          fontWeight: "bold",
-                          color: "text.inverse",
-                          textAlign: "center",
-                          mb: "2",
-                          textShadow: "0 2px 8px rgba(0, 0, 0, 0.8)",
+                          fontSize: 'xl',
+                          fontWeight: 'bold',
+                          color: 'text.inverse',
+                          textAlign: 'center',
+                          mb: '2',
+                          textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)',
                         })}
                       >
                         {manifest.displayName}
@@ -348,41 +343,41 @@ function GamesPageContent() {
                       {/* Game Info Badges */}
                       <div
                         className={css({
-                          display: "flex",
-                          gap: "2",
-                          mb: "2",
-                          justifyContent: "center",
-                          flexWrap: "wrap",
+                          display: 'flex',
+                          gap: '2',
+                          mb: '2',
+                          justifyContent: 'center',
+                          flexWrap: 'wrap',
                         })}
                       >
                         <span
                           className={css({
-                            px: "3",
-                            py: "1",
-                            rounded: "full",
-                            fontSize: "xs",
-                            fontWeight: "semibold",
-                            background: "rgba(255, 255, 255, 0.2)",
-                            color: "text.inverse",
-                            textShadow: "0 1px 2px rgba(0, 0, 0, 0.8)",
+                            px: '3',
+                            py: '1',
+                            rounded: 'full',
+                            fontSize: 'xs',
+                            fontWeight: 'semibold',
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            color: 'text.inverse',
+                            textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
                           })}
                         >
                           {manifest.difficulty}
                         </span>
                         <span
                           className={css({
-                            px: "3",
-                            py: "1",
-                            rounded: "full",
-                            fontSize: "xs",
-                            fontWeight: "semibold",
-                            background: "rgba(255, 255, 255, 0.2)",
-                            color: "text.inverse",
-                            textShadow: "0 1px 2px rgba(0, 0, 0, 0.8)",
+                            px: '3',
+                            py: '1',
+                            rounded: 'full',
+                            fontSize: 'xs',
+                            fontWeight: 'semibold',
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            color: 'text.inverse',
+                            textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
                           })}
                         >
                           {manifest.maxPlayers === 1
-                            ? "1 Player"
+                            ? '1 Player'
                             : `1-${manifest.maxPlayers} Players`}
                         </span>
                       </div>
@@ -390,18 +385,18 @@ function GamesPageContent() {
                       {/* Description */}
                       <p
                         className={css({
-                          fontSize: "sm",
-                          color: "text.inverse",
-                          textAlign: "center",
-                          lineHeight: "1.4",
-                          textShadow: "0 1px 3px rgba(0, 0, 0, 0.8)",
+                          fontSize: 'sm',
+                          color: 'text.inverse',
+                          textAlign: 'center',
+                          lineHeight: '1.4',
+                          textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)',
                         })}
                       >
                         {manifest.description}
                       </p>
                     </div>
                   </div>
-                );
+                )
               })}
             </div>
           </div>
@@ -409,10 +404,10 @@ function GamesPageContent() {
           {/* Navigation Dots with Game Icons */}
           <div
             className={css({
-              display: "flex",
-              justifyContent: "center",
-              gap: "3",
-              mt: "8",
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '3',
+              mt: '8',
             })}
             data-element="games-carousel-dots"
           >
@@ -421,26 +416,26 @@ function GamesPageContent() {
                 key={game.manifest.name}
                 onClick={() => gamesEmblaApi?.scrollTo(index)}
                 className={css({
-                  rounded: "full",
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "all 0.3s ease",
-                  minH: "44px",
-                  minW: "44px",
-                  w: "12",
-                  h: "12",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: index === gamesSelectedIndex ? "2xl" : "lg",
+                  rounded: 'full',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  minH: '44px',
+                  minW: '44px',
+                  w: '12',
+                  h: '12',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: index === gamesSelectedIndex ? '2xl' : 'lg',
                   opacity: index === gamesSelectedIndex ? 1 : 0.5,
                   background:
                     index === gamesSelectedIndex
-                      ? "rgba(255, 255, 255, 0.9)"
-                      : "rgba(255, 255, 255, 0.3)",
+                      ? 'rgba(255, 255, 255, 0.9)'
+                      : 'rgba(255, 255, 255, 0.3)',
                   _hover: {
                     opacity: 1,
-                    transform: "scale(1.1)",
+                    transform: 'scale(1.1)',
                   },
                 })}
                 aria-label={`Go to ${game.manifest.displayName}`}
@@ -459,131 +454,131 @@ function GamesPageContent() {
           {/* Character Showcase Header */}
           <div
             className={css({
-              mb: "16",
+              mb: '16',
             })}
           >
             <div
               className={css({
-                textAlign: "center",
-                mb: "8",
+                textAlign: 'center',
+                mb: '8',
               })}
             >
               <h2
                 className={css({
-                  fontSize: { base: "2xl", md: "3xl" },
-                  fontWeight: "bold",
-                  color: "text.primary",
-                  mb: "2",
+                  fontSize: { base: '2xl', md: '3xl' },
+                  fontWeight: 'bold',
+                  color: 'text.primary',
+                  mb: '2',
                 })}
               >
-                {t("champions.title")}
+                {t('champions.title')}
               </h2>
               <p
                 className={css({
-                  color: "text.secondary",
-                  fontSize: "lg",
+                  color: 'text.secondary',
+                  fontSize: 'lg',
                 })}
               >
-                {t("champions.subtitle")}
+                {t('champions.subtitle')}
               </p>
             </div>
 
             {/* Player Carousel */}
             <div
               className={css({
-                position: "relative",
-                overflow: "hidden",
-                py: "12",
-                userSelect: "none",
+                position: 'relative',
+                overflow: 'hidden',
+                py: '12',
+                userSelect: 'none',
               })}
               data-component="player-carousel"
             >
               <div
                 ref={emblaRef}
                 className={css({
-                  overflow: "hidden",
-                  cursor: "grab",
+                  overflow: 'hidden',
+                  cursor: 'grab',
                   _active: {
-                    cursor: "grabbing",
+                    cursor: 'grabbing',
                   },
                 })}
               >
                 <div
                   className={css({
-                    display: "flex",
+                    display: 'flex',
                   })}
                 >
                   {/* Dynamic Player Character Cards */}
                   {allPlayers.map((player, index) => {
-                    const isActive = index === selectedIndex;
+                    const isActive = index === selectedIndex
 
                     // Rotate through different color schemes for visual variety
                     const colorSchemes = [
                       {
-                        border: "rgba(59, 130, 246, 0.3)",
-                        shadow: "rgba(59, 130, 246, 0.1)",
-                        gradient: "linear-gradient(90deg, #3b82f6, #1d4ed8)",
-                        statBg: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
-                        statBorder: "blue.200",
-                        statColor: "blue.800",
-                        levelColor: "blue.700",
+                        border: 'rgba(59, 130, 246, 0.3)',
+                        shadow: 'rgba(59, 130, 246, 0.1)',
+                        gradient: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
+                        statBg: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                        statBorder: 'blue.200',
+                        statColor: 'blue.800',
+                        levelColor: 'blue.700',
                       },
                       {
-                        border: "rgba(139, 92, 246, 0.3)",
-                        shadow: "rgba(139, 92, 246, 0.1)",
-                        gradient: "linear-gradient(90deg, #8b5cf6, #7c3aed)",
-                        statBg: "linear-gradient(135deg, #e9d5ff, #ddd6fe)",
-                        statBorder: "purple.200",
-                        statColor: "purple.800",
-                        levelColor: "purple.700",
+                        border: 'rgba(139, 92, 246, 0.3)',
+                        shadow: 'rgba(139, 92, 246, 0.1)',
+                        gradient: 'linear-gradient(90deg, #8b5cf6, #7c3aed)',
+                        statBg: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
+                        statBorder: 'purple.200',
+                        statColor: 'purple.800',
+                        levelColor: 'purple.700',
                       },
                       {
-                        border: "rgba(16, 185, 129, 0.3)",
-                        shadow: "rgba(16, 185, 129, 0.1)",
-                        gradient: "linear-gradient(90deg, #10b981, #059669)",
-                        statBg: "linear-gradient(135deg, #d1fae5, #a7f3d0)",
-                        statBorder: "green.200",
-                        statColor: "green.800",
-                        levelColor: "green.700",
+                        border: 'rgba(16, 185, 129, 0.3)',
+                        shadow: 'rgba(16, 185, 129, 0.1)',
+                        gradient: 'linear-gradient(90deg, #10b981, #059669)',
+                        statBg: 'linear-gradient(135deg, #d1fae5, #a7f3d0)',
+                        statBorder: 'green.200',
+                        statColor: 'green.800',
+                        levelColor: 'green.700',
                       },
                       {
-                        border: "rgba(245, 158, 11, 0.3)",
-                        shadow: "rgba(245, 158, 11, 0.1)",
-                        gradient: "linear-gradient(90deg, #f59e0b, #d97706)",
-                        statBg: "linear-gradient(135deg, #fef3c7, #fde68a)",
-                        statBorder: "yellow.200",
-                        statColor: "yellow.800",
-                        levelColor: "yellow.700",
+                        border: 'rgba(245, 158, 11, 0.3)',
+                        shadow: 'rgba(245, 158, 11, 0.1)',
+                        gradient: 'linear-gradient(90deg, #f59e0b, #d97706)',
+                        statBg: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                        statBorder: 'yellow.200',
+                        statColor: 'yellow.800',
+                        levelColor: 'yellow.700',
                       },
-                    ];
-                    const theme = colorSchemes[index % colorSchemes.length];
+                    ]
+                    const theme = colorSchemes[index % colorSchemes.length]
 
                     // Get per-player stats
-                    const playerStats = playerStatsMap.get(player.id);
-                    const gamesPlayed = playerStats?.gamesPlayed || 0;
-                    const totalWins = playerStats?.totalWins || 0;
+                    const playerStats = playerStatsMap.get(player.id)
+                    const gamesPlayed = playerStats?.gamesPlayed || 0
+                    const totalWins = playerStats?.totalWins || 0
 
                     return (
                       <div
                         key={player.id}
                         className={css({
-                          position: "relative",
-                          background: "rgba(255, 255, 255, 0.95)",
-                          backdropFilter: "blur(10px)",
-                          rounded: "2xl",
-                          p: "6",
-                          border: "2px solid",
+                          position: 'relative',
+                          background: 'rgba(255, 255, 255, 0.95)',
+                          backdropFilter: 'blur(10px)',
+                          rounded: '2xl',
+                          p: '6',
+                          border: '2px solid',
                           boxShadow: isActive
                             ? `0 30px 60px ${theme.shadow}`
                             : `0 20px 40px ${theme.shadow}`,
-                          cursor: "pointer",
-                          flex: "0 0 350px",
-                          minWidth: "350px",
-                          mr: "6",
+                          cursor: 'pointer',
+                          flex: '0 0 350px',
+                          minWidth: '350px',
+                          mr: '6',
                           opacity: isActive ? 1 : 0.6,
-                          transitionProperty: "opacity, box-shadow",
-                          transitionDuration: "0.3s",
-                          transitionTimingFunction: "ease-out",
+                          transitionProperty: 'opacity, box-shadow',
+                          transitionDuration: '0.3s',
+                          transitionTimingFunction: 'ease-out',
                           _hover: {
                             opacity: 1,
                           },
@@ -597,12 +592,12 @@ function GamesPageContent() {
                         {/* Gradient Border */}
                         <div
                           className={css({
-                            position: "absolute",
+                            position: 'absolute',
                             top: 0,
                             left: 0,
                             right: 0,
-                            height: "4px",
-                            borderRadius: "16px 16px 0 0",
+                            height: '4px',
+                            borderRadius: '16px 16px 0 0',
                           })}
                           style={{ background: theme.gradient }}
                         />
@@ -610,23 +605,23 @@ function GamesPageContent() {
                         {/* Character Display */}
                         <div
                           className={css({
-                            textAlign: "center",
-                            mb: "4",
+                            textAlign: 'center',
+                            mb: '4',
                           })}
                         >
                           <div
                             className={`${css({
-                              fontSize: "4xl",
-                              mb: "2",
-                              transition: "all 0.3s ease",
+                              fontSize: '4xl',
+                              mb: '2',
+                              transition: 'all 0.3s ease',
                             })} character-emoji`}
                           >
                             {player.emoji}
                           </div>
                           <h3
                             className={css({
-                              fontSize: "xl",
-                              fontWeight: "bold",
+                              fontSize: 'xl',
+                              fontWeight: 'bold',
                             })}
                             style={{ color: player.color }}
                           >
@@ -637,17 +632,17 @@ function GamesPageContent() {
                         {/* Stats */}
                         <div
                           className={css({
-                            display: "grid",
-                            gridTemplateColumns: "repeat(2, 1fr)",
-                            gap: "3",
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '3',
                           })}
                         >
                           <div
                             className={css({
-                              textAlign: "center",
-                              p: "3",
-                              rounded: "lg",
-                              border: "1px solid",
+                              textAlign: 'center',
+                              p: '3',
+                              rounded: 'lg',
+                              border: '1px solid',
                             })}
                             style={{
                               background: theme.statBg,
@@ -656,8 +651,8 @@ function GamesPageContent() {
                           >
                             <div
                               className={css({
-                                fontSize: "2xl",
-                                fontWeight: "bold",
+                                fontSize: '2xl',
+                                fontWeight: 'bold',
                               })}
                               style={{ color: theme.statColor }}
                             >
@@ -665,43 +660,42 @@ function GamesPageContent() {
                             </div>
                             <div
                               className={css({
-                                fontSize: "xs",
-                                fontWeight: "semibold",
+                                fontSize: 'xs',
+                                fontWeight: 'semibold',
                               })}
                               style={{ color: theme.statColor }}
                             >
-                              {t("champions.stats.gamesPlayed")}
+                              {t('champions.stats.gamesPlayed')}
                             </div>
                           </div>
 
                           <div
                             className={css({
-                              textAlign: "center",
-                              background:
-                                "linear-gradient(135deg, #fef3c7, #fde68a)",
-                              p: "3",
-                              rounded: "lg",
-                              border: "1px solid",
-                              borderColor: "yellow.200",
+                              textAlign: 'center',
+                              background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                              p: '3',
+                              rounded: 'lg',
+                              border: '1px solid',
+                              borderColor: 'yellow.200',
                             })}
                           >
                             <div
                               className={css({
-                                fontSize: "2xl",
-                                fontWeight: "bold",
-                                color: "yellow.800",
+                                fontSize: '2xl',
+                                fontWeight: 'bold',
+                                color: 'yellow.800',
                               })}
                             >
                               {totalWins}
                             </div>
                             <div
                               className={css({
-                                fontSize: "xs",
-                                color: "yellow.700",
-                                fontWeight: "semibold",
+                                fontSize: 'xs',
+                                color: 'yellow.700',
+                                fontWeight: 'semibold',
                               })}
                             >
-                              {t("champions.stats.victories")}
+                              {t('champions.stats.victories')}
                             </div>
                           </div>
                         </div>
@@ -709,35 +703,35 @@ function GamesPageContent() {
                         {/* Level Progress */}
                         <div
                           className={css({
-                            mt: "4",
+                            mt: '4',
                           })}
                         >
                           <div
                             className={css({
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              mb: "2",
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              mb: '2',
                             })}
                           >
                             <span
                               className={css({
-                                fontSize: "sm",
-                                fontWeight: "semibold",
+                                fontSize: 'sm',
+                                fontWeight: 'semibold',
                               })}
                               style={{ color: theme.levelColor }}
                             >
-                              {t("champions.stats.level", {
+                              {t('champions.stats.level', {
                                 level: Math.floor(gamesPlayed / 5) + 1,
                               })}
                             </span>
                             <span
                               className={css({
-                                fontSize: "xs",
+                                fontSize: 'xs',
                               })}
                               style={{ color: theme.levelColor }}
                             >
-                              {t("champions.stats.xp", {
+                              {t('champions.stats.xp', {
                                 current: gamesPlayed % 5,
                                 total: 5,
                               })}
@@ -745,18 +739,18 @@ function GamesPageContent() {
                           </div>
                           <div
                             className={css({
-                              w: "full",
-                              h: "2",
-                              rounded: "full",
-                              overflow: "hidden",
+                              w: 'full',
+                              h: '2',
+                              rounded: 'full',
+                              overflow: 'hidden',
                             })}
                             style={{ background: `${player.color}33` }}
                           >
                             <div
                               className={css({
-                                h: "full",
-                                rounded: "full",
-                                transition: "width 0.5s ease",
+                                h: 'full',
+                                rounded: 'full',
+                                transition: 'width 0.5s ease',
                               })}
                               style={{
                                 background: theme.gradient,
@@ -769,36 +763,34 @@ function GamesPageContent() {
                         {/* Quick Customize Button */}
                         <button
                           className={css({
-                            position: "absolute",
-                            top: "3",
-                            right: "3",
-                            w: { base: "12", md: "8" },
-                            h: { base: "12", md: "8" },
-                            minH: "44px",
-                            minW: "44px",
-                            background:
-                              "linear-gradient(135deg, #f3f4f6, #e5e7eb)",
-                            rounded: "full",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: { base: "md", md: "sm" },
-                            border: "1px solid",
-                            borderColor: "border.default",
-                            cursor: "pointer",
-                            touchAction: "manipulation",
-                            transition: "all 0.3s ease",
+                            position: 'absolute',
+                            top: '3',
+                            right: '3',
+                            w: { base: '12', md: '8' },
+                            h: { base: '12', md: '8' },
+                            minH: '44px',
+                            minW: '44px',
+                            background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
+                            rounded: 'full',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: { base: 'md', md: 'sm' },
+                            border: '1px solid',
+                            borderColor: 'border.default',
+                            cursor: 'pointer',
+                            touchAction: 'manipulation',
+                            transition: 'all 0.3s ease',
                             _hover: {
-                              transform: "scale(1.1)",
-                              background:
-                                "linear-gradient(135deg, #e5e7eb, #d1d5db)",
+                              transform: 'scale(1.1)',
+                              background: 'linear-gradient(135deg, #e5e7eb, #d1d5db)',
                             },
                           })}
                         >
                           ⚙️
                         </button>
                       </div>
-                    );
+                    )
                   })}
                 </div>
               </div>
@@ -806,10 +798,10 @@ function GamesPageContent() {
               {/* Navigation Dots */}
               <div
                 className={css({
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: "3",
-                  mt: "8",
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '3',
+                  mt: '8',
                 })}
                 data-element="carousel-dots"
               >
@@ -818,22 +810,22 @@ function GamesPageContent() {
                     key={player.id}
                     onClick={() => emblaApi?.scrollTo(index)}
                     className={css({
-                      rounded: "full",
-                      border: "none",
-                      cursor: "pointer",
-                      transition: "all 0.3s ease",
-                      minH: "44px",
-                      minW: "44px",
-                      w: "12",
-                      h: "12",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: index === selectedIndex ? "2xl" : "lg",
+                      rounded: 'full',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      minH: '44px',
+                      minW: '44px',
+                      w: '12',
+                      h: '12',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: index === selectedIndex ? '2xl' : 'lg',
                       opacity: index === selectedIndex ? 1 : 0.5,
                       _hover: {
                         opacity: 1,
-                        transform: "scale(1.1)",
+                        transform: 'scale(1.1)',
                       },
                     })}
                     style={{
@@ -858,96 +850,96 @@ function GamesPageContent() {
       {hasStats && (
         <div
           className={css({
-            mb: "12",
+            mb: '12',
           })}
         >
           <div
             className={css({
-              display: "grid",
+              display: 'grid',
               gridTemplateColumns: {
-                base: "1fr",
-                md: "1fr",
-                lg: "repeat(3, 1fr)",
+                base: '1fr',
+                md: '1fr',
+                lg: 'repeat(3, 1fr)',
               },
-              gap: { base: "4", md: "6" },
-              maxW: "7xl",
-              mx: "auto",
+              gap: { base: '4', md: '6' },
+              maxW: '7xl',
+              mx: 'auto',
             })}
           >
             {/* Head-to-Head Stats */}
             <div
               className={css({
-                background: "bg.surface",
-                backdropFilter: "blur(10px)",
-                rounded: "2xl",
-                p: "6",
-                border: "1px solid",
-                borderColor: "border.default",
-                boxShadow: "0 15px 35px token(colors.bg.muted)",
-                transition: "all 0.3s ease",
+                background: 'bg.surface',
+                backdropFilter: 'blur(10px)',
+                rounded: '2xl',
+                p: '6',
+                border: '1px solid',
+                borderColor: 'border.default',
+                boxShadow: '0 15px 35px token(colors.bg.muted)',
+                transition: 'all 0.3s ease',
                 _hover: {
-                  transform: "translateY(-2px)",
-                  boxShadow: "0 20px 45px token(colors.bg.muted)",
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 20px 45px token(colors.bg.muted)',
                 },
               })}
             >
               <div
                 className={css({
-                  textAlign: "center",
-                  mb: "4",
+                  textAlign: 'center',
+                  mb: '4',
                 })}
               >
                 <h3
                   className={css({
-                    fontSize: "xl",
-                    fontWeight: "bold",
-                    color: "text.primary",
-                    mb: "2",
+                    fontSize: 'xl',
+                    fontWeight: 'bold',
+                    color: 'text.primary',
+                    mb: '2',
                   })}
                 >
-                  {t("dashboard.headToHead.title")}
+                  {t('dashboard.headToHead.title')}
                 </h3>
                 <p
                   className={css({
-                    fontSize: "sm",
-                    color: "text.secondary",
+                    fontSize: 'sm',
+                    color: 'text.secondary',
                   })}
                 >
-                  {t("dashboard.headToHead.subtitle")}
+                  {t('dashboard.headToHead.subtitle')}
                 </p>
               </div>
 
               <div
                 className={css({
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  mb: "4",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: '4',
                 })}
               >
                 {allPlayers.slice(0, 2).map((player, idx) => {
-                  const playerStats = playerStatsMap.get(player.id);
-                  const totalWins = playerStats?.totalWins || 0;
+                  const playerStats = playerStatsMap.get(player.id)
+                  const totalWins = playerStats?.totalWins || 0
 
                   return (
                     <React.Fragment key={player.id}>
                       <div
                         className={css({
-                          textAlign: "center",
+                          textAlign: 'center',
                         })}
                       >
                         <div
                           className={css({
-                            fontSize: "2xl",
-                            mb: "1",
+                            fontSize: '2xl',
+                            mb: '1',
                           })}
                         >
                           {player.emoji}
                         </div>
                         <div
                           className={css({
-                            fontSize: "2xl",
-                            fontWeight: "bold",
+                            fontSize: '2xl',
+                            fontWeight: 'bold',
                           })}
                           style={{ color: player.color }}
                         >
@@ -955,142 +947,140 @@ function GamesPageContent() {
                         </div>
                         <div
                           className={css({
-                            fontSize: "xs",
-                            fontWeight: "semibold",
+                            fontSize: 'xs',
+                            fontWeight: 'semibold',
                           })}
                           style={{ color: player.color }}
                         >
-                          {t("dashboard.headToHead.wins")}
+                          {t('dashboard.headToHead.wins')}
                         </div>
                       </div>
 
                       {idx === 0 && allPlayers.length > 1 && (
                         <div
                           className={css({
-                            textAlign: "center",
-                            mx: "4",
+                            textAlign: 'center',
+                            mx: '4',
                           })}
                         >
                           <div
                             className={css({
-                              fontSize: "sm",
-                              color: "text.muted",
-                              fontWeight: "semibold",
+                              fontSize: 'sm',
+                              color: 'text.muted',
+                              fontWeight: 'semibold',
                             })}
                           >
-                            {t("dashboard.headToHead.vs")}
+                            {t('dashboard.headToHead.vs')}
                           </div>
                         </div>
                       )}
                     </React.Fragment>
-                  );
+                  )
                 })}
               </div>
 
               <div
                 className={css({
-                  textAlign: "center",
-                  fontSize: "sm",
-                  color: "text.secondary",
+                  textAlign: 'center',
+                  fontSize: 'sm',
+                  color: 'text.secondary',
                 })}
               >
-                {t("dashboard.headToHead.lastPlayed")}
+                {t('dashboard.headToHead.lastPlayed')}
               </div>
             </div>
 
             {/* Recent Achievements */}
             <div
               className={css({
-                background: "bg.surface",
-                backdropFilter: "blur(10px)",
-                rounded: "2xl",
-                p: "6",
-                border: "1px solid",
-                borderColor: "border.default",
-                boxShadow: "0 15px 35px token(colors.bg.muted)",
-                transition: "all 0.3s ease",
+                background: 'bg.surface',
+                backdropFilter: 'blur(10px)',
+                rounded: '2xl',
+                p: '6',
+                border: '1px solid',
+                borderColor: 'border.default',
+                boxShadow: '0 15px 35px token(colors.bg.muted)',
+                transition: 'all 0.3s ease',
                 _hover: {
-                  transform: "translateY(-2px)",
-                  boxShadow: "0 20px 45px token(colors.bg.muted)",
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 20px 45px token(colors.bg.muted)',
                 },
               })}
             >
               <div
                 className={css({
-                  textAlign: "center",
-                  mb: "4",
+                  textAlign: 'center',
+                  mb: '4',
                 })}
               >
                 <h3
                   className={css({
-                    fontSize: "xl",
-                    fontWeight: "bold",
-                    color: "text.primary",
-                    mb: "2",
+                    fontSize: 'xl',
+                    fontWeight: 'bold',
+                    color: 'text.primary',
+                    mb: '2',
                   })}
                 >
-                  {t("dashboard.achievements.title")}
+                  {t('dashboard.achievements.title')}
                 </h3>
                 <p
                   className={css({
-                    fontSize: "sm",
-                    color: "text.secondary",
+                    fontSize: 'sm',
+                    color: 'text.secondary',
                   })}
                 >
-                  {t("dashboard.achievements.subtitle")}
+                  {t('dashboard.achievements.subtitle')}
                 </p>
               </div>
 
               <div
                 className={css({
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "3",
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '3',
                 })}
               >
                 {allPlayers.slice(0, 2).map((player, idx) => (
                   <div
                     key={player.id}
                     className={css({
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "3",
-                      p: "3",
-                      rounded: "lg",
-                      border: "1px solid",
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3',
+                      p: '3',
+                      rounded: 'lg',
+                      border: '1px solid',
                     })}
                     style={{
                       background:
                         idx === 0
-                          ? "linear-gradient(135deg, #fef3c7, #fde68a)"
-                          : "linear-gradient(135deg, #e9d5ff, #ddd6fe)",
-                      borderColor: idx === 0 ? "#fde68a" : "#ddd6fe",
+                          ? 'linear-gradient(135deg, #fef3c7, #fde68a)'
+                          : 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
+                      borderColor: idx === 0 ? '#fde68a' : '#ddd6fe',
                     }}
                   >
-                    <span className={css({ fontSize: "lg" })}>
-                      {player.emoji}
-                    </span>
+                    <span className={css({ fontSize: 'lg' })}>{player.emoji}</span>
                     <div>
                       <div
                         className={css({
-                          fontSize: "sm",
-                          fontWeight: "semibold",
+                          fontSize: 'sm',
+                          fontWeight: 'semibold',
                         })}
-                        style={{ color: idx === 0 ? "#92400e" : "#581c87" }}
+                        style={{ color: idx === 0 ? '#92400e' : '#581c87' }}
                       >
                         {idx === 0
-                          ? t("dashboard.achievements.firstWin.title")
-                          : t("dashboard.achievements.speedDemon.title")}
+                          ? t('dashboard.achievements.firstWin.title')
+                          : t('dashboard.achievements.speedDemon.title')}
                       </div>
                       <div
                         className={css({
-                          fontSize: "xs",
+                          fontSize: 'xs',
                         })}
-                        style={{ color: idx === 0 ? "#a16207" : "#6b21a8" }}
+                        style={{ color: idx === 0 ? '#a16207' : '#6b21a8' }}
                       >
                         {idx === 0
-                          ? t("dashboard.achievements.firstWin.description")
-                          : t("dashboard.achievements.speedDemon.description")}
+                          ? t('dashboard.achievements.firstWin.description')
+                          : t('dashboard.achievements.speedDemon.description')}
                       </div>
                     </div>
                   </div>
@@ -1101,130 +1091,126 @@ function GamesPageContent() {
             {/* Challenge System */}
             <div
               className={css({
-                background: "bg.surface",
-                backdropFilter: "blur(10px)",
-                rounded: "2xl",
-                p: "6",
-                border: "1px solid",
-                borderColor: "border.default",
-                boxShadow: "0 15px 35px token(colors.bg.muted)",
-                transition: "all 0.3s ease",
+                background: 'bg.surface',
+                backdropFilter: 'blur(10px)',
+                rounded: '2xl',
+                p: '6',
+                border: '1px solid',
+                borderColor: 'border.default',
+                boxShadow: '0 15px 35px token(colors.bg.muted)',
+                transition: 'all 0.3s ease',
                 _hover: {
-                  transform: "translateY(-2px)",
-                  boxShadow: "0 20px 45px token(colors.bg.muted)",
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 20px 45px token(colors.bg.muted)',
                 },
               })}
             >
               <div
                 className={css({
-                  textAlign: "center",
-                  mb: "4",
+                  textAlign: 'center',
+                  mb: '4',
                 })}
               >
                 <h3
                   className={css({
-                    fontSize: "xl",
-                    fontWeight: "bold",
-                    color: "text.primary",
-                    mb: "2",
+                    fontSize: 'xl',
+                    fontWeight: 'bold',
+                    color: 'text.primary',
+                    mb: '2',
                   })}
                 >
-                  {t("dashboard.challenges.title")}
+                  {t('dashboard.challenges.title')}
                 </h3>
                 <p
                   className={css({
-                    fontSize: "sm",
-                    color: "text.secondary",
+                    fontSize: 'sm',
+                    color: 'text.secondary',
                   })}
                 >
-                  {t("dashboard.challenges.subtitle")}
+                  {t('dashboard.challenges.subtitle')}
                 </p>
               </div>
 
               {allPlayers.length >= 2 && (
                 <div
                   className={css({
-                    background: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
-                    rounded: "lg",
-                    p: "4",
-                    border: "1px solid",
-                    borderColor: "blue.200",
-                    mb: "4",
+                    background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                    rounded: 'lg',
+                    p: '4',
+                    border: '1px solid',
+                    borderColor: 'blue.200',
+                    mb: '4',
                   })}
                 >
                   <div
                     className={css({
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "2",
-                      mb: "2",
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '2',
+                      mb: '2',
                     })}
                   >
-                    <span className={css({ fontSize: "lg" })}>
-                      {allPlayers[0].emoji}
-                    </span>
+                    <span className={css({ fontSize: 'lg' })}>{allPlayers[0].emoji}</span>
                     <span
                       className={css({
-                        fontSize: "sm",
-                        color: "blue.800",
-                        fontWeight: "semibold",
+                        fontSize: 'sm',
+                        color: 'blue.800',
+                        fontWeight: 'semibold',
                       })}
                     >
-                      {t("dashboard.challenges.challengesText")}
+                      {t('dashboard.challenges.challengesText')}
                     </span>
-                    <span className={css({ fontSize: "lg" })}>
-                      {allPlayers[1].emoji}
-                    </span>
+                    <span className={css({ fontSize: 'lg' })}>{allPlayers[1].emoji}</span>
                   </div>
                   <div
                     className={css({
-                      fontSize: "sm",
-                      color: "blue.700",
-                      fontWeight: "medium",
+                      fontSize: 'sm',
+                      color: 'blue.700',
+                      fontWeight: 'medium',
                     })}
                   >
-                    "{t("dashboard.challenges.exampleChallenge")}"
+                    "{t('dashboard.challenges.exampleChallenge')}"
                   </div>
                   <div
                     className={css({
-                      fontSize: "xs",
-                      color: "blue.600",
-                      mt: "1",
+                      fontSize: 'xs',
+                      color: 'blue.600',
+                      mt: '1',
                     })}
                   >
-                    {t("dashboard.challenges.currentBest", { score: 850 })}
+                    {t('dashboard.challenges.currentBest', { score: 850 })}
                   </div>
                 </div>
               )}
 
               <button
                 className={css({
-                  w: "full",
-                  py: { base: "4", md: "3" },
-                  minH: "44px",
-                  background: "linear-gradient(135deg, #10b981, #059669)",
-                  color: "white",
-                  rounded: "lg",
-                  fontSize: { base: "md", md: "sm" },
-                  fontWeight: "semibold",
-                  border: "none",
-                  cursor: "pointer",
-                  touchAction: "manipulation",
-                  transition: "all 0.3s ease",
+                  w: 'full',
+                  py: { base: '4', md: '3' },
+                  minH: '44px',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: 'white',
+                  rounded: 'lg',
+                  fontSize: { base: 'md', md: 'sm' },
+                  fontWeight: 'semibold',
+                  border: 'none',
+                  cursor: 'pointer',
+                  touchAction: 'manipulation',
+                  transition: 'all 0.3s ease',
                   _hover: {
-                    transform: "translateY(-1px)",
-                    boxShadow: "0 8px 25px rgba(16, 185, 129, 0.3)",
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 8px 25px rgba(16, 185, 129, 0.3)',
                   },
                 })}
               >
-                {t("dashboard.challenges.createButton")}
+                {t('dashboard.challenges.createButton')}
               </button>
             </div>
           </div>
         </div>
       )}
     </div>
-  );
+  )
 }
 
 // Refined animations for the sweet spot design
@@ -1328,23 +1314,20 @@ const globalAnimations = `
     transform: translateY(0) scale(1);
   }
 }
-`;
+`
 
 export default function GamesPage() {
   return (
     <PageWithNav navTitle="Soroban Arcade" navEmoji="🕹️">
       <GamesPageContent />
     </PageWithNav>
-  );
+  )
 }
 
 // Inject refined animations into the page
-if (
-  typeof document !== "undefined" &&
-  !document.getElementById("games-page-animations")
-) {
-  const style = document.createElement("style");
-  style.id = "games-page-animations";
-  style.textContent = globalAnimations;
-  document.head.appendChild(style);
+if (typeof document !== 'undefined' && !document.getElementById('games-page-animations')) {
+  const style = document.createElement('style')
+  style.id = 'games-page-animations'
+  style.textContent = globalAnimations
+  document.head.appendChild(style)
 }

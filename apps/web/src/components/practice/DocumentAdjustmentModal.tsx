@@ -1,44 +1,33 @@
-"use client";
+'use client'
 
-import * as Dialog from "@radix-ui/react-dialog";
-import dynamic from "next/dynamic";
-import type {
-  DocumentAdjustmentState,
-  Corner,
-  Rotation,
-} from "@/types/attachments";
-import type { DetectQuadsInImageResult } from "@/components/practice/useDocumentDetection";
-import { Z_INDEX } from "@/constants/zIndex";
-import { css } from "../../../styled-system/css";
+import * as Dialog from '@radix-ui/react-dialog'
+import dynamic from 'next/dynamic'
+import type { DocumentAdjustmentState, Corner, Rotation } from '@/types/attachments'
+import type { DetectQuadsInImageResult } from '@/components/practice/useDocumentDetection'
+import { Z_INDEX } from '@/constants/zIndex'
+import { css } from '../../../styled-system/css'
 
 // Dynamic import for heavy OpenCV-dependent component
 const DocumentAdjuster = dynamic(
-  () =>
-    import("@/components/practice/DocumentAdjuster").then(
-      (m) => m.DocumentAdjuster,
-    ),
-  { ssr: false },
-);
+  () => import('@/components/practice/DocumentAdjuster').then((m) => m.DocumentAdjuster),
+  { ssr: false }
+)
 
 export interface DocumentAdjustmentModalProps {
   /** Current adjustment state (null when closed) */
-  state: DocumentAdjustmentState | null;
+  state: DocumentAdjustmentState | null
   /** Number of files remaining in queue (for "1 of N" display) */
-  queueLength: number;
+  queueLength: number
   /** OpenCV reference */
-  opencvRef: unknown;
+  opencvRef: unknown
   /** Function to detect quads in an image */
-  detectQuadsInImage: (canvas: HTMLCanvasElement) => DetectQuadsInImageResult;
+  detectQuadsInImage: (canvas: HTMLCanvasElement) => DetectQuadsInImageResult
   /** Callback when adjustment is confirmed */
-  onConfirm: (
-    croppedFile: File,
-    corners: Corner[],
-    rotation: Rotation,
-  ) => Promise<void>;
+  onConfirm: (croppedFile: File, corners: Corner[], rotation: Rotation) => Promise<void>
   /** Callback when adjustment is skipped (use original) */
-  onSkip: () => Promise<void>;
+  onSkip: () => Promise<void>
   /** Callback when adjustment is cancelled (clear queue) */
-  onCancel: () => void;
+  onCancel: () => void
 }
 
 /**
@@ -56,33 +45,32 @@ export function DocumentAdjustmentModal({
   onSkip,
   onCancel,
 }: DocumentAdjustmentModalProps) {
-  const isOpen = state !== null && opencvRef !== null;
+  const isOpen = state !== null && opencvRef !== null
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onCancel()}>
       <Dialog.Portal>
         <Dialog.Overlay
           className={css({
-            position: "fixed",
+            position: 'fixed',
             inset: 0,
-            bg: "black",
+            bg: 'black',
             zIndex: Z_INDEX.MODAL,
           })}
         />
         <Dialog.Content
           className={css({
-            position: "fixed",
+            position: 'fixed',
             inset: 0,
             zIndex: Z_INDEX.MODAL + 1,
-            outline: "none",
+            outline: 'none',
           })}
         >
           <Dialog.Title className={css({ srOnly: true })}>
-            Adjust Photo {queueLength > 0 ? `(1 of ${queueLength + 1})` : ""}
+            Adjust Photo {queueLength > 0 ? `(1 of ${queueLength + 1})` : ''}
           </Dialog.Title>
           <Dialog.Description className={css({ srOnly: true })}>
-            Drag corners to crop the document. Tap Done to confirm or Skip to
-            use original.
+            Drag corners to crop the document. Tap Done to confirm or Skip to use original.
           </Dialog.Description>
           {state !== null && opencvRef !== null && (
             <DocumentAdjuster
@@ -98,7 +86,7 @@ export function DocumentAdjustmentModal({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-  );
+  )
 }
 
-export default DocumentAdjustmentModal;
+export default DocumentAdjustmentModal

@@ -1,10 +1,10 @@
-import de from "./de.json";
-import en from "./en.json";
-import es from "./es.json";
-import goh from "./goh.json";
-import hi from "./hi.json";
-import ja from "./ja.json";
-import la from "./la.json";
+import de from './de.json'
+import en from './en.json'
+import es from './es.json'
+import goh from './goh.json'
+import hi from './hi.json'
+import ja from './ja.json'
+import la from './la.json'
 
 export const guideMessages = {
   en: en.guide,
@@ -14,4 +14,4 @@ export const guideMessages = {
   es: es.guide,
   la: la.guide,
   goh: goh.guide,
-} as const;
+} as const

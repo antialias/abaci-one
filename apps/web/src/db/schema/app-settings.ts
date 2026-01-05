@@ -1,4 +1,4 @@
-import { real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 /**
  * App-wide settings table
@@ -6,11 +6,11 @@ import { real, sqliteTable, text } from "drizzle-orm/sqlite-core";
  * Singleton table with a fixed key for global application configuration.
  * These settings affect all users/students in the app.
  */
-export const appSettings = sqliteTable("app_settings", {
+export const appSettings = sqliteTable('app_settings', {
   /**
    * Setting key - use 'global' for the singleton row
    */
-  key: text("key").primaryKey().default("global"),
+  key: text('key').primaryKey().default('global'),
 
   /**
    * BKT confidence threshold for skill classification.
@@ -22,18 +22,16 @@ export const appSettings = sqliteTable("app_settings", {
    * Skills with confidence below this threshold are classified as 'learning'
    * regardless of their pKnown value.
    */
-  bktConfidenceThreshold: real("bkt_confidence_threshold")
-    .notNull()
-    .default(0.3),
-});
+  bktConfidenceThreshold: real('bkt_confidence_threshold').notNull().default(0.3),
+})
 
-export type AppSettings = typeof appSettings.$inferSelect;
-export type NewAppSettings = typeof appSettings.$inferInsert;
+export type AppSettings = typeof appSettings.$inferSelect
+export type NewAppSettings = typeof appSettings.$inferInsert
 
 /**
  * Default app settings values
  */
 export const DEFAULT_APP_SETTINGS: AppSettings = {
-  key: "global",
+  key: 'global',
   bktConfidenceThreshold: 0.3,
-};
+}

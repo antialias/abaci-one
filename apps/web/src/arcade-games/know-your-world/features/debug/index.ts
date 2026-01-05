@@ -7,11 +7,11 @@
 export type {
   AutoZoomDebugOverlayProps,
   DetectedRegion,
-} from "./AutoZoomDebugOverlay";
-export { AutoZoomDebugOverlay } from "./AutoZoomDebugOverlay";
+} from './AutoZoomDebugOverlay'
+export { AutoZoomDebugOverlay } from './AutoZoomDebugOverlay'
 
-export type { HotColdDebugPanelProps } from "./HotColdDebugPanel";
-export { HotColdDebugPanel } from "./HotColdDebugPanel";
+export type { HotColdDebugPanelProps } from './HotColdDebugPanel'
+export { HotColdDebugPanel } from './HotColdDebugPanel'
 
-export type { SafeZoneDebugOverlayProps } from "./SafeZoneDebugOverlay";
-export { SafeZoneDebugOverlay } from "./SafeZoneDebugOverlay";
+export type { SafeZoneDebugOverlayProps } from './SafeZoneDebugOverlay'
+export { SafeZoneDebugOverlay } from './SafeZoneDebugOverlay'

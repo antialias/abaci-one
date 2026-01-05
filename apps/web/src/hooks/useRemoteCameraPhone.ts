@@ -1,61 +1,61 @@
-"use client";
+'use client'
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { io, type Socket } from "socket.io-client";
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { io, type Socket } from 'socket.io-client'
 import {
   isOpenCVReady,
   loadOpenCV,
   rectifyQuadrilateralToBase64,
-} from "@/lib/vision/perspectiveTransform";
-import type { QuadCorners } from "@/types/vision";
+} from '@/lib/vision/perspectiveTransform'
+import type { QuadCorners } from '@/types/vision'
 
 /** Frame mode: raw sends uncropped frames, cropped applies calibration */
-export type FrameMode = "raw" | "cropped";
+export type FrameMode = 'raw' | 'cropped'
 
 interface UseRemoteCameraPhoneOptions {
   /** Target frame rate (default 10) */
-  targetFps?: number;
+  targetFps?: number
   /** JPEG quality (0-1, default 0.8) */
-  jpegQuality?: number;
+  jpegQuality?: number
   /** Target width for cropped image (default 300) */
-  targetWidth?: number;
+  targetWidth?: number
   /** Target width for raw frames (default 640) */
-  rawWidth?: number;
+  rawWidth?: number
   /** Callback when desktop requests torch change */
-  onTorchRequest?: (on: boolean) => void;
+  onTorchRequest?: (on: boolean) => void
 }
 
 /**
  * Fixed aspect ratio for cropped abacus images.
  * Abacus is 4 units high by 3 units wide, giving a 4:3 height:width ratio.
  */
-const ABACUS_ASPECT_RATIO = 4 / 3;
+const ABACUS_ASPECT_RATIO = 4 / 3
 
 interface UseRemoteCameraPhoneReturn {
   /** Whether connected to the session */
-  isConnected: boolean;
+  isConnected: boolean
   /** Whether currently sending frames */
-  isSending: boolean;
+  isSending: boolean
   /** Current frame mode (raw or cropped) */
-  frameMode: FrameMode;
+  frameMode: FrameMode
   /** Current calibration from desktop (if any) */
-  desktopCalibration: QuadCorners | null;
+  desktopCalibration: QuadCorners | null
   /** Error message if any */
-  error: string | null;
+  error: string | null
   /** Connect to a session */
-  connect: (sessionId: string) => void;
+  connect: (sessionId: string) => void
   /** Disconnect from session */
-  disconnect: () => void;
+  disconnect: () => void
   /** Start sending frames */
-  startSending: (video: HTMLVideoElement, calibration?: QuadCorners) => void;
+  startSending: (video: HTMLVideoElement, calibration?: QuadCorners) => void
   /** Stop sending frames */
-  stopSending: () => void;
+  stopSending: () => void
   /** Update calibration while sending (from phone UI) */
-  updateCalibration: (calibration: QuadCorners) => void;
+  updateCalibration: (calibration: QuadCorners) => void
   /** Set frame mode locally */
-  setFrameMode: (mode: FrameMode) => void;
+  setFrameMode: (mode: FrameMode) => void
   /** Emit torch state to desktop */
-  emitTorchState: (isTorchOn: boolean, isTorchAvailable: boolean) => void;
+  emitTorchState: (isTorchOn: boolean, isTorchAvailable: boolean) => void
 }
 
 /**
@@ -66,7 +66,7 @@ interface UseRemoteCameraPhoneReturn {
  * Supports receiving calibration commands from the desktop.
  */
 export function useRemoteCameraPhone(
-  options: UseRemoteCameraPhoneOptions = {},
+  options: UseRemoteCameraPhoneOptions = {}
 ): UseRemoteCameraPhoneReturn {
   const {
     targetFps = 10,
@@ -74,174 +74,168 @@ export function useRemoteCameraPhone(
     targetWidth = 300,
     rawWidth = 640,
     onTorchRequest,
-  } = options;
+  } = options
 
   // Keep onTorchRequest in a ref to avoid stale closures
-  const onTorchRequestRef = useRef(onTorchRequest);
+  const onTorchRequestRef = useRef(onTorchRequest)
   useEffect(() => {
-    onTorchRequestRef.current = onTorchRequest;
-  }, [onTorchRequest]);
+    onTorchRequestRef.current = onTorchRequest
+  }, [onTorchRequest])
 
   // Calculate fixed output height based on aspect ratio (4 units tall by 3 units wide)
-  const targetHeight = Math.round(targetWidth * ABACUS_ASPECT_RATIO);
+  const targetHeight = Math.round(targetWidth * ABACUS_ASPECT_RATIO)
 
-  const [isSocketConnected, setIsSocketConnected] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [opencvReady, setOpencvReady] = useState(false);
-  const [frameMode, setFrameModeState] = useState<FrameMode>("raw");
-  const [desktopCalibration, setDesktopCalibration] =
-    useState<QuadCorners | null>(null);
+  const [isSocketConnected, setIsSocketConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [opencvReady, setOpencvReady] = useState(false)
+  const [frameMode, setFrameModeState] = useState<FrameMode>('raw')
+  const [desktopCalibration, setDesktopCalibration] = useState<QuadCorners | null>(null)
 
   // Use refs for values that need to be accessed in animation loop
   // to avoid stale closure issues
-  const socketRef = useRef<Socket | null>(null);
-  const isConnectedRef = useRef(false);
-  const opencvReadyRef = useRef(false);
-  const sessionIdRef = useRef<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const calibrationRef = useRef<QuadCorners | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastFrameTimeRef = useRef(0);
-  const frameModeRef = useRef<FrameMode>("raw");
+  const socketRef = useRef<Socket | null>(null)
+  const isConnectedRef = useRef(false)
+  const opencvReadyRef = useRef(false)
+  const sessionIdRef = useRef<string | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const calibrationRef = useRef<QuadCorners | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+  const lastFrameTimeRef = useRef(0)
+  const frameModeRef = useRef<FrameMode>('raw')
 
   // Keep refs in sync with state
   useEffect(() => {
-    isConnectedRef.current = isConnected;
-  }, [isConnected]);
+    isConnectedRef.current = isConnected
+  }, [isConnected])
 
   useEffect(() => {
-    opencvReadyRef.current = opencvReady;
-  }, [opencvReady]);
+    opencvReadyRef.current = opencvReady
+  }, [opencvReady])
 
   useEffect(() => {
-    frameModeRef.current = frameMode;
-  }, [frameMode]);
+    frameModeRef.current = frameMode
+  }, [frameMode])
 
   // Initialize socket connection with reconnection support
   useEffect(() => {
-    console.log("[RemoteCameraPhone] Initializing socket connection...");
+    console.log('[RemoteCameraPhone] Initializing socket connection...')
     const socketInstance = io({
-      path: "/api/socket",
+      path: '/api/socket',
       autoConnect: true,
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: 10,
-    });
+    })
 
-    socketInstance.on("connect", () => {
-      console.log(
-        "[RemoteCameraPhone] Socket connected! ID:",
-        socketInstance.id,
-      );
-      setIsSocketConnected(true);
+    socketInstance.on('connect', () => {
+      console.log('[RemoteCameraPhone] Socket connected! ID:', socketInstance.id)
+      setIsSocketConnected(true)
 
       // Auto-reconnect to session if we have one
-      const sessionId = sessionIdRef.current;
+      const sessionId = sessionIdRef.current
       if (sessionId) {
         console.log(
-          "[RemoteCameraPhone] Auto-reconnecting to session after socket reconnect:",
-          sessionId,
-        );
-        socketInstance.emit("remote-camera:join", { sessionId });
-        setIsConnected(true);
-        isConnectedRef.current = true;
+          '[RemoteCameraPhone] Auto-reconnecting to session after socket reconnect:',
+          sessionId
+        )
+        socketInstance.emit('remote-camera:join', { sessionId })
+        setIsConnected(true)
+        isConnectedRef.current = true
       }
-    });
+    })
 
-    socketInstance.on("connect_error", (error) => {
-      console.error("[RemoteCameraPhone] Socket connect error:", error);
-    });
+    socketInstance.on('connect_error', (error) => {
+      console.error('[RemoteCameraPhone] Socket connect error:', error)
+    })
 
-    socketInstance.on("disconnect", (reason) => {
-      console.log("[RemoteCameraPhone] Socket disconnected:", reason);
-      setIsSocketConnected(false);
+    socketInstance.on('disconnect', (reason) => {
+      console.log('[RemoteCameraPhone] Socket disconnected:', reason)
+      setIsSocketConnected(false)
       // Don't clear isConnected or sessionIdRef - we want to auto-reconnect
       // Only clear if server explicitly disconnected us
-      if (reason === "io server disconnect") {
-        setIsConnected(false);
-        isConnectedRef.current = false;
+      if (reason === 'io server disconnect') {
+        setIsConnected(false)
+        isConnectedRef.current = false
       }
-    });
+    })
 
-    socketRef.current = socketInstance;
+    socketRef.current = socketInstance
 
     return () => {
-      socketInstance.disconnect();
-    };
-  }, []);
+      socketInstance.disconnect()
+    }
+  }, [])
 
   // Load OpenCV on mount
   useEffect(() => {
     loadOpenCV()
       .then(() => {
-        setOpencvReady(true);
+        setOpencvReady(true)
       })
       .catch((err) => {
-        console.error("[RemoteCameraPhone] Failed to load OpenCV:", err);
-        setError("Failed to load image processing library");
-      });
-  }, []);
+        console.error('[RemoteCameraPhone] Failed to load OpenCV:', err)
+        setError('Failed to load image processing library')
+      })
+  }, [])
 
   // Set up Socket.IO event listeners
   useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket) return;
+    const socket = socketRef.current
+    if (!socket) return
 
     const handleError = ({ error: errorMsg }: { error: string }) => {
-      setError(errorMsg);
-      setIsConnected(false);
-      isConnectedRef.current = false;
-    };
+      setError(errorMsg)
+      setIsConnected(false)
+      isConnectedRef.current = false
+    }
 
     // Handle mode change from desktop
     const handleSetMode = ({ mode }: { mode: FrameMode }) => {
-      console.log("[RemoteCameraPhone] Desktop set mode to:", mode);
-      setFrameModeState(mode);
-      frameModeRef.current = mode;
-    };
+      console.log('[RemoteCameraPhone] Desktop set mode to:', mode)
+      setFrameModeState(mode)
+      frameModeRef.current = mode
+    }
 
     // Handle calibration from desktop
     const handleSetCalibration = ({ corners }: { corners: QuadCorners }) => {
-      console.log("[RemoteCameraPhone] Received calibration from desktop");
-      setDesktopCalibration(corners);
-      calibrationRef.current = corners;
+      console.log('[RemoteCameraPhone] Received calibration from desktop')
+      setDesktopCalibration(corners)
+      calibrationRef.current = corners
       // Auto-switch to cropped mode when calibration is received
-      setFrameModeState("cropped");
-      frameModeRef.current = "cropped";
-    };
+      setFrameModeState('cropped')
+      frameModeRef.current = 'cropped'
+    }
 
     // Handle clear calibration from desktop (go back to auto-detection)
     const handleClearCalibration = () => {
-      console.log(
-        "[RemoteCameraPhone] Desktop cleared calibration - returning to auto-detection",
-      );
-      setDesktopCalibration(null);
-      calibrationRef.current = null;
-    };
+      console.log('[RemoteCameraPhone] Desktop cleared calibration - returning to auto-detection')
+      setDesktopCalibration(null)
+      calibrationRef.current = null
+    }
 
     // Handle torch command from desktop
     const handleSetTorch = ({ on }: { on: boolean }) => {
-      console.log("[RemoteCameraPhone] Desktop requested torch:", on);
-      onTorchRequestRef.current?.(on);
-    };
+      console.log('[RemoteCameraPhone] Desktop requested torch:', on)
+      onTorchRequestRef.current?.(on)
+    }
 
-    socket.on("remote-camera:error", handleError);
-    socket.on("remote-camera:set-mode", handleSetMode);
-    socket.on("remote-camera:set-calibration", handleSetCalibration);
-    socket.on("remote-camera:clear-calibration", handleClearCalibration);
-    socket.on("remote-camera:set-torch", handleSetTorch);
+    socket.on('remote-camera:error', handleError)
+    socket.on('remote-camera:set-mode', handleSetMode)
+    socket.on('remote-camera:set-calibration', handleSetCalibration)
+    socket.on('remote-camera:clear-calibration', handleClearCalibration)
+    socket.on('remote-camera:set-torch', handleSetTorch)
 
     return () => {
-      socket.off("remote-camera:error", handleError);
-      socket.off("remote-camera:set-mode", handleSetMode);
-      socket.off("remote-camera:set-calibration", handleSetCalibration);
-      socket.off("remote-camera:clear-calibration", handleClearCalibration);
-      socket.off("remote-camera:set-torch", handleSetTorch);
-    };
-  }, [isSocketConnected]); // Re-run when socket connects
+      socket.off('remote-camera:error', handleError)
+      socket.off('remote-camera:set-mode', handleSetMode)
+      socket.off('remote-camera:set-calibration', handleSetCalibration)
+      socket.off('remote-camera:clear-calibration', handleClearCalibration)
+      socket.off('remote-camera:set-torch', handleSetTorch)
+    }
+  }, [isSocketConnected]) // Re-run when socket connects
 
   /**
    * Apply perspective transform and extract the quadrilateral region
@@ -252,10 +246,8 @@ export function useRemoteCameraPhone(
   const cropToQuad = useCallback(
     (video: HTMLVideoElement, quad: QuadCorners): string | null => {
       if (!isOpenCVReady()) {
-        console.warn(
-          "[RemoteCameraPhone] OpenCV not ready for perspective transform",
-        );
-        return null;
+        console.warn('[RemoteCameraPhone] OpenCV not ready for perspective transform')
+        return null
       }
 
       return rectifyQuadrilateralToBase64(video, quad, {
@@ -263,10 +255,10 @@ export function useRemoteCameraPhone(
         outputHeight: targetHeight, // Fixed 4:3 aspect ratio
         jpegQuality,
         rotate180: false, // Phone camera: no rotation needed, direct mapping
-      });
+      })
     },
-    [targetWidth, targetHeight, jpegQuality],
-  );
+    [targetWidth, targetHeight, jpegQuality]
+  )
 
   /**
    * Capture raw (uncropped) frame as base64 JPEG
@@ -274,202 +266,195 @@ export function useRemoteCameraPhone(
   const captureRawFrame = useCallback(
     (video: HTMLVideoElement): string | null => {
       try {
-        const canvas = document.createElement("canvas");
+        const canvas = document.createElement('canvas')
         // Scale down to target width while maintaining aspect ratio
-        const scale = rawWidth / video.videoWidth;
-        canvas.width = rawWidth;
-        canvas.height = Math.round(video.videoHeight * scale);
+        const scale = rawWidth / video.videoWidth
+        canvas.width = rawWidth
+        canvas.height = Math.round(video.videoHeight * scale)
 
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return null;
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return null
 
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL("image/jpeg", jpegQuality);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality)
         // Remove the data:image/jpeg;base64, prefix
-        return dataUrl.split(",")[1];
+        return dataUrl.split(',')[1]
       } catch (err) {
-        console.error("[RemoteCameraPhone] Failed to capture raw frame:", err);
-        return null;
+        console.error('[RemoteCameraPhone] Failed to capture raw frame:', err)
+        return null
       }
     },
-    [rawWidth, jpegQuality],
-  );
+    [rawWidth, jpegQuality]
+  )
 
   /**
    * Frame capture loop - uses refs to avoid stale closure issues
    */
   const captureFrame = useCallback(() => {
-    const video = videoRef.current;
-    const calibration = calibrationRef.current;
-    const sessionId = sessionIdRef.current;
-    const socket = socketRef.current;
-    const isConnected = isConnectedRef.current;
-    const cvReady = opencvReadyRef.current;
-    const mode = frameModeRef.current;
+    const video = videoRef.current
+    const calibration = calibrationRef.current
+    const sessionId = sessionIdRef.current
+    const socket = socketRef.current
+    const isConnected = isConnectedRef.current
+    const cvReady = opencvReadyRef.current
+    const mode = frameModeRef.current
 
     // For raw mode, we don't need calibration or OpenCV
     if (!video || !sessionId || !socket || !isConnected) {
-      animationFrameRef.current = requestAnimationFrame(captureFrame);
-      return;
+      animationFrameRef.current = requestAnimationFrame(captureFrame)
+      return
     }
 
     // For cropped mode, we need calibration and OpenCV
-    if (mode === "cropped" && (!calibration || !cvReady)) {
-      animationFrameRef.current = requestAnimationFrame(captureFrame);
-      return;
+    if (mode === 'cropped' && (!calibration || !cvReady)) {
+      animationFrameRef.current = requestAnimationFrame(captureFrame)
+      return
     }
 
-    const now = performance.now();
-    const frameInterval = 1000 / targetFps;
+    const now = performance.now()
+    const frameInterval = 1000 / targetFps
 
     if (now - lastFrameTimeRef.current < frameInterval) {
-      animationFrameRef.current = requestAnimationFrame(captureFrame);
-      return;
+      animationFrameRef.current = requestAnimationFrame(captureFrame)
+      return
     }
 
-    lastFrameTimeRef.current = now;
+    lastFrameTimeRef.current = now
 
     // Capture frame based on mode
-    let imageData: string | null = null;
-    if (mode === "raw") {
-      imageData = captureRawFrame(video);
+    let imageData: string | null = null
+    if (mode === 'raw') {
+      imageData = captureRawFrame(video)
     } else if (calibration) {
-      imageData = cropToQuad(video, calibration);
+      imageData = cropToQuad(video, calibration)
     }
 
     if (imageData) {
-      socket.emit("remote-camera:frame", {
+      socket.emit('remote-camera:frame', {
         sessionId,
         imageData,
         timestamp: Date.now(),
         mode, // Include mode so desktop knows what it's receiving
         videoDimensions:
-          mode === "raw"
-            ? { width: video.videoWidth, height: video.videoHeight }
-            : undefined,
-      });
+          mode === 'raw' ? { width: video.videoWidth, height: video.videoHeight } : undefined,
+      })
     }
 
-    animationFrameRef.current = requestAnimationFrame(captureFrame);
-  }, [targetFps, cropToQuad, captureRawFrame]);
+    animationFrameRef.current = requestAnimationFrame(captureFrame)
+  }, [targetFps, cropToQuad, captureRawFrame])
 
   const connect = useCallback(
     (sessionId: string) => {
-      const socket = socketRef.current;
+      const socket = socketRef.current
       console.log(
-        "[RemoteCameraPhone] Connecting to session:",
+        '[RemoteCameraPhone] Connecting to session:',
         sessionId,
-        "socket:",
+        'socket:',
         !!socket,
-        "connected:",
-        isSocketConnected,
-      );
+        'connected:',
+        isSocketConnected
+      )
 
       // Save session ID FIRST, so auto-connect handler can use it
       // even if socket isn't connected yet
-      sessionIdRef.current = sessionId;
-      setError(null);
+      sessionIdRef.current = sessionId
+      setError(null)
 
       if (!socket || !isSocketConnected) {
-        console.log(
-          "[RemoteCameraPhone] Socket not connected yet, will join on connect",
-        );
-        return;
+        console.log('[RemoteCameraPhone] Socket not connected yet, will join on connect')
+        return
       }
 
-      console.log("[RemoteCameraPhone] Emitting remote-camera:join");
-      socket.emit("remote-camera:join", { sessionId });
-      setIsConnected(true);
-      isConnectedRef.current = true;
+      console.log('[RemoteCameraPhone] Emitting remote-camera:join')
+      socket.emit('remote-camera:join', { sessionId })
+      setIsConnected(true)
+      isConnectedRef.current = true
     },
-    [isSocketConnected],
-  );
+    [isSocketConnected]
+  )
 
   const disconnect = useCallback(() => {
-    const socket = socketRef.current;
-    if (!socket || !sessionIdRef.current) return;
+    const socket = socketRef.current
+    if (!socket || !sessionIdRef.current) return
 
     // Stop sending first
     if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
     }
-    setIsSending(false);
+    setIsSending(false)
 
-    socket.emit("remote-camera:leave", { sessionId: sessionIdRef.current });
-    sessionIdRef.current = null;
-    setIsConnected(false);
-    isConnectedRef.current = false;
-    videoRef.current = null;
-    calibrationRef.current = null;
-  }, []);
+    socket.emit('remote-camera:leave', { sessionId: sessionIdRef.current })
+    sessionIdRef.current = null
+    setIsConnected(false)
+    isConnectedRef.current = false
+    videoRef.current = null
+    calibrationRef.current = null
+  }, [])
 
   const startSending = useCallback(
     (video: HTMLVideoElement, calibration?: QuadCorners) => {
       if (!isConnected) {
-        setError("Not connected to session");
-        return;
+        setError('Not connected to session')
+        return
       }
 
-      videoRef.current = video;
+      videoRef.current = video
       if (calibration) {
-        calibrationRef.current = calibration;
+        calibrationRef.current = calibration
       }
-      setIsSending(true);
+      setIsSending(true)
 
       // Start capture loop
-      animationFrameRef.current = requestAnimationFrame(captureFrame);
+      animationFrameRef.current = requestAnimationFrame(captureFrame)
     },
-    [isConnected, captureFrame],
-  );
+    [isConnected, captureFrame]
+  )
 
   const setFrameMode = useCallback((mode: FrameMode) => {
-    setFrameModeState(mode);
-    frameModeRef.current = mode;
-  }, []);
+    setFrameModeState(mode)
+    frameModeRef.current = mode
+  }, [])
 
   const stopSending = useCallback(() => {
     if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
     }
-    setIsSending(false);
-  }, []);
+    setIsSending(false)
+  }, [])
 
   const updateCalibration = useCallback((calibration: QuadCorners) => {
-    calibrationRef.current = calibration;
-  }, []);
+    calibrationRef.current = calibration
+  }, [])
 
   /**
    * Emit torch state to desktop
    */
-  const emitTorchState = useCallback(
-    (isTorchOn: boolean, isTorchAvailable: boolean) => {
-      const socket = socketRef.current;
-      const sessionId = sessionIdRef.current;
-      if (!socket || !sessionId) return;
+  const emitTorchState = useCallback((isTorchOn: boolean, isTorchAvailable: boolean) => {
+    const socket = socketRef.current
+    const sessionId = sessionIdRef.current
+    if (!socket || !sessionId) return
 
-      socket.emit("remote-camera:torch-state", {
-        sessionId,
-        isTorchOn,
-        isTorchAvailable,
-      });
-    },
-    [],
-  );
+    socket.emit('remote-camera:torch-state', {
+      sessionId,
+      isTorchOn,
+      isTorchAvailable,
+    })
+  }, [])
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+        cancelAnimationFrame(animationFrameRef.current)
       }
-      const socket = socketRef.current;
+      const socket = socketRef.current
       if (socket && sessionIdRef.current) {
-        socket.emit("remote-camera:leave", { sessionId: sessionIdRef.current });
+        socket.emit('remote-camera:leave', { sessionId: sessionIdRef.current })
       }
-    };
-  }, []);
+    }
+  }, [])
 
   return {
     isConnected,
@@ -484,5 +469,5 @@ export function useRemoteCameraPhone(
     updateCalibration,
     setFrameMode,
     emitTorchState,
-  };
+  }
 }

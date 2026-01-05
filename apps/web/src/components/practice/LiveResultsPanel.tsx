@@ -1,21 +1,21 @@
-"use client";
+'use client'
 
-import { useMemo, useState } from "react";
-import type { ObservedResult } from "@/hooks/useSessionObserver";
-import { css } from "../../../styled-system/css";
-import { formatMs } from "./autoPauseCalculator";
-import { CompactLinearProblem } from "./CompactProblemDisplay";
-import { getPurposeColors, getPurposeConfig } from "./purposeExplanations";
+import { useMemo, useState } from 'react'
+import type { ObservedResult } from '@/hooks/useSessionObserver'
+import { css } from '../../../styled-system/css'
+import { formatMs } from './autoPauseCalculator'
+import { CompactLinearProblem } from './CompactProblemDisplay'
+import { getPurposeColors, getPurposeConfig } from './purposeExplanations'
 
 interface LiveResultsPanelProps {
   /** Accumulated results from the session */
-  results: ObservedResult[];
+  results: ObservedResult[]
   /** Total problems in the session */
-  totalProblems: number;
+  totalProblems: number
   /** Whether dark mode */
-  isDark: boolean;
+  isDark: boolean
   /** Callback to expand to full report view */
-  onExpandFullReport?: () => void;
+  onExpandFullReport?: () => void
 }
 
 /**
@@ -24,19 +24,13 @@ interface LiveResultsPanelProps {
  * Shows problem in collapsed mode, expands to show full details when clicked.
  * Similar pattern to ProblemToReview but adapted for ObservedResult data.
  */
-function ObservedResultItem({
-  result,
-  isDark,
-}: {
-  result: ObservedResult;
-  isDark: boolean;
-}) {
-  const [isExpanded, setIsExpanded] = useState(false);
+function ObservedResultItem({ result, isDark }: { result: ObservedResult; isDark: boolean }) {
+  const [isExpanded, setIsExpanded] = useState(false)
 
-  const studentAnswerNum = parseInt(result.studentAnswer, 10);
-  const purposeConfig = getPurposeConfig(result.purpose);
-  const purposeColors = getPurposeColors(result.purpose, isDark);
-  const isIncorrect = !result.isCorrect;
+  const studentAnswerNum = parseInt(result.studentAnswer, 10)
+  const purposeConfig = getPurposeConfig(result.purpose)
+  const purposeColors = getPurposeColors(result.purpose, isDark)
+  const isIncorrect = !result.isCorrect
 
   return (
     <div
@@ -44,25 +38,25 @@ function ObservedResultItem({
       data-problem-number={result.problemNumber}
       data-correct={result.isCorrect}
       className={css({
-        display: "flex",
-        flexDirection: "column",
-        borderRadius: "8px",
-        border: "1px solid",
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: '8px',
+        border: '1px solid',
         borderColor: isIncorrect
           ? isDark
-            ? "red.700"
-            : "red.200"
+            ? 'red.700'
+            : 'red.200'
           : isDark
-            ? "green.700"
-            : "green.200",
+            ? 'green.700'
+            : 'green.200',
         backgroundColor: isIncorrect
           ? isDark
-            ? "red.900/30"
-            : "red.50"
+            ? 'red.900/30'
+            : 'red.50'
           : isDark
-            ? "green.900/30"
-            : "green.50",
-        overflow: "hidden",
+            ? 'green.900/30'
+            : 'green.50',
+        overflow: 'hidden',
       })}
     >
       {/* Header row - clickable to expand/collapse */}
@@ -71,37 +65,37 @@ function ObservedResultItem({
         data-element="result-header"
         onClick={() => setIsExpanded(!isExpanded)}
         className={css({
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0.375rem 0.625rem",
-          backgroundColor: isDark ? "rgba(0,0,0,0.1)" : "rgba(0,0,0,0.02)",
-          border: "none",
-          borderBottom: isExpanded ? "1px solid" : "none",
-          borderColor: isDark ? "gray.700/50" : "gray.200/50",
-          width: "100%",
-          cursor: "pointer",
-          textAlign: "left",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0.375rem 0.625rem',
+          backgroundColor: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.02)',
+          border: 'none',
+          borderBottom: isExpanded ? '1px solid' : 'none',
+          borderColor: isDark ? 'gray.700/50' : 'gray.200/50',
+          width: '100%',
+          cursor: 'pointer',
+          textAlign: 'left',
           _hover: {
-            backgroundColor: isDark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.04)",
+            backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.04)',
           },
         })}
       >
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
             flex: 1,
           })}
         >
           {/* Problem number */}
           <span
             className={css({
-              fontSize: "0.625rem",
-              fontWeight: "bold",
-              color: isDark ? "gray.500" : "gray.400",
-              minWidth: "1.25rem",
+              fontSize: '0.625rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.500' : 'gray.400',
+              minWidth: '1.25rem',
             })}
           >
             #{result.problemNumber}
@@ -110,18 +104,18 @@ function ObservedResultItem({
           {/* Status indicator */}
           <span
             className={css({
-              fontSize: "0.75rem",
-              fontWeight: "bold",
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
               color: result.isCorrect
                 ? isDark
-                  ? "green.400"
-                  : "green.600"
+                  ? 'green.400'
+                  : 'green.600'
                 : isDark
-                  ? "red.400"
-                  : "red.600",
+                  ? 'red.400'
+                  : 'red.600',
             })}
           >
-            {result.isCorrect ? "✓" : "✗"}
+            {result.isCorrect ? '✓' : '✗'}
           </span>
 
           {/* Compact problem display */}
@@ -129,9 +123,7 @@ function ObservedResultItem({
             <CompactLinearProblem
               terms={result.terms}
               answer={result.answer}
-              studentAnswer={
-                Number.isNaN(studentAnswerNum) ? undefined : studentAnswerNum
-              }
+              studentAnswer={Number.isNaN(studentAnswerNum) ? undefined : studentAnswerNum}
               isCorrect={result.isCorrect}
               isDark={isDark}
             />
@@ -140,18 +132,18 @@ function ObservedResultItem({
 
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
           })}
         >
           {/* Purpose emoji badge */}
           <span
             className={css({
-              padding: "0.125rem 0.375rem",
-              borderRadius: "4px",
-              fontSize: "0.5625rem",
-              fontWeight: "500",
+              padding: '0.125rem 0.375rem',
+              borderRadius: '4px',
+              fontSize: '0.5625rem',
+              fontWeight: '500',
               backgroundColor: purposeColors.background,
               color: purposeColors.text,
             })}
@@ -162,15 +154,15 @@ function ObservedResultItem({
           {/* Expand/collapse indicator */}
           <span
             className={css({
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "1rem",
-              height: "1rem",
-              fontSize: "0.5rem",
-              color: isDark ? "gray.400" : "gray.500",
-              transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-              transition: "transform 0.25s ease-out",
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '1rem',
+              height: '1rem',
+              fontSize: '0.5rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.25s ease-out',
             })}
           >
             ▼
@@ -182,68 +174,60 @@ function ObservedResultItem({
       <div
         data-element="expanded-details-wrapper"
         className={css({
-          display: "grid",
-          gridTemplateRows: isExpanded ? "1fr" : "0fr",
-          transition: "grid-template-rows 0.25s ease-out",
+          display: 'grid',
+          gridTemplateRows: isExpanded ? '1fr' : '0fr',
+          transition: 'grid-template-rows 0.25s ease-out',
         })}
       >
         <div
           data-element="expanded-details"
           className={css({
-            overflow: "hidden",
+            overflow: 'hidden',
           })}
         >
           <div
             className={css({
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.5rem",
-              padding: "0.5rem 0.625rem",
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              padding: '0.5rem 0.625rem',
               opacity: isExpanded ? 1 : 0,
-              transition: "opacity 0.2s ease-out",
+              transition: 'opacity 0.2s ease-out',
             })}
           >
             {/* Full problem display */}
             <div
               className={css({
-                fontFamily: "var(--font-mono, monospace)",
-                fontSize: "1rem",
-                fontWeight: "bold",
-                textAlign: "center",
-                padding: "0.5rem",
-                borderRadius: "6px",
+                fontFamily: 'var(--font-mono, monospace)',
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                padding: '0.5rem',
+                borderRadius: '6px',
                 backgroundColor: result.isCorrect
                   ? isDark
-                    ? "green.900/50"
-                    : "green.100"
+                    ? 'green.900/50'
+                    : 'green.100'
                   : isDark
-                    ? "red.900/50"
-                    : "red.100",
+                    ? 'red.900/50'
+                    : 'red.100',
               })}
             >
-              <span
-                className={css({ color: isDark ? "gray.200" : "gray.800" })}
-              >
+              <span className={css({ color: isDark ? 'gray.200' : 'gray.800' })}>
                 {result.terms
-                  .map((t, i) =>
-                    i === 0
-                      ? String(t)
-                      : t < 0
-                        ? ` − ${Math.abs(t)}`
-                        : ` + ${t}`,
-                  )
-                  .join("")}{" "}
-                ={" "}
+                  .map((t, i) => (i === 0 ? String(t) : t < 0 ? ` − ${Math.abs(t)}` : ` + ${t}`))
+                  .join('')}{' '}
+                ={' '}
               </span>
               <span
                 className={css({
                   color: result.isCorrect
                     ? isDark
-                      ? "green.300"
-                      : "green.700"
+                      ? 'green.300'
+                      : 'green.700'
                     : isDark
-                      ? "red.300"
-                      : "red.700",
+                      ? 'red.300'
+                      : 'red.700',
                 })}
               >
                 {result.answer}
@@ -254,12 +238,12 @@ function ObservedResultItem({
             {!result.isCorrect && (
               <div
                 className={css({
-                  padding: "0.375rem",
-                  borderRadius: "6px",
-                  backgroundColor: isDark ? "red.900/40" : "red.50",
-                  textAlign: "center",
-                  fontSize: "0.75rem",
-                  color: isDark ? "red.300" : "red.700",
+                  padding: '0.375rem',
+                  borderRadius: '6px',
+                  backgroundColor: isDark ? 'red.900/40' : 'red.50',
+                  textAlign: 'center',
+                  fontSize: '0.75rem',
+                  color: isDark ? 'red.300' : 'red.700',
                 })}
               >
                 Student answered: <strong>{result.studentAnswer}</strong>
@@ -269,32 +253,32 @@ function ObservedResultItem({
             {/* Purpose explanation */}
             <div
               className={css({
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.125rem",
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.125rem',
               })}
             >
               <span
                 className={css({
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.25rem",
-                  padding: "0.125rem 0.5rem",
-                  borderRadius: "4px",
-                  fontSize: "0.625rem",
-                  fontWeight: "500",
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  padding: '0.125rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.625rem',
+                  fontWeight: '500',
                   backgroundColor: purposeColors.background,
                   color: purposeColors.text,
-                  width: "fit-content",
+                  width: 'fit-content',
                 })}
               >
                 {purposeConfig.emoji} {purposeConfig.shortLabel}
               </span>
               <span
                 className={css({
-                  fontSize: "0.625rem",
-                  color: isDark ? "gray.400" : "gray.500",
-                  fontStyle: "italic",
+                  fontSize: '0.625rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  fontStyle: 'italic',
                 })}
               >
                 {purposeConfig.shortExplanation}
@@ -304,17 +288,17 @@ function ObservedResultItem({
             {/* Response time */}
             <div
               className={css({
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "0.6875rem",
-                color: isDark ? "gray.400" : "gray.500",
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '0.6875rem',
+                color: isDark ? 'gray.400' : 'gray.500',
               })}
             >
               <span>Response time:</span>
               <span
                 className={css({
-                  fontWeight: "bold",
-                  color: isDark ? "gray.200" : "gray.800",
+                  fontWeight: 'bold',
+                  color: isDark ? 'gray.200' : 'gray.800',
                 })}
               >
                 {formatMs(result.responseTimeMs)}
@@ -324,7 +308,7 @@ function ObservedResultItem({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 /**
@@ -341,22 +325,19 @@ export function LiveResultsPanel({
   isDark,
   onExpandFullReport,
 }: LiveResultsPanelProps) {
-  const [showAllProblems, setShowAllProblems] = useState(false);
+  const [showAllProblems, setShowAllProblems] = useState(false)
 
   // Compute stats
   const stats = useMemo(() => {
-    const correct = results.filter((r) => r.isCorrect).length;
-    const incorrect = results.filter((r) => !r.isCorrect).length;
-    const completed = results.length;
-    const accuracy = completed > 0 ? correct / completed : 0;
-    return { correct, incorrect, completed, accuracy };
-  }, [results]);
+    const correct = results.filter((r) => r.isCorrect).length
+    const incorrect = results.filter((r) => !r.isCorrect).length
+    const completed = results.length
+    const accuracy = completed > 0 ? correct / completed : 0
+    return { correct, incorrect, completed, accuracy }
+  }, [results])
 
   // Get incorrect results
-  const incorrectResults = useMemo(
-    () => results.filter((r) => !r.isCorrect),
-    [results],
-  );
+  const incorrectResults = useMemo(() => results.filter((r) => !r.isCorrect), [results])
 
   // No results yet - show placeholder
   if (results.length === 0) {
@@ -365,63 +346,63 @@ export function LiveResultsPanel({
         data-component="live-results-panel"
         data-state="empty"
         className={css({
-          borderRadius: "8px",
-          border: "1px solid",
-          borderColor: isDark ? "gray.700" : "gray.200",
-          backgroundColor: isDark ? "gray.800" : "white",
-          padding: "0.75rem",
-          textAlign: "center",
+          borderRadius: '8px',
+          border: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
+          backgroundColor: isDark ? 'gray.800' : 'white',
+          padding: '0.75rem',
+          textAlign: 'center',
         })}
       >
         <p
           className={css({
-            fontSize: "0.75rem",
-            color: isDark ? "gray.500" : "gray.400",
+            fontSize: '0.75rem',
+            color: isDark ? 'gray.500' : 'gray.400',
           })}
         >
           Waiting for results...
         </p>
       </div>
-    );
+    )
   }
 
   return (
     <div
       data-component="live-results-panel"
       className={css({
-        borderRadius: "8px",
-        border: "1px solid",
-        borderColor: isDark ? "gray.700" : "gray.200",
-        backgroundColor: isDark ? "gray.800" : "white",
-        overflow: "hidden",
+        borderRadius: '8px',
+        border: '1px solid',
+        borderColor: isDark ? 'gray.700' : 'gray.200',
+        backgroundColor: isDark ? 'gray.800' : 'white',
+        overflow: 'hidden',
       })}
     >
       {/* Summary stats header */}
       <div
         data-element="stats-header"
         className={css({
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0.5rem 0.75rem",
-          borderBottom: "1px solid",
-          borderColor: isDark ? "gray.700" : "gray.200",
-          backgroundColor: isDark ? "gray.850" : "gray.50",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0.5rem 0.75rem',
+          borderBottom: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
+          backgroundColor: isDark ? 'gray.850' : 'gray.50',
         })}
       >
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
           })}
         >
           {/* Progress */}
           <span
             className={css({
-              fontSize: "0.75rem",
-              fontWeight: "bold",
-              color: isDark ? "gray.300" : "gray.600",
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.300' : 'gray.600',
             })}
           >
             {stats.completed}/{totalProblems}
@@ -430,20 +411,20 @@ export function LiveResultsPanel({
           {/* Accuracy */}
           <span
             className={css({
-              fontSize: "0.75rem",
-              fontWeight: "bold",
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
               color:
                 stats.accuracy >= 0.8
                   ? isDark
-                    ? "green.400"
-                    : "green.600"
+                    ? 'green.400'
+                    : 'green.600'
                   : stats.accuracy >= 0.6
                     ? isDark
-                      ? "yellow.400"
-                      : "yellow.600"
+                      ? 'yellow.400'
+                      : 'yellow.600'
                     : isDark
-                      ? "red.400"
-                      : "red.600",
+                      ? 'red.400'
+                      : 'red.600',
             })}
           >
             {Math.round(stats.accuracy * 100)}%
@@ -453,15 +434,15 @@ export function LiveResultsPanel({
           {stats.incorrect > 0 && (
             <span
               className={css({
-                display: "flex",
-                alignItems: "center",
-                gap: "0.25rem",
-                padding: "0.125rem 0.375rem",
-                borderRadius: "9999px",
-                backgroundColor: isDark ? "red.900/50" : "red.100",
-                fontSize: "0.6875rem",
-                fontWeight: "bold",
-                color: isDark ? "red.300" : "red.700",
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                padding: '0.125rem 0.375rem',
+                borderRadius: '9999px',
+                backgroundColor: isDark ? 'red.900/50' : 'red.100',
+                fontSize: '0.6875rem',
+                fontWeight: 'bold',
+                color: isDark ? 'red.300' : 'red.700',
               })}
             >
               <span>✗</span>
@@ -477,16 +458,16 @@ export function LiveResultsPanel({
             data-action="expand-full-report"
             onClick={onExpandFullReport}
             className={css({
-              fontSize: "0.625rem",
-              fontWeight: "bold",
-              color: isDark ? "blue.400" : "blue.600",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "0.125rem 0.25rem",
-              borderRadius: "4px",
+              fontSize: '0.625rem',
+              fontWeight: 'bold',
+              color: isDark ? 'blue.400' : 'blue.600',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '0.125rem 0.25rem',
+              borderRadius: '4px',
               _hover: {
-                backgroundColor: isDark ? "blue.900/30" : "blue.50",
+                backgroundColor: isDark ? 'blue.900/30' : 'blue.50',
               },
             })}
           >
@@ -499,26 +480,26 @@ export function LiveResultsPanel({
       <div
         data-element="results-content"
         className={css({
-          padding: "0.75rem",
+          padding: '0.75rem',
         })}
       >
         {/* Section header with toggle */}
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "0.5rem",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '0.5rem',
           })}
         >
           <span
             className={css({
-              fontSize: "0.6875rem",
-              fontWeight: "bold",
-              color: isDark ? "gray.400" : "gray.600",
+              fontSize: '0.6875rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.400' : 'gray.600',
             })}
           >
-            {showAllProblems ? "All Problems" : "Incorrect"}
+            {showAllProblems ? 'All Problems' : 'Incorrect'}
             {!showAllProblems && stats.incorrect > 0 && ` (${stats.incorrect})`}
           </span>
 
@@ -527,55 +508,49 @@ export function LiveResultsPanel({
             type="button"
             onClick={() => setShowAllProblems(!showAllProblems)}
             className={css({
-              fontSize: "0.625rem",
-              color: isDark ? "blue.400" : "blue.600",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              textDecoration: "underline",
-              _hover: { color: isDark ? "blue.300" : "blue.700" },
+              fontSize: '0.625rem',
+              color: isDark ? 'blue.400' : 'blue.600',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              _hover: { color: isDark ? 'blue.300' : 'blue.700' },
             })}
           >
-            {showAllProblems ? "Incorrect only" : "Show all"}
+            {showAllProblems ? 'Incorrect only' : 'Show all'}
           </button>
         </div>
 
         {/* Results list */}
         <div
           className={css({
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.375rem",
-            maxHeight: "250px",
-            overflowY: "auto",
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.375rem',
+            maxHeight: '250px',
+            overflowY: 'auto',
           })}
         >
           {(showAllProblems ? results : incorrectResults).length === 0 ? (
             <div
               className={css({
-                textAlign: "center",
-                padding: "0.75rem",
-                fontSize: "0.6875rem",
-                color: isDark ? "gray.500" : "gray.400",
+                textAlign: 'center',
+                padding: '0.75rem',
+                fontSize: '0.6875rem',
+                color: isDark ? 'gray.500' : 'gray.400',
               })}
             >
-              {showAllProblems
-                ? "No problems completed yet"
-                : "No incorrect problems yet"}
+              {showAllProblems ? 'No problems completed yet' : 'No incorrect problems yet'}
             </div>
           ) : (
             (showAllProblems ? results : incorrectResults).map((result) => (
-              <ObservedResultItem
-                key={result.problemNumber}
-                result={result}
-                isDark={isDark}
-              />
+              <ObservedResultItem key={result.problemNumber} result={result} isDark={isDark} />
             ))
           )}
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default LiveResultsPanel;
+export default LiveResultsPanel

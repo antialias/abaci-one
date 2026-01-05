@@ -1,9 +1,9 @@
-"use client";
+'use client'
 
-import { useEffect, useRef, useState } from "react";
-import { io, type Socket } from "socket.io-client";
-import { useQueryClient } from "@tanstack/react-query";
-import { invalidateForEvent } from "@/lib/classroom/query-invalidations";
+import { useEffect, useRef, useState } from 'react'
+import { io, type Socket } from 'socket.io-client'
+import { useQueryClient } from '@tanstack/react-query'
+import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
 import type {
   EnrollmentApprovedEvent,
   EnrollmentRequestApprovedEvent,
@@ -13,7 +13,7 @@ import type {
   EntryPromptCreatedEvent,
   EntryPromptDeclinedEvent,
   StudentUnenrolledEvent,
-} from "@/lib/classroom/socket-events";
+} from '@/lib/classroom/socket-events'
 
 /**
  * Hook for real-time parent notifications via WebSocket
@@ -26,150 +26,136 @@ import type {
  * @returns Whether the socket is connected
  */
 export function useParentSocket(userId: string | undefined): {
-  connected: boolean;
+  connected: boolean
 } {
-  const [connected, setConnected] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
-  const queryClient = useQueryClient();
+  const [connected, setConnected] = useState(false)
+  const socketRef = useRef<Socket | null>(null)
+  const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) return
 
     // Create socket connection
     const socket = io({
-      path: "/api/socket",
+      path: '/api/socket',
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
-    });
-    socketRef.current = socket;
+    })
+    socketRef.current = socket
 
-    socket.on("connect", () => {
-      console.log("[ParentSocket] Connected");
-      setConnected(true);
+    socket.on('connect', () => {
+      console.log('[ParentSocket] Connected')
+      setConnected(true)
       // Join the user channel for parent notifications
-      socket.emit("join-user-channel", { userId });
-    });
+      socket.emit('join-user-channel', { userId })
+    })
 
-    socket.on("disconnect", () => {
-      console.log("[ParentSocket] Disconnected");
-      setConnected(false);
-    });
+    socket.on('disconnect', () => {
+      console.log('[ParentSocket] Disconnected')
+      setConnected(false)
+    })
 
     // Listen for enrollment request created event (teacher added student to classroom)
-    socket.on(
-      "enrollment-request-created",
-      (data: EnrollmentRequestCreatedEvent) => {
-        console.log(
-          "[ParentSocket] Enrollment request created for:",
-          data.request.playerName,
-          "in classroom:",
-          data.request.classroomName,
-        );
-        invalidateForEvent(queryClient, "requestCreated", {
-          classroomId: data.request.classroomId,
-          playerId: data.request.playerId,
-        });
-      },
-    );
+    socket.on('enrollment-request-created', (data: EnrollmentRequestCreatedEvent) => {
+      console.log(
+        '[ParentSocket] Enrollment request created for:',
+        data.request.playerName,
+        'in classroom:',
+        data.request.classroomName
+      )
+      invalidateForEvent(queryClient, 'requestCreated', {
+        classroomId: data.request.classroomId,
+        playerId: data.request.playerId,
+      })
+    })
 
     // Listen for enrollment request approved event (teacher approved parent's request)
-    socket.on(
-      "enrollment-request-approved",
-      (data: EnrollmentRequestApprovedEvent) => {
-        console.log(
-          "[ParentSocket] Enrollment request approved for:",
-          data.playerName,
-          "by:",
-          data.approvedBy,
-        );
-        invalidateForEvent(queryClient, "requestApproved", {
-          classroomId: data.classroomId,
-          playerId: data.playerId,
-        });
-      },
-    );
+    socket.on('enrollment-request-approved', (data: EnrollmentRequestApprovedEvent) => {
+      console.log(
+        '[ParentSocket] Enrollment request approved for:',
+        data.playerName,
+        'by:',
+        data.approvedBy
+      )
+      invalidateForEvent(queryClient, 'requestApproved', {
+        classroomId: data.classroomId,
+        playerId: data.playerId,
+      })
+    })
 
     // Listen for enrollment request denied event (teacher denied parent's request)
-    socket.on(
-      "enrollment-request-denied",
-      (data: EnrollmentRequestDeniedEvent) => {
-        console.log(
-          "[ParentSocket] Enrollment request denied for:",
-          data.playerName,
-          "by:",
-          data.deniedBy,
-        );
-        invalidateForEvent(queryClient, "requestDenied", {
-          classroomId: data.classroomId,
-          playerId: data.playerId,
-        });
-      },
-    );
+    socket.on('enrollment-request-denied', (data: EnrollmentRequestDeniedEvent) => {
+      console.log(
+        '[ParentSocket] Enrollment request denied for:',
+        data.playerName,
+        'by:',
+        data.deniedBy
+      )
+      invalidateForEvent(queryClient, 'requestDenied', {
+        classroomId: data.classroomId,
+        playerId: data.playerId,
+      })
+    })
 
     // Listen for enrollment completed event (student fully enrolled)
-    socket.on("enrollment-approved", (data: EnrollmentApprovedEvent) => {
-      console.log("[ParentSocket] Enrollment completed for:", data.playerName);
-      invalidateForEvent(queryClient, "enrollmentCompleted", {
+    socket.on('enrollment-approved', (data: EnrollmentApprovedEvent) => {
+      console.log('[ParentSocket] Enrollment completed for:', data.playerName)
+      invalidateForEvent(queryClient, 'enrollmentCompleted', {
         classroomId: data.classroomId,
         playerId: data.playerId,
-      });
-    });
+      })
+    })
 
     // Listen for student unenrolled event (child removed from classroom)
-    socket.on("student-unenrolled", (data: StudentUnenrolledEvent) => {
-      console.log(
-        "[ParentSocket] Child unenrolled:",
-        data.playerName,
-        "from:",
-        data.classroomName,
-      );
-      invalidateForEvent(queryClient, "studentUnenrolled", {
+    socket.on('student-unenrolled', (data: StudentUnenrolledEvent) => {
+      console.log('[ParentSocket] Child unenrolled:', data.playerName, 'from:', data.classroomName)
+      invalidateForEvent(queryClient, 'studentUnenrolled', {
         classroomId: data.classroomId,
         playerId: data.playerId,
-      });
-    });
+      })
+    })
 
     // Listen for entry prompt created event (teacher wants child to enter classroom)
-    socket.on("entry-prompt-created", (data: EntryPromptCreatedEvent) => {
+    socket.on('entry-prompt-created', (data: EntryPromptCreatedEvent) => {
       console.log(
-        "[ParentSocket] Entry prompt from:",
+        '[ParentSocket] Entry prompt from:',
         data.teacherName,
-        "for:",
+        'for:',
         data.playerName,
-        "to enter:",
-        data.classroomName,
-      );
-      invalidateForEvent(queryClient, "entryPromptCreated", {
+        'to enter:',
+        data.classroomName
+      )
+      invalidateForEvent(queryClient, 'entryPromptCreated', {
         classroomId: data.classroomId,
         playerId: data.playerId,
-      });
-    });
+      })
+    })
 
     // Listen for entry prompt accepted event (another parent accepted)
-    socket.on("entry-prompt-accepted", (data: EntryPromptAcceptedEvent) => {
-      console.log("[ParentSocket] Entry prompt accepted for:", data.playerName);
-      invalidateForEvent(queryClient, "entryPromptAccepted", {
+    socket.on('entry-prompt-accepted', (data: EntryPromptAcceptedEvent) => {
+      console.log('[ParentSocket] Entry prompt accepted for:', data.playerName)
+      invalidateForEvent(queryClient, 'entryPromptAccepted', {
         classroomId: data.classroomId,
         playerId: data.playerId,
-      });
-    });
+      })
+    })
 
     // Listen for entry prompt declined event (another parent declined)
-    socket.on("entry-prompt-declined", (data: EntryPromptDeclinedEvent) => {
-      console.log("[ParentSocket] Entry prompt declined for:", data.playerName);
-      invalidateForEvent(queryClient, "entryPromptDeclined", {
+    socket.on('entry-prompt-declined', (data: EntryPromptDeclinedEvent) => {
+      console.log('[ParentSocket] Entry prompt declined for:', data.playerName)
+      invalidateForEvent(queryClient, 'entryPromptDeclined', {
         classroomId: data.classroomId,
         playerId: data.playerId,
-      });
-    });
+      })
+    })
 
     // Cleanup on unmount
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [userId, queryClient]);
+      socket.disconnect()
+      socketRef.current = null
+    }
+  }, [userId, queryClient])
 
-  return { connected };
+  return { connected }
 }

@@ -1,15 +1,15 @@
-"use client";
+'use client'
 
-import { useTheme } from "@/contexts/ThemeContext";
-import { css, cx } from "../../../styled-system/css";
+import { useTheme } from '@/contexts/ThemeContext'
+import { css, cx } from '../../../styled-system/css'
 
 interface PracticeFeedbackProps {
   /** Whether the answer was correct */
-  isCorrect: boolean;
+  isCorrect: boolean
   /** The correct answer (shown when incorrect) */
-  correctAnswer: number;
+  correctAnswer: number
   /** Optional className for additional styling/positioning */
-  className?: string;
+  className?: string
 }
 
 /**
@@ -21,34 +21,24 @@ interface PracticeFeedbackProps {
  *
  * Used by both ActiveSession (student view) and SessionObserverModal (teacher view)
  */
-export function PracticeFeedback({
-  isCorrect,
-  correctAnswer,
-  className,
-}: PracticeFeedbackProps) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+export function PracticeFeedback({ isCorrect, correctAnswer, className }: PracticeFeedbackProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
   const baseStyles = css({
-    padding: "0.75rem 1.5rem",
-    borderRadius: "8px",
-    fontSize: "1.25rem",
-    fontWeight: "bold",
+    padding: '0.75rem 1.5rem',
+    borderRadius: '8px',
+    fontSize: '1.25rem',
+    fontWeight: 'bold',
     backgroundColor: isCorrect
       ? isDark
-        ? "green.900"
-        : "green.100"
+        ? 'green.900'
+        : 'green.100'
       : isDark
-        ? "red.900"
-        : "red.100",
-    color: isCorrect
-      ? isDark
-        ? "green.200"
-        : "green.700"
-      : isDark
-        ? "red.200"
-        : "red.700",
-  });
+        ? 'red.900'
+        : 'red.100',
+    color: isCorrect ? (isDark ? 'green.200' : 'green.700') : isDark ? 'red.200' : 'red.700',
+  })
 
   return (
     <div
@@ -56,7 +46,7 @@ export function PracticeFeedback({
       data-correct={isCorrect}
       className={cx(baseStyles, className)}
     >
-      {isCorrect ? "Correct!" : `The answer was ${correctAnswer}`}
+      {isCorrect ? 'Correct!' : `The answer was ${correctAnswer}`}
     </div>
-  );
+  )
 }

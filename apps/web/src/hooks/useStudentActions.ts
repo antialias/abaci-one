@@ -1,73 +1,73 @@
-"use client";
+'use client'
 
-import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useRouter } from 'next/navigation'
+import { useCallback, useMemo, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import {
   useEnrolledClassrooms,
   useEnterClassroom,
   useLeaveClassroom,
   useMyClassroom,
   useStudentPresence,
-} from "@/hooks/useClassroom";
-import type { Classroom } from "@/db/schema";
-import { useUpdatePlayer } from "@/hooks/useUserPlayers";
+} from '@/hooks/useClassroom'
+import type { Classroom } from '@/db/schema'
+import { useUpdatePlayer } from '@/hooks/useUserPlayers'
 import {
   getAvailableActions,
   type AvailableActions,
   type StudentActionData,
-} from "@/components/practice/studentActions";
-import { api } from "@/lib/queryClient";
+} from '@/components/practice/studentActions'
+import { api } from '@/lib/queryClient'
 
-export type { StudentActionData, AvailableActions };
+export type { StudentActionData, AvailableActions }
 
 export interface StudentActionHandlers {
-  startPractice: () => void;
-  watchSession: () => void;
-  enterClassroom: () => Promise<void>;
-  enterSpecificClassroom: (classroomId: string) => Promise<void>;
-  leaveClassroom: () => Promise<void>;
-  promptToEnter: () => Promise<void>;
-  toggleArchive: () => Promise<void>;
-  openShareAccess: () => void;
-  openEnrollModal: () => void;
+  startPractice: () => void
+  watchSession: () => void
+  enterClassroom: () => Promise<void>
+  enterSpecificClassroom: (classroomId: string) => Promise<void>
+  leaveClassroom: () => Promise<void>
+  promptToEnter: () => Promise<void>
+  toggleArchive: () => Promise<void>
+  openShareAccess: () => void
+  openEnrollModal: () => void
 }
 
 export interface StudentActionModals {
   shareAccess: {
-    isOpen: boolean;
-    open: () => void;
-    close: () => void;
-  };
+    isOpen: boolean
+    open: () => void
+    close: () => void
+  }
   enroll: {
-    isOpen: boolean;
-    open: () => void;
-    close: () => void;
-  };
+    isOpen: boolean
+    open: () => void
+    close: () => void
+  }
 }
 
 export interface ClassroomData {
   /** All classrooms this student is enrolled in */
-  enrolled: Classroom[];
+  enrolled: Classroom[]
   /** Current classroom presence (if any) */
-  current: { classroomId: string; classroom: Classroom } | null;
+  current: { classroomId: string; classroom: Classroom } | null
   /** Whether classroom data is loading */
-  isLoading: boolean;
+  isLoading: boolean
 }
 
 export interface UseStudentActionsResult {
   /** Which actions are available based on student state and user context */
-  actions: AvailableActions;
+  actions: AvailableActions
   /** Pre-built handlers for each action */
-  handlers: StudentActionHandlers;
+  handlers: StudentActionHandlers
   /** Modal state for sub-modals (Share Access, Enroll) */
-  modals: StudentActionModals;
+  modals: StudentActionModals
   /** Whether any action is currently loading */
-  isLoading: boolean;
+  isLoading: boolean
   /** The student data being operated on */
-  student: StudentActionData;
+  student: StudentActionData
   /** Classroom enrollment and presence data */
-  classrooms: ClassroomData;
+  classrooms: ClassroomData
 }
 
 /**
@@ -85,87 +85,81 @@ export function useStudentActions(
   student: StudentActionData,
   options?: {
     /** Optional callback when observe session is clicked (for external handling) */
-    onObserveSession?: (sessionId: string) => void;
-  },
+    onObserveSession?: (sessionId: string) => void
+  }
 ): UseStudentActionsResult {
-  const router = useRouter();
-  const { onObserveSession } = options ?? {};
+  const router = useRouter()
+  const { onObserveSession } = options ?? {}
 
   // ========== Context hooks ==========
-  const { data: classroom } = useMyClassroom();
-  const isTeacher = !!classroom;
+  const { data: classroom } = useMyClassroom()
+  const isTeacher = !!classroom
 
   // ========== Action hooks ==========
-  const { data: enrolledClassrooms = [], isLoading: loadingEnrollments } =
-    useEnrolledClassrooms(student.id);
-  const { data: currentPresence, isLoading: loadingPresence } =
-    useStudentPresence(student.id);
-  const updatePlayer = useUpdatePlayer();
-  const enterClassroom = useEnterClassroom();
-  const leaveClassroom = useLeaveClassroom();
+  const { data: enrolledClassrooms = [], isLoading: loadingEnrollments } = useEnrolledClassrooms(
+    student.id
+  )
+  const { data: currentPresence, isLoading: loadingPresence } = useStudentPresence(student.id)
+  const updatePlayer = useUpdatePlayer()
+  const enterClassroom = useEnterClassroom()
+  const leaveClassroom = useLeaveClassroom()
 
   // Entry prompt mutation (teacher action)
   const createEntryPrompt = useMutation({
-    mutationFn: async ({
-      classroomId,
-      playerId,
-    }: {
-      classroomId: string;
-      playerId: string;
-    }) => {
+    mutationFn: async ({ classroomId, playerId }: { classroomId: string; playerId: string }) => {
       const response = await api(`classrooms/${classroomId}/entry-prompts`, {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify({ playerIds: [playerId] }),
-      });
+      })
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to send prompt");
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to send prompt')
       }
-      return response.json();
+      return response.json()
     },
-  });
+  })
 
   // ========== Modal state ==========
-  const [showShareAccess, setShowShareAccess] = useState(false);
-  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [showShareAccess, setShowShareAccess] = useState(false)
+  const [showEnrollModal, setShowEnrollModal] = useState(false)
 
   // ========== Compute available actions ==========
   const actions = useMemo(() => {
-    const context = { isTeacher, classroomId: classroom?.id };
+    const context = { isTeacher, classroomId: classroom?.id }
     return getAvailableActions(student, context, {
       hasEnrolledClassrooms: enrolledClassrooms.length > 0,
-    });
-  }, [student, isTeacher, classroom?.id, enrolledClassrooms.length]);
+    })
+  }, [student, isTeacher, classroom?.id, enrolledClassrooms.length])
 
   // ========== Action handlers ==========
   const handleStartPractice = useCallback(() => {
-    router.push(`/practice/${student.id}/dashboard?startPractice=true`);
-  }, [router, student.id]);
+    router.push(`/practice/${student.id}/dashboard?startPractice=true`)
+  }, [router, student.id])
 
   const handleWatchSession = useCallback(() => {
     if (student.activity?.sessionId) {
       if (onObserveSession) {
-        onObserveSession(student.activity.sessionId);
+        onObserveSession(student.activity.sessionId)
       } else {
         // TODO: Default navigation to session observer
-        console.log("Watch session:", student.activity.sessionId);
+        console.log('Watch session:', student.activity.sessionId)
       }
     }
-  }, [student.activity?.sessionId, onObserveSession]);
+  }, [student.activity?.sessionId, onObserveSession])
 
   const handleEnterClassroom = useCallback(async () => {
     if (enrolledClassrooms.length > 0) {
-      const classroomId = enrolledClassrooms[0].id;
-      await enterClassroom.mutateAsync({ classroomId, playerId: student.id });
+      const classroomId = enrolledClassrooms[0].id
+      await enterClassroom.mutateAsync({ classroomId, playerId: student.id })
     }
-  }, [enrolledClassrooms, enterClassroom, student.id]);
+  }, [enrolledClassrooms, enterClassroom, student.id])
 
   const handleEnterSpecificClassroom = useCallback(
     async (classroomId: string) => {
-      await enterClassroom.mutateAsync({ classroomId, playerId: student.id });
+      await enterClassroom.mutateAsync({ classroomId, playerId: student.id })
     },
-    [enterClassroom, student.id],
-  );
+    [enterClassroom, student.id]
+  )
 
   const handleLeaveClassroom = useCallback(async () => {
     // Use currentPresence to get the actual classroom they're in
@@ -173,25 +167,25 @@ export function useStudentActions(
       await leaveClassroom.mutateAsync({
         classroomId: currentPresence.classroomId,
         playerId: student.id,
-      });
+      })
     }
-  }, [currentPresence, leaveClassroom, student.id]);
+  }, [currentPresence, leaveClassroom, student.id])
 
   const handleToggleArchive = useCallback(async () => {
     await updatePlayer.mutateAsync({
       id: student.id,
       updates: { isArchived: !student.isArchived },
-    });
-  }, [student.id, student.isArchived, updatePlayer]);
+    })
+  }, [student.id, student.isArchived, updatePlayer])
 
   const handlePromptToEnter = useCallback(async () => {
     if (classroom?.id) {
       await createEntryPrompt.mutateAsync({
         classroomId: classroom.id,
         playerId: student.id,
-      });
+      })
     }
-  }, [classroom?.id, createEntryPrompt, student.id]);
+  }, [classroom?.id, createEntryPrompt, student.id])
 
   // ========== Memoized result ==========
   const handlers: StudentActionHandlers = useMemo(
@@ -214,8 +208,8 @@ export function useStudentActions(
       handleLeaveClassroom,
       handlePromptToEnter,
       handleToggleArchive,
-    ],
-  );
+    ]
+  )
 
   const modals: StudentActionModals = useMemo(
     () => ({
@@ -230,14 +224,14 @@ export function useStudentActions(
         close: () => setShowEnrollModal(false),
       },
     }),
-    [showShareAccess, showEnrollModal],
-  );
+    [showShareAccess, showEnrollModal]
+  )
 
   const isLoading =
     updatePlayer.isPending ||
     enterClassroom.isPending ||
     leaveClassroom.isPending ||
-    createEntryPrompt.isPending;
+    createEntryPrompt.isPending
 
   // ========== Classroom data ==========
   const classrooms: ClassroomData = useMemo(
@@ -252,8 +246,8 @@ export function useStudentActions(
         : null,
       isLoading: loadingEnrollments || loadingPresence,
     }),
-    [enrolledClassrooms, currentPresence, loadingEnrollments, loadingPresence],
-  );
+    [enrolledClassrooms, currentPresence, loadingEnrollments, loadingPresence]
+  )
 
   return {
     actions,
@@ -262,5 +256,5 @@ export function useStudentActions(
     isLoading,
     student,
     classrooms,
-  };
+  }
 }

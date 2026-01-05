@@ -11,7 +11,7 @@
  * - Unpracticed ten complements: +9 costs 8 (base 2 × not_practicing 4)
  */
 
-import type { SessionPartType } from "@/db/schema/session-plans";
+import type { SessionPartType } from '@/db/schema/session-plans'
 
 // =============================================================================
 // General Budget Defaults
@@ -33,7 +33,7 @@ export const DEFAULT_COMPLEXITY_BUDGETS = {
 
   /** Linear mode */
   linearDefault: 8,
-} as const;
+} as const
 
 // =============================================================================
 // Per-Purpose, Per-Part Complexity Bounds
@@ -73,7 +73,7 @@ export const DEFAULT_COMPLEXITY_BUDGETS = {
  * This differentiation is key to BKT-driven adaptive problem selection.
  */
 export const PURPOSE_COMPLEXITY_BOUNDS: Record<
-  "focus" | "reinforce" | "review" | "challenge",
+  'focus' | 'reinforce' | 'review' | 'challenge',
   Record<SessionPartType, { min: number | null; max: number | null }>
 > = {
   focus: {
@@ -97,16 +97,16 @@ export const PURPOSE_COMPLEXITY_BOUNDS: Record<
     visualization: { min: 1, max: null },
     linear: { min: 1, max: null },
   },
-};
+}
 
 /**
  * Get complexity bounds for a specific purpose and part type.
  */
 export function getComplexityBounds(
-  purpose: "focus" | "reinforce" | "review" | "challenge",
-  partType: SessionPartType,
+  purpose: 'focus' | 'reinforce' | 'review' | 'challenge',
+  partType: SessionPartType
 ): { min: number | null; max: number | null } {
-  return PURPOSE_COMPLEXITY_BOUNDS[purpose][partType];
+  return PURPOSE_COMPLEXITY_BOUNDS[purpose][partType]
 }
 
-export type PurposeComplexityBounds = typeof PURPOSE_COMPLEXITY_BOUNDS;
+export type PurposeComplexityBounds = typeof PURPOSE_COMPLEXITY_BOUNDS

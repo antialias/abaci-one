@@ -19,8 +19,8 @@ import {
   isBktConfident,
   ROTATION_MULTIPLIERS,
   type ProblemGenerationMode,
-} from "@/lib/curriculum/config";
-import type { SkillBktResult } from "@/lib/curriculum/bkt";
+} from '@/lib/curriculum/config'
+import type { SkillBktResult } from '@/lib/curriculum/bkt'
 
 // Re-export for backwards compatibility
 export {
@@ -28,22 +28,22 @@ export {
   DEFAULT_COMPLEXITY_BUDGETS,
   getBaseComplexity,
   ROTATION_MULTIPLIERS,
-};
+}
 
 /**
  * Information about a student's relationship with a skill
  */
 export interface StudentSkillState {
-  skillId: string;
+  skillId: string
   /** Whether skill is in the student's active practice rotation */
-  isPracticing: boolean;
+  isPracticing: boolean
 }
 
 /**
  * Student skill history - all skills and their states
  */
 export interface StudentSkillHistory {
-  skills: Record<string, StudentSkillState>;
+  skills: Record<string, StudentSkillState>
 }
 
 /**
@@ -55,7 +55,7 @@ export interface SkillCostCalculatorOptions {
    * Used for skill targeting in all adaptive modes.
    * Used for cost calculation only in 'adaptive-bkt' mode.
    */
-  bktResults?: Map<string, SkillBktResult>;
+  bktResults?: Map<string, SkillBktResult>
 
   /**
    * Problem generation mode:
@@ -63,7 +63,7 @@ export interface SkillCostCalculatorOptions {
    * - 'adaptive': BKT skill targeting, discrete cost multipliers
    * - 'adaptive-bkt': BKT skill targeting, BKT-based continuous multipliers (default)
    */
-  mode?: ProblemGenerationMode;
+  mode?: ProblemGenerationMode
 }
 
 /**
@@ -74,32 +74,32 @@ export interface SkillCostCalculator {
   /**
    * Calculate the effective cost of a skill for this student
    */
-  calculateSkillCost(skillId: string): number;
+  calculateSkillCost(skillId: string): number
 
   /**
    * Calculate total cost for a set of skills (a term)
    */
-  calculateTermCost(skillIds: string[]): number;
+  calculateTermCost(skillIds: string[]): number
 
   /**
    * Check if skill is in student's practice rotation (useful for debug UI)
    */
-  getIsPracticing(skillId: string): boolean;
+  getIsPracticing(skillId: string): boolean
 
   /**
    * Get the raw multiplier used for a skill (useful for debug UI)
    */
-  getMultiplier(skillId: string): number;
+  getMultiplier(skillId: string): number
 
   /**
    * Get BKT result for a skill if available (for transparency)
    */
-  getBktResult(skillId: string): SkillBktResult | undefined;
+  getBktResult(skillId: string): SkillBktResult | undefined
 
   /**
    * Get the mode being used for this calculator
    */
-  getMode(): ProblemGenerationMode;
+  getMode(): ProblemGenerationMode
 }
 
 // =============================================================================
@@ -126,16 +126,16 @@ export interface SkillCostCalculator {
  */
 export function createSkillCostCalculator(
   studentHistory: StudentSkillHistory,
-  options: SkillCostCalculatorOptions = {},
+  options: SkillCostCalculatorOptions = {}
 ): SkillCostCalculator {
-  const { bktResults, mode = "adaptive" } = options;
+  const { bktResults, mode = 'adaptive' } = options
 
   /**
    * Check if a skill is in the student's practice rotation.
    */
   function checkIsPracticing(skillId: string): boolean {
-    const skillState = studentHistory.skills[skillId];
-    return skillState?.isPracticing ?? false;
+    const skillState = studentHistory.skills[skillId]
+    return skillState?.isPracticing ?? false
   }
 
   /**
@@ -148,50 +148,50 @@ export function createSkillCostCalculator(
   function getMultiplierForSkill(skillId: string): number {
     // Use BKT for cost calculation if confident
     if (bktResults) {
-      const bktResult = bktResults.get(skillId);
+      const bktResult = bktResults.get(skillId)
       if (bktResult && isBktConfident(bktResult.confidence)) {
-        return calculateBktMultiplier(bktResult.pKnown);
+        return calculateBktMultiplier(bktResult.pKnown)
       }
     }
 
     // Fallback: use discrete multiplier based on isPracticing status
     if (!checkIsPracticing(skillId)) {
-      return ROTATION_MULTIPLIERS.outOfRotation;
+      return ROTATION_MULTIPLIERS.outOfRotation
     }
     // For practicing skills without confident BKT, use inRotation multiplier (3.0)
     // This represents "developing/learning" - a reasonable default
-    return ROTATION_MULTIPLIERS.inRotation;
+    return ROTATION_MULTIPLIERS.inRotation
   }
 
   return {
     calculateSkillCost(skillId: string): number {
-      const baseCost = getBaseComplexity(skillId);
-      const multiplier = getMultiplierForSkill(skillId);
-      return baseCost * multiplier;
+      const baseCost = getBaseComplexity(skillId)
+      const multiplier = getMultiplierForSkill(skillId)
+      return baseCost * multiplier
     },
 
     calculateTermCost(skillIds: string[]): number {
       return skillIds.reduce((total, skillId) => {
-        return total + this.calculateSkillCost(skillId);
-      }, 0);
+        return total + this.calculateSkillCost(skillId)
+      }, 0)
     },
 
     getIsPracticing(skillId: string): boolean {
-      return checkIsPracticing(skillId);
+      return checkIsPracticing(skillId)
     },
 
     getMultiplier(skillId: string): number {
-      return getMultiplierForSkill(skillId);
+      return getMultiplierForSkill(skillId)
     },
 
     getBktResult(skillId: string): SkillBktResult | undefined {
-      return bktResults?.get(skillId);
+      return bktResults?.get(skillId)
     },
 
     getMode(): ProblemGenerationMode {
-      return mode;
+      return mode
     },
-  };
+  }
 }
 
 /**
@@ -205,15 +205,12 @@ export function createSkillCostCalculator(
  * @param skillIds - List of skill IDs to check (e.g., all mastered skills)
  * @returns The maximum effective cost across all provided skills
  */
-export function calculateMaxSkillCost(
-  calculator: SkillCostCalculator,
-  skillIds: string[],
-): number {
+export function calculateMaxSkillCost(calculator: SkillCostCalculator, skillIds: string[]): number {
   if (skillIds.length === 0) {
-    return 0;
+    return 0
   }
 
-  return Math.max(...skillIds.map((id) => calculator.calculateSkillCost(id)));
+  return Math.max(...skillIds.map((id) => calculator.calculateSkillCost(id)))
 }
 
 // =============================================================================
@@ -227,27 +224,27 @@ export function calculateMaxSkillCost(
  * Stats are now computed on-the-fly from session results.
  */
 export interface DbSkillRecord {
-  skillId: string;
-  isPracticing: boolean;
-  lastPracticedAt?: Date | null;
+  skillId: string
+  isPracticing: boolean
+  lastPracticedAt?: Date | null
 }
 
 /**
  * Build StudentSkillHistory from database records
  */
 export function buildStudentSkillHistoryFromRecords(
-  dbRecords: DbSkillRecord[],
+  dbRecords: DbSkillRecord[]
 ): StudentSkillHistory {
-  const skills: Record<string, StudentSkillState> = {};
+  const skills: Record<string, StudentSkillState> = {}
 
   for (const record of dbRecords) {
     skills[record.skillId] = {
       skillId: record.skillId,
       isPracticing: record.isPracticing,
-    };
+    }
   }
 
-  return { skills };
+  return { skills }
 }
 
 // =============================================================================

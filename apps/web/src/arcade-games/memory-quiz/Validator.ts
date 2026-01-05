@@ -3,84 +3,75 @@
  * Validates all game moves and state transitions
  */
 
-import type { GameValidator, ValidationResult } from "@/lib/arcade/game-sdk";
+import type { GameValidator, ValidationResult } from '@/lib/arcade/game-sdk'
 import type {
   MemoryQuizConfig,
   MemoryQuizState,
   MemoryQuizMove,
   MemoryQuizSetConfigMove,
-} from "./types";
+} from './types'
 
-export class MemoryQuizGameValidator
-  implements GameValidator<MemoryQuizState, MemoryQuizMove>
-{
+export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, MemoryQuizMove> {
   validateMove(
     state: MemoryQuizState,
     move: MemoryQuizMove,
-    context?: { userId?: string; playerOwnership?: Record<string, string> },
+    context?: { userId?: string; playerOwnership?: Record<string, string> }
   ): ValidationResult {
     switch (move.type) {
-      case "START_QUIZ":
-        return this.validateStartQuiz(state, move.data);
+      case 'START_QUIZ':
+        return this.validateStartQuiz(state, move.data)
 
-      case "NEXT_CARD":
-        return this.validateNextCard(state);
+      case 'NEXT_CARD':
+        return this.validateNextCard(state)
 
-      case "SHOW_INPUT_PHASE":
-        return this.validateShowInputPhase(state);
+      case 'SHOW_INPUT_PHASE':
+        return this.validateShowInputPhase(state)
 
-      case "ACCEPT_NUMBER":
-        return this.validateAcceptNumber(state, move.data.number, move.userId);
+      case 'ACCEPT_NUMBER':
+        return this.validateAcceptNumber(state, move.data.number, move.userId)
 
-      case "REJECT_NUMBER":
-        return this.validateRejectNumber(state, move.userId);
+      case 'REJECT_NUMBER':
+        return this.validateRejectNumber(state, move.userId)
 
-      case "SET_INPUT":
-        return this.validateSetInput(state, move.data.input);
+      case 'SET_INPUT':
+        return this.validateSetInput(state, move.data.input)
 
-      case "SHOW_RESULTS":
-        return this.validateShowResults(state);
+      case 'SHOW_RESULTS':
+        return this.validateShowResults(state)
 
-      case "RESET_QUIZ":
-        return this.validateResetQuiz(state);
+      case 'RESET_QUIZ':
+        return this.validateResetQuiz(state)
 
-      case "SET_CONFIG": {
-        const configMove = move as MemoryQuizSetConfigMove;
-        return this.validateSetConfig(
-          state,
-          configMove.data.field,
-          configMove.data.value,
-        );
+      case 'SET_CONFIG': {
+        const configMove = move as MemoryQuizSetConfigMove
+        return this.validateSetConfig(state, configMove.data.field, configMove.data.value)
       }
 
       default:
         return {
           valid: false,
           error: `Unknown move type: ${(move as any).type}`,
-        };
+        }
     }
   }
 
-  private validateStartQuiz(
-    state: MemoryQuizState,
-    data: any,
-  ): ValidationResult {
+  private validateStartQuiz(state: MemoryQuizState, data: any): ValidationResult {
     // Can start quiz from setup or results phase
-    if (state.gamePhase !== "setup" && state.gamePhase !== "results") {
+    if (state.gamePhase !== 'setup' && state.gamePhase !== 'results') {
       return {
         valid: false,
-        error: "Can only start quiz from setup or results phase",
-      };
+        error: 'Can only start quiz from setup or results phase',
+      }
     }
 
     // Accept either numbers array (from network) or quizCards (from client)
-    const numbers = data.numbers || data.quizCards?.map((c: any) => c.number);
+    const numbers = data.numbers || data.quizCards?.map((c: any) => c.number)
 
     if (!numbers || numbers.length === 0) {
       return {
         valid: false,
-        error: "Quiz numbers are required",
-      };
+        error: 'Quiz numbers are required',
+      }
     }
 
     // Create minimal quiz cards from numbers (server-side doesn't need React components)
@@ -88,28 +79,25 @@ export class MemoryQuizGameValidator
       number,
       svgComponent: null, // Not needed server-side
       element: null,
-    }));
+    }))
 
     // Extract multiplayer data from move
-    const activePlayers = data.activePlayers || state.activePlayers || [];
-    const playerMetadata = data.playerMetadata || state.playerMetadata || {};
+    const activePlayers = data.activePlayers || state.activePlayers || []
+    const playerMetadata = data.playerMetadata || state.playerMetadata || {}
 
     // Initialize player scores for all active players (by userId)
-    const uniqueUserIds = new Set<string>();
+    const uniqueUserIds = new Set<string>()
     for (const playerId of activePlayers) {
-      const metadata = playerMetadata[playerId];
+      const metadata = playerMetadata[playerId]
       if (metadata?.userId) {
-        uniqueUserIds.add(metadata.userId);
+        uniqueUserIds.add(metadata.userId)
       }
     }
 
-    const playerScores = Array.from(uniqueUserIds).reduce(
-      (acc: any, userId: string) => {
-        acc[userId] = { correct: 0, incorrect: 0 };
-        return acc;
-      },
-      {},
-    );
+    const playerScores = Array.from(uniqueUserIds).reduce((acc: any, userId: string) => {
+      acc[userId] = { correct: 0, incorrect: 0 }
+      return acc
+    }, {})
 
     const newState: MemoryQuizState = {
       ...state,
@@ -118,9 +106,9 @@ export class MemoryQuizGameValidator
       currentCardIndex: 0,
       foundNumbers: [],
       guessesRemaining: numbers.length + Math.floor(numbers.length / 2),
-      gamePhase: "display",
+      gamePhase: 'display',
       incorrectGuesses: 0,
-      currentInput: "",
+      currentInput: '',
       wrongGuessAnimations: [],
       prefixAcceptanceTimeout: null,
       // Multiplayer state
@@ -128,32 +116,32 @@ export class MemoryQuizGameValidator
       playerMetadata,
       playerScores,
       numberFoundBy: {},
-    };
+    }
 
     return {
       valid: true,
       newState,
-    };
+    }
   }
 
   private validateNextCard(state: MemoryQuizState): ValidationResult {
     // Must be in display phase
-    if (state.gamePhase !== "display") {
+    if (state.gamePhase !== 'display') {
       return {
         valid: false,
-        error: "NEXT_CARD only valid in display phase",
-      };
+        error: 'NEXT_CARD only valid in display phase',
+      }
     }
 
     const newState: MemoryQuizState = {
       ...state,
       currentCardIndex: state.currentCardIndex + 1,
-    };
+    }
 
     return {
       valid: true,
       newState,
-    };
+    }
   }
 
   private validateShowInputPhase(state: MemoryQuizState): ValidationResult {
@@ -161,249 +149,243 @@ export class MemoryQuizGameValidator
     if (state.currentCardIndex < state.quizCards.length) {
       return {
         valid: false,
-        error: "All cards must be shown before input phase",
-      };
+        error: 'All cards must be shown before input phase',
+      }
     }
 
     const newState: MemoryQuizState = {
       ...state,
-      gamePhase: "input",
-    };
+      gamePhase: 'input',
+    }
 
     return {
       valid: true,
       newState,
-    };
+    }
   }
 
   private validateAcceptNumber(
     state: MemoryQuizState,
     number: number,
-    userId?: string,
+    userId?: string
   ): ValidationResult {
     // Must be in input phase
-    if (state.gamePhase !== "input") {
+    if (state.gamePhase !== 'input') {
       return {
         valid: false,
-        error: "ACCEPT_NUMBER only valid in input phase",
-      };
+        error: 'ACCEPT_NUMBER only valid in input phase',
+      }
     }
 
     // Number must be in correct answers
     if (!state.correctAnswers.includes(number)) {
       return {
         valid: false,
-        error: "Number is not a correct answer",
-      };
+        error: 'Number is not a correct answer',
+      }
     }
 
     // Number must not be already found
     if (state.foundNumbers.includes(number)) {
       return {
         valid: false,
-        error: "Number already found",
-      };
+        error: 'Number already found',
+      }
     }
 
     // Update player scores (track by userId)
-    const playerScores = state.playerScores || {};
-    const newPlayerScores = { ...playerScores };
-    const numberFoundBy = state.numberFoundBy || {};
-    const newNumberFoundBy = { ...numberFoundBy };
+    const playerScores = state.playerScores || {}
+    const newPlayerScores = { ...playerScores }
+    const numberFoundBy = state.numberFoundBy || {}
+    const newNumberFoundBy = { ...numberFoundBy }
 
     if (userId) {
       const currentScore = newPlayerScores[userId] || {
         correct: 0,
         incorrect: 0,
-      };
+      }
       newPlayerScores[userId] = {
         ...currentScore,
         correct: currentScore.correct + 1,
-      };
+      }
       // Track who found this number
-      newNumberFoundBy[number] = userId;
+      newNumberFoundBy[number] = userId
     }
 
     const newState: MemoryQuizState = {
       ...state,
       foundNumbers: [...state.foundNumbers, number],
-      currentInput: "",
+      currentInput: '',
       playerScores: newPlayerScores,
       numberFoundBy: newNumberFoundBy,
-    };
+    }
 
     return {
       valid: true,
       newState,
-    };
+    }
   }
 
-  private validateRejectNumber(
-    state: MemoryQuizState,
-    userId?: string,
-  ): ValidationResult {
+  private validateRejectNumber(state: MemoryQuizState, userId?: string): ValidationResult {
     // Must be in input phase
-    if (state.gamePhase !== "input") {
+    if (state.gamePhase !== 'input') {
       return {
         valid: false,
-        error: "REJECT_NUMBER only valid in input phase",
-      };
+        error: 'REJECT_NUMBER only valid in input phase',
+      }
     }
 
     // Must have guesses remaining
     if (state.guessesRemaining <= 0) {
       return {
         valid: false,
-        error: "No guesses remaining",
-      };
+        error: 'No guesses remaining',
+      }
     }
 
     // Update player scores (track by userId)
-    const playerScores = state.playerScores || {};
-    const newPlayerScores = { ...playerScores };
+    const playerScores = state.playerScores || {}
+    const newPlayerScores = { ...playerScores }
     if (userId) {
       const currentScore = newPlayerScores[userId] || {
         correct: 0,
         incorrect: 0,
-      };
+      }
       newPlayerScores[userId] = {
         ...currentScore,
         incorrect: currentScore.incorrect + 1,
-      };
+      }
     }
 
     const newState: MemoryQuizState = {
       ...state,
       guessesRemaining: state.guessesRemaining - 1,
       incorrectGuesses: state.incorrectGuesses + 1,
-      currentInput: "",
+      currentInput: '',
       playerScores: newPlayerScores,
-    };
+    }
 
     return {
       valid: true,
       newState,
-    };
+    }
   }
 
-  private validateSetInput(
-    state: MemoryQuizState,
-    input: string,
-  ): ValidationResult {
+  private validateSetInput(state: MemoryQuizState, input: string): ValidationResult {
     // Must be in input phase
-    if (state.gamePhase !== "input") {
+    if (state.gamePhase !== 'input') {
       return {
         valid: false,
-        error: "SET_INPUT only valid in input phase",
-      };
+        error: 'SET_INPUT only valid in input phase',
+      }
     }
 
     // Input must be numeric
     if (input && !/^\d+$/.test(input)) {
       return {
         valid: false,
-        error: "Input must be numeric",
-      };
+        error: 'Input must be numeric',
+      }
     }
 
     const newState: MemoryQuizState = {
       ...state,
       currentInput: input,
-    };
+    }
 
     return {
       valid: true,
       newState,
-    };
+    }
   }
 
   private validateShowResults(state: MemoryQuizState): ValidationResult {
     // Can show results from input phase
-    if (state.gamePhase !== "input") {
+    if (state.gamePhase !== 'input') {
       return {
         valid: false,
-        error: "SHOW_RESULTS only valid from input phase",
-      };
+        error: 'SHOW_RESULTS only valid from input phase',
+      }
     }
 
     const newState: MemoryQuizState = {
       ...state,
-      gamePhase: "results",
-    };
+      gamePhase: 'results',
+    }
 
     return {
       valid: true,
       newState,
-    };
+    }
   }
 
   private validateResetQuiz(state: MemoryQuizState): ValidationResult {
     // Can reset from any phase
     const newState: MemoryQuizState = {
       ...state,
-      gamePhase: "setup",
+      gamePhase: 'setup',
       quizCards: [],
       correctAnswers: [],
       currentCardIndex: 0,
       foundNumbers: [],
       guessesRemaining: 0,
-      currentInput: "",
+      currentInput: '',
       incorrectGuesses: 0,
       wrongGuessAnimations: [],
       prefixAcceptanceTimeout: null,
       finishButtonsBound: false,
-    };
+    }
 
     return {
       valid: true,
       newState,
-    };
+    }
   }
 
   private validateSetConfig(
     state: MemoryQuizState,
-    field: "selectedCount" | "displayTime" | "selectedDifficulty" | "playMode",
-    value: any,
+    field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode',
+    value: any
   ): ValidationResult {
     // Can only change config during setup phase
-    if (state.gamePhase !== "setup") {
+    if (state.gamePhase !== 'setup') {
       return {
         valid: false,
-        error: "Cannot change configuration outside of setup phase",
-      };
+        error: 'Cannot change configuration outside of setup phase',
+      }
     }
 
     // Validate field-specific values
     switch (field) {
-      case "selectedCount":
+      case 'selectedCount':
         if (![2, 5, 8, 12, 15].includes(value)) {
-          return { valid: false, error: `Invalid selectedCount: ${value}` };
+          return { valid: false, error: `Invalid selectedCount: ${value}` }
         }
-        break;
+        break
 
-      case "displayTime":
-        if (typeof value !== "number" || value < 0.5 || value > 10) {
-          return { valid: false, error: `Invalid displayTime: ${value}` };
+      case 'displayTime':
+        if (typeof value !== 'number' || value < 0.5 || value > 10) {
+          return { valid: false, error: `Invalid displayTime: ${value}` }
         }
-        break;
+        break
 
-      case "selectedDifficulty":
-        if (!["beginner", "easy", "medium", "hard", "expert"].includes(value)) {
+      case 'selectedDifficulty':
+        if (!['beginner', 'easy', 'medium', 'hard', 'expert'].includes(value)) {
           return {
             valid: false,
             error: `Invalid selectedDifficulty: ${value}`,
-          };
+          }
         }
-        break;
+        break
 
-      case "playMode":
-        if (!["cooperative", "competitive"].includes(value)) {
-          return { valid: false, error: `Invalid playMode: ${value}` };
+      case 'playMode':
+        if (!['cooperative', 'competitive'].includes(value)) {
+          return { valid: false, error: `Invalid playMode: ${value}` }
         }
-        break;
+        break
 
       default:
-        return { valid: false, error: `Unknown config field: ${field}` };
+        return { valid: false, error: `Unknown config field: ${field}` }
     }
 
     // Apply the configuration change
@@ -413,11 +395,11 @@ export class MemoryQuizGameValidator
         ...state,
         [field]: value,
       },
-    };
+    }
   }
 
   isGameComplete(state: MemoryQuizState): boolean {
-    return state.gamePhase === "results";
+    return state.gamePhase === 'results'
   }
 
   getInitialState(config: MemoryQuizConfig): MemoryQuizState {
@@ -431,25 +413,25 @@ export class MemoryQuizGameValidator
       selectedDifficulty: config.selectedDifficulty,
       foundNumbers: [],
       guessesRemaining: 0,
-      currentInput: "",
+      currentInput: '',
       incorrectGuesses: 0,
       // Multiplayer state
       activePlayers: [],
       playerMetadata: {},
       playerScores: {},
-      playMode: config.playMode || "cooperative",
+      playMode: config.playMode || 'cooperative',
       numberFoundBy: {},
       // UI state
-      gamePhase: "setup",
+      gamePhase: 'setup',
       prefixAcceptanceTimeout: null,
       finishButtonsBound: false,
       wrongGuessAnimations: [],
       hasPhysicalKeyboard: null,
       testingMode: false,
       showOnScreenKeyboard: false,
-    };
+    }
   }
 }
 
 // Singleton instance
-export const memoryQuizGameValidator = new MemoryQuizGameValidator();
+export const memoryQuizGameValidator = new MemoryQuizGameValidator()

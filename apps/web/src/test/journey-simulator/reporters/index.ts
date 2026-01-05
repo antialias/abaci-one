@@ -9,7 +9,7 @@ export {
   formatComparisonResults,
   logJourneyResults,
   logComparisonResults,
-} from "./ConsoleReporter";
+} from './ConsoleReporter'
 
 export {
   toJsonSerializable,
@@ -18,4 +18,4 @@ export {
   exportComparisonToJson,
   loadFromJson,
   type ComparisonResultJson,
-} from "./JsonReporter";
+} from './JsonReporter'

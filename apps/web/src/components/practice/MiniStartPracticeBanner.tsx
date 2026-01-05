@@ -1,9 +1,9 @@
-"use client";
+'use client'
 
-import { useTheme } from "@/contexts/ThemeContext";
-import type { SessionMode } from "@/lib/curriculum/session-mode";
-import type { StudentActivity } from "@/types/student";
-import { css } from "../../../styled-system/css";
+import { useTheme } from '@/contexts/ThemeContext'
+import type { SessionMode } from '@/lib/curriculum/session-mode'
+import type { StudentActivity } from '@/types/student'
+import { css } from '../../../styled-system/css'
 
 // ============================================================================
 // Types
@@ -11,13 +11,13 @@ import { css } from "../../../styled-system/css";
 
 interface MiniStartPracticeBannerProps {
   /** Session mode data (null if not loaded yet) */
-  sessionMode: SessionMode | null;
+  sessionMode: SessionMode | null
   /** Current activity status */
-  activity: StudentActivity | null;
+  activity: StudentActivity | null
   /** Called when "Start" is clicked - should open StartPracticeModal */
-  onStartPractice: () => void;
+  onStartPractice: () => void
   /** Called when "Resume" is clicked - navigates to active session */
-  onResumePractice: () => void;
+  onResumePractice: () => void
 }
 
 // ============================================================================
@@ -25,92 +25,89 @@ interface MiniStartPracticeBannerProps {
 // ============================================================================
 
 interface ModeConfig {
-  icon: string;
-  label: string;
-  sublabel?: string;
-  buttonLabel: string;
-  bgGradient: { light: string; dark: string };
-  borderColor: { light: string; dark: string };
-  textColor: { light: string; dark: string };
-  buttonGradient: string;
+  icon: string
+  label: string
+  sublabel?: string
+  buttonLabel: string
+  bgGradient: { light: string; dark: string }
+  borderColor: { light: string; dark: string }
+  textColor: { light: string; dark: string }
+  buttonGradient: string
 }
 
 function getIdleModeConfig(sessionMode: SessionMode): ModeConfig {
   switch (sessionMode.type) {
-    case "remediation": {
-      const hasBlockedPromotion = !!sessionMode.blockedPromotion;
-      const weakCount = sessionMode.weakSkills.length;
+    case 'remediation': {
+      const hasBlockedPromotion = !!sessionMode.blockedPromotion
+      const weakCount = sessionMode.weakSkills.length
       return {
-        icon: hasBlockedPromotion ? "🔒" : "💪",
-        label: hasBlockedPromotion ? "Almost there!" : "Build strength",
-        sublabel: `${weakCount} skill${weakCount > 1 ? "s" : ""} to strengthen`,
-        buttonLabel: "Start",
+        icon: hasBlockedPromotion ? '🔒' : '💪',
+        label: hasBlockedPromotion ? 'Almost there!' : 'Build strength',
+        sublabel: `${weakCount} skill${weakCount > 1 ? 's' : ''} to strengthen`,
+        buttonLabel: 'Start',
         bgGradient: {
           light:
-            "linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.05) 100%)",
-          dark: "linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.08) 100%)",
+            'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.05) 100%)',
+          dark: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.08) 100%)',
         },
-        borderColor: { light: "#fbbf24", dark: "#d97706" },
-        textColor: { light: "#b45309", dark: "#fcd34d" },
-        buttonGradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-      };
+        borderColor: { light: '#fbbf24', dark: '#d97706' },
+        textColor: { light: '#b45309', dark: '#fcd34d' },
+        buttonGradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+      }
     }
-    case "progression": {
-      const tutorialRequired = sessionMode.tutorialRequired;
+    case 'progression': {
+      const tutorialRequired = sessionMode.tutorialRequired
       return {
-        icon: "🌟",
-        label: tutorialRequired ? "New skill unlocked!" : "Ready to learn",
+        icon: '🌟',
+        label: tutorialRequired ? 'New skill unlocked!' : 'Ready to learn',
         sublabel: sessionMode.nextSkill.displayName,
-        buttonLabel: tutorialRequired ? "Learn" : "Start",
+        buttonLabel: tutorialRequired ? 'Learn' : 'Start',
         bgGradient: {
           light:
-            "linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)",
-          dark: "linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%)",
+            'linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%)',
+          dark: 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%)',
         },
-        borderColor: { light: "#22c55e", dark: "#16a34a" },
-        textColor: { light: "#166534", dark: "#86efac" },
-        buttonGradient: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-      };
+        borderColor: { light: '#22c55e', dark: '#16a34a' },
+        textColor: { light: '#166534', dark: '#86efac' },
+        buttonGradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+      }
     }
-    case "maintenance": {
+    case 'maintenance': {
       return {
-        icon: "✨",
-        label: "All skills strong!",
+        icon: '✨',
+        label: 'All skills strong!',
         sublabel: `${sessionMode.skillCount} skills mastered`,
-        buttonLabel: "Start",
+        buttonLabel: 'Start',
         bgGradient: {
           light:
-            "linear-gradient(135deg, rgba(59, 130, 246, 0.06) 0%, rgba(139, 92, 246, 0.04) 100%)",
-          dark: "linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%)",
+            'linear-gradient(135deg, rgba(59, 130, 246, 0.06) 0%, rgba(139, 92, 246, 0.04) 100%)',
+          dark: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%)',
         },
-        borderColor: { light: "#3b82f6", dark: "#2563eb" },
-        textColor: { light: "#1d4ed8", dark: "#93c5fd" },
-        buttonGradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-      };
+        borderColor: { light: '#3b82f6', dark: '#2563eb' },
+        textColor: { light: '#1d4ed8', dark: '#93c5fd' },
+        buttonGradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+      }
     }
   }
 }
 
 function getActiveSessionConfig(activity: StudentActivity): ModeConfig {
-  const progress = activity.sessionProgress;
-  const progressText = progress
-    ? `${progress.current}/${progress.total} problems`
-    : "In progress";
+  const progress = activity.sessionProgress
+  const progressText = progress ? `${progress.current}/${progress.total} problems` : 'In progress'
 
   return {
-    icon: "▶️",
-    label: "Session in progress",
+    icon: '▶️',
+    label: 'Session in progress',
     sublabel: progressText,
-    buttonLabel: "Resume",
+    buttonLabel: 'Resume',
     bgGradient: {
-      light:
-        "linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(16, 185, 129, 0.04) 100%)",
-      dark: "linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%)",
+      light: 'linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(16, 185, 129, 0.04) 100%)',
+      dark: 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%)',
     },
-    borderColor: { light: "#22c55e", dark: "#16a34a" },
-    textColor: { light: "#166534", dark: "#86efac" },
-    buttonGradient: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-  };
+    borderColor: { light: '#22c55e', dark: '#16a34a' },
+    textColor: { light: '#166534', dark: '#86efac' },
+    buttonGradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+  }
 }
 
 // ============================================================================
@@ -132,51 +129,49 @@ export function MiniStartPracticeBanner({
   onStartPractice,
   onResumePractice,
 }: MiniStartPracticeBannerProps) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
-  const isPracticing = activity?.status === "practicing";
+  const isPracticing = activity?.status === 'practicing'
 
   // Determine config and handler based on state
-  let config: ModeConfig;
-  let handleClick: () => void;
+  let config: ModeConfig
+  let handleClick: () => void
 
   if (isPracticing) {
-    config = getActiveSessionConfig(activity);
-    handleClick = onResumePractice;
+    config = getActiveSessionConfig(activity)
+    handleClick = onResumePractice
   } else if (sessionMode) {
-    config = getIdleModeConfig(sessionMode);
-    handleClick = onStartPractice;
+    config = getIdleModeConfig(sessionMode)
+    handleClick = onStartPractice
   } else {
     // No session mode data yet - don't render
-    return null;
+    return null
   }
 
   return (
     <div
       data-component="mini-start-practice-banner"
-      data-mode={isPracticing ? "active" : sessionMode?.type}
-      data-variant={isPracticing ? "resume" : "start"}
+      data-mode={isPracticing ? 'active' : sessionMode?.type}
+      data-variant={isPracticing ? 'resume' : 'start'}
       className={css({
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "8px 12px",
-        borderRadius: "8px",
-        margin: "8px 12px 0",
-        border: "1px solid",
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        padding: '8px 12px',
+        borderRadius: '8px',
+        margin: '8px 12px 0',
+        border: '1px solid',
       })}
       style={{
         background: isDark ? config.bgGradient.dark : config.bgGradient.light,
-        borderColor: isDark
-          ? config.borderColor.dark
-          : config.borderColor.light,
+        borderColor: isDark ? config.borderColor.dark : config.borderColor.light,
       }}
     >
       {/* Icon */}
       <span
         className={css({
-          fontSize: "1.25rem",
+          fontSize: '1.25rem',
           lineHeight: 1,
           flexShrink: 0,
         })}
@@ -189,17 +184,17 @@ export function MiniStartPracticeBanner({
         className={css({
           flex: 1,
           minWidth: 0,
-          overflow: "hidden",
+          overflow: 'hidden',
         })}
       >
         <div
           className={css({
-            fontSize: "0.8125rem",
-            fontWeight: "600",
+            fontSize: '0.8125rem',
+            fontWeight: '600',
             lineHeight: 1.2,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           })}
           style={{
             color: isDark ? config.textColor.dark : config.textColor.light,
@@ -210,14 +205,14 @@ export function MiniStartPracticeBanner({
         {config.sublabel && (
           <div
             className={css({
-              fontSize: "0.6875rem",
+              fontSize: '0.6875rem',
               lineHeight: 1.2,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              marginTop: "1px",
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              marginTop: '1px',
             })}
-            style={{ color: isDark ? "#a1a1aa" : "#6b7280" }}
+            style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
           >
             {config.sublabel}
           </div>
@@ -227,39 +222,39 @@ export function MiniStartPracticeBanner({
       {/* Action button */}
       <button
         type="button"
-        data-action={isPracticing ? "resume-practice" : "start-practice"}
+        data-action={isPracticing ? 'resume-practice' : 'start-practice'}
         onClick={handleClick}
         className={css({
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          padding: "6px 12px",
-          fontSize: "0.8125rem",
-          fontWeight: "600",
-          color: "white",
-          border: "none",
-          borderRadius: "6px",
-          cursor: "pointer",
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '6px 12px',
+          fontSize: '0.8125rem',
+          fontWeight: '600',
+          color: 'white',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
           flexShrink: 0,
-          transition: "all 0.15s ease",
+          transition: 'all 0.15s ease',
           _hover: {
-            filter: "brightness(1.05)",
-            transform: "translateY(-1px)",
+            filter: 'brightness(1.05)',
+            transform: 'translateY(-1px)',
           },
           _active: {
-            transform: "translateY(0)",
+            transform: 'translateY(0)',
           },
         })}
         style={{
           background: config.buttonGradient,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
         }}
       >
         <span>{config.buttonLabel}</span>
-        <span className={css({ fontSize: "0.75rem" })}>→</span>
+        <span className={css({ fontSize: '0.75rem' })}>→</span>
       </button>
     </div>
-  );
+  )
 }
 
-export default MiniStartPracticeBanner;
+export default MiniStartPracticeBanner

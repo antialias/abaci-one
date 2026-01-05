@@ -1,6 +1,6 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import * as schema from "./schema";
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import * as schema from './schema'
 
 /**
  * Database connection and client
@@ -13,10 +13,10 @@ import * as schema from "./schema";
  * when the database doesn't exist (e.g., in CI/CD environments).
  */
 
-const databaseUrl = process.env.DATABASE_URL || "./data/sqlite.db";
+const databaseUrl = process.env.DATABASE_URL || './data/sqlite.db'
 
-let _sqlite: Database.Database | null = null;
-let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
+let _sqlite: Database.Database | null = null
+let _db: ReturnType<typeof drizzle<typeof schema>> | null = null
 
 /**
  * Get the database connection (lazy-loaded singleton)
@@ -24,17 +24,17 @@ let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
  */
 function getDb() {
   if (!_db) {
-    _sqlite = new Database(databaseUrl);
+    _sqlite = new Database(databaseUrl)
 
     // Enable foreign keys (SQLite requires explicit enable)
-    _sqlite.pragma("foreign_keys = ON");
+    _sqlite.pragma('foreign_keys = ON')
 
     // Enable WAL mode for better concurrency
-    _sqlite.pragma("journal_mode = WAL");
+    _sqlite.pragma('journal_mode = WAL')
 
-    _db = drizzle(_sqlite, { schema });
+    _db = drizzle(_sqlite, { schema })
   }
-  return _db;
+  return _db
 }
 
 /**
@@ -43,8 +43,8 @@ function getDb() {
  */
 export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
   get(_target, prop) {
-    return getDb()[prop as keyof ReturnType<typeof drizzle<typeof schema>>];
+    return getDb()[prop as keyof ReturnType<typeof drizzle<typeof schema>>]
   },
-});
+})
 
-export { schema };
+export { schema }

@@ -1,46 +1,46 @@
-"use client";
+'use client'
 
-import type { Meta, StoryObj } from "@storybook/react";
-import { useState } from "react";
-import { css } from "../../../styled-system/css";
-import { ParsingProgressOverlay } from "./ParsingProgressOverlay";
+import type { Meta, StoryObj } from '@storybook/react'
+import { useState } from 'react'
+import { css } from '../../../styled-system/css'
+import { ParsingProgressOverlay } from './ParsingProgressOverlay'
 
 const meta: Meta<typeof ParsingProgressOverlay> = {
-  title: "Practice/Worksheet Parsing/ParsingProgressOverlay",
+  title: 'Practice/Worksheet Parsing/ParsingProgressOverlay',
   component: ParsingProgressOverlay,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
   argTypes: {
-    progressMessage: { control: "text" },
-    completedCount: { control: { type: "number", min: 0, max: 50 } },
-    totalCount: { control: { type: "number", min: 0, max: 50 } },
-    isPanelExpanded: { control: "boolean" },
-    hasReasoningText: { control: "boolean" },
+    progressMessage: { control: 'text' },
+    completedCount: { control: { type: 'number', min: 0, max: 50 } },
+    totalCount: { control: { type: 'number', min: 0, max: 50 } },
+    isPanelExpanded: { control: 'boolean' },
+    hasReasoningText: { control: 'boolean' },
   },
   decorators: [
     (Story) => (
       <div
         className={css({
-          position: "relative",
-          width: "300px",
-          height: "300px",
-          borderRadius: "12px",
-          overflow: "hidden",
+          position: 'relative',
+          width: '300px',
+          height: '300px',
+          borderRadius: '12px',
+          overflow: 'hidden',
           backgroundImage:
-            "url(https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=400&h=400&fit=crop)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
+            'url(https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=400&h=400&fit=crop)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
         })}
       >
         <Story />
       </div>
     ),
   ],
-};
+}
 
-export default meta;
-type Story = StoryObj<typeof ParsingProgressOverlay>;
+export default meta
+type Story = StoryObj<typeof ParsingProgressOverlay>
 
 // ============================================
 // BASIC STATES
@@ -48,7 +48,7 @@ type Story = StoryObj<typeof ParsingProgressOverlay>;
 
 export const Connecting: Story = {
   args: {
-    progressMessage: "Connecting to AI...",
+    progressMessage: 'Connecting to AI...',
     completedCount: 0,
     totalCount: 0,
     isPanelExpanded: false,
@@ -56,11 +56,11 @@ export const Connecting: Story = {
     onTogglePanel: () => {},
     onCancel: () => {},
   },
-};
+}
 
 export const Analyzing: Story = {
   args: {
-    progressMessage: "AI is analyzing the worksheet...",
+    progressMessage: 'AI is analyzing the worksheet...',
     completedCount: 0,
     totalCount: 0,
     isPanelExpanded: false,
@@ -68,7 +68,7 @@ export const Analyzing: Story = {
     onTogglePanel: () => {},
     onCancel: () => {},
   },
-};
+}
 
 export const FoundProblemsUnknownTotal: Story = {
   args: {
@@ -80,7 +80,7 @@ export const FoundProblemsUnknownTotal: Story = {
     onTogglePanel: () => {},
     onCancel: () => {},
   },
-};
+}
 
 export const FoundProblemsKnownTotal: Story = {
   args: {
@@ -92,7 +92,7 @@ export const FoundProblemsKnownTotal: Story = {
     onTogglePanel: () => {},
     onCancel: () => {},
   },
-};
+}
 
 export const AlmostComplete: Story = {
   args: {
@@ -104,7 +104,7 @@ export const AlmostComplete: Story = {
     onTogglePanel: () => {},
     onCancel: () => {},
   },
-};
+}
 
 // ============================================
 // PANEL EXPANDED STATES
@@ -120,7 +120,7 @@ export const PanelCollapsed: Story = {
     onTogglePanel: () => {},
     onCancel: () => {},
   },
-};
+}
 
 export const PanelExpanded: Story = {
   args: {
@@ -132,11 +132,11 @@ export const PanelExpanded: Story = {
     onTogglePanel: () => {},
     onCancel: () => {},
   },
-};
+}
 
 export const NoReasoningText: Story = {
   args: {
-    progressMessage: "Connecting...",
+    progressMessage: 'Connecting...',
     completedCount: 0,
     totalCount: 0,
     isPanelExpanded: false,
@@ -144,44 +144,44 @@ export const NoReasoningText: Story = {
     onTogglePanel: () => {},
     onCancel: () => {},
   },
-};
+}
 
 // ============================================
 // INTERACTIVE DEMO
 // ============================================
 
 function InteractiveDemo() {
-  const [isPanelExpanded, setIsPanelExpanded] = useState(false);
-  const [cancelled, setCancelled] = useState(false);
+  const [isPanelExpanded, setIsPanelExpanded] = useState(false)
+  const [cancelled, setCancelled] = useState(false)
 
   if (cancelled) {
     return (
       <div
         className={css({
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          color: "white",
-          backgroundColor: "rgba(0, 0, 0, 0.65)",
-          borderRadius: "12px",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          color: 'white',
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          borderRadius: '12px',
         })}
       >
         <button
           type="button"
           onClick={() => setCancelled(false)}
           className={css({
-            padding: "0.5rem 1rem",
-            backgroundColor: "blue.500",
-            color: "white",
-            borderRadius: "6px",
-            cursor: "pointer",
+            padding: '0.5rem 1rem',
+            backgroundColor: 'blue.500',
+            color: 'white',
+            borderRadius: '6px',
+            cursor: 'pointer',
           })}
         >
           Restart
         </button>
       </div>
-    );
+    )
   }
 
   return (
@@ -194,12 +194,12 @@ function InteractiveDemo() {
       onTogglePanel={() => setIsPanelExpanded((p) => !p)}
       onCancel={() => setCancelled(true)}
     />
-  );
+  )
 }
 
 export const Interactive: Story = {
   render: () => <InteractiveDemo />,
-};
+}
 
 // ============================================
 // DIFFERENT PROBLEM COUNTS
@@ -215,7 +215,7 @@ export const SmallWorksheet: Story = {
     onTogglePanel: () => {},
     onCancel: () => {},
   },
-};
+}
 
 export const LargeWorksheet: Story = {
   args: {
@@ -227,7 +227,7 @@ export const LargeWorksheet: Story = {
     onTogglePanel: () => {},
     onCancel: () => {},
   },
-};
+}
 
 // ============================================
 // TILE SIZE VARIATIONS
@@ -247,21 +247,21 @@ export const SmallTile: Story = {
     (Story) => (
       <div
         className={css({
-          position: "relative",
-          width: "150px",
-          height: "150px",
-          borderRadius: "8px",
-          overflow: "hidden",
+          position: 'relative',
+          width: '150px',
+          height: '150px',
+          borderRadius: '8px',
+          overflow: 'hidden',
           backgroundImage:
-            "url(https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=200&h=200&fit=crop)",
-          backgroundSize: "cover",
+            'url(https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=200&h=200&fit=crop)',
+          backgroundSize: 'cover',
         })}
       >
         <Story />
       </div>
     ),
   ],
-};
+}
 
 export const LargeTile: Story = {
   args: {
@@ -277,18 +277,18 @@ export const LargeTile: Story = {
     (Story) => (
       <div
         className={css({
-          position: "relative",
-          width: "450px",
-          height: "450px",
-          borderRadius: "16px",
-          overflow: "hidden",
+          position: 'relative',
+          width: '450px',
+          height: '450px',
+          borderRadius: '16px',
+          overflow: 'hidden',
           backgroundImage:
-            "url(https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=600&h=600&fit=crop)",
-          backgroundSize: "cover",
+            'url(https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=600&h=600&fit=crop)',
+          backgroundSize: 'cover',
         })}
       >
         <Story />
       </div>
     ),
   ],
-};
+}

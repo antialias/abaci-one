@@ -850,6 +850,25 @@ Three places must handle settings correctly:
 
 If a setting doesn't persist, check all three locations.
 
+## Arcade Room Architecture
+
+When working on arcade rooms, multiplayer, or game break integration with practice:
+
+- **`.claude/ARCADE_ROOM_ARCHITECTURE.md`** - Complete architecture documentation
+  - One Room Rule (modal room enforcement)
+  - Auto-leave socket broadcasting
+  - React Strict Mode handling for room creation
+  - Practice + Arcade integration (game breaks)
+  - Known gaps and improvement ideas
+  - Debugging checklist
+
+**Quick Reference:**
+
+- **One Room Rule:** Users can only be in one room at a time. Creating/joining auto-leaves from previous rooms.
+- **Auto-leave broadcasts:** When auto-leaving, socket `member-left` events must be sent to all affected clients.
+- **Strict Mode:** Hooks creating rooms need `isCreatingRef` guards to prevent double-creation.
+- **Idempotent leave:** The leave endpoint returns success even if user already left.
+
 ## Z-Index and Stacking Context Management
 
 When working with z-index values or encountering layering issues, refer to:

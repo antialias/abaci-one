@@ -17,31 +17,31 @@
 
 export interface ViewportInfo {
   /** Width of SVG viewBox */
-  viewBoxWidth: number;
+  viewBoxWidth: number
   /** Height of SVG viewBox */
-  viewBoxHeight: number;
+  viewBoxHeight: number
   /** Rendered width of SVG element */
-  svgWidth: number;
+  svgWidth: number
   /** Rendered height of SVG element */
-  svgHeight: number;
+  svgHeight: number
 }
 
 export interface MagnifierInfo {
   /** Actual width of magnifier (accounting for expansion) */
-  width: number;
+  width: number
   /** Actual height of magnifier (accounting for expansion) */
-  height: number;
+  height: number
   /** Current zoom level */
-  zoom: number;
+  zoom: number
 }
 
 export interface TouchMultiplierResult {
   /** Multiplier to apply to touch delta for cursor movement */
-  multiplier: number;
+  multiplier: number
   /** Viewport scale (SVG rendering scale) */
-  viewportScale: number;
+  viewportScale: number
   /** Magnifier scale (content scale within magnifier) */
-  magnifierScale: number;
+  magnifierScale: number
 }
 
 // ============================================================================
@@ -55,15 +55,15 @@ export interface TouchMultiplierResult {
  * is constrained and the other has letterboxing.
  */
 export function calculateViewportScale(viewport: ViewportInfo): number {
-  const { viewBoxWidth, viewBoxHeight, svgWidth, svgHeight } = viewport;
+  const { viewBoxWidth, viewBoxHeight, svgWidth, svgHeight } = viewport
 
-  const svgAspect = viewBoxWidth / viewBoxHeight;
-  const containerAspect = svgWidth / svgHeight;
+  const svgAspect = viewBoxWidth / viewBoxHeight
+  const containerAspect = svgWidth / svgHeight
 
   // Use the constrained dimension's scale
   return containerAspect > svgAspect
     ? svgHeight / viewBoxHeight // Height-constrained
-    : svgWidth / viewBoxWidth; // Width-constrained
+    : svgWidth / viewBoxWidth // Width-constrained
 }
 
 /**
@@ -71,18 +71,15 @@ export function calculateViewportScale(viewport: ViewportInfo): number {
  *
  * Uses the smaller scale factor to ensure 1:1 feel in the constrained direction.
  */
-export function calculateMagnifierScale(
-  viewport: ViewportInfo,
-  magnifier: MagnifierInfo,
-): number {
-  const { viewBoxWidth, viewBoxHeight } = viewport;
-  const { width, height, zoom } = magnifier;
+export function calculateMagnifierScale(viewport: ViewportInfo, magnifier: MagnifierInfo): number {
+  const { viewBoxWidth, viewBoxHeight } = viewport
+  const { width, height, zoom } = magnifier
 
-  const magnifierScaleX = (width * zoom) / viewBoxWidth;
-  const magnifierScaleY = (height * zoom) / viewBoxHeight;
+  const magnifierScaleX = (width * zoom) / viewBoxWidth
+  const magnifierScaleY = (height * zoom) / viewBoxHeight
 
   // Use smaller scale to ensure consistency (magnifier may not be square)
-  return Math.min(magnifierScaleX, magnifierScaleY);
+  return Math.min(magnifierScaleX, magnifierScaleY)
 }
 
 /**
@@ -107,16 +104,16 @@ export function calculateMagnifierScale(
  */
 export function calculateTouchMultiplier(
   viewport: ViewportInfo,
-  magnifier: MagnifierInfo,
+  magnifier: MagnifierInfo
 ): TouchMultiplierResult {
-  const viewportScale = calculateViewportScale(viewport);
-  const magnifierScale = calculateMagnifierScale(viewport, magnifier);
+  const viewportScale = calculateViewportScale(viewport)
+  const magnifierScale = calculateMagnifierScale(viewport, magnifier)
 
   return {
     multiplier: viewportScale / magnifierScale,
     viewportScale,
     magnifierScale,
-  };
+  }
 }
 
 // ============================================================================
@@ -130,18 +127,18 @@ export function calculateTouchMultiplier(
  * @returns Object with x, y, width, height (defaults if parsing fails)
  */
 export function parseViewBoxDimensions(viewBox: string): {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  x: number
+  y: number
+  width: number
+  height: number
 } {
-  const parts = viewBox.split(" ").map(Number);
+  const parts = viewBox.split(' ').map(Number)
   return {
     x: parts[0] || 0,
     y: parts[1] || 0,
     width: parts[2] || 1000,
     height: parts[3] || 500,
-  };
+  }
 }
 
 /**
@@ -155,14 +152,14 @@ export function parseViewBoxDimensions(viewBox: string): {
 export function applyPanDelta(
   currentCursor: { x: number; y: number },
   delta: { x: number; y: number },
-  multiplier: number,
+  multiplier: number
 ): { x: number; y: number } {
   // Invert delta - dragging the "paper" under the magnifier means:
   // - Drag finger right = paper moves right = magnifier shows what was to the LEFT
   return {
     x: currentCursor.x - delta.x * multiplier,
     y: currentCursor.y - delta.y * multiplier,
-  };
+  }
 }
 
 /**
@@ -174,18 +171,12 @@ export function applyPanDelta(
  */
 export function clampToSvgBounds(
   cursor: { x: number; y: number },
-  svgBounds: { left: number; top: number; width: number; height: number },
+  svgBounds: { left: number; top: number; width: number; height: number }
 ): { x: number; y: number } {
   return {
-    x: Math.max(
-      svgBounds.left,
-      Math.min(svgBounds.left + svgBounds.width, cursor.x),
-    ),
-    y: Math.max(
-      svgBounds.top,
-      Math.min(svgBounds.top + svgBounds.height, cursor.y),
-    ),
-  };
+    x: Math.max(svgBounds.left, Math.min(svgBounds.left + svgBounds.width, cursor.x)),
+    y: Math.max(svgBounds.top, Math.min(svgBounds.top + svgBounds.height, cursor.y)),
+  }
 }
 
 /**
@@ -193,11 +184,11 @@ export function clampToSvgBounds(
  */
 export interface RenderedViewport {
   /** Scale factor for converting pixels to SVG units */
-  scale: number;
+  scale: number
   /** Horizontal letterbox offset in pixels */
-  letterboxX: number;
+  letterboxX: number
   /** Vertical letterbox offset in pixels */
-  letterboxY: number;
+  letterboxY: number
 }
 
 /**
@@ -221,13 +212,13 @@ export function cursorToSvgCoordinates(
   containerRect: DOMRect,
   svgRect: DOMRect,
   viewport: RenderedViewport,
-  viewBox: { x: number; y: number; width: number; height: number },
+  viewBox: { x: number; y: number; width: number; height: number }
 ): { x: number; y: number } {
-  const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX;
-  const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY;
+  const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+  const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
 
   return {
     x: (cursorPosition.x - svgOffsetX) / viewport.scale + viewBox.x,
     y: (cursorPosition.y - svgOffsetY) / viewport.scale + viewBox.y,
-  };
+  }
 }

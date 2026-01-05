@@ -1,23 +1,23 @@
-"use client";
+'use client'
 
-import type { ReactNode } from "react";
-import { css } from "../../../styled-system/css";
+import type { ReactNode } from 'react'
+import { css } from '../../../styled-system/css'
 
 export interface VisionStatusIndicatorProps {
   /** Whether calibration is complete */
-  isCalibrated: boolean;
+  isCalibrated: boolean
   /** Whether actively detecting */
-  isDetecting: boolean;
+  isDetecting: boolean
   /** Detection confidence (0-1) */
-  confidence: number;
+  confidence: number
   /** Whether hand motion is detected */
-  handDetected: boolean;
+  handDetected: boolean
   /** Current detected value (null if not stable) */
-  detectedValue: number | null;
+  detectedValue: number | null
   /** Number of consecutive stable frames */
-  consecutiveFrames: number;
+  consecutiveFrames: number
   /** Minimum frames needed for stable detection */
-  minFrames?: number;
+  minFrames?: number
 }
 
 /**
@@ -39,52 +39,51 @@ export function VisionStatusIndicator({
   minFrames = 10,
 }: VisionStatusIndicatorProps): ReactNode {
   // Determine status
-  let status: "uncalibrated" | "detecting" | "stable" | "hand-blocking" =
-    "uncalibrated";
-  let statusColor = "gray.500";
-  let statusText = "Not calibrated";
+  let status: 'uncalibrated' | 'detecting' | 'stable' | 'hand-blocking' = 'uncalibrated'
+  let statusColor = 'gray.500'
+  let statusText = 'Not calibrated'
 
   if (!isCalibrated) {
-    status = "uncalibrated";
-    statusColor = "gray.500";
-    statusText = "Not calibrated";
+    status = 'uncalibrated'
+    statusColor = 'gray.500'
+    statusText = 'Not calibrated'
   } else if (handDetected) {
-    status = "hand-blocking";
-    statusColor = "orange.500";
-    statusText = "Hand detected";
+    status = 'hand-blocking'
+    statusColor = 'orange.500'
+    statusText = 'Hand detected'
   } else if (detectedValue !== null && consecutiveFrames >= minFrames) {
-    status = "stable";
-    statusColor = "green.500";
-    statusText = "Stable";
+    status = 'stable'
+    statusColor = 'green.500'
+    statusText = 'Stable'
   } else if (isDetecting) {
-    status = "detecting";
-    statusColor = "yellow.500";
-    statusText = "Detecting...";
+    status = 'detecting'
+    statusColor = 'yellow.500'
+    statusText = 'Detecting...'
   }
 
   // Confidence bar width
-  const confidencePercent = Math.round(confidence * 100);
+  const confidencePercent = Math.round(confidence * 100)
 
   return (
     <div
       data-component="vision-status-indicator"
       data-status={status}
       className={css({
-        display: "flex",
-        flexDirection: "column",
+        display: 'flex',
+        flexDirection: 'column',
         gap: 1,
         p: 2,
-        bg: "rgba(0, 0, 0, 0.7)",
-        borderRadius: "lg",
-        minWidth: "120px",
+        bg: 'rgba(0, 0, 0, 0.7)',
+        borderRadius: 'lg',
+        minWidth: '120px',
       })}
     >
       {/* Status indicator */}
       <div
         data-element="status-row"
         className={css({
-          display: "flex",
-          alignItems: "center",
+          display: 'flex',
+          alignItems: 'center',
           gap: 2,
         })}
       >
@@ -92,20 +91,20 @@ export function VisionStatusIndicator({
         <div
           data-element="status-dot"
           className={css({
-            width: "8px",
-            height: "8px",
-            borderRadius: "full",
-            animation: status === "detecting" ? "pulse 1s infinite" : "none",
+            width: '8px',
+            height: '8px',
+            borderRadius: 'full',
+            animation: status === 'detecting' ? 'pulse 1s infinite' : 'none',
           })}
           style={{
-            backgroundColor: `var(--colors-${statusColor.replace(".", "-")})`,
+            backgroundColor: `var(--colors-${statusColor.replace('.', '-')})`,
           }}
         />
         <span
           className={css({
-            fontSize: "xs",
-            color: "white",
-            fontWeight: "medium",
+            fontSize: 'xs',
+            color: 'white',
+            fontWeight: 'medium',
           })}
         >
           {statusText}
@@ -117,11 +116,11 @@ export function VisionStatusIndicator({
         <div
           data-element="detected-value"
           className={css({
-            fontSize: "xl",
-            fontWeight: "bold",
-            color: status === "stable" ? "green.300" : "yellow.300",
-            fontFamily: "mono",
-            textAlign: "center",
+            fontSize: 'xl',
+            fontWeight: 'bold',
+            color: status === 'stable' ? 'green.300' : 'yellow.300',
+            fontFamily: 'mono',
+            textAlign: 'center',
           })}
         >
           {detectedValue}
@@ -133,41 +132,41 @@ export function VisionStatusIndicator({
         <div
           data-element="confidence-bar"
           className={css({
-            display: "flex",
-            flexDirection: "column",
+            display: 'flex',
+            flexDirection: 'column',
             gap: 0.5,
           })}
         >
           <div
             className={css({
-              fontSize: "xs",
-              color: "gray.400",
+              fontSize: 'xs',
+              color: 'gray.400',
             })}
           >
             Confidence: {confidencePercent}%
           </div>
           <div
             className={css({
-              height: "4px",
-              bg: "gray.700",
-              borderRadius: "full",
-              overflow: "hidden",
+              height: '4px',
+              bg: 'gray.700',
+              borderRadius: 'full',
+              overflow: 'hidden',
             })}
           >
             <div
               className={css({
-                height: "100%",
-                borderRadius: "full",
-                transition: "width 0.2s",
+                height: '100%',
+                borderRadius: 'full',
+                transition: 'width 0.2s',
               })}
               style={{
                 width: `${confidencePercent}%`,
                 backgroundColor:
                   confidence > 0.8
-                    ? "var(--colors-green-500)"
+                    ? 'var(--colors-green-500)'
                     : confidence > 0.5
-                      ? "var(--colors-yellow-500)"
-                      : "var(--colors-red-500)",
+                      ? 'var(--colors-yellow-500)'
+                      : 'var(--colors-red-500)',
               }}
             />
           </div>
@@ -175,24 +174,21 @@ export function VisionStatusIndicator({
       )}
 
       {/* Stability progress */}
-      {isCalibrated &&
-        isDetecting &&
-        !handDetected &&
-        consecutiveFrames > 0 && (
-          <div
-            data-element="stability-progress"
-            className={css({
-              fontSize: "xs",
-              color: "gray.400",
-            })}
-          >
-            {consecutiveFrames >= minFrames
-              ? "Locked"
-              : `Stabilizing... ${consecutiveFrames}/${minFrames}`}
-          </div>
-        )}
+      {isCalibrated && isDetecting && !handDetected && consecutiveFrames > 0 && (
+        <div
+          data-element="stability-progress"
+          className={css({
+            fontSize: 'xs',
+            color: 'gray.400',
+          })}
+        >
+          {consecutiveFrames >= minFrames
+            ? 'Locked'
+            : `Stabilizing... ${consecutiveFrames}/${minFrames}`}
+        </div>
+      )}
     </div>
-  );
+  )
 }
 
-export default VisionStatusIndicator;
+export default VisionStatusIndicator

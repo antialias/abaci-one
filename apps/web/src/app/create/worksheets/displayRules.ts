@@ -1,37 +1,37 @@
 // Display rules for conditional per-problem scaffolding
 
-import type { ProblemMeta, SubtractionProblemMeta } from "./problemAnalysis";
+import type { ProblemMeta, SubtractionProblemMeta } from './problemAnalysis'
 
-export type AnyProblemMeta = ProblemMeta | SubtractionProblemMeta;
+export type AnyProblemMeta = ProblemMeta | SubtractionProblemMeta
 
 export type RuleMode =
-  | "auto" // Defer to mastery progression (should be resolved before rendering)
-  | "always" // Always show this display option
-  | "never" // Never show this display option
-  | "whenRegrouping" // Show when problem requires any regrouping
-  | "whenMultipleRegroups" // Show when 2+ place values regroup
-  | "when3PlusDigits"; // Show when maxDigits >= 3
+  | 'auto' // Defer to mastery progression (should be resolved before rendering)
+  | 'always' // Always show this display option
+  | 'never' // Never show this display option
+  | 'whenRegrouping' // Show when problem requires any regrouping
+  | 'whenMultipleRegroups' // Show when 2+ place values regroup
+  | 'when3PlusDigits' // Show when maxDigits >= 3
 
 export interface DisplayRules {
-  carryBoxes: RuleMode;
-  answerBoxes: RuleMode;
-  placeValueColors: RuleMode;
-  tenFrames: RuleMode;
-  problemNumbers: RuleMode;
-  cellBorders: RuleMode;
-  borrowNotation: RuleMode; // Subtraction: scratch boxes showing borrowed 10s
-  borrowingHints: RuleMode; // Subtraction: arrows and visual hints
+  carryBoxes: RuleMode
+  answerBoxes: RuleMode
+  placeValueColors: RuleMode
+  tenFrames: RuleMode
+  problemNumbers: RuleMode
+  cellBorders: RuleMode
+  borrowNotation: RuleMode // Subtraction: scratch boxes showing borrowed 10s
+  borrowingHints: RuleMode // Subtraction: arrows and visual hints
 }
 
 export interface ResolvedDisplayOptions {
-  showCarryBoxes: boolean;
-  showAnswerBoxes: boolean;
-  showPlaceValueColors: boolean;
-  showTenFrames: boolean;
-  showProblemNumbers: boolean;
-  showCellBorder: boolean;
-  showBorrowNotation: boolean; // Subtraction: scratch work boxes in minuend
-  showBorrowingHints: boolean; // Subtraction: hints with arrows
+  showCarryBoxes: boolean
+  showAnswerBoxes: boolean
+  showPlaceValueColors: boolean
+  showTenFrames: boolean
+  showProblemNumbers: boolean
+  showCellBorder: boolean
+  showBorrowNotation: boolean // Subtraction: scratch work boxes in minuend
+  showBorrowingHints: boolean // Subtraction: hints with arrows
 }
 
 /**
@@ -40,34 +40,32 @@ export interface ResolvedDisplayOptions {
  */
 export function evaluateRule(mode: RuleMode, problem: AnyProblemMeta): boolean {
   switch (mode) {
-    case "auto":
+    case 'auto':
       // 'auto' should have been resolved to a concrete value in validation
       // If it reaches here, something went wrong - default to 'always' to avoid breaking
       console.error(
-        '[evaluateRule] BUG: "auto" mode should have been resolved before rendering. Defaulting to "always".',
-      );
-      return true;
+        '[evaluateRule] BUG: "auto" mode should have been resolved before rendering. Defaulting to "always".'
+      )
+      return true
 
-    case "always":
-      return true;
+    case 'always':
+      return true
 
-    case "never":
-      return false;
+    case 'never':
+      return false
 
-    case "whenRegrouping":
+    case 'whenRegrouping':
       // Works for both: requiresRegrouping (addition) or requiresBorrowing (subtraction)
-      return "requiresRegrouping" in problem
+      return 'requiresRegrouping' in problem
         ? problem.requiresRegrouping
-        : problem.requiresBorrowing;
+        : problem.requiresBorrowing
 
-    case "whenMultipleRegroups":
+    case 'whenMultipleRegroups':
       // Works for both: regroupCount (addition) or borrowCount (subtraction)
-      return "regroupCount" in problem
-        ? problem.regroupCount >= 2
-        : problem.borrowCount >= 2;
+      return 'regroupCount' in problem ? problem.regroupCount >= 2 : problem.borrowCount >= 2
 
-    case "when3PlusDigits":
-      return problem.maxDigits >= 3;
+    case 'when3PlusDigits':
+      return problem.maxDigits >= 3
   }
 }
 
@@ -77,7 +75,7 @@ export function evaluateRule(mode: RuleMode, problem: AnyProblemMeta): boolean {
  */
 export function resolveDisplayForProblem(
   rules: DisplayRules,
-  problem: AnyProblemMeta,
+  problem: AnyProblemMeta
 ): ResolvedDisplayOptions {
   return {
     showCarryBoxes: evaluateRule(rules.carryBoxes, problem),
@@ -88,5 +86,5 @@ export function resolveDisplayForProblem(
     showCellBorder: evaluateRule(rules.cellBorders, problem),
     showBorrowNotation: evaluateRule(rules.borrowNotation, problem),
     showBorrowingHints: evaluateRule(rules.borrowingHints, problem),
-  };
+  }
 }

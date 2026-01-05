@@ -1,12 +1,8 @@
-"use client";
+'use client'
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { io, type Socket } from "socket.io-client";
-import type {
-  SessionPart,
-  SessionPartType,
-  SlotResult,
-} from "@/db/schema/session-plans";
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { io, type Socket } from 'socket.io-client'
+import type { SessionPart, SessionPartType, SlotResult } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
   PartTransitionCompleteEvent,
@@ -15,28 +11,28 @@ import type {
   SessionPausedEvent,
   SessionResumedEvent,
   VisionFrameEvent,
-} from "@/lib/classroom/socket-events";
+} from '@/lib/classroom/socket-events'
 
 /**
  * Control actions a teacher can send to a student's practice session abacus
  */
 export type SessionAbacusControlAction =
-  | { type: "show-abacus" }
-  | { type: "hide-abacus" }
-  | { type: "set-abacus-value"; value: number };
+  | { type: 'show-abacus' }
+  | { type: 'hide-abacus' }
+  | { type: 'set-abacus-value'; value: number }
 
 /**
  * Complexity data from broadcast
  */
 export interface ObservedComplexity {
   /** Complexity bounds from slot constraints */
-  bounds?: { min?: number; max?: number };
+  bounds?: { min?: number; max?: number }
   /** Total complexity cost from generation trace */
-  totalCost?: number;
+  totalCost?: number
   /** Number of steps (for per-term average) */
-  stepCount?: number;
+  stepCount?: number
   /** Pre-formatted target skill name */
-  targetSkillName?: string;
+  targetSkillName?: string
 }
 
 /**
@@ -45,38 +41,38 @@ export interface ObservedComplexity {
 export interface ObservedSessionState {
   /** Current problem being worked on */
   currentProblem: {
-    terms: number[];
-    answer: number;
-  };
+    terms: number[]
+    answer: number
+  }
   /** Current phase of the interaction */
-  phase: "problem" | "feedback" | "tutorial";
+  phase: 'problem' | 'feedback' | 'tutorial'
   /** Student's current typed answer (digit by digit, empty string if not started) */
-  studentAnswer: string;
+  studentAnswer: string
   /** Whether the answer is correct (null if not yet submitted) */
-  isCorrect: boolean | null;
+  isCorrect: boolean | null
   /** Timing information */
   timing: {
-    startedAt: number;
-    elapsed: number;
-  };
+    startedAt: number
+    elapsed: number
+  }
   /** Purpose of this problem slot (why it was selected) */
-  purpose: "focus" | "reinforce" | "review" | "challenge";
+  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
   /** Complexity data for tooltip display */
-  complexity?: ObservedComplexity;
+  complexity?: ObservedComplexity
   /** When this state was received */
-  receivedAt: number;
+  receivedAt: number
   /** Current problem number (1-indexed for display) */
-  currentProblemNumber: number;
+  currentProblemNumber: number
   /** Total problems in the session */
-  totalProblems: number;
+  totalProblems: number
   /** Session structure for progress indicator */
-  sessionParts?: SessionPart[];
+  sessionParts?: SessionPart[]
   /** Current part index for progress indicator */
-  currentPartIndex?: number;
+  currentPartIndex?: number
   /** Current slot index within the part */
-  currentSlotIndex?: number;
+  currentSlotIndex?: number
   /** Accumulated results for progress indicator */
-  slotResults?: SlotResult[];
+  slotResults?: SlotResult[]
 }
 
 /**
@@ -84,13 +80,13 @@ export interface ObservedSessionState {
  */
 export interface ObservedTransitionState {
   /** Part type transitioning FROM (null if session start) */
-  previousPartType: SessionPartType | null;
+  previousPartType: SessionPartType | null
   /** Part type transitioning TO */
-  nextPartType: SessionPartType;
+  nextPartType: SessionPartType
   /** Timestamp when countdown started (for sync) */
-  countdownStartTime: number;
+  countdownStartTime: number
   /** Countdown duration in ms */
-  countdownDurationMs: number;
+  countdownDurationMs: number
 }
 
 /**
@@ -98,21 +94,21 @@ export interface ObservedTransitionState {
  */
 export interface ObservedResult {
   /** Problem number (1-indexed) */
-  problemNumber: number;
+  problemNumber: number
   /** The problem terms */
-  terms: number[];
+  terms: number[]
   /** Correct answer */
-  answer: number;
+  answer: number
   /** Student's submitted answer */
-  studentAnswer: string;
+  studentAnswer: string
   /** Whether correct */
-  isCorrect: boolean;
+  isCorrect: boolean
   /** Purpose of this problem slot */
-  purpose: "focus" | "reinforce" | "review" | "challenge";
+  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
   /** Response time in ms */
-  responseTimeMs: number;
+  responseTimeMs: number
   /** When recorded */
-  recordedAt: number;
+  recordedAt: number
 }
 
 /**
@@ -120,38 +116,38 @@ export interface ObservedResult {
  */
 export interface ObservedVisionFrame {
   /** Base64-encoded JPEG image data */
-  imageData: string;
+  imageData: string
   /** Detected abacus value (null if not yet detected) */
-  detectedValue: number | null;
+  detectedValue: number | null
   /** Detection confidence (0-1) */
-  confidence: number;
+  confidence: number
   /** When this frame was received by observer */
-  receivedAt: number;
+  receivedAt: number
 }
 
 interface UseSessionObserverResult {
   /** Current observed state (null if not yet received) */
-  state: ObservedSessionState | null;
+  state: ObservedSessionState | null
   /** Accumulated results from completed problems */
-  results: ObservedResult[];
+  results: ObservedResult[]
   /** Current part transition state (null if not in transition) */
-  transitionState: ObservedTransitionState | null;
+  transitionState: ObservedTransitionState | null
   /** Latest vision frame from student's camera (null if vision not enabled) */
-  visionFrame: ObservedVisionFrame | null;
+  visionFrame: ObservedVisionFrame | null
   /** Whether connected to the session channel */
-  isConnected: boolean;
+  isConnected: boolean
   /** Whether actively observing (connected and joined session) */
-  isObserving: boolean;
+  isObserving: boolean
   /** Error message if connection failed */
-  error: string | null;
+  error: string | null
   /** Stop observing the session */
-  stopObserving: () => void;
+  stopObserving: () => void
   /** Send a control action to the student's abacus */
-  sendControl: (action: SessionAbacusControlAction) => void;
+  sendControl: (action: SessionAbacusControlAction) => void
   /** Pause the student's session with optional message */
-  sendPause: (message?: string) => void;
+  sendPause: (message?: string) => void
   /** Resume the student's session */
-  sendResume: () => void;
+  sendResume: () => void
 }
 
 /**
@@ -171,141 +167,132 @@ export function useSessionObserver(
   observerId: string | undefined,
   playerId: string | undefined,
   enabled = true,
-  shareToken?: string,
+  shareToken?: string
 ): UseSessionObserverResult {
-  const [state, setState] = useState<ObservedSessionState | null>(null);
-  const [results, setResults] = useState<ObservedResult[]>([]);
-  const [transitionState, setTransitionState] =
-    useState<ObservedTransitionState | null>(null);
-  const [visionFrame, setVisionFrame] = useState<ObservedVisionFrame | null>(
-    null,
-  );
-  const [isConnected, setIsConnected] = useState(false);
-  const [isObserving, setIsObserving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<ObservedSessionState | null>(null)
+  const [results, setResults] = useState<ObservedResult[]>([])
+  const [transitionState, setTransitionState] = useState<ObservedTransitionState | null>(null)
+  const [visionFrame, setVisionFrame] = useState<ObservedVisionFrame | null>(null)
+  const [isConnected, setIsConnected] = useState(false)
+  const [isObserving, setIsObserving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const socketRef = useRef<Socket | null>(null);
+  const socketRef = useRef<Socket | null>(null)
   // Track which problem numbers we've already recorded to avoid duplicates
-  const recordedProblemsRef = useRef<Set<number>>(new Set());
+  const recordedProblemsRef = useRef<Set<number>>(new Set())
   // Track if we've seeded historical results from slotResults
-  const hasSeededHistoryRef = useRef(false);
+  const hasSeededHistoryRef = useRef(false)
 
   const stopObserving = useCallback(() => {
     if (socketRef.current && sessionId) {
-      socketRef.current.emit("stop-observing", { sessionId });
-      socketRef.current.disconnect();
-      socketRef.current = null;
-      setIsConnected(false);
-      setIsObserving(false);
-      setState(null);
-      setResults([]);
-      setTransitionState(null);
-      setVisionFrame(null);
-      recordedProblemsRef.current.clear();
-      hasSeededHistoryRef.current = false;
+      socketRef.current.emit('stop-observing', { sessionId })
+      socketRef.current.disconnect()
+      socketRef.current = null
+      setIsConnected(false)
+      setIsObserving(false)
+      setState(null)
+      setResults([])
+      setTransitionState(null)
+      setVisionFrame(null)
+      recordedProblemsRef.current.clear()
+      hasSeededHistoryRef.current = false
     }
-  }, [sessionId]);
+  }, [sessionId])
 
   useEffect(() => {
     // Need sessionId and either (observerId + playerId) or shareToken
-    const hasAuthCredentials = observerId && playerId;
-    const hasShareToken = !!shareToken;
+    const hasAuthCredentials = observerId && playerId
+    const hasShareToken = !!shareToken
     if (!sessionId || (!hasAuthCredentials && !hasShareToken) || !enabled) {
       // Clean up if disabled
       if (socketRef.current) {
-        stopObserving();
+        stopObserving()
       }
-      return;
+      return
     }
 
     // Create socket connection
     const socket = io({
-      path: "/api/socket",
+      path: '/api/socket',
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
-    });
-    socketRef.current = socket;
+    })
+    socketRef.current = socket
 
-    socket.on("connect", () => {
-      console.log("[SessionObserver] Connected, joining session:", sessionId);
-      setIsConnected(true);
-      setError(null);
+    socket.on('connect', () => {
+      console.log('[SessionObserver] Connected, joining session:', sessionId)
+      setIsConnected(true)
+      setError(null)
 
       // Join the session channel - use shareToken if available, otherwise authenticated flow
       if (shareToken) {
-        socket.emit("observe-session", { sessionId, shareToken });
+        socket.emit('observe-session', { sessionId, shareToken })
       } else {
-        socket.emit("observe-session", { sessionId, observerId, playerId });
+        socket.emit('observe-session', { sessionId, observerId, playerId })
       }
-      setIsObserving(true);
-    });
+      setIsObserving(true)
+    })
 
-    socket.on("disconnect", () => {
-      console.log("[SessionObserver] Disconnected");
-      setIsConnected(false);
-      setIsObserving(false);
-    });
+    socket.on('disconnect', () => {
+      console.log('[SessionObserver] Disconnected')
+      setIsConnected(false)
+      setIsObserving(false)
+    })
 
-    socket.on("connect_error", (err) => {
-      console.error("[SessionObserver] Connection error:", err);
-      setError("Failed to connect to session");
-    });
+    socket.on('connect_error', (err) => {
+      console.error('[SessionObserver] Connection error:', err)
+      setError('Failed to connect to session')
+    })
 
     // Handle authorization errors from server
-    socket.on("observe-error", (data: { error: string }) => {
-      console.error("[SessionObserver] Observation error:", data.error);
-      setError(data.error);
-      setIsObserving(false);
-    });
+    socket.on('observe-error', (data: { error: string }) => {
+      console.error('[SessionObserver] Observation error:', data.error)
+      setError(data.error)
+      setIsObserving(false)
+    })
 
     // Listen for practice state updates from the student
-    socket.on("practice-state", (data: PracticeStateEvent) => {
-      console.log("[SessionObserver] Received practice-state:", {
+    socket.on('practice-state', (data: PracticeStateEvent) => {
+      console.log('[SessionObserver] Received practice-state:', {
         phase: data.phase,
         answer: data.studentAnswer,
         isCorrect: data.isCorrect,
         problemNumber: data.currentProblemNumber,
-      });
+      })
 
       const currentProblem = data.currentProblem as {
-        terms: number[];
-        answer: number;
-      };
-      const sessionParts = data.sessionParts as SessionPart[] | undefined;
-      const slotResults = data.slotResults as SlotResult[] | undefined;
+        terms: number[]
+        answer: number
+      }
+      const sessionParts = data.sessionParts as SessionPart[] | undefined
+      const slotResults = data.slotResults as SlotResult[] | undefined
 
       // Seed historical results from slotResults on first event
-      if (
-        !hasSeededHistoryRef.current &&
-        slotResults &&
-        slotResults.length > 0 &&
-        sessionParts
-      ) {
-        hasSeededHistoryRef.current = true;
+      if (!hasSeededHistoryRef.current && slotResults && slotResults.length > 0 && sessionParts) {
+        hasSeededHistoryRef.current = true
         console.log(
-          "[SessionObserver] Seeding historical results from slotResults:",
-          slotResults.length,
-        );
+          '[SessionObserver] Seeding historical results from slotResults:',
+          slotResults.length
+        )
 
         // Convert slotResults to ObservedResult format
-        const historicalResults: ObservedResult[] = [];
+        const historicalResults: ObservedResult[] = []
 
         for (const result of slotResults) {
           // Calculate problem number from part structure
-          let problemNumber = 0;
+          let problemNumber = 0
           for (let p = 0; p < result.partNumber - 1; p++) {
-            problemNumber += sessionParts[p]?.slots.length ?? 0;
+            problemNumber += sessionParts[p]?.slots.length ?? 0
           }
-          problemNumber += result.slotIndex + 1;
+          problemNumber += result.slotIndex + 1
 
           // Get purpose from the slot definition
-          const slot =
-            sessionParts[result.partNumber - 1]?.slots[result.slotIndex];
-          const purpose = slot?.purpose ?? "focus";
+          const slot = sessionParts[result.partNumber - 1]?.slots[result.slotIndex]
+          const purpose = slot?.purpose ?? 'focus'
 
           // Mark as recorded to avoid duplicates
-          recordedProblemsRef.current.add(problemNumber);
+          recordedProblemsRef.current.add(problemNumber)
 
           historicalResults.push({
             problemNumber,
@@ -315,30 +302,23 @@ export function useSessionObserver(
             isCorrect: result.isCorrect,
             purpose,
             responseTimeMs: result.responseTimeMs,
-            recordedAt:
-              result.timestamp instanceof Date
-                ? result.timestamp.getTime()
-                : Date.now(),
-          });
+            recordedAt: result.timestamp instanceof Date ? result.timestamp.getTime() : Date.now(),
+          })
         }
 
         // Sort by problem number and set results
-        historicalResults.sort((a, b) => a.problemNumber - b.problemNumber);
-        setResults(historicalResults);
-        console.log(
-          "[SessionObserver] Seeded",
-          historicalResults.length,
-          "historical results",
-        );
+        historicalResults.sort((a, b) => a.problemNumber - b.problemNumber)
+        setResults(historicalResults)
+        console.log('[SessionObserver] Seeded', historicalResults.length, 'historical results')
       }
 
       // Record result when problem is completed (feedback phase with definite answer)
       if (
-        data.phase === "feedback" &&
+        data.phase === 'feedback' &&
         data.isCorrect !== null &&
         !recordedProblemsRef.current.has(data.currentProblemNumber)
       ) {
-        recordedProblemsRef.current.add(data.currentProblemNumber);
+        recordedProblemsRef.current.add(data.currentProblemNumber)
         const newResult: ObservedResult = {
           problemNumber: data.currentProblemNumber,
           terms: currentProblem.terms,
@@ -348,9 +328,9 @@ export function useSessionObserver(
           purpose: data.purpose,
           responseTimeMs: data.timing.elapsed,
           recordedAt: Date.now(),
-        };
-        setResults((prev) => [...prev, newResult]);
-        console.log("[SessionObserver] Recorded result:", newResult);
+        }
+        setResults((prev) => [...prev, newResult])
+        console.log('[SessionObserver] Recorded result:', newResult)
       }
 
       setState({
@@ -369,136 +349,127 @@ export function useSessionObserver(
         currentPartIndex: data.currentPartIndex,
         currentSlotIndex: data.currentSlotIndex,
         slotResults,
-      });
-    });
+      })
+    })
 
     // Listen for part transition events
-    socket.on("part-transition", (data: PartTransitionEvent) => {
-      console.log("[SessionObserver] Received part-transition:", {
+    socket.on('part-transition', (data: PartTransitionEvent) => {
+      console.log('[SessionObserver] Received part-transition:', {
         previousPartType: data.previousPartType,
         nextPartType: data.nextPartType,
         countdownDurationMs: data.countdownDurationMs,
-      });
+      })
 
       setTransitionState({
         previousPartType: data.previousPartType,
         nextPartType: data.nextPartType,
         countdownStartTime: data.countdownStartTime,
         countdownDurationMs: data.countdownDurationMs,
-      });
-    });
+      })
+    })
 
     // Listen for part transition complete events
-    socket.on(
-      "part-transition-complete",
-      (_data: PartTransitionCompleteEvent) => {
-        console.log("[SessionObserver] Part transition complete");
-        setTransitionState(null);
-      },
-    );
+    socket.on('part-transition-complete', (_data: PartTransitionCompleteEvent) => {
+      console.log('[SessionObserver] Part transition complete')
+      setTransitionState(null)
+    })
 
     // Listen for vision frames from student's camera
-    socket.on("vision-frame", (data: VisionFrameEvent) => {
+    socket.on('vision-frame', (data: VisionFrameEvent) => {
       setVisionFrame({
         imageData: data.imageData,
         detectedValue: data.detectedValue,
         confidence: data.confidence,
         receivedAt: Date.now(),
-      });
-    });
+      })
+    })
 
     // Listen for session ended event
-    socket.on("session-ended", () => {
-      console.log("[SessionObserver] Session ended");
-      stopObserving();
-    });
+    socket.on('session-ended', () => {
+      console.log('[SessionObserver] Session ended')
+      stopObserving()
+    })
 
     return () => {
-      console.log("[SessionObserver] Cleaning up");
-      socket.emit("stop-observing", { sessionId });
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [sessionId, observerId, playerId, enabled, stopObserving, shareToken]);
+      console.log('[SessionObserver] Cleaning up')
+      socket.emit('stop-observing', { sessionId })
+      socket.disconnect()
+      socketRef.current = null
+    }
+  }, [sessionId, observerId, playerId, enabled, stopObserving, shareToken])
 
   // Send control action to student's abacus
   const sendControl = useCallback(
     (action: SessionAbacusControlAction) => {
       if (!socketRef.current || !isConnected || !sessionId) {
-        console.warn(
-          "[SessionObserver] Cannot send control - not connected or no sessionId",
-        );
-        return;
+        console.warn('[SessionObserver] Cannot send control - not connected or no sessionId')
+        return
       }
 
       // Map our action types to the AbacusControlEvent format
-      let eventAction: "show" | "hide" | "set-value";
-      let value: number | undefined;
+      let eventAction: 'show' | 'hide' | 'set-value'
+      let value: number | undefined
 
       switch (action.type) {
-        case "show-abacus":
-          eventAction = "show";
-          break;
-        case "hide-abacus":
-          eventAction = "hide";
-          break;
-        case "set-abacus-value":
-          eventAction = "set-value";
-          value = action.value;
-          break;
+        case 'show-abacus':
+          eventAction = 'show'
+          break
+        case 'hide-abacus':
+          eventAction = 'hide'
+          break
+        case 'set-abacus-value':
+          eventAction = 'set-value'
+          value = action.value
+          break
       }
 
       const event: AbacusControlEvent = {
         sessionId,
-        target: "hero", // The main practice abacus
+        target: 'hero', // The main practice abacus
         action: eventAction,
         value,
-      };
+      }
 
-      socketRef.current.emit("abacus-control", event);
-      console.log("[SessionObserver] Sent abacus-control:", action);
+      socketRef.current.emit('abacus-control', event)
+      console.log('[SessionObserver] Sent abacus-control:', action)
     },
-    [isConnected, sessionId],
-  );
+    [isConnected, sessionId]
+  )
 
   // Send pause command to student's session
   const sendPause = useCallback(
     (message?: string) => {
       if (!socketRef.current || !isConnected || !sessionId) {
-        console.warn(
-          "[SessionObserver] Cannot send pause - not connected or no sessionId",
-        );
-        return;
+        console.warn('[SessionObserver] Cannot send pause - not connected or no sessionId')
+        return
       }
 
       const event: SessionPausedEvent = {
         sessionId,
-        reason: "teacher",
+        reason: 'teacher',
         message,
-      };
+      }
 
-      socketRef.current.emit("session-pause", event);
-      console.log("[SessionObserver] Sent session-pause:", { message });
+      socketRef.current.emit('session-pause', event)
+      console.log('[SessionObserver] Sent session-pause:', { message })
     },
-    [isConnected, sessionId],
-  );
+    [isConnected, sessionId]
+  )
 
   // Send resume command to student's session
   const sendResume = useCallback(() => {
     if (!socketRef.current || !isConnected || !sessionId) {
-      console.warn(
-        "[SessionObserver] Cannot send resume - not connected or no sessionId",
-      );
-      return;
+      console.warn('[SessionObserver] Cannot send resume - not connected or no sessionId')
+      return
     }
 
     const event: SessionResumedEvent = {
       sessionId,
-    };
+    }
 
-    socketRef.current.emit("session-resume", event);
-    console.log("[SessionObserver] Sent session-resume");
-  }, [isConnected, sessionId]);
+    socketRef.current.emit('session-resume', event)
+    console.log('[SessionObserver] Sent session-resume')
+  }, [isConnected, sessionId])
 
   return {
     state,
@@ -512,5 +483,5 @@ export function useSessionObserver(
     sendControl,
     sendPause,
     sendResume,
-  };
+  }
 }

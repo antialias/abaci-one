@@ -1,7 +1,7 @@
 // Shared Typst helper functions and components
 // Reusable across addition and subtraction worksheets
 
-import { TYPST_CONSTANTS } from "./types";
+import { TYPST_CONSTANTS } from './types'
 
 /**
  * Generate Typst helper functions (ten-frames, diagonal boxes, etc.)
@@ -71,5 +71,5 @@ export function generateTypstHelpers(cellSize: number): string {
     )
   ]
 }
-`;
+`
 }

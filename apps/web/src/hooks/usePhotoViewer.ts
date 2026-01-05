@@ -1,6 +1,6 @@
-"use client";
+'use client'
 
-import { useCallback, useState } from "react";
+import { useCallback, useState } from 'react'
 
 /**
  * Viewer mode for photos
@@ -8,26 +8,26 @@ import { useCallback, useState } from "react";
  * - edit: Editing (crop, rotate)
  * - review: Worksheet parsing review
  */
-export type PhotoViewerMode = "view" | "edit" | "review";
+export type PhotoViewerMode = 'view' | 'edit' | 'review'
 
 /**
  * Return type for usePhotoViewer hook
  */
 export interface UsePhotoViewerReturn {
   /** Whether the viewer is open */
-  isOpen: boolean;
+  isOpen: boolean
   /** Current photo index */
-  index: number;
+  index: number
   /** Current viewer mode */
-  mode: PhotoViewerMode;
+  mode: PhotoViewerMode
   /** Open the viewer at a specific index and mode */
-  open: (index: number, mode?: PhotoViewerMode) => void;
+  open: (index: number, mode?: PhotoViewerMode) => void
   /** Close the viewer */
-  close: () => void;
+  close: () => void
   /** Change the viewer mode */
-  setMode: (mode: PhotoViewerMode) => void;
+  setMode: (mode: PhotoViewerMode) => void
   /** Change the current index */
-  setIndex: (index: number) => void;
+  setIndex: (index: number) => void
 }
 
 /**
@@ -39,19 +39,19 @@ export interface UsePhotoViewerReturn {
  * - Viewer mode (view, edit, review)
  */
 export function usePhotoViewer(): UsePhotoViewerReturn {
-  const [isOpen, setIsOpen] = useState(false);
-  const [index, setIndex] = useState(0);
-  const [mode, setMode] = useState<PhotoViewerMode>("view");
+  const [isOpen, setIsOpen] = useState(false)
+  const [index, setIndex] = useState(0)
+  const [mode, setMode] = useState<PhotoViewerMode>('view')
 
-  const open = useCallback((idx: number, m: PhotoViewerMode = "view") => {
-    setIndex(idx);
-    setMode(m);
-    setIsOpen(true);
-  }, []);
+  const open = useCallback((idx: number, m: PhotoViewerMode = 'view') => {
+    setIndex(idx)
+    setMode(m)
+    setIsOpen(true)
+  }, [])
 
   const close = useCallback(() => {
-    setIsOpen(false);
-  }, []);
+    setIsOpen(false)
+  }, [])
 
   return {
     isOpen,
@@ -61,7 +61,7 @@ export function usePhotoViewer(): UsePhotoViewerReturn {
     close,
     setMode,
     setIndex,
-  };
+  }
 }
 
-export default usePhotoViewer;
+export default usePhotoViewer

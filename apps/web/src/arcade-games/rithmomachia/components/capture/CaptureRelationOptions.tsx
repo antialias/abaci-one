@@ -1,27 +1,22 @@
-"use client";
+'use client'
 
-import * as Tooltip from "@radix-ui/react-tooltip";
-import { animated, useSpring } from "@react-spring/web";
-import { useEffect, useState } from "react";
-import {
-  getRelationColor,
-  getRelationOperator,
-} from "../../constants/captureRelations";
-import type { RelationKind } from "../../types";
-import { useCaptureContext } from "../../contexts/CaptureContext";
-import { getEffectiveValue } from "../../utils/pieceSetup";
-import { getSquarePosition } from "../../utils/boardCoordinates";
+import * as Tooltip from '@radix-ui/react-tooltip'
+import { animated, useSpring } from '@react-spring/web'
+import { useEffect, useState } from 'react'
+import { getRelationColor, getRelationOperator } from '../../constants/captureRelations'
+import type { RelationKind } from '../../types'
+import { useCaptureContext } from '../../contexts/CaptureContext'
+import { getEffectiveValue } from '../../utils/pieceSetup'
+import { getSquarePosition } from '../../utils/boardCoordinates'
 
 interface CaptureRelationOptionsProps {
-  availableRelations: RelationKind[];
+  availableRelations: RelationKind[]
 }
 
 /**
  * Animated floating capture relation options with number bond preview on hover
  */
-export function CaptureRelationOptions({
-  availableRelations,
-}: CaptureRelationOptionsProps) {
+export function CaptureRelationOptions({ availableRelations }: CaptureRelationOptionsProps) {
   const {
     layout,
     pieces,
@@ -30,31 +25,29 @@ export function CaptureRelationOptions({
     pyramidFaceValues,
     findValidHelpers,
     selectRelation,
-  } = useCaptureContext();
-  const { targetPos, cellSize, gap, padding } = layout;
-  const { mover: moverPiece, target: targetPiece } = pieces;
-  const [hoveredRelation, setHoveredRelation] = useState<RelationKind | null>(
-    null,
-  );
-  const [currentHelperIndex, setCurrentHelperIndex] = useState(0);
+  } = useCaptureContext()
+  const { targetPos, cellSize, gap, padding } = layout
+  const { mover: moverPiece, target: targetPiece } = pieces
+  const [hoveredRelation, setHoveredRelation] = useState<RelationKind | null>(null)
+  const [currentHelperIndex, setCurrentHelperIndex] = useState(0)
 
   // Get mover value - either from pyramidFaceValues map (for pyramids) or from piece directly
   const getMoverValue = (relation: RelationKind): number | null => {
     if (pyramidFaceValues && pyramidFaceValues.has(relation)) {
-      return pyramidFaceValues.get(relation) || null;
+      return pyramidFaceValues.get(relation) || null
     }
-    return getEffectiveValue(moverPiece);
-  };
+    return getEffectiveValue(moverPiece)
+  }
 
   // Cycle through valid helpers every 1.5 seconds when hovering
   useEffect(() => {
     if (!hoveredRelation) {
-      setCurrentHelperIndex(0);
-      return;
+      setCurrentHelperIndex(0)
+      return
     }
 
-    const moverValue = getMoverValue(hoveredRelation);
-    const targetValue = getEffectiveValue(targetPiece);
+    const moverValue = getMoverValue(hoveredRelation)
+    const targetValue = getEffectiveValue(targetPiece)
 
     if (
       moverValue === undefined ||
@@ -62,46 +55,42 @@ export function CaptureRelationOptions({
       targetValue === undefined ||
       targetValue === null
     ) {
-      return;
+      return
     }
 
-    const validHelpers = findValidHelpers(
-      moverValue,
-      targetValue,
-      hoveredRelation,
-    );
+    const validHelpers = findValidHelpers(moverValue, targetValue, hoveredRelation)
     if (validHelpers.length <= 1) {
       // No need to cycle if only one or zero helpers
-      setCurrentHelperIndex(0);
-      return;
+      setCurrentHelperIndex(0)
+      return
     }
 
     // Cycle through helpers every 1.5 seconds
     const interval = setInterval(() => {
-      setCurrentHelperIndex((prev) => (prev + 1) % validHelpers.length);
-    }, 1500);
+      setCurrentHelperIndex((prev) => (prev + 1) % validHelpers.length)
+    }, 1500)
 
-    return () => clearInterval(interval);
-  }, [hoveredRelation, pyramidFaceValues, targetPiece, findValidHelpers]);
+    return () => clearInterval(interval)
+  }, [hoveredRelation, pyramidFaceValues, targetPiece, findValidHelpers])
 
   // Generate tooltip text with actual numbers for the currently displayed helper
   const getTooltipText = (relation: RelationKind): string => {
     if (relation !== hoveredRelation) {
       // Not hovered, use generic text
       const genericMap: Record<RelationKind, string> = {
-        EQUAL: "Equality: a = b",
-        MULTIPLE: "Multiple: b is multiple of a",
-        DIVISOR: "Divisor: a divides b",
-        SUM: "Sum: a + h = b (helper)",
-        DIFF: "Difference: |a - h| = b (helper)",
-        PRODUCT: "Product: a × h = b (helper)",
-        RATIO: "Ratio: a/h = b/h (helper)",
-      };
-      return genericMap[relation] || relation;
+        EQUAL: 'Equality: a = b',
+        MULTIPLE: 'Multiple: b is multiple of a',
+        DIVISOR: 'Divisor: a divides b',
+        SUM: 'Sum: a + h = b (helper)',
+        DIFF: 'Difference: |a - h| = b (helper)',
+        PRODUCT: 'Product: a × h = b (helper)',
+        RATIO: 'Ratio: a/h = b/h (helper)',
+      }
+      return genericMap[relation] || relation
     }
 
-    const moverValue = getMoverValue(relation);
-    const targetValue = getEffectiveValue(targetPiece);
+    const moverValue = getMoverValue(relation)
+    const targetValue = getEffectiveValue(targetPiece)
 
     if (
       moverValue === undefined ||
@@ -109,108 +98,107 @@ export function CaptureRelationOptions({
       targetValue === undefined ||
       targetValue === null
     ) {
-      return relation;
+      return relation
     }
 
     // Relations that don't need helpers - show equation with just mover and target
-    const helperRelations: RelationKind[] = ["SUM", "DIFF", "PRODUCT", "RATIO"];
-    const needsHelper = helperRelations.includes(relation);
+    const helperRelations: RelationKind[] = ['SUM', 'DIFF', 'PRODUCT', 'RATIO']
+    const needsHelper = helperRelations.includes(relation)
 
     if (!needsHelper) {
       // Generate equation with just mover and target values
       switch (relation) {
-        case "EQUAL":
-          return `${moverValue} = ${targetValue}`;
-        case "MULTIPLE":
-          return `${targetValue} is multiple of ${moverValue}`;
-        case "DIVISOR":
-          return `${moverValue} divides ${targetValue}`;
+        case 'EQUAL':
+          return `${moverValue} = ${targetValue}`
+        case 'MULTIPLE':
+          return `${targetValue} is multiple of ${moverValue}`
+        case 'DIVISOR':
+          return `${moverValue} divides ${targetValue}`
         default:
-          return relation;
+          return relation
       }
     }
 
     // Relations that need helpers
-    const validHelpers = findValidHelpers(moverValue, targetValue, relation);
+    const validHelpers = findValidHelpers(moverValue, targetValue, relation)
     if (validHelpers.length === 0) {
-      return `${relation}: No valid helpers`;
+      return `${relation}: No valid helpers`
     }
 
-    const currentHelper = validHelpers[currentHelperIndex];
-    const helperValue = getEffectiveValue(currentHelper);
+    const currentHelper = validHelpers[currentHelperIndex]
+    const helperValue = getEffectiveValue(currentHelper)
 
     if (helperValue === undefined || helperValue === null) {
-      return relation;
+      return relation
     }
 
     // Generate equation with actual numbers including helper
     switch (relation) {
-      case "SUM":
-        return `${moverValue} + ${helperValue} = ${targetValue}`;
-      case "DIFF":
-        return `|${moverValue} - ${helperValue}| = ${targetValue}`;
-      case "PRODUCT":
-        return `${moverValue} × ${helperValue} = ${targetValue}`;
-      case "RATIO":
-        return `${moverValue}/${helperValue} = ${targetValue}/${helperValue}`;
+      case 'SUM':
+        return `${moverValue} + ${helperValue} = ${targetValue}`
+      case 'DIFF':
+        return `|${moverValue} - ${helperValue}| = ${targetValue}`
+      case 'PRODUCT':
+        return `${moverValue} × ${helperValue} = ${targetValue}`
+      case 'RATIO':
+        return `${moverValue}/${helperValue} = ${targetValue}/${helperValue}`
       default:
-        return relation;
+        return relation
     }
-  };
+  }
 
   const allRelations = [
-    { relation: "EQUAL", label: "=", angle: 0, color: "#8b5cf6" },
+    { relation: 'EQUAL', label: '=', angle: 0, color: '#8b5cf6' },
     {
-      relation: "MULTIPLE",
-      label: "×n",
+      relation: 'MULTIPLE',
+      label: '×n',
       angle: 51.4,
-      color: "#a855f7",
+      color: '#a855f7',
     },
     {
-      relation: "DIVISOR",
-      label: "÷",
+      relation: 'DIVISOR',
+      label: '÷',
       angle: 102.8,
-      color: "#c084fc",
+      color: '#c084fc',
     },
     {
-      relation: "SUM",
-      label: "+",
+      relation: 'SUM',
+      label: '+',
       angle: 154.3,
-      color: "#3b82f6",
+      color: '#3b82f6',
     },
     {
-      relation: "DIFF",
-      label: "−",
+      relation: 'DIFF',
+      label: '−',
       angle: 205.7,
-      color: "#06b6d4",
+      color: '#06b6d4',
     },
     {
-      relation: "PRODUCT",
-      label: "×",
+      relation: 'PRODUCT',
+      label: '×',
       angle: 257.1,
-      color: "#10b981",
+      color: '#10b981',
     },
     {
-      relation: "RATIO",
-      label: "÷÷",
+      relation: 'RATIO',
+      label: '÷÷',
       angle: 308.6,
-      color: "#f59e0b",
+      color: '#f59e0b',
     },
-  ];
+  ]
 
   // Filter to only available relations and redistribute angles evenly
   const availableRelationDefs = allRelations.filter((r) =>
-    availableRelations.includes(r.relation as RelationKind),
-  );
-  const angleStep =
-    availableRelationDefs.length > 1 ? 360 / availableRelationDefs.length : 0;
+    availableRelations.includes(r.relation as RelationKind)
+  )
+  const angleStep = availableRelationDefs.length > 1 ? 360 / availableRelationDefs.length : 0
   const relations = availableRelationDefs.map((r, index) => ({
     ...r,
     angle: index * angleStep,
-  }));
+  }))
 
-  const maxRadius = cellSize * 1.2;
-  const buttonSize = 64;
+  const maxRadius = cellSize * 1.2
+  const buttonSize = 64
 
   // Animate all buttons simultaneously - reverse animation when closing
   const spring = useSpring({
@@ -218,20 +206,20 @@ export function CaptureRelationOptions({
     radius: closing ? 0 : maxRadius,
     opacity: closing ? 0 : 0.85,
     config: { tension: 280, friction: 20 },
-  });
+  })
 
   return (
     <Tooltip.Provider delayDuration={0} disableHoverableContent>
       <g>
         {relations.map(({ relation, label, angle, color }) => {
-          const rad = (angle * Math.PI) / 180;
+          const rad = (angle * Math.PI) / 180
 
           return (
             <animated.g
               key={relation}
               transform={spring.radius.to(
                 (r) =>
-                  `translate(${targetPos.x + Math.cos(rad) * r}, ${targetPos.y + Math.sin(rad) * r})`,
+                  `translate(${targetPos.x + Math.cos(rad) * r}, ${targetPos.y + Math.sin(rad) * r})`
               )}
             >
               <foreignObject
@@ -239,45 +227,42 @@ export function CaptureRelationOptions({
                 y={-buttonSize / 2}
                 width={buttonSize}
                 height={buttonSize}
-                style={{ overflow: "visible" }}
+                style={{ overflow: 'visible' }}
               >
                 <Tooltip.Root>
                   <Tooltip.Trigger asChild>
                     <animated.button
                       onClick={(e) => {
-                        e.stopPropagation();
-                        selectRelation(relation as RelationKind);
+                        e.stopPropagation()
+                        selectRelation(relation as RelationKind)
                       }}
                       style={{
                         width: buttonSize,
                         height: buttonSize,
-                        borderRadius: "50%",
-                        border: "3px solid rgba(255, 255, 255, 0.9)",
+                        borderRadius: '50%',
+                        border: '3px solid rgba(255, 255, 255, 0.9)',
                         backgroundColor: color,
-                        color: "white",
-                        fontSize: "28px",
-                        fontWeight: "bold",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        color: 'white',
+                        fontSize: '28px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         opacity: spring.opacity,
-                        transition:
-                          "transform 0.15s ease, box-shadow 0.15s ease",
-                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-                        textShadow: "0 2px 4px rgba(0, 0, 0, 0.5)",
+                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                        textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "scale(1.15)";
-                        e.currentTarget.style.boxShadow =
-                          "0 6px 20px rgba(0, 0, 0, 0.4)";
-                        setHoveredRelation(relation as RelationKind);
+                        e.currentTarget.style.transform = 'scale(1.15)'
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.4)'
+                        setHoveredRelation(relation as RelationKind)
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "scale(1)";
-                        e.currentTarget.style.boxShadow =
-                          "0 4px 12px rgba(0, 0, 0, 0.3)";
-                        setHoveredRelation(null);
+                        e.currentTarget.style.transform = 'scale(1)'
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+                        setHoveredRelation(null)
                       }}
                     >
                       {label}
@@ -287,22 +272,22 @@ export function CaptureRelationOptions({
                     <Tooltip.Content asChild sideOffset={8}>
                       <div
                         style={{
-                          background: "rgba(0,0,0,0.95)",
-                          color: "white",
-                          padding: "8px 16px",
-                          borderRadius: "8px",
-                          fontSize: "14px",
+                          background: 'rgba(0,0,0,0.95)',
+                          color: 'white',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          fontSize: '14px',
                           fontWeight: 600,
-                          maxWidth: "240px",
+                          maxWidth: '240px',
                           zIndex: 10000,
-                          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
-                          pointerEvents: "none",
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                          pointerEvents: 'none',
                         }}
                       >
                         {getTooltipText(relation as RelationKind)}
                         <Tooltip.Arrow
                           style={{
-                            fill: "rgba(0,0,0,0.95)",
+                            fill: 'rgba(0,0,0,0.95)',
                           }}
                         />
                       </div>
@@ -311,14 +296,14 @@ export function CaptureRelationOptions({
                 </Tooltip.Root>
               </foreignObject>
             </animated.g>
-          );
+          )
         })}
 
         {/* Number bond preview when hovering over a relation - cycle through valid helpers */}
         {hoveredRelation &&
           (() => {
-            const moverValue = getMoverValue(hoveredRelation);
-            const targetValue = getEffectiveValue(targetPiece);
+            const moverValue = getMoverValue(hoveredRelation)
+            const targetValue = getEffectiveValue(targetPiece)
 
             if (
               moverValue === undefined ||
@@ -326,33 +311,26 @@ export function CaptureRelationOptions({
               targetValue === undefined ||
               targetValue === null
             ) {
-              return null;
+              return null
             }
 
-            const validHelpers = findValidHelpers(
-              moverValue,
-              targetValue,
-              hoveredRelation,
-            );
+            const validHelpers = findValidHelpers(moverValue, targetValue, hoveredRelation)
 
             if (validHelpers.length === 0) {
-              return null;
+              return null
             }
 
             // Show only the current helper
-            const currentHelper = validHelpers[currentHelperIndex];
+            const currentHelper = validHelpers[currentHelperIndex]
 
-            const color = getRelationColor(hoveredRelation);
-            const operator = getRelationOperator(hoveredRelation);
+            const color = getRelationColor(hoveredRelation)
+            const operator = getRelationOperator(hoveredRelation)
 
             // Calculate piece positions on board
-            const layout = { cellSize, gap, padding };
-            const moverPos = getSquarePosition(moverPiece.square, layout);
-            const targetBoardPos = getSquarePosition(
-              targetPiece.square,
-              layout,
-            );
-            const helperPos = getSquarePosition(currentHelper.square, layout);
+            const layout = { cellSize, gap, padding }
+            const moverPos = getSquarePosition(moverPiece.square, layout)
+            const targetBoardPos = getSquarePosition(targetPiece.square, layout)
+            const helperPos = getSquarePosition(currentHelper.square, layout)
 
             return (
               <g key={currentHelper.id}>
@@ -387,42 +365,40 @@ export function CaptureRelationOptions({
                 {/* Operator symbol - smart placement to avoid collinear collapse */}
                 {(() => {
                   // Calculate center of triangle
-                  const centerX =
-                    (moverPos.x + helperPos.x + targetBoardPos.x) / 3;
-                  const centerY =
-                    (moverPos.y + helperPos.y + targetBoardPos.y) / 3;
+                  const centerX = (moverPos.x + helperPos.x + targetBoardPos.x) / 3
+                  const centerY = (moverPos.y + helperPos.y + targetBoardPos.y) / 3
 
                   // Check if pieces are nearly collinear using cross product
                   // Vector from mover to helper
-                  const v1x = helperPos.x - moverPos.x;
-                  const v1y = helperPos.y - moverPos.y;
+                  const v1x = helperPos.x - moverPos.x
+                  const v1y = helperPos.y - moverPos.y
                   // Vector from mover to target
-                  const v2x = targetBoardPos.x - moverPos.x;
-                  const v2y = targetBoardPos.y - moverPos.y;
+                  const v2x = targetBoardPos.x - moverPos.x
+                  const v2y = targetBoardPos.y - moverPos.y
 
                   // Cross product magnitude (2D)
-                  const crossProduct = Math.abs(v1x * v2y - v1y * v2x);
+                  const crossProduct = Math.abs(v1x * v2y - v1y * v2x)
 
                   // If cross product is small, pieces are nearly collinear
-                  const minTriangleArea = cellSize * cellSize * 0.5; // Minimum triangle area threshold
-                  const isCollinear = crossProduct < minTriangleArea;
+                  const minTriangleArea = cellSize * cellSize * 0.5 // Minimum triangle area threshold
+                  const isCollinear = crossProduct < minTriangleArea
 
-                  let operatorX = centerX;
-                  let operatorY = centerY;
+                  let operatorX = centerX
+                  let operatorY = centerY
 
                   if (isCollinear) {
                     // Find the line connecting the three points (use mover to target as reference)
-                    const lineLength = Math.sqrt(v2x * v2x + v2y * v2y);
+                    const lineLength = Math.sqrt(v2x * v2x + v2y * v2y)
 
                     if (lineLength > 0) {
                       // Perpendicular direction (rotate 90 degrees)
-                      const perpX = -v2y / lineLength;
-                      const perpY = v2x / lineLength;
+                      const perpX = -v2y / lineLength
+                      const perpY = v2x / lineLength
 
                       // Offset operator perpendicular to the line
-                      const offsetDistance = cellSize * 0.8;
-                      operatorX = centerX + perpX * offsetDistance;
-                      operatorY = centerY + perpY * offsetDistance;
+                      const offsetDistance = cellSize * 0.8
+                      operatorX = centerX + perpX * offsetDistance
+                      operatorY = centerY + perpY * offsetDistance
                     }
                   }
 
@@ -440,12 +416,12 @@ export function CaptureRelationOptions({
                     >
                       {operator}
                     </text>
-                  );
+                  )
                 })()}
               </g>
-            );
+            )
           })()}
       </g>
     </Tooltip.Provider>
-  );
+  )
 }

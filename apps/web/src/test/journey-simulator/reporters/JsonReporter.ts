@@ -5,13 +5,9 @@
  * Converts Maps to objects for JSON serialization.
  */
 
-import * as fs from "node:fs";
-import * as path from "node:path";
-import type {
-  ComparisonResult,
-  JourneyResult,
-  JourneyResultJson,
-} from "../types";
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import type { ComparisonResult, JourneyResult, JourneyResultJson } from '../types'
 
 /**
  * Convert a JourneyResult to JSON-serializable format.
@@ -41,7 +37,7 @@ export function toJsonSerializable(result: JourneyResult): JourneyResultJson {
       cumulativeExposures: Object.fromEntries(s.cumulativeExposures),
       sessionExposures: Object.fromEntries(s.sessionExposures),
     })),
-  };
+  }
 }
 
 /**
@@ -51,55 +47,53 @@ export function toJsonSerializable(result: JourneyResult): JourneyResultJson {
  * @param filepath - Path to write the JSON file
  */
 export function exportToJson(result: JourneyResult, filepath: string): void {
-  const jsonData = toJsonSerializable(result);
-  const jsonString = JSON.stringify(jsonData, null, 2);
+  const jsonData = toJsonSerializable(result)
+  const jsonString = JSON.stringify(jsonData, null, 2)
 
   // Ensure directory exists
-  const dir = path.dirname(filepath);
+  const dir = path.dirname(filepath)
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(dir, { recursive: true })
   }
 
-  fs.writeFileSync(filepath, jsonString, "utf-8");
+  fs.writeFileSync(filepath, jsonString, 'utf-8')
 }
 
 /**
  * JSON-serializable comparison result.
  */
 export interface ComparisonResultJson {
-  adaptive: JourneyResultJson;
-  classic: JourneyResultJson;
+  adaptive: JourneyResultJson
+  classic: JourneyResultJson
   deltas: {
-    bktCorrelation: number;
-    weakSkillSurfacing: number;
-    accuracyImprovement: number;
-  };
-  winner: "adaptive" | "classic" | "tie";
+    bktCorrelation: number
+    weakSkillSurfacing: number
+    accuracyImprovement: number
+  }
+  winner: 'adaptive' | 'classic' | 'tie'
 }
 
 /**
  * Convert a ComparisonResult to JSON-serializable format.
  */
-export function comparisonToJsonSerializable(
-  comparison: ComparisonResult,
-): ComparisonResultJson {
+export function comparisonToJsonSerializable(comparison: ComparisonResult): ComparisonResultJson {
   // Determine winner
-  let adaptiveWins = 0;
-  let classicWins = 0;
+  let adaptiveWins = 0
+  let classicWins = 0
 
-  if (comparison.correlationDelta > 0.05) adaptiveWins++;
-  else if (comparison.correlationDelta < -0.05) classicWins++;
+  if (comparison.correlationDelta > 0.05) adaptiveWins++
+  else if (comparison.correlationDelta < -0.05) classicWins++
 
-  if (comparison.weakSkillSurfacingDelta > 0.1) adaptiveWins++;
-  else if (comparison.weakSkillSurfacingDelta < -0.1) classicWins++;
+  if (comparison.weakSkillSurfacingDelta > 0.1) adaptiveWins++
+  else if (comparison.weakSkillSurfacingDelta < -0.1) classicWins++
 
-  if (comparison.accuracyImprovementDelta > 0.02) adaptiveWins++;
-  else if (comparison.accuracyImprovementDelta < -0.02) classicWins++;
+  if (comparison.accuracyImprovementDelta > 0.02) adaptiveWins++
+  else if (comparison.accuracyImprovementDelta < -0.02) classicWins++
 
-  let winner: "adaptive" | "classic" | "tie";
-  if (adaptiveWins > classicWins) winner = "adaptive";
-  else if (classicWins > adaptiveWins) winner = "classic";
-  else winner = "tie";
+  let winner: 'adaptive' | 'classic' | 'tie'
+  if (adaptiveWins > classicWins) winner = 'adaptive'
+  else if (classicWins > adaptiveWins) winner = 'classic'
+  else winner = 'tie'
 
   return {
     adaptive: toJsonSerializable(comparison.adaptiveResult),
@@ -110,32 +104,29 @@ export function comparisonToJsonSerializable(
       accuracyImprovement: comparison.accuracyImprovementDelta,
     },
     winner,
-  };
+  }
 }
 
 /**
  * Export comparison results to a JSON file.
  */
-export function exportComparisonToJson(
-  comparison: ComparisonResult,
-  filepath: string,
-): void {
-  const jsonData = comparisonToJsonSerializable(comparison);
-  const jsonString = JSON.stringify(jsonData, null, 2);
+export function exportComparisonToJson(comparison: ComparisonResult, filepath: string): void {
+  const jsonData = comparisonToJsonSerializable(comparison)
+  const jsonString = JSON.stringify(jsonData, null, 2)
 
   // Ensure directory exists
-  const dir = path.dirname(filepath);
+  const dir = path.dirname(filepath)
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(dir, { recursive: true })
   }
 
-  fs.writeFileSync(filepath, jsonString, "utf-8");
+  fs.writeFileSync(filepath, jsonString, 'utf-8')
 }
 
 /**
  * Load a journey result from a JSON file.
  */
 export function loadFromJson(filepath: string): JourneyResultJson {
-  const jsonString = fs.readFileSync(filepath, "utf-8");
-  return JSON.parse(jsonString) as JourneyResultJson;
+  const jsonString = fs.readFileSync(filepath, 'utf-8')
+  return JSON.parse(jsonString) as JourneyResultJson
 }

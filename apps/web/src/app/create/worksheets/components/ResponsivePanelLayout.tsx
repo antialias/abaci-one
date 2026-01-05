@@ -1,18 +1,18 @@
-"use client";
+'use client'
 
-import { css } from "@styled/css";
-import { useState } from "react";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { useTheme } from "@/contexts/ThemeContext";
-import { useIsMobile } from "@/hooks/useMediaQuery";
-import type { WorksheetFormState } from "../types";
-import { MobileDrawer } from "./MobileDrawer";
-import { MobileSettingsButton } from "./MobileSettingsButton";
+import { css } from '@styled/css'
+import { useState } from 'react'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { useTheme } from '@/contexts/ThemeContext'
+import { useIsMobile } from '@/hooks/useMediaQuery'
+import type { WorksheetFormState } from '../types'
+import { MobileDrawer } from './MobileDrawer'
+import { MobileSettingsButton } from './MobileSettingsButton'
 
 interface ResponsivePanelLayoutProps {
-  config: Partial<WorksheetFormState>;
-  sidebarContent: React.ReactNode;
-  previewContent: React.ReactNode;
+  config: Partial<WorksheetFormState>
+  sidebarContent: React.ReactNode
+  previewContent: React.ReactNode
 }
 
 export function ResponsivePanelLayout({
@@ -20,10 +20,10 @@ export function ResponsivePanelLayout({
   sidebarContent,
   previewContent,
 }: ResponsivePanelLayoutProps) {
-  const isMobile = useIsMobile();
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const isMobile = useIsMobile()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   // Mobile layout: Drawer + floating button
   // eslint-disable-next-line react-hooks/rules-of-hooks -- All hooks are called before this conditional return
@@ -34,62 +34,56 @@ export function ResponsivePanelLayout({
         <div
           data-component="mobile-preview-container"
           className={css({
-            width: "100%",
-            height: "100%",
-            overflow: "auto",
+            width: '100%',
+            height: '100%',
+            overflow: 'auto',
           })}
         >
           {previewContent}
         </div>
 
         {/* Floating settings button */}
-        <MobileSettingsButton
-          config={config}
-          onClick={() => setIsDrawerOpen(true)}
-        />
+        <MobileSettingsButton config={config} onClick={() => setIsDrawerOpen(true)} />
 
         {/* Settings drawer */}
-        <MobileDrawer
-          isOpen={isDrawerOpen}
-          onClose={() => setIsDrawerOpen(false)}
-        >
+        <MobileDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)}>
           {sidebarContent}
         </MobileDrawer>
       </>
-    );
+    )
   }
 
   // Desktop layout: Resizable panels
   const resizeHandleStyles = css({
-    width: "36px",
-    marginRight: "-28px",
-    height: "100%",
-    position: "relative",
-    cursor: "col-resize",
+    width: '36px',
+    marginRight: '-28px',
+    height: '100%',
+    position: 'relative',
+    cursor: 'col-resize',
     zIndex: 10,
-  });
+  })
 
   const handleVisualStyles = css({
-    position: "absolute",
+    position: 'absolute',
     inset: 0,
-    pointerEvents: "none",
-    display: "flex",
-    alignItems: "center",
-  });
+    pointerEvents: 'none',
+    display: 'flex',
+    alignItems: 'center',
+  })
 
   return (
     <PanelGroup
       direction="horizontal"
       autoSaveId="worksheet-generator-layout"
-      className={css({ flex: "1", minHeight: "0" })}
+      className={css({ flex: '1', minHeight: '0' })}
     >
       {/* Left Panel: Config Sidebar */}
       <Panel defaultSize={25} minSize={20} maxSize={40} collapsible>
         <div
           data-component="desktop-sidebar-container"
           className={css({
-            h: "full",
-            overflow: "auto",
+            h: 'full',
+            overflow: 'auto',
           })}
         >
           {sidebarContent}
@@ -101,50 +95,50 @@ export function ResponsivePanelLayout({
           {/* Thin divider (8px, full height) */}
           <div
             className={css({
-              width: "8px",
-              height: "100%",
-              bg: isDark ? "gray.700" : "gray.300",
-              position: "relative",
-              transition: "background-color 0.2s",
+              width: '8px',
+              height: '100%',
+              bg: isDark ? 'gray.700' : 'gray.300',
+              position: 'relative',
+              transition: 'background-color 0.2s',
               _groupHover: {
-                bg: isDark ? "blue.600" : "blue.300",
+                bg: isDark ? 'blue.600' : 'blue.300',
               },
             })}
           >
             {/* Grip dots on divider */}
             <div
               className={css({
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px",
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
               })}
             >
               <div
                 className={css({
-                  width: "3px",
-                  height: "3px",
-                  borderRadius: "full",
-                  bg: isDark ? "gray.500" : "gray.500",
+                  width: '3px',
+                  height: '3px',
+                  borderRadius: 'full',
+                  bg: isDark ? 'gray.500' : 'gray.500',
                 })}
               />
               <div
                 className={css({
-                  width: "3px",
-                  height: "3px",
-                  borderRadius: "full",
-                  bg: isDark ? "gray.500" : "gray.500",
+                  width: '3px',
+                  height: '3px',
+                  borderRadius: 'full',
+                  bg: isDark ? 'gray.500' : 'gray.500',
                 })}
               />
               <div
                 className={css({
-                  width: "3px",
-                  height: "3px",
-                  borderRadius: "full",
-                  bg: isDark ? "gray.500" : "gray.500",
+                  width: '3px',
+                  height: '3px',
+                  borderRadius: 'full',
+                  bg: isDark ? 'gray.500' : 'gray.500',
                 })}
               />
             </div>
@@ -153,16 +147,16 @@ export function ResponsivePanelLayout({
           {/* Grab tab (28px wide, 64px tall, centered vertically) */}
           <div
             className={css({
-              width: "28px",
-              height: "64px",
-              bg: isDark ? "gray.600" : "gray.400",
-              borderTopRightRadius: "8px",
-              borderBottomRightRadius: "8px",
-              position: "relative",
-              transition: "background-color 0.2s",
-              overflow: "hidden",
+              width: '28px',
+              height: '64px',
+              bg: isDark ? 'gray.600' : 'gray.400',
+              borderTopRightRadius: '8px',
+              borderBottomRightRadius: '8px',
+              position: 'relative',
+              transition: 'background-color 0.2s',
+              overflow: 'hidden',
               _groupHover: {
-                bg: isDark ? "blue.500" : "blue.400",
+                bg: isDark ? 'blue.500' : 'blue.400',
               },
             })}
           >
@@ -171,17 +165,15 @@ export function ResponsivePanelLayout({
               <div
                 key={offset}
                 className={css({
-                  position: "absolute",
+                  position: 'absolute',
                   left: `${offset}px`,
                   top: 0,
                   bottom: 0,
-                  width: "2px",
-                  bg: isDark
-                    ? "rgba(255, 255, 255, 0.25)"
-                    : "rgba(0, 0, 0, 0.25)",
+                  width: '2px',
+                  bg: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.25)',
                   boxShadow: isDark
-                    ? "1px 0 0 rgba(0, 0, 0, 0.3)"
-                    : "1px 0 0 rgba(255, 255, 255, 0.3)",
+                    ? '1px 0 0 rgba(0, 0, 0, 0.3)'
+                    : '1px 0 0 rgba(255, 255, 255, 0.3)',
                 })}
               />
             ))}
@@ -194,13 +186,13 @@ export function ResponsivePanelLayout({
         <div
           data-component="desktop-preview-container"
           className={css({
-            h: "full",
-            overflow: "auto",
+            h: 'full',
+            overflow: 'auto',
           })}
         >
           {previewContent}
         </div>
       </Panel>
     </PanelGroup>
-  );
+  )
 }

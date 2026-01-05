@@ -6,12 +6,7 @@
  * letterboxing.
  */
 
-import type {
-  CursorPosition,
-  SVGPosition,
-  ViewBoxComponents,
-  ViewportInfo,
-} from "./types";
+import type { CursorPosition, SVGPosition, ViewBoxComponents, ViewportInfo } from './types'
 
 /**
  * Parse a viewBox string into its components
@@ -20,13 +15,13 @@ import type {
  * @returns Parsed components with defaults for missing values
  */
 export function parseViewBox(viewBox: string): ViewBoxComponents {
-  const parts = viewBox.split(" ").map(Number);
+  const parts = viewBox.split(' ').map(Number)
   return {
     x: parts[0] || 0,
     y: parts[1] || 0,
     width: parts[2] || 1000,
     height: parts[3] || 1000,
-  };
+  }
 }
 
 /**
@@ -48,32 +43,32 @@ export function getRenderedViewport(
   viewBoxX: number,
   viewBoxY: number,
   viewBoxWidth: number,
-  viewBoxHeight: number,
+  viewBoxHeight: number
 ): ViewportInfo {
-  const svgAspect = svgRect.width / svgRect.height;
-  const viewBoxAspect = viewBoxWidth / viewBoxHeight;
+  const svgAspect = svgRect.width / svgRect.height
+  const viewBoxAspect = viewBoxWidth / viewBoxHeight
 
-  let renderedWidth: number;
-  let renderedHeight: number;
-  let letterboxX: number;
-  let letterboxY: number;
+  let renderedWidth: number
+  let renderedHeight: number
+  let letterboxX: number
+  let letterboxY: number
 
   if (svgAspect > viewBoxAspect) {
     // SVG element is wider than viewBox - letterboxing on sides
-    renderedHeight = svgRect.height;
-    renderedWidth = renderedHeight * viewBoxAspect;
-    letterboxX = (svgRect.width - renderedWidth) / 2;
-    letterboxY = 0;
+    renderedHeight = svgRect.height
+    renderedWidth = renderedHeight * viewBoxAspect
+    letterboxX = (svgRect.width - renderedWidth) / 2
+    letterboxY = 0
   } else {
     // SVG element is taller than viewBox - letterboxing on top/bottom
-    renderedWidth = svgRect.width;
-    renderedHeight = renderedWidth / viewBoxAspect;
-    letterboxX = 0;
-    letterboxY = (svgRect.height - renderedHeight) / 2;
+    renderedWidth = svgRect.width
+    renderedHeight = renderedWidth / viewBoxAspect
+    letterboxX = 0
+    letterboxY = (svgRect.height - renderedHeight) / 2
   }
 
   // Scale factor is uniform (same for X and Y due to preserveAspectRatio)
-  const scale = renderedWidth / viewBoxWidth;
+  const scale = renderedWidth / viewBoxWidth
 
   return {
     renderedWidth,
@@ -83,7 +78,7 @@ export function getRenderedViewport(
     scale,
     viewBoxX,
     viewBoxY,
-  };
+  }
 }
 
 /**
@@ -99,25 +94,19 @@ export function screenToSVG(
   cursorPosition: CursorPosition,
   containerRect: DOMRect,
   svgRect: DOMRect,
-  viewBox: ViewBoxComponents,
+  viewBox: ViewBoxComponents
 ): SVGPosition {
-  const viewport = getRenderedViewport(
-    svgRect,
-    viewBox.x,
-    viewBox.y,
-    viewBox.width,
-    viewBox.height,
-  );
+  const viewport = getRenderedViewport(svgRect, viewBox.x, viewBox.y, viewBox.width, viewBox.height)
 
   // Calculate offset from container origin to SVG rendered content
-  const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX;
-  const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY;
+  const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+  const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
 
   // Convert screen position to SVG coordinates
-  const svgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBox.x;
-  const svgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBox.y;
+  const svgX = (cursorPosition.x - svgOffsetX) / viewport.scale + viewBox.x
+  const svgY = (cursorPosition.y - svgOffsetY) / viewport.scale + viewBox.y
 
-  return { svgX, svgY };
+  return { svgX, svgY }
 }
 
 /**
@@ -133,25 +122,19 @@ export function svgToScreen(
   svgPosition: SVGPosition,
   containerRect: DOMRect,
   svgRect: DOMRect,
-  viewBox: ViewBoxComponents,
+  viewBox: ViewBoxComponents
 ): CursorPosition {
-  const viewport = getRenderedViewport(
-    svgRect,
-    viewBox.x,
-    viewBox.y,
-    viewBox.width,
-    viewBox.height,
-  );
+  const viewport = getRenderedViewport(svgRect, viewBox.x, viewBox.y, viewBox.width, viewBox.height)
 
   // Calculate offset from container origin to SVG rendered content
-  const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX;
-  const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY;
+  const svgOffsetX = svgRect.left - containerRect.left + viewport.letterboxX
+  const svgOffsetY = svgRect.top - containerRect.top + viewport.letterboxY
 
   // Convert SVG coordinates to screen position
-  const x = (svgPosition.svgX - viewBox.x) * viewport.scale + svgOffsetX;
-  const y = (svgPosition.svgY - viewBox.y) * viewport.scale + svgOffsetY;
+  const x = (svgPosition.svgX - viewBox.x) * viewport.scale + svgOffsetX
+  const y = (svgPosition.svgY - viewBox.y) * viewport.scale + svgOffsetY
 
-  return { x, y };
+  return { x, y }
 }
 
 /**
@@ -168,22 +151,16 @@ export function svgToScreen(
 export function getViewportFromRefs(
   containerRef: React.RefObject<HTMLDivElement>,
   svgRef: React.RefObject<SVGSVGElement>,
-  viewBoxString: string,
+  viewBoxString: string
 ): ViewportInfo | null {
   if (!containerRef.current || !svgRef.current) {
-    return null;
+    return null
   }
 
-  const svgRect = svgRef.current.getBoundingClientRect();
-  const viewBox = parseViewBox(viewBoxString);
+  const svgRect = svgRef.current.getBoundingClientRect()
+  const viewBox = parseViewBox(viewBoxString)
 
-  return getRenderedViewport(
-    svgRect,
-    viewBox.x,
-    viewBox.y,
-    viewBox.width,
-    viewBox.height,
-  );
+  return getRenderedViewport(svgRect, viewBox.x, viewBox.y, viewBox.width, viewBox.height)
 }
 
 /**
@@ -197,10 +174,10 @@ export function getViewportFromRefs(
 export function getLeftoverDimensions(
   containerWidth: number,
   containerHeight: number,
-  margins: { top: number; right: number; bottom: number; left: number },
+  margins: { top: number; right: number; bottom: number; left: number }
 ): { width: number; height: number } {
   return {
     width: containerWidth - margins.left - margins.right,
     height: containerHeight - margins.top - margins.bottom,
-  };
+  }
 }

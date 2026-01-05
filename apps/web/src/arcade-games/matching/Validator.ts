@@ -3,65 +3,49 @@
  * Validates all game moves and state transitions
  */
 
-import type {
-  GameCard,
-  MatchingConfig,
-  MatchingMove,
-  MatchingState,
-  Player,
-} from "./types";
-import { generateGameCards } from "./utils/cardGeneration";
-import { canFlipCard, validateMatch } from "./utils/matchValidation";
-import type {
-  GameValidator,
-  ValidationResult,
-} from "@/lib/arcade/validation/types";
+import type { GameCard, MatchingConfig, MatchingMove, MatchingState, Player } from './types'
+import { generateGameCards } from './utils/cardGeneration'
+import { canFlipCard, validateMatch } from './utils/matchValidation'
+import type { GameValidator, ValidationResult } from '@/lib/arcade/validation/types'
 
-export class MatchingGameValidator
-  implements GameValidator<MatchingState, MatchingMove>
-{
+export class MatchingGameValidator implements GameValidator<MatchingState, MatchingMove> {
   validateMove(
     state: MatchingState,
     move: MatchingMove,
-    context?: { userId?: string; playerOwnership?: Record<string, string> },
+    context?: { userId?: string; playerOwnership?: Record<string, string> }
   ): ValidationResult {
     switch (move.type) {
-      case "FLIP_CARD":
-        return this.validateFlipCard(
-          state,
-          move.data.cardId,
-          move.playerId,
-          context,
-        );
+      case 'FLIP_CARD':
+        return this.validateFlipCard(state, move.data.cardId, move.playerId, context)
 
-      case "START_GAME":
+      case 'START_GAME':
         return this.validateStartGame(
           state,
           move.data.activePlayers,
           move.data.cards,
-          move.data.playerMetadata,
-        );
+          move.data.playerMetadata
+        )
 
-      case "CLEAR_MISMATCH":
-        return this.validateClearMismatch(state);
+      case 'CLEAR_MISMATCH':
+        return this.validateClearMismatch(state)
 
-      case "GO_TO_SETUP":
-        return this.validateGoToSetup(state);
+      case 'GO_TO_SETUP':
+        return this.validateGoToSetup(state)
 
-      case "SET_CONFIG":
-        return this.validateSetConfig(state, move.data.field, move.data.value);
+      case 'SET_CONFIG':
+        return this.validateSetConfig(state, move.data.field, move.data.value)
 
-      case "RESUME_GAME":
-        return this.validateResumeGame(state);
+      case 'RESUME_GAME':
+        return this.validateResumeGame(state)
 
-      case "HOVER_CARD":
-        return this.validateHoverCard(state, move.data.cardId, move.playerId);
+      case 'HOVER_CARD':
+        return this.validateHoverCard(state, move.data.cardId, move.playerId)
 
       default:
         return {
           valid: false,
           error: `Unknown move type: ${(move as any).type}`,
-        };
+        }
     }
   }
 
@@ -69,79 +53,79 @@ export class MatchingGameValidator
     state: MatchingState,
     cardId: string,
     playerId: string,
-    context?: { userId?: string; playerOwnership?: Record<string, string> },
+    context?: { userId?: string; playerOwnership?: Record<string, string> }
   ): ValidationResult {
     // Game must be in playing phase
-    if (state.gamePhase !== "playing") {
+    if (state.gamePhase !== 'playing') {
       return {
         valid: false,
-        error: "Cannot flip cards outside of playing phase",
-      };
+        error: 'Cannot flip cards outside of playing phase',
+      }
     }
 
     // Check if it's the player's turn (in multiplayer)
     if (state.activePlayers.length > 1 && state.currentPlayer !== playerId) {
-      console.log("[Validator] Turn check failed:", {
+      console.log('[Validator] Turn check failed:', {
         activePlayers: state.activePlayers,
         currentPlayer: state.currentPlayer,
         currentPlayerType: typeof state.currentPlayer,
         playerId,
         playerIdType: typeof playerId,
         matches: state.currentPlayer === playerId,
-      });
+      })
       return {
         valid: false,
-        error: "Not your turn",
-      };
+        error: 'Not your turn',
+      }
     }
 
     // Check player ownership authorization (if context provided)
     if (context?.userId && context?.playerOwnership) {
-      const playerOwner = context.playerOwnership[playerId];
+      const playerOwner = context.playerOwnership[playerId]
       if (playerOwner && playerOwner !== context.userId) {
-        console.log("[Validator] Player ownership check failed:", {
+        console.log('[Validator] Player ownership check failed:', {
           playerId,
           playerOwner,
           requestingUserId: context.userId,
-        });
+        })
         return {
           valid: false,
-          error: "You can only move your own players",
-        };
+          error: 'You can only move your own players',
+        }
       }
     }
 
     // Find the card
-    const card = state.gameCards.find((c) => c.id === cardId);
+    const card = state.gameCards.find((c) => c.id === cardId)
     if (!card) {
       return {
         valid: false,
-        error: "Card not found",
-      };
+        error: 'Card not found',
+      }
     }
 
     // Validate using existing game logic
     if (!canFlipCard(card, state.flippedCards, state.isProcessingMove)) {
       return {
         valid: false,
-        error: "Cannot flip this card",
-      };
+        error: 'Cannot flip this card',
+      }
     }
 
     // Calculate new state
-    const newFlippedCards = [...state.flippedCards, card];
+    const newFlippedCards = [...state.flippedCards, card]
     let newState = {
       ...state,
       flippedCards: newFlippedCards,
       isProcessingMove: newFlippedCards.length === 2,
       // Clear mismatch feedback when player flips a new card
       showMismatchFeedback: false,
-    };
+    }
 
     // If two cards are flipped, check for match
     if (newFlippedCards.length === 2) {
-      const [card1, card2] = newFlippedCards;
-      const matchResult = validateMatch(card1, card2);
+      const [card1, card2] = newFlippedCards
+      const matchResult = validateMatch(card1, card2)
 
       if (matchResult.isValid) {
         // Match found - update cards
@@ -150,7 +134,7 @@ export class MatchingGameValidator
           gameCards: newState.gameCards.map((c) =>
             c.id === card1.id || c.id === card2.id
               ? { ...c, matched: true, matchedBy: state.currentPlayer }
-              : c,
+              : c
           ),
           matchedPairs: state.matchedPairs + 1,
           scores: {
@@ -159,33 +143,31 @@ export class MatchingGameValidator
           },
           consecutiveMatches: {
             ...state.consecutiveMatches,
-            [state.currentPlayer]:
-              (state.consecutiveMatches[state.currentPlayer] || 0) + 1,
+            [state.currentPlayer]: (state.consecutiveMatches[state.currentPlayer] || 0) + 1,
           },
           moves: state.moves + 1,
           flippedCards: [],
           isProcessingMove: false,
-        };
+        }
 
         // Check if game is complete
         if (newState.matchedPairs === newState.totalPairs) {
           newState = {
             ...newState,
-            gamePhase: "results",
+            gamePhase: 'results',
             gameEndTime: Date.now(),
-          };
+          }
         }
       } else {
         // Match failed - keep cards flipped briefly so player can see them
         // Client will handle clearing them after a delay
-        const shouldSwitchPlayer = state.activePlayers.length > 1;
+        const shouldSwitchPlayer = state.activePlayers.length > 1
         const nextPlayerIndex = shouldSwitchPlayer
-          ? (state.activePlayers.indexOf(state.currentPlayer) + 1) %
-            state.activePlayers.length
-          : 0;
+          ? (state.activePlayers.indexOf(state.currentPlayer) + 1) % state.activePlayers.length
+          : 0
         const nextPlayer = shouldSwitchPlayer
           ? state.activePlayers[nextPlayerIndex]
-          : state.currentPlayer;
+          : state.currentPlayer
 
         newState = {
           ...newState,
@@ -204,21 +186,21 @@ export class MatchingGameValidator
             ...state.playerHovers,
             [state.currentPlayer]: null,
           },
-        };
+        }
       }
     }
 
     return {
       valid: true,
       newState,
-    };
+    }
   }
 
   private validateStartGame(
     state: MatchingState,
     activePlayers: Player[],
     cards?: GameCard[],
-    playerMetadata?: { [playerId: string]: any },
+    playerMetadata?: { [playerId: string]: any }
   ): ValidationResult {
     // Allow starting a new game from any phase (for "New Game" button)
 
@@ -226,13 +208,12 @@ export class MatchingGameValidator
     if (!activePlayers || activePlayers.length === 0) {
       return {
         valid: false,
-        error: "Must have at least one player",
-      };
+        error: 'Must have at least one player',
+      }
     }
 
     // Use provided cards or generate new ones
-    const gameCards =
-      cards || generateGameCards(state.gameType, state.difficulty);
+    const gameCards = cards || generateGameCards(state.gameType, state.difficulty)
 
     const newState: MatchingState = {
       ...state,
@@ -240,17 +221,14 @@ export class MatchingGameValidator
       cards: gameCards,
       activePlayers,
       playerMetadata: playerMetadata || {}, // Store player metadata for cross-user visibility
-      gamePhase: "playing",
+      gamePhase: 'playing',
       gameStartTime: Date.now(),
       currentPlayer: activePlayers[0],
       flippedCards: [],
       matchedPairs: 0,
       moves: 0,
       scores: activePlayers.reduce((acc, p) => ({ ...acc, [p]: 0 }), {}),
-      consecutiveMatches: activePlayers.reduce(
-        (acc, p) => ({ ...acc, [p]: 0 }),
-        {},
-      ),
+      consecutiveMatches: activePlayers.reduce((acc, p) => ({ ...acc, [p]: 0 }), {}),
       // PAUSE/RESUME: Save original config so we can detect changes
       originalConfig: {
         gameType: state.gameType,
@@ -262,12 +240,12 @@ export class MatchingGameValidator
       pausedGameState: undefined,
       // Clear hover state when starting new game
       playerHovers: {},
-    };
+    }
 
     return {
       valid: true,
       newState,
-    };
+    }
   }
 
   private validateClearMismatch(state: MatchingState): ValidationResult {
@@ -278,17 +256,17 @@ export class MatchingGameValidator
       return {
         valid: true,
         newState: state,
-      };
+      }
     }
 
     // Get the list of all non-current players whose hovers should be cleared
     // (They're not playing this turn, so their hovers from previous turns should not show)
-    const clearedHovers = { ...state.playerHovers };
+    const clearedHovers = { ...state.playerHovers }
     for (const playerId of state.activePlayers) {
       // Clear hover for all players except the current player
       // This ensures only the current player's active hover shows
       if (playerId !== state.currentPlayer) {
-        clearedHovers[playerId] = null;
+        clearedHovers[playerId] = null
       }
     }
 
@@ -303,7 +281,7 @@ export class MatchingGameValidator
         // Clear hovers for non-current players when cards are cleared
         playerHovers: clearedHovers,
       },
-    };
+    }
   }
 
   /**
@@ -326,14 +304,13 @@ export class MatchingGameValidator
    */
   private validateGoToSetup(state: MatchingState): ValidationResult {
     // Determine if we're pausing an active game (for Resume functionality)
-    const isPausingGame =
-      state.gamePhase === "playing" || state.gamePhase === "results";
+    const isPausingGame = state.gamePhase === 'playing' || state.gamePhase === 'results'
 
     return {
       valid: true,
       newState: {
         ...state,
-        gamePhase: "setup",
+        gamePhase: 'setup',
 
         // Pause/Resume: Save game state if pausing from active game
         pausedGamePhase: isPausingGame ? state.gamePhase : undefined,
@@ -358,7 +335,7 @@ export class MatchingGameValidator
         gameCards: [],
         cards: [],
         flippedCards: [],
-        currentPlayer: "",
+        currentPlayer: '',
         matchedPairs: 0,
         moves: 0,
         scores: {},
@@ -376,7 +353,7 @@ export class MatchingGameValidator
         // Preserve configuration - players can modify in setup
         // gameType, difficulty, turnTimer stay as-is
       },
-    };
+    }
   }
 
   /**
@@ -397,44 +374,44 @@ export class MatchingGameValidator
    */
   private validateSetConfig(
     state: MatchingState,
-    field: "gameType" | "difficulty" | "turnTimer",
-    value: any,
+    field: 'gameType' | 'difficulty' | 'turnTimer',
+    value: any
   ): ValidationResult {
     // Can only change config during setup phase
-    if (state.gamePhase !== "setup") {
+    if (state.gamePhase !== 'setup') {
       return {
         valid: false,
-        error: "Cannot change configuration outside of setup phase",
-      };
+        error: 'Cannot change configuration outside of setup phase',
+      }
     }
 
     // Validate field-specific values
     switch (field) {
-      case "gameType":
-        if (value !== "abacus-numeral" && value !== "complement-pairs") {
-          return { valid: false, error: `Invalid gameType: ${value}` };
+      case 'gameType':
+        if (value !== 'abacus-numeral' && value !== 'complement-pairs') {
+          return { valid: false, error: `Invalid gameType: ${value}` }
         }
-        break;
+        break
 
-      case "difficulty":
+      case 'difficulty':
         if (![6, 8, 12, 15].includes(value)) {
-          return { valid: false, error: `Invalid difficulty: ${value}` };
+          return { valid: false, error: `Invalid difficulty: ${value}` }
         }
-        break;
+        break
 
-      case "turnTimer":
-        if (typeof value !== "number" || value < 5 || value > 300) {
-          return { valid: false, error: `Invalid turnTimer: ${value}` };
+      case 'turnTimer':
+        if (typeof value !== 'number' || value < 5 || value > 300) {
+          return { valid: false, error: `Invalid turnTimer: ${value}` }
         }
-        break;
+        break
 
       default:
-        return { valid: false, error: `Unknown config field: ${field}` };
+        return { valid: false, error: `Unknown config field: ${field}` }
     }
 
     // PAUSE/RESUME: If there's a paused game and config is changing,
     // clear the paused game state (can't resume anymore)
-    const clearPausedGame = !!state.pausedGamePhase;
+    const clearPausedGame = !!state.pausedGamePhase
 
     // Apply the configuration change
     return {
@@ -443,7 +420,7 @@ export class MatchingGameValidator
         ...state,
         [field]: value,
         // Update totalPairs if difficulty changes
-        ...(field === "difficulty" ? { totalPairs: value } : {}),
+        ...(field === 'difficulty' ? { totalPairs: value } : {}),
         // Clear paused game if config changed
         ...(clearPausedGame
           ? {
@@ -453,7 +430,7 @@ export class MatchingGameValidator
             }
           : {}),
       },
-    };
+    }
   }
 
   /**
@@ -470,19 +447,19 @@ export class MatchingGameValidator
    */
   private validateResumeGame(state: MatchingState): ValidationResult {
     // Must be in setup phase
-    if (state.gamePhase !== "setup") {
+    if (state.gamePhase !== 'setup') {
       return {
         valid: false,
-        error: "Can only resume from setup phase",
-      };
+        error: 'Can only resume from setup phase',
+      }
     }
 
     // Must have a paused game
     if (!state.pausedGamePhase || !state.pausedGameState) {
       return {
         valid: false,
-        error: "No paused game to resume",
-      };
+        error: 'No paused game to resume',
+      }
     }
 
     // Config must match original (no changes while paused)
@@ -490,13 +467,13 @@ export class MatchingGameValidator
       const configChanged =
         state.gameType !== state.originalConfig.gameType ||
         state.difficulty !== state.originalConfig.difficulty ||
-        state.turnTimer !== state.originalConfig.turnTimer;
+        state.turnTimer !== state.originalConfig.turnTimer
 
       if (configChanged) {
         return {
           valid: false,
-          error: "Cannot resume - configuration has changed",
-        };
+          error: 'Cannot resume - configuration has changed',
+        }
       }
     }
 
@@ -521,7 +498,7 @@ export class MatchingGameValidator
         pausedGameState: undefined,
         // Keep originalConfig for potential future pauses
       },
-    };
+    }
   }
 
   /**
@@ -533,7 +510,7 @@ export class MatchingGameValidator
   private validateHoverCard(
     state: MatchingState,
     cardId: string | null,
-    playerId: string,
+    playerId: string
   ): ValidationResult {
     // Hover is always valid - it's just UI state for networked presence
     // Update the player's hover state
@@ -546,13 +523,11 @@ export class MatchingGameValidator
           [playerId]: cardId,
         },
       },
-    };
+    }
   }
 
   isGameComplete(state: MatchingState): boolean {
-    return (
-      state.gamePhase === "results" || state.matchedPairs === state.totalPairs
-    );
+    return state.gamePhase === 'results' || state.matchedPairs === state.totalPairs
   }
 
   getInitialState(config: MatchingConfig): MatchingState {
@@ -563,8 +538,8 @@ export class MatchingGameValidator
       gameType: config.gameType,
       difficulty: config.difficulty,
       turnTimer: config.turnTimer,
-      gamePhase: "setup",
-      currentPlayer: "",
+      gamePhase: 'setup',
+      currentPlayer: '',
       matchedPairs: 0,
       totalPairs: config.difficulty,
       moves: 0,
@@ -586,9 +561,9 @@ export class MatchingGameValidator
       pausedGameState: undefined,
       // HOVER: Initialize hover state
       playerHovers: {},
-    };
+    }
   }
 }
 
 // Singleton instance
-export const matchingGameValidator = new MatchingGameValidator();
+export const matchingGameValidator = new MatchingGameValidator()

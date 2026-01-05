@@ -1,22 +1,21 @@
-import type { ComponentProps } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import type { ComponentProps } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 
-type QRCodeSVGProps = ComponentProps<typeof QRCodeSVG>;
+type QRCodeSVGProps = ComponentProps<typeof QRCodeSVG>
 
-export interface AbacusQRCodeProps
-  extends Omit<QRCodeSVGProps, "imageSettings"> {
+export interface AbacusQRCodeProps extends Omit<QRCodeSVGProps, 'imageSettings'> {
   /**
    * Override the default abacus logo with a custom image
    * If not provided, uses the abacus icon at /icon (only on QR codes >= 150px)
    */
-  imageSettings?: QRCodeSVGProps["imageSettings"];
+  imageSettings?: QRCodeSVGProps['imageSettings']
 
   /**
    * Minimum size (in pixels) to show the logo
    * Below this threshold, QR code will be plain for better scannability
    * @default 150
    */
-  minLogoSize?: number;
+  minLogoSize?: number
 }
 
 /**
@@ -60,16 +59,16 @@ export function AbacusQRCode({
   imageSettings,
   minLogoSize = 150,
   size = 128,
-  level = "H", // Default to high error correction for logo
-  fgColor = "#111827",
-  bgColor = "#ffffff",
+  level = 'H', // Default to high error correction for logo
+  fgColor = '#111827',
+  bgColor = '#ffffff',
   ...props
 }: AbacusQRCodeProps) {
   // Only show logo on QR codes large enough for it to scan reliably
-  const showLogo = typeof size === "number" && size >= minLogoSize;
+  const showLogo = typeof size === 'number' && size >= minLogoSize
 
   // Calculate logo size as 22% of QR code size (scales nicely)
-  const logoSize = typeof size === "number" ? Math.round(size * 0.22) : 48;
+  const logoSize = typeof size === 'number' ? Math.round(size * 0.22) : 48
 
   return (
     <QRCodeSVG
@@ -81,7 +80,7 @@ export function AbacusQRCode({
       imageSettings={
         showLogo
           ? (imageSettings ?? {
-              src: "/icon",
+              src: '/icon',
               height: logoSize,
               width: logoSize,
               excavate: true, // Clear space behind logo for better scanning
@@ -89,5 +88,5 @@ export function AbacusQRCode({
           : undefined // No logo on small QR codes
       }
     />
-  );
+  )
 }

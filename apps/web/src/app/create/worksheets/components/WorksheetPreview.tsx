@@ -1,63 +1,56 @@
-"use client";
+'use client'
 
-import { css } from "@styled/css";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import {
-  Component,
-  type ReactNode,
-  Suspense,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import type { WorksheetFormState } from "@/app/create/worksheets/types";
-import { useTheme } from "@/contexts/ThemeContext";
-import { FloatingPageIndicator } from "./FloatingPageIndicator";
-import { PagePlaceholder } from "./PagePlaceholder";
-import { DuplicateWarningBanner } from "./worksheet-preview/DuplicateWarningBanner";
-import { WorksheetPreviewProvider } from "./worksheet-preview/WorksheetPreviewContext";
+import { css } from '@styled/css'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { Component, type ReactNode, Suspense, useEffect, useRef, useState } from 'react'
+import type { WorksheetFormState } from '@/app/create/worksheets/types'
+import { useTheme } from '@/contexts/ThemeContext'
+import { FloatingPageIndicator } from './FloatingPageIndicator'
+import { PagePlaceholder } from './PagePlaceholder'
+import { DuplicateWarningBanner } from './worksheet-preview/DuplicateWarningBanner'
+import { WorksheetPreviewProvider } from './worksheet-preview/WorksheetPreviewContext'
 
 interface WorksheetPreviewProps {
-  formState: WorksheetFormState;
-  initialData?: string[];
-  isScrolling?: boolean;
+  formState: WorksheetFormState
+  initialData?: string[]
+  isScrolling?: boolean
   onPageDataReady?: (data: {
-    currentPage: number;
-    totalPages: number;
-    jumpToPage: (pageIndex: number) => void;
-  }) => void;
+    currentPage: number
+    totalPages: number
+    jumpToPage: (pageIndex: number) => void
+  }) => void
 }
 
 function getDefaultDate(): string {
-  const now = new Date();
-  return now.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  const now = new Date()
+  return now.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 interface FetchPreviewResponse {
-  pages: string[];
-  totalPages: number;
-  startPage?: number;
-  endPage?: number;
-  warnings?: string[];
-  nextCursor?: number | null;
+  pages: string[]
+  totalPages: number
+  startPage?: number
+  endPage?: number
+  warnings?: string[]
+  nextCursor?: number | null
 }
 
 async function fetchWorksheetPreview(
   formState: WorksheetFormState,
   startPage?: number,
-  endPage?: number,
+  endPage?: number
 ): Promise<FetchPreviewResponse> {
   // Set current date for preview
   const configWithDate = {
     ...formState,
     date: getDefaultDate(),
-  };
+  }
 
-  console.log("[fetchWorksheetPreview] Fetching with config:", {
+  console.log('[fetchWorksheetPreview] Fetching with config:', {
     mode: configWithDate.mode,
     operator: configWithDate.operator,
     displayRules: configWithDate.displayRules,
@@ -65,47 +58,41 @@ async function fetchWorksheetPreview(
     subtractionDisplayRules: (configWithDate as any).subtractionDisplayRules,
     startPage,
     endPage,
-  });
+  })
 
   // Use absolute URL for SSR compatibility
-  const baseUrl =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : "http://localhost:3000";
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
 
   // Add pagination query parameters if provided
-  const params = new URLSearchParams();
+  const params = new URLSearchParams()
   if (startPage !== undefined) {
-    params.set("startPage", startPage.toString());
+    params.set('startPage', startPage.toString())
   }
   if (endPage !== undefined) {
-    params.set("endPage", endPage.toString());
+    params.set('endPage', endPage.toString())
   }
 
-  const queryString = params.toString();
-  const url = `${baseUrl}/api/create/worksheets/preview${queryString ? `?${queryString}` : ""}`;
+  const queryString = params.toString()
+  const url = `${baseUrl}/api/create/worksheets/preview${queryString ? `?${queryString}` : ''}`
 
-  console.log("[fetchWorksheetPreview] Sending POST to:", url);
+  console.log('[fetchWorksheetPreview] Sending POST to:', url)
 
   const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(configWithDate),
-  });
+  })
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMsg =
-      errorData.error || errorData.message || "Failed to fetch preview";
-    const details = errorData.details ? `\n\n${errorData.details}` : "";
-    const errors = errorData.errors
-      ? `\n\nErrors:\n${errorData.errors.join("\n")}`
-      : "";
-    throw new Error(errorMsg + details + errors);
+    const errorData = await response.json().catch(() => ({}))
+    const errorMsg = errorData.error || errorData.message || 'Failed to fetch preview'
+    const details = errorData.details ? `\n\n${errorData.details}` : ''
+    const errors = errorData.errors ? `\n\nErrors:\n${errorData.errors.join('\n')}` : ''
+    throw new Error(errorMsg + details + errors)
   }
 
-  const data = await response.json();
-  return data;
+  const data = await response.json()
+  return data
 }
 
 function PreviewContent({
@@ -114,12 +101,12 @@ function PreviewContent({
   isScrolling = false,
   onPageDataReady,
 }: WorksheetPreviewProps) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-  const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const pageRefs = useRef<(HTMLDivElement | null)[]>([])
 
   // Track if we've used the initial data (so we only use it once)
-  const initialDataUsed = useRef(false);
+  const initialDataUsed = useRef(false)
 
   // Only use initialData on the very first query, not on subsequent fetches
   // Convert initial pages to response format
@@ -131,19 +118,19 @@ function PreviewContent({
           startPage: 0,
           endPage: initialData.length - 1,
         }
-      : undefined;
+      : undefined
 
   if (queryInitialData) {
-    initialDataUsed.current = true;
+    initialDataUsed.current = true
   }
 
   // For initial query and refetches, only load first 3 pages
-  const INITIAL_PAGE_COUNT = 3;
+  const INITIAL_PAGE_COUNT = 3
 
   // Use Suspense Query - will suspend during loading
   const { data: response } = useSuspenseQuery({
     queryKey: [
-      "worksheet-preview",
+      'worksheet-preview',
       // PRIMARY state
       formState.problemsPerPage,
       formState.cols,
@@ -184,185 +171,177 @@ function PreviewContent({
     queryFn: () => {
       // Only fetch first INITIAL_PAGE_COUNT pages initially
       // The virtualization system will fetch remaining pages on-demand
-      const totalPages = formState.pages || 1;
-      const endPage = Math.min(INITIAL_PAGE_COUNT - 1, totalPages - 1);
-      return fetchWorksheetPreview(formState, 0, endPage);
+      const totalPages = formState.pages || 1
+      const endPage = Math.min(INITIAL_PAGE_COUNT - 1, totalPages - 1)
+      return fetchWorksheetPreview(formState, 0, endPage)
     },
     initialData: queryInitialData, // Only use on first render
-  });
+  })
 
-  const totalPages = response.totalPages;
+  const totalPages = response.totalPages
   const [loadedPages, setLoadedPages] = useState<Map<number, string>>(() => {
     // Initialize with pages from response
-    const map = new Map<number, string>();
+    const map = new Map<number, string>()
     response.pages.forEach((page, offsetIndex) => {
-      const pageIndex = (response.startPage ?? 0) + offsetIndex;
-      map.set(pageIndex, page);
-    });
-    return map;
-  });
+      const pageIndex = (response.startPage ?? 0) + offsetIndex
+      map.set(pageIndex, page)
+    })
+    return map
+  })
 
   // Virtualization decision based on page count, not config source
   // Always virtualize multi-page worksheets for performance
-  const shouldVirtualize = totalPages > 1;
+  const shouldVirtualize = totalPages > 1
 
   // Initialize visible pages - start with first page only
-  const [visiblePages, setVisiblePages] = useState<Set<number>>(
-    () => new Set([0]),
-  );
+  const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set([0]))
 
   // Track which pages are currently being fetched
-  const [fetchingPages, setFetchingPages] = useState<Set<number>>(new Set());
+  const [fetchingPages, setFetchingPages] = useState<Set<number>>(new Set())
 
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0)
 
   // Track when refs are fully populated
-  const [refsReady, setRefsReady] = useState(false);
+  const [refsReady, setRefsReady] = useState(false)
 
   // Reset to first page when preview updates
   useEffect(() => {
-    setCurrentPage(0);
-    setVisiblePages(new Set([0]));
-    setFetchingPages(new Set());
-    pageRefs.current = [];
-    setRefsReady(false);
+    setCurrentPage(0)
+    setVisiblePages(new Set([0]))
+    setFetchingPages(new Set())
+    pageRefs.current = []
+    setRefsReady(false)
 
     // Update loaded pages with new pages from response
-    const map = new Map<number, string>();
+    const map = new Map<number, string>()
     response.pages.forEach((page, offsetIndex) => {
-      const pageIndex = (response.startPage ?? 0) + offsetIndex;
-      map.set(pageIndex, page);
-    });
-    setLoadedPages(map);
-  }, [response]);
+      const pageIndex = (response.startPage ?? 0) + offsetIndex
+      map.set(pageIndex, page)
+    })
+    setLoadedPages(map)
+  }, [response])
 
   // Fetch pages as they become visible
   useEffect(() => {
     if (!shouldVirtualize) {
-      return;
+      return
     }
 
     // Find pages that are visible but not loaded and not being fetched
     const pagesToFetch = Array.from(visiblePages).filter(
-      (pageIndex) =>
-        !loadedPages.has(pageIndex) && !fetchingPages.has(pageIndex),
-    );
+      (pageIndex) => !loadedPages.has(pageIndex) && !fetchingPages.has(pageIndex)
+    )
 
-    if (pagesToFetch.length === 0) return;
+    if (pagesToFetch.length === 0) return
 
     // Group consecutive pages into ranges for batch fetching
-    const ranges: { start: number; end: number }[] = [];
-    let currentRange: { start: number; end: number } | null = null;
+    const ranges: { start: number; end: number }[] = []
+    let currentRange: { start: number; end: number } | null = null
 
     pagesToFetch
       .sort((a, b) => a - b)
       .forEach((pageIndex) => {
         if (currentRange === null) {
-          currentRange = { start: pageIndex, end: pageIndex };
+          currentRange = { start: pageIndex, end: pageIndex }
         } else if (pageIndex === currentRange.end + 1) {
-          currentRange.end = pageIndex;
+          currentRange.end = pageIndex
         } else {
-          ranges.push(currentRange);
-          currentRange = { start: pageIndex, end: pageIndex };
+          ranges.push(currentRange)
+          currentRange = { start: pageIndex, end: pageIndex }
         }
-      });
+      })
     if (currentRange !== null) {
-      ranges.push(currentRange);
+      ranges.push(currentRange)
     }
 
     // Fetch each range
     ranges.forEach(({ start, end }) => {
       // Mark pages as being fetched
       setFetchingPages((prev) => {
-        const next = new Set(prev);
+        const next = new Set(prev)
         for (let i = start; i <= end; i++) {
-          next.add(i);
+          next.add(i)
         }
-        return next;
-      });
+        return next
+      })
 
-      console.log(`[Virtualization] Fetching pages ${start}-${end}...`);
+      console.log(`[Virtualization] Fetching pages ${start}-${end}...`)
 
       // Fetch the range with pagination parameters
       fetchWorksheetPreview(formState, start, end)
         .then((response) => {
           console.log(
-            `[Virtualization] Received ${response.pages.length} pages for range ${start}-${end}`,
-          );
+            `[Virtualization] Received ${response.pages.length} pages for range ${start}-${end}`
+          )
           // Add fetched pages to loaded pages
           setLoadedPages((prev) => {
-            const next = new Map(prev);
+            const next = new Map(prev)
             // Pages are returned starting from 'start', so map them correctly
             response.pages.forEach((page, offsetIndex) => {
-              next.set(start + offsetIndex, page);
-            });
-            return next;
-          });
+              next.set(start + offsetIndex, page)
+            })
+            return next
+          })
 
           // Remove from fetching set
           setFetchingPages((prev) => {
-            const next = new Set(prev);
+            const next = new Set(prev)
             for (let i = start; i <= end; i++) {
-              next.delete(i);
+              next.delete(i)
             }
-            return next;
-          });
+            return next
+          })
         })
         .catch((error) => {
-          console.error(
-            `[Virtualization] Failed to fetch pages ${start}-${end}:`,
-            error,
-          );
+          console.error(`[Virtualization] Failed to fetch pages ${start}-${end}:`, error)
 
           // Remove from fetching set on error
           setFetchingPages((prev) => {
-            const next = new Set(prev);
+            const next = new Set(prev)
             for (let i = start; i <= end; i++) {
-              next.delete(i);
+              next.delete(i)
             }
-            return next;
-          });
-        });
-    });
-  }, [visiblePages, loadedPages, fetchingPages, shouldVirtualize, formState]);
+            return next
+          })
+        })
+    })
+  }, [visiblePages, loadedPages, fetchingPages, shouldVirtualize, formState])
 
   // Check if all refs are populated after each render
   useEffect(() => {
     if (totalPages > 1 && pageRefs.current.length === totalPages) {
-      const allPopulated = pageRefs.current.every((ref) => ref !== null);
+      const allPopulated = pageRefs.current.every((ref) => ref !== null)
       if (allPopulated && !refsReady) {
-        setRefsReady(true);
+        setRefsReady(true)
       }
     }
-  });
+  })
 
   // Intersection Observer to track current page (works with or without virtualization)
   useEffect(() => {
     if (totalPages <= 1) {
-      return; // No need for page tracking with single page
+      return // No need for page tracking with single page
     }
 
     // Wait for refs to be populated
     if (!refsReady) {
-      return;
+      return
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         // Find the most visible page among all entries
-        let mostVisiblePage = 0;
-        let maxRatio = 0;
+        let mostVisiblePage = 0
+        let maxRatio = 0
 
         entries.forEach((entry) => {
-          const pageIndex = Number(
-            entry.target.getAttribute("data-page-index"),
-          );
+          const pageIndex = Number(entry.target.getAttribute('data-page-index'))
 
           if (entry.intersectionRatio > maxRatio) {
-            maxRatio = entry.intersectionRatio;
-            mostVisiblePage = pageIndex;
+            maxRatio = entry.intersectionRatio
+            mostVisiblePage = pageIndex
           }
-        });
+        })
 
         // Update current page with hysteresis to prevent flickering
         // Only update if:
@@ -371,100 +350,93 @@ function PreviewContent({
         // 3. New page is significantly more visible (>0.6 ratio) OR current page has very low visibility (<0.3)
         if (maxRatio > 0) {
           setCurrentPage((prev) => {
-            const isDifferentPage = mostVisiblePage !== prev;
-            const isSignificantlyVisible = maxRatio > 0.6;
-            const currentPageLowVisibility = maxRatio > 0.3; // If maxRatio is high, current page must be less visible
+            const isDifferentPage = mostVisiblePage !== prev
+            const isSignificantlyVisible = maxRatio > 0.6
+            const currentPageLowVisibility = maxRatio > 0.3 // If maxRatio is high, current page must be less visible
 
-            if (
-              isDifferentPage &&
-              (isSignificantlyVisible || !currentPageLowVisibility)
-            ) {
-              return mostVisiblePage;
+            if (isDifferentPage && (isSignificantlyVisible || !currentPageLowVisibility)) {
+              return mostVisiblePage
             }
 
-            return prev;
-          });
+            return prev
+          })
         }
 
         // Update visible pages set (only when virtualizing)
         if (shouldVirtualize) {
           setVisiblePages((prev) => {
-            const next = new Set<number>();
+            const next = new Set<number>()
 
             // Only keep pages that are currently intersecting
             entries.forEach((entry) => {
-              const pageIndex = Number(
-                entry.target.getAttribute("data-page-index"),
-              );
+              const pageIndex = Number(entry.target.getAttribute('data-page-index'))
 
               if (entry.isIntersecting) {
                 // Add visible page
-                next.add(pageIndex);
+                next.add(pageIndex)
                 // Preload adjacent pages for smooth scrolling
-                if (pageIndex > 0) next.add(pageIndex - 1);
-                if (pageIndex < totalPages - 1) next.add(pageIndex + 1);
+                if (pageIndex > 0) next.add(pageIndex - 1)
+                if (pageIndex < totalPages - 1) next.add(pageIndex + 1)
               }
-            });
+            })
 
             // Keep any pages from prev that weren't in entries (not observed in this callback)
             prev.forEach((pageIndex) => {
               const wasObserved = entries.some(
-                (entry) =>
-                  Number(entry.target.getAttribute("data-page-index")) ===
-                  pageIndex,
-              );
+                (entry) => Number(entry.target.getAttribute('data-page-index')) === pageIndex
+              )
               if (!wasObserved) {
-                next.add(pageIndex);
+                next.add(pageIndex)
               }
-            });
+            })
 
-            return next;
-          });
+            return next
+          })
         }
       },
       {
         root: null, // Use viewport as root (scrolling happens in parent)
-        rootMargin: "50% 0px", // Start loading when page is 50% away from viewport
+        rootMargin: '50% 0px', // Start loading when page is 50% away from viewport
         threshold: [0, 0.5, 1],
-      },
-    );
+      }
+    )
 
     // Observe all page containers
     pageRefs.current.forEach((ref) => {
       if (ref) {
-        observer.observe(ref);
+        observer.observe(ref)
       }
-    });
+    })
 
     return () => {
-      observer.disconnect();
-    };
-  }, [totalPages, refsReady, shouldVirtualize]);
+      observer.disconnect()
+    }
+  }, [totalPages, refsReady, shouldVirtualize])
 
   // Jump to page function for floating indicator
   const jumpToPage = (pageIndex: number) => {
     pageRefs.current[pageIndex]?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
 
   // Notify parent of page data for floating elements
   useEffect(() => {
     if (onPageDataReady) {
-      onPageDataReady({ currentPage, totalPages, jumpToPage });
+      onPageDataReady({ currentPage, totalPages, jumpToPage })
     }
-  }, [currentPage, totalPages, onPageDataReady]);
+  }, [currentPage, totalPages, onPageDataReady])
 
   return (
     <div
       data-component="worksheet-preview"
       className={css({
-        bg: isDark ? "gray.700" : "white",
-        rounded: "lg",
-        border: "1px solid",
-        borderColor: isDark ? "gray.600" : "gray.200",
-        minH: "full",
+        bg: isDark ? 'gray.700' : 'white',
+        rounded: 'lg',
+        border: '1px solid',
+        borderColor: isDark ? 'gray.600' : 'gray.200',
+        minH: 'full',
       })}
     >
       {/* Floating elements moved to PreviewCenter */}
@@ -472,51 +444,50 @@ function PreviewContent({
       {/* Page containers */}
       <div
         className={css({
-          display: "flex",
-          flexDirection: "column",
-          gap: "6",
-          p: "4",
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6',
+          p: '4',
         })}
       >
         {Array.from({ length: totalPages }, (_, index) => {
-          const isLoaded = loadedPages.has(index);
-          const isFetching = fetchingPages.has(index);
-          const isVisible = visiblePages.has(index);
-          const page = loadedPages.get(index);
+          const isLoaded = loadedPages.has(index)
+          const isFetching = fetchingPages.has(index)
+          const isVisible = visiblePages.has(index)
+          const page = loadedPages.get(index)
 
           // Calculate dimensions for consistent sizing between placeholder and loaded content
-          const orientation = formState.orientation ?? "portrait";
-          const maxWidth = orientation === "portrait" ? 816 : 1056;
-          const aspectRatio =
-            orientation === "portrait" ? "8.5 / 11" : "11 / 8.5";
+          const orientation = formState.orientation ?? 'portrait'
+          const maxWidth = orientation === 'portrait' ? 816 : 1056
+          const aspectRatio = orientation === 'portrait' ? '8.5 / 11' : '11 / 8.5'
 
           return (
             <div
               key={index}
               ref={(el) => {
-                pageRefs.current[index] = el;
+                pageRefs.current[index] = el
               }}
               data-page-index={index}
               data-element="page-container"
-              data-page-loaded={isLoaded ? "true" : "false"}
-              data-page-fetching={isFetching ? "true" : "false"}
+              data-page-loaded={isLoaded ? 'true' : 'false'}
+              data-page-fetching={isFetching ? 'true' : 'false'}
               className={css({
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "flex-start",
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-start',
               })}
             >
               {isLoaded && page ? (
                 <div
                   style={{
-                    width: "100%",
+                    width: '100%',
                     maxWidth: `${maxWidth}px`,
                     aspectRatio: aspectRatio,
                   }}
                   className={css({
-                    "& svg": {
-                      width: "100%",
-                      height: "auto",
+                    '& svg': {
+                      width: '100%',
+                      height: 'auto',
                     },
                   })}
                   dangerouslySetInnerHTML={{ __html: page }}
@@ -525,19 +496,17 @@ function PreviewContent({
                 <PagePlaceholder
                   pageNumber={index + 1}
                   orientation={formState.orientation}
-                  rows={Math.ceil(
-                    (formState.problemsPerPage ?? 20) / (formState.cols ?? 5),
-                  )}
+                  rows={Math.ceil((formState.problemsPerPage ?? 20) / (formState.cols ?? 5))}
                   cols={formState.cols}
                   loading={isFetching}
                 />
               )}
             </div>
-          );
+          )
         })}
       </div>
     </div>
-  );
+  )
 }
 
 function PreviewFallback({ formState }: { formState?: WorksheetFormState }) {
@@ -545,73 +514,65 @@ function PreviewFallback({ formState }: { formState?: WorksheetFormState }) {
     <div
       data-component="worksheet-preview-loading"
       className={css({
-        bg: "white",
-        rounded: "2xl",
-        p: "6",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "600px",
+        bg: 'white',
+        rounded: '2xl',
+        p: '6',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '600px',
       })}
     >
       <PagePlaceholder
         pageNumber={1}
-        orientation={formState?.orientation ?? "portrait"}
-        rows={Math.ceil(
-          (formState?.problemsPerPage ?? 20) / (formState?.cols ?? 5),
-        )}
+        orientation={formState?.orientation ?? 'portrait'}
+        rows={Math.ceil((formState?.problemsPerPage ?? 20) / (formState?.cols ?? 5))}
         cols={formState?.cols ?? 5}
         loading={true}
       />
     </div>
-  );
+  )
 }
 
-function PreviewErrorFallback({
-  error,
-  onRetry,
-}: {
-  error: Error;
-  onRetry: () => void;
-}) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+function PreviewErrorFallback({ error, onRetry }: { error: Error; onRetry: () => void }) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
   // Log full error details to console
   useEffect(() => {
-    console.error("[WorksheetPreview] Preview generation failed:", {
+    console.error('[WorksheetPreview] Preview generation failed:', {
       message: error.message,
       stack: error.stack,
       error,
-    });
-  }, [error]);
+    })
+  }, [error])
 
   return (
     <div
       data-component="worksheet-preview-error"
       className={css({
-        bg: isDark ? "gray.800" : "white",
-        rounded: "xl",
-        p: "6",
-        border: "2px solid",
-        borderColor: "red.300",
-        display: "flex",
-        flexDirection: "column",
-        gap: "4",
-        minHeight: "400px",
+        bg: isDark ? 'gray.800' : 'white',
+        rounded: 'xl',
+        p: '6',
+        border: '2px solid',
+        borderColor: 'red.300',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4',
+        minHeight: '400px',
       })}
     >
       <div
         className={css({
-          display: "flex",
-          alignItems: "flex-start",
-          gap: "3",
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '3',
         })}
       >
         <div
           className={css({
-            fontSize: "3xl",
+            fontSize: '3xl',
             flexShrink: 0,
           })}
         >
@@ -620,80 +581,77 @@ function PreviewErrorFallback({
         <div className={css({ flex: 1 })}>
           <h3
             className={css({
-              fontSize: "lg",
-              fontWeight: "bold",
-              color: isDark ? "red.300" : "red.600",
-              mb: "2",
+              fontSize: 'lg',
+              fontWeight: 'bold',
+              color: isDark ? 'red.300' : 'red.600',
+              mb: '2',
             })}
           >
             Preview Generation Failed
           </h3>
           <p
             className={css({
-              fontSize: "sm",
-              color: isDark ? "gray.300" : "gray.600",
-              mb: "3",
-              lineHeight: "1.6",
+              fontSize: 'sm',
+              color: isDark ? 'gray.300' : 'gray.600',
+              mb: '3',
+              lineHeight: '1.6',
             })}
           >
-            The worksheet preview could not be generated. This usually happens
-            due to invalid settings or a temporary server issue. Your settings
-            are still saved.
+            The worksheet preview could not be generated. This usually happens due to invalid
+            settings or a temporary server issue. Your settings are still saved.
           </p>
 
           {/* Actionable suggestions */}
           <div
             className={css({
-              bg: isDark ? "gray.900" : "gray.50",
-              p: "4",
-              rounded: "lg",
-              fontSize: "sm",
-              mb: "3",
+              bg: isDark ? 'gray.900' : 'gray.50',
+              p: '4',
+              rounded: 'lg',
+              fontSize: 'sm',
+              mb: '3',
             })}
           >
             <h4
               className={css({
-                fontWeight: "semibold",
-                color: isDark ? "gray.200" : "gray.800",
-                mb: "2",
+                fontWeight: 'semibold',
+                color: isDark ? 'gray.200' : 'gray.800',
+                mb: '2',
               })}
             >
               Try these steps:
             </h4>
             <ul
               className={css({
-                listStyle: "none",
-                display: "flex",
-                flexDirection: "column",
-                gap: "2",
-                color: isDark ? "gray.300" : "gray.700",
+                listStyle: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2',
+                color: isDark ? 'gray.300' : 'gray.700',
               })}
             >
-              <li className={css({ display: "flex", gap: "2" })}>
+              <li className={css({ display: 'flex', gap: '2' })}>
                 <span>1.</span>
-                <span>
-                  Click the "Retry Preview" button below to try generating again
-                </span>
+                <span>Click the "Retry Preview" button below to try generating again</span>
               </li>
-              <li className={css({ display: "flex", gap: "2" })}>
+              <li className={css({ display: 'flex', gap: '2' })}>
                 <span>2.</span>
                 <span>
-                  Try adjusting your worksheet settings (e.g., reduce problems
-                  per page or number of pages)
+                  Try adjusting your worksheet settings (e.g., reduce problems per page or number of
+                  pages)
                 </span>
               </li>
-              <li className={css({ display: "flex", gap: "2" })}>
+              <li className={css({ display: 'flex', gap: '2' })}>
                 <span>3.</span>
                 <span>
-                  Check if you have extreme values in difficulty settings that
-                  might be causing issues
+                  Check if you have extreme values in difficulty settings that might be causing
+                  issues
                 </span>
               </li>
-              <li className={css({ display: "flex", gap: "2" })}>
+              <li className={css({ display: 'flex', gap: '2' })}>
                 <span>4.</span>
                 <span>
-                  If the preview continues to fail, you can still try generating
-                  the full worksheet PDF
+                  If the preview continues to fail, you can still try generating the full worksheet
+                  PDF
                 </span>
               </li>
             </ul>
@@ -703,22 +661,22 @@ function PreviewErrorFallback({
           <button
             onClick={onRetry}
             className={css({
-              px: "4",
-              py: "2",
-              bg: isDark ? "blue.600" : "blue.500",
-              color: "white",
-              rounded: "lg",
-              fontWeight: "medium",
-              fontSize: "sm",
-              cursor: "pointer",
-              transition: "all 0.2s",
+              px: '4',
+              py: '2',
+              bg: isDark ? 'blue.600' : 'blue.500',
+              color: 'white',
+              rounded: 'lg',
+              fontWeight: 'medium',
+              fontSize: 'sm',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
               _hover: {
-                bg: isDark ? "blue.700" : "blue.600",
-                transform: "translateY(-1px)",
-                boxShadow: "md",
+                bg: isDark ? 'blue.700' : 'blue.600',
+                transform: 'translateY(-1px)',
+                boxShadow: 'md',
               },
               _active: {
-                transform: "translateY(0)",
+                transform: 'translateY(0)',
               },
             })}
           >
@@ -730,47 +688,47 @@ function PreviewErrorFallback({
       {/* Technical details (collapsible) */}
       <details
         className={css({
-          bg: isDark ? "gray.900" : "gray.50",
-          p: "3",
-          rounded: "md",
-          fontSize: "sm",
-          borderTop: "1px solid",
-          borderColor: isDark ? "gray.700" : "gray.200",
+          bg: isDark ? 'gray.900' : 'gray.50',
+          p: '3',
+          rounded: 'md',
+          fontSize: 'sm',
+          borderTop: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
         <summary
           className={css({
-            cursor: "pointer",
-            fontWeight: "medium",
-            color: isDark ? "gray.400" : "gray.600",
+            cursor: 'pointer',
+            fontWeight: 'medium',
+            color: isDark ? 'gray.400' : 'gray.600',
             _hover: {
-              color: isDark ? "gray.300" : "gray.900",
+              color: isDark ? 'gray.300' : 'gray.900',
             },
           })}
         >
           Technical Details (for debugging)
         </summary>
-        <div className={css({ mt: "3" })}>
+        <div className={css({ mt: '3' })}>
           <div
             className={css({
-              mb: "2",
-              fontSize: "xs",
-              color: isDark ? "gray.400" : "gray.600",
+              mb: '2',
+              fontSize: 'xs',
+              color: isDark ? 'gray.400' : 'gray.600',
             })}
           >
             Error message:
           </div>
           <pre
             className={css({
-              p: "2",
-              bg: isDark ? "gray.950" : "white",
-              rounded: "sm",
-              fontSize: "xs",
-              overflow: "auto",
-              color: isDark ? "red.300" : "red.600",
-              mb: "3",
-              border: "1px solid",
-              borderColor: isDark ? "gray.800" : "gray.200",
+              p: '2',
+              bg: isDark ? 'gray.950' : 'white',
+              rounded: 'sm',
+              fontSize: 'xs',
+              overflow: 'auto',
+              color: isDark ? 'red.300' : 'red.600',
+              mb: '3',
+              border: '1px solid',
+              borderColor: isDark ? 'gray.800' : 'gray.200',
             })}
           >
             {error.message}
@@ -779,24 +737,24 @@ function PreviewErrorFallback({
             <>
               <div
                 className={css({
-                  mb: "2",
-                  fontSize: "xs",
-                  color: isDark ? "gray.400" : "gray.600",
+                  mb: '2',
+                  fontSize: 'xs',
+                  color: isDark ? 'gray.400' : 'gray.600',
                 })}
               >
                 Stack trace (also logged to browser console):
               </div>
               <pre
                 className={css({
-                  p: "2",
-                  bg: isDark ? "gray.950" : "white",
-                  rounded: "sm",
-                  fontSize: "xs",
-                  overflow: "auto",
-                  maxHeight: "200px",
-                  color: isDark ? "gray.400" : "gray.600",
-                  border: "1px solid",
-                  borderColor: isDark ? "gray.800" : "gray.200",
+                  p: '2',
+                  bg: isDark ? 'gray.950' : 'white',
+                  rounded: 'sm',
+                  fontSize: 'xs',
+                  overflow: 'auto',
+                  maxHeight: '200px',
+                  color: isDark ? 'gray.400' : 'gray.600',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.800' : 'gray.200',
                 })}
               >
                 {error.stack}
@@ -806,7 +764,7 @@ function PreviewErrorFallback({
         </div>
       </details>
     </div>
-  );
+  )
 }
 
 class PreviewErrorBoundary extends Component<
@@ -814,40 +772,29 @@ class PreviewErrorBoundary extends Component<
   { hasError: boolean; error: Error | null }
 > {
   constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
+    super(props)
+    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
+    return { hasError: true, error }
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error(
-      "[WorksheetPreview] Error caught by boundary:",
-      error,
-      errorInfo,
-    );
+    console.error('[WorksheetPreview] Error caught by boundary:', error, errorInfo)
   }
 
   handleRetry = () => {
-    console.log(
-      "[WorksheetPreview] Retry requested - resetting error boundary",
-    );
-    this.setState({ hasError: false, error: null });
-  };
+    console.log('[WorksheetPreview] Retry requested - resetting error boundary')
+    this.setState({ hasError: false, error: null })
+  }
 
   render() {
     if (this.state.hasError && this.state.error) {
-      return (
-        <PreviewErrorFallback
-          error={this.state.error}
-          onRetry={this.handleRetry}
-        />
-      );
+      return <PreviewErrorFallback error={this.state.error} onRetry={this.handleRetry} />
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }
 
@@ -870,5 +817,5 @@ export function WorksheetPreview({
         </Suspense>
       </PreviewErrorBoundary>
     </WorksheetPreviewProvider>
-  );
+  )
 }

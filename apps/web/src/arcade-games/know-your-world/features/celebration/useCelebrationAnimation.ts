@@ -17,32 +17,32 @@
  * ```
  */
 
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import { usePulsingAnimation } from "../animations";
-import { CELEBRATION_TIMING } from "../../utils/celebration";
-import type { CelebrationType } from "../../Provider";
+import { useEffect, useState } from 'react'
+import { usePulsingAnimation } from '../animations'
+import { CELEBRATION_TIMING } from '../../utils/celebration'
+import type { CelebrationType } from '../../Provider'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 export interface Celebration {
-  regionId: string;
-  regionName: string;
-  type: CelebrationType;
-  startTime: number;
+  regionId: string
+  regionName: string
+  type: CelebrationType
+  startTime: number
 }
 
 export interface UseCelebrationAnimationOptions {
   /** The current celebration state, or null if not celebrating */
-  celebration: Celebration | null;
+  celebration: Celebration | null
 }
 
 export interface UseCelebrationAnimationReturn {
   /** Pulsing value 0-1 for gold flash animation */
-  celebrationFlashProgress: number;
+  celebrationFlashProgress: number
 }
 
 // ============================================================================
@@ -59,46 +59,41 @@ export interface UseCelebrationAnimationReturn {
  * @returns Celebration animation state
  */
 export function useCelebrationAnimation(
-  options: UseCelebrationAnimationOptions,
+  options: UseCelebrationAnimationOptions
 ): UseCelebrationAnimationReturn {
-  const { celebration } = options;
+  const { celebration } = options
 
   // Animation state
-  const [celebrationFlashProgress, setCelebrationFlashProgress] = useState(0);
+  const [celebrationFlashProgress, setCelebrationFlashProgress] = useState(0)
 
   // Animation controller
-  const celebrationAnimation = usePulsingAnimation();
+  const celebrationAnimation = usePulsingAnimation()
 
   // Celebration animation effect - gold flash when region found
   useEffect(() => {
     if (!celebration) {
-      setCelebrationFlashProgress(0);
-      return;
+      setCelebrationFlashProgress(0)
+      return
     }
 
     // Animation: pulsing gold flash during celebration
-    const timing = CELEBRATION_TIMING[celebration.type];
-    const pulses =
-      celebration.type === "lightning"
-        ? 2
-        : celebration.type === "standard"
-          ? 3
-          : 4;
+    const timing = CELEBRATION_TIMING[celebration.type]
+    const pulses = celebration.type === 'lightning' ? 2 : celebration.type === 'standard' ? 3 : 4
 
     celebrationAnimation.start({
       duration: timing.totalDuration,
       pulses,
       onProgress: setCelebrationFlashProgress,
       // No onComplete - animation just runs until cleanup
-    });
+    })
 
     // Cleanup
     return () => {
-      celebrationAnimation.cancel();
-    };
-  }, [celebration?.startTime, celebrationAnimation]);
+      celebrationAnimation.cancel()
+    }
+  }, [celebration?.startTime, celebrationAnimation])
 
   return {
     celebrationFlashProgress,
-  };
+  }
 }

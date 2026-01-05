@@ -14,19 +14,16 @@
  *   - error: Error occurred
  */
 
-import { readFile } from "fs/promises";
-import { join } from "path";
-import { eq } from "drizzle-orm";
-import sharp from "sharp";
-import { z } from "zod";
-import { db } from "@/db";
-import {
-  practiceAttachments,
-  type ParsingStatus,
-} from "@/db/schema/practice-attachments";
-import { canPerformAction } from "@/lib/classroom";
-import { getDbUserId } from "@/lib/viewer";
-import { llm } from "@/lib/llm";
+import { readFile } from 'fs/promises'
+import { join } from 'path'
+import { eq } from 'drizzle-orm'
+import sharp from 'sharp'
+import { z } from 'zod'
+import { db } from '@/db'
+import { practiceAttachments, type ParsingStatus } from '@/db/schema/practice-attachments'
+import { canPerformAction } from '@/lib/classroom'
+import { getDbUserId } from '@/lib/viewer'
+import { llm } from '@/lib/llm'
 import {
   type ParsedProblem,
   type BoundingBox,
@@ -35,10 +32,10 @@ import {
   getDefaultModelConfig,
   calculateCropRegion,
   CROP_PADDING,
-} from "@/lib/worksheet-parsing";
+} from '@/lib/worksheet-parsing'
 
 interface RouteParams {
-  params: Promise<{ playerId: string; attachmentId: string }>;
+  params: Promise<{ playerId: string; attachmentId: string }>
 }
 
 // Schema for single problem re-parse response
@@ -48,30 +45,24 @@ const SingleProblemSchema = z.object({
     .min(2)
     .max(7)
     .describe(
-      "The terms (numbers) in this problem. First term is always positive. " +
-        'Negative numbers indicate subtraction. Example: "45 - 17 + 8" -> [45, -17, 8]',
+      'The terms (numbers) in this problem. First term is always positive. ' +
+        'Negative numbers indicate subtraction. Example: "45 - 17 + 8" -> [45, -17, 8]'
     ),
   studentAnswer: z
     .number()
     .int()
     .nullable()
-    .describe(
-      "The student's written answer. null if no answer is visible or answer box is empty.",
-    ),
+    .describe("The student's written answer. null if no answer is visible or answer box is empty."),
   format: z
-    .enum(["vertical", "linear"])
+    .enum(['vertical', 'linear'])
     .describe('Format: "vertical" for stacked column, "linear" for horizontal'),
-  termsConfidence: z
-    .number()
-    .min(0)
-    .max(1)
-    .describe("Confidence in terms reading (0-1)"),
+  termsConfidence: z.number().min(0).max(1).describe('Confidence in terms reading (0-1)'),
   studentAnswerConfidence: z
     .number()
     .min(0)
     .max(1)
-    .describe("Confidence in student answer reading (0-1)"),
-});
+    .describe('Confidence in student answer reading (0-1)'),
+})
 
 // Request body schema
 const RequestBodySchema = z.object({
@@ -82,11 +73,11 @@ const RequestBodySchema = z.object({
       y: z.number().min(0).max(1),
       width: z.number().min(0).max(1),
       height: z.number().min(0).max(1),
-    }),
+    })
   ),
   additionalContext: z.string().optional(),
   modelConfigId: z.string().optional(),
-});
+})
 
 /**
  * Build prompt for single problem parsing
@@ -126,13 +117,13 @@ CONFIDENCE GUIDELINES:
 - 0.9-1.0: Clear, unambiguous reading
 - 0.7-0.89: Slightly unclear but confident
 - 0.5-0.69: Uncertain, could be misread
-- Below 0.5: Very uncertain`;
+- Below 0.5: Very uncertain`
 
   if (additionalContext) {
-    prompt += `\n\nADDITIONAL CONTEXT FROM USER:\n${additionalContext}`;
+    prompt += `\n\nADDITIONAL CONTEXT FROM USER:\n${additionalContext}`
   }
 
-  return prompt;
+  return prompt
 }
 
 /**
@@ -141,13 +132,13 @@ CONFIDENCE GUIDELINES:
 async function cropToBoundingBox(
   imageBuffer: Buffer,
   box: BoundingBox,
-  padding: number = CROP_PADDING,
+  padding: number = CROP_PADDING
 ): Promise<Buffer> {
-  const metadata = await sharp(imageBuffer).metadata();
-  const imageWidth = metadata.width ?? 1;
-  const imageHeight = metadata.height ?? 1;
+  const metadata = await sharp(imageBuffer).metadata()
+  const imageWidth = metadata.width ?? 1
+  const imageHeight = metadata.height ?? 1
 
-  const region = calculateCropRegion(box, imageWidth, imageHeight, padding);
+  const region = calculateCropRegion(box, imageWidth, imageHeight, padding)
 
   return sharp(imageBuffer)
     .extract({
@@ -156,71 +147,65 @@ async function cropToBoundingBox(
       width: region.width,
       height: region.height,
     })
-    .toBuffer();
+    .toBuffer()
 }
 
 /**
  * POST - Stream re-parsing of selected problems
  */
 export async function POST(request: Request, { params }: RouteParams) {
-  const { playerId, attachmentId } = await params;
+  const { playerId, attachmentId } = await params
 
   if (!playerId || !attachmentId) {
-    return new Response(
-      JSON.stringify({ error: "Player ID and Attachment ID required" }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ error: 'Player ID and Attachment ID required' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   // Parse request body
-  let body: z.infer<typeof RequestBodySchema>;
+  let body: z.infer<typeof RequestBodySchema>
   try {
-    const rawBody = await request.json();
-    body = RequestBodySchema.parse(rawBody);
+    const rawBody = await request.json()
+    body = RequestBodySchema.parse(rawBody)
   } catch (err) {
     return new Response(
       JSON.stringify({
-        error: "Invalid request body",
-        details: err instanceof Error ? err.message : "Unknown",
+        error: 'Invalid request body',
+        details: err instanceof Error ? err.message : 'Unknown',
       }),
       {
         status: 400,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+        headers: { 'Content-Type': 'application/json' },
+      }
+    )
   }
 
-  const { problemIndices, boundingBoxes, additionalContext, modelConfigId } =
-    body;
+  const { problemIndices, boundingBoxes, additionalContext, modelConfigId } = body
 
   if (problemIndices.length !== boundingBoxes.length) {
     return new Response(
       JSON.stringify({
-        error: "problemIndices and boundingBoxes must have the same length",
+        error: 'problemIndices and boundingBoxes must have the same length',
       }),
       {
         status: 400,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+        headers: { 'Content-Type': 'application/json' },
+      }
+    )
   }
 
   // Resolve model config
-  const modelConfig = modelConfigId
-    ? getModelConfig(modelConfigId)
-    : getDefaultModelConfig();
+  const modelConfig = modelConfigId ? getModelConfig(modelConfigId) : getDefaultModelConfig()
 
   // Authorization check
-  const userId = await getDbUserId();
-  const canParse = await canPerformAction(userId, playerId, "start-session");
+  const userId = await getDbUserId()
+  const canParse = await canPerformAction(userId, playerId, 'start-session')
   if (!canParse) {
-    return new Response(JSON.stringify({ error: "Not authorized" }), {
+    return new Response(JSON.stringify({ error: 'Not authorized' }), {
       status: 403,
-      headers: { "Content-Type": "application/json" },
-    });
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   // Get attachment record
@@ -228,83 +213,72 @@ export async function POST(request: Request, { params }: RouteParams) {
     .select()
     .from(practiceAttachments)
     .where(eq(practiceAttachments.id, attachmentId))
-    .get();
+    .get()
 
   if (!attachment) {
-    return new Response(JSON.stringify({ error: "Attachment not found" }), {
+    return new Response(JSON.stringify({ error: 'Attachment not found' }), {
       status: 404,
-      headers: { "Content-Type": "application/json" },
-    });
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   if (attachment.playerId !== playerId) {
-    return new Response(JSON.stringify({ error: "Attachment not found" }), {
+    return new Response(JSON.stringify({ error: 'Attachment not found' }), {
       status: 404,
-      headers: { "Content-Type": "application/json" },
-    });
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   // Must have existing parsing result to merge into
   if (!attachment.rawParsingResult) {
-    return new Response(
-      JSON.stringify({ error: "Attachment has not been parsed yet" }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ error: 'Attachment has not been parsed yet' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
-  const existingResult = attachment.rawParsingResult as WorksheetParsingResult;
+  const existingResult = attachment.rawParsingResult as WorksheetParsingResult
 
   // Set status to processing
   await db
     .update(practiceAttachments)
-    .set({ parsingStatus: "processing" })
-    .where(eq(practiceAttachments.id, attachmentId));
+    .set({ parsingStatus: 'processing' })
+    .where(eq(practiceAttachments.id, attachmentId))
 
   // Create SSE stream
-  const encoder = new TextEncoder();
+  const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
       const sendEvent = (event: string, data: unknown) => {
-        controller.enqueue(encoder.encode(`event: ${event}\n`));
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-      };
+        controller.enqueue(encoder.encode(`event: ${event}\n`))
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+      }
 
       try {
         // Read the image file
-        const uploadDir = join(
-          process.cwd(),
-          "data",
-          "uploads",
-          "players",
-          playerId,
-        );
-        const filepath = join(uploadDir, attachment.filename);
-        const imageBuffer = await readFile(filepath);
-        const mimeType = attachment.mimeType || "image/jpeg";
+        const uploadDir = join(process.cwd(), 'data', 'uploads', 'players', playerId)
+        const filepath = join(uploadDir, attachment.filename)
+        const imageBuffer = await readFile(filepath)
+        const mimeType = attachment.mimeType || 'image/jpeg'
 
         // Build the prompt
-        const prompt = buildSingleProblemPrompt(additionalContext);
+        const prompt = buildSingleProblemPrompt(additionalContext)
 
         // Process each selected problem
         const reparsedProblems: Array<{
-          index: number;
-          originalProblem: ParsedProblem;
-          newData: z.infer<typeof SingleProblemSchema>;
-        }> = [];
+          index: number
+          originalProblem: ParsedProblem
+          newData: z.infer<typeof SingleProblemSchema>
+        }> = []
 
         for (let i = 0; i < problemIndices.length; i++) {
-          const problemIndex = problemIndices[i];
-          const box = boundingBoxes[i];
-          const originalProblem = existingResult.problems[problemIndex];
+          const problemIndex = problemIndices[i]
+          const box = boundingBoxes[i]
+          const originalProblem = existingResult.problems[problemIndex]
 
           if (!originalProblem) {
-            console.warn(
-              `Problem index ${problemIndex} not found in existing result`,
-            );
-            continue;
+            console.warn(`Problem index ${problemIndex} not found in existing result`)
+            continue
           }
 
           // Check if cancelled
@@ -312,73 +286,72 @@ export async function POST(request: Request, { params }: RouteParams) {
             .select({ parsingStatus: practiceAttachments.parsingStatus })
             .from(practiceAttachments)
             .where(eq(practiceAttachments.id, attachmentId))
-            .get();
+            .get()
 
-          if (!currentStatus || currentStatus.parsingStatus !== "processing") {
-            sendEvent("cancelled", { message: "Re-parsing was cancelled" });
-            return;
+          if (!currentStatus || currentStatus.parsingStatus !== 'processing') {
+            sendEvent('cancelled', { message: 'Re-parsing was cancelled' })
+            return
           }
 
           // Notify client we're starting this problem
-          sendEvent("problem_start", {
+          sendEvent('problem_start', {
             problemIndex,
             problemNumber: originalProblem.problemNumber,
             currentIndex: i,
             totalProblems: problemIndices.length,
-          });
+          })
 
           try {
             // Crop image to bounding box
-            const croppedBuffer = await cropToBoundingBox(imageBuffer, box);
-            const base64Cropped = croppedBuffer.toString("base64");
-            const croppedDataUrl = `data:${mimeType};base64,${base64Cropped}`;
+            const croppedBuffer = await cropToBoundingBox(imageBuffer, box)
+            const base64Cropped = croppedBuffer.toString('base64')
+            const croppedDataUrl = `data:${mimeType};base64,${base64Cropped}`
 
             // Stream the LLM call for this problem
             const llmStream = llm.stream({
               prompt,
               images: [croppedDataUrl],
               schema: SingleProblemSchema,
-              provider: "openai",
+              provider: 'openai',
               model: modelConfig?.model,
               reasoning: {
-                effort: "medium",
-                summary: "auto",
+                effort: 'medium',
+                summary: 'auto',
               },
-            });
+            })
 
-            let problemResult: z.infer<typeof SingleProblemSchema> | null =
-              null;
+            let problemResult: z.infer<typeof SingleProblemSchema> | null = null
 
             for await (const event of llmStream) {
               switch (event.type) {
-                case "reasoning":
-                  sendEvent("reasoning", {
+                case 'reasoning':
+                  sendEvent('reasoning', {
                     problemIndex,
                     text: event.text,
                     summaryIndex: event.summaryIndex,
                     isDelta: event.isDelta,
-                  });
-                  break;
+                  })
+                  break
 
-                case "output_delta":
-                  sendEvent("output_delta", {
+                case 'output_delta':
+                  sendEvent('output_delta', {
                     problemIndex,
                     text: event.text,
                     outputIndex: event.outputIndex,
-                  });
-                  break;
+                  })
+                  break
 
-                case "error":
-                  sendEvent("problem_error", {
+                case 'error':
+                  sendEvent('problem_error', {
                     problemIndex,
                     message: event.message,
                     code: event.code,
-                  });
-                  break;
+                  })
+                  break
 
-                case "complete":
-                  problemResult = event.data;
-                  break;
+                case 'complete':
+                  problemResult = event.data
+                  break
               }
             }
 
@@ -387,23 +360,23 @@ export async function POST(request: Request, { params }: RouteParams) {
                 index: problemIndex,
                 originalProblem,
                 newData: problemResult,
-              });
+              })
 
               // Notify client this problem is done
-              sendEvent("problem_complete", {
+              sendEvent('problem_complete', {
                 problemIndex,
                 problemNumber: originalProblem.problemNumber,
                 result: problemResult,
                 currentIndex: i,
                 totalProblems: problemIndices.length,
-              });
+              })
             }
           } catch (err) {
-            console.error(`Failed to re-parse problem ${problemIndex}:`, err);
-            sendEvent("problem_error", {
+            console.error(`Failed to re-parse problem ${problemIndex}:`, err)
+            sendEvent('problem_error', {
               problemIndex,
-              message: err instanceof Error ? err.message : "Unknown error",
-            });
+              message: err instanceof Error ? err.message : 'Unknown error',
+            })
             // Continue with other problems
           }
         }
@@ -413,24 +386,23 @@ export async function POST(request: Request, { params }: RouteParams) {
           .select({ parsingStatus: practiceAttachments.parsingStatus })
           .from(practiceAttachments)
           .where(eq(practiceAttachments.id, attachmentId))
-          .get();
+          .get()
 
-        if (!finalStatus || finalStatus.parsingStatus !== "processing") {
-          sendEvent("cancelled", { message: "Re-parsing was cancelled" });
-          return;
+        if (!finalStatus || finalStatus.parsingStatus !== 'processing') {
+          sendEvent('cancelled', { message: 'Re-parsing was cancelled' })
+          return
         }
 
         // Merge results back into existing parsing result
-        const adjustedBoxMap = new Map<number, BoundingBox>();
+        const adjustedBoxMap = new Map<number, BoundingBox>()
         for (let i = 0; i < problemIndices.length; i++) {
-          adjustedBoxMap.set(problemIndices[i], boundingBoxes[i]);
+          adjustedBoxMap.set(problemIndices[i], boundingBoxes[i])
         }
 
-        const updatedProblems = [...existingResult.problems];
+        const updatedProblems = [...existingResult.problems]
         for (const { index, originalProblem, newData } of reparsedProblems) {
-          const correctAnswer = newData.terms.reduce((a, b) => a + b, 0);
-          const userAdjustedBox =
-            adjustedBoxMap.get(index) ?? originalProblem.problemBoundingBox;
+          const correctAnswer = newData.terms.reduce((a, b) => a + b, 0)
+          const userAdjustedBox = adjustedBoxMap.get(index) ?? originalProblem.problemBoundingBox
           updatedProblems[index] = {
             ...originalProblem,
             terms: newData.terms,
@@ -440,7 +412,7 @@ export async function POST(request: Request, { params }: RouteParams) {
             termsConfidence: newData.termsConfidence,
             studentAnswerConfidence: newData.studentAnswerConfidence,
             problemBoundingBox: userAdjustedBox,
-          };
+          }
         }
 
         // Update the parsing result
@@ -449,19 +421,16 @@ export async function POST(request: Request, { params }: RouteParams) {
           problems: updatedProblems,
           overallConfidence:
             updatedProblems.reduce(
-              (sum, p) =>
-                sum + Math.min(p.termsConfidence, p.studentAnswerConfidence),
-              0,
+              (sum, p) => sum + Math.min(p.termsConfidence, p.studentAnswerConfidence),
+              0
             ) / updatedProblems.length,
           needsReview: updatedProblems.some(
-            (p) => Math.min(p.termsConfidence, p.studentAnswerConfidence) < 0.7,
+            (p) => Math.min(p.termsConfidence, p.studentAnswerConfidence) < 0.7
           ),
-        };
+        }
 
         // Save updated result to database
-        const status: ParsingStatus = updatedResult.needsReview
-          ? "needs_review"
-          : "approved";
+        const status: ParsingStatus = updatedResult.needsReview ? 'needs_review' : 'approved'
         await db
           .update(practiceAttachments)
           .set({
@@ -470,42 +439,41 @@ export async function POST(request: Request, { params }: RouteParams) {
             needsReview: updatedResult.needsReview,
             parsingStatus: status,
           })
-          .where(eq(practiceAttachments.id, attachmentId));
+          .where(eq(practiceAttachments.id, attachmentId))
 
         // Send complete event with merged result
-        sendEvent("complete", {
+        sendEvent('complete', {
           success: true,
           reparsedCount: reparsedProblems.length,
           reparsedIndices: reparsedProblems.map((p) => p.index),
           updatedResult,
           status,
-        });
+        })
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        console.error("Streaming re-parse error:", error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        console.error('Streaming re-parse error:', error)
 
         // Update DB with error
         await db
           .update(practiceAttachments)
           .set({
-            parsingStatus: "failed",
+            parsingStatus: 'failed',
             parsingError: errorMessage,
           })
-          .where(eq(practiceAttachments.id, attachmentId));
+          .where(eq(practiceAttachments.id, attachmentId))
 
-        sendEvent("error", { message: errorMessage });
+        sendEvent('error', { message: errorMessage })
       } finally {
-        controller.close();
+        controller.close()
       }
     },
-  });
+  })
 
   return new Response(stream, {
     headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
     },
-  });
+  })
 }

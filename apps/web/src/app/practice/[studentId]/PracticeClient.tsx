@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '@/components/common/ToastContext'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -13,8 +13,16 @@ import {
   PracticeSubNav,
   type SessionHudData,
 } from '@/components/practice'
+import { GameBreakScreen } from '@/components/practice/GameBreakScreen'
+import { PracticeGameModeProvider } from '@/components/practice/PracticeGameModeProvider'
 import type { Player } from '@/db/schema/players'
-import type { SessionHealth, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import type {
+  GameBreakSettings,
+  SessionHealth,
+  SessionPart,
+  SessionPlan,
+  SlotResult,
+} from '@/db/schema/session-plans'
 import {
   type ReceivedAbacusControl,
   type TeacherPauseRequest,
@@ -63,6 +71,33 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const [teacherResumeRequest, setTeacherResumeRequest] = useState(false)
   // Manual pause request from HUD
   const [manualPauseRequest, setManualPauseRequest] = useState(false)
+  // Game break state
+  const [showGameBreak, setShowGameBreak] = useState(false)
+  const [gameBreakStartTime, setGameBreakStartTime] = useState<number>(Date.now())
+  // Track pending game break - set when part transition happens, triggers after transition screen
+  const [pendingGameBreak, setPendingGameBreak] = useState(false)
+  // Track previous part index to detect part transitions
+  const previousPartIndexRef = useRef<number>(initialSession.currentPartIndex)
+
+  // Dev shortcut: Ctrl+Shift+G to trigger game break for testing
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'G') {
+        e.preventDefault()
+        setShowGameBreak((prev) => {
+          if (!prev) {
+            setGameBreakStartTime(Date.now())
+          }
+          return !prev
+        })
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // Session plan mutations
   const recordResult = useRecordSlotResult()
@@ -73,6 +108,9 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
 
   // Current plan - mutations take priority, then fetched/cached data
   const currentPlan = endEarly.data ?? recordResult.data ?? fetchedPlan ?? initialSession
+
+  // Game break settings from the session plan
+  const gameBreakSettings = currentPlan.gameBreakSettings as GameBreakSettings | null
 
   // Compute HUD data from current plan
   const currentPart = currentPlan.parts[currentPlan.currentPartIndex] as SessionPart | undefined
@@ -102,17 +140,37 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const handleAnswer = useCallback(
     async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>): Promise<void> => {
       try {
+        const previousPartIndex = previousPartIndexRef.current
         const updatedPlan = await recordResult.mutateAsync({
           playerId: studentId,
           planId: currentPlan.id,
           result,
         })
 
+        // Update previous part index tracking
+        previousPartIndexRef.current = updatedPlan.currentPartIndex
+
         // If session just completed, redirect to summary with completed flag
         if (updatedPlan.completedAt) {
           router.push(`/practice/${studentId}/summary?completed=1`, {
             scroll: false,
           })
+          return
+        }
+
+        // Check for part transition - queue game break to show AFTER transition screen
+        const partTransitioned = updatedPlan.currentPartIndex > previousPartIndex
+        const hasMoreParts = updatedPlan.currentPartIndex < updatedPlan.parts.length
+        const gameBreakEnabled =
+          (updatedPlan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
+
+        if (partTransitioned && hasMoreParts && gameBreakEnabled) {
+          console.log(
+            `[PracticeClient] Part completed (${previousPartIndex} → ${updatedPlan.currentPartIndex}), queuing game break for after transition screen`
+          )
+          // Don't show game break immediately - wait for transition screen to complete
+          // The game break will be triggered when onPartTransitionComplete is called
+          setPendingGameBreak(true)
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
@@ -166,6 +224,11 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     })
   }, [studentId, router])
 
+  // Handle game break end - return to practice
+  const handleGameBreakEnd = useCallback(() => {
+    setShowGameBreak(false)
+  }, [])
+
   // Broadcast session state if student is in a classroom
   // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
   // onAbacusControl receives control events from observing teacher
@@ -180,6 +243,21 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
       onTeacherResume: () => setTeacherResumeRequest(true),
     }
   )
+
+  // Handle part transition complete - called when transition screen finishes
+  // This is where we trigger game break (after "put away abacus" message is shown)
+  const handlePartTransitionComplete = useCallback(() => {
+    // First, broadcast to observers
+    sendPartTransitionComplete()
+
+    // Then, check if we have a pending game break
+    if (pendingGameBreak) {
+      console.log('[PracticeClient] Transition screen complete, now showing game break')
+      setGameBreakStartTime(Date.now())
+      setShowGameBreak(true)
+      setPendingGameBreak(false)
+    }
+  }, [sendPartTransitionComplete, pendingGameBreak])
 
   // Wire vision frame callback to broadcast vision frames to observers
   useEffect(() => {
@@ -268,35 +346,50 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
           }}
         />
         <PracticeErrorBoundary studentName={player.name}>
-          <ActiveSession
-            plan={currentPlan}
-            student={{
-              id: player.id,
-              name: player.name,
-              emoji: player.emoji,
-              color: player.color,
-            }}
-            onAnswer={handleAnswer}
-            onEndEarly={handleEndEarly}
-            onPause={() => setIsPaused(true)}
-            onResume={handleResume}
-            onComplete={handleSessionComplete}
-            onTimingUpdate={setTimingData}
-            onBroadcastStateChange={setBroadcastState}
-            isBrowseMode={isBrowseMode}
-            browseIndex={browseIndex}
-            onBrowseIndexChange={setBrowseIndex}
-            teacherControl={teacherControl}
-            onTeacherControlHandled={() => setTeacherControl(null)}
-            teacherPauseRequest={teacherPauseRequest}
-            onTeacherPauseHandled={() => setTeacherPauseRequest(null)}
-            teacherResumeRequest={teacherResumeRequest}
-            onTeacherResumeHandled={() => setTeacherResumeRequest(false)}
-            manualPauseRequest={manualPauseRequest}
-            onManualPauseHandled={() => setManualPauseRequest(false)}
-            onPartTransition={sendPartTransition}
-            onPartTransitionComplete={sendPartTransitionComplete}
-          />
+          {showGameBreak ? (
+            <GameBreakScreen
+              isVisible={showGameBreak}
+              student={{
+                id: player.id,
+                name: player.name,
+                emoji: player.emoji,
+                color: player.color,
+              }}
+              maxDurationMinutes={gameBreakSettings?.maxDurationMinutes ?? 5}
+              startTime={gameBreakStartTime}
+              onComplete={handleGameBreakEnd}
+            />
+          ) : (
+            <ActiveSession
+              plan={currentPlan}
+              student={{
+                id: player.id,
+                name: player.name,
+                emoji: player.emoji,
+                color: player.color,
+              }}
+              onAnswer={handleAnswer}
+              onEndEarly={handleEndEarly}
+              onPause={() => setIsPaused(true)}
+              onResume={handleResume}
+              onComplete={handleSessionComplete}
+              onTimingUpdate={setTimingData}
+              onBroadcastStateChange={setBroadcastState}
+              isBrowseMode={isBrowseMode}
+              browseIndex={browseIndex}
+              onBrowseIndexChange={setBrowseIndex}
+              teacherControl={teacherControl}
+              onTeacherControlHandled={() => setTeacherControl(null)}
+              teacherPauseRequest={teacherPauseRequest}
+              onTeacherPauseHandled={() => setTeacherPauseRequest(null)}
+              teacherResumeRequest={teacherResumeRequest}
+              onTeacherResumeHandled={() => setTeacherResumeRequest(false)}
+              manualPauseRequest={manualPauseRequest}
+              onManualPauseHandled={() => setManualPauseRequest(false)}
+              onPartTransition={sendPartTransition}
+              onPartTransitionComplete={handlePartTransitionComplete}
+            />
+          )}
         </PracticeErrorBoundary>
       </main>
     </PageWithNav>

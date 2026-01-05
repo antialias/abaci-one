@@ -15,7 +15,7 @@
  * - 0 exposures → P = 0% (missed skills - will fail until practiced)
  */
 
-import type { StudentProfile } from "../types";
+import type { StudentProfile } from '../types'
 
 /**
  * Fast learner who missed ten complements lesson.
@@ -23,38 +23,37 @@ import type { StudentProfile } from "../types";
  */
 const initialExposures: Record<string, number> = {
   // Basic skills - learned normally (20 exposures → ~86%)
-  "basic.directAddition": 20,
-  "basic.heavenBead": 18,
-  "basic.simpleCombinations": 16,
-  "basic.directSubtraction": 18,
-  "basic.heavenBeadSubtraction": 16,
-  "basic.simpleCombinationsSub": 14,
+  'basic.directAddition': 20,
+  'basic.heavenBead': 18,
+  'basic.simpleCombinations': 16,
+  'basic.directSubtraction': 18,
+  'basic.heavenBeadSubtraction': 16,
+  'basic.simpleCombinationsSub': 14,
   // Five complements - learned normally (15 exposures → ~77%)
-  "fiveComplements.4=5-1": 15,
-  "fiveComplements.3=5-2": 14,
-  "fiveComplements.2=5-3": 13,
-  "fiveComplements.1=5-4": 12,
+  'fiveComplements.4=5-1': 15,
+  'fiveComplements.3=5-2': 14,
+  'fiveComplements.2=5-3': 13,
+  'fiveComplements.1=5-4': 12,
   // Ten complements - MISSED THIS LESSON (0 exposures → 0%)
-  "tenComplements.9=10-1": 0,
-  "tenComplements.8=10-2": 0,
-  "tenComplements.7=10-3": 0,
-  "tenComplements.6=10-4": 0,
-  "tenComplements.5=10-5": 0,
-};
+  'tenComplements.9=10-1': 0,
+  'tenComplements.8=10-2': 0,
+  'tenComplements.7=10-3': 0,
+  'tenComplements.6=10-4': 0,
+  'tenComplements.5=10-5': 0,
+}
 
 /** Skills this student is weak at (for test validation) */
 export const FAST_LEARNER_WEAK_SKILLS = [
-  "tenComplements.9=10-1",
-  "tenComplements.8=10-2",
-  "tenComplements.7=10-3",
-  "tenComplements.6=10-4",
-  "tenComplements.5=10-5",
-];
+  'tenComplements.9=10-1',
+  'tenComplements.8=10-2',
+  'tenComplements.7=10-3',
+  'tenComplements.6=10-4',
+  'tenComplements.5=10-5',
+]
 
 export const fastLearnerProfile: StudentProfile = {
-  name: "Fast Learner (Missed Ten Complements)",
-  description:
-    "Strong in basics, missed ten complements lesson, learns quickly",
+  name: 'Fast Learner (Missed Ten Complements)',
+  description: 'Strong in basics, missed ten complements lesson, learns quickly',
 
   // K = 8: Reaches 50% proficiency at 8 exposures (fast)
   halfMaxExposure: 8,
@@ -75,4 +74,4 @@ export const fastLearnerProfile: StudentProfile = {
 
   // Low variance (consistent)
   responseTimeVariance: 0.25,
-};
+}

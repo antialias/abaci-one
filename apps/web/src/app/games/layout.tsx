@@ -1,16 +1,13 @@
-"use client";
+'use client'
 
-import dynamic from "next/dynamic";
+import dynamic from 'next/dynamic'
 
 // Dynamic import breaks webpack's import chain, preventing useRoomData
 // from being bundled with useUserPlayers in shared chunks
 const GameModeProviderWithHooks = dynamic(
-  () =>
-    import("@/contexts/GameModeProviderWithHooks").then(
-      (m) => m.GameModeProviderWithHooks,
-    ),
-  { ssr: false },
-);
+  () => import('@/contexts/GameModeProviderWithHooks').then((m) => m.GameModeProviderWithHooks),
+  { ssr: false }
+)
 
 /**
  * Games Layout - wrapper for games pages
@@ -19,10 +16,6 @@ const GameModeProviderWithHooks = dynamic(
  * This keeps those heavy imports out of GameModeContext.tsx, allowing
  * practice pages (which don't use this layout) to avoid loading them.
  */
-export default function GamesLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <GameModeProviderWithHooks>{children}</GameModeProviderWithHooks>;
+export default function GamesLayout({ children }: { children: React.ReactNode }) {
+  return <GameModeProviderWithHooks>{children}</GameModeProviderWithHooks>
 }

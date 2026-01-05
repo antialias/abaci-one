@@ -1,16 +1,16 @@
-"use client";
+'use client'
 
-import { css } from "../../../styled-system/css";
+import { css } from '../../../styled-system/css'
 
 export interface TrendIndicatorProps {
   /** Current accuracy (0-1) */
-  current: number;
+  current: number
   /** Previous accuracy (0-1), null if no previous session */
-  previous: number | null;
+  previous: number | null
   /** Label text (default: "from last session") */
-  label?: string;
+  label?: string
   /** Dark mode */
-  isDark: boolean;
+  isDark: boolean
 }
 
 /**
@@ -25,18 +25,18 @@ export interface TrendIndicatorProps {
 export function TrendIndicator({
   current,
   previous,
-  label = "from last session",
+  label = 'from last session',
   isDark,
 }: TrendIndicatorProps) {
-  if (previous === null) return null;
+  if (previous === null) return null
 
-  const delta = current - previous;
-  const deltaPercent = Math.abs(Math.round(delta * 100));
+  const delta = current - previous
+  const deltaPercent = Math.abs(Math.round(delta * 100))
 
   // Within 1% is considered "same"
-  const isImproved = delta > 0.01;
-  const isDeclined = delta < -0.01;
-  const isSame = !isImproved && !isDeclined;
+  const isImproved = delta > 0.01
+  const isDeclined = delta < -0.01
+  const isSame = !isImproved && !isDeclined
 
   if (isSame) {
     return (
@@ -44,43 +44,37 @@ export function TrendIndicator({
         data-element="trend-indicator"
         data-trend="same"
         className={css({
-          display: "flex",
-          alignItems: "center",
-          gap: "0.25rem",
-          fontSize: "0.875rem",
-          color: isDark ? "gray.400" : "gray.500",
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+          fontSize: '0.875rem',
+          color: isDark ? 'gray.400' : 'gray.500',
         })}
       >
         <span>→</span>
         <span>Same as last session</span>
       </div>
-    );
+    )
   }
 
   return (
     <div
       data-element="trend-indicator"
-      data-trend={isImproved ? "improved" : "declined"}
+      data-trend={isImproved ? 'improved' : 'declined'}
       className={css({
-        display: "flex",
-        alignItems: "center",
-        gap: "0.25rem",
-        fontSize: "0.875rem",
-        color: isImproved
-          ? isDark
-            ? "green.400"
-            : "green.600"
-          : isDark
-            ? "red.400"
-            : "red.600",
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.25rem',
+        fontSize: '0.875rem',
+        color: isImproved ? (isDark ? 'green.400' : 'green.600') : isDark ? 'red.400' : 'red.600',
       })}
     >
-      <span>{isImproved ? "↑" : "↓"}</span>
+      <span>{isImproved ? '↑' : '↓'}</span>
       <span>
         {deltaPercent}% {label}
       </span>
     </div>
-  );
+  )
 }
 
-export default TrendIndicator;
+export default TrendIndicator

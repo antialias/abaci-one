@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 /**
  * Worksheet generator settings table - persists user preferences per worksheet type
@@ -12,25 +12,25 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
  * Note: No foreign key constraint - allows guest users to save settings
  * (matches pattern used by room_members table)
  */
-export const worksheetSettings = sqliteTable("worksheet_settings", {
+export const worksheetSettings = sqliteTable('worksheet_settings', {
   /** Unique identifier (UUID) */
-  id: text("id").primaryKey(),
+  id: text('id').primaryKey(),
 
   /** User ID (may be authenticated user or guest ID) */
-  userId: text("user_id").notNull(),
+  userId: text('user_id').notNull(),
 
   /** Type of worksheet: 'addition', 'subtraction', 'multiplication', etc. */
-  worksheetType: text("worksheet_type").notNull(),
+  worksheetType: text('worksheet_type').notNull(),
 
   /** JSON blob containing versioned settings (see config-schemas.ts for types) */
-  config: text("config").notNull(),
+  config: text('config').notNull(),
 
   /** Timestamp of creation */
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 
   /** Timestamp of last update */
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+})
 
-export type WorksheetSettings = typeof worksheetSettings.$inferSelect;
-export type NewWorksheetSettings = typeof worksheetSettings.$inferInsert;
+export type WorksheetSettings = typeof worksheetSettings.$inferSelect
+export type NewWorksheetSettings = typeof worksheetSettings.$inferInsert

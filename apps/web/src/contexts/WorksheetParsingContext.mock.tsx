@@ -1,4 +1,4 @@
-"use client";
+'use client'
 
 /**
  * Mock Worksheet Parsing Context Provider
@@ -26,42 +26,38 @@
  * ```
  */
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from 'react'
 import {
   initialParsingState,
   isParsingAttachment as isParsingAttachmentHelper,
   isAnyParsingActive as isAnyParsingActiveHelper,
   getStreamingStatus as getStreamingStatusHelper,
   type ParsingContextState,
-} from "@/lib/worksheet-parsing/state-machine";
-import type {
-  WorksheetParsingContextValue,
-  ApproveResponse,
-} from "./WorksheetParsingContext";
+} from '@/lib/worksheet-parsing/state-machine'
+import type { WorksheetParsingContextValue, ApproveResponse } from './WorksheetParsingContext'
 
 // ============================================================================
 // Mock Provider
 // ============================================================================
 
 interface MockWorksheetParsingProviderProps {
-  children: ReactNode;
+  children: ReactNode
   /** Override the default initial state */
-  state?: Partial<ParsingContextState>;
+  state?: Partial<ParsingContextState>
   /** Mock implementations for actions (optional - defaults to no-ops) */
   actions?: Partial<{
-    startParse: WorksheetParsingContextValue["startParse"];
-    startReparse: WorksheetParsingContextValue["startReparse"];
-    cancel: WorksheetParsingContextValue["cancel"];
-    reset: WorksheetParsingContextValue["reset"];
-    submitCorrection: WorksheetParsingContextValue["submitCorrection"];
-    approve: WorksheetParsingContextValue["approve"];
-    unapprove: WorksheetParsingContextValue["unapprove"];
-  }>;
+    startParse: WorksheetParsingContextValue['startParse']
+    startReparse: WorksheetParsingContextValue['startReparse']
+    cancel: WorksheetParsingContextValue['cancel']
+    reset: WorksheetParsingContextValue['reset']
+    submitCorrection: WorksheetParsingContextValue['submitCorrection']
+    approve: WorksheetParsingContextValue['approve']
+    unapprove: WorksheetParsingContextValue['unapprove']
+  }>
 }
 
 // Re-use the same context from the real provider
-const MockWorksheetParsingContext =
-  createContext<WorksheetParsingContextValue | null>(null);
+const MockWorksheetParsingContext = createContext<WorksheetParsingContextValue | null>(null)
 
 /**
  * Mock provider for testing and Storybook
@@ -77,18 +73,16 @@ export function MockWorksheetParsingProvider({
   const state: ParsingContextState = {
     ...initialParsingState,
     ...stateOverrides,
-  };
+  }
 
   // Create mock context value with no-op defaults for actions
   const value: WorksheetParsingContextValue = {
     state,
 
     // Derived helpers use actual logic with mock state
-    isParsingAttachment: (attachmentId: string) =>
-      isParsingAttachmentHelper(state, attachmentId),
+    isParsingAttachment: (attachmentId: string) => isParsingAttachmentHelper(state, attachmentId),
     isAnyParsingActive: () => isAnyParsingActiveHelper(state),
-    getStreamingStatus: (attachmentId: string) =>
-      getStreamingStatusHelper(state, attachmentId),
+    getStreamingStatus: (attachmentId: string) => getStreamingStatusHelper(state, attachmentId),
 
     // Actions default to no-ops but can be overridden
     startParse: actions.startParse ?? (async () => {}),
@@ -100,7 +94,7 @@ export function MockWorksheetParsingProvider({
       actions.approve ??
       (async (): Promise<ApproveResponse> => ({
         success: true,
-        sessionId: "mock-session-id",
+        sessionId: 'mock-session-id',
         problemCount: 0,
         correctCount: 0,
         accuracy: null,
@@ -115,13 +109,13 @@ export function MockWorksheetParsingProvider({
         },
       })),
     unapprove: actions.unapprove ?? (async () => {}),
-  };
+  }
 
   return (
     <MockWorksheetParsingContext.Provider value={value}>
       {children}
     </MockWorksheetParsingContext.Provider>
-  );
+  )
 }
 
 /**
@@ -130,13 +124,13 @@ export function MockWorksheetParsingProvider({
  * Can be used interchangeably with useWorksheetParsingContext in tests
  */
 export function useMockWorksheetParsingContext(): WorksheetParsingContextValue {
-  const context = useContext(MockWorksheetParsingContext);
+  const context = useContext(MockWorksheetParsingContext)
   if (!context) {
     throw new Error(
-      "useMockWorksheetParsingContext must be used within a MockWorksheetParsingProvider",
-    );
+      'useMockWorksheetParsingContext must be used within a MockWorksheetParsingProvider'
+    )
   }
-  return context;
+  return context
 }
 
 // ============================================================================
@@ -152,11 +146,11 @@ export const mockParsingStates = {
   parsing: (attachmentId: string): Partial<ParsingContextState> => ({
     activeAttachmentId: attachmentId,
     streaming: {
-      status: "generating",
-      streamType: "initial",
-      reasoningText: "I can see a worksheet with arithmetic problems...",
+      status: 'generating',
+      streamType: 'initial',
+      reasoningText: 'I can see a worksheet with arithmetic problems...',
       outputText: '{"problems": [',
-      progressMessage: "Extracting problems... 5 found",
+      progressMessage: 'Extracting problems... 5 found',
       completedProblems: [],
     },
   }),
@@ -171,7 +165,7 @@ export const mockParsingStates = {
         lessonId: null,
         weekId: null,
         pageNumber: null,
-        detectedFormat: "vertical",
+        detectedFormat: 'vertical',
         totalRows: 0,
         problemsPerRow: 0,
       },
@@ -185,16 +179,13 @@ export const mockParsingStates = {
       incorrectCount: 2,
       unansweredCount: 0,
       accuracy: 0.8,
-      skillsDetected: ["add-1-digit"],
+      skillsDetected: ['add-1-digit'],
     },
     lastError: null,
   }),
 
   /** Parsing failed with error */
-  error: (
-    attachmentId: string,
-    errorMessage: string,
-  ): Partial<ParsingContextState> => ({
+  error: (attachmentId: string, errorMessage: string): Partial<ParsingContextState> => ({
     activeAttachmentId: null,
     streaming: null,
     lastResult: null,
@@ -206,14 +197,14 @@ export const mockParsingStates = {
   reparsing: (
     attachmentId: string,
     currentIndex: number,
-    total: number,
+    total: number
   ): Partial<ParsingContextState> => ({
     activeAttachmentId: attachmentId,
     streaming: {
-      status: "processing",
-      streamType: "reparse",
-      reasoningText: "Re-analyzing this problem more carefully...",
-      outputText: "",
+      status: 'processing',
+      streamType: 'reparse',
+      reasoningText: 'Re-analyzing this problem more carefully...',
+      outputText: '',
       progressMessage: `Re-parsing problem ${currentIndex + 1} of ${total}`,
       completedProblems: [],
       currentProblemIndex: currentIndex,
@@ -221,4 +212,4 @@ export const mockParsingStates = {
       completedIndices: Array.from({ length: currentIndex }, (_, i) => i),
     },
   }),
-};
+}

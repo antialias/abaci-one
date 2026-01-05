@@ -10,15 +10,15 @@
  * See README.md for full documentation.
  */
 
-export * from "./types";
+export * from './types'
 export {
   renderColumnSVG,
   generateAllDigitSVGs,
   getColumnDimensions,
-} from "./renderColumn";
+} from './renderColumn'
 export {
   SeededRandom,
   augmentImage,
   generateAugmentedBatch,
   type AugmentationResult,
-} from "./augmentation";
+} from './augmentation'

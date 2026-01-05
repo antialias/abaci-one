@@ -9,9 +9,9 @@ export {
   type UseHintAnimationOptions,
   type UseHintAnimationReturn,
   type HintActive,
-} from "./useHintAnimation";
+} from './useHintAnimation'
 
 export {
   useStruggleDetection,
   type UseStruggleDetectionOptions,
-} from "./useStruggleDetection";
+} from './useStruggleDetection'

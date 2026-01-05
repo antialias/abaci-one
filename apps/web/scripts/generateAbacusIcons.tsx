@@ -7,20 +7,20 @@
  * SVG output as the interactive client-side version (without animations).
  */
 
-import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { writeFileSync } from "fs";
-import { join } from "path";
-import { AbacusReact } from "@soroban/abacus-react";
+import React from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { writeFileSync } from 'fs'
+import { join } from 'path'
+import { AbacusReact } from '@soroban/abacus-react'
 
 // Extract just the SVG element content from rendered output
 function extractSvgContent(markup: string): string {
   // Find the opening <svg and closing </svg> tags
-  const svgMatch = markup.match(/<svg[^>]*>([\s\S]*?)<\/svg>/);
+  const svgMatch = markup.match(/<svg[^>]*>([\s\S]*?)<\/svg>/)
   if (!svgMatch) {
-    throw new Error("No SVG element found in rendered output");
+    throw new Error('No SVG element found in rendered output')
   }
-  return svgMatch[1]; // Return just the inner content
+  return svgMatch[1] // Return just the inner content
 }
 
 // Generate the favicon (icon.svg) - single column showing value 5
@@ -34,27 +34,27 @@ function generateFavicon(): string {
       interactive={false}
       showNumbers={false}
       customStyles={{
-        heavenBeads: { fill: "#7c2d12", stroke: "#451a03", strokeWidth: 1 },
-        earthBeads: { fill: "#7c2d12", stroke: "#451a03", strokeWidth: 1 },
+        heavenBeads: { fill: '#7c2d12', stroke: '#451a03', strokeWidth: 1 },
+        earthBeads: { fill: '#7c2d12', stroke: '#451a03', strokeWidth: 1 },
         columnPosts: {
-          fill: "#451a03",
-          stroke: "#292524",
+          fill: '#451a03',
+          stroke: '#292524',
           strokeWidth: 2,
         },
         reckoningBar: {
-          fill: "#292524",
-          stroke: "#292524",
+          fill: '#292524',
+          stroke: '#292524',
           strokeWidth: 3,
         },
       }}
-    />,
-  );
+    />
+  )
 
   // Extract just the SVG content (without div wrapper)
-  let svgContent = extractSvgContent(abacusMarkup);
+  let svgContent = extractSvgContent(abacusMarkup)
 
   // Remove !important from CSS (production code policy)
-  svgContent = svgContent.replace(/\s*!important/g, "");
+  svgContent = svgContent.replace(/\s*!important/g, '')
 
   // Wrap in SVG with proper viewBox for favicon sizing
   // AbacusReact with 1 column + scaleFactor 1.0 = ~25×120px
@@ -68,7 +68,7 @@ function generateFavicon(): string {
     ${svgContent}
   </g>
 </svg>
-`;
+`
 }
 
 // Generate the Open Graph image (og-image.svg)
@@ -83,46 +83,46 @@ function generateOGImage(): string {
       showNumbers={false}
       customStyles={{
         columnPosts: {
-          fill: "rgb(255, 255, 255)",
-          stroke: "rgb(200, 200, 200)",
+          fill: 'rgb(255, 255, 255)',
+          stroke: 'rgb(200, 200, 200)',
           strokeWidth: 2,
         },
         reckoningBar: {
-          fill: "rgb(255, 255, 255)",
-          stroke: "rgb(200, 200, 200)",
+          fill: 'rgb(255, 255, 255)',
+          stroke: 'rgb(200, 200, 200)',
           strokeWidth: 3,
         },
         columns: {
           0: {
             // Ones place (rightmost) - Blue
-            heavenBeads: { fill: "#60a5fa", stroke: "#3b82f6", strokeWidth: 1 },
-            earthBeads: { fill: "#60a5fa", stroke: "#3b82f6", strokeWidth: 1 },
+            heavenBeads: { fill: '#60a5fa', stroke: '#3b82f6', strokeWidth: 1 },
+            earthBeads: { fill: '#60a5fa', stroke: '#3b82f6', strokeWidth: 1 },
           },
           1: {
             // Tens place - Green
-            heavenBeads: { fill: "#4ade80", stroke: "#22c55e", strokeWidth: 1 },
-            earthBeads: { fill: "#4ade80", stroke: "#22c55e", strokeWidth: 1 },
+            heavenBeads: { fill: '#4ade80', stroke: '#22c55e', strokeWidth: 1 },
+            earthBeads: { fill: '#4ade80', stroke: '#22c55e', strokeWidth: 1 },
           },
           2: {
             // Hundreds place - Yellow/Gold
-            heavenBeads: { fill: "#fbbf24", stroke: "#f59e0b", strokeWidth: 1 },
-            earthBeads: { fill: "#fbbf24", stroke: "#f59e0b", strokeWidth: 1 },
+            heavenBeads: { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 1 },
+            earthBeads: { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 1 },
           },
           3: {
             // Thousands place (leftmost) - Purple
-            heavenBeads: { fill: "#c084fc", stroke: "#a855f7", strokeWidth: 1 },
-            earthBeads: { fill: "#c084fc", stroke: "#a855f7", strokeWidth: 1 },
+            heavenBeads: { fill: '#c084fc', stroke: '#a855f7', strokeWidth: 1 },
+            earthBeads: { fill: '#c084fc', stroke: '#a855f7', strokeWidth: 1 },
           },
         },
       }}
-    />,
-  );
+    />
+  )
 
   // Extract just the SVG content (without div wrapper)
-  let svgContent = extractSvgContent(abacusMarkup);
+  let svgContent = extractSvgContent(abacusMarkup)
 
   // Remove !important from CSS (production code policy)
-  svgContent = svgContent.replace(/\s*!important/g, "");
+  svgContent = svgContent.replace(/\s*!important/g, '')
 
   return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
   <!-- Dark background like homepage -->
@@ -199,24 +199,22 @@ function generateOGImage(): string {
     </linearGradient>
   </defs>
 </svg>
-`;
+`
 }
 
 // Main execution
-const appDir = __dirname.replace("/scripts", "");
+const appDir = __dirname.replace('/scripts', '')
 
 try {
-  console.log("Generating Open Graph image from AbacusReact...");
-  const ogImageSvg = generateOGImage();
-  writeFileSync(join(appDir, "public", "og-image.svg"), ogImageSvg);
-  console.log("✓ Generated public/og-image.svg");
+  console.log('Generating Open Graph image from AbacusReact...')
+  const ogImageSvg = generateOGImage()
+  writeFileSync(join(appDir, 'public', 'og-image.svg'), ogImageSvg)
+  console.log('✓ Generated public/og-image.svg')
 
-  console.log("\n✅ Icon generated successfully!");
-  console.log(
-    "\nNote: Day-of-month favicons are generated on-demand by src/app/icon/route.tsx",
-  );
-  console.log("which calls scripts/generateDayIcon.tsx as a subprocess.");
+  console.log('\n✅ Icon generated successfully!')
+  console.log('\nNote: Day-of-month favicons are generated on-demand by src/app/icon/route.tsx')
+  console.log('which calls scripts/generateDayIcon.tsx as a subprocess.')
 } catch (error) {
-  console.error("❌ Error generating icons:", error);
-  process.exit(1);
+  console.error('❌ Error generating icons:', error)
+  process.exit(1)
 }

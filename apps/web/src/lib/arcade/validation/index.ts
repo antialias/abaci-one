@@ -9,7 +9,7 @@ export {
   getValidator,
   hasValidator,
   getRegisteredGameNames,
-} from "../validators";
+} from '../validators'
 
-export type { GameName } from "../validators";
-export * from "./types";
+export type { GameName } from '../validators'
+export * from './types'

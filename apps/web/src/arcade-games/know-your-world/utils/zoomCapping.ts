@@ -11,32 +11,32 @@ import {
   calculateMaxZoomAtThreshold,
   isAboveThreshold,
   type ZoomContext,
-} from "./screenPixelRatio";
+} from './screenPixelRatio'
 
 export interface ZoomCappingContext {
   /** The zoom level to potentially cap */
-  zoom: number;
+  zoom: number
   /** Width of the magnifier in screen pixels */
-  magnifierWidth: number;
+  magnifierWidth: number
   /** Width of the SVG viewBox */
-  viewBoxWidth: number;
+  viewBoxWidth: number
   /** Width of the SVG element in screen pixels */
-  svgWidth: number;
+  svgWidth: number
   /** Precision mode threshold (e.g., 20 px/px) */
-  threshold: number;
+  threshold: number
   /** Whether pointer lock is active (no capping if true) */
-  pointerLocked: boolean;
+  pointerLocked: boolean
 }
 
 export interface ZoomCappingResult {
   /** The (possibly capped) zoom level */
-  cappedZoom: number;
+  cappedZoom: number
   /** Whether the zoom was capped */
-  wasCapped: boolean;
+  wasCapped: boolean
   /** The original uncapped zoom */
-  originalZoom: number;
+  originalZoom: number
   /** The screen pixel ratio at the original zoom */
-  screenPixelRatio: number;
+  screenPixelRatio: number
 }
 
 /**
@@ -49,17 +49,8 @@ export interface ZoomCappingResult {
  * @param context - The zoom capping context
  * @returns The capping result with capped zoom and metadata
  */
-export function capZoomAtThreshold(
-  context: ZoomCappingContext,
-): ZoomCappingResult {
-  const {
-    zoom,
-    magnifierWidth,
-    viewBoxWidth,
-    svgWidth,
-    threshold,
-    pointerLocked,
-  } = context;
+export function capZoomAtThreshold(context: ZoomCappingContext): ZoomCappingResult {
+  const { zoom, magnifierWidth, viewBoxWidth, svgWidth, threshold, pointerLocked } = context
 
   // No capping when pointer lock is active
   if (pointerLocked) {
@@ -73,7 +64,7 @@ export function capZoomAtThreshold(
         svgWidth,
         zoom,
       }),
-    };
+    }
   }
 
   // Calculate screen pixel ratio at this zoom
@@ -82,7 +73,7 @@ export function capZoomAtThreshold(
     viewBoxWidth,
     svgWidth,
     zoom,
-  });
+  })
 
   // If below threshold, no capping needed
   if (!isAboveThreshold(screenPixelRatio, threshold)) {
@@ -91,23 +82,19 @@ export function capZoomAtThreshold(
       wasCapped: false,
       originalZoom: zoom,
       screenPixelRatio,
-    };
+    }
   }
 
   // Calculate the maximum zoom at the threshold
-  const maxZoom = calculateMaxZoomAtThreshold(
-    threshold,
-    magnifierWidth,
-    svgWidth,
-  );
-  const cappedZoom = Math.min(zoom, maxZoom);
+  const maxZoom = calculateMaxZoomAtThreshold(threshold, magnifierWidth, svgWidth)
+  const cappedZoom = Math.min(zoom, maxZoom)
 
   return {
     cappedZoom,
     wasCapped: true,
     originalZoom: zoom,
     screenPixelRatio,
-  };
+  }
 }
 
 /**
@@ -121,7 +108,7 @@ export function capZoomAtThreshold(
  */
 export function wouldZoomBeCapped(context: ZoomCappingContext): boolean {
   if (context.pointerLocked) {
-    return false;
+    return false
   }
 
   const screenPixelRatio = calculateScreenPixelRatio({
@@ -129,7 +116,7 @@ export function wouldZoomBeCapped(context: ZoomCappingContext): boolean {
     viewBoxWidth: context.viewBoxWidth,
     svgWidth: context.svgWidth,
     zoom: context.zoom,
-  });
+  })
 
-  return isAboveThreshold(screenPixelRatio, context.threshold);
+  return isAboveThreshold(screenPixelRatio, context.threshold)
 }

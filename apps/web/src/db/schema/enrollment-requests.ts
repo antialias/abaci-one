@@ -1,33 +1,23 @@
-import { createId } from "@paralleldrive/cuid2";
-import {
-  index,
-  integer,
-  sqliteTable,
-  text,
-  uniqueIndex,
-} from "drizzle-orm/sqlite-core";
-import { classrooms } from "./classrooms";
-import { players } from "./players";
-import { users } from "./users";
+import { createId } from '@paralleldrive/cuid2'
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { classrooms } from './classrooms'
+import { players } from './players'
+import { users } from './users'
 
 /**
  * Enrollment request status
  */
-export type EnrollmentRequestStatus =
-  | "pending"
-  | "approved"
-  | "denied"
-  | "cancelled";
+export type EnrollmentRequestStatus = 'pending' | 'approved' | 'denied' | 'cancelled'
 
 /**
  * Who initiated the enrollment request
  */
-export type EnrollmentRequestRole = "parent" | "teacher";
+export type EnrollmentRequestRole = 'parent' | 'teacher'
 
 /**
  * Approval status for a single party
  */
-export type ApprovalStatus = "approved" | "denied";
+export type ApprovalStatus = 'approved' | 'denied'
 
 /**
  * Enrollment requests - consent workflow for classroom enrollment
@@ -40,109 +30,103 @@ export type ApprovalStatus = "approved" | "denied";
  * and the request status is set to 'approved'.
  */
 export const enrollmentRequests = sqliteTable(
-  "enrollment_requests",
+  'enrollment_requests',
   {
     /** Primary key */
-    id: text("id")
+    id: text('id')
       .primaryKey()
       .$defaultFn(() => createId()),
 
     /** Classroom this request is for */
-    classroomId: text("classroom_id")
+    classroomId: text('classroom_id')
       .notNull()
-      .references(() => classrooms.id, { onDelete: "cascade" }),
+      .references(() => classrooms.id, { onDelete: 'cascade' }),
 
     /** Student (player) to be enrolled */
-    playerId: text("player_id")
+    playerId: text('player_id')
       .notNull()
-      .references(() => players.id, { onDelete: "cascade" }),
+      .references(() => players.id, { onDelete: 'cascade' }),
 
     // ---- Who initiated ----
 
     /** User who created this request */
-    requestedBy: text("requested_by")
+    requestedBy: text('requested_by')
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => users.id, { onDelete: 'cascade' }),
 
     /** Role of the requester */
-    requestedByRole: text("requested_by_role")
-      .notNull()
-      .$type<EnrollmentRequestRole>(),
+    requestedByRole: text('requested_by_role').notNull().$type<EnrollmentRequestRole>(),
 
     /** When the request was created */
-    requestedAt: integer("requested_at", { mode: "timestamp" })
+    requestedAt: integer('requested_at', { mode: 'timestamp' })
       .notNull()
       .$defaultFn(() => new Date()),
 
     // ---- Overall status ----
 
     /** Current status of the request */
-    status: text("status")
-      .notNull()
-      .default("pending")
-      .$type<EnrollmentRequestStatus>(),
+    status: text('status').notNull().default('pending').$type<EnrollmentRequestStatus>(),
 
     // ---- Teacher approval ----
 
     /** Teacher's approval decision (null if not yet acted or not required) */
-    teacherApproval: text("teacher_approval").$type<ApprovalStatus>(),
+    teacherApproval: text('teacher_approval').$type<ApprovalStatus>(),
 
     /** When teacher approved/denied */
-    teacherApprovedAt: integer("teacher_approved_at", { mode: "timestamp" }),
+    teacherApprovedAt: integer('teacher_approved_at', { mode: 'timestamp' }),
 
     // ---- Parent approval ----
 
     /** Parent's approval decision (null if not yet acted or not required) */
-    parentApproval: text("parent_approval").$type<ApprovalStatus>(),
+    parentApproval: text('parent_approval').$type<ApprovalStatus>(),
 
     /** Which parent approved (since multiple parents may exist) */
-    parentApprovedBy: text("parent_approved_by").references(() => users.id),
+    parentApprovedBy: text('parent_approved_by').references(() => users.id),
 
     /** When parent approved/denied */
-    parentApprovedAt: integer("parent_approved_at", { mode: "timestamp" }),
+    parentApprovedAt: integer('parent_approved_at', { mode: 'timestamp' }),
 
     // ---- Resolution ----
 
     /** When the request was resolved (approved, denied, or cancelled) */
-    resolvedAt: integer("resolved_at", { mode: "timestamp" }),
+    resolvedAt: integer('resolved_at', { mode: 'timestamp' }),
   },
   (table) => ({
     /** One active request per player per classroom */
-    classroomPlayerIdx: uniqueIndex(
-      "idx_enrollment_requests_classroom_player",
-    ).on(table.classroomId, table.playerId),
-
-    /** Index for finding all requests for a classroom */
-    classroomIdx: index("idx_enrollment_requests_classroom").on(
+    classroomPlayerIdx: uniqueIndex('idx_enrollment_requests_classroom_player').on(
       table.classroomId,
+      table.playerId
     ),
 
+    /** Index for finding all requests for a classroom */
+    classroomIdx: index('idx_enrollment_requests_classroom').on(table.classroomId),
+
     /** Index for finding all requests for a player */
-    playerIdx: index("idx_enrollment_requests_player").on(table.playerId),
+    playerIdx: index('idx_enrollment_requests_player').on(table.playerId),
 
     /** Index for filtering by status */
-    statusIdx: index("idx_enrollment_requests_status").on(table.status),
-  }),
-);
+    statusIdx: index('idx_enrollment_requests_status').on(table.status),
+  })
+)
 
-export type EnrollmentRequest = typeof enrollmentRequests.$inferSelect;
-export type NewEnrollmentRequest = typeof enrollmentRequests.$inferInsert;
+export type EnrollmentRequest = typeof enrollmentRequests.$inferSelect
+export type NewEnrollmentRequest = typeof enrollmentRequests.$inferInsert
 
 /**
  * Determine what approvals are required based on who initiated
  */
 export function getRequiredApprovals(
-  requestedByRole: EnrollmentRequestRole,
-): ("teacher" | "parent")[] {
+  requestedByRole: EnrollmentRequestRole
+): ('teacher' | 'parent')[] {
   switch (requestedByRole) {
-    case "parent":
+    case 'parent':
       // Parent initiated → need teacher approval
-      return ["teacher"];
-    case "teacher":
+      return ['teacher']
+    case 'teacher':
       // Teacher initiated → need parent approval
-      return ["parent"];
+      return ['parent']
     default:
-      return [];
+      return []
   }
 }
 
@@ -150,27 +134,23 @@ export function getRequiredApprovals(
  * Check if a request has all required approvals
  */
 export function isFullyApproved(request: EnrollmentRequest): boolean {
-  const required = getRequiredApprovals(
-    request.requestedByRole as EnrollmentRequestRole,
-  );
+  const required = getRequiredApprovals(request.requestedByRole as EnrollmentRequestRole)
 
   for (const role of required) {
-    if (role === "teacher" && request.teacherApproval !== "approved") {
-      return false;
+    if (role === 'teacher' && request.teacherApproval !== 'approved') {
+      return false
     }
-    if (role === "parent" && request.parentApproval !== "approved") {
-      return false;
+    if (role === 'parent' && request.parentApproval !== 'approved') {
+      return false
     }
   }
 
-  return true;
+  return true
 }
 
 /**
  * Check if a request has been denied by anyone
  */
 export function isDenied(request: EnrollmentRequest): boolean {
-  return (
-    request.teacherApproval === "denied" || request.parentApproval === "denied"
-  );
+  return request.teacherApproval === 'denied' || request.parentApproval === 'denied'
 }

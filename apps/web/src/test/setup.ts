@@ -1,32 +1,28 @@
-import "@testing-library/jest-dom";
-import React from "react";
-import { vi } from "vitest";
+import '@testing-library/jest-dom'
+import React from 'react'
+import { vi } from 'vitest'
 
 // Mock next-intl for tests
 // This provides a passthrough translation function that returns the key
-vi.mock("next-intl", () => ({
+vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
-  useLocale: () => "en",
+  useLocale: () => 'en',
   useNow: () => new Date(),
-  useTimeZone: () => "America/Los_Angeles",
+  useTimeZone: () => 'America/Los_Angeles',
   useFormatter: () => ({
     dateTime: (date: Date) => date.toISOString(),
     number: (num: number) => String(num),
-    relativeTime: () => "some time ago",
+    relativeTime: () => 'some time ago',
   }),
-  NextIntlClientProvider: ({
-    children,
-  }: {
-    children: React.ReactNode;
-  }) => children,
-}));
+  NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
 
 // Mock @soroban/abacus-react for tests
 // This provides mock implementations of abacus display context and components
 const mockAbacusConfig = {
-  colorScheme: "place-value" as const,
-  beadShape: "diamond" as const,
-  colorPalette: "default" as const,
+  colorScheme: 'place-value' as const,
+  beadShape: 'diamond' as const,
+  colorPalette: 'default' as const,
   hideInactiveBeads: false,
   coloredNumerals: false,
   scaleFactor: 1.0,
@@ -37,15 +33,14 @@ const mockAbacusConfig = {
   soundEnabled: false,
   soundVolume: 0.8,
   physicalAbacusColumns: 4,
-};
+}
 
-vi.mock("@soroban/abacus-react", () => ({
+vi.mock('@soroban/abacus-react', () => ({
   AbacusReact: ({ value }: { value: number }) =>
-    React.createElement("div", { "data-testid": "abacus", "data-value": value }),
+    React.createElement('div', { 'data-testid': 'abacus', 'data-value': value }),
   AbacusStatic: ({ value }: { value: number }) =>
-    React.createElement("div", { "data-testid": "abacus-static", "data-value": value }),
-  StandaloneBead: () =>
-    React.createElement("div", { "data-testid": "standalone-bead" }),
+    React.createElement('div', { 'data-testid': 'abacus-static', 'data-value': value }),
+  StandaloneBead: () => React.createElement('div', { 'data-testid': 'standalone-bead' }),
   AbacusDisplayProvider: ({ children }: { children: React.ReactNode }) => children,
   useAbacusConfig: () => mockAbacusConfig,
   useAbacusDisplay: () => ({
@@ -60,7 +55,7 @@ vi.mock("@soroban/abacus-react", () => ({
     setValue: vi.fn(),
     value,
   }),
-  useSystemTheme: () => "light",
+  useSystemTheme: () => 'light',
   ABACUS_THEMES: {},
   // Utility functions
   numberToAbacusState: vi.fn(() => ({ columns: [] })),
@@ -76,27 +71,24 @@ vi.mock("@soroban/abacus-react", () => ({
   calculateBeadDimensions: vi.fn(() => ({ width: 10, height: 10 })),
   calculateActiveBeadsBounds: vi.fn(() => ({ x: 0, y: 0, width: 100, height: 200 })),
   calculateAbacusCrop: vi.fn(() => ({})),
-}));
+}))
 
 // Mock canvas Image constructor to prevent jsdom errors when rendering
 // images with data URIs (e.g., data:image/jpeg;base64,...)
 // This works by patching HTMLImageElement.prototype before jsdom uses it
 // Guard for node environment where HTMLImageElement doesn't exist
-if (typeof HTMLImageElement !== "undefined") {
-  const originalSetAttribute = HTMLImageElement.prototype.setAttribute;
-  HTMLImageElement.prototype.setAttribute = function (
-    name: string,
-    value: string,
-  ) {
-    if (name === "src" && value.startsWith("data:image/")) {
+if (typeof HTMLImageElement !== 'undefined') {
+  const originalSetAttribute = HTMLImageElement.prototype.setAttribute
+  HTMLImageElement.prototype.setAttribute = function (name: string, value: string) {
+    if (name === 'src' && value.startsWith('data:image/')) {
       // Store the value but don't trigger jsdom's image loading
-      Object.defineProperty(this, "src", {
+      Object.defineProperty(this, 'src', {
         value,
         writable: true,
         configurable: true,
-      });
-      return;
+      })
+      return
     }
-    return originalSetAttribute.call(this, name, value);
-  };
+    return originalSetAttribute.call(this, name, value)
+  }
 }

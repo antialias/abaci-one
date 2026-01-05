@@ -1,19 +1,19 @@
-"use client";
+'use client'
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useMyAbacus } from "@/contexts/MyAbacusContext";
-import { useRemoteCameraDesktop } from "@/hooks/useRemoteCameraDesktop";
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useMyAbacus } from '@/contexts/MyAbacusContext'
+import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
 import {
   cleanupArucoDetector,
   detectMarkers,
   initArucoDetector,
   isArucoAvailable,
   loadAruco,
-} from "@/lib/vision/arucoDetection";
-import { useFrameStability } from "@/hooks/useFrameStability";
-import { VisionCameraFeed } from "./VisionCameraFeed";
-import { css } from "../../../styled-system/css";
-import type { CalibrationGrid } from "@/types/vision";
+} from '@/lib/vision/arucoDetection'
+import { useFrameStability } from '@/hooks/useFrameStability'
+import { VisionCameraFeed } from './VisionCameraFeed'
+import { css } from '../../../styled-system/css'
+import type { CalibrationGrid } from '@/types/vision'
 
 /**
  * Feature flag: Enable automatic abacus value detection from video feed.
@@ -30,33 +30,33 @@ import type { CalibrationGrid } from "@/types/vision";
  *
  * Set to true when ready to work on improving detection accuracy.
  */
-const ENABLE_AUTO_DETECTION = false;
+const ENABLE_AUTO_DETECTION = false
 
 // Only import detection modules when auto-detection is enabled
 // This ensures the detection code is tree-shaken when disabled
-let analyzeColumns: typeof import("@/lib/vision/beadDetector").analyzeColumns;
-let analysesToDigits: typeof import("@/lib/vision/beadDetector").analysesToDigits;
-let digitsToNumber: typeof import("@/lib/vision/beadDetector").digitsToNumber;
-let processVideoFrame: typeof import("@/lib/vision/frameProcessor").processVideoFrame;
-let processImageFrame: typeof import("@/lib/vision/frameProcessor").processImageFrame;
+let analyzeColumns: typeof import('@/lib/vision/beadDetector').analyzeColumns
+let analysesToDigits: typeof import('@/lib/vision/beadDetector').analysesToDigits
+let digitsToNumber: typeof import('@/lib/vision/beadDetector').digitsToNumber
+let processVideoFrame: typeof import('@/lib/vision/frameProcessor').processVideoFrame
+let processImageFrame: typeof import('@/lib/vision/frameProcessor').processImageFrame
 
 if (ENABLE_AUTO_DETECTION) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const beadDetector = require("@/lib/vision/beadDetector");
+  const beadDetector = require('@/lib/vision/beadDetector')
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const frameProcessor = require("@/lib/vision/frameProcessor");
-  analyzeColumns = beadDetector.analyzeColumns;
-  analysesToDigits = beadDetector.analysesToDigits;
-  digitsToNumber = beadDetector.digitsToNumber;
-  processVideoFrame = frameProcessor.processVideoFrame;
-  processImageFrame = frameProcessor.processImageFrame;
+  const frameProcessor = require('@/lib/vision/frameProcessor')
+  analyzeColumns = beadDetector.analyzeColumns
+  analysesToDigits = beadDetector.analysesToDigits
+  digitsToNumber = beadDetector.digitsToNumber
+  processVideoFrame = frameProcessor.processVideoFrame
+  processImageFrame = frameProcessor.processImageFrame
 }
 
 interface DockedVisionFeedProps {
   /** Called when a stable value is detected */
-  onValueDetected?: (value: number) => void;
+  onValueDetected?: (value: number) => void
   /** Number of columns to detect */
-  columnCount?: number;
+  columnCount?: number
 }
 
 /**
@@ -67,161 +67,127 @@ interface DockedVisionFeedProps {
  * - For remote camera: Receives frames from phone, runs detection
  * - Shows the video feed with detection overlay
  */
-export function DockedVisionFeed({
-  onValueDetected,
-  columnCount = 5,
-}: DockedVisionFeedProps) {
-  const {
-    visionConfig,
-    setDockedValue,
-    setVisionEnabled,
-    setVisionCalibration,
-    emitVisionFrame,
-  } = useMyAbacus();
+export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVisionFeedProps) {
+  const { visionConfig, setDockedValue, setVisionEnabled, setVisionCalibration, emitVisionFrame } =
+    useMyAbacus()
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const remoteImageRef = useRef<HTMLImageElement>(null);
-  const rectifiedCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const markerDetectionFrameRef = useRef<number | null>(null);
-  const lastInferenceTimeRef = useRef<number>(0);
-  const lastBroadcastTimeRef = useRef<number>(0);
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const remoteImageRef = useRef<HTMLImageElement>(null)
+  const rectifiedCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+  const markerDetectionFrameRef = useRef<number | null>(null)
+  const lastInferenceTimeRef = useRef<number>(0)
+  const lastBroadcastTimeRef = useRef<number>(0)
 
-  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [detectedValue, setDetectedValue] = useState<number | null>(null);
-  const [confidence, setConfidence] = useState(0);
-  const [isArucoReady, setIsArucoReady] = useState(false);
-  const [markersFound, setMarkersFound] = useState(0);
+  const [videoStream, setVideoStream] = useState<MediaStream | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [detectedValue, setDetectedValue] = useState<number | null>(null)
+  const [confidence, setConfidence] = useState(0)
+  const [isArucoReady, setIsArucoReady] = useState(false)
+  const [markersFound, setMarkersFound] = useState(0)
 
   // Stability tracking for detected values (hook must be called unconditionally)
-  const stability = useFrameStability();
+  const stability = useFrameStability()
 
   // Determine camera source from explicit activeCameraSource field
-  const isLocalCamera = visionConfig.activeCameraSource === "local";
-  const isRemoteCamera = visionConfig.activeCameraSource === "phone";
+  const isLocalCamera = visionConfig.activeCameraSource === 'local'
+  const isRemoteCamera = visionConfig.activeCameraSource === 'phone'
 
   // Load and initialize ArUco on mount (for local camera auto-calibration)
   useEffect(() => {
-    if (!isLocalCamera) return;
+    if (!isLocalCamera) return
 
-    let cancelled = false;
+    let cancelled = false
 
     const initAruco = async () => {
       try {
-        await loadAruco();
-        if (cancelled) return;
+        await loadAruco()
+        if (cancelled) return
 
-        const available = isArucoAvailable();
+        const available = isArucoAvailable()
         if (available) {
-          initArucoDetector();
-          setIsArucoReady(true);
+          initArucoDetector()
+          setIsArucoReady(true)
         }
       } catch (err) {
-        console.error("[DockedVisionFeed] Failed to load ArUco:", err);
+        console.error('[DockedVisionFeed] Failed to load ArUco:', err)
       }
-    };
+    }
 
-    initAruco();
+    initAruco()
     return () => {
-      cancelled = true;
-    };
-  }, [isLocalCamera]);
+      cancelled = true
+    }
+  }, [isLocalCamera])
 
   // Cleanup ArUco detector on unmount
   useEffect(() => {
     return () => {
-      cleanupArucoDetector();
-    };
-  }, []);
+      cleanupArucoDetector()
+    }
+  }, [])
 
   // Auto-calibration loop using ArUco markers (for local camera)
   useEffect(() => {
-    if (
-      !visionConfig.enabled ||
-      !isLocalCamera ||
-      !videoStream ||
-      !isArucoReady
-    ) {
+    if (!visionConfig.enabled || !isLocalCamera || !videoStream || !isArucoReady) {
       if (markerDetectionFrameRef.current) {
-        cancelAnimationFrame(markerDetectionFrameRef.current);
-        markerDetectionFrameRef.current = null;
+        cancelAnimationFrame(markerDetectionFrameRef.current)
+        markerDetectionFrameRef.current = null
       }
-      return;
+      return
     }
 
-    const video = videoRef.current;
-    if (!video) return;
+    const video = videoRef.current
+    if (!video) return
 
-    let running = true;
+    let running = true
 
     const detectLoop = () => {
       if (!running || !video || video.readyState < 2) {
         if (running) {
-          markerDetectionFrameRef.current = requestAnimationFrame(detectLoop);
+          markerDetectionFrameRef.current = requestAnimationFrame(detectLoop)
         }
-        return;
+        return
       }
 
-      const result = detectMarkers(video);
-      setMarkersFound(result.markersFound);
+      const result = detectMarkers(video)
+      setMarkersFound(result.markersFound)
 
       // Auto-update calibration when all 4 markers found
       if (result.allMarkersFound && result.quadCorners) {
         const grid: CalibrationGrid = {
           roi: {
-            x: Math.min(
-              result.quadCorners.topLeft.x,
-              result.quadCorners.bottomLeft.x,
-            ),
-            y: Math.min(
-              result.quadCorners.topLeft.y,
-              result.quadCorners.topRight.y,
-            ),
+            x: Math.min(result.quadCorners.topLeft.x, result.quadCorners.bottomLeft.x),
+            y: Math.min(result.quadCorners.topLeft.y, result.quadCorners.topRight.y),
             width:
-              Math.max(
-                result.quadCorners.topRight.x,
-                result.quadCorners.bottomRight.x,
-              ) -
-              Math.min(
-                result.quadCorners.topLeft.x,
-                result.quadCorners.bottomLeft.x,
-              ),
+              Math.max(result.quadCorners.topRight.x, result.quadCorners.bottomRight.x) -
+              Math.min(result.quadCorners.topLeft.x, result.quadCorners.bottomLeft.x),
             height:
-              Math.max(
-                result.quadCorners.bottomLeft.y,
-                result.quadCorners.bottomRight.y,
-              ) -
-              Math.min(
-                result.quadCorners.topLeft.y,
-                result.quadCorners.topRight.y,
-              ),
+              Math.max(result.quadCorners.bottomLeft.y, result.quadCorners.bottomRight.y) -
+              Math.min(result.quadCorners.topLeft.y, result.quadCorners.topRight.y),
           },
           corners: result.quadCorners,
           columnCount,
-          columnDividers: Array.from(
-            { length: columnCount - 1 },
-            (_, i) => (i + 1) / columnCount,
-          ),
+          columnDividers: Array.from({ length: columnCount - 1 }, (_, i) => (i + 1) / columnCount),
           rotation: 0,
-        };
+        }
         // Update calibration in context
-        setVisionCalibration(grid);
+        setVisionCalibration(grid)
       }
 
-      markerDetectionFrameRef.current = requestAnimationFrame(detectLoop);
-    };
+      markerDetectionFrameRef.current = requestAnimationFrame(detectLoop)
+    }
 
-    detectLoop();
+    detectLoop()
 
     return () => {
-      running = false;
+      running = false
       if (markerDetectionFrameRef.current) {
-        cancelAnimationFrame(markerDetectionFrameRef.current);
-        markerDetectionFrameRef.current = null;
+        cancelAnimationFrame(markerDetectionFrameRef.current)
+        markerDetectionFrameRef.current = null
       }
-    };
+    }
   }, [
     visionConfig.enabled,
     isLocalCamera,
@@ -229,7 +195,7 @@ export function DockedVisionFeed({
     isArucoReady,
     columnCount,
     setVisionCalibration,
-  ]);
+  ])
 
   // Remote camera hook
   const {
@@ -237,23 +203,19 @@ export function DockedVisionFeed({
     latestFrame: remoteLatestFrame,
     subscribe: remoteSubscribe,
     unsubscribe: remoteUnsubscribe,
-  } = useRemoteCameraDesktop();
+  } = useRemoteCameraDesktop()
 
-  const INFERENCE_INTERVAL_MS = 100; // 10fps
+  const INFERENCE_INTERVAL_MS = 100 // 10fps
 
   // Start local camera when component mounts (only for local camera)
   useEffect(() => {
-    if (
-      !visionConfig.enabled ||
-      !isLocalCamera ||
-      !visionConfig.cameraDeviceId
-    ) {
-      return;
+    if (!visionConfig.enabled || !isLocalCamera || !visionConfig.cameraDeviceId) {
+      return
     }
 
-    let cancelled = false;
-    setIsLoading(true);
-    setError(null);
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
 
     const startCamera = async () => {
       try {
@@ -263,201 +225,183 @@ export function DockedVisionFeed({
             width: { ideal: 1280 },
             height: { ideal: 720 },
           },
-        });
+        })
 
         if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
+          stream.getTracks().forEach((track) => track.stop())
+          return
         }
 
-        setVideoStream(stream);
-        setIsLoading(false);
+        setVideoStream(stream)
+        setIsLoading(false)
       } catch (err) {
-        if (cancelled) return;
-        console.error("[DockedVisionFeed] Failed to start camera:", err);
-        setError("Failed to access camera");
-        setIsLoading(false);
+        if (cancelled) return
+        console.error('[DockedVisionFeed] Failed to start camera:', err)
+        setError('Failed to access camera')
+        setIsLoading(false)
       }
-    };
+    }
 
-    startCamera();
+    startCamera()
 
     return () => {
-      cancelled = true;
-    };
-  }, [visionConfig.enabled, isLocalCamera, visionConfig.cameraDeviceId]);
+      cancelled = true
+    }
+  }, [visionConfig.enabled, isLocalCamera, visionConfig.cameraDeviceId])
 
   // Stop camera when stream changes or component unmounts
   useEffect(() => {
     return () => {
       if (videoStream) {
-        videoStream.getTracks().forEach((track) => track.stop());
+        videoStream.getTracks().forEach((track) => track.stop())
       }
-    };
-  }, [videoStream]);
+    }
+  }, [videoStream])
 
   // Attach stream to video element
   useEffect(() => {
     if (videoRef.current && videoStream) {
-      videoRef.current.srcObject = videoStream;
+      videoRef.current.srcObject = videoStream
     }
-  }, [videoStream]);
+  }, [videoStream])
 
   // Subscribe to remote camera session
   useEffect(() => {
-    if (
-      !visionConfig.enabled ||
-      !isRemoteCamera ||
-      !visionConfig.remoteCameraSessionId
-    ) {
-      return;
+    if (!visionConfig.enabled || !isRemoteCamera || !visionConfig.remoteCameraSessionId) {
+      return
     }
 
-    setIsLoading(true);
-    remoteSubscribe(visionConfig.remoteCameraSessionId);
+    setIsLoading(true)
+    remoteSubscribe(visionConfig.remoteCameraSessionId)
 
     return () => {
-      remoteUnsubscribe();
-    };
+      remoteUnsubscribe()
+    }
   }, [
     visionConfig.enabled,
     isRemoteCamera,
     visionConfig.remoteCameraSessionId,
     remoteSubscribe,
     remoteUnsubscribe,
-  ]);
+  ])
 
   // Update loading state when remote camera connects
   useEffect(() => {
     if (isRemoteCamera && remoteIsPhoneConnected) {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  }, [isRemoteCamera, remoteIsPhoneConnected]);
+  }, [isRemoteCamera, remoteIsPhoneConnected])
 
   // Process local camera frames for detection (only when enabled)
   const processLocalFrame = useCallback(() => {
     // Skip detection when feature is disabled
-    if (!ENABLE_AUTO_DETECTION) return;
+    if (!ENABLE_AUTO_DETECTION) return
 
-    const now = performance.now();
+    const now = performance.now()
     if (now - lastInferenceTimeRef.current < INFERENCE_INTERVAL_MS) {
-      return;
+      return
     }
-    lastInferenceTimeRef.current = now;
+    lastInferenceTimeRef.current = now
 
-    const video = videoRef.current;
-    if (!video || video.readyState < 2) return;
-    if (!visionConfig.calibration) return;
+    const video = videoRef.current
+    if (!video || video.readyState < 2) return
+    if (!visionConfig.calibration) return
 
     // Process video frame into column strips
-    const columnImages = processVideoFrame(video, visionConfig.calibration);
-    if (columnImages.length === 0) return;
+    const columnImages = processVideoFrame(video, visionConfig.calibration)
+    if (columnImages.length === 0) return
 
     // Use CV-based bead detection
-    const analyses = analyzeColumns(columnImages);
-    const { digits, minConfidence } = analysesToDigits(analyses);
+    const analyses = analyzeColumns(columnImages)
+    const { digits, minConfidence } = analysesToDigits(analyses)
 
     // Convert to number
-    const value = digitsToNumber(digits);
+    const value = digitsToNumber(digits)
 
     // Push to stability buffer
-    stability.pushFrame(value, minConfidence);
-  }, [visionConfig.calibration, stability]);
+    stability.pushFrame(value, minConfidence)
+  }, [visionConfig.calibration, stability])
 
   // Process remote camera frames for detection (only when enabled)
   useEffect(() => {
     // Skip detection when feature is disabled
-    if (!ENABLE_AUTO_DETECTION) return;
+    if (!ENABLE_AUTO_DETECTION) return
 
     if (!isRemoteCamera || !remoteIsPhoneConnected || !remoteLatestFrame) {
-      return;
+      return
     }
 
-    const now = performance.now();
+    const now = performance.now()
     if (now - lastInferenceTimeRef.current < INFERENCE_INTERVAL_MS) {
-      return;
+      return
     }
-    lastInferenceTimeRef.current = now;
+    lastInferenceTimeRef.current = now
 
-    const image = remoteImageRef.current;
+    const image = remoteImageRef.current
     if (!image || !image.complete || image.naturalWidth === 0) {
-      return;
+      return
     }
 
     // Phone sends pre-cropped frames in auto mode, so no calibration needed
-    const columnImages = processImageFrame(image, null, columnCount);
-    if (columnImages.length === 0) return;
+    const columnImages = processImageFrame(image, null, columnCount)
+    if (columnImages.length === 0) return
 
     // Use CV-based bead detection
-    const analyses = analyzeColumns(columnImages);
-    const { digits, minConfidence } = analysesToDigits(analyses);
+    const analyses = analyzeColumns(columnImages)
+    const { digits, minConfidence } = analysesToDigits(analyses)
 
     // Convert to number
-    const value = digitsToNumber(digits);
+    const value = digitsToNumber(digits)
 
     // Push to stability buffer
-    stability.pushFrame(value, minConfidence);
-  }, [
-    isRemoteCamera,
-    remoteIsPhoneConnected,
-    remoteLatestFrame,
-    columnCount,
-    stability,
-  ]);
+    stability.pushFrame(value, minConfidence)
+  }, [isRemoteCamera, remoteIsPhoneConnected, remoteLatestFrame, columnCount, stability])
 
   // Local camera detection loop (only when enabled)
   useEffect(() => {
     // Skip detection loop when feature is disabled
-    if (!ENABLE_AUTO_DETECTION) return;
+    if (!ENABLE_AUTO_DETECTION) return
 
-    if (
-      !visionConfig.enabled ||
-      !isLocalCamera ||
-      !videoStream ||
-      !visionConfig.calibration
-    ) {
-      return;
+    if (!visionConfig.enabled || !isLocalCamera || !videoStream || !visionConfig.calibration) {
+      return
     }
 
-    let running = true;
+    let running = true
 
     const loop = () => {
-      if (!running) return;
+      if (!running) return
 
-      processLocalFrame();
-      animationFrameRef.current = requestAnimationFrame(loop);
-    };
+      processLocalFrame()
+      animationFrameRef.current = requestAnimationFrame(loop)
+    }
 
-    loop();
+    loop()
 
     return () => {
-      running = false;
+      running = false
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
       }
-    };
+    }
   }, [
     visionConfig.enabled,
     isLocalCamera,
     videoStream,
     visionConfig.calibration,
     processLocalFrame,
-  ]);
+  ])
 
   // Handle stable value changes (only when auto-detection is enabled)
   useEffect(() => {
     // Skip value updates when feature is disabled
-    if (!ENABLE_AUTO_DETECTION) return;
+    if (!ENABLE_AUTO_DETECTION) return
 
-    if (
-      stability.stableValue !== null &&
-      stability.stableValue !== detectedValue
-    ) {
-      setDetectedValue(stability.stableValue);
-      setConfidence(stability.currentConfidence);
-      setDockedValue(stability.stableValue);
-      onValueDetected?.(stability.stableValue);
+    if (stability.stableValue !== null && stability.stableValue !== detectedValue) {
+      setDetectedValue(stability.stableValue)
+      setConfidence(stability.currentConfidence)
+      setDockedValue(stability.stableValue)
+      onValueDetected?.(stability.stableValue)
     }
   }, [
     stability.stableValue,
@@ -465,36 +409,34 @@ export function DockedVisionFeed({
     detectedValue,
     setDockedValue,
     onValueDetected,
-  ]);
+  ])
 
   // Broadcast vision frames to observers (5fps to save bandwidth)
-  const BROADCAST_INTERVAL_MS = 200;
+  const BROADCAST_INTERVAL_MS = 200
   useEffect(() => {
-    if (!visionConfig.enabled) return;
+    if (!visionConfig.enabled) return
 
-    let running = true;
+    let running = true
 
     const broadcastLoop = () => {
-      if (!running) return;
+      if (!running) return
 
-      const now = performance.now();
+      const now = performance.now()
       if (now - lastBroadcastTimeRef.current >= BROADCAST_INTERVAL_MS) {
-        lastBroadcastTimeRef.current = now;
+        lastBroadcastTimeRef.current = now
 
         // Capture from rectified canvas (local camera) or remote image
-        let imageData: string | null = null;
+        let imageData: string | null = null
 
         if (isLocalCamera && rectifiedCanvasRef.current) {
-          const canvas = rectifiedCanvasRef.current;
+          const canvas = rectifiedCanvasRef.current
           if (canvas.width > 0 && canvas.height > 0) {
             // Convert canvas to JPEG (quality 0.7 for bandwidth)
-            imageData = canvas
-              .toDataURL("image/jpeg", 0.7)
-              .replace("data:image/jpeg;base64,", "");
+            imageData = canvas.toDataURL('image/jpeg', 0.7).replace('data:image/jpeg;base64,', '')
           }
         } else if (isRemoteCamera && remoteLatestFrame) {
           // Remote camera already sends base64 JPEG
-          imageData = remoteLatestFrame.imageData;
+          imageData = remoteLatestFrame.imageData
         }
 
         if (imageData) {
@@ -502,18 +444,18 @@ export function DockedVisionFeed({
             imageData,
             detectedValue,
             confidence,
-          });
+          })
         }
       }
 
-      requestAnimationFrame(broadcastLoop);
-    };
+      requestAnimationFrame(broadcastLoop)
+    }
 
-    broadcastLoop();
+    broadcastLoop()
 
     return () => {
-      running = false;
-    };
+      running = false
+    }
   }, [
     visionConfig.enabled,
     isLocalCamera,
@@ -522,15 +464,15 @@ export function DockedVisionFeed({
     detectedValue,
     confidence,
     emitVisionFrame,
-  ]);
+  ])
 
   const handleDisableVision = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setVisionEnabled(false);
+    e.stopPropagation()
+    setVisionEnabled(false)
     if (videoStream) {
-      videoStream.getTracks().forEach((track) => track.stop());
+      videoStream.getTracks().forEach((track) => track.stop())
     }
-  };
+  }
 
   if (error) {
     return (
@@ -538,20 +480,20 @@ export function DockedVisionFeed({
         data-component="docked-vision-feed"
         data-status="error"
         className={css({
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
           gap: 2,
           p: 4,
-          bg: "red.900/30",
-          borderRadius: "lg",
-          color: "red.400",
-          textAlign: "center",
+          bg: 'red.900/30',
+          borderRadius: 'lg',
+          color: 'red.400',
+          textAlign: 'center',
         })}
       >
-        <span className={css({ fontSize: "xl" })}>⚠️</span>
-        <span className={css({ fontSize: "sm" })}>{error}</span>
+        <span className={css({ fontSize: 'xl' })}>⚠️</span>
+        <span className={css({ fontSize: 'sm' })}>{error}</span>
         <button
           type="button"
           onClick={handleDisableVision}
@@ -559,18 +501,18 @@ export function DockedVisionFeed({
             mt: 2,
             px: 3,
             py: 1,
-            bg: "gray.700",
-            color: "white",
-            borderRadius: "md",
-            fontSize: "xs",
-            border: "none",
-            cursor: "pointer",
+            bg: 'gray.700',
+            color: 'white',
+            borderRadius: 'md',
+            fontSize: 'xs',
+            border: 'none',
+            cursor: 'pointer',
           })}
         >
           Disable Vision
         </button>
       </div>
-    );
+    )
   }
 
   if (isLoading) {
@@ -579,40 +521,40 @@ export function DockedVisionFeed({
         data-component="docked-vision-feed"
         data-status="loading"
         className={css({
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
           gap: 2,
           p: 4,
-          bg: "gray.800/50",
-          borderRadius: "lg",
-          color: "gray.400",
+          bg: 'gray.800/50',
+          borderRadius: 'lg',
+          color: 'gray.400',
         })}
       >
-        <span className={css({ fontSize: "xl" })}>📷</span>
-        <span className={css({ fontSize: "sm" })}>
-          {isRemoteCamera ? "Connecting to phone..." : "Starting camera..."}
+        <span className={css({ fontSize: 'xl' })}>📷</span>
+        <span className={css({ fontSize: 'sm' })}>
+          {isRemoteCamera ? 'Connecting to phone...' : 'Starting camera...'}
         </span>
       </div>
-    );
+    )
   }
 
   return (
     <div
       data-component="docked-vision-feed"
       data-status="active"
-      data-source={isRemoteCamera ? "remote" : "local"}
+      data-source={isRemoteCamera ? 'remote' : 'local'}
       className={css({
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        overflow: "hidden",
-        borderRadius: "lg",
-        bg: "black",
-        width: "100%",
-        height: "100%",
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        overflow: 'hidden',
+        borderRadius: 'lg',
+        bg: 'black',
+        width: '100%',
+        height: '100%',
       })}
     >
       {/* Rectified video feed - local camera */}
@@ -622,10 +564,10 @@ export function DockedVisionFeed({
           calibration={visionConfig.calibration}
           showRectifiedView={true}
           videoRef={(el) => {
-            videoRef.current = el;
+            videoRef.current = el
           }}
           rectifiedCanvasRef={(el) => {
-            rectifiedCanvasRef.current = el;
+            rectifiedCanvasRef.current = el
           }}
         />
       )}
@@ -637,9 +579,9 @@ export function DockedVisionFeed({
           src={`data:image/jpeg;base64,${remoteLatestFrame.imageData}`}
           alt="Phone camera view"
           className={css({
-            width: "100%",
-            height: "auto",
-            objectFit: "contain",
+            width: '100%',
+            height: 'auto',
+            objectFit: 'contain',
           })}
         />
       )}
@@ -648,13 +590,13 @@ export function DockedVisionFeed({
       {isRemoteCamera && !remoteLatestFrame && remoteIsPhoneConnected && (
         <div
           className={css({
-            width: "100%",
-            aspectRatio: "2/1",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "gray.400",
-            fontSize: "sm",
+            width: '100%',
+            aspectRatio: '2/1',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'gray.400',
+            fontSize: 'sm',
           })}
         >
           Waiting for frames...
@@ -666,56 +608,49 @@ export function DockedVisionFeed({
         <div
           data-element="detection-overlay"
           className={css({
-            position: "absolute",
+            position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             p: 2,
-            bg: "rgba(0, 0, 0, 0.7)",
-            backdropFilter: "blur(4px)",
+            bg: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(4px)',
           })}
         >
           {/* Detected value */}
-          <div
-            className={css({ display: "flex", alignItems: "center", gap: 2 })}
-          >
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
             <span
               className={css({
-                fontSize: "lg",
-                fontWeight: "bold",
-                color: "white",
-                fontFamily: "mono",
+                fontSize: 'lg',
+                fontWeight: 'bold',
+                color: 'white',
+                fontFamily: 'mono',
               })}
             >
-              {detectedValue !== null ? detectedValue : "---"}
+              {detectedValue !== null ? detectedValue : '---'}
             </span>
             {detectedValue !== null && (
-              <span className={css({ fontSize: "xs", color: "gray.400" })}>
+              <span className={css({ fontSize: 'xs', color: 'gray.400' })}>
                 {Math.round(confidence * 100)}%
               </span>
             )}
           </div>
 
           {/* Stability indicator */}
-          <div
-            className={css({ display: "flex", alignItems: "center", gap: 1 })}
-          >
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
             {stability.consecutiveFrames > 0 && (
-              <div className={css({ display: "flex", gap: 0.5 })}>
+              <div className={css({ display: 'flex', gap: 0.5 })}>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div
                     key={i}
                     className={css({
-                      w: "6px",
-                      h: "6px",
-                      borderRadius: "full",
-                      bg:
-                        i < stability.consecutiveFrames
-                          ? "green.500"
-                          : "gray.600",
+                      w: '6px',
+                      h: '6px',
+                      borderRadius: 'full',
+                      bg: i < stability.consecutiveFrames ? 'green.500' : 'gray.600',
                     })}
                   />
                 ))}
@@ -732,25 +667,25 @@ export function DockedVisionFeed({
         onClick={handleDisableVision}
         title="Disable vision mode"
         className={css({
-          position: "absolute",
-          top: "4px",
-          right: "4px",
-          w: "24px",
-          h: "24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bg: "rgba(0, 0, 0, 0.5)",
-          backdropFilter: "blur(4px)",
-          border: "1px solid rgba(255, 255, 255, 0.3)",
-          borderRadius: "md",
-          color: "white",
-          fontSize: "xs",
-          cursor: "pointer",
+          position: 'absolute',
+          top: '4px',
+          right: '4px',
+          w: '24px',
+          h: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bg: 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(4px)',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          borderRadius: 'md',
+          color: 'white',
+          fontSize: 'xs',
+          cursor: 'pointer',
           zIndex: 10,
           opacity: 0.7,
           _hover: {
-            bg: "rgba(239, 68, 68, 0.8)",
+            bg: 'rgba(239, 68, 68, 0.8)',
             opacity: 1,
           },
         })}
@@ -758,5 +693,5 @@ export function DockedVisionFeed({
         ✕
       </button>
     </div>
-  );
+  )
 }

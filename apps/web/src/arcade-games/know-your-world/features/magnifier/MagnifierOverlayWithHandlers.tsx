@@ -9,15 +9,15 @@
  * because it calls hooks that consume from those contexts.
  */
 
-"use client";
+'use client'
 
-import type { SpringValue } from "@react-spring/web";
+import type { SpringValue } from '@react-spring/web'
 
-import { MagnifierOverlay } from "./MagnifierOverlay";
+import { MagnifierOverlay } from './MagnifierOverlay'
 import {
   type UseMagnifierTouchHandlersOptions,
   useMagnifierTouchHandlers,
-} from "./useMagnifierTouchHandlers";
+} from './useMagnifierTouchHandlers'
 
 // ============================================================================
 // Types
@@ -25,9 +25,9 @@ import {
 
 export interface MagnifierOverlayWithHandlersProps {
   /** Crosshair rotation angle spring */
-  rotationAngle: SpringValue<number>;
+  rotationAngle: SpringValue<number>
   /** Options for touch handlers hook (the options that aren't from context) */
-  touchHandlerOptions: UseMagnifierTouchHandlersOptions;
+  touchHandlerOptions: UseMagnifierTouchHandlersOptions
 }
 
 // ============================================================================
@@ -39,11 +39,8 @@ export function MagnifierOverlayWithHandlers({
   touchHandlerOptions,
 }: MagnifierOverlayWithHandlersProps) {
   // This hook consumes from MagnifierContext and MapGameContext
-  const {
-    handleMagnifierTouchStart,
-    handleMagnifierTouchMove,
-    handleMagnifierTouchEnd,
-  } = useMagnifierTouchHandlers(touchHandlerOptions);
+  const { handleMagnifierTouchStart, handleMagnifierTouchMove, handleMagnifierTouchEnd } =
+    useMagnifierTouchHandlers(touchHandlerOptions)
 
   return (
     <MagnifierOverlay
@@ -52,5 +49,5 @@ export function MagnifierOverlayWithHandlers({
       handleMagnifierTouchMove={handleMagnifierTouchMove}
       handleMagnifierTouchEnd={handleMagnifierTouchEnd}
     />
-  );
+  )
 }

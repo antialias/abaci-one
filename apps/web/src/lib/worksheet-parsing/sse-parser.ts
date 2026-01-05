@@ -5,8 +5,8 @@
  * Used by both initial parse and selective re-parse operations.
  */
 
-import type { WorksheetParsingResult, BoundingBox } from "./schemas";
-import type { ParsingStats, CompletedProblem } from "./state-machine";
+import type { WorksheetParsingResult, BoundingBox } from './schemas'
+import type { ParsingStats, CompletedProblem } from './state-machine'
 
 // ============================================================================
 // Types
@@ -19,21 +19,21 @@ import type { ParsingStats, CompletedProblem } from "./state-machine";
  */
 export interface SSECallbacks {
   /** Called when the response is created (initial connection established) */
-  onStarted?: (responseId: string) => void;
+  onStarted?: (responseId: string) => void
 
   /** Called with reasoning text (model's thinking process) */
-  onReasoning?: (text: string, isDelta: boolean, summaryIndex?: number) => void;
+  onReasoning?: (text: string, isDelta: boolean, summaryIndex?: number) => void
 
   /** Called with output deltas (partial JSON being generated) */
-  onOutputDelta?: (text: string, outputIndex?: number) => void;
+  onOutputDelta?: (text: string, outputIndex?: number) => void
 
   /** Called when a problem parsing starts (re-parse only) */
   onProblemStart?: (
     problemIndex: number,
     problemNumber: number,
     currentIndex: number,
-    totalProblems: number,
-  ) => void;
+    totalProblems: number
+  ) => void
 
   /** Called when a problem is fully parsed */
   onProblemComplete?: (
@@ -41,35 +41,31 @@ export interface SSECallbacks {
     problemNumber: number,
     result: unknown,
     currentIndex: number,
-    totalProblems: number,
-  ) => void;
+    totalProblems: number
+  ) => void
 
   /** Called when a specific problem fails (re-parse only) */
-  onProblemError?: (problemIndex: number, message: string) => void;
+  onProblemError?: (problemIndex: number, message: string) => void
 
   /** Called when the entire operation completes successfully */
-  onComplete?: (
-    result: WorksheetParsingResult,
-    stats?: ParsingStats,
-    status?: string,
-  ) => void;
+  onComplete?: (result: WorksheetParsingResult, stats?: ParsingStats, status?: string) => void
 
   /** Called when the operation fails */
-  onError?: (message: string, code?: string) => void;
+  onError?: (message: string, code?: string) => void
 
   /** Called when the operation is cancelled */
-  onCancelled?: () => void;
+  onCancelled?: () => void
 
   /** Called with progress messages */
-  onProgress?: (message: string) => void;
+  onProgress?: (message: string) => void
 }
 
 /**
  * Parse result event from SSE stream
  */
 interface SSEEvent {
-  type: string;
-  [key: string]: unknown;
+  type: string
+  [key: string]: unknown
 }
 
 // ============================================================================
@@ -100,66 +96,66 @@ interface SSEEvent {
 export async function parseSSEStream(
   response: Response,
   callbacks: SSECallbacks,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
-  const reader = response.body?.getReader();
+  const reader = response.body?.getReader()
   if (!reader) {
-    throw new Error("No response body");
+    throw new Error('No response body')
   }
 
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let currentEvent: string | null = null;
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let currentEvent: string | null = null
 
   try {
     while (true) {
       // Check for cancellation
       if (signal?.aborted) {
-        callbacks.onCancelled?.();
-        break;
+        callbacks.onCancelled?.()
+        break
       }
 
-      const { done, value } = await reader.read();
-      if (done) break;
+      const { done, value } = await reader.read()
+      if (done) break
 
-      buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(value, { stream: true })
 
       // Parse SSE events from buffer
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? ""; // Keep incomplete line in buffer
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? '' // Keep incomplete line in buffer
 
       for (const line of lines) {
         // Event type line
-        if (line.startsWith("event: ")) {
-          currentEvent = line.slice(7).trim();
-          continue;
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim()
+          continue
         }
 
         // Data line
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6).trim();
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim()
 
           // Skip [DONE] marker
-          if (data === "[DONE]") {
-            currentEvent = null;
-            continue;
+          if (data === '[DONE]') {
+            currentEvent = null
+            continue
           }
 
           try {
-            const event = JSON.parse(data) as SSEEvent;
-            const eventType = currentEvent ?? event.type;
+            const event = JSON.parse(data) as SSEEvent
+            const eventType = currentEvent ?? event.type
 
-            handleSSEEvent(eventType, event, callbacks);
+            handleSSEEvent(eventType, event, callbacks)
           } catch {
             // Ignore malformed JSON
           }
 
-          currentEvent = null;
+          currentEvent = null
         }
       }
     }
   } finally {
-    reader.releaseLock();
+    reader.releaseLock()
   }
 }
 
@@ -170,94 +166,86 @@ export async function parseSSEStream(
 /**
  * Handle a single SSE event by invoking the appropriate callback
  */
-function handleSSEEvent(
-  eventType: string,
-  event: SSEEvent,
-  callbacks: SSECallbacks,
-): void {
+function handleSSEEvent(eventType: string, event: SSEEvent, callbacks: SSECallbacks): void {
   switch (eventType) {
     // Connection established
-    case "started":
-    case "response.created": {
-      const response = event.response as { id?: string } | undefined;
-      callbacks.onStarted?.(String(event.responseId ?? response?.id ?? ""));
-      break;
+    case 'started':
+    case 'response.created': {
+      const response = event.response as { id?: string } | undefined
+      callbacks.onStarted?.(String(event.responseId ?? response?.id ?? ''))
+      break
     }
 
     // Progress updates
-    case "progress":
-      callbacks.onProgress?.(String(event.message ?? ""));
-      break;
+    case 'progress':
+      callbacks.onProgress?.(String(event.message ?? ''))
+      break
 
     // Reasoning text
-    case "reasoning":
+    case 'reasoning':
       callbacks.onReasoning?.(
-        String(event.text ?? ""),
+        String(event.text ?? ''),
         Boolean(event.isDelta),
-        typeof event.summaryIndex === "number" ? event.summaryIndex : undefined,
-      );
-      break;
+        typeof event.summaryIndex === 'number' ? event.summaryIndex : undefined
+      )
+      break
 
     // Output delta (partial JSON)
-    case "output_delta":
+    case 'output_delta':
       callbacks.onOutputDelta?.(
-        String(event.text ?? event.delta ?? ""),
-        typeof event.outputIndex === "number" ? event.outputIndex : undefined,
-      );
-      break;
+        String(event.text ?? event.delta ?? ''),
+        typeof event.outputIndex === 'number' ? event.outputIndex : undefined
+      )
+      break
 
     // Problem parsing started (re-parse only)
-    case "problem_start":
+    case 'problem_start':
       callbacks.onProblemStart?.(
         Number(event.problemIndex ?? 0),
         Number(event.problemNumber ?? 0),
         Number(event.currentIndex ?? 0),
-        Number(event.totalProblems ?? 0),
-      );
-      break;
+        Number(event.totalProblems ?? 0)
+      )
+      break
 
     // Problem parsing completed
-    case "problem_complete":
+    case 'problem_complete':
       callbacks.onProblemComplete?.(
         Number(event.problemIndex ?? 0),
         Number(event.problemNumber ?? 0),
         event.result,
         Number(event.currentIndex ?? 0),
-        Number(event.totalProblems ?? 0),
-      );
-      break;
+        Number(event.totalProblems ?? 0)
+      )
+      break
 
     // Individual problem error (re-parse only)
-    case "problem_error":
+    case 'problem_error':
       callbacks.onProblemError?.(
         Number(event.problemIndex ?? 0),
-        String(event.message ?? "Unknown error"),
-      );
-      break;
+        String(event.message ?? 'Unknown error')
+      )
+      break
 
     // Operation completed successfully
-    case "complete": {
+    case 'complete': {
       // Handle both initial parse and re-parse complete events
-      const result = (event.result ??
-        event.updatedResult) as WorksheetParsingResult;
-      const stats = event.stats as ParsingStats | undefined;
-      const status = String(event.status ?? "");
-      callbacks.onComplete?.(result, stats, status);
-      break;
+      const result = (event.result ?? event.updatedResult) as WorksheetParsingResult
+      const stats = event.stats as ParsingStats | undefined
+      const status = String(event.status ?? '')
+      callbacks.onComplete?.(result, stats, status)
+      break
     }
 
     // Operation cancelled
-    case "cancelled":
-      callbacks.onCancelled?.();
-      break;
+    case 'cancelled':
+      callbacks.onCancelled?.()
+      break
 
     // Error occurred
-    case "error":
-      callbacks.onError?.(
-        String(event.message ?? "Unknown error"),
-        String(event.code ?? ""),
-      );
-      break;
+    case 'error':
+      callbacks.onError?.(String(event.message ?? 'Unknown error'), String(event.code ?? ''))
+      break
   }
 }
 
@@ -274,78 +262,76 @@ function handleSSEEvent(
  * @param partialJson - Incomplete JSON string from streaming output
  * @returns Array of completed problems with their bounding boxes
  */
-export function extractCompletedProblemsFromPartialJson(
-  partialJson: string,
-): CompletedProblem[] {
-  const problems: CompletedProblem[] = [];
+export function extractCompletedProblemsFromPartialJson(partialJson: string): CompletedProblem[] {
+  const problems: CompletedProblem[] = []
 
   // Find the problems array start
-  const problemsMatch = partialJson.match(/"problems"\s*:\s*\[/);
-  if (!problemsMatch) return problems;
+  const problemsMatch = partialJson.match(/"problems"\s*:\s*\[/)
+  if (!problemsMatch) return problems
 
-  const startIndex = problemsMatch.index! + problemsMatch[0].length;
-  let depth = 1; // We're inside the array
-  let objectStart = -1;
-  let inString = false;
-  let escaped = false;
+  const startIndex = problemsMatch.index! + problemsMatch[0].length
+  let depth = 1 // We're inside the array
+  let objectStart = -1
+  let inString = false
+  let escaped = false
 
   for (let i = startIndex; i < partialJson.length; i++) {
-    const char = partialJson[i];
+    const char = partialJson[i]
 
     // Handle escape sequences in strings
     if (escaped) {
-      escaped = false;
-      continue;
+      escaped = false
+      continue
     }
 
-    if (char === "\\") {
-      escaped = true;
-      continue;
+    if (char === '\\') {
+      escaped = true
+      continue
     }
 
     // Handle string boundaries
     if (char === '"') {
-      inString = !inString;
-      continue;
+      inString = !inString
+      continue
     }
 
     // Skip characters inside strings
-    if (inString) continue;
+    if (inString) continue
 
     // Track brace depth
-    if (char === "{") {
+    if (char === '{') {
       if (depth === 1 && objectStart === -1) {
-        objectStart = i;
+        objectStart = i
       }
-      depth++;
-    } else if (char === "}") {
-      depth--;
+      depth++
+    } else if (char === '}') {
+      depth--
       if (depth === 1 && objectStart !== -1) {
         // We've found a complete object
-        const objectStr = partialJson.slice(objectStart, i + 1);
-        objectStart = -1;
+        const objectStr = partialJson.slice(objectStart, i + 1)
+        objectStart = -1
 
         try {
-          const obj = JSON.parse(objectStr);
+          const obj = JSON.parse(objectStr)
           if (
-            typeof obj.problemNumber === "number" &&
+            typeof obj.problemNumber === 'number' &&
             obj.problemBoundingBox &&
-            typeof obj.problemBoundingBox.x === "number"
+            typeof obj.problemBoundingBox.x === 'number'
           ) {
             problems.push({
               problemNumber: obj.problemNumber,
               problemBoundingBox: obj.problemBoundingBox as BoundingBox,
-            });
+            })
           }
         } catch {
           // Not a valid JSON object yet
         }
       }
-    } else if (char === "]" && depth === 1) {
+    } else if (char === ']' && depth === 1) {
       // End of problems array
-      break;
+      break
     }
   }
 
-  return problems;
+  return problems
 }

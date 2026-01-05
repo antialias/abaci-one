@@ -1,10 +1,10 @@
-import { css } from "@styled/css";
+import { css } from '@styled/css'
 
 export interface StudentNameInputProps {
-  value: string | undefined;
-  onChange: (value: string) => void;
-  isDark?: boolean;
-  readOnly?: boolean;
+  value: string | undefined
+  onChange: (value: string) => void
+  isDark?: boolean
+  readOnly?: boolean
 }
 
 export function StudentNameInput({
@@ -16,38 +16,32 @@ export function StudentNameInput({
   return (
     <input
       type="text"
-      value={value || ""}
+      value={value || ''}
       onChange={(e) => onChange(e.target.value)}
       placeholder="Student Name"
       readOnly={readOnly}
       className={css({
-        w: "full",
-        px: "3",
-        py: "2",
-        border: "1px solid",
-        borderColor: isDark ? "gray.600" : "gray.300",
-        bg: readOnly
-          ? isDark
-            ? "gray.800"
-            : "gray.100"
-          : isDark
-            ? "gray.700"
-            : "white",
-        color: isDark ? "gray.100" : "gray.900",
-        rounded: "lg",
-        fontSize: "sm",
-        opacity: readOnly ? "0.7" : "1",
-        cursor: readOnly ? "not-allowed" : "text",
+        w: 'full',
+        px: '3',
+        py: '2',
+        border: '1px solid',
+        borderColor: isDark ? 'gray.600' : 'gray.300',
+        bg: readOnly ? (isDark ? 'gray.800' : 'gray.100') : isDark ? 'gray.700' : 'white',
+        color: isDark ? 'gray.100' : 'gray.900',
+        rounded: 'lg',
+        fontSize: 'sm',
+        opacity: readOnly ? '0.7' : '1',
+        cursor: readOnly ? 'not-allowed' : 'text',
         _focus: readOnly
           ? {}
           : {
-              outline: "none",
-              borderColor: "brand.500",
-              ring: "2px",
-              ringColor: "brand.200",
+              outline: 'none',
+              borderColor: 'brand.500',
+              ring: '2px',
+              ringColor: 'brand.200',
             },
-        _placeholder: { color: isDark ? "gray.500" : "gray.400" },
+        _placeholder: { color: isDark ? 'gray.500' : 'gray.400' },
       })}
     />
-  );
+  )
 }

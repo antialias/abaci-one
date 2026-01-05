@@ -1,27 +1,24 @@
-"use client";
+'use client'
 
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { EnrollChildModal } from "@/components/classroom/EnrollChildModal";
-import { FamilyCodeDisplay } from "@/components/family";
-import { Z_INDEX } from "@/constants/zIndex";
-import { useTheme } from "@/contexts/ThemeContext";
-import {
-  type StudentActionData,
-  useStudentActions,
-} from "@/hooks/useStudentActions";
-import { css } from "../../../styled-system/css";
-import { ACTION_DEFINITIONS } from "./studentActions";
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { EnrollChildModal } from '@/components/classroom/EnrollChildModal'
+import { FamilyCodeDisplay } from '@/components/family'
+import { Z_INDEX } from '@/constants/zIndex'
+import { useTheme } from '@/contexts/ThemeContext'
+import { type StudentActionData, useStudentActions } from '@/hooks/useStudentActions'
+import { css } from '../../../styled-system/css'
+import { ACTION_DEFINITIONS } from './studentActions'
 
 // Re-export types for backward compatibility
-export type { StudentActionData };
-export type StudentForActions = StudentActionData;
+export type { StudentActionData }
+export type StudentForActions = StudentActionData
 
 interface StudentActionMenuProps {
-  student: StudentActionData;
+  student: StudentActionData
   /** Optional callback when observe session is clicked (for external handling) */
-  onObserveSession?: (sessionId: string) => void;
+  onObserveSession?: (sessionId: string) => void
   /** Positioning variant: 'card' for absolute positioning on cards, 'inline' for normal flow */
-  variant?: "card" | "inline";
+  variant?: 'card' | 'inline'
 }
 
 /**
@@ -38,14 +35,14 @@ interface StudentActionMenuProps {
 export function StudentActionMenu({
   student,
   onObserveSession,
-  variant = "card",
+  variant = 'card',
 }: StudentActionMenuProps) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
   const { actions, handlers, modals, classrooms } = useStudentActions(student, {
     onObserveSession,
-  });
+  })
 
   // If no actions are available, don't render the menu
   const hasAnyAction =
@@ -58,9 +55,9 @@ export function StudentActionMenu({
     actions.unenrollStudent ||
     actions.shareAccess ||
     actions.archive ||
-    actions.unarchive;
+    actions.unarchive
 
-  if (!hasAnyAction) return null;
+  if (!hasAnyAction) return null
 
   return (
     <>
@@ -72,30 +69,30 @@ export function StudentActionMenu({
             onClick={(e) => e.stopPropagation()}
             className={css({
               // Card variant: absolute positioned overlay on cards
-              ...(variant === "card" && {
-                position: "absolute",
-                top: "6px",
-                right: "38px",
+              ...(variant === 'card' && {
+                position: 'absolute',
+                top: '6px',
+                right: '38px',
               }),
               // Inline variant: normal flow for toolbars
-              ...(variant === "inline" && {
-                position: "relative",
+              ...(variant === 'inline' && {
+                position: 'relative',
               }),
-              width: "28px",
-              height: "28px",
-              borderRadius: "6px",
-              border: "none",
-              backgroundColor: isDark ? "gray.700" : "gray.100",
-              color: isDark ? "gray.400" : "gray.500",
-              fontSize: "1rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all 0.15s ease",
+              width: '28px',
+              height: '28px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: isDark ? 'gray.700' : 'gray.100',
+              color: isDark ? 'gray.400' : 'gray.500',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s ease',
               _hover: {
-                backgroundColor: isDark ? "gray.600" : "gray.200",
-                color: isDark ? "gray.200" : "gray.700",
+                backgroundColor: isDark ? 'gray.600' : 'gray.200',
+                color: isDark ? 'gray.200' : 'gray.700',
               },
             })}
             aria-label="Student actions"
@@ -107,13 +104,13 @@ export function StudentActionMenu({
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             className={css({
-              minWidth: "180px",
-              backgroundColor: isDark ? "gray.800" : "white",
-              borderRadius: "8px",
-              border: "1px solid",
-              borderColor: isDark ? "gray.700" : "gray.200",
-              padding: "4px",
-              boxShadow: "lg",
+              minWidth: '180px',
+              backgroundColor: isDark ? 'gray.800' : 'white',
+              borderRadius: '8px',
+              border: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+              padding: '4px',
+              boxShadow: 'lg',
               zIndex: Z_INDEX.DROPDOWN,
             })}
             sideOffset={5}
@@ -155,10 +152,10 @@ export function StudentActionMenu({
                   >
                     <span
                       className={css({
-                        width: "8px",
-                        height: "8px",
-                        borderRadius: "50%",
-                        backgroundColor: "green.500",
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: 'green.500',
                       })}
                     />
                     <span>In {classrooms.current.classroom.name} — Leave</span>
@@ -180,23 +177,21 @@ export function StudentActionMenu({
                 {/* If not in classroom and has multiple enrollments: use submenu */}
                 {!classrooms.current && classrooms.enrolled.length > 1 && (
                   <DropdownMenu.Sub>
-                    <DropdownMenu.SubTrigger
-                      className={subTriggerStyles(isDark)}
-                    >
+                    <DropdownMenu.SubTrigger className={subTriggerStyles(isDark)}>
                       <span>🏫</span>
                       <span>Enter Classroom</span>
-                      <span className={css({ marginLeft: "auto" })}>→</span>
+                      <span className={css({ marginLeft: 'auto' })}>→</span>
                     </DropdownMenu.SubTrigger>
                     <DropdownMenu.Portal>
                       <DropdownMenu.SubContent
                         className={css({
-                          minWidth: "160px",
-                          backgroundColor: isDark ? "gray.800" : "white",
-                          borderRadius: "8px",
-                          border: "1px solid",
-                          borderColor: isDark ? "gray.700" : "gray.200",
-                          padding: "4px",
-                          boxShadow: "lg",
+                          minWidth: '160px',
+                          backgroundColor: isDark ? 'gray.800' : 'white',
+                          borderRadius: '8px',
+                          border: '1px solid',
+                          borderColor: isDark ? 'gray.700' : 'gray.200',
+                          padding: '4px',
+                          boxShadow: 'lg',
                           zIndex: Z_INDEX.DROPDOWN + 1,
                         })}
                         sideOffset={4}
@@ -205,9 +200,7 @@ export function StudentActionMenu({
                           <DropdownMenu.Item
                             key={c.id}
                             className={menuItemStyles(isDark)}
-                            onSelect={() =>
-                              handlers.enterSpecificClassroom(c.id)
-                            }
+                            onSelect={() => handlers.enterSpecificClassroom(c.id)}
                             data-action="enter-specific-classroom"
                           >
                             {c.name}
@@ -295,81 +288,72 @@ export function StudentActionMenu({
         playerName={student.name}
       />
     </>
-  );
+  )
 }
 
-function menuItemStyles(
-  isDark: boolean,
-  variant: "default" | "danger" = "default",
-) {
+function menuItemStyles(isDark: boolean, variant: 'default' | 'danger' = 'default') {
   return css({
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "8px 12px",
-    borderRadius: "4px",
-    fontSize: "13px",
-    cursor: "pointer",
-    outline: "none",
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 12px',
+    borderRadius: '4px',
+    fontSize: '13px',
+    cursor: 'pointer',
+    outline: 'none',
     color:
-      variant === "danger"
-        ? isDark
-          ? "red.400"
-          : "red.600"
-        : isDark
-          ? "gray.200"
-          : "gray.700",
+      variant === 'danger' ? (isDark ? 'red.400' : 'red.600') : isDark ? 'gray.200' : 'gray.700',
     _hover: {
       backgroundColor:
-        variant === "danger"
+        variant === 'danger'
           ? isDark
-            ? "red.900/50"
-            : "red.50"
+            ? 'red.900/50'
+            : 'red.50'
           : isDark
-            ? "gray.700"
-            : "gray.100",
+            ? 'gray.700'
+            : 'gray.100',
     },
     _focus: {
       backgroundColor:
-        variant === "danger"
+        variant === 'danger'
           ? isDark
-            ? "red.900/50"
-            : "red.50"
+            ? 'red.900/50'
+            : 'red.50'
           : isDark
-            ? "gray.700"
-            : "gray.100",
+            ? 'gray.700'
+            : 'gray.100',
     },
-  });
+  })
 }
 
 function separatorStyles(isDark: boolean) {
   return css({
-    height: "1px",
-    backgroundColor: isDark ? "gray.700" : "gray.200",
-    margin: "4px 0",
-  });
+    height: '1px',
+    backgroundColor: isDark ? 'gray.700' : 'gray.200',
+    margin: '4px 0',
+  })
 }
 
 function subTriggerStyles(isDark: boolean) {
   return css({
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "8px 12px",
-    borderRadius: "4px",
-    fontSize: "13px",
-    cursor: "pointer",
-    outline: "none",
-    color: isDark ? "gray.200" : "gray.700",
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 12px',
+    borderRadius: '4px',
+    fontSize: '13px',
+    cursor: 'pointer',
+    outline: 'none',
+    color: isDark ? 'gray.200' : 'gray.700',
     _hover: {
-      backgroundColor: isDark ? "gray.700" : "gray.100",
+      backgroundColor: isDark ? 'gray.700' : 'gray.100',
     },
     _focus: {
-      backgroundColor: isDark ? "gray.700" : "gray.100",
+      backgroundColor: isDark ? 'gray.700' : 'gray.100',
     },
     // SubTrigger specific: highlight when open
     '&[data-state="open"]': {
-      backgroundColor: isDark ? "gray.700" : "gray.100",
+      backgroundColor: isDark ? 'gray.700' : 'gray.100',
     },
-  });
+  })
 }

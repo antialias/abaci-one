@@ -6,22 +6,18 @@
  * Check if an input string is a prefix of any numbers in the target list,
  * excluding already found numbers
  */
-export function isPrefix(
-  input: string,
-  targetNumbers: number[],
-  foundNumbers: number[],
-): boolean {
+export function isPrefix(input: string, targetNumbers: number[], foundNumbers: number[]): boolean {
   // Original logic: check if input is a prefix of any unfound numbers
   return targetNumbers
     .filter((n) => !foundNumbers.includes(n)) // Only consider unfound numbers
-    .some((n) => n.toString().startsWith(input) && n.toString() !== input);
+    .some((n) => n.toString().startsWith(input) && n.toString() !== input)
 }
 
 /**
  * Check if an input could be a valid prefix of any target numbers
  */
 export function couldBePrefix(input: string, targetNumbers: number[]): boolean {
-  return targetNumbers.some((n) => n.toString().startsWith(input));
+  return targetNumbers.some((n) => n.toString().startsWith(input))
 }
 
 /**
@@ -30,16 +26,16 @@ export function couldBePrefix(input: string, targetNumbers: number[]): boolean {
 export function isCompleteWrongNumber(
   input: string,
   targetNumbers: number[],
-  _minLengthForWrong: number = 2,
+  _minLengthForWrong: number = 2
 ): boolean {
-  const number = parseInt(input, 10);
-  if (Number.isNaN(number)) return false;
+  const number = parseInt(input, 10)
+  if (Number.isNaN(number)) return false
 
-  const isNotTarget = !targetNumbers.includes(number);
-  const cannotBePrefix = !couldBePrefix(input, targetNumbers);
+  const isNotTarget = !targetNumbers.includes(number)
+  const cannotBePrefix = !couldBePrefix(input, targetNumbers)
 
   // It's a complete wrong number if it's not a target AND it cannot be a prefix of any target
-  return isNotTarget && cannotBePrefix;
+  return isNotTarget && cannotBePrefix
 }
 
 /**
@@ -49,23 +45,20 @@ export function shouldTriggerIncorrectGuess(
   input: string,
   targetNumbers: number[],
   _foundNumbers: number[],
-  hasGuessesRemaining: boolean = true,
+  hasGuessesRemaining: boolean = true
 ): boolean {
-  if (!hasGuessesRemaining) return false;
+  if (!hasGuessesRemaining) return false
 
-  const number = parseInt(input, 10);
-  if (Number.isNaN(number)) return false;
+  const number = parseInt(input, 10)
+  if (Number.isNaN(number)) return false
 
   // Don't trigger if it's a correct answer (even if already found)
-  if (targetNumbers.includes(number)) return false;
+  if (targetNumbers.includes(number)) return false
 
-  const couldBeValidPrefix = couldBePrefix(input, targetNumbers);
+  const couldBeValidPrefix = couldBePrefix(input, targetNumbers)
 
   // Trigger if it clearly cannot be a valid prefix, OR if it's a multi-digit partial input
-  return (
-    !couldBeValidPrefix ||
-    (input.length >= 2 && !targetNumbers.includes(number))
-  );
+  return !couldBeValidPrefix || (input.length >= 2 && !targetNumbers.includes(number))
 }
 
 /**
@@ -74,7 +67,7 @@ export function shouldTriggerIncorrectGuess(
 export function isCorrectAndAvailable(
   number: number,
   targetNumbers: number[],
-  foundNumbers: number[],
+  foundNumbers: number[]
 ): boolean {
-  return targetNumbers.includes(number) && !foundNumbers.includes(number);
+  return targetNumbers.includes(number) && !foundNumbers.includes(number)
 }

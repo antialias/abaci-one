@@ -9,20 +9,20 @@
  * - Progress calculation
  */
 
-"use client";
+'use client'
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type {
   UseLetterConfirmationOptions,
   UseLetterConfirmationReturn,
   LetterStatus,
-} from "./types";
+} from './types'
 import {
   getNthNonSpaceLetter,
   normalizeToBaseLetter,
   getLetterStatus as getLetterStatusUtil,
   calculateProgress,
-} from "./letterUtils";
+} from './letterUtils'
 
 /**
  * Hook for managing letter confirmation in Learning mode.
@@ -59,101 +59,93 @@ export function useLetterConfirmation({
   onNotYourTurn,
 }: UseLetterConfirmationOptions): UseLetterConfirmationReturn {
   // Optimistic letter count ref - prevents race conditions when typing fast
-  const optimisticCountRef = useRef(confirmedCount);
+  const optimisticCountRef = useRef(confirmedCount)
 
   // Sync optimistic count when server state updates
   useEffect(() => {
-    optimisticCountRef.current = confirmedCount;
-  }, [confirmedCount]);
+    optimisticCountRef.current = confirmedCount
+  }, [confirmedCount])
 
   // Reset optimistic count when region changes
   useEffect(() => {
-    optimisticCountRef.current = 0;
-  }, [regionName]);
+    optimisticCountRef.current = 0
+  }, [regionName])
 
   // Calculate derived state
-  const isRequired = requiredLetters > 0;
-  const isComplete = confirmedCount >= requiredLetters;
+  const isRequired = requiredLetters > 0
+  const isComplete = confirmedCount >= requiredLetters
 
   // Get the next expected letter
   const nextExpectedLetter = useMemo(() => {
-    if (!regionName || isComplete) return null;
-    const letterInfo = getNthNonSpaceLetter(regionName, confirmedCount);
-    return letterInfo ? normalizeToBaseLetter(letterInfo.char) : null;
-  }, [regionName, confirmedCount, isComplete]);
+    if (!regionName || isComplete) return null
+    const letterInfo = getNthNonSpaceLetter(regionName, confirmedCount)
+    return letterInfo ? normalizeToBaseLetter(letterInfo.char) : null
+  }, [regionName, confirmedCount, isComplete])
 
   // Calculate progress (0-1)
   const progress = useMemo(
     () => calculateProgress(confirmedCount, requiredLetters),
-    [confirmedCount, requiredLetters],
-  );
+    [confirmedCount, requiredLetters]
+  )
 
   // Get letter status for display
   const getLetterStatus = useCallback(
     (nonSpaceIndex: number): LetterStatus => {
-      return getLetterStatusUtil(
-        nonSpaceIndex,
-        confirmedCount,
-        requiredLetters,
-        isComplete,
-      );
+      return getLetterStatusUtil(nonSpaceIndex, confirmedCount, requiredLetters, isComplete)
     },
-    [confirmedCount, requiredLetters, isComplete],
-  );
+    [confirmedCount, requiredLetters, isComplete]
+  )
 
   // Handle keyboard input
   useEffect(() => {
     if (!isRequired || isComplete || !regionName) {
-      return;
+      return
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in an input or textarea
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
-        return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
       }
 
       // Only accept single character keys (letters only)
-      const pressedLetter = e.key.toLowerCase();
+      const pressedLetter = e.key.toLowerCase()
       if (pressedLetter.length !== 1 || !/[a-z]/i.test(pressedLetter)) {
-        return;
+        return
       }
 
       // In turn-based mode, only allow the current player to type
-      if (gameMode === "turn-based" && !isMyTurn) {
-        onNotYourTurn?.();
-        return;
+      if (gameMode === 'turn-based' && !isMyTurn) {
+        onNotYourTurn?.()
+        return
       }
 
       // Use optimistic count to prevent race conditions when typing fast
-      const nextLetterIndex = optimisticCountRef.current;
+      const nextLetterIndex = optimisticCountRef.current
       if (nextLetterIndex >= requiredLetters) {
-        return; // Already confirmed all required letters
+        return // Already confirmed all required letters
       }
 
       // Get the nth non-space letter (skipping spaces in the name)
-      const letterInfo = getNthNonSpaceLetter(regionName, nextLetterIndex);
+      const letterInfo = getNthNonSpaceLetter(regionName, nextLetterIndex)
       if (!letterInfo) {
-        return; // No more letters to confirm
+        return // No more letters to confirm
       }
 
       // Normalize accented letters to base ASCII
-      const expectedLetter = normalizeToBaseLetter(letterInfo.char);
+      const expectedLetter = normalizeToBaseLetter(letterInfo.char)
 
       if (pressedLetter === expectedLetter) {
         // Optimistically advance count before server responds
-        optimisticCountRef.current = nextLetterIndex + 1;
+        optimisticCountRef.current = nextLetterIndex + 1
         // Dispatch to shared state
-        onConfirmLetter(pressedLetter, nextLetterIndex);
+        onConfirmLetter(pressedLetter, nextLetterIndex)
       }
       // Ignore wrong characters silently
-    };
+    }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [
     isRequired,
     isComplete,
@@ -163,7 +155,7 @@ export function useLetterConfirmation({
     gameMode,
     onConfirmLetter,
     onNotYourTurn,
-  ]);
+  ])
 
   return {
     isComplete,
@@ -171,5 +163,5 @@ export function useLetterConfirmation({
     progress,
     isRequired,
     getLetterStatus,
-  };
+  }
 }

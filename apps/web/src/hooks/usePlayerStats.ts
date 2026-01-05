@@ -1,12 +1,12 @@
-"use client";
+'use client'
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from '@tanstack/react-query'
 import type {
   GetAllPlayerStatsResponse,
   GetPlayerStatsResponse,
   PlayerStatsData,
-} from "@/lib/arcade/stats/types";
-import { api } from "@/lib/queryClient";
+} from '@/lib/arcade/stats/types'
+import { api } from '@/lib/queryClient'
 
 /**
  * Hook to fetch stats for a specific player or all user's players
@@ -24,22 +24,21 @@ import { api } from "@/lib/queryClient";
  */
 export function usePlayerStats(playerId?: string) {
   return useQuery<PlayerStatsData | PlayerStatsData[]>({
-    queryKey: playerId ? ["player-stats", playerId] : ["player-stats"],
+    queryKey: playerId ? ['player-stats', playerId] : ['player-stats'],
     queryFn: async () => {
-      const url = playerId ? `player-stats/${playerId}` : "player-stats";
+      const url = playerId ? `player-stats/${playerId}` : 'player-stats'
 
-      const res = await api(url);
+      const res = await api(url)
       if (!res.ok) {
-        throw new Error("Failed to fetch player stats");
+        throw new Error('Failed to fetch player stats')
       }
 
-      const data: GetPlayerStatsResponse | GetAllPlayerStatsResponse =
-        await res.json();
+      const data: GetPlayerStatsResponse | GetAllPlayerStatsResponse = await res.json()
 
       // Return single player stats or array of all stats
-      return "stats" in data ? data.stats : data.playerStats;
+      return 'stats' in data ? data.stats : data.playerStats
     },
-  });
+  })
 }
 
 /**
@@ -49,19 +48,19 @@ export function usePlayerStats(playerId?: string) {
  */
 export function useAllPlayerStats() {
   const query = useQuery<PlayerStatsData[]>({
-    queryKey: ["player-stats"],
+    queryKey: ['player-stats'],
     queryFn: async () => {
-      const res = await api("player-stats");
+      const res = await api('player-stats')
       if (!res.ok) {
-        throw new Error("Failed to fetch player stats");
+        throw new Error('Failed to fetch player stats')
       }
 
-      const data: GetAllPlayerStatsResponse = await res.json();
-      return data.playerStats;
+      const data: GetAllPlayerStatsResponse = await res.json()
+      return data.playerStats
     },
-  });
+  })
 
-  return query;
+  return query
 }
 
 /**
@@ -71,18 +70,18 @@ export function useAllPlayerStats() {
  */
 export function useSinglePlayerStats(playerId: string) {
   const query = useQuery<PlayerStatsData>({
-    queryKey: ["player-stats", playerId],
+    queryKey: ['player-stats', playerId],
     queryFn: async () => {
-      const res = await api(`player-stats/${playerId}`);
+      const res = await api(`player-stats/${playerId}`)
       if (!res.ok) {
-        throw new Error("Failed to fetch player stats");
+        throw new Error('Failed to fetch player stats')
       }
 
-      const data: GetPlayerStatsResponse = await res.json();
-      return data.stats;
+      const data: GetPlayerStatsResponse = await res.json()
+      return data.stats
     },
     enabled: !!playerId, // Only run if playerId is provided
-  });
+  })
 
-  return query;
+  return query
 }

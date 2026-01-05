@@ -12,11 +12,11 @@
  * - xl: 1280px+ (large desktop)
  */
 export const BREAKPOINTS = {
-  mobile: "base",
-  tablet: "sm",
-  desktop: "md",
-  wide: "lg",
-} as const;
+  mobile: 'base',
+  tablet: 'sm',
+  desktop: 'md',
+  wide: 'lg',
+} as const
 
 /**
  * Creates responsive display styles for showing/hiding elements.
@@ -29,22 +29,22 @@ export const BREAKPOINTS = {
  * className={css(responsiveDisplay({ hideOn: 'desktop' }))}
  */
 export function responsiveDisplay(options: {
-  showOn?: "mobile" | "desktop";
-  hideOn?: "mobile" | "desktop";
+  showOn?: 'mobile' | 'desktop'
+  hideOn?: 'mobile' | 'desktop'
 }): { display: Record<string, string> } {
-  if (options.showOn === "desktop") {
-    return { display: { base: "none", md: "flex" } };
+  if (options.showOn === 'desktop') {
+    return { display: { base: 'none', md: 'flex' } }
   }
-  if (options.showOn === "mobile") {
-    return { display: { base: "flex", md: "none" } };
+  if (options.showOn === 'mobile') {
+    return { display: { base: 'flex', md: 'none' } }
   }
-  if (options.hideOn === "desktop") {
-    return { display: { base: "flex", md: "none" } };
+  if (options.hideOn === 'desktop') {
+    return { display: { base: 'flex', md: 'none' } }
   }
-  if (options.hideOn === "mobile") {
-    return { display: { base: "none", md: "flex" } };
+  if (options.hideOn === 'mobile') {
+    return { display: { base: 'none', md: 'flex' } }
   }
-  return { display: { base: "flex" } };
+  return { display: { base: 'flex' } }
 }
 
 /**
@@ -58,10 +58,10 @@ export function responsiveDisplay(options: {
 export function responsiveScale(
   mobileScale: number,
   desktopScale: number = 1,
-  origin: string = "top right",
+  origin: string = 'top right'
 ): {
-  transform: Record<string, string>;
-  transformOrigin: string;
+  transform: Record<string, string>
+  transformOrigin: string
 } {
   return {
     transform: {
@@ -69,7 +69,7 @@ export function responsiveScale(
       sm: `scale(${desktopScale})`,
     },
     transformOrigin: origin,
-  };
+  }
 }
 
 /**
@@ -80,14 +80,14 @@ export function responsiveScale(
  */
 export function responsiveGap(
   mobileGap: number | string,
-  desktopGap: number | string,
+  desktopGap: number | string
 ): { gap: Record<string, number | string> } {
   return {
     gap: {
       base: mobileGap,
       sm: desktopGap,
     },
-  };
+  }
 }
 
 /**
@@ -99,15 +99,15 @@ export function responsiveGap(
  * className={css(responsiveFlexDirection('column', 'row'))}
  */
 export function responsiveFlexDirection(
-  mobileDirection: "row" | "column",
-  desktopDirection: "row" | "column",
-): { flexDirection: Record<string, "row" | "column"> } {
+  mobileDirection: 'row' | 'column',
+  desktopDirection: 'row' | 'column'
+): { flexDirection: Record<string, 'row' | 'column'> } {
   return {
     flexDirection: {
       base: mobileDirection,
       sm: desktopDirection,
     },
-  };
+  }
 }
 
 /**
@@ -118,14 +118,14 @@ export function responsiveFlexDirection(
  */
 export function responsiveFontSize(
   mobileSize: string,
-  desktopSize: string,
+  desktopSize: string
 ): { fontSize: Record<string, string> } {
   return {
     fontSize: {
       base: mobileSize,
       sm: desktopSize,
     },
-  };
+  }
 }
 
 /**
@@ -135,5 +135,5 @@ export function responsiveFontSize(
  */
 export const preventFlexExpansion = {
   width: 0,
-  minWidth: "100%",
-} as const;
+  minWidth: '100%',
+} as const
