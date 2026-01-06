@@ -464,10 +464,12 @@ export default function TrainModelPage() {
                   Training Hardware
                 </div>
                 {hardwareLoading ? (
-                  <div className={css({ fontSize: 'md', color: 'gray.400' })}>Detecting...</div>
+                  <div className={css({ fontSize: 'md', color: 'blue.300' })}>
+                    Setting up Python environment...
+                  </div>
                 ) : hardwareInfo?.error ? (
                   <div className={css({ fontSize: 'md', color: 'red.300' })}>
-                    {hardwareInfo.deviceName}
+                    Setup Failed
                   </div>
                 ) : (
                   <div className={css({ fontSize: 'md', fontWeight: 'semibold' })}>
@@ -583,7 +585,7 @@ export default function TrainModelPage() {
                   },
                 })}
               >
-                {hardwareLoading ? 'Setting up...' : hardwareInfo?.error ? 'Setup Failed' : 'Start Training'}
+                Start Training
               </button>
             )}
 
@@ -689,34 +691,24 @@ export default function TrainModelPage() {
                   borderRadius: 'full',
                   bg:
                     phase === 'idle'
-                      ? hardwareLoading
-                        ? 'blue.500'
-                        : hardwareInfo?.error
-                          ? 'red.500'
-                          : 'green.500'
+                      ? 'gray.500'
                       : phase === 'complete'
                         ? 'green.500'
                         : phase === 'error'
                           ? 'red.500'
                           : 'blue.500',
                   animation:
-                    phase === 'training' || phase === 'loading' || hardwareLoading
+                    phase === 'training' || phase === 'loading' || phase === 'setup'
                       ? 'pulse 1.5s infinite'
                       : 'none',
                 })}
               />
               <span className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>
-                {phase === 'idle' && (
-                  hardwareLoading
-                    ? 'Setting up Python environment...'
-                    : hardwareInfo?.error
-                      ? 'Setup failed'
-                      : 'Ready to train'
-                )}
-                {phase === 'setup' && 'Starting training...'}
+                {phase === 'idle' && 'Ready'}
+                {phase === 'setup' && 'Starting...'}
                 {phase === 'loading' && 'Loading dataset...'}
                 {phase === 'training' &&
-                  `Training: Epoch ${currentEpoch?.epoch || 0}/${currentEpoch?.total_epochs || config.epochs}`}
+                  `Epoch ${currentEpoch?.epoch || 0}/${currentEpoch?.total_epochs || config.epochs}`}
                 {phase === 'exporting' && 'Exporting model...'}
                 {phase === 'complete' && 'Training Complete!'}
                 {phase === 'error' && 'Error'}
