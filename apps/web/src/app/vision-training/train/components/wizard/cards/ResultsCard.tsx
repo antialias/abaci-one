@@ -1,0 +1,142 @@
+'use client'
+
+import { css } from '../../../../../../../styled-system/css'
+import type { TrainingResult } from '../types'
+
+interface ResultsCardProps {
+  result: TrainingResult | null
+  error: string | null
+  onTrainAgain: () => void
+}
+
+export function ResultsCard({ result, error, onTrainAgain }: ResultsCardProps) {
+  if (error) {
+    return (
+      <div className={css({ textAlign: 'center', py: 4 })}>
+        <div className={css({ fontSize: '3xl', mb: 3 })}>❌</div>
+        <div className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'red.400', mb: 2 })}>
+          Training Failed
+        </div>
+        <div className={css({ color: 'gray.400', fontSize: 'sm', mb: 4, maxWidth: '280px', mx: 'auto' })}>
+          {error}
+        </div>
+        <button
+          type="button"
+          onClick={onTrainAgain}
+          className={css({
+            px: 6,
+            py: 3,
+            bg: 'blue.600',
+            color: 'white',
+            borderRadius: 'lg',
+            border: 'none',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontSize: 'md',
+            _hover: { bg: 'blue.500' },
+          })}
+        >
+          Try Again
+        </button>
+      </div>
+    )
+  }
+
+  if (!result) {
+    return (
+      <div className={css({ textAlign: 'center', py: 6 })}>
+        <div className={css({ fontSize: '2xl', mb: 3, animation: 'spin 1s linear infinite' })}>⏳</div>
+        <div className={css({ color: 'gray.400' })}>Waiting for results...</div>
+      </div>
+    )
+  }
+
+  const accuracy = result.final_accuracy ?? 0
+
+  return (
+    <div className={css({ textAlign: 'center' })}>
+      {/* Success icon */}
+      <div className={css({ fontSize: '3xl', mb: 2 })}>🎉</div>
+
+      {/* Title */}
+      <div className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'green.400', mb: 3 })}>
+        Training Complete!
+      </div>
+
+      {/* Main accuracy */}
+      <div
+        className={css({
+          fontSize: '4xl',
+          fontWeight: 'bold',
+          color: 'green.400',
+          mb: 0.5,
+        })}
+      >
+        {(accuracy * 100).toFixed(1)}%
+      </div>
+      <div className={css({ fontSize: 'sm', color: 'gray.500', mb: 4 })}>
+        Final Accuracy
+      </div>
+
+      {/* Stats grid */}
+      <div
+        className={css({
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 2,
+          p: 3,
+          bg: 'gray.900',
+          borderRadius: 'lg',
+          fontSize: 'sm',
+          mb: 4,
+        })}
+      >
+        <div>
+          <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Epochs</div>
+          <div className={css({ fontFamily: 'mono', color: 'gray.300', fontWeight: 'medium' })}>
+            {result.epochs_trained ?? '—'}
+          </div>
+        </div>
+        <div>
+          <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Final Loss</div>
+          <div className={css({ fontFamily: 'mono', color: 'gray.300', fontWeight: 'medium' })}>
+            {result.final_loss?.toFixed(4) ?? '—'}
+          </div>
+        </div>
+        <div>
+          <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Model</div>
+          <div className={css({ color: 'green.400', fontWeight: 'medium' })}>
+            {result.tfjs_exported ? '✓ Saved' : '—'}
+          </div>
+        </div>
+      </div>
+
+      {/* Model path */}
+      {result.tfjs_exported && (
+        <div className={css({ fontSize: 'xs', color: 'gray.500', mb: 4 })}>
+          Model exported and ready to use
+        </div>
+      )}
+
+      {/* Train again button */}
+      <button
+        type="button"
+        onClick={onTrainAgain}
+        className={css({
+          px: 6,
+          py: 3,
+          bg: 'blue.600',
+          color: 'white',
+          borderRadius: 'lg',
+          border: 'none',
+          cursor: 'pointer',
+          fontWeight: 'bold',
+          fontSize: 'md',
+          _hover: { bg: 'blue.500' },
+        })}
+      >
+        Train Again
+      </button>
+    </div>
+  )
+}

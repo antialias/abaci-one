@@ -57,8 +57,7 @@ interface SetupResult {
  * On Apple Silicon, prefer Homebrew ARM Python for Metal GPU support.
  */
 function findBestPython(): string {
-  const isAppleSilicon =
-    process.platform === 'darwin' && process.arch === 'arm64'
+  const isAppleSilicon = process.platform === 'darwin' && process.arch === 'arm64'
 
   if (isAppleSilicon) {
     // Try Homebrew Python versions (ARM native)
@@ -110,8 +109,7 @@ async function isVenvReady(): Promise<boolean> {
  * Create the venv and install dependencies
  */
 async function createVenv(): Promise<SetupResult> {
-  const isAppleSilicon =
-    process.platform === 'darwin' && process.arch === 'arm64'
+  const isAppleSilicon = process.platform === 'darwin' && process.arch === 'arm64'
 
   const basePython = findBestPython()
   console.log(`[vision-training] Creating venv with ${basePython}...`)
@@ -147,9 +145,7 @@ async function createVenv(): Promise<SetupResult> {
     )
     const gpuCount = parseInt(stdout.trim(), 10) || 0
 
-    console.log(
-      `[vision-training] Setup complete. GPUs detected: ${gpuCount}`
-    )
+    console.log(`[vision-training] Setup complete. GPUs detected: ${gpuCount}`)
 
     return {
       success: true,
@@ -185,8 +181,7 @@ export async function ensureVenvReady(): Promise<SetupResult> {
 
   // Check if already set up
   if (await isVenvReady()) {
-    const isAppleSilicon =
-      process.platform === 'darwin' && process.arch === 'arm64'
+    const isAppleSilicon = process.platform === 'darwin' && process.arch === 'arm64'
 
     // Quick GPU check
     let hasGpu = false
