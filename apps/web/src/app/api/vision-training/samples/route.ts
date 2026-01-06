@@ -1,6 +1,9 @@
 import fs from 'fs'
 import path from 'path'
 
+// Force dynamic rendering - this route reads from disk which changes at runtime
+export const dynamic = 'force-dynamic'
+
 const DATA_DIR = path.join(process.cwd(), 'data/vision-training/collected')
 
 interface DigitSample {

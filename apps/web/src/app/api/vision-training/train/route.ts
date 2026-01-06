@@ -2,6 +2,9 @@ import { spawn, type ChildProcess } from 'child_process'
 import path from 'path'
 import { ensureVenvReady, isPlatformSupported, PYTHON_ENV, TRAINING_PYTHON } from '../config'
 
+// Force dynamic rendering - this route manages training process state
+export const dynamic = 'force-dynamic'
+
 /**
  * Training configuration options
  */

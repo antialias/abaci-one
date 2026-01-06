@@ -8,6 +8,9 @@ import {
   TRAINING_SCRIPTS_DIR,
 } from '../config'
 
+// Force dynamic rendering - this route runs system commands at runtime
+export const dynamic = 'force-dynamic'
+
 /**
  * Hardware detection result from Python/TensorFlow
  */

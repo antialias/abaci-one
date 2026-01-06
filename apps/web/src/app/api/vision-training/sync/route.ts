@@ -2,6 +2,9 @@ import { spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 
+// Force dynamic rendering - this route reads from disk and runs rsync
+export const dynamic = 'force-dynamic'
+
 // Configuration - should match the sync script
 const REMOTE_HOST = 'nas.home.network'
 const REMOTE_USER = 'antialias'

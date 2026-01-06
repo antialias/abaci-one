@@ -582,7 +582,8 @@
       "Bash(src/app/vision-training/train/components/wizard/types.ts )",
       "Bash(src/app/vision-training/train/components/TrainingDataCapture.tsx )",
       "Bash(src/app/vision-training/train/page.tsx )",
-      "Bash(src/components/vision/CameraCapture.tsx)"
+      "Bash(src/components/vision/CameraCapture.tsx)",
+      "WebFetch(domain:abaci.one)"
     ],
     "deny": [],
     "ask": []

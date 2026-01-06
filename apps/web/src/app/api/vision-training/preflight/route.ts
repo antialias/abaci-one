@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { checkDependencies, ensureVenvReady, isPlatformSupported, TRAINING_PYTHON } from '../config'
 
+// Force dynamic rendering - this route checks system dependencies at runtime
+export const dynamic = 'force-dynamic'
+
 export interface PreflightResult {
   ready: boolean
   platform: {
