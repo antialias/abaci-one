@@ -141,7 +141,14 @@ export function ExpandedCard({
       case 'export':
         return <ExportCard message={statusMessage} />
       case 'results':
-        return <ResultsCard result={result} error={error} onTrainAgain={onTrainAgain} />
+        return (
+          <ResultsCard
+            result={result}
+            error={error}
+            configuredEpochs={config.epochs}
+            onTrainAgain={onTrainAgain}
+          />
+        )
       default:
         return null
     }

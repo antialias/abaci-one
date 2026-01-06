@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { css } from '../../../../styled-system/css'
+import { TrainingDiagnosticsProvider } from './components/TrainingDiagnosticsContext'
 import { TrainingWizard } from './components/wizard/TrainingWizard'
 import type {
   SamplesData,
@@ -446,29 +447,37 @@ export default function TrainModelPage() {
         </div>
 
         {/* Training Wizard - handles all phases */}
-        <TrainingWizard
+        <TrainingDiagnosticsProvider
           samples={samples}
-          samplesLoading={samplesLoading}
-          hardwareInfo={hardwareInfo}
-          hardwareLoading={hardwareLoading}
-          fetchHardware={fetchHardware}
-          preflightInfo={preflightInfo}
-          preflightLoading={preflightLoading}
-          fetchPreflight={fetchPreflight}
-          config={config}
-          setConfig={setConfig}
-          serverPhase={serverPhase}
-          statusMessage={statusMessage}
-          currentEpoch={currentEpoch}
-          epochHistory={epochHistory}
           datasetInfo={datasetInfo}
+          epochHistory={epochHistory}
+          config={config}
           result={result}
-          error={error}
-          onStart={startTraining}
-          onCancel={cancelTraining}
-          onReset={resetToIdle}
-          onSyncComplete={fetchSamples}
-        />
+        >
+          <TrainingWizard
+            samples={samples}
+            samplesLoading={samplesLoading}
+            hardwareInfo={hardwareInfo}
+            hardwareLoading={hardwareLoading}
+            fetchHardware={fetchHardware}
+            preflightInfo={preflightInfo}
+            preflightLoading={preflightLoading}
+            fetchPreflight={fetchPreflight}
+            config={config}
+            setConfig={setConfig}
+            serverPhase={serverPhase}
+            statusMessage={statusMessage}
+            currentEpoch={currentEpoch}
+            epochHistory={epochHistory}
+            datasetInfo={datasetInfo}
+            result={result}
+            error={error}
+            onStart={startTraining}
+            onCancel={cancelTraining}
+            onReset={resetToIdle}
+            onSyncComplete={fetchSamples}
+          />
+        </TrainingDiagnosticsProvider>
       </main>
     </div>
   )

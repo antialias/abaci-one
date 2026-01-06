@@ -3,16 +3,19 @@
 import { useState } from 'react'
 import { css } from '../../../../../../../styled-system/css'
 import { ModelTester } from '../../ModelTester'
+import { useTrainingDiagnostics, type DiagnosticReason } from '../../TrainingDiagnosticsContext'
 import type { TrainingResult } from '../types'
 
 interface ResultsCardProps {
   result: TrainingResult | null
   error: string | null
+  configuredEpochs: number
   onTrainAgain: () => void
 }
 
-export function ResultsCard({ result, error, onTrainAgain }: ResultsCardProps) {
+export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: ResultsCardProps) {
   const [activeTab, setActiveTab] = useState<'results' | 'test'>('results')
+  const diagnostics = useTrainingDiagnostics()
 
   if (error) {
     return (
@@ -169,7 +172,15 @@ export function ResultsCard({ result, error, onTrainAgain }: ResultsCardProps) {
               <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Epochs</div>
               <div className={css({ fontFamily: 'mono', color: 'gray.300', fontWeight: 'medium' })}>
                 {result.epochs_trained ?? '—'}
+                {result.epochs_trained && result.epochs_trained < configuredEpochs && (
+                  <span className={css({ color: 'gray.500' })}>/{configuredEpochs}</span>
+                )}
               </div>
+              {result.epochs_trained && result.epochs_trained < configuredEpochs && (
+                <div className={css({ color: 'green.500', fontSize: 'xs', fontWeight: 'medium' })}>
+                  converged
+                </div>
+              )}
             </div>
             <div>
               <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Final Loss</div>
@@ -190,6 +201,11 @@ export function ResultsCard({ result, error, onTrainAgain }: ResultsCardProps) {
             <div className={css({ fontSize: 'xs', color: 'gray.500', mb: 4 })}>
               Model exported and ready to use
             </div>
+          )}
+
+          {/* Remediation advice for poor results */}
+          {diagnostics.shouldShowRemediation && (
+            <RemediationSection reasons={diagnostics.reasons} />
           )}
 
           {/* Train again button */}
@@ -215,6 +231,51 @@ export function ResultsCard({ result, error, onTrainAgain }: ResultsCardProps) {
       ) : (
         <ModelTester columnCount={4} />
       )}
+    </div>
+  )
+}
+
+/** Shows diagnostic reasons and remediation advice for poor training results */
+function RemediationSection({ reasons }: { reasons: DiagnosticReason[] }) {
+  if (reasons.length === 0) return null
+
+  return (
+    <div
+      data-element="remediation-section"
+      className={css({
+        mt: 4,
+        mb: 4,
+        p: 3,
+        bg: 'yellow.900/30',
+        border: '1px solid',
+        borderColor: 'yellow.700',
+        borderRadius: 'lg',
+        textAlign: 'left',
+      })}
+    >
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          mb: 2,
+          fontWeight: 'semibold',
+          color: 'yellow.400',
+          fontSize: 'sm',
+        })}
+      >
+        <span>⚠️</span>
+        <span>Why is accuracy low?</span>
+      </div>
+
+      <div className={css({ display: 'flex', flexDirection: 'column', gap: 2 })}>
+        {reasons.map((reason, i) => (
+          <div key={i} className={css({ fontSize: 'xs' })}>
+            <div className={css({ color: 'gray.200', fontWeight: 'medium' })}>• {reason.title}</div>
+            <div className={css({ color: 'gray.400', ml: 3 })}>{reason.action}</div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
