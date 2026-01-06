@@ -689,19 +689,31 @@ export default function TrainModelPage() {
                   borderRadius: 'full',
                   bg:
                     phase === 'idle'
-                      ? 'gray.500'
+                      ? hardwareLoading
+                        ? 'blue.500'
+                        : hardwareInfo?.error
+                          ? 'red.500'
+                          : 'green.500'
                       : phase === 'complete'
                         ? 'green.500'
                         : phase === 'error'
                           ? 'red.500'
                           : 'blue.500',
                   animation:
-                    phase === 'training' || phase === 'loading' ? 'pulse 1.5s infinite' : 'none',
+                    phase === 'training' || phase === 'loading' || hardwareLoading
+                      ? 'pulse 1.5s infinite'
+                      : 'none',
                 })}
               />
               <span className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>
-                {phase === 'idle' && 'Ready to train'}
-                {phase === 'setup' && 'Setting up...'}
+                {phase === 'idle' && (
+                  hardwareLoading
+                    ? 'Setting up Python environment...'
+                    : hardwareInfo?.error
+                      ? 'Setup failed'
+                      : 'Ready to train'
+                )}
+                {phase === 'setup' && 'Starting training...'}
                 {phase === 'loading' && 'Loading dataset...'}
                 {phase === 'training' &&
                   `Training: Epoch ${currentEpoch?.epoch || 0}/${currentEpoch?.total_epochs || config.epochs}`}
