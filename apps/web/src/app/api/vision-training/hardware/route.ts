@@ -1,5 +1,6 @@
 import { spawn } from 'child_process'
 import path from 'path'
+import { PYTHON_ENV, TRAINING_PYTHON, TRAINING_SCRIPTS_DIR } from '../config'
 
 /**
  * Hardware detection result from Python/TensorFlow
@@ -38,23 +39,17 @@ export async function GET(): Promise<Response> {
 
   try {
     const cwd = path.resolve(process.cwd())
-    const scriptPath = path.join(cwd, 'scripts/train-column-classifier/detect_hardware.py')
+    const scriptPath = path.join(TRAINING_SCRIPTS_DIR, 'detect_hardware.py')
 
     const result = await new Promise<HardwareInfo>((resolve, reject) => {
       let stdout = ''
       let stderr = ''
       let hasError = false
 
-      // Use the venv Python with tensorflow-metal for proper GPU detection
-      const venvPython = path.join(cwd, 'scripts/train-column-classifier/.venv/bin/python')
-
-      const childProcess = spawn(venvPython, [scriptPath], {
+      // Use shared Python config - same as training uses
+      const childProcess = spawn(TRAINING_PYTHON, [scriptPath], {
         cwd,
-        env: {
-          ...process.env,
-          PYTHONUNBUFFERED: '1',
-          PYTHONWARNINGS: 'ignore::FutureWarning', // Suppress keras warning
-        },
+        env: PYTHON_ENV,
       })
 
       childProcess.stdout?.on('data', (data: Buffer) => {

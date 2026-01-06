@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'child_process'
 import path from 'path'
+import { PYTHON_ENV, TRAINING_PYTHON } from '../config'
 
 /**
  * Training configuration options
@@ -94,17 +95,12 @@ export async function POST(request: Request): Promise<Response> {
         },
       })
 
-      // Spawn Python process using the venv with tensorflow-metal for GPU support
+      // Spawn Python process - uses shared config so hardware detection matches
       const cwd = path.resolve(process.cwd())
-      const venvPython = path.join(cwd, 'scripts/train-column-classifier/.venv/bin/python')
 
-      activeProcess = spawn(venvPython, args, {
+      activeProcess = spawn(TRAINING_PYTHON, args, {
         cwd,
-        env: {
-          ...process.env,
-          PYTHONUNBUFFERED: '1',
-          PYTHONWARNINGS: 'ignore::FutureWarning', // Suppress keras warning
-        },
+        env: PYTHON_ENV,
       })
 
       // Handle stdout (JSON progress events)
