@@ -16,6 +16,45 @@ const execAsync = promisify(exec)
 const cwd = process.cwd()
 
 /**
+ * Check if the current platform supports TensorFlow training.
+ * TensorFlow doesn't have wheels for all platforms (e.g., ARM-based NAS devices).
+ */
+export function isPlatformSupported(): { supported: boolean; reason?: string } {
+  const platform = process.platform
+  const arch = process.arch
+
+  // TensorFlow supports:
+  // - macOS on x86_64 and arm64 (Apple Silicon with tensorflow-macos)
+  // - Linux on x86_64 (and some arm64 builds)
+  // - Windows on x86_64
+
+  if (platform === 'darwin') {
+    // macOS - both Intel and Apple Silicon are supported
+    return { supported: true }
+  }
+
+  if (platform === 'linux') {
+    if (arch === 'x64') {
+      return { supported: true }
+    }
+    // ARM Linux (like Synology NAS) typically doesn't have TensorFlow wheels
+    return {
+      supported: false,
+      reason: `TensorFlow is not available for Linux ${arch}. Training should be done on a machine with x86_64 or Apple Silicon.`,
+    }
+  }
+
+  if (platform === 'win32' && arch === 'x64') {
+    return { supported: true }
+  }
+
+  return {
+    supported: false,
+    reason: `TensorFlow is not available for ${platform} ${arch}. Training should be done on macOS, Linux x86_64, or Windows x86_64.`,
+  }
+}
+
+/**
  * Path to the training scripts directory
  */
 export const TRAINING_SCRIPTS_DIR = path.join(cwd, 'scripts/train-column-classifier')

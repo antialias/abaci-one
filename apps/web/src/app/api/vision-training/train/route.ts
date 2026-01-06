@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'child_process'
 import path from 'path'
-import { ensureVenvReady, PYTHON_ENV, TRAINING_PYTHON } from '../config'
+import { ensureVenvReady, isPlatformSupported, PYTHON_ENV, TRAINING_PYTHON } from '../config'
 
 /**
  * Training configuration options
@@ -25,6 +25,19 @@ let activeAbortController: AbortController | null = null
  * Only one training session can run at a time.
  */
 export async function POST(request: Request): Promise<Response> {
+  // Check platform support first
+  const platformCheck = isPlatformSupported()
+  if (!platformCheck.supported) {
+    return new Response(
+      JSON.stringify({
+        error: 'Platform not supported',
+        details: platformCheck.reason,
+        hint: 'Training should be done on macOS, Linux x86_64, or Windows x86_64',
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+
   // Check if training is already running
   if (activeProcess && !activeProcess.killed) {
     return new Response(

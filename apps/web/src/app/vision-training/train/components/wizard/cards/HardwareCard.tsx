@@ -70,29 +70,39 @@ export function HardwareCard({
   }
 
   if (hardwareInfo?.error) {
+    const isUnsupportedPlatform = hardwareInfo.device === 'unsupported'
+
     return (
       <div className={css({ textAlign: 'center', py: 4 })}>
-        <div className={css({ fontSize: '2xl', mb: 2 })}>⚠️</div>
-        <div className={css({ color: 'red.400', mb: 2 })}>Hardware setup failed</div>
-        <div className={css({ fontSize: 'sm', color: 'gray.500', mb: 4 })}>
-          {hardwareInfo.error}
+        <div className={css({ fontSize: '2xl', mb: 2 })}>
+          {isUnsupportedPlatform ? '🚫' : '⚠️'}
         </div>
-        <button
-          type="button"
-          onClick={fetchHardware}
-          className={css({
-            px: 4,
-            py: 2,
-            bg: 'blue.600',
-            color: 'white',
-            borderRadius: 'lg',
-            border: 'none',
-            cursor: 'pointer',
-            _hover: { bg: 'blue.500' },
-          })}
-        >
-          Retry Detection
-        </button>
+        <div className={css({ color: isUnsupportedPlatform ? 'yellow.400' : 'red.400', mb: 2 })}>
+          {isUnsupportedPlatform ? 'Platform Not Supported' : 'Hardware setup failed'}
+        </div>
+        <div className={css({ fontSize: 'sm', color: 'gray.400', mb: 4, px: 2 })}>
+          {isUnsupportedPlatform
+            ? 'Training requires macOS, Linux x86_64, or Windows. Run training on your local development machine instead.'
+            : hardwareInfo.error}
+        </div>
+        {!isUnsupportedPlatform && (
+          <button
+            type="button"
+            onClick={fetchHardware}
+            className={css({
+              px: 4,
+              py: 2,
+              bg: 'blue.600',
+              color: 'white',
+              borderRadius: 'lg',
+              border: 'none',
+              cursor: 'pointer',
+              _hover: { bg: 'blue.500' },
+            })}
+          >
+            Retry Detection
+          </button>
+        )}
       </div>
     )
   }

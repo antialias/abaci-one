@@ -1,6 +1,6 @@
 import { spawn } from 'child_process'
 import path from 'path'
-import { ensureVenvReady, PYTHON_ENV, TRAINING_PYTHON, TRAINING_SCRIPTS_DIR } from '../config'
+import { ensureVenvReady, isPlatformSupported, PYTHON_ENV, TRAINING_PYTHON, TRAINING_SCRIPTS_DIR } from '../config'
 
 /**
  * Hardware detection result from Python/TensorFlow
@@ -28,6 +28,26 @@ const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
  * Runs a Python script that queries TensorFlow for available devices.
  */
 export async function GET(): Promise<Response> {
+  // Check platform support first - don't even try to set up venv on unsupported platforms
+  const platformCheck = isPlatformSupported()
+  if (!platformCheck.supported) {
+    const unsupportedResult: HardwareInfo = {
+      available: false,
+      device: 'unsupported',
+      deviceName: 'Platform Not Supported',
+      deviceType: 'unsupported',
+      details: {
+        platform: process.platform,
+        arch: process.arch,
+      },
+      error: platformCheck.reason || 'This platform does not support TensorFlow training',
+    }
+    return new Response(JSON.stringify(unsupportedResult), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
   // Return cached result if valid
   const now = Date.now()
   if (cachedHardwareInfo && now - cacheTimestamp < CACHE_TTL_MS) {
