@@ -11,7 +11,9 @@ interface LoadingCardProps {
 export function LoadingCard({ datasetInfo, message }: LoadingCardProps) {
   return (
     <div className={css({ textAlign: 'center', py: 6 })}>
-      <div className={css({ fontSize: '2xl', mb: 3, animation: 'spin 1s linear infinite' })}>📥</div>
+      <div className={css({ fontSize: '2xl', mb: 3, animation: 'spin 1s linear infinite' })}>
+        📥
+      </div>
       <div className={css({ fontSize: 'lg', fontWeight: 'medium', color: 'gray.200', mb: 2 })}>
         Loading Dataset
       </div>

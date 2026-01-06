@@ -27,7 +27,10 @@ interface SyncProgress {
   bytesTransferred?: number
 }
 
-const QUALITY_CONFIG: Record<SamplesData['dataQuality'], { color: string; label: string; barWidth: string }> = {
+const QUALITY_CONFIG: Record<
+  SamplesData['dataQuality'],
+  { color: string; label: string; barWidth: string }
+> = {
   none: { color: 'gray.500', label: 'No Data', barWidth: '0%' },
   insufficient: { color: 'red.400', label: 'Need More', barWidth: '20%' },
   minimal: { color: 'yellow.400', label: 'Minimal', barWidth: '50%' },
@@ -41,7 +44,8 @@ export function DataCard({ samples, samplesLoading, onProgress, onSyncComplete }
   const [syncChecking, setSyncChecking] = useState(true)
   const abortRef = useRef<AbortController | null>(null)
 
-  const isReady = samples?.hasData && samples.dataQuality !== 'none' && samples.dataQuality !== 'insufficient'
+  const isReady =
+    samples?.hasData && samples.dataQuality !== 'none' && samples.dataQuality !== 'insufficient'
   const isSyncing = syncProgress.phase === 'connecting' || syncProgress.phase === 'syncing'
 
   // Check sync availability on mount
@@ -203,7 +207,8 @@ export function DataCard({ samples, samplesLoading, onProgress, onSyncComplete }
               {syncStatus.local && syncStatus.local.totalImages > 0 && (
                 <span>
                   {' '}
-                  ({(syncStatus.remote.totalImages - syncStatus.local.totalImages).toLocaleString()} new)
+                  ({(syncStatus.remote.totalImages - syncStatus.local.totalImages).toLocaleString()}{' '}
+                  new)
                 </span>
               )}
             </div>
@@ -214,7 +219,9 @@ export function DataCard({ samples, samplesLoading, onProgress, onSyncComplete }
             <div className={css({ mb: 3 })}>
               <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 2 })}>
                 <span className={css({ animation: 'spin 1s linear infinite' })}>🔄</span>
-                <span className={css({ fontSize: 'sm', color: 'gray.300' })}>{syncProgress.message}</span>
+                <span className={css({ fontSize: 'sm', color: 'gray.300' })}>
+                  {syncProgress.message}
+                </span>
               </div>
               {syncProgress.filesTransferred !== undefined && syncProgress.filesTransferred > 0 && (
                 <div className={css({ fontSize: 'xs', color: 'gray.500' })}>
@@ -226,7 +233,9 @@ export function DataCard({ samples, samplesLoading, onProgress, onSyncComplete }
 
           {/* Error state */}
           {syncProgress.phase === 'error' && (
-            <div className={css({ color: 'red.400', fontSize: 'sm', mb: 3 })}>{syncProgress.message}</div>
+            <div className={css({ color: 'red.400', fontSize: 'sm', mb: 3 })}>
+              {syncProgress.message}
+            </div>
           )}
 
           {/* Action buttons */}
@@ -309,7 +318,9 @@ export function DataCard({ samples, samplesLoading, onProgress, onSyncComplete }
           })}
         >
           <span>✅</span>
-          <span className={css({ color: 'green.400', fontSize: 'sm' })}>{syncProgress.message}</span>
+          <span className={css({ color: 'green.400', fontSize: 'sm' })}>
+            {syncProgress.message}
+          </span>
         </div>
       )}
 
@@ -359,7 +370,14 @@ export function DataCard({ samples, samplesLoading, onProgress, onSyncComplete }
                 {QUALITY_CONFIG[samples.dataQuality].label}
               </span>
             </div>
-            <div className={css({ height: '6px', bg: 'gray.700', borderRadius: 'full', overflow: 'hidden' })}>
+            <div
+              className={css({
+                height: '6px',
+                bg: 'gray.700',
+                borderRadius: 'full',
+                overflow: 'hidden',
+              })}
+            >
               <div
                 className={css({
                   height: '100%',
@@ -382,7 +400,12 @@ export function DataCard({ samples, samplesLoading, onProgress, onSyncComplete }
                 return (
                   <div
                     key={digit}
-                    className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 })}
+                    className={css({
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      flex: 1,
+                    })}
                   >
                     <div
                       className={css({
@@ -393,7 +416,9 @@ export function DataCard({ samples, samplesLoading, onProgress, onSyncComplete }
                       })}
                       style={{ height: `${barHeight}px` }}
                     />
-                    <span className={css({ fontSize: 'xs', color: 'gray.500', mt: 1 })}>{digit}</span>
+                    <span className={css({ fontSize: 'xs', color: 'gray.500', mt: 1 })}>
+                      {digit}
+                    </span>
                   </div>
                 )
               })}

@@ -655,8 +655,8 @@ export function ActiveSession({
       const problemKey = `${plan.id}-${slotIndex}`
       if (trainingDataCollectedRef.current.has(problemKey)) return
 
-      // Get column count from display config
-      const columnCount = abacusDisplayConfig?.columns ?? 5
+      // Get column count from display config (physicalAbacusColumns for vision detection)
+      const columnCount = abacusDisplayConfig?.physicalAbacusColumns ?? 5
 
       // Capture the current column images
       const columns = captureTrainingColumns(columnCount)

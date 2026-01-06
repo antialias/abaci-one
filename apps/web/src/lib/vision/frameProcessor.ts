@@ -2,9 +2,25 @@
  * Frame Processor for Abacus Vision
  *
  * Handles slicing video frames into column strips based on calibration grid.
+ * Uses perspective transform when available for accurate column extraction.
  */
 
-import type { CalibrationGrid, ROI } from '@/types/vision'
+import type { CalibrationGrid, ColumnMargins, ROI } from '@/types/vision'
+import { isOpenCVReady, rectifyQuadrilateral } from './perspectiveTransform'
+
+/**
+ * Default margins to apply when slicing columns.
+ * These account for the typical frame/border area around abacus columns.
+ *
+ * Based on typical soroban layouts where ArUco markers are at frame corners
+ * but the actual bead columns are inset from the frame edges.
+ */
+export const DEFAULT_COLUMN_MARGINS: ColumnMargins = {
+  left: 0.06, // 6% trim from left edge
+  right: 0.06, // 6% trim from right edge
+  top: 0.02, // 2% trim from top (small since reckoning bar is usually inside)
+  bottom: 0.02, // 2% trim from bottom
+}
 
 /**
  * Extract the Region of Interest from a video frame
@@ -26,7 +42,7 @@ export function extractROI(ctx: CanvasRenderingContext2D, roi: ROI): ImageData {
  * Slice a ROI image into individual column strips
  *
  * @param roiImageData - The extracted ROI image data
- * @param calibration - Calibration grid with column dividers
+ * @param calibration - Calibration grid with column dividers and optional margins
  * @returns Array of ImageData, one per column (left to right)
  */
 export function sliceIntoColumns(
@@ -34,7 +50,7 @@ export function sliceIntoColumns(
   calibration: CalibrationGrid
 ): ImageData[] {
   const { width, height } = roiImageData
-  const { columnDividers, columnCount } = calibration
+  const { columnDividers, columnCount, margins } = calibration
 
   // Create an offscreen canvas for slicing
   const canvas = document.createElement('canvas')
@@ -45,20 +61,42 @@ export function sliceIntoColumns(
   // Put the ROI image on the canvas
   ctx.putImageData(roiImageData, 0, 0)
 
+  // Apply margins to get the effective column area
+  // Margins are fractions of width/height to trim from each edge
+  // Use default margins if none specified (common for ArUco auto-calibration)
+  const effectiveMargins = margins ?? DEFAULT_COLUMN_MARGINS
+  const leftMargin = effectiveMargins.left
+  const rightMargin = effectiveMargins.right
+  const topMargin = effectiveMargins.top
+  const bottomMargin = effectiveMargins.bottom
+
+  // Calculate effective area after margins
+  const effectiveLeft = Math.round(leftMargin * width)
+  const effectiveRight = Math.round((1 - rightMargin) * width)
+  const effectiveTop = Math.round(topMargin * height)
+  const effectiveBottom = Math.round((1 - bottomMargin) * height)
+  const effectiveWidth = effectiveRight - effectiveLeft
+  const effectiveHeight = effectiveBottom - effectiveTop
+
+  if (effectiveWidth <= 0 || effectiveHeight <= 0) {
+    console.warn('[frameProcessor] Invalid margins result in zero-size area')
+    return []
+  }
+
   const columns: ImageData[] = []
 
-  // Calculate column boundaries
+  // Calculate column boundaries within the effective area
   const boundaries = [0, ...columnDividers, 1]
 
   for (let i = 0; i < columnCount; i++) {
-    const startX = Math.round(boundaries[i] * width)
-    const endX = Math.round(boundaries[i + 1] * width)
+    const startX = effectiveLeft + Math.round(boundaries[i] * effectiveWidth)
+    const endX = effectiveLeft + Math.round(boundaries[i + 1] * effectiveWidth)
     const colWidth = endX - startX
 
     if (colWidth <= 0) continue
 
-    // Extract column strip
-    const columnData = ctx.getImageData(startX, 0, colWidth, height)
+    // Extract column strip (use effective height for vertical cropping)
+    const columnData = ctx.getImageData(startX, effectiveTop, colWidth, effectiveHeight)
     columns.push(columnData)
   }
 
@@ -123,10 +161,13 @@ export function resizeImageData(
 }
 
 /**
- * Process a video frame for classification
+ * Process a video frame for classification using perspective-correct extraction
+ *
+ * Uses OpenCV perspective transform when available to handle camera angle.
+ * Falls back to bounding box extraction if OpenCV not loaded.
  *
  * @param video - Video element with camera feed
- * @param calibration - Calibration grid
+ * @param calibration - Calibration grid (should have corners for perspective correction)
  * @param columnWidth - Target column width for model input
  * @param columnHeight - Target column height for model input
  * @returns Array of preprocessed column ImageData ready for classification
@@ -137,20 +178,37 @@ export function processVideoFrame(
   columnWidth: number = 64,
   columnHeight: number = 128
 ): ImageData[] {
-  // Create canvas for video frame
-  const canvas = document.createElement('canvas')
-  canvas.width = video.videoWidth
-  canvas.height = video.videoHeight
-  const ctx = canvas.getContext('2d')!
+  let roiData: ImageData
 
-  // Draw video frame
-  ctx.drawImage(video, 0, 0)
+  // Try perspective transform if corners available and OpenCV ready
+  if (calibration.corners && isOpenCVReady()) {
+    const rectifiedCanvas = document.createElement('canvas')
+    const success = rectifyQuadrilateral(video, calibration.corners, rectifiedCanvas, {
+      // Output size: use consistent dimensions for ML training
+      // Width based on number of columns, height for proper aspect ratio
+      outputWidth: calibration.columnCount * columnWidth,
+      outputHeight: columnHeight,
+      rotate180: true, // Desk View camera needs rotation
+    })
 
-  // Extract ROI
-  const roiData = extractROI(ctx, calibration.roi)
+    if (success) {
+      const ctx = rectifiedCanvas.getContext('2d')!
+      roiData = ctx.getImageData(0, 0, rectifiedCanvas.width, rectifiedCanvas.height)
+    } else {
+      // Fall back to bounding box method
+      roiData = extractROIFromVideo(video, calibration.roi)
+    }
+  } else {
+    // No corners or OpenCV not ready - use bounding box
+    roiData = extractROIFromVideo(video, calibration.roi)
+  }
 
-  // Slice into columns
-  const columns = sliceIntoColumns(roiData, calibration)
+  // Slice into columns using equal divisions (perspective already corrected)
+  const syntheticCalibration: CalibrationGrid = {
+    ...calibration,
+    roi: { x: 0, y: 0, width: roiData.width, height: roiData.height },
+  }
+  const columns = sliceIntoColumns(roiData, syntheticCalibration)
 
   // Preprocess each column
   return columns.map((col) => {
@@ -159,6 +217,18 @@ export function processVideoFrame(
     // Resize to model input size
     return resizeImageData(gray, columnWidth, columnHeight)
   })
+}
+
+/**
+ * Helper to extract ROI from video using bounding box (legacy method)
+ */
+function extractROIFromVideo(video: HTMLVideoElement, roi: ROI): ImageData {
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(video, 0, 0)
+  return extractROI(ctx, roi)
 }
 
 /**

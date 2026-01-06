@@ -19,7 +19,9 @@ export function TrainingCard({
   if (!currentEpoch) {
     return (
       <div className={css({ textAlign: 'center', py: 6 })}>
-        <div className={css({ fontSize: '2xl', mb: 3, animation: 'spin 1s linear infinite' })}>🏋️</div>
+        <div className={css({ fontSize: '2xl', mb: 3, animation: 'spin 1s linear infinite' })}>
+          🏋️
+        </div>
         <div className={css({ color: 'gray.400' })}>Starting training...</div>
       </div>
     )
@@ -45,9 +47,7 @@ export function TrainingCard({
       >
         {(currentEpoch.val_accuracy * 100).toFixed(1)}%
       </div>
-      <div className={css({ fontSize: 'xs', color: 'gray.500', mb: 3 })}>
-        Validation Accuracy
-      </div>
+      <div className={css({ fontSize: 'xs', color: 'gray.500', mb: 3 })}>Validation Accuracy</div>
 
       {/* Progress bar */}
       <div className={css({ mb: 3 })}>

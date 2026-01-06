@@ -170,7 +170,9 @@ export function ConfigCard({
           <span className={css({ fontSize: 'sm', color: 'gray.200' })}>Data Augmentation</span>
         </label>
         <div className={css({ fontSize: 'xs', color: 'gray.500', ml: 6, mt: 0.5 })}>
-          {isGpu ? 'Recommended - your GPU handles extra data easily' : 'Adds processing time but improves results'}
+          {isGpu
+            ? 'Recommended - your GPU handles extra data easily'
+            : 'Adds processing time but improves results'}
         </div>
       </div>
 

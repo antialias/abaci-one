@@ -63,7 +63,9 @@ export function HardwareCard({
   if (hardwareLoading) {
     return (
       <div className={css({ textAlign: 'center', py: 6 })}>
-        <div className={css({ fontSize: '2xl', mb: 2, animation: 'spin 1s linear infinite' })}>⚙️</div>
+        <div className={css({ fontSize: '2xl', mb: 2, animation: 'spin 1s linear infinite' })}>
+          ⚙️
+        </div>
         <div className={css({ color: 'gray.400' })}>Detecting hardware...</div>
       </div>
     )
@@ -74,9 +76,7 @@ export function HardwareCard({
 
     return (
       <div className={css({ textAlign: 'center', py: 4 })}>
-        <div className={css({ fontSize: '2xl', mb: 2 })}>
-          {isUnsupportedPlatform ? '🚫' : '⚠️'}
-        </div>
+        <div className={css({ fontSize: '2xl', mb: 2 })}>{isUnsupportedPlatform ? '🚫' : '⚠️'}</div>
         <div className={css({ color: isUnsupportedPlatform ? 'yellow.400' : 'red.400', mb: 2 })}>
           {isUnsupportedPlatform ? 'Platform Not Supported' : 'Hardware setup failed'}
         </div>
@@ -121,9 +121,7 @@ export function HardwareCard({
   return (
     <div className={css({ textAlign: 'center' })}>
       {/* Device Icon */}
-      <div className={css({ fontSize: '3xl', mb: 2 })}>
-        {isGpu ? '⚡' : '💻'}
-      </div>
+      <div className={css({ fontSize: '3xl', mb: 2 })}>{isGpu ? '⚡' : '💻'}</div>
 
       {/* Device Name */}
       <div className={css({ fontSize: 'xl', fontWeight: 'bold', color: 'gray.100', mb: 1 })}>
@@ -162,7 +160,14 @@ export function HardwareCard({
 
       {/* Auto-progress bar */}
       <div className={css({ mb: 3 })}>
-        <div className={css({ height: '4px', bg: 'gray.700', borderRadius: 'full', overflow: 'hidden' })}>
+        <div
+          className={css({
+            height: '4px',
+            bg: 'gray.700',
+            borderRadius: 'full',
+            overflow: 'hidden',
+          })}
+        >
           <div
             className={css({
               height: '100%',

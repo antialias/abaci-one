@@ -563,7 +563,7 @@ export function MyAbacus() {
               {/* Show vision feed when enabled, otherwise show digital abacus */}
               {visionConfig.enabled && isVisionSetupComplete ? (
                 <DockedVisionFeed
-                  columnCount={dock.columns ?? 5}
+                  columnCount={appConfig.physicalAbacusColumns ?? 4}
                   onValueDetected={(value) => {
                     // Update the appropriate state based on dock mode
                     if (dock.value === undefined) {

@@ -170,7 +170,14 @@ export interface TrainingConfig {
 }
 
 // Server-side training phase (from SSE events)
-export type ServerPhase = 'idle' | 'setup' | 'loading' | 'training' | 'exporting' | 'complete' | 'error'
+export type ServerPhase =
+  | 'idle'
+  | 'setup'
+  | 'loading'
+  | 'training'
+  | 'exporting'
+  | 'complete'
+  | 'error'
 
 // Helper to get phase index
 export function getPhaseIndex(phaseId: PhaseId): number {
@@ -194,9 +201,10 @@ export function getPhaseForCard(cardId: CardId): PhaseId | null {
 }
 
 // Map server phase to wizard position
-export function serverPhaseToWizardPosition(
-  serverPhase: ServerPhase
-): { phaseIndex: number; cardIndex: number } {
+export function serverPhaseToWizardPosition(serverPhase: ServerPhase): {
+  phaseIndex: number
+  cardIndex: number
+} {
   switch (serverPhase) {
     case 'idle':
       return { phaseIndex: 0, cardIndex: 0 } // Start at data card

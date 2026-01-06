@@ -1,6 +1,12 @@
 import { spawn } from 'child_process'
 import path from 'path'
-import { ensureVenvReady, isPlatformSupported, PYTHON_ENV, TRAINING_PYTHON, TRAINING_SCRIPTS_DIR } from '../config'
+import {
+  ensureVenvReady,
+  isPlatformSupported,
+  PYTHON_ENV,
+  TRAINING_PYTHON,
+  TRAINING_SCRIPTS_DIR,
+} from '../config'
 
 /**
  * Hardware detection result from Python/TensorFlow

@@ -277,7 +277,12 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
   useEffect(() => {
     if (isLocalCamera && videoRef.current && videoStream) {
       visionSourceRef.current = { type: 'video', element: videoRef.current }
-    } else if (isRemoteCamera && remoteImageRef.current && remoteIsPhoneConnected && remoteLatestFrame) {
+    } else if (
+      isRemoteCamera &&
+      remoteImageRef.current &&
+      remoteIsPhoneConnected &&
+      remoteLatestFrame
+    ) {
       visionSourceRef.current = { type: 'image', element: remoteImageRef.current }
     }
 
@@ -285,7 +290,14 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
       // Clear the source ref when this component unmounts
       visionSourceRef.current = null
     }
-  }, [isLocalCamera, isRemoteCamera, videoStream, remoteIsPhoneConnected, remoteLatestFrame, visionSourceRef])
+  }, [
+    isLocalCamera,
+    isRemoteCamera,
+    videoStream,
+    remoteIsPhoneConnected,
+    remoteLatestFrame,
+    visionSourceRef,
+  ])
 
   // Subscribe to remote camera session
   useEffect(() => {

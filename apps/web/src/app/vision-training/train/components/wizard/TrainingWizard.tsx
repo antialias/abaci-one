@@ -68,8 +68,10 @@ export function TrainingWizard({
 
   // Derive state
   const isGpu = hardwareInfo?.deviceType === 'gpu'
-  const bestAccuracy = epochHistory.length > 0 ? Math.max(...epochHistory.map((e) => e.val_accuracy)) : 0
-  const hasEnoughData = samples?.hasData && samples.dataQuality !== 'none' && samples.dataQuality !== 'insufficient'
+  const bestAccuracy =
+    epochHistory.length > 0 ? Math.max(...epochHistory.map((e) => e.val_accuracy)) : 0
+  const hasEnoughData =
+    samples?.hasData && samples.dataQuality !== 'none' && samples.dataQuality !== 'insufficient'
 
   // Sync wizard position with server phase during training
   useEffect(() => {
@@ -127,7 +129,7 @@ export function TrainingWizard({
         if (!hardwareInfo) return null
         return {
           label: hardwareInfo.deviceType === 'gpu' ? 'GPU' : 'CPU',
-          value: hardwareInfo.deviceName.split(' ').slice(0, 2).join(' ')
+          value: hardwareInfo.deviceName.split(' ').slice(0, 2).join(' '),
         }
       case 'config':
         return { label: 'Epochs', value: `${config.epochs}` }
@@ -140,7 +142,9 @@ export function TrainingWizard({
       case 'export':
         return { label: 'Exported', value: '✓' }
       case 'results':
-        return result ? { label: 'Final', value: `${(result.final_accuracy * 100).toFixed(1)}%` } : null
+        return result
+          ? { label: 'Final', value: `${(result.final_accuracy * 100).toFixed(1)}%` }
+          : null
       default:
         return null
     }

@@ -1,5 +1,6 @@
 'use client'
 
+import { useAbacusConfig } from '@soroban/abacus-react'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { css } from '../../../styled-system/css'
 import { AbacusVisionBridge } from './AbacusVisionBridge'
@@ -21,8 +22,8 @@ export function VisionSetupModal() {
     setVisionCalibration,
     setVisionRemoteSession,
     setVisionCameraSource,
-    dock,
   } = useMyAbacus()
+  const abacusConfig = useAbacusConfig()
 
   const handleClearSettings = () => {
     setVisionCamera(null)
@@ -61,7 +62,7 @@ export function VisionSetupModal() {
       {/* AbacusVisionBridge is a motion.div with drag - stopPropagation prevents backdrop close */}
       <div onClick={(e) => e.stopPropagation()}>
         <AbacusVisionBridge
-          columnCount={dock?.columns ?? 5}
+          columnCount={abacusConfig.physicalAbacusColumns ?? 4}
           onValueDetected={() => {
             // Value detected - configuration is working
           }}

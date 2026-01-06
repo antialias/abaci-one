@@ -7,11 +7,13 @@ interface CollapsedCardProps {
   title: string
   summary?: string
   // For upcoming cards - can be a simple string or rich preview with multiple lines
-  preview?: {
-    primary: string
-    secondary?: string
-    tertiary?: string
-  } | string
+  preview?:
+    | {
+        primary: string
+        secondary?: string
+        tertiary?: string
+      }
+    | string
   status: 'done' | 'upcoming'
 }
 
@@ -19,9 +21,7 @@ export function CollapsedCard({ icon, title, summary, preview, status }: Collaps
   const isDone = status === 'done'
 
   // Parse preview into lines
-  const previewObj = typeof preview === 'string'
-    ? { primary: preview }
-    : preview
+  const previewObj = typeof preview === 'string' ? { primary: preview } : preview
 
   // Rich preview means we need a larger card
   const hasRichPreview = !isDone && previewObj && (previewObj.secondary || previewObj.tertiary)
@@ -70,7 +70,14 @@ export function CollapsedCard({ icon, title, summary, preview, status }: Collaps
         </span>
       ) : previewObj ? (
         /* Upcoming state with preview */
-        <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 })}>
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 0,
+          })}
+        >
           <span
             className={css({
               fontSize: 'xs',

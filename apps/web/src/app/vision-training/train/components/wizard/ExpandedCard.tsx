@@ -121,13 +121,7 @@ export function ExpandedCard({
       case 'export':
         return <ExportCard message={statusMessage} />
       case 'results':
-        return (
-          <ResultsCard
-            result={result}
-            error={error}
-            onTrainAgain={onTrainAgain}
-          />
-        )
+        return <ResultsCard result={result} error={error} onTrainAgain={onTrainAgain} />
       default:
         return null
     }
@@ -163,15 +157,11 @@ export function ExpandedCard({
         })}
       >
         <span className={css({ fontSize: 'lg' })}>{cardDef.icon}</span>
-        <span className={css({ fontWeight: 'semibold', color: 'gray.100' })}>
-          {cardDef.title}
-        </span>
+        <span className={css({ fontWeight: 'semibold', color: 'gray.100' })}>{cardDef.title}</span>
       </div>
 
       {/* Card Content */}
-      <div className={css({ p: 4 })}>
-        {renderCardContent()}
-      </div>
+      <div className={css({ p: 4 })}>{renderCardContent()}</div>
     </div>
   )
 }

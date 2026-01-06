@@ -74,24 +74,32 @@ export function CardCarousel({
 }: CardCarouselProps) {
   // Generate preview for upcoming cards based on known data
   // Can return a simple string or a rich object with multiple lines
-  const getCardPreview = (cardId: CardId): { primary: string; secondary?: string; tertiary?: string } | string => {
+  const getCardPreview = (
+    cardId: CardId
+  ): { primary: string; secondary?: string; tertiary?: string } | string => {
     switch (cardId) {
       case 'data':
         if (samples?.hasData) {
           return {
             primary: `${samples.totalImages} images`,
-            secondary: samples.dataQuality === 'excellent' ? 'Excellent' :
-                       samples.dataQuality === 'good' ? 'Good quality' :
-                       samples.dataQuality === 'minimal' ? 'Minimal' : 'Ready',
+            secondary:
+              samples.dataQuality === 'excellent'
+                ? 'Excellent'
+                : samples.dataQuality === 'good'
+                  ? 'Good quality'
+                  : samples.dataQuality === 'minimal'
+                    ? 'Minimal'
+                    : 'Ready',
           }
         }
         return 'Check data'
 
       case 'hardware':
         if (hardwareInfo && !hardwareInfo.error) {
-          const shortName = hardwareInfo.deviceName.length > 12
-            ? hardwareInfo.deviceName.split(' ').slice(0, 2).join(' ')
-            : hardwareInfo.deviceName
+          const shortName =
+            hardwareInfo.deviceName.length > 12
+              ? hardwareInfo.deviceName.split(' ').slice(0, 2).join(' ')
+              : hardwareInfo.deviceName
           return {
             primary: shortName,
             secondary: hardwareInfo.deviceType === 'gpu' ? 'GPU Accel' : 'CPU Mode',

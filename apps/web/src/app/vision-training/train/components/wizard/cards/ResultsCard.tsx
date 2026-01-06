@@ -17,7 +17,15 @@ export function ResultsCard({ result, error, onTrainAgain }: ResultsCardProps) {
         <div className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'red.400', mb: 2 })}>
           Training Failed
         </div>
-        <div className={css({ color: 'gray.400', fontSize: 'sm', mb: 4, maxWidth: '280px', mx: 'auto' })}>
+        <div
+          className={css({
+            color: 'gray.400',
+            fontSize: 'sm',
+            mb: 4,
+            maxWidth: '280px',
+            mx: 'auto',
+          })}
+        >
           {error}
         </div>
         <button
@@ -45,7 +53,9 @@ export function ResultsCard({ result, error, onTrainAgain }: ResultsCardProps) {
   if (!result) {
     return (
       <div className={css({ textAlign: 'center', py: 6 })}>
-        <div className={css({ fontSize: '2xl', mb: 3, animation: 'spin 1s linear infinite' })}>⏳</div>
+        <div className={css({ fontSize: '2xl', mb: 3, animation: 'spin 1s linear infinite' })}>
+          ⏳
+        </div>
         <div className={css({ color: 'gray.400' })}>Waiting for results...</div>
       </div>
     )
@@ -74,9 +84,7 @@ export function ResultsCard({ result, error, onTrainAgain }: ResultsCardProps) {
       >
         {(accuracy * 100).toFixed(1)}%
       </div>
-      <div className={css({ fontSize: 'sm', color: 'gray.500', mb: 4 })}>
-        Final Accuracy
-      </div>
+      <div className={css({ fontSize: 'sm', color: 'gray.500', mb: 4 })}>Final Accuracy</div>
 
       {/* Stats grid */}
       <div

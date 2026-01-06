@@ -136,9 +136,12 @@ export async function GET() {
     const execAsync = promisify(exec)
 
     // Test SSH connection with timeout
-    await execAsync(`ssh -o ConnectTimeout=3 -o BatchMode=yes ${REMOTE_USER}@${REMOTE_HOST} "echo ok"`, {
-      timeout: 5000,
-    })
+    await execAsync(
+      `ssh -o ConnectTimeout=3 -o BatchMode=yes ${REMOTE_USER}@${REMOTE_HOST} "echo ok"`,
+      {
+        timeout: 5000,
+      }
+    )
 
     // Get remote stats
     const { stdout } = await execAsync(
@@ -168,7 +171,10 @@ export async function GET() {
   }
 }
 
-async function countLocalImages(): Promise<{ totalImages: number; digitCounts: Record<number, number> }> {
+async function countLocalImages(): Promise<{
+  totalImages: number
+  digitCounts: Record<number, number>
+}> {
   const digitCounts: Record<number, number> = {}
   let totalImages = 0
 

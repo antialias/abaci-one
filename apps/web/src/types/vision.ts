@@ -40,6 +40,22 @@ export interface QuadCorners {
 }
 
 /**
+ * Margins to trim from the ROI edges before slicing columns.
+ * Useful when ArUco markers are positioned at frame corners
+ * but columns are inset from the frame.
+ */
+export interface ColumnMargins {
+  /** Fraction of width to trim from left (0-0.5, default 0) */
+  left: number
+  /** Fraction of width to trim from right (0-0.5, default 0) */
+  right: number
+  /** Fraction of height to trim from top (0-0.5, default 0) */
+  top: number
+  /** Fraction of height to trim from bottom (0-0.5, default 0) */
+  bottom: number
+}
+
+/**
  * Calibration grid defining how to slice the video feed into columns
  */
 export interface CalibrationGrid {
@@ -53,6 +69,8 @@ export interface CalibrationGrid {
   columnDividers: number[]
   /** Rotation angle in degrees (for skewed cameras) - deprecated, use corners instead */
   rotation: number
+  /** Margins to trim from edges before slicing (for frame inset) */
+  margins?: ColumnMargins
 }
 
 /**
