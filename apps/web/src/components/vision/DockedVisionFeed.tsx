@@ -68,8 +68,14 @@ interface DockedVisionFeedProps {
  * - Shows the video feed with detection overlay
  */
 export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVisionFeedProps) {
-  const { visionConfig, setDockedValue, setVisionEnabled, setVisionCalibration, emitVisionFrame } =
-    useMyAbacus()
+  const {
+    visionConfig,
+    setDockedValue,
+    setVisionEnabled,
+    setVisionCalibration,
+    emitVisionFrame,
+    visionSourceRef,
+  } = useMyAbacus()
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const remoteImageRef = useRef<HTMLImageElement>(null)
@@ -264,6 +270,20 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
       videoRef.current.srcObject = videoStream
     }
   }, [videoStream])
+
+  // Register vision source for training data capture
+  useEffect(() => {
+    if (isLocalCamera && videoRef.current && videoStream) {
+      visionSourceRef.current = { type: 'video', element: videoRef.current }
+    } else if (isRemoteCamera && remoteImageRef.current && remoteIsPhoneConnected) {
+      visionSourceRef.current = { type: 'image', element: remoteImageRef.current }
+    }
+
+    return () => {
+      // Clear the source ref when this component unmounts
+      visionSourceRef.current = null
+    }
+  }, [isLocalCamera, isRemoteCamera, videoStream, remoteIsPhoneConnected, visionSourceRef])
 
   // Subscribe to remote camera session
   useEffect(() => {

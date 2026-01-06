@@ -27,7 +27,7 @@ import type {
   ParsedProblem,
   BoundingBox,
 } from '@/lib/worksheet-parsing'
-import { type CompletedProblem } from './usePartialJsonParser'
+import type { CompletedProblem } from './usePartialJsonParser'
 
 // Re-export for use by components
 export type { CompletedProblem }

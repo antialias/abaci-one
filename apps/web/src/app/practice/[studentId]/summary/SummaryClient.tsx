@@ -593,7 +593,10 @@ export function SummaryClient({
             onApproveProblem={async (photoId, problemIndex) => {
               await updateReviewProgress.mutateAsync({
                 attachmentId: photoId,
-                problemUpdate: { index: problemIndex, reviewStatus: 'approved' },
+                problemUpdate: {
+                  index: problemIndex,
+                  reviewStatus: 'approved',
+                },
               })
             }}
             onFlagProblem={async (photoId, problemIndex) => {

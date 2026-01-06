@@ -69,7 +69,10 @@ describe('parseSSEStream', () => {
     it('should call onReasoning with text and isDelta', async () => {
       const onReasoning = vi.fn()
       const response = createSSEResponse([
-        sseEvent('reasoning', { text: 'Looking at the image...', isDelta: true }),
+        sseEvent('reasoning', {
+          text: 'Looking at the image...',
+          isDelta: true,
+        }),
       ])
 
       await parseSSEStream(response, { onReasoning })
@@ -183,7 +186,11 @@ describe('parseSSEStream', () => {
       const onComplete = vi.fn()
       const result = {
         problems: [],
-        pageMetadata: { lessonId: null, weekId: null, detectedFormat: 'vertical' },
+        pageMetadata: {
+          lessonId: null,
+          weekId: null,
+          detectedFormat: 'vertical',
+        },
         overallConfidence: 0.95,
         warnings: [],
         needsReview: false,
@@ -209,7 +216,11 @@ describe('parseSSEStream', () => {
       const onComplete = vi.fn()
       const updatedResult = {
         problems: [{ problemNumber: 1 }],
-        pageMetadata: { lessonId: null, weekId: null, detectedFormat: 'vertical' },
+        pageMetadata: {
+          lessonId: null,
+          weekId: null,
+          detectedFormat: 'vertical',
+        },
         overallConfidence: 0.9,
         warnings: [],
         needsReview: false,
@@ -228,7 +239,10 @@ describe('parseSSEStream', () => {
     it('should call onError with message and code', async () => {
       const onError = vi.fn()
       const response = createSSEResponse([
-        sseEvent('error', { message: 'API rate limit exceeded', code: 'RATE_LIMIT' }),
+        sseEvent('error', {
+          message: 'API rate limit exceeded',
+          code: 'RATE_LIMIT',
+        }),
       ])
 
       await parseSSEStream(response, { onError })

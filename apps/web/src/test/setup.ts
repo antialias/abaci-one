@@ -37,9 +37,15 @@ const mockAbacusConfig = {
 
 vi.mock('@soroban/abacus-react', () => ({
   AbacusReact: ({ value }: { value: number }) =>
-    React.createElement('div', { 'data-testid': 'abacus', 'data-value': value }),
+    React.createElement('div', {
+      'data-testid': 'abacus',
+      'data-value': value,
+    }),
   AbacusStatic: ({ value }: { value: number }) =>
-    React.createElement('div', { 'data-testid': 'abacus-static', 'data-value': value }),
+    React.createElement('div', {
+      'data-testid': 'abacus-static',
+      'data-value': value,
+    }),
   StandaloneBead: () => React.createElement('div', { 'data-testid': 'standalone-bead' }),
   AbacusDisplayProvider: ({ children }: { children: React.ReactNode }) => children,
   useAbacusConfig: () => mockAbacusConfig,
@@ -69,7 +75,12 @@ vi.mock('@soroban/abacus-react', () => ({
   calculateStandardDimensions: vi.fn(() => ({})),
   calculateBeadPosition: vi.fn(() => ({ x: 0, y: 0 })),
   calculateBeadDimensions: vi.fn(() => ({ width: 10, height: 10 })),
-  calculateActiveBeadsBounds: vi.fn(() => ({ x: 0, y: 0, width: 100, height: 200 })),
+  calculateActiveBeadsBounds: vi.fn(() => ({
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 200,
+  })),
   calculateAbacusCrop: vi.fn(() => ({})),
 }))
 

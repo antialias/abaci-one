@@ -252,7 +252,11 @@ describe('parsingReducer', () => {
       // Use a minimal mock result - the reducer only stores it, doesn't validate
       const result = {
         problems: [{ problemNumber: 1, terms: [1, 2], correctAnswer: 3 }],
-        pageMetadata: { lessonId: null, weekId: null, detectedFormat: 'vertical' as const },
+        pageMetadata: {
+          lessonId: null,
+          weekId: null,
+          detectedFormat: 'vertical' as const,
+        },
         overallConfidence: 0.95,
         warnings: [],
         needsReview: false,

@@ -7,8 +7,9 @@
 **Users can only be in one room at a time.** When a user creates or joins a new room, they are automatically removed from any previous room.
 
 **Implementation:** `addRoomMember()` in `src/lib/arcade/room-membership.ts` handles this:
+
 ```typescript
-const autoLeaveResult = await autoLeaveOtherRooms(userId)
+const autoLeaveResult = await autoLeaveOtherRooms(userId);
 // Returns { leftRooms: string[] } with room IDs the user was removed from
 ```
 
@@ -17,26 +18,29 @@ const autoLeaveResult = await autoLeaveOtherRooms(userId)
 ### 2. Socket Broadcasting for Auto-Leave Events
 
 **Problem We Solved:** When auto-leave happens, ALL clients need to be notified:
+
 - The user who was auto-left (so their UI updates)
 - Other members of the old room (so they see the member left)
 
 **Solution:** Both room creation and join endpoints now broadcast `member-left` events:
+
 ```typescript
 // In room creation and join routes
 if (autoLeaveResult?.leftRooms.length > 0) {
   for (const leftRoomId of autoLeaveResult.leftRooms) {
-    io.to(`room:${leftRoomId}`).emit('member-left', {
+    io.to(`room:${leftRoomId}`).emit("member-left", {
       roomId: leftRoomId,
       userId: viewerId,
       members: updatedMembers,
       memberPlayers: updatedPlayers,
-      reason: 'auto-left',
-    })
+      reason: "auto-left",
+    });
   }
 }
 ```
 
 **Files involved:**
+
 - `src/app/api/arcade/rooms/route.ts` (room creation)
 - `src/app/api/arcade/rooms/[roomId]/join/route.ts` (room join)
 
@@ -45,10 +49,11 @@ if (autoLeaveResult?.leftRooms.length > 0) {
 **Problem:** Calling leave on a room you're already not a member of (e.g., after auto-leave) returned 400.
 
 **Solution:** The leave endpoint is now idempotent:
+
 ```typescript
 // src/app/api/arcade/rooms/[roomId]/leave/route.ts
 if (!isMemberOfRoom) {
-  return NextResponse.json({ success: true, alreadyLeft: true })
+  return NextResponse.json({ success: true, alreadyLeft: true });
 }
 ```
 
@@ -57,27 +62,28 @@ if (!isMemberOfRoom) {
 **Problem:** Hooks that create resources (like `useGameBreakRoom`) can be called twice in development due to Strict Mode's intentional double-rendering.
 
 **Solution Pattern:**
+
 ```typescript
-const isCreatingRef = useRef(false)
-const hasStartedRef = useRef(false)
+const isCreatingRef = useRef(false);
+const hasStartedRef = useRef(false);
 
 useEffect(() => {
-  if (hasStartedRef.current || isCreatingRef.current) return
-  hasStartedRef.current = true
-  isCreatingRef.current = true
+  if (hasStartedRef.current || isCreatingRef.current) return;
+  hasStartedRef.current = true;
+  isCreatingRef.current = true;
 
   async function initRoom() {
     try {
-      const result = await createRoom()
+      const result = await createRoom();
       // Handle result
     } finally {
-      isCreatingRef.current = false
+      isCreatingRef.current = false;
     }
   }
 
-  initRoom()
+  initRoom();
   // NO cleanup that destroys the resource here - let explicit cleanup() handle it
-}, [enabled])
+}, [enabled]);
 ```
 
 **Key insight:** Don't use `mounted` flags that trigger cleanup during Strict Mode's simulated unmount. Use refs to prevent duplicate creation, and provide an explicit `cleanup()` function for intentional teardown.
@@ -110,6 +116,7 @@ The practice system uses arcade rooms for "game breaks" - short play sessions be
 **Why transition screen first?** The transition messages ("Put your abacus aside") are pedagogically important - they prepare the student mentally and physically for the next part type.
 
 **Key files:**
+
 - `src/app/practice/[studentId]/PracticeClient.tsx` - Orchestrates the flow
 - `src/components/practice/PartTransitionScreen.tsx` - Transition messages
 - `src/components/practice/GameBreakScreen.tsx` - Game selection/play
@@ -119,11 +126,11 @@ The practice system uses arcade rooms for "game breaks" - short play sessions be
 
 Currently no explicit distinction, but rooms serve different purposes:
 
-| Use Case | Created By | Lifetime | Game Selection |
-|----------|------------|----------|----------------|
-| Solo arcade | `/arcade` page auto-creates | Until user leaves | User selects |
-| Multiplayer | User creates, shares code | Until all leave | Host selects |
-| Game break | Practice system | Duration of break | Student selects |
+| Use Case    | Created By                  | Lifetime          | Game Selection  |
+| ----------- | --------------------------- | ----------------- | --------------- |
+| Solo arcade | `/arcade` page auto-creates | Until user leaves | User selects    |
+| Multiplayer | User creates, shares code   | Until all leave   | Host selects    |
+| Game break  | Practice system             | Duration of break | Student selects |
 
 ### Game Completion Detection
 
@@ -131,10 +138,10 @@ The practice system needs to know when a student finishes a game to end the brea
 
 **Critical Socket Event Distinction:**
 
-| Event | When Emitted | Contains Game State? |
-|-------|--------------|---------------------|
-| `session-state` | Only when client **joins** a session | Yes |
-| `move-accepted` | After every game move during play | Yes |
+| Event           | When Emitted                         | Contains Game State? |
+| --------------- | ------------------------------------ | -------------------- |
+| `session-state` | Only when client **joins** a session | Yes                  |
+| `move-accepted` | After every game move during play    | Yes                  |
 
 **Common Mistake:** Listening only to `session-state` for game completion. This won't work because `session-state` is only sent on join - during gameplay, all state updates come through `move-accepted`.
 
@@ -144,19 +151,19 @@ The practice system needs to know when a student finishes a game to end the brea
 // In PracticeGameModeProvider.tsx
 // MUST listen to BOTH events to catch game completion
 useArcadeSocket({
-  onSessionState: handleStateUpdate,   // Initial state on join
-  onMoveAccepted: handleStateUpdate,   // State changes during gameplay
-})
+  onSessionState: handleStateUpdate, // Initial state on join
+  onMoveAccepted: handleStateUpdate, // State changes during gameplay
+});
 
 function handleStateUpdate(data: { gameState: unknown }) {
-  const currentPhase = (data.gameState as { gamePhase?: string })?.gamePhase
+  const currentPhase = (data.gameState as { gamePhase?: string })?.gamePhase;
 
   // Detect transition TO 'results' phase
-  if (currentPhase === 'results' && previousPhase !== 'results') {
-    onGameComplete?.()  // End the game break
+  if (currentPhase === "results" && previousPhase !== "results") {
+    onGameComplete?.(); // End the game break
   }
 
-  previousPhase = currentPhase
+  previousPhase = currentPhase;
 }
 ```
 
@@ -173,6 +180,7 @@ Games with a `'results'` phase (matching, memory-quiz, know-your-world) will aut
 **Endless games:**
 
 Games without a `'results'` phase (complement-race) will only end via:
+
 - Break timer expiring
 - Student clicking "Back to Practice"
 
@@ -187,14 +195,15 @@ This is expected behavior - the practice system handles both cases gracefully.
 **Current state:** Socket broadcasts for auto-leave are duplicated in room creation and join routes.
 
 **Improvement:** Move broadcasting logic into `room-membership.ts`:
+
 ```typescript
 // Proposed: addRoomMember handles its own broadcasting
 export async function addRoomMember(params, io?: Server) {
-  const autoLeaveResult = await autoLeaveOtherRooms(userId)
+  const autoLeaveResult = await autoLeaveOtherRooms(userId);
 
   // Centralized broadcasting
   if (io && autoLeaveResult.leftRooms.length > 0) {
-    await broadcastAutoLeave(io, userId, autoLeaveResult.leftRooms)
+    await broadcastAutoLeave(io, userId, autoLeaveResult.leftRooms);
   }
 
   // ... rest of logic
@@ -206,6 +215,7 @@ export async function addRoomMember(params, io?: Server) {
 **Current state:** Components fetch room data via `useRoomData()` which polls/caches.
 
 **Improvement:** A unified `RoomProvider` context that:
+
 - Maintains current room state
 - Subscribes to socket events
 - Auto-updates when auto-left or kicked
@@ -216,15 +226,16 @@ export async function addRoomMember(params, io?: Server) {
 **Current state:** No distinction between temporary (game break) and persistent (multiplayer) rooms.
 
 **Potential improvement:** Room metadata could include:
+
 ```typescript
 interface Room {
   // ... existing fields
-  lifetime: 'temporary' | 'persistent'
-  expiresAt?: Date  // Auto-cleanup for temporary rooms
+  lifetime: "temporary" | "persistent";
+  expiresAt?: Date; // Auto-cleanup for temporary rooms
   parentContext?: {
-    type: 'practice-break'
-    sessionId: string
-  }
+    type: "practice-break";
+    sessionId: string;
+  };
 }
 ```
 
@@ -233,11 +244,12 @@ interface Room {
 **Current state:** Room creation returns `CreateRoomResult` with `{ room, autoLeave }`.
 
 **Improvement:** All room mutation endpoints could return consistent structure:
+
 ```typescript
 interface RoomMutationResult {
-  room: RoomData
-  autoLeave?: { roomIds: string[] }
-  socketEvents?: string[]  // Events that were broadcast
+  room: RoomData;
+  autoLeave?: { roomIds: string[] };
+  socketEvents?: string[]; // Events that were broadcast
 }
 ```
 

@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'child_process'
 import path from 'path'
-import { PYTHON_ENV, TRAINING_PYTHON } from '../config'
+import { ensureVenvReady, PYTHON_ENV, TRAINING_PYTHON } from '../config'
 
 /**
  * Training configuration options
@@ -33,6 +33,19 @@ export async function POST(request: Request): Promise<Response> {
         hint: 'Wait for current training to complete or cancel it first',
       }),
       { status: 409, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // Ensure venv is set up (lazy, cached)
+  const setup = await ensureVenvReady()
+  if (!setup.success) {
+    return new Response(
+      JSON.stringify({
+        error: 'Python environment setup failed',
+        details: setup.error,
+        hint: 'Check server logs for details',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 

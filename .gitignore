@@ -60,3 +60,5 @@ temp/
 *storybook.log
 storybook-static
 apps/web/data/sqlite.db.backup.*
+# Vision training data
+data/vision-training/

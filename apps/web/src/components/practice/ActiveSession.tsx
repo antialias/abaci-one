@@ -629,10 +629,73 @@ export function ActiveSession({
   const isDark = resolvedTheme === 'dark'
 
   // Check if abacus is docked (to force show submit button)
-  const { isDockedByUser, requestDock, undock, dock, setDockedValue } = useMyAbacus()
+  const {
+    isDockedByUser,
+    requestDock,
+    undock,
+    dock,
+    setDockedValue,
+    visionConfig,
+    captureTrainingColumns,
+  } = useMyAbacus()
 
   // Get abacus display config (for physical abacus column count in vision mode)
   const { config: abacusDisplayConfig } = useAbacusDisplay()
+
+  // Track which problems have had training data collected (one frame per problem)
+  const trainingDataCollectedRef = useRef<Set<string>>(new Set())
+
+  // Collect training data when vision is enabled and answer is correct
+  const collectVisionTrainingData = useCallback(
+    async (correctAnswer: number, slotIndex: number) => {
+      // Only collect if vision is enabled and docked
+      if (!visionConfig.enabled || !isDockedByUser) return
+
+      // Create a unique key for this problem to avoid duplicate collection
+      const problemKey = `${plan.id}-${slotIndex}`
+      if (trainingDataCollectedRef.current.has(problemKey)) return
+
+      // Get column count from display config
+      const columnCount = abacusDisplayConfig?.columns ?? 5
+
+      // Capture the current column images
+      const columns = captureTrainingColumns(columnCount)
+      if (!columns || columns.length === 0) {
+        console.log('[VisionTraining] No column images captured')
+        return
+      }
+
+      // Mark as collected before sending (to avoid race conditions)
+      trainingDataCollectedRef.current.add(problemKey)
+
+      // Send to the collection API (fire and forget - don't block the UI)
+      try {
+        const response = await fetch('/api/vision-training/collect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            columns,
+            correctAnswer,
+            playerId: student.id,
+            sessionId: plan.id,
+          }),
+        })
+        if (!response.ok) {
+          console.warn('[VisionTraining] Failed to save training data:', response.status)
+        }
+      } catch (error) {
+        console.warn('[VisionTraining] Error saving training data:', error)
+      }
+    },
+    [
+      visionConfig.enabled,
+      isDockedByUser,
+      plan.id,
+      student.id,
+      captureTrainingColumns,
+      abacusDisplayConfig,
+    ]
+  )
 
   // Sound effects
   const { playSound } = usePracticeSoundEffects()
@@ -1355,6 +1418,12 @@ export function ActiveSession({
     const responseTimeMs = Date.now() - attemptData.startTime - attemptData.accumulatedPauseMs
     const isCorrect = answerNum === attemptData.problem.answer
 
+    // Collect vision training data if answer is correct and vision is enabled
+    // This runs in the background (fire-and-forget) to not block the UI
+    if (isCorrect) {
+      collectVisionTrainingData(attemptData.problem.answer, attemptData.slotIndex)
+    }
+
     // Record the result
     const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
       slotIndex: attemptData.slotIndex,
@@ -1411,6 +1480,7 @@ export function ActiveSession({
     isDockedByUser,
     prefixSums,
     enterHelpMode,
+    collectVisionTrainingData,
   ])
 
   // Auto-submit when correct answer is entered

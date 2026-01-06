@@ -1,6 +1,6 @@
 import { spawn } from 'child_process'
 import path from 'path'
-import { PYTHON_ENV, TRAINING_PYTHON, TRAINING_SCRIPTS_DIR } from '../config'
+import { ensureVenvReady, PYTHON_ENV, TRAINING_PYTHON, TRAINING_SCRIPTS_DIR } from '../config'
 
 /**
  * Hardware detection result from Python/TensorFlow
@@ -38,6 +38,23 @@ export async function GET(): Promise<Response> {
   }
 
   try {
+    // Ensure venv is set up (lazy, cached)
+    const setup = await ensureVenvReady()
+    if (!setup.success) {
+      return new Response(
+        JSON.stringify({
+          available: false,
+          device: 'unknown',
+          deviceName: 'Setup Failed',
+          deviceType: 'unknown',
+          details: {},
+          error: setup.error || 'Failed to set up Python environment',
+          hint: 'Check server logs for details',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
     const cwd = path.resolve(process.cwd())
     const scriptPath = path.join(TRAINING_SCRIPTS_DIR, 'detect_hardware.py')
 

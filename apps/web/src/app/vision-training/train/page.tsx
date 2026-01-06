@@ -454,7 +454,9 @@ export default function TrainModelPage() {
               </div>
 
               <div className={css({ flex: 1 })}>
-                <div className={css({ fontSize: 'xs', color: 'gray.400', textTransform: 'uppercase' })}>
+                <div
+                  className={css({ fontSize: 'xs', color: 'gray.400', textTransform: 'uppercase' })}
+                >
                   Training Hardware
                 </div>
                 {hardwareLoading ? (

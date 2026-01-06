@@ -315,7 +315,9 @@ describe('WorksheetParsingContext', () => {
       // Start parsing without waiting for completion
       let parsePromise: Promise<void>
       act(() => {
-        parsePromise = result.current.startParse({ attachmentId: 'attachment-1' })
+        parsePromise = result.current.startParse({
+          attachmentId: 'attachment-1',
+        })
       })
 
       // Wait for the streaming to start

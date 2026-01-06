@@ -1080,11 +1080,11 @@ To verify your game integrates correctly with the practice system:
 
 **Key files:**
 
-| File | Purpose |
-|------|---------|
-| `src/components/practice/GameBreakScreen.tsx` | Game break UI, timer, game selection |
-| `src/components/practice/PracticeGameModeProvider.tsx` | Wraps games, listens for completion |
-| `src/hooks/useGameBreakRoom.ts` | Creates temporary room for game break |
-| `src/hooks/useGameBreakTimer.ts` | Break duration timer |
+| File                                                   | Purpose                               |
+| ------------------------------------------------------ | ------------------------------------- |
+| `src/components/practice/GameBreakScreen.tsx`          | Game break UI, timer, game selection  |
+| `src/components/practice/PracticeGameModeProvider.tsx` | Wraps games, listens for completion   |
+| `src/hooks/useGameBreakRoom.ts`                        | Creates temporary room for game break |
+| `src/hooks/useGameBreakTimer.ts`                       | Break duration timer                  |
 
 **See also:** `.claude/ARCADE_ROOM_ARCHITECTURE.md` for complete integration documentation.

@@ -11,6 +11,8 @@ import {
   useState,
 } from 'react'
 import type { CalibrationGrid } from '@/types/vision'
+import type { ColumnImageData } from '@/lib/vision/trainingData'
+import { imageDataToBase64Png } from '@/lib/vision/trainingData'
 
 /**
  * Camera source type for vision
@@ -216,6 +218,18 @@ interface MyAbacusContextValue {
   setVisionFrameCallback: (callback: VisionFrameCallback | null) => void
   /** Emit a vision frame (called by DockedVisionFeed) */
   emitVisionFrame: (frame: VisionFrameData) => void
+  /** Ref for DockedVisionFeed to register its video/image source for training data capture */
+  visionSourceRef: MutableRefObject<VisionSourceRef | null>
+  /** Capture column images from the current vision source for training data */
+  captureTrainingColumns: (columnCount: number) => ColumnImageData[] | null
+}
+
+/**
+ * Vision source reference for training data capture
+ */
+export interface VisionSourceRef {
+  type: 'video' | 'image'
+  element: HTMLVideoElement | HTMLImageElement
 }
 
 const MyAbacusContext = createContext<MyAbacusContextValue | undefined>(undefined)
@@ -386,6 +400,83 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
     visionFrameCallbackRef.current?.(frame)
   }, [])
 
+  // Vision source ref for training data capture
+  // We need to explicitly type this to get MutableRefObject instead of RefObject
+  const visionSourceRef: MutableRefObject<VisionSourceRef | null> = useRef<VisionSourceRef | null>(
+    null
+  )
+
+  // Capture training columns from current vision source
+  const captureTrainingColumns = useCallback(
+    (columnCount: number): ColumnImageData[] | null => {
+      const source = visionSourceRef.current
+      if (!source) return null
+
+      try {
+        // Dynamically import frameProcessor (client-side only)
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const {
+          processVideoFrame,
+          processImageFrame,
+          toGrayscale,
+          resizeImageData,
+          sliceIntoColumns,
+        } = require('@/lib/vision/frameProcessor')
+
+        let columnImages: ImageData[]
+
+        if (source.type === 'video') {
+          const video = source.element as HTMLVideoElement
+          if (!video || video.readyState < 2) return null
+
+          if (visionConfig.calibration) {
+            columnImages = processVideoFrame(video, visionConfig.calibration)
+          } else {
+            // Fallback: slice entire frame into columns
+            const canvas = document.createElement('canvas')
+            canvas.width = video.videoWidth
+            canvas.height = video.videoHeight
+            const ctx = canvas.getContext('2d')!
+            ctx.drawImage(video, 0, 0)
+            const roiData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+            const syntheticCalibration = {
+              roi: { x: 0, y: 0, width: canvas.width, height: canvas.height },
+              columnCount,
+              columnDividers: Array.from(
+                { length: columnCount - 1 },
+                (_, i) => (i + 1) / columnCount
+              ),
+              rotation: 0,
+            }
+            const cols = sliceIntoColumns(roiData, syntheticCalibration)
+            columnImages = cols.map((col: ImageData) => {
+              const gray = toGrayscale(col)
+              return resizeImageData(gray, 64, 128)
+            })
+          }
+        } else {
+          const image = source.element as HTMLImageElement
+          if (!image || !image.complete || image.naturalWidth === 0) return null
+
+          // Phone camera - no calibration needed
+          columnImages = processImageFrame(image, null, columnCount)
+        }
+
+        if (columnImages.length === 0) return null
+
+        // Convert to base64 PNG
+        return columnImages.map((imgData: ImageData, index: number) => ({
+          columnIndex: index,
+          imageData: imageDataToBase64Png(imgData),
+        }))
+      } catch (error) {
+        console.error('[MyAbacusContext] Failed to capture training columns:', error)
+        return null
+      }
+    },
+    [visionConfig.calibration]
+  )
+
   return (
     <MyAbacusContext.Provider
       value={{
@@ -432,6 +523,8 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
         closeVisionSetup,
         setVisionFrameCallback,
         emitVisionFrame,
+        visionSourceRef,
+        captureTrainingColumns,
       }}
     >
       {children}

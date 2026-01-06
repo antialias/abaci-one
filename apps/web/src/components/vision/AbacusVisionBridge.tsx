@@ -1421,27 +1421,47 @@ export function AbacusVisionBridge({
           })}
         >
           {isVisionSetupComplete && (
-            <button
-              type="button"
-              onClick={onToggleVision}
-              className={css({
-                px: 4,
-                py: 3,
-                bg: isVisionEnabled ? 'red.600' : 'green.600',
-                color: 'white',
-                borderRadius: 'lg',
-                fontWeight: 'semibold',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                _hover: {
-                  bg: isVisionEnabled ? 'red.700' : 'green.700',
-                  transform: 'scale(1.02)',
-                },
-              })}
-            >
-              {isVisionEnabled ? 'Disable Vision' : 'Enable Vision'}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={onToggleVision}
+                className={css({
+                  px: 4,
+                  py: 3,
+                  bg: isVisionEnabled ? 'red.600' : 'green.600',
+                  color: 'white',
+                  borderRadius: 'lg',
+                  fontWeight: 'semibold',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  _hover: {
+                    bg: isVisionEnabled ? 'red.700' : 'green.700',
+                    transform: 'scale(1.02)',
+                  },
+                })}
+              >
+                {isVisionEnabled ? 'Disable Vision' : 'Enable Vision'}
+              </button>
+
+              {/* Training data collection disclaimer */}
+              <div
+                data-element="training-data-disclaimer"
+                className={css({
+                  mt: 2,
+                  p: 2,
+                  bg: 'blue.900/50',
+                  borderRadius: 'md',
+                  fontSize: 'xs',
+                  color: 'blue.200',
+                  lineHeight: 1.4,
+                })}
+              >
+                <strong>Training Data:</strong> When vision is enabled and you answer correctly,
+                abacus column images may be saved to help improve the bead detection model. No
+                personally identifiable information is collected with these images.
+              </div>
+            </>
           )}
         </div>
       )}
