@@ -41,7 +41,7 @@ export async function GET(): Promise<Response> {
     const scriptPath = 'scripts/train-column-classifier/detect_hardware.py'
 
     const result = await new Promise<HardwareInfo>((resolve, reject) => {
-      const process = spawn('python3', [scriptPath], {
+      const childProcess = spawn('python3', [scriptPath], {
         cwd,
         env: { ...process.env, PYTHONUNBUFFERED: '1' },
         timeout: 30000, // 30 second timeout
@@ -50,15 +50,15 @@ export async function GET(): Promise<Response> {
       let stdout = ''
       let stderr = ''
 
-      process.stdout?.on('data', (data: Buffer) => {
+      childProcess.stdout?.on('data', (data: Buffer) => {
         stdout += data.toString()
       })
 
-      process.stderr?.on('data', (data: Buffer) => {
+      childProcess.stderr?.on('data', (data: Buffer) => {
         stderr += data.toString()
       })
 
-      process.on('close', (code) => {
+      childProcess.on('close', (code) => {
         if (code === 0) {
           try {
             const parsed = JSON.parse(stdout.trim())
@@ -71,7 +71,7 @@ export async function GET(): Promise<Response> {
         }
       })
 
-      process.on('error', (error) => {
+      childProcess.on('error', (error) => {
         reject(error)
       })
     })
