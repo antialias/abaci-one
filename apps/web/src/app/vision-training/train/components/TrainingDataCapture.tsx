@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { css } from '../../../../../styled-system/css'
 import { CameraCapture, type CameraSource } from '@/components/vision/CameraCapture'
+import type { CalibrationGrid } from '@/types/vision'
 
 interface TrainingDataCaptureProps {
   /** Called when samples are saved successfully */
@@ -33,6 +34,7 @@ export function TrainingDataCapture({
   const [captureCount, setCaptureCount] = useState(0)
   const [isPhoneConnected, setIsPhoneConnected] = useState(false)
   const [cameraSource, setCameraSource] = useState<CameraSource>('local')
+  const [calibration, setCalibration] = useState<CalibrationGrid | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const captureElementRef = useRef<HTMLImageElement | HTMLVideoElement | null>(null)
@@ -105,8 +107,8 @@ export function TrainingDataCapture({
         imageElement = element
       }
 
-      // Slice the image into columns
-      const columnImages = processImageFrame(imageElement, null, columnCount)
+      // Slice the image into columns (using calibration if available for perspective correction)
+      const columnImages = processImageFrame(imageElement, calibration, columnCount)
 
       if (columnImages.length === 0) {
         throw new Error('Failed to slice image into columns')
@@ -154,7 +156,7 @@ export function TrainingDataCapture({
     } finally {
       setIsCapturing(false)
     }
-  }, [inputValue, columnCount, onSamplesCollected])
+  }, [inputValue, columnCount, calibration, onSamplesCollected])
 
   // Handle keyboard shortcut (Enter to capture)
   const handleKeyDown = useCallback(
@@ -200,6 +202,10 @@ export function TrainingDataCapture({
         onSourceChange={setCameraSource}
         onPhoneConnected={setIsPhoneConnected}
         compact
+        enableMarkerDetection
+        columnCount={columnCount}
+        onCalibrationChange={setCalibration}
+        showRectifiedView
       />
 
       {/* Capture controls - show when camera is ready */}
@@ -272,10 +278,28 @@ export function TrainingDataCapture({
 
       {/* Instructions */}
       <div className={css({ fontSize: 'xs', color: 'gray.500', mt: 3 })}>
-        <p>1. Point camera at your abacus</p>
-        <p>2. Set beads to show a number</p>
-        <p>3. Type that number and press Capture (or Enter)</p>
+        <p>1. Point camera at your abacus with printed markers</p>
+        <p>2. Wait for all 4 markers to be detected (green dots)</p>
+        <p>3. Set beads to show a number</p>
+        <p>4. Type that number and press Capture (or Enter)</p>
       </div>
+
+      {/* Calibration status */}
+      {calibration && (
+        <div
+          className={css({
+            fontSize: 'xs',
+            color: 'green.400',
+            mt: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+          })}
+        >
+          <span>✓</span>
+          <span>Markers detected - using perspective correction</span>
+        </div>
+      )}
     </div>
   )
 }

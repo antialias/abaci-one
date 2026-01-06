@@ -47,6 +47,7 @@ interface CardCarouselProps {
   onCancel: () => void
   onTrainAgain: () => void
   onSyncComplete?: () => void
+  onDataWarningAcknowledged?: () => void
   canStartTraining: boolean
 }
 
@@ -77,6 +78,7 @@ export function CardCarousel({
   onCancel,
   onTrainAgain,
   onSyncComplete,
+  onDataWarningAcknowledged,
   canStartTraining,
 }: CardCarouselProps) {
   // Generate preview for upcoming cards based on known data
@@ -217,6 +219,7 @@ export function CardCarousel({
           onCancel={onCancel}
           onTrainAgain={onTrainAgain}
           onSyncComplete={onSyncComplete}
+          onDataWarningAcknowledged={onDataWarningAcknowledged}
           canStartTraining={canStartTraining}
         />
       )}

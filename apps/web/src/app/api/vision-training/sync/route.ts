@@ -9,6 +9,25 @@ const REMOTE_PATH = '/volume1/homes/antialias/projects/abaci.one/data/vision-tra
 const LOCAL_PATH = path.join(process.cwd(), 'data/vision-training/collected/')
 
 /**
+ * File that tracks intentionally deleted images (to prevent re-syncing)
+ */
+const DELETED_FILE = path.join(LOCAL_PATH, '.deleted')
+
+/**
+ * Read the list of intentionally deleted files
+ */
+async function readDeletedFiles(): Promise<Set<string>> {
+  try {
+    const content = await fs.promises.readFile(DELETED_FILE, 'utf-8')
+    const lines = content.split('\n').filter((line) => line.trim())
+    return new Set(lines)
+  } catch {
+    // File doesn't exist yet - no deletions recorded
+    return new Set()
+  }
+}
+
+/**
  * POST /api/vision-training/sync
  * Sync training data from production to local using rsync
  * Returns SSE stream with progress updates
@@ -28,11 +47,28 @@ export async function POST() {
 
         send('status', { message: 'Connecting to production server...', phase: 'connecting' })
 
+        // Read deleted files to exclude from sync
+        const deletedFiles = await readDeletedFiles()
+        const excludeArgs: string[] = []
+
+        // Add each deleted file as an exclude pattern
+        for (const file of deletedFiles) {
+          excludeArgs.push('--exclude', file)
+        }
+
+        if (deletedFiles.size > 0) {
+          send('status', {
+            message: `Excluding ${deletedFiles.size} previously deleted files...`,
+            phase: 'connecting',
+          })
+        }
+
         // Run rsync with progress
         const rsync = spawn('rsync', [
           '-avz',
           '--progress',
           '--stats',
+          ...excludeArgs,
           `${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}`,
           LOCAL_PATH,
         ])
@@ -126,7 +162,7 @@ export async function POST() {
 
 /**
  * GET /api/vision-training/sync
- * Check if sync is available (SSH connectivity)
+ * Check if sync is available (SSH connectivity) and what files would be synced
  */
 export async function GET() {
   try {
@@ -143,15 +179,39 @@ export async function GET() {
       }
     )
 
-    // Get remote stats
-    const { stdout } = await execAsync(
-      `ssh ${REMOTE_USER}@${REMOTE_HOST} "find '${REMOTE_PATH}' -name '*.png' 2>/dev/null | wc -l"`,
-      { timeout: 10000 }
+    // Get list of remote files (just filenames, not full paths)
+    const { stdout: remoteFilesOutput } = await execAsync(
+      `ssh ${REMOTE_USER}@${REMOTE_HOST} "find '${REMOTE_PATH}' -name '*.png' -printf '%P\\n' 2>/dev/null"`,
+      { timeout: 15000 }
     )
-    const remoteCount = parseInt(stdout.trim(), 10) || 0
+    const remoteFiles = new Set(remoteFilesOutput.trim().split('\n').filter(Boolean))
+    const remoteCount = remoteFiles.size
 
-    // Get local stats
+    // Get local files and deleted files
     const localStats = await countLocalImages()
+    const localFiles = await listLocalFiles()
+    const deletedFiles = await readDeletedFiles()
+
+    // Find files that exist on remote but not locally (excluding intentionally deleted)
+    const newOnRemote: string[] = []
+    const excludedByDeletion: string[] = []
+    for (const file of remoteFiles) {
+      if (!localFiles.has(file)) {
+        if (deletedFiles.has(file)) {
+          excludedByDeletion.push(file)
+        } else {
+          newOnRemote.push(file)
+        }
+      }
+    }
+
+    // Find files that exist locally but not on remote
+    const newOnLocal: string[] = []
+    for (const file of localFiles) {
+      if (!remoteFiles.has(file)) {
+        newOnLocal.push(file)
+      }
+    }
 
     return Response.json({
       available: true,
@@ -160,9 +220,15 @@ export async function GET() {
         totalImages: remoteCount,
       },
       local: localStats,
-      needsSync: remoteCount > localStats.totalImages,
+      // Smart sync detection: there are files on remote that we don't have locally
+      needsSync: newOnRemote.length > 0,
+      newOnRemote: newOnRemote.length,
+      newOnLocal: newOnLocal.length,
+      // Files that would sync but are in our deleted list
+      excludedByDeletion: excludedByDeletion.length,
     })
-  } catch {
+  } catch (error) {
+    console.error('[vision-training/sync] Error:', error)
     return Response.json({
       available: false,
       error: 'Cannot connect to production server',
@@ -191,4 +257,25 @@ async function countLocalImages(): Promise<{
   }
 
   return { totalImages, digitCounts }
+}
+
+async function listLocalFiles(): Promise<Set<string>> {
+  const files = new Set<string>()
+
+  for (let digit = 0; digit <= 9; digit++) {
+    const digitPath = path.join(LOCAL_PATH, String(digit))
+    try {
+      const dirFiles = await fs.promises.readdir(digitPath)
+      for (const file of dirFiles) {
+        if (file.endsWith('.png')) {
+          // Use relative path format: digit/filename.png
+          files.add(`${digit}/${file}`)
+        }
+      }
+    } catch {
+      // Directory doesn't exist
+    }
+  }
+
+  return files
 }

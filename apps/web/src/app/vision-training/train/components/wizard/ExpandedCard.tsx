@@ -51,6 +51,7 @@ interface ExpandedCardProps {
   onCancel: () => void
   onTrainAgain: () => void
   onSyncComplete?: () => void
+  onDataWarningAcknowledged?: () => void
   canStartTraining: boolean
 }
 
@@ -79,6 +80,7 @@ export function ExpandedCard({
   onCancel,
   onTrainAgain,
   onSyncComplete,
+  onDataWarningAcknowledged,
   canStartTraining,
 }: ExpandedCardProps) {
   const cardDef = CARDS[cardId]
@@ -92,6 +94,7 @@ export function ExpandedCard({
             samplesLoading={samplesLoading}
             onProgress={onProgress}
             onSyncComplete={onSyncComplete}
+            onDataWarningAcknowledged={onDataWarningAcknowledged}
           />
         )
       case 'hardware':

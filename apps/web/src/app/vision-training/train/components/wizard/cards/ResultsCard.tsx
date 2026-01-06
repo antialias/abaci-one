@@ -19,11 +19,20 @@ export function ResultsCard({ result, error, onTrainAgain }: ResultsCardProps) {
         </div>
         <div
           className={css({
-            color: 'gray.400',
+            color: 'gray.300',
             fontSize: 'sm',
             mb: 4,
-            maxWidth: '280px',
-            mx: 'auto',
+            p: 3,
+            bg: 'red.900/30',
+            border: '1px solid',
+            borderColor: 'red.800',
+            borderRadius: 'lg',
+            textAlign: 'left',
+            fontFamily: 'mono',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            maxHeight: '150px',
+            overflow: 'auto',
           })}
         >
           {error}

@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDeskViewCamera } from '@/hooks/useDeskViewCamera'
+import { useMarkerDetection } from '@/hooks/useMarkerDetection'
 import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
 import { css } from '../../../styled-system/css'
 import { RemoteCameraQRCode } from './RemoteCameraQRCode'
 import { VisionCameraFeed } from './VisionCameraFeed'
+import type { CalibrationGrid } from '@/types/vision'
 
 export type CameraSource = 'local' | 'phone'
 
@@ -22,6 +24,14 @@ export interface CameraCaptureProps {
   showSourceSelector?: boolean
   /** Compact mode - smaller QR code, less padding */
   compact?: boolean
+  /** Enable ArUco marker detection for auto-calibration (default: false) */
+  enableMarkerDetection?: boolean
+  /** Number of columns for the abacus (used for calibration grid) */
+  columnCount?: number
+  /** Called when calibration is updated from marker detection */
+  onCalibrationChange?: (calibration: CalibrationGrid | null) => void
+  /** Show rectified (perspective-corrected) view when calibrated (default: false) */
+  showRectifiedView?: boolean
 }
 
 /**
@@ -44,12 +54,29 @@ export function CameraCapture({
   onPhoneConnected,
   showSourceSelector = true,
   compact = false,
+  enableMarkerDetection = false,
+  columnCount = 4,
+  onCalibrationChange,
+  showRectifiedView = false,
 }: CameraCaptureProps) {
   const [cameraSource, setCameraSource] = useState<CameraSource>(initialSource)
 
   // Local camera
   const camera = useDeskViewCamera()
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const rectifiedCanvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  // Track video element in state so hook can react to it
+  // (refs don't trigger re-renders, so we need state for the hook)
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
+
+  // ArUco marker detection (using shared hook)
+  const { markersFound, calibration, isCalibrated } = useMarkerDetection({
+    enabled: enableMarkerDetection && cameraSource === 'local',
+    videoElement,
+    columnCount,
+    onCalibrationChange,
+  })
 
   // Phone camera
   const {
@@ -147,6 +174,7 @@ export function CameraCapture({
   const handleVideoRef = useCallback(
     (el: HTMLVideoElement | null) => {
       videoRef.current = el
+      setVideoElement(el) // Update state so marker detection hook can react
       if (el && onCapture) {
         onCapture(el)
       }
@@ -287,6 +315,11 @@ export function CameraCapture({
               videoStream={camera.videoStream}
               isLoading={camera.isLoading}
               videoRef={handleVideoRef}
+              calibration={enableMarkerDetection ? calibration : undefined}
+              showRectifiedView={showRectifiedView && isCalibrated}
+              rectifiedCanvasRef={(el) => {
+                rectifiedCanvasRef.current = el
+              }}
             />
 
             {/* Local camera toolbar */}
@@ -307,6 +340,47 @@ export function CameraCapture({
                   backdropFilter: 'blur(4px)',
                 })}
               >
+                {/* Marker status indicator (when marker detection is enabled) */}
+                {enableMarkerDetection && (
+                  <div
+                    data-element="marker-status"
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      fontSize: 'xs',
+                      color: isCalibrated ? 'green.400' : 'gray.400',
+                    })}
+                  >
+                    <div
+                      className={css({
+                        display: 'flex',
+                        gap: 0.5,
+                      })}
+                    >
+                      {[0, 1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className={css({
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: 'full',
+                            bg: i < markersFound ? 'green.500' : 'gray.600',
+                            transition: 'background 0.15s',
+                          })}
+                        />
+                      ))}
+                    </div>
+                    <span>
+                      {isCalibrated
+                        ? 'Calibrated'
+                        : markersFound > 0
+                          ? `${markersFound}/4`
+                          : 'No markers'}
+                    </span>
+                  </div>
+                )}
+
                 {/* Camera selector */}
                 {camera.availableDevices.length > 0 && (
                   <select

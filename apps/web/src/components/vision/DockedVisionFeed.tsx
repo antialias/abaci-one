@@ -2,18 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
-import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
-import {
-  cleanupArucoDetector,
-  detectMarkers,
-  initArucoDetector,
-  isArucoAvailable,
-  loadAruco,
-} from '@/lib/vision/arucoDetection'
 import { useFrameStability } from '@/hooks/useFrameStability'
+import { useMarkerDetection } from '@/hooks/useMarkerDetection'
+import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
 import { VisionCameraFeed } from './VisionCameraFeed'
 import { css } from '../../../styled-system/css'
-import type { CalibrationGrid } from '@/types/vision'
 
 /**
  * Feature flag: Enable automatic abacus value detection from video feed.
@@ -77,11 +70,10 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
     visionSourceRef,
   } = useMyAbacus()
 
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
   const remoteImageRef = useRef<HTMLImageElement>(null)
   const rectifiedCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const animationFrameRef = useRef<number | null>(null)
-  const markerDetectionFrameRef = useRef<number | null>(null)
   const lastInferenceTimeRef = useRef<number>(0)
   const lastBroadcastTimeRef = useRef<number>(0)
 
@@ -90,8 +82,9 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
   const [isLoading, setIsLoading] = useState(true)
   const [detectedValue, setDetectedValue] = useState<number | null>(null)
   const [confidence, setConfidence] = useState(0)
-  const [isArucoReady, setIsArucoReady] = useState(false)
-  const [markersFound, setMarkersFound] = useState(0)
+
+  // Track video element in state for marker detection hook
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
 
   // Stability tracking for detected values (hook must be called unconditionally)
   const stability = useFrameStability()
@@ -100,108 +93,13 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
   const isLocalCamera = visionConfig.activeCameraSource === 'local'
   const isRemoteCamera = visionConfig.activeCameraSource === 'phone'
 
-  // Load and initialize ArUco on mount (for local camera auto-calibration)
-  useEffect(() => {
-    if (!isLocalCamera) return
-
-    let cancelled = false
-
-    const initAruco = async () => {
-      try {
-        await loadAruco()
-        if (cancelled) return
-
-        const available = isArucoAvailable()
-        if (available) {
-          initArucoDetector()
-          setIsArucoReady(true)
-        }
-      } catch (err) {
-        console.error('[DockedVisionFeed] Failed to load ArUco:', err)
-      }
-    }
-
-    initAruco()
-    return () => {
-      cancelled = true
-    }
-  }, [isLocalCamera])
-
-  // Cleanup ArUco detector on unmount
-  useEffect(() => {
-    return () => {
-      cleanupArucoDetector()
-    }
-  }, [])
-
-  // Auto-calibration loop using ArUco markers (for local camera)
-  useEffect(() => {
-    if (!visionConfig.enabled || !isLocalCamera || !videoStream || !isArucoReady) {
-      if (markerDetectionFrameRef.current) {
-        cancelAnimationFrame(markerDetectionFrameRef.current)
-        markerDetectionFrameRef.current = null
-      }
-      return
-    }
-
-    const video = videoRef.current
-    if (!video) return
-
-    let running = true
-
-    const detectLoop = () => {
-      if (!running || !video || video.readyState < 2) {
-        if (running) {
-          markerDetectionFrameRef.current = requestAnimationFrame(detectLoop)
-        }
-        return
-      }
-
-      const result = detectMarkers(video)
-      setMarkersFound(result.markersFound)
-
-      // Auto-update calibration when all 4 markers found
-      if (result.allMarkersFound && result.quadCorners) {
-        const grid: CalibrationGrid = {
-          roi: {
-            x: Math.min(result.quadCorners.topLeft.x, result.quadCorners.bottomLeft.x),
-            y: Math.min(result.quadCorners.topLeft.y, result.quadCorners.topRight.y),
-            width:
-              Math.max(result.quadCorners.topRight.x, result.quadCorners.bottomRight.x) -
-              Math.min(result.quadCorners.topLeft.x, result.quadCorners.bottomLeft.x),
-            height:
-              Math.max(result.quadCorners.bottomLeft.y, result.quadCorners.bottomRight.y) -
-              Math.min(result.quadCorners.topLeft.y, result.quadCorners.topRight.y),
-          },
-          corners: result.quadCorners,
-          columnCount,
-          columnDividers: Array.from({ length: columnCount - 1 }, (_, i) => (i + 1) / columnCount),
-          rotation: 0,
-        }
-        // Update calibration in context
-        setVisionCalibration(grid)
-      }
-
-      markerDetectionFrameRef.current = requestAnimationFrame(detectLoop)
-    }
-
-    detectLoop()
-
-    return () => {
-      running = false
-      if (markerDetectionFrameRef.current) {
-        cancelAnimationFrame(markerDetectionFrameRef.current)
-        markerDetectionFrameRef.current = null
-      }
-    }
-  }, [
-    visionConfig.enabled,
-    isLocalCamera,
-    videoStream,
-    isArucoReady,
+  // ArUco marker detection using shared hook
+  const { markersFound } = useMarkerDetection({
+    enabled: visionConfig.enabled && isLocalCamera && videoStream !== null,
+    videoElement,
     columnCount,
-    setVisionCalibration,
-  ])
+    onCalibrationChange: setVisionCalibration,
+  })
 
   // Remote camera hook
   const {
@@ -599,6 +497,7 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
           showRectifiedView={true}
           videoRef={(el) => {
             videoRef.current = el
+            setVideoElement(el) // Update state so marker detection hook can react
           }}
           rectifiedCanvasRef={(el) => {
             rectifiedCanvasRef.current = el

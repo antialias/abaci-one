@@ -73,6 +73,8 @@ export function TrainingWizard({
   // Wizard position state
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0)
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
+  // Track if user explicitly bypassed insufficient data warning
+  const [dataWarningAcknowledged, setDataWarningAcknowledged] = useState(false)
 
   // Derive state
   const isGpu = hardwareInfo?.deviceType === 'gpu'
@@ -80,6 +82,8 @@ export function TrainingWizard({
     epochHistory.length > 0 ? Math.max(...epochHistory.map((e) => e.val_accuracy)) : 0
   const hasEnoughData =
     samples?.hasData && samples.dataQuality !== 'none' && samples.dataQuality !== 'insufficient'
+  // Allow training if data is sufficient OR user acknowledged the warning
+  const canProceedWithData = hasEnoughData || (dataWarningAcknowledged && samples?.hasData)
 
   // Sync wizard position with server phase during training
   useEffect(() => {
@@ -117,8 +121,14 @@ export function TrainingWizard({
   const handleTrainAgain = useCallback(() => {
     setCurrentPhaseIndex(0)
     setCurrentCardIndex(0)
+    setDataWarningAcknowledged(false)
     onReset()
   }, [onReset])
+
+  // Handle data warning acknowledgment (user clicked "Continue Anyway")
+  const handleDataWarningAcknowledged = useCallback(() => {
+    setDataWarningAcknowledged(true)
+  }, [])
 
   // Get phase status based on current position
   const getPhaseStatus = (phaseIndex: number): PhaseStatus => {
@@ -207,9 +217,13 @@ export function TrainingWizard({
           onCancel={onCancel}
           onTrainAgain={handleTrainAgain}
           onSyncComplete={onSyncComplete}
-          // Validation - require data, hardware, and dependencies all ready
+          onDataWarningAcknowledged={handleDataWarningAcknowledged}
+          // Validation - require data (or acknowledged warning), hardware, and dependencies all ready
           canStartTraining={
-            !!hasEnoughData && !hardwareLoading && !hardwareInfo?.error && !!preflightInfo?.ready
+            !!canProceedWithData &&
+            !hardwareLoading &&
+            !hardwareInfo?.error &&
+            !!preflightInfo?.ready
           }
         />
       ))}

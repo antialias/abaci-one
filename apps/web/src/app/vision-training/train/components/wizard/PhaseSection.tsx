@@ -49,6 +49,7 @@ interface PhaseSectionProps {
   onCancel: () => void
   onTrainAgain: () => void
   onSyncComplete?: () => void
+  onDataWarningAcknowledged?: () => void
   canStartTraining: boolean
 }
 
@@ -86,6 +87,7 @@ export function PhaseSection({
   onCancel,
   onTrainAgain,
   onSyncComplete,
+  onDataWarningAcknowledged,
   canStartTraining,
 }: PhaseSectionProps) {
   const styles = STATUS_STYLES[status]
@@ -194,6 +196,7 @@ export function PhaseSection({
             onCancel={onCancel}
             onTrainAgain={onTrainAgain}
             onSyncComplete={onSyncComplete}
+            onDataWarningAcknowledged={onDataWarningAcknowledged}
             canStartTraining={canStartTraining}
           />
 

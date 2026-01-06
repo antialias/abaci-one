@@ -47,6 +47,8 @@ export default function TrainModelPage() {
 
   // Refs
   const eventSourceRef = useRef<EventSource | null>(null)
+  // Track stderr logs for error messages
+  const stderrLogsRef = useRef<string[]>([])
 
   // Fetch training samples
   const fetchSamples = useCallback(async () => {
@@ -186,10 +188,22 @@ export default function TrainModelPage() {
       case 'started':
         setServerPhase('setup')
         setStatusMessage('Training started')
+        // Reset stderr logs on new training
+        stderrLogsRef.current = []
         break
       case 'status':
         setStatusMessage(data.message as string)
         if (data.phase) setServerPhase(data.phase as ServerPhase)
+        break
+      case 'log':
+        // Track stderr logs for error messages
+        if (data.type === 'stderr' && data.message) {
+          stderrLogsRef.current.push(data.message as string)
+          // Keep only last 20 lines to avoid memory issues
+          if (stderrLogsRef.current.length > 20) {
+            stderrLogsRef.current.shift()
+          }
+        }
         break
       case 'dataset_loaded':
         setDatasetInfo({
@@ -211,10 +225,22 @@ export default function TrainModelPage() {
         setServerPhase('complete')
         setResult(data as unknown as TrainingResult)
         break
-      case 'error':
+      case 'error': {
         setServerPhase('error')
-        setError(data.message as string)
+        // Extract meaningful error from stderr logs
+        const stderrText = stderrLogsRef.current.join('\n')
+        // Look for Python ValueError, Exception, or Error messages
+        const errorMatch = stderrText.match(/(ValueError|Exception|Error):\s*(.+?)(?:\n|$)/s)
+        if (errorMatch) {
+          setError(errorMatch[0].trim())
+        } else if (stderrLogsRef.current.length > 0) {
+          // Use last few stderr lines if no specific error pattern found
+          setError(stderrLogsRef.current.slice(-3).join('\n'))
+        } else {
+          setError(data.message as string)
+        }
         break
+      }
       case 'cancelled':
         setServerPhase('idle')
         break
