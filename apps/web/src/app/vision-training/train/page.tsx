@@ -464,12 +464,10 @@ export default function TrainModelPage() {
                   Training Hardware
                 </div>
                 {hardwareLoading ? (
-                  <div className={css({ fontSize: 'md', color: 'blue.300' })}>
-                    Setting up Python environment...
-                  </div>
+                  <div className={css({ fontSize: 'md', color: 'gray.400' })}>—</div>
                 ) : hardwareInfo?.error ? (
                   <div className={css({ fontSize: 'md', color: 'red.300' })}>
-                    Setup Failed
+                    Not available
                   </div>
                 ) : (
                   <div className={css({ fontSize: 'md', fontWeight: 'semibold' })}>
@@ -511,39 +509,27 @@ export default function TrainModelPage() {
               )}
             </div>
 
-            {/* Error details */}
-            {hardwareInfo?.error && (
-              <div className={css({ mt: 2 })}>
-                <p className={css({ fontSize: 'sm', color: 'red.300' })}>
-                  {hardwareInfo.error}
-                </p>
-                {hardwareInfo.hint && (
-                  <p className={css({ fontSize: 'sm', color: 'gray.400', mt: 1 })}>
-                    Hint: {hardwareInfo.hint}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={fetchHardware}
-                  disabled={hardwareLoading}
-                  className={css({
-                    mt: 2,
-                    px: 3,
-                    py: 1,
-                    bg: 'blue.600',
-                    color: 'white',
-                    fontSize: 'sm',
-                    fontWeight: 'medium',
-                    borderRadius: 'md',
-                    border: 'none',
-                    cursor: 'pointer',
-                    _hover: { bg: 'blue.700' },
-                    _disabled: { opacity: 0.6, cursor: 'not-allowed' },
-                  })}
-                >
-                  {hardwareLoading ? 'Retrying...' : 'Retry Setup'}
-                </button>
-              </div>
+            {/* Retry button on error */}
+            {hardwareInfo?.error && !hardwareLoading && (
+              <button
+                type="button"
+                onClick={fetchHardware}
+                className={css({
+                  mt: 2,
+                  px: 3,
+                  py: 1,
+                  bg: 'blue.600',
+                  color: 'white',
+                  fontSize: 'sm',
+                  fontWeight: 'medium',
+                  borderRadius: 'md',
+                  border: 'none',
+                  cursor: 'pointer',
+                  _hover: { bg: 'blue.700' },
+                })}
+              >
+                Retry
+              </button>
             )}
 
             {/* Additional details */}
@@ -691,31 +677,56 @@ export default function TrainModelPage() {
                   borderRadius: 'full',
                   bg:
                     phase === 'idle'
-                      ? 'gray.500'
+                      ? hardwareLoading
+                        ? 'blue.500'
+                        : hardwareInfo?.error
+                          ? 'red.500'
+                          : 'green.500'
                       : phase === 'complete'
                         ? 'green.500'
                         : phase === 'error'
                           ? 'red.500'
                           : 'blue.500',
                   animation:
-                    phase === 'training' || phase === 'loading' || phase === 'setup'
+                    phase === 'training' || phase === 'loading' || hardwareLoading
                       ? 'pulse 1.5s infinite'
                       : 'none',
                 })}
               />
               <span className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>
-                {phase === 'idle' && 'Ready'}
-                {phase === 'setup' && 'Starting...'}
+                {phase === 'idle' && (
+                  hardwareLoading
+                    ? 'Preparing...'
+                    : hardwareInfo?.error
+                      ? 'Setup failed'
+                      : 'Ready to train'
+                )}
+                {phase === 'setup' && 'Starting training...'}
                 {phase === 'loading' && 'Loading dataset...'}
                 {phase === 'training' &&
-                  `Epoch ${currentEpoch?.epoch || 0}/${currentEpoch?.total_epochs || config.epochs}`}
+                  `Training: Epoch ${currentEpoch?.epoch || 0}/${currentEpoch?.total_epochs || config.epochs}`}
                 {phase === 'exporting' && 'Exporting model...'}
                 {phase === 'complete' && 'Training Complete!'}
                 {phase === 'error' && 'Error'}
               </span>
             </div>
 
-            {statusMessage && (
+            {phase === 'idle' && hardwareLoading && (
+              <p className={css({ color: 'gray.400', fontSize: 'sm' })}>
+                Installing TensorFlow and detecting hardware. First run may take 2-5 minutes.
+              </p>
+            )}
+
+            {phase === 'idle' && !hardwareLoading && hardwareInfo?.error && (
+              <div className={css({ color: 'gray.400', fontSize: 'sm' })}>
+                <p className={css({ color: 'red.300' })}>{hardwareInfo.error}</p>
+                {hardwareInfo.hint && (
+                  <p className={css({ mt: 1 })}>Hint: {hardwareInfo.hint}</p>
+                )}
+              </div>
+            )}
+
+            {statusMessage && phase !== 'idle' && (
               <p className={css({ color: 'gray.400', fontSize: 'sm' })}>{statusMessage}</p>
             )}
 
