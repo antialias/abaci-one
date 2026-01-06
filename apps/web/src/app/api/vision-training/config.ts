@@ -117,6 +117,12 @@ async function createVenv(): Promise<SetupResult> {
   console.log(`[vision-training] Creating venv with ${basePython}...`)
 
   try {
+    // Remove incomplete venv if it exists
+    if (fs.existsSync(VENV_DIR)) {
+      console.log('[vision-training] Removing incomplete venv...')
+      fs.rmSync(VENV_DIR, { recursive: true, force: true })
+    }
+
     // Create venv
     await execAsync(`"${basePython}" -m venv "${VENV_DIR}"`, { timeout: 60000 })
 
@@ -211,6 +217,12 @@ export async function ensureVenvReady(): Promise<SetupResult> {
 
   // Need to set up - do it once
   console.log('[vision-training] Venv not found, setting up...')
-  setupPromise = createVenv()
+  setupPromise = createVenv().then((result) => {
+    // If setup failed, clear cache so we can retry next time
+    if (!result.success) {
+      setupPromise = null
+    }
+    return result
+  })
   return setupPromise
 }
