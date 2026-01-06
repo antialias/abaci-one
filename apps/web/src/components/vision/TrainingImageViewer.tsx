@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo, type ReactNode } from 'react'
 import { css } from '../../../styled-system/css'
 
@@ -128,12 +129,38 @@ export function TrainingImageViewer({
       })}
     >
       <header className={css({ mb: 6 })}>
-        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 2 })}>
-          Vision Training Data
-        </h1>
-        <p className={css({ color: 'gray.400', fontSize: 'sm' })}>
-          Collected abacus column images for training the classifier model
-        </p>
+        <div
+          className={css({
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            mb: 2,
+          })}
+        >
+          <div>
+            <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 2 })}>
+              Vision Training Data
+            </h1>
+            <p className={css({ color: 'gray.400', fontSize: 'sm' })}>
+              Collected abacus column images for training the classifier model
+            </p>
+          </div>
+          <Link
+            href="/vision-training/train"
+            className={css({
+              px: 4,
+              py: 2,
+              bg: 'green.600',
+              color: 'white',
+              fontWeight: 'semibold',
+              borderRadius: 'md',
+              textDecoration: 'none',
+              _hover: { bg: 'green.700' },
+            })}
+          >
+            Train Model
+          </Link>
+        </div>
       </header>
 
       {/* Stats bar */}
