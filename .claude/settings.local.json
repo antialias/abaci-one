@@ -569,7 +569,20 @@
       "Bash(brew list:*)",
       "Bash(scripts/train-column-classifier/.venv/bin/pip index:*)",
       "Bash(scripts/train-column-classifier/.venv/bin/pip:*)",
-      "WebFetch(domain:pypi.org)"
+      "WebFetch(domain:pypi.org)",
+      "Bash(\"/Users/antialias/projects/soroban-abacus-flashcards/apps/web/data/vision-training/.venv/bin/python\" -m pip install Pillow scikit-learn)",
+      "Bash(src/app/api/vision-training/config.ts )",
+      "Bash(src/app/api/vision-training/preflight/ )",
+      "Bash(src/app/vision-training/train/components/wizard/CardCarousel.tsx )",
+      "Bash(src/app/vision-training/train/components/wizard/ExpandedCard.tsx )",
+      "Bash(src/app/vision-training/train/components/wizard/PhaseSection.tsx )",
+      "Bash(src/app/vision-training/train/components/wizard/TrainingWizard.tsx )",
+      "Bash(src/app/vision-training/train/components/wizard/cards/DataCard.tsx )",
+      "Bash(src/app/vision-training/train/components/wizard/cards/DependencyCard.tsx )",
+      "Bash(src/app/vision-training/train/components/wizard/types.ts )",
+      "Bash(src/app/vision-training/train/components/TrainingDataCapture.tsx )",
+      "Bash(src/app/vision-training/train/page.tsx )",
+      "Bash(src/components/vision/CameraCapture.tsx)"
     ],
     "deny": [],
     "ask": []
