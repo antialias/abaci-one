@@ -290,14 +290,18 @@ export default function TrainModelPage() {
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, 60px)',
               gap: 2,
-              transform: 'rotate(-5deg) scale(1.2)',
+              transform: 'rotate(-5deg)',
               transformOrigin: 'center center',
+              width: '120vw',
+              height: '120vh',
+              marginLeft: '-10vw',
+              marginTop: '-10vh',
             })}
           >
-            {/* Repeat tiles to fill background */}
-            {Array.from({ length: Math.ceil(50 / Math.max(1, allTileImages.length)) })
+            {/* Repeat tiles to fill background (need ~600+ for full coverage) */}
+            {Array.from({ length: Math.ceil(800 / Math.max(1, allTileImages.length)) })
               .flatMap(() => allTileImages)
-              .slice(0, 100)
+              .slice(0, 800)
               .map((src, i) => (
                 <img
                   key={`${src}-${i}`}
