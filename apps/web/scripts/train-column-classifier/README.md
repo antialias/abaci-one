@@ -1,104 +1,91 @@
-# Column Classifier Training Data Generator
+# Column Classifier Training
 
-Generates synthetic training images for the TensorFlow.js abacus column digit classifier used by the AbacusVisionBridge feature.
+Trains the TensorFlow.js abacus column digit classifier using real images collected from production.
 
 ## Overview
 
-This script renders single-column abacus SVGs for digits 0-9 using the `AbacusStatic` component from `@soroban/abacus-react`, then applies various augmentations to create diverse training data.
+Training data is collected automatically when users practice with vision mode enabled:
+- When a student answers correctly with vision enabled, column images are saved
+- Images are 64×128 grayscale PNGs, organized by digit (0-9)
+- Collection happens in the background without interrupting practice
 
 ## Quick Start
 
 ```bash
-# Generate training data (default: 5000 samples per digit = 50,000 total)
-npx tsx scripts/train-column-classifier/generateTrainingData.ts
+# 1. Sync training data from production
+./scripts/sync-training-data.sh
 
-# Generate fewer samples for testing
-npx tsx scripts/train-column-classifier/generateTrainingData.ts --samples 100
+# 2. Install Python dependencies
+pip install -r scripts/train-column-classifier/requirements.txt
 
-# Specify output directory
-npx tsx scripts/train-column-classifier/generateTrainingData.ts --output ./my-training-data
-
-# Set random seed for reproducibility
-npx tsx scripts/train-column-classifier/generateTrainingData.ts --seed 42
-
-# Dry run (show config without generating)
-npx tsx scripts/train-column-classifier/generateTrainingData.ts --dry-run
-```
-
-## Output Structure
-
-```
-training-data/column-classifier/
-├── 0/
-│   ├── 0_circle-mono_00000.png
-│   ├── 0_circle-mono_00001.png
-│   └── ...
-├── 1/
-├── 2/
-├── ...
-├── 9/
-├── metadata.json    # Generation configuration and stats
-└── labels.csv       # Sample labels with augmentation params
-```
-
-## Image Specifications
-
-- **Dimensions**: 64x128 pixels (width x height)
-- **Format**: Grayscale PNG
-- **Classes**: 10 (digits 0-9)
-- **Default samples**: 5,000 per digit (50,000 total)
-
-## Augmentations Applied
-
-Each sample is randomly augmented with:
-
-| Augmentation     | Range                | Purpose                        |
-| ---------------- | -------------------- | ------------------------------ |
-| Rotation         | ±5°                  | Handle camera angle variations |
-| Scale            | 0.9-1.1x             | Handle distance variations     |
-| Brightness       | 0.8-1.2x             | Handle lighting conditions     |
-| Gaussian noise   | σ=10                 | Handle camera sensor noise     |
-| Background color | 7 variations         | Handle different surfaces      |
-| Blur             | 0-1.5px (10% chance) | Handle focus issues            |
-
-## Style Variants
-
-Training data includes all bead shapes and color schemes:
-
-- `circle-mono` - Circle beads, monochrome
-- `diamond-mono` - Diamond beads, monochrome
-- `square-mono` - Square beads, monochrome
-- `circle-heaven-earth` - Circle beads, heaven-earth colors
-- `diamond-heaven-earth` - Diamond beads, heaven-earth colors
-- `circle-place-value` - Circle beads, place-value colors
-
-## Training the Model
-
-After generating training data, use the Python training script:
-
-```bash
-# Install dependencies
-pip install tensorflow numpy pillow
-
-# Train the model
+# 3. Train the model
 python scripts/train-column-classifier/train_model.py
 
-# Export to TensorFlow.js format
+# 4. Convert to TensorFlow.js format
 tensorflowjs_converter \
   --input_format=keras \
   ./models/column-classifier.keras \
   ./public/models/abacus-column-classifier/
 ```
 
-## Model Architecture
+## Data Collection
 
-The CNN architecture is designed for efficiency on mobile devices:
+Training data is collected by:
+- `POST /api/vision-training/collect` - saves column images when answer is correct
+- Images stored in `data/vision-training/collected/{digit}/*.png`
+
+View collected data at `/vision-training` in the app.
+
+### Filename Format
 
 ```
-Input: 64x128x1 (grayscale)
-├── Conv2D(32, 3x3) + ReLU + MaxPool(2x2)
-├── Conv2D(64, 3x3) + ReLU + MaxPool(2x2)
-├── Conv2D(128, 3x3) + ReLU + MaxPool(2x2)
+{timestamp}_{playerId}_{sessionId}_col{index}_{uuid}.png
+```
+
+Example: `1736112345678_abc12345_def67890_col2_a1b2c3d4.png`
+
+## Directory Structure
+
+```
+data/vision-training/collected/
+├── 0/
+│   ├── 1736112345678_abc12345_def67890_col0_a1b2c3d4.png
+│   └── ...
+├── 1/
+├── 2/
+├── ...
+└── 9/
+```
+
+## Image Specifications
+
+- **Dimensions**: 64×128 pixels (width × height)
+- **Format**: Grayscale PNG
+- **Classes**: 10 (digits 0-9)
+- **Source**: Real abacus photos from vision mode
+
+## Training the Model
+
+```bash
+# Train with default settings
+python scripts/train-column-classifier/train_model.py
+
+# Specify data directory
+python scripts/train-column-classifier/train_model.py --data-dir ./data/vision-training/collected
+
+# Adjust epochs
+python scripts/train-column-classifier/train_model.py --epochs 50
+```
+
+## Model Architecture
+
+CNN designed for efficiency on mobile devices:
+
+```
+Input: 64×128×1 (grayscale)
+├── Conv2D(32, 3×3) + ReLU + MaxPool(2×2)
+├── Conv2D(64, 3×3) + ReLU + MaxPool(2×2)
+├── Conv2D(128, 3×3) + ReLU + MaxPool(2×2)
 ├── Flatten
 ├── Dense(128) + ReLU + Dropout(0.5)
 └── Dense(10) + Softmax
@@ -109,21 +96,21 @@ Target model size: <2MB (quantized)
 
 ## Files
 
-- `types.ts` - Type definitions and default configurations
-- `renderColumn.tsx` - Single-column SVG rendering
-- `augmentation.ts` - Image augmentation utilities
-- `generateTrainingData.ts` - Main generation script
-- `train_model.py` - Python training script (to be created)
+- `train_model.py` - Python training script
+- `requirements.txt` - Python dependencies
+- `../sync-training-data.sh` - Script to pull data from production
 
 ## Requirements
 
-- Node.js 18+
-- `sharp` package (for image processing)
-- `@soroban/abacus-react` package (workspace dependency)
+- Python 3.8+
+- TensorFlow 2.x
+- tensorflowjs (for model conversion)
 
-## Notes
+## Workflow
 
-- Generation takes ~5-10 minutes for 50,000 samples
-- Output size is approximately 200-300MB
-- Training data is grayscale to focus on shape recognition
-- The model will be integrated via `useColumnClassifier.ts` hook
+1. **Collect**: Users practice with vision mode → images auto-saved on prod
+2. **Sync**: Run `sync-training-data.sh` to pull images to dev machine
+3. **Review**: Check `/vision-training` page to view/filter collected data
+4. **Train**: Run `train_model.py` to train the model
+5. **Convert**: Use `tensorflowjs_converter` to export for browser
+6. **Deploy**: Commit updated model to `public/models/abacus-column-classifier/`
