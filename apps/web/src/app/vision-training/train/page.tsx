@@ -74,28 +74,32 @@ export default function TrainModelPage() {
   const eventSourceRef = useRef<EventSource | null>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
+  // Fetch hardware info (also used for retry)
+  const fetchHardware = useCallback(async () => {
+    setHardwareLoading(true)
+    setHardwareInfo(null)
+    try {
+      const response = await fetch('/api/vision-training/hardware')
+      const data = await response.json()
+      setHardwareInfo(data)
+    } catch {
+      setHardwareInfo({
+        available: false,
+        device: 'unknown',
+        deviceName: 'Failed to detect',
+        deviceType: 'unknown',
+        details: {},
+        error: 'Failed to fetch hardware info',
+      })
+    } finally {
+      setHardwareLoading(false)
+    }
+  }, [])
+
   // Fetch hardware info on mount
   useEffect(() => {
-    async function fetchHardware() {
-      try {
-        const response = await fetch('/api/vision-training/hardware')
-        const data = await response.json()
-        setHardwareInfo(data)
-      } catch {
-        setHardwareInfo({
-          available: false,
-          device: 'unknown',
-          deviceName: 'Failed to detect',
-          deviceType: 'unknown',
-          details: {},
-          error: 'Failed to fetch hardware info',
-        })
-      } finally {
-        setHardwareLoading(false)
-      }
-    }
     fetchHardware()
-  }, [])
+  }, [fetchHardware])
 
   // Auto-scroll logs
   useEffect(() => {
@@ -507,13 +511,36 @@ export default function TrainModelPage() {
 
             {/* Error details */}
             {hardwareInfo?.error && (
-              <div className={css({ mt: 2, fontSize: 'sm', color: 'red.300' })}>
-                {hardwareInfo.error}
+              <div className={css({ mt: 2 })}>
+                <p className={css({ fontSize: 'sm', color: 'red.300' })}>
+                  {hardwareInfo.error}
+                </p>
                 {hardwareInfo.hint && (
-                  <span className={css({ display: 'block', color: 'gray.400', mt: 1 })}>
+                  <p className={css({ fontSize: 'sm', color: 'gray.400', mt: 1 })}>
                     Hint: {hardwareInfo.hint}
-                  </span>
+                  </p>
                 )}
+                <button
+                  type="button"
+                  onClick={fetchHardware}
+                  disabled={hardwareLoading}
+                  className={css({
+                    mt: 2,
+                    px: 3,
+                    py: 1,
+                    bg: 'blue.600',
+                    color: 'white',
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    borderRadius: 'md',
+                    border: 'none',
+                    cursor: 'pointer',
+                    _hover: { bg: 'blue.700' },
+                    _disabled: { opacity: 0.6, cursor: 'not-allowed' },
+                  })}
+                >
+                  {hardwareLoading ? 'Retrying...' : 'Retry Setup'}
+                </button>
               </div>
             )}
 
@@ -536,6 +563,7 @@ export default function TrainModelPage() {
               <button
                 type="button"
                 onClick={startTraining}
+                disabled={hardwareLoading || !!hardwareInfo?.error}
                 className={css({
                   flex: 1,
                   px: 6,
@@ -548,9 +576,14 @@ export default function TrainModelPage() {
                   cursor: 'pointer',
                   fontSize: 'lg',
                   _hover: { bg: 'green.700' },
+                  _disabled: {
+                    bg: 'gray.600',
+                    cursor: 'not-allowed',
+                    opacity: 0.6,
+                  },
                 })}
               >
-                Start Training
+                {hardwareLoading ? 'Setting up...' : hardwareInfo?.error ? 'Setup Failed' : 'Start Training'}
               </button>
             )}
 
