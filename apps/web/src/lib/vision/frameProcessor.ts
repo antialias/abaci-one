@@ -56,7 +56,7 @@ export function sliceIntoColumns(
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
-  const ctx = canvas.getContext('2d')!
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!
 
   // Put the ROI image on the canvas
   ctx.putImageData(roiImageData, 0, 0)
@@ -141,14 +141,14 @@ export function resizeImageData(
   const srcCanvas = document.createElement('canvas')
   srcCanvas.width = imageData.width
   srcCanvas.height = imageData.height
-  const srcCtx = srcCanvas.getContext('2d')!
+  const srcCtx = srcCanvas.getContext('2d', { willReadFrequently: true })!
   srcCtx.putImageData(imageData, 0, 0)
 
   // Create destination canvas with target size
   const dstCanvas = document.createElement('canvas')
   dstCanvas.width = targetWidth
   dstCanvas.height = targetHeight
-  const dstCtx = dstCanvas.getContext('2d')!
+  const dstCtx = dstCanvas.getContext('2d', { willReadFrequently: true })!
 
   // Use high-quality scaling
   dstCtx.imageSmoothingEnabled = true
@@ -226,7 +226,7 @@ function extractROIFromVideo(video: HTMLVideoElement, roi: ROI): ImageData {
   const canvas = document.createElement('canvas')
   canvas.width = video.videoWidth
   canvas.height = video.videoHeight
-  const ctx = canvas.getContext('2d')!
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!
   ctx.drawImage(video, 0, 0)
   return extractROI(ctx, roi)
 }
@@ -306,7 +306,7 @@ export function processImageFrame(
   const canvas = document.createElement('canvas')
   canvas.width = image.naturalWidth || image.width
   canvas.height = image.naturalHeight || image.height
-  const ctx = canvas.getContext('2d')!
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!
 
   // Draw image frame
   ctx.drawImage(image, 0, 0)

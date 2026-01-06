@@ -787,6 +787,25 @@ import { AbacusReact } from '@soroban/abacus-react'
 
 **Status:** Known issue, does not block development or deployment.
 
+## Vision Components (Camera, Markers, Calibration)
+
+**CRITICAL: Before creating or modifying any component that uses abacus vision/camera, READ:**
+
+- **`src/components/vision/VISION_COMPONENTS.md`** - Required wiring for marker detection and rectified view
+
+**Quick checklist for CameraCapture usage:**
+
+```typescript
+<CameraCapture
+  enableMarkerDetection        // ← REQUIRED for marker detection
+  columnCount={columnCount}    // ← REQUIRED for calibration grid
+  onCalibrationChange={setCalibration}  // ← REQUIRED to receive calibration
+  showRectifiedView            // ← REQUIRED to show perspective-corrected view
+/>
+```
+
+**If you skip any of these props, marker detection and/or the rectified view will not work.**
+
 ## Animation Patterns (React-Spring)
 
 When implementing continuous animations with smoothly-changing speeds (like rotating crosshairs), refer to:

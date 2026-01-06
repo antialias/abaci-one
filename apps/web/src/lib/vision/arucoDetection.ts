@@ -249,7 +249,7 @@ export function detectMarkers(
   tempCanvas.width = video.videoWidth
   tempCanvas.height = video.videoHeight
 
-  const ctx = tempCanvas.getContext('2d')
+  const ctx = tempCanvas.getContext('2d', { willReadFrequently: true })
   if (!ctx) return result
 
   // Draw video frame to canvas

@@ -79,11 +79,13 @@ export function VisionCameraFeed({
   }, [showRectifiedView, opencvReady])
 
   // Set video ref for external access
+  // IMPORTANT: Must re-run when videoStream changes because the video element
+  // only renders when videoStream exists (see early return below)
   useEffect(() => {
     if (externalVideoRef) {
       externalVideoRef(internalVideoRef.current)
     }
-  }, [externalVideoRef])
+  }, [externalVideoRef, videoStream])
 
   // Set canvas ref for external access (when rectified view is active)
   useEffect(() => {
