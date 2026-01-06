@@ -280,7 +280,7 @@ export default function TrainModelPage() {
             position: 'absolute',
             inset: 0,
             overflow: 'hidden',
-            opacity: 0.04,
+            opacity: 0.12,
             pointerEvents: 'none',
             zIndex: 0,
           })}
