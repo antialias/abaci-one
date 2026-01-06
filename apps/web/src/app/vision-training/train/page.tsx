@@ -11,6 +11,16 @@ interface TrainingConfig {
   augmentation: boolean
 }
 
+interface HardwareInfo {
+  available: boolean
+  device: string
+  deviceName: string
+  deviceType: string
+  details: Record<string, unknown>
+  error: string | null
+  hint?: string
+}
+
 interface EpochData {
   epoch: number
   total_epochs: number
@@ -46,6 +56,10 @@ export default function TrainModelPage() {
     augmentation: true,
   })
 
+  // Hardware info
+  const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo | null>(null)
+  const [hardwareLoading, setHardwareLoading] = useState(true)
+
   // Training state
   const [phase, setPhase] = useState<TrainingPhase>('idle')
   const [statusMessage, setStatusMessage] = useState<string>('')
@@ -59,6 +73,29 @@ export default function TrainModelPage() {
   // Refs
   const eventSourceRef = useRef<EventSource | null>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
+
+  // Fetch hardware info on mount
+  useEffect(() => {
+    async function fetchHardware() {
+      try {
+        const response = await fetch('/api/vision-training/hardware')
+        const data = await response.json()
+        setHardwareInfo(data)
+      } catch {
+        setHardwareInfo({
+          available: false,
+          device: 'unknown',
+          deviceName: 'Failed to detect',
+          deviceType: 'unknown',
+          details: {},
+          error: 'Failed to fetch hardware info',
+        })
+      } finally {
+        setHardwareLoading(false)
+      }
+    }
+    fetchHardware()
+  }, [])
 
   // Auto-scroll logs
   useEffect(() => {
@@ -376,6 +413,119 @@ export default function TrainModelPage() {
                 <span className={css({ fontSize: 'sm' })}>Enable data augmentation</span>
               </label>
             </div>
+          </div>
+
+          {/* Hardware Info */}
+          <div
+            data-element="hardware-info"
+            className={css({
+              p: 4,
+              bg: hardwareInfo?.error ? 'red.900/30' : 'gray.800',
+              borderRadius: 'lg',
+              border: '1px solid',
+              borderColor: hardwareInfo?.error
+                ? 'red.700'
+                : hardwareInfo?.deviceType === 'gpu'
+                  ? 'green.700'
+                  : 'gray.700',
+            })}
+          >
+            <div className={css({ display: 'flex', alignItems: 'center', gap: 3 })}>
+              {/* Device icon */}
+              <div
+                className={css({
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: 'lg',
+                  bg: hardwareLoading
+                    ? 'gray.700'
+                    : hardwareInfo?.deviceType === 'gpu'
+                      ? 'green.600'
+                      : hardwareInfo?.error
+                        ? 'red.600'
+                        : 'blue.600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 'xl',
+                })}
+              >
+                {hardwareLoading ? '...' : hardwareInfo?.deviceType === 'gpu' ? '⚡' : '💻'}
+              </div>
+
+              <div className={css({ flex: 1 })}>
+                <div className={css({ fontSize: 'xs', color: 'gray.400', textTransform: 'uppercase' })}>
+                  Training Hardware
+                </div>
+                {hardwareLoading ? (
+                  <div className={css({ fontSize: 'md', color: 'gray.400' })}>Detecting...</div>
+                ) : hardwareInfo?.error ? (
+                  <div className={css({ fontSize: 'md', color: 'red.300' })}>
+                    {hardwareInfo.deviceName}
+                  </div>
+                ) : (
+                  <div className={css({ fontSize: 'md', fontWeight: 'semibold' })}>
+                    {hardwareInfo?.deviceName}
+                  </div>
+                )}
+              </div>
+
+              {/* GPU badge */}
+              {!hardwareLoading && hardwareInfo?.deviceType === 'gpu' && (
+                <div
+                  className={css({
+                    px: 2,
+                    py: 1,
+                    bg: 'green.600',
+                    borderRadius: 'md',
+                    fontSize: 'xs',
+                    fontWeight: 'semibold',
+                    color: 'white',
+                  })}
+                >
+                  GPU
+                </div>
+              )}
+              {!hardwareLoading && hardwareInfo?.deviceType === 'cpu' && (
+                <div
+                  className={css({
+                    px: 2,
+                    py: 1,
+                    bg: 'blue.600',
+                    borderRadius: 'md',
+                    fontSize: 'xs',
+                    fontWeight: 'semibold',
+                    color: 'white',
+                  })}
+                >
+                  CPU
+                </div>
+              )}
+            </div>
+
+            {/* Error details */}
+            {hardwareInfo?.error && (
+              <div className={css({ mt: 2, fontSize: 'sm', color: 'red.300' })}>
+                {hardwareInfo.error}
+                {hardwareInfo.hint && (
+                  <span className={css({ display: 'block', color: 'gray.400', mt: 1 })}>
+                    Hint: {hardwareInfo.hint}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Additional details */}
+            {!hardwareLoading && !hardwareInfo?.error && hardwareInfo?.details && (
+              <div className={css({ mt: 2, fontSize: 'xs', color: 'gray.500' })}>
+                {hardwareInfo.details.tensorflowVersion && (
+                  <span>TensorFlow {hardwareInfo.details.tensorflowVersion as string}</span>
+                )}
+                {hardwareInfo.details.systemMemory && (
+                  <span> • {hardwareInfo.details.systemMemory as string} RAM</span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
