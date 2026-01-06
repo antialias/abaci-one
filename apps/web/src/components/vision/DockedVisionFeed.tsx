@@ -272,10 +272,12 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
   }, [videoStream])
 
   // Register vision source for training data capture
+  // Note: We depend on remoteLatestFrame because the <img> element only renders when we have a frame,
+  // so remoteImageRef.current is null until the first frame arrives
   useEffect(() => {
     if (isLocalCamera && videoRef.current && videoStream) {
       visionSourceRef.current = { type: 'video', element: videoRef.current }
-    } else if (isRemoteCamera && remoteImageRef.current && remoteIsPhoneConnected) {
+    } else if (isRemoteCamera && remoteImageRef.current && remoteIsPhoneConnected && remoteLatestFrame) {
       visionSourceRef.current = { type: 'image', element: remoteImageRef.current }
     }
 
@@ -283,7 +285,7 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
       // Clear the source ref when this component unmounts
       visionSourceRef.current = null
     }
-  }, [isLocalCamera, isRemoteCamera, videoStream, remoteIsPhoneConnected, visionSourceRef])
+  }, [isLocalCamera, isRemoteCamera, videoStream, remoteIsPhoneConnected, remoteLatestFrame, visionSourceRef])
 
   // Subscribe to remote camera session
   useEffect(() => {
