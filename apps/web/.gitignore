@@ -64,4 +64,5 @@ data/uploads/
 # ML training data
 training-data/
 data/vision-training/collected/
+data/vision-training/.venv/
 scripts/train-column-classifier/.venv/

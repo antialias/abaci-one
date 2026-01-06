@@ -110,9 +110,11 @@ FROM node:20-slim AS runner
 WORKDIR /app
 
 # Install ONLY runtime dependencies (no build tools)
+# python3-venv is needed for creating virtual environments for ML training
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
+    python3-venv \
     qpdf \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -154,6 +156,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/packages/templates ./packages/tem
 # Copy abacus-react package (needed for calendar generation scripts)
 COPY --from=builder --chown=nextjs:nodejs /app/packages/abacus-react ./packages/abacus-react
 
+# Copy ML training scripts (for vision model training)
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/scripts/train-column-classifier ./apps/web/scripts/train-column-classifier
+
 # Install Python dependencies for flashcard generation
 RUN pip3 install --no-cache-dir --break-system-packages -r packages/core/requirements.txt
 
@@ -164,8 +169,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/package.json ./apps/web/
 # Set up environment
 WORKDIR /app/apps/web
 
-# Create data directory for SQLite database and uploads
-RUN mkdir -p data/uploads && chown -R nextjs:nodejs data
+# Create data directory for SQLite database, uploads, and vision training
+RUN mkdir -p data/uploads data/vision-training/collected data/vision-training/.venv && chown -R nextjs:nodejs data
 
 USER nextjs
 EXPOSE 3000

@@ -17,16 +17,14 @@ const cwd = process.cwd()
 
 /**
  * Check if the current platform supports TensorFlow training.
- * TensorFlow doesn't have wheels for all platforms (e.g., ARM-based NAS devices).
+ * TensorFlow has wheels for:
+ * - macOS x86_64 and arm64 (Apple Silicon with tensorflow-macos)
+ * - Linux x86_64 and aarch64
+ * - Windows x86_64
  */
 export function isPlatformSupported(): { supported: boolean; reason?: string } {
   const platform = process.platform
   const arch = process.arch
-
-  // TensorFlow supports:
-  // - macOS on x86_64 and arm64 (Apple Silicon with tensorflow-macos)
-  // - Linux on x86_64 (and some arm64 builds)
-  // - Windows on x86_64
 
   if (platform === 'darwin') {
     // macOS - both Intel and Apple Silicon are supported
@@ -34,13 +32,12 @@ export function isPlatformSupported(): { supported: boolean; reason?: string } {
   }
 
   if (platform === 'linux') {
-    if (arch === 'x64') {
+    if (arch === 'x64' || arch === 'arm64') {
       return { supported: true }
     }
-    // ARM Linux (like Synology NAS) typically doesn't have TensorFlow wheels
     return {
       supported: false,
-      reason: `TensorFlow is not available for Linux ${arch}. Training should be done on a machine with x86_64 or Apple Silicon.`,
+      reason: `TensorFlow is not available for Linux ${arch}. Training requires x86_64 or ARM64.`,
     }
   }
 
@@ -50,7 +47,7 @@ export function isPlatformSupported(): { supported: boolean; reason?: string } {
 
   return {
     supported: false,
-    reason: `TensorFlow is not available for ${platform} ${arch}. Training should be done on macOS, Linux x86_64, or Windows x86_64.`,
+    reason: `TensorFlow is not available for ${platform} ${arch}. Training should be done on macOS, Linux (x86_64/ARM64), or Windows x86_64.`,
   }
 }
 
@@ -61,8 +58,12 @@ export const TRAINING_SCRIPTS_DIR = path.join(cwd, 'scripts/train-column-classif
 
 /**
  * Path to the venv directory
+ * We use data/vision-training/.venv because:
+ * 1. The data/ directory is mounted as a volume in Docker (persists across restarts)
+ * 2. It's writable by the container
+ * 3. Scripts directory may not exist in production Docker images
  */
-const VENV_DIR = path.join(TRAINING_SCRIPTS_DIR, '.venv')
+const VENV_DIR = path.join(cwd, 'data/vision-training/.venv')
 
 /**
  * Path to the Python executable in the venv

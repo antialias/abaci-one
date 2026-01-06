@@ -568,7 +568,8 @@
       "Bash(scripts/train-column-classifier/.venv/bin/python:*)",
       "Bash(brew list:*)",
       "Bash(scripts/train-column-classifier/.venv/bin/pip index:*)",
-      "Bash(scripts/train-column-classifier/.venv/bin/pip:*)"
+      "Bash(scripts/train-column-classifier/.venv/bin/pip:*)",
+      "WebFetch(domain:pypi.org)"
     ],
     "deny": [],
     "ask": []
