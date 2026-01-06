@@ -94,11 +94,17 @@ export async function POST(request: Request): Promise<Response> {
         },
       })
 
-      // Spawn Python process
+      // Spawn Python process using the venv with tensorflow-metal for GPU support
       const cwd = path.resolve(process.cwd())
-      activeProcess = spawn('python3', args, {
+      const venvPython = path.join(cwd, 'scripts/train-column-classifier/.venv/bin/python')
+
+      activeProcess = spawn(venvPython, args, {
         cwd,
-        env: { ...process.env, PYTHONUNBUFFERED: '1' },
+        env: {
+          ...process.env,
+          PYTHONUNBUFFERED: '1',
+          PYTHONWARNINGS: 'ignore::FutureWarning', // Suppress keras warning
+        },
       })
 
       // Handle stdout (JSON progress events)
