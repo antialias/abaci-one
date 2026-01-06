@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { css } from '../../../../styled-system/css'
 import { TrainingWizard } from './components/wizard/TrainingWizard'
@@ -14,6 +14,90 @@ import type {
   DatasetInfo,
   TrainingResult,
 } from './components/wizard/types'
+
+/** Animated background tile that transitions between image and digit */
+function AnimatedTile({ src, digit, index }: { src: string; digit: number; index: number }) {
+  const [showDigit, setShowDigit] = useState(false)
+
+  useEffect(() => {
+    // Random initial delay so tiles don't all animate together
+    const initialDelay = Math.random() * 10000
+
+    const startAnimation = () => {
+      // Random interval between 3-8 seconds
+      const interval = 3000 + Math.random() * 5000
+
+      const timer = setInterval(() => {
+        setShowDigit((prev) => !prev)
+        // Stay in the new state for 1-3 seconds before potentially switching back
+        setTimeout(
+          () => {
+            // 50% chance to switch back
+            if (Math.random() > 0.5) {
+              setShowDigit((prev) => !prev)
+            }
+          },
+          1000 + Math.random() * 2000
+        )
+      }, interval)
+
+      return timer
+    }
+
+    const delayTimer = setTimeout(() => {
+      const animTimer = startAnimation()
+      return () => clearInterval(animTimer)
+    }, initialDelay)
+
+    return () => clearTimeout(delayTimer)
+  }, [])
+
+  return (
+    <div
+      className={css({
+        width: '60px',
+        height: '60px',
+        position: 'relative',
+        borderRadius: 'sm',
+        overflow: 'hidden',
+      })}
+    >
+      {/* Image layer */}
+      <img
+        src={src}
+        alt=""
+        className={css({
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          filter: 'grayscale(100%)',
+          transition: 'opacity 0.8s ease-in-out',
+        })}
+        style={{ opacity: showDigit ? 0 : 1 }}
+      />
+      {/* Digit layer */}
+      <div
+        className={css({
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '2xl',
+          fontWeight: 'bold',
+          color: 'gray.400',
+          fontFamily: 'mono',
+          transition: 'opacity 0.8s ease-in-out',
+        })}
+        style={{ opacity: showDigit ? 1 : 0 }}
+      >
+        {digit}
+      </div>
+    </div>
+  )
+}
 
 export default function TrainModelPage() {
   // Configuration
@@ -123,8 +207,13 @@ export default function TrainModelPage() {
     }
   }, [])
 
-  // Get all tile images for background
-  const allTileImages = samples ? Object.values(samples.digits).flatMap((d) => d.tilePaths) : []
+  // Get all tile images with their digits for background
+  const allTiles = useMemo(() => {
+    if (!samples) return []
+    return Object.entries(samples.digits).flatMap(([digit, data]) =>
+      data.tilePaths.map((src) => ({ src, digit: parseInt(digit, 10) }))
+    )
+  }, [samples])
 
   // Start training
   const startTraining = useCallback(async () => {
@@ -273,7 +362,7 @@ export default function TrainModelPage() {
       })}
     >
       {/* Tiled Background Effect */}
-      {allTileImages.length > 0 && (
+      {allTiles.length > 0 && (
         <div
           data-element="tiled-background"
           className={css({
@@ -299,21 +388,15 @@ export default function TrainModelPage() {
             })}
           >
             {/* Repeat tiles to fill background (need ~600+ for full coverage) */}
-            {Array.from({ length: Math.ceil(800 / Math.max(1, allTileImages.length)) })
-              .flatMap(() => allTileImages)
+            {Array.from({ length: Math.ceil(800 / Math.max(1, allTiles.length)) })
+              .flatMap(() => allTiles)
               .slice(0, 800)
-              .map((src, i) => (
-                <img
-                  key={`${src}-${i}`}
-                  src={src}
-                  alt=""
-                  className={css({
-                    width: '60px',
-                    height: '60px',
-                    objectFit: 'cover',
-                    borderRadius: 'sm',
-                    filter: 'grayscale(100%)',
-                  })}
+              .map((tile, i) => (
+                <AnimatedTile
+                  key={`${tile.src}-${i}`}
+                  src={tile.src}
+                  digit={tile.digit}
+                  index={i}
                 />
               ))}
           </div>
