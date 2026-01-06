@@ -38,17 +38,17 @@ export async function GET(): Promise<Response> {
 
   try {
     const cwd = path.resolve(process.cwd())
-    const scriptPath = 'scripts/train-column-classifier/detect_hardware.py'
+    const scriptPath = path.join(cwd, 'scripts/train-column-classifier/detect_hardware.py')
 
     const result = await new Promise<HardwareInfo>((resolve, reject) => {
+      let stdout = ''
+      let stderr = ''
+      let hasError = false
+
       const childProcess = spawn('python3', [scriptPath], {
         cwd,
         env: { ...process.env, PYTHONUNBUFFERED: '1' },
-        timeout: 30000, // 30 second timeout
       })
-
-      let stdout = ''
-      let stderr = ''
 
       childProcess.stdout?.on('data', (data: Buffer) => {
         stdout += data.toString()
@@ -58,7 +58,14 @@ export async function GET(): Promise<Response> {
         stderr += data.toString()
       })
 
+      childProcess.on('error', (error) => {
+        hasError = true
+        reject(new Error(`Failed to spawn python3: ${error.message}`))
+      })
+
       childProcess.on('close', (code) => {
+        if (hasError) return // Already rejected
+
         if (code === 0) {
           try {
             const parsed = JSON.parse(stdout.trim())
@@ -67,13 +74,18 @@ export async function GET(): Promise<Response> {
             reject(new Error(`Failed to parse hardware info: ${stdout}`))
           }
         } else {
-          reject(new Error(`Hardware detection failed (code ${code}): ${stderr || stdout}`))
+          const errorInfo = stderr || stdout || 'No output'
+          reject(new Error(`Hardware detection failed (code ${code}): ${errorInfo}`))
         }
       })
 
-      childProcess.on('error', (error) => {
-        reject(error)
-      })
+      // Timeout after 30 seconds
+      setTimeout(() => {
+        if (!hasError) {
+          childProcess.kill()
+          reject(new Error('Hardware detection timed out after 30 seconds'))
+        }
+      }, 30000)
     })
 
     // Cache successful result
