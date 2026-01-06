@@ -45,9 +45,16 @@ export async function GET(): Promise<Response> {
       let stderr = ''
       let hasError = false
 
-      const childProcess = spawn('python3', [scriptPath], {
+      // Use the venv Python with tensorflow-metal for proper GPU detection
+      const venvPython = path.join(cwd, 'scripts/train-column-classifier/.venv/bin/python')
+
+      const childProcess = spawn(venvPython, [scriptPath], {
         cwd,
-        env: { ...process.env, PYTHONUNBUFFERED: '1' },
+        env: {
+          ...process.env,
+          PYTHONUNBUFFERED: '1',
+          PYTHONWARNINGS: 'ignore::FutureWarning', // Suppress keras warning
+        },
       })
 
       childProcess.stdout?.on('data', (data: Buffer) => {
