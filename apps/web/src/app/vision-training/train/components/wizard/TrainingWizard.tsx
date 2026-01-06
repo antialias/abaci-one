@@ -8,6 +8,7 @@ import {
   serverPhaseToWizardPosition,
   type SamplesData,
   type HardwareInfo,
+  type PreflightInfo,
   type TrainingConfig,
   type ServerPhase,
   type EpochData,
@@ -24,6 +25,10 @@ interface TrainingWizardProps {
   hardwareInfo: HardwareInfo | null
   hardwareLoading: boolean
   fetchHardware: () => void
+  // Preflight state
+  preflightInfo: PreflightInfo | null
+  preflightLoading: boolean
+  fetchPreflight: () => void
   // Config state
   config: TrainingConfig
   setConfig: (config: TrainingConfig | ((prev: TrainingConfig) => TrainingConfig)) => void
@@ -48,6 +53,9 @@ export function TrainingWizard({
   hardwareInfo,
   hardwareLoading,
   fetchHardware,
+  preflightInfo,
+  preflightLoading,
+  fetchPreflight,
   config,
   setConfig,
   serverPhase,
@@ -131,6 +139,12 @@ export function TrainingWizard({
           label: hardwareInfo.deviceType === 'gpu' ? 'GPU' : 'CPU',
           value: hardwareInfo.deviceName.split(' ').slice(0, 2).join(' '),
         }
+      case 'dependencies':
+        if (!preflightInfo?.ready) return null
+        return {
+          label: 'Packages',
+          value: `${preflightInfo.dependencies.installed.length}`,
+        }
       case 'config':
         return { label: 'Epochs', value: `${config.epochs}` }
       case 'setup':
@@ -171,6 +185,9 @@ export function TrainingWizard({
           hardwareInfo={hardwareInfo}
           hardwareLoading={hardwareLoading}
           fetchHardware={fetchHardware}
+          preflightInfo={preflightInfo}
+          preflightLoading={preflightLoading}
+          fetchPreflight={fetchPreflight}
           config={config}
           setConfig={setConfig}
           isGpu={isGpu}
@@ -190,8 +207,10 @@ export function TrainingWizard({
           onCancel={onCancel}
           onTrainAgain={handleTrainAgain}
           onSyncComplete={onSyncComplete}
-          // Validation
-          canStartTraining={!!hasEnoughData && !hardwareLoading && !hardwareInfo?.error}
+          // Validation - require data, hardware, and dependencies all ready
+          canStartTraining={
+            !!hasEnoughData && !hardwareLoading && !hardwareInfo?.error && !!preflightInfo?.ready
+          }
         />
       ))}
     </div>

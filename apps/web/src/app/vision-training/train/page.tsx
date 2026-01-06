@@ -7,6 +7,7 @@ import { TrainingWizard } from './components/wizard/TrainingWizard'
 import type {
   SamplesData,
   HardwareInfo,
+  PreflightInfo,
   ServerPhase,
   TrainingConfig,
   EpochData,
@@ -26,6 +27,10 @@ export default function TrainModelPage() {
   // Hardware info
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo | null>(null)
   const [hardwareLoading, setHardwareLoading] = useState(true)
+
+  // Preflight/dependency info
+  const [preflightInfo, setPreflightInfo] = useState<PreflightInfo | null>(null)
+  const [preflightLoading, setPreflightLoading] = useState(true)
 
   // Training state
   const [serverPhase, setServerPhase] = useState<ServerPhase>('idle')
@@ -79,10 +84,36 @@ export default function TrainModelPage() {
     }
   }, [])
 
+  // Fetch preflight/dependency info
+  const fetchPreflight = useCallback(async () => {
+    setPreflightLoading(true)
+    setPreflightInfo(null)
+    try {
+      const response = await fetch('/api/vision-training/preflight')
+      const data = await response.json()
+      setPreflightInfo(data)
+    } catch {
+      setPreflightInfo({
+        ready: false,
+        platform: { supported: false, reason: 'Failed to check dependencies' },
+        venv: { exists: false, python: '', isAppleSilicon: false, hasGpu: false },
+        dependencies: {
+          allInstalled: false,
+          installed: [],
+          missing: [],
+          error: 'Failed to fetch',
+        },
+      })
+    } finally {
+      setPreflightLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     fetchHardware()
     fetchSamples()
-  }, [fetchHardware, fetchSamples])
+    fetchPreflight()
+  }, [fetchHardware, fetchSamples, fetchPreflight])
 
   useEffect(() => {
     return () => {
@@ -308,6 +339,9 @@ export default function TrainModelPage() {
           hardwareInfo={hardwareInfo}
           hardwareLoading={hardwareLoading}
           fetchHardware={fetchHardware}
+          preflightInfo={preflightInfo}
+          preflightLoading={preflightLoading}
+          fetchPreflight={fetchPreflight}
           config={config}
           setConfig={setConfig}
           serverPhase={serverPhase}

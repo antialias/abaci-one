@@ -1,0 +1,568 @@
+'use client'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useDeskViewCamera } from '@/hooks/useDeskViewCamera'
+import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
+import { css } from '../../../styled-system/css'
+import { RemoteCameraQRCode } from './RemoteCameraQRCode'
+import { VisionCameraFeed } from './VisionCameraFeed'
+
+export type CameraSource = 'local' | 'phone'
+
+export interface CameraCaptureProps {
+  /** Initial camera source (default: 'local') */
+  initialSource?: CameraSource
+  /** Called when a frame is captured (either from local video or phone) */
+  onCapture?: (imageElement: HTMLImageElement | HTMLVideoElement) => void
+  /** Called when camera source changes */
+  onSourceChange?: (source: CameraSource) => void
+  /** Called when phone connection status changes */
+  onPhoneConnected?: (connected: boolean) => void
+  /** Show source selector tabs (default: true) */
+  showSourceSelector?: boolean
+  /** Compact mode - smaller QR code, less padding */
+  compact?: boolean
+}
+
+/**
+ * CameraCapture - Reusable component for capturing frames from local or phone camera
+ *
+ * Provides:
+ * - Camera source tabs (local/phone)
+ * - Local camera feed with device selection
+ * - Phone camera via QR code connection
+ * - Access to current frame for capture
+ *
+ * Used by:
+ * - TrainingDataCapture (vision training wizard)
+ * - AbacusVisionBridge (practice sessions) - uses separate implementation for calibration
+ */
+export function CameraCapture({
+  initialSource = 'local',
+  onCapture,
+  onSourceChange,
+  onPhoneConnected,
+  showSourceSelector = true,
+  compact = false,
+}: CameraCaptureProps) {
+  const [cameraSource, setCameraSource] = useState<CameraSource>(initialSource)
+
+  // Local camera
+  const camera = useDeskViewCamera()
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+
+  // Phone camera
+  const {
+    isPhoneConnected,
+    latestFrame,
+    frameRate,
+    currentSessionId,
+    subscribe,
+    unsubscribe,
+    getPersistedSessionId,
+    clearSession,
+  } = useRemoteCameraDesktop()
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const imageRef = useRef<HTMLImageElement | null>(null)
+
+  // Notify phone connection changes
+  useEffect(() => {
+    if (cameraSource === 'phone') {
+      onPhoneConnected?.(isPhoneConnected)
+    }
+  }, [cameraSource, isPhoneConnected, onPhoneConnected])
+
+  // Start local camera when source is local
+  useEffect(() => {
+    if (cameraSource === 'local') {
+      camera.requestCamera()
+    }
+    return () => {
+      if (cameraSource === 'local') {
+        camera.stopCamera()
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraSource])
+
+  // Handle camera source change
+  const handleSourceChange = useCallback(
+    (source: CameraSource) => {
+      if (source === cameraSource) return
+
+      setCameraSource(source)
+      onSourceChange?.(source)
+
+      if (source === 'local') {
+        // Stop phone camera, start local
+        if (currentSessionId) {
+          unsubscribe()
+        }
+        camera.requestCamera()
+      } else {
+        // Stop local camera
+        camera.stopCamera()
+        // Check for persisted session
+        const persistedSessionId = getPersistedSessionId()
+        if (persistedSessionId) {
+          setSessionId(persistedSessionId)
+        }
+      }
+    },
+    [cameraSource, currentSessionId, unsubscribe, camera, getPersistedSessionId, onSourceChange]
+  )
+
+  // Handle session created by QR code
+  const handleSessionCreated = useCallback(
+    (newSessionId: string) => {
+      setSessionId(newSessionId)
+      subscribe(newSessionId)
+    },
+    [subscribe]
+  )
+
+  // Subscribe when session is set and source is phone
+  useEffect(() => {
+    if (sessionId && cameraSource === 'phone' && !currentSessionId) {
+      subscribe(sessionId)
+    }
+  }, [sessionId, cameraSource, currentSessionId, subscribe])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (currentSessionId) {
+        unsubscribe()
+      }
+    }
+  }, [currentSessionId, unsubscribe])
+
+  // Start fresh phone session
+  const handleStartFreshSession = useCallback(() => {
+    clearSession()
+    setSessionId(null)
+  }, [clearSession])
+
+  // Video ref callback for VisionCameraFeed - also calls onCapture
+  const handleVideoRef = useCallback(
+    (el: HTMLVideoElement | null) => {
+      videoRef.current = el
+      if (el && onCapture) {
+        onCapture(el)
+      }
+    },
+    [onCapture]
+  )
+
+  // Image ref callback - also calls onCapture
+  const handleImageRef = useCallback(
+    (el: HTMLImageElement | null) => {
+      imageRef.current = el
+      if (el && onCapture) {
+        onCapture(el)
+      }
+    },
+    [onCapture]
+  )
+
+  // Update capture element when phone frame changes
+  useEffect(() => {
+    if (
+      cameraSource === 'phone' &&
+      isPhoneConnected &&
+      latestFrame &&
+      imageRef.current &&
+      onCapture
+    ) {
+      onCapture(imageRef.current)
+    }
+  }, [cameraSource, isPhoneConnected, latestFrame, onCapture])
+
+  // Determine if we have a usable frame
+  const hasFrame =
+    cameraSource === 'local'
+      ? camera.videoStream !== null
+      : isPhoneConnected && latestFrame !== null
+
+  return (
+    <div
+      data-component="camera-capture"
+      data-source={cameraSource}
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        gap: compact ? 2 : 3,
+      })}
+    >
+      {/* Camera source selector tabs */}
+      {showSourceSelector && (
+        <div
+          data-element="source-selector"
+          className={css({
+            display: 'flex',
+            gap: 0,
+            bg: 'gray.800',
+            borderRadius: 'lg',
+            p: 1,
+          })}
+        >
+          <button
+            type="button"
+            data-source="local"
+            data-active={cameraSource === 'local' ? 'true' : 'false'}
+            onClick={() => handleSourceChange('local')}
+            className={css({
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+              py: 2,
+              px: 3,
+              bg: cameraSource === 'local' ? 'gray.700' : 'transparent',
+              color: cameraSource === 'local' ? 'white' : 'gray.400',
+              border: 'none',
+              borderRadius: 'md',
+              cursor: 'pointer',
+              fontSize: 'sm',
+              fontWeight: cameraSource === 'local' ? 'medium' : 'normal',
+              transition: 'all 0.15s',
+              _hover: {
+                color: 'white',
+                bg: cameraSource === 'local' ? 'gray.700' : 'gray.750',
+              },
+            })}
+          >
+            <span>💻</span>
+            <span>This Device</span>
+          </button>
+          <button
+            type="button"
+            data-source="phone"
+            data-active={cameraSource === 'phone' ? 'true' : 'false'}
+            onClick={() => handleSourceChange('phone')}
+            className={css({
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+              py: 2,
+              px: 3,
+              bg: cameraSource === 'phone' ? 'gray.700' : 'transparent',
+              color: cameraSource === 'phone' ? 'white' : 'gray.400',
+              border: 'none',
+              borderRadius: 'md',
+              cursor: 'pointer',
+              fontSize: 'sm',
+              fontWeight: cameraSource === 'phone' ? 'medium' : 'normal',
+              transition: 'all 0.15s',
+              _hover: {
+                color: 'white',
+                bg: cameraSource === 'phone' ? 'gray.700' : 'gray.750',
+              },
+            })}
+          >
+            <span>📱</span>
+            <span>Phone Camera</span>
+          </button>
+        </div>
+      )}
+
+      {/* Camera feed */}
+      <div
+        data-element="camera-feed"
+        className={css({
+          position: 'relative',
+          borderRadius: 'lg',
+          overflow: 'hidden',
+          bg: 'gray.800',
+          minHeight: '150px',
+        })}
+      >
+        {cameraSource === 'local' ? (
+          /* Local camera feed */
+          <>
+            <VisionCameraFeed
+              videoStream={camera.videoStream}
+              isLoading={camera.isLoading}
+              videoRef={handleVideoRef}
+            />
+
+            {/* Local camera toolbar */}
+            {camera.videoStream && (
+              <div
+                data-element="feed-toolbar"
+                className={css({
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  p: 2,
+                  bg: 'rgba(0, 0, 0, 0.6)',
+                  backdropFilter: 'blur(4px)',
+                })}
+              >
+                {/* Camera selector */}
+                {camera.availableDevices.length > 0 && (
+                  <select
+                    data-element="camera-selector"
+                    value={camera.currentDevice?.deviceId ?? ''}
+                    onChange={(e) => camera.requestCamera(e.target.value)}
+                    className={css({
+                      flex: 1,
+                      py: 1.5,
+                      px: 2,
+                      bg: 'rgba(255, 255, 255, 0.1)',
+                      color: 'white',
+                      border: '1px solid',
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
+                      borderRadius: 'md',
+                      fontSize: 'xs',
+                      maxWidth: '180px',
+                      cursor: 'pointer',
+                    })}
+                  >
+                    {camera.availableDevices.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* Toolbar buttons */}
+                <div className={css({ display: 'flex', gap: 1 })}>
+                  {camera.availableDevices.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => camera.flipCamera()}
+                      data-action="flip-camera"
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '32px',
+                        height: '32px',
+                        bg: 'rgba(255, 255, 255, 0.15)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 'md',
+                        cursor: 'pointer',
+                        fontSize: 'sm',
+                        _hover: { bg: 'rgba(255, 255, 255, 0.25)' },
+                      })}
+                      title="Switch camera"
+                    >
+                      🔄
+                    </button>
+                  )}
+                  {camera.isTorchAvailable && (
+                    <button
+                      type="button"
+                      onClick={() => camera.toggleTorch()}
+                      data-action="toggle-torch"
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '32px',
+                        height: '32px',
+                        bg: camera.isTorchOn ? 'yellow.600' : 'rgba(255, 255, 255, 0.15)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 'md',
+                        cursor: 'pointer',
+                        fontSize: 'sm',
+                        _hover: {
+                          bg: camera.isTorchOn ? 'yellow.500' : 'rgba(255, 255, 255, 0.25)',
+                        },
+                      })}
+                      title={camera.isTorchOn ? 'Turn off flash' : 'Turn on flash'}
+                    >
+                      {camera.isTorchOn ? '🔦' : '💡'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Camera error */}
+            {camera.error && (
+              <div
+                className={css({
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 4,
+                  bg: 'red.900/80',
+                  color: 'red.200',
+                  fontSize: 'sm',
+                  textAlign: 'center',
+                })}
+              >
+                {camera.error}
+              </div>
+            )}
+          </>
+        ) : /* Phone camera feed */ !sessionId ? (
+          /* Show QR code to connect phone */
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              p: compact ? 4 : 6,
+            })}
+          >
+            <RemoteCameraQRCode
+              onSessionCreated={handleSessionCreated}
+              size={compact ? 140 : 180}
+            />
+            <p
+              className={css({
+                color: 'gray.400',
+                fontSize: 'sm',
+                textAlign: 'center',
+                mt: 3,
+              })}
+            >
+              Scan with your phone to connect
+            </p>
+          </div>
+        ) : !isPhoneConnected ? (
+          /* Waiting for phone */
+          <div
+            className={css({
+              aspectRatio: '4/3',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 3,
+              p: 4,
+            })}
+          >
+            <RemoteCameraQRCode
+              onSessionCreated={handleSessionCreated}
+              existingSessionId={sessionId}
+              size={compact ? 120 : 150}
+            />
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                color: 'gray.400',
+                fontSize: 'xs',
+              })}
+            >
+              <span
+                className={css({
+                  width: 1.5,
+                  height: 1.5,
+                  borderRadius: 'full',
+                  bg: 'gray.500',
+                  animation: 'pulse 1.5s infinite',
+                })}
+              />
+              Waiting for phone
+              <span className={css({ color: 'gray.600' })}>·</span>
+              <button
+                type="button"
+                onClick={handleStartFreshSession}
+                className={css({
+                  color: 'gray.500',
+                  bg: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 'xs',
+                  textDecoration: 'underline',
+                  _hover: { color: 'gray.300' },
+                })}
+              >
+                new session
+              </button>
+              <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
+            </div>
+          </div>
+        ) : (
+          /* Show camera frames */
+          <div className={css({ position: 'relative' })}>
+            {latestFrame ? (
+              <img
+                ref={handleImageRef}
+                src={`data:image/jpeg;base64,${latestFrame.imageData}`}
+                alt="Remote camera view"
+                className={css({
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block',
+                })}
+              />
+            ) : (
+              <div
+                className={css({
+                  width: '100%',
+                  aspectRatio: '4/3',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'gray.400',
+                  fontSize: 'sm',
+                })}
+              >
+                Waiting for frames...
+              </div>
+            )}
+
+            {/* Phone camera toolbar */}
+            <div
+              data-element="feed-toolbar"
+              className={css({
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 2,
+                p: 2,
+                bg: 'rgba(0, 0, 0, 0.6)',
+                backdropFilter: 'blur(4px)',
+              })}
+            >
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  fontSize: 'xs',
+                  color: 'white',
+                })}
+              >
+                <span
+                  className={css({
+                    width: 2,
+                    height: 2,
+                    borderRadius: 'full',
+                    bg: 'green.500',
+                  })}
+                />
+                {frameRate} fps
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

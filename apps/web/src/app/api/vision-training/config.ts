@@ -93,6 +93,57 @@ interface SetupResult {
 }
 
 /**
+ * Required Python modules for training
+ */
+const REQUIRED_MODULES = [
+  { name: 'tensorflow', importName: 'tensorflow', pipName: 'tensorflow' },
+  { name: 'PIL (Pillow)', importName: 'PIL', pipName: 'Pillow' },
+  { name: 'sklearn (scikit-learn)', importName: 'sklearn', pipName: 'scikit-learn' },
+  { name: 'numpy', importName: 'numpy', pipName: 'numpy' },
+]
+
+export interface DependencyCheckResult {
+  allInstalled: boolean
+  missing: { name: string; pipName: string }[]
+  installed: { name: string; pipName: string }[]
+  error?: string
+}
+
+/**
+ * Check if all required Python dependencies are installed
+ */
+export async function checkDependencies(): Promise<DependencyCheckResult> {
+  if (!fs.existsSync(TRAINING_PYTHON)) {
+    return {
+      allInstalled: false,
+      missing: REQUIRED_MODULES.map((m) => ({ name: m.name, pipName: m.pipName })),
+      installed: [],
+      error: 'Python virtual environment not found',
+    }
+  }
+
+  const missing: { name: string; pipName: string }[] = []
+  const installed: { name: string; pipName: string }[] = []
+
+  for (const mod of REQUIRED_MODULES) {
+    try {
+      await execAsync(`"${TRAINING_PYTHON}" -c "import ${mod.importName}"`, {
+        timeout: 10000,
+      })
+      installed.push({ name: mod.name, pipName: mod.pipName })
+    } catch {
+      missing.push({ name: mod.name, pipName: mod.pipName })
+    }
+  }
+
+  return {
+    allInstalled: missing.length === 0,
+    missing,
+    installed,
+  }
+}
+
+/**
  * Find the best Python to use for the venv.
  * On Apple Silicon, prefer Homebrew ARM Python for Metal GPU support.
  */
@@ -146,6 +197,11 @@ async function isVenvReady(): Promise<boolean> {
 }
 
 /**
+ * Path to the requirements.txt file
+ */
+const REQUIREMENTS_FILE = path.join(TRAINING_SCRIPTS_DIR, 'requirements.txt')
+
+/**
  * Create the venv and install dependencies
  */
 async function createVenv(): Promise<SetupResult> {
@@ -176,6 +232,29 @@ async function createVenv(): Promise<SetupResult> {
       await execAsync(`"${TRAINING_PYTHON}" -m pip install tensorflow`, {
         timeout: 600000,
       })
+    }
+
+    // Install all other requirements from requirements.txt
+    if (fs.existsSync(REQUIREMENTS_FILE)) {
+      console.log('[vision-training] Installing additional requirements from requirements.txt...')
+      await execAsync(`"${TRAINING_PYTHON}" -m pip install -r "${REQUIREMENTS_FILE}"`, {
+        timeout: 600000,
+      })
+    } else {
+      // Fallback: install known required packages individually
+      console.log(
+        '[vision-training] requirements.txt not found, installing packages individually...'
+      )
+      const packages = ['Pillow', 'scikit-learn', 'numpy', 'tensorflowjs']
+      for (const pkg of packages) {
+        try {
+          await execAsync(`"${TRAINING_PYTHON}" -m pip install "${pkg}"`, {
+            timeout: 300000,
+          })
+        } catch (e) {
+          console.warn(`[vision-training] Failed to install ${pkg}: ${e}`)
+        }
+      }
     }
 
     // Verify installation

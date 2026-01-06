@@ -9,6 +9,7 @@ import {
   type PhaseStatus,
   type SamplesData,
   type HardwareInfo,
+  type PreflightInfo,
   type TrainingConfig,
   type ServerPhase,
   type EpochData,
@@ -26,6 +27,9 @@ interface PhaseSectionProps {
   hardwareInfo: HardwareInfo | null
   hardwareLoading: boolean
   fetchHardware: () => void
+  preflightInfo: PreflightInfo | null
+  preflightLoading: boolean
+  fetchPreflight: () => void
   config: TrainingConfig
   setConfig: (config: TrainingConfig | ((prev: TrainingConfig) => TrainingConfig)) => void
   isGpu: boolean
@@ -63,6 +67,9 @@ export function PhaseSection({
   hardwareInfo,
   hardwareLoading,
   fetchHardware,
+  preflightInfo,
+  preflightLoading,
+  fetchPreflight,
   config,
   setConfig,
   isGpu,
@@ -165,6 +172,9 @@ export function PhaseSection({
             hardwareInfo={hardwareInfo}
             hardwareLoading={hardwareLoading}
             fetchHardware={fetchHardware}
+            preflightInfo={preflightInfo}
+            preflightLoading={preflightLoading}
+            fetchPreflight={fetchPreflight}
             config={config}
             setConfig={setConfig}
             isGpu={isGpu}

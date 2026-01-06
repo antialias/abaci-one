@@ -3,6 +3,7 @@ export type PhaseId = 'preparation' | 'training' | 'results'
 export type CardId =
   | 'data'
   | 'hardware'
+  | 'dependencies'
   | 'config'
   | 'setup'
   | 'loading'
@@ -28,7 +29,7 @@ export const PHASES: PhaseDefinition[] = [
   {
     id: 'preparation',
     title: 'Preparation',
-    cards: ['data', 'hardware', 'config'],
+    cards: ['data', 'hardware', 'dependencies', 'config'],
   },
   {
     id: 'training',
@@ -63,6 +64,13 @@ export const CARDS: Record<CardId, CardDefinition> = {
     id: 'hardware',
     title: 'Hardware',
     icon: '🔧',
+    autoProgress: true,
+    autoProgressDelay: 2000,
+  },
+  dependencies: {
+    id: 'dependencies',
+    title: 'Dependencies',
+    icon: '📦',
     autoProgress: true,
     autoProgressDelay: 2000,
   },
@@ -138,6 +146,27 @@ export interface HardwareInfo {
   details: Record<string, unknown>
   error: string | null
   hint?: string
+}
+
+export interface PreflightInfo {
+  ready: boolean
+  platform: {
+    supported: boolean
+    reason?: string
+  }
+  venv: {
+    exists: boolean
+    python: string
+    isAppleSilicon: boolean
+    hasGpu: boolean
+    error?: string
+  }
+  dependencies: {
+    allInstalled: boolean
+    installed: { name: string; pipName: string }[]
+    missing: { name: string; pipName: string }[]
+    error?: string
+  }
 }
 
 export interface EpochData {

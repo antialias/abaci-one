@@ -8,6 +8,7 @@ import {
   type CardId,
   type SamplesData,
   type HardwareInfo,
+  type PreflightInfo,
   type TrainingConfig,
   type ServerPhase,
   type EpochData,
@@ -24,6 +25,9 @@ interface CardCarouselProps {
   hardwareInfo: HardwareInfo | null
   hardwareLoading: boolean
   fetchHardware: () => void
+  preflightInfo: PreflightInfo | null
+  preflightLoading: boolean
+  fetchPreflight: () => void
   config: TrainingConfig
   setConfig: (config: TrainingConfig | ((prev: TrainingConfig) => TrainingConfig)) => void
   isGpu: boolean
@@ -54,6 +58,9 @@ export function CardCarousel({
   hardwareInfo,
   hardwareLoading,
   fetchHardware,
+  preflightInfo,
+  preflightLoading,
+  fetchPreflight,
   config,
   setConfig,
   isGpu,
@@ -106,6 +113,21 @@ export function CardCarousel({
           }
         }
         return 'Detect HW'
+
+      case 'dependencies':
+        if (preflightInfo?.ready) {
+          return {
+            primary: 'Ready',
+            secondary: `${preflightInfo.dependencies.installed.length} packages`,
+          }
+        }
+        if (preflightInfo?.dependencies.missing.length) {
+          return {
+            primary: 'Missing',
+            secondary: `${preflightInfo.dependencies.missing.length} packages`,
+          }
+        }
+        return 'Check deps'
 
       case 'config':
         return {
@@ -175,6 +197,9 @@ export function CardCarousel({
           hardwareInfo={hardwareInfo}
           hardwareLoading={hardwareLoading}
           fetchHardware={fetchHardware}
+          preflightInfo={preflightInfo}
+          preflightLoading={preflightLoading}
+          fetchPreflight={fetchPreflight}
           config={config}
           setConfig={setConfig}
           isGpu={isGpu}

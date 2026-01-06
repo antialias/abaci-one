@@ -3,6 +3,7 @@
 import { css } from '../../../../../../styled-system/css'
 import { DataCard } from './cards/DataCard'
 import { HardwareCard } from './cards/HardwareCard'
+import { DependencyCard } from './cards/DependencyCard'
 import { ConfigCard } from './cards/ConfigCard'
 import { SetupCard } from './cards/SetupCard'
 import { LoadingCard } from './cards/LoadingCard'
@@ -14,6 +15,7 @@ import {
   type CardId,
   type SamplesData,
   type HardwareInfo,
+  type PreflightInfo,
   type TrainingConfig,
   type ServerPhase,
   type EpochData,
@@ -29,6 +31,9 @@ interface ExpandedCardProps {
   hardwareInfo: HardwareInfo | null
   hardwareLoading: boolean
   fetchHardware: () => void
+  preflightInfo: PreflightInfo | null
+  preflightLoading: boolean
+  fetchPreflight: () => void
   config: TrainingConfig
   setConfig: (config: TrainingConfig | ((prev: TrainingConfig) => TrainingConfig)) => void
   isGpu: boolean
@@ -56,6 +61,9 @@ export function ExpandedCard({
   hardwareInfo,
   hardwareLoading,
   fetchHardware,
+  preflightInfo,
+  preflightLoading,
+  fetchPreflight,
   config,
   setConfig,
   isGpu,
@@ -92,6 +100,15 @@ export function ExpandedCard({
             hardwareInfo={hardwareInfo}
             hardwareLoading={hardwareLoading}
             fetchHardware={fetchHardware}
+            onProgress={onProgress}
+          />
+        )
+      case 'dependencies':
+        return (
+          <DependencyCard
+            preflightInfo={preflightInfo}
+            preflightLoading={preflightLoading}
+            fetchPreflight={fetchPreflight}
             onProgress={onProgress}
           />
         )
