@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { AbacusReact } from '@soroban/abacus-react'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useFrameStability } from '@/hooks/useFrameStability'
 import { useMarkerDetection } from '@/hooks/useMarkerDetection'
@@ -63,6 +64,12 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
   const [isLoading, setIsLoading] = useState(true)
   const [detectedValue, setDetectedValue] = useState<number | null>(null)
   const [confidence, setConfidence] = useState(0)
+  const [columnDigits, setColumnDigits] = useState<number[]>([])
+  const [showAbacusMirror, setShowAbacusMirror] = useState(false)
+  // Show a subtle recommendation to try mirror mode when detection is working well
+  const [showMirrorHint, setShowMirrorHint] = useState(false)
+  // Track if user has dismissed the hint or engaged with mirror mode
+  const hintDismissedRef = useRef(false)
 
   // Track video element in state for marker detection hook
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
@@ -247,6 +254,9 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
       const { digits, confidences } = results
       const minConfidence = Math.min(...confidences)
 
+      // Store column digits for AbacusMirror display
+      setColumnDigits(digits)
+
       // Convert to number
       const value = digitsToNumber(digits)
 
@@ -298,13 +308,23 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
       const { digits, confidences } = results
       const minConfidence = Math.min(...confidences)
 
+      // Store column digits for AbacusMirror display
+      setColumnDigits(digits)
+
       // Convert to number
       const value = digitsToNumber(digits)
 
       // Push to stability buffer
       stability.pushFrame(value, minConfidence)
     })
-  }, [isRemoteCamera, remoteIsPhoneConnected, remoteLatestFrame, columnCount, stability, classifier])
+  }, [
+    isRemoteCamera,
+    remoteIsPhoneConnected,
+    remoteLatestFrame,
+    columnCount,
+    stability,
+    classifier,
+  ])
 
   // Local camera detection loop (only when enabled)
   useEffect(() => {
@@ -362,6 +382,19 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
     setDockedValue,
     onValueDetected,
   ])
+
+  // Show a subtle hint to try mirror mode when detection has been stable
+  // This is non-intrusive - user can ignore it, and it goes away once they've tried mirror
+  useEffect(() => {
+    if (!ENABLE_AUTO_DETECTION) return
+    if (!classifier.isModelLoaded) return
+    if (hintDismissedRef.current) return // Don't show again if dismissed
+    if (showAbacusMirror) return // Already in mirror mode, no need to suggest it
+
+    // Show hint when we have stable detection (3+ consecutive frames)
+    const isStable = stability.consecutiveFrames >= 3
+    setShowMirrorHint(isStable && columnDigits.length > 0)
+  }, [stability.consecutiveFrames, classifier.isModelLoaded, showAbacusMirror, columnDigits.length])
 
   // Broadcast vision frames to observers (5fps to save bandwidth)
   const BROADCAST_INTERVAL_MS = 200
@@ -498,96 +531,187 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
       data-status="active"
       data-source={isRemoteCamera ? 'remote' : 'local'}
       className={css({
-        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        overflow: 'hidden',
         borderRadius: 'lg',
         bg: 'black',
         width: '100%',
         height: '100%',
+        minHeight: 0, // Allow flex shrinking
       })}
     >
-      {/* Rectified video feed - local camera */}
-      {isLocalCamera && (
-        <VisionCameraFeed
-          videoStream={videoStream}
-          calibration={visionConfig.calibration}
-          showRectifiedView={true}
-          videoRef={(el) => {
-            videoRef.current = el
-            setVideoElement(el) // Update state so marker detection hook can react
-          }}
-          rectifiedCanvasRef={(el) => {
-            rectifiedCanvasRef.current = el
-          }}
-        />
-      )}
+      {/* Main content area - takes available space above status bar */}
+      <div
+        data-element="vision-content"
+        className={css({
+          flex: '1 1 auto',
+          minHeight: 0, // Allow shrinking
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          position: 'relative',
+        })}
+      >
+        {/* AbacusReact mirror mode - shows detected values */}
+        {showAbacusMirror && columnDigits.length > 0 ? (
+          <div
+            data-element="abacus-mirror"
+            className={css({
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              bg: 'gray.900',
+              p: '8px',
+            })}
+          >
+          {/* Main AbacusReact display - takes available space */}
+          <div
+            data-element="abacus-main"
+            className={css({
+              flex: '1 1 auto',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 0,
+              height: '100%',
+            })}
+          >
+            <AbacusReact
+              value={detectedValue ?? 0}
+              columns={columnDigits.length}
+              interactive={false}
+              animated={true}
+              showNumbers={true}
+              scaleFactor={1.2}
+            />
+          </div>
 
-      {/* Remote camera feed */}
-      {isRemoteCamera && remoteLatestFrame && (
-        <img
-          ref={remoteImageRef}
-          src={`data:image/jpeg;base64,${remoteLatestFrame.imageData}`}
-          alt="Phone camera view"
-          className={css({
-            width: '100%',
-            height: 'auto',
-            objectFit: 'contain',
-          })}
-        />
-      )}
-
-      {/* Waiting for remote frames */}
-      {isRemoteCamera && !remoteLatestFrame && remoteIsPhoneConnected && (
-        <div
-          className={css({
-            width: '100%',
-            aspectRatio: '2/1',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'gray.400',
-            fontSize: 'sm',
-          })}
-        >
-          Waiting for frames...
+          {/* Video preview - fixed width sidebar */}
+          <div
+            data-element="video-preview"
+            className={css({
+              flex: '0 0 auto',
+              width: '60px',
+              height: '80px',
+              borderRadius: 'md',
+              overflow: 'hidden',
+              border: '2px solid rgba(255,255,255,0.6)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+              bg: 'black',
+            })}
+          >
+            {isLocalCamera && (
+              <VisionCameraFeed
+                videoStream={videoStream}
+                calibration={visionConfig.calibration}
+                showRectifiedView={true}
+                videoRef={(el) => {
+                  videoRef.current = el
+                  setVideoElement(el)
+                }}
+                rectifiedCanvasRef={(el) => {
+                  rectifiedCanvasRef.current = el
+                }}
+              />
+            )}
+            {isRemoteCamera && remoteLatestFrame && (
+              <img
+                ref={remoteImageRef}
+                src={`data:image/jpeg;base64,${remoteLatestFrame.imageData}`}
+                alt="Phone camera view"
+                className={css({
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                })}
+              />
+            )}
+          </div>
         </div>
-      )}
+      ) : (
+        <>
+          {/* Rectified video feed - local camera */}
+          {isLocalCamera && (
+            <VisionCameraFeed
+              videoStream={videoStream}
+              calibration={visionConfig.calibration}
+              showRectifiedView={true}
+              videoRef={(el) => {
+                videoRef.current = el
+                setVideoElement(el) // Update state so marker detection hook can react
+              }}
+              rectifiedCanvasRef={(el) => {
+                rectifiedCanvasRef.current = el
+              }}
+            />
+          )}
 
-      {/* Detection overlay - only shown when auto-detection is enabled */}
+          {/* Remote camera feed */}
+          {isRemoteCamera && remoteLatestFrame && (
+            <img
+              ref={remoteImageRef}
+              src={`data:image/jpeg;base64,${remoteLatestFrame.imageData}`}
+              alt="Phone camera view"
+              className={css({
+                width: '100%',
+                height: 'auto',
+                objectFit: 'contain',
+              })}
+            />
+          )}
+
+          {/* Waiting for remote frames */}
+          {isRemoteCamera && !remoteLatestFrame && remoteIsPhoneConnected && (
+            <div
+              className={css({
+                width: '100%',
+                aspectRatio: '2/1',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'gray.400',
+                fontSize: 'sm',
+              })}
+            >
+              Waiting for frames...
+            </div>
+          )}
+        </>
+        )}
+      </div>
+
+      {/* Unified status bar - combines detection info, mode toggle, and close button */}
       {ENABLE_AUTO_DETECTION && (
         <div
-          data-element="detection-overlay"
+          data-element="vision-status-bar"
           className={css({
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
+            flex: '0 0 auto', // Don't grow, don't shrink
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            p: 2,
-            bg: 'rgba(0, 0, 0, 0.7)',
-            backdropFilter: 'blur(4px)',
+            px: 2,
+            py: 1.5,
+            bg: 'rgba(0, 0, 0, 0.85)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
           })}
         >
-          {/* Model loading or detected value */}
-          <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+          {/* Left side: Status (detected value or loading message) */}
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 })}>
             {classifier.isLoading ? (
-              <span className={css({ fontSize: 'xs', color: 'yellow.400' })}>
-                Loading model...
-              </span>
+              <span className={css({ fontSize: 'xs', color: 'yellow.400' })}>Loading...</span>
             ) : !classifier.isModelLoaded ? (
-              <span className={css({ fontSize: 'xs', color: 'gray.500' })}>
-                Model unavailable
-              </span>
+              <span className={css({ fontSize: 'xs', color: 'gray.500' })}>No model</span>
             ) : (
               <>
+                {/* Detected value */}
                 <span
                   className={css({
-                    fontSize: 'lg',
+                    fontSize: 'md',
                     fontWeight: 'bold',
                     color: 'white',
                     fontFamily: 'mono',
@@ -595,68 +719,160 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
                 >
                   {detectedValue !== null ? detectedValue : '---'}
                 </span>
-                {detectedValue !== null && (
-                  <span className={css({ fontSize: 'xs', color: 'gray.400' })}>
-                    {Math.round(confidence * 100)}%
-                  </span>
+                {/* Stability dots - show detection stability */}
+                {stability.consecutiveFrames > 0 && (
+                  <div
+                    className={css({ display: 'flex', gap: '2px', alignItems: 'center' })}
+                    title={`Stability: ${stability.consecutiveFrames}/3`}
+                  >
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={css({
+                          w: '5px',
+                          h: '5px',
+                          borderRadius: 'full',
+                          bg: i < stability.consecutiveFrames ? 'green.400' : 'gray.600',
+                        })}
+                      />
+                    ))}
+                  </div>
                 )}
               </>
             )}
           </div>
 
-          {/* Stability indicator */}
-          <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
-            {classifier.isModelLoaded && stability.consecutiveFrames > 0 && (
-              <div className={css({ display: 'flex', gap: 0.5 })}>
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div
-                    key={i}
+          {/* Center: Mode toggle with text labels */}
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 1, position: 'relative' })}>
+            {columnDigits.length > 0 && (
+              <>
+                <div
+                  data-element="mode-toggle"
+                  className={css({
+                    display: 'flex',
+                    bg: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: 'md',
+                    p: '2px',
+                  })}
+                >
+                  <button
+                    type="button"
+                    data-action="show-video"
+                    onClick={() => setShowAbacusMirror(false)}
+                    title="Show camera feed"
                     className={css({
-                      w: '6px',
-                      h: '6px',
-                      borderRadius: 'full',
-                      bg: i < stability.consecutiveFrames ? 'green.500' : 'gray.600',
+                      px: 2,
+                      py: 0.5,
+                      borderRadius: 'sm',
+                      border: 'none',
+                      fontSize: 'xs',
+                      fontWeight: 'medium',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      bg: !showAbacusMirror ? 'blue.500' : 'transparent',
+                      color: !showAbacusMirror ? 'white' : 'gray.400',
+                      _hover: {
+                        color: 'white',
+                      },
                     })}
-                  />
-                ))}
-              </div>
+                  >
+                    Video
+                  </button>
+                  <button
+                    type="button"
+                    data-action="show-mirror"
+                    onClick={() => {
+                      hintDismissedRef.current = true
+                      setShowMirrorHint(false)
+                      setShowAbacusMirror(true)
+                    }}
+                    title="Show digital abacus mirror"
+                    className={css({
+                      px: 2,
+                      py: 0.5,
+                      borderRadius: 'sm',
+                      border: 'none',
+                      fontSize: 'xs',
+                      fontWeight: 'medium',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      bg: showAbacusMirror ? 'blue.500' : 'transparent',
+                      color: showAbacusMirror ? 'white' : 'gray.400',
+                      _hover: {
+                        color: 'white',
+                      },
+                    })}
+                  >
+                    Mirror
+                  </button>
+                </div>
+
+                {/* Subtle hint when detection is working well */}
+                {showMirrorHint && !showAbacusMirror && (
+                  <div
+                    data-element="mirror-hint"
+                    onClick={() => {
+                      hintDismissedRef.current = true
+                      setShowMirrorHint(false)
+                      setShowAbacusMirror(true)
+                    }}
+                    className={css({
+                      position: 'absolute',
+                      top: '-20px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      px: 2,
+                      py: 0.5,
+                      bg: 'green.600',
+                      color: 'white',
+                      fontSize: '10px',
+                      fontWeight: 'medium',
+                      borderRadius: 'full',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      animation: 'pulse 2s ease-in-out infinite',
+                      _hover: {
+                        bg: 'green.500',
+                      },
+                    })}
+                  >
+                    ✨ Try Mirror
+                  </div>
+                )}
+              </>
             )}
           </div>
+
+          {/* Right side: Close button */}
+          <button
+            type="button"
+            data-action="disable-vision"
+            onClick={handleDisableVision}
+            title="Turn off camera"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              w: '24px',
+              h: '24px',
+              bg: 'transparent',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: 'md',
+              color: 'gray.400',
+              fontSize: 'xs',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              _hover: {
+                bg: 'red.600',
+                borderColor: 'red.600',
+                color: 'white',
+              },
+            })}
+          >
+            ✕
+          </button>
         </div>
       )}
-
-      {/* Disable button */}
-      <button
-        type="button"
-        data-action="disable-vision"
-        onClick={handleDisableVision}
-        title="Disable vision mode"
-        className={css({
-          position: 'absolute',
-          top: '4px',
-          right: '4px',
-          w: '24px',
-          h: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bg: 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: 'blur(4px)',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          borderRadius: 'md',
-          color: 'white',
-          fontSize: 'xs',
-          cursor: 'pointer',
-          zIndex: 10,
-          opacity: 0.7,
-          _hover: {
-            bg: 'rgba(239, 68, 68, 0.8)',
-            opacity: 1,
-          },
-        })}
-      >
-        ✕
-      </button>
     </div>
   )
 }

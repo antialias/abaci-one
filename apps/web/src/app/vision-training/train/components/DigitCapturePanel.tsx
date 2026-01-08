@@ -91,7 +91,11 @@ export function DigitCapturePanel({
   // Perform capture
   const captureTrainingData = useCallback(async () => {
     const element = captureElementRef.current
-    console.log('[DigitCapturePanel] captureTrainingData - element:', element?.constructor?.name, element instanceof HTMLCanvasElement ? `${element.width}x${element.height}` : '')
+    console.log(
+      '[DigitCapturePanel] captureTrainingData - element:',
+      element?.constructor?.name,
+      element instanceof HTMLCanvasElement ? `${element.width}x${element.height}` : ''
+    )
 
     if (!element) {
       console.log('[DigitCapturePanel] captureTrainingData - NO ELEMENT!')
@@ -158,7 +162,12 @@ export function DigitCapturePanel({
       // Slice image into columns
       // When it's a rectified canvas, pass null for calibration - image is already corrected,
       // just slice into equal columns. When it's raw video/image, use calibration for perspective.
-      console.log('[DigitCapturePanel] Calling processImageFrame, imageElement size:', imageElement.width || imageElement.naturalWidth, 'x', imageElement.height || imageElement.naturalHeight)
+      console.log(
+        '[DigitCapturePanel] Calling processImageFrame, imageElement size:',
+        imageElement.width || imageElement.naturalWidth,
+        'x',
+        imageElement.height || imageElement.naturalHeight
+      )
       const columnImages = processImageFrame(
         imageElement,
         isRectifiedCanvas ? null : calibration,

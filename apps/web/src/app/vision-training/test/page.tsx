@@ -66,9 +66,7 @@ export default function TestModelPage() {
       >
         {/* Title */}
         <div className={css({ textAlign: 'center', mb: 6 })}>
-          <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 2 })}>
-            🔬 Model Tester
-          </h1>
+          <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 2 })}>🔬 Model Tester</h1>
           <p className={css({ color: 'gray.400', fontSize: 'sm' })}>
             Test the trained model with live camera feed or uploaded images
           </p>
@@ -105,9 +103,7 @@ export default function TestModelPage() {
             color: 'gray.400',
           })}
         >
-          <h3 className={css({ fontWeight: 'medium', color: 'gray.300', mb: 2 })}>
-            How to use:
-          </h3>
+          <h3 className={css({ fontWeight: 'medium', color: 'gray.300', mb: 2 })}>How to use:</h3>
           <ol className={css({ listStyle: 'decimal', pl: 4, '& li': { mb: 1 } })}>
             <li>Upload a training image PNG to test inference directly</li>
             <li>Or point your camera at the abacus with ArUco markers visible</li>

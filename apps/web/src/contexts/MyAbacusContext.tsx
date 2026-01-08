@@ -140,6 +140,23 @@ export interface VisionFrameData {
  */
 export type VisionFrameCallback = (frame: VisionFrameData) => void
 
+/**
+ * Storybook-only state override for testing mirror mode layout.
+ * Only used when testing - production code should not use this.
+ */
+export interface VisionStorybookState {
+  /** Force mirror mode on */
+  showAbacusMirror: true
+  /** Fake detected digits */
+  columnDigits: number[]
+  /** Fake detected value */
+  detectedValue: number
+  /** Fake confidence */
+  confidence: number
+  /** Fake video stream to display in PIP */
+  videoStream: MediaStream | null
+}
+
 interface MyAbacusContextValue {
   isOpen: boolean
   open: () => void

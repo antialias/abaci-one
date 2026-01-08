@@ -1121,31 +1121,6 @@ export function ActiveSession({
   const outgoingRef = useRef<HTMLDivElement>(null)
   const activeRef = useRef<HTMLDivElement>(null)
 
-  // Track problem container height for AbacusDock sizing
-  const [problemHeight, setProblemHeight] = useState<number | null>(null)
-
-  // Measure problem container height with ResizeObserver
-  // Use useLayoutEffect to run synchronously after DOM mutations (before paint)
-  // This ensures we get accurate measurements before the browser paints
-  useLayoutEffect(() => {
-    const element = activeRef.current
-    if (!element) return
-
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        // Use borderBoxSize for more accurate measurement including padding
-        const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
-        setProblemHeight(height)
-      }
-    })
-
-    observer.observe(element)
-    // Initial measurement - offsetHeight includes padding and border
-    setProblemHeight(element.offsetHeight)
-
-    return () => observer.disconnect()
-  }, [attempt?.slotIndex, attempt?.partIndex]) // Re-run when problem changes
-
   // Track if we need to apply centering offset (set true when transition starts)
   const needsCenteringOffsetRef = useRef(false)
   // Store the centering offset value for the animation end
@@ -1673,6 +1648,9 @@ export function ActiveSession({
     )
   }
 
+  // Check if we should show the abacus dock
+  const showAbacusDock = currentPart.type === 'abacus' && !showHelpOverlay
+
   return (
     <div
       data-component="active-session"
@@ -1684,33 +1662,48 @@ export function ActiveSession({
         flexDirection: 'column',
         gap: { base: '0.75rem', md: '1rem' },
         padding: { base: '0.5rem', md: '1rem' },
-        maxWidth: '600px',
+        // Widen container when dock is shown to accommodate side-by-side layout
+        maxWidth: showAbacusDock ? '900px' : '600px',
         margin: '0 auto',
-        height: '100%', // Fill parent container
-        overflow: 'hidden', // Prevent overflow
+        height: '100%',
+        overflow: 'hidden',
+        transition: 'max-width 0.3s ease',
       })}
     >
-      {/* Problem display */}
+      {/* Problem + Dock row container */}
       <div
-        data-section="problem-area"
+        data-section="problem-dock-row"
         className={css({
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: { base: '0.75rem', md: '1rem' },
-          flex: 1, // Take remaining space
-          minHeight: 0, // Allow shrinking
-          paddingTop: { base: '1rem', md: '2rem' },
-          paddingRight: { base: '1rem', md: '2rem' },
-          paddingBottom: { base: '1rem', md: '1.5rem' },
-          paddingLeft: { base: '1rem', md: '2rem' },
-          backgroundColor: isDark ? 'gray.800' : 'white',
-          borderRadius: '16px',
-          boxShadow: 'md',
-          overflow: 'hidden', // Prevent overflow
+          flexDirection: 'row',
+          gap: '1.5rem',
+          flex: 1,
+          minHeight: 0,
+          alignItems: 'stretch',
         })}
       >
+        {/* Problem display */}
+        <div
+          data-section="problem-area"
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: { base: '0.75rem', md: '1rem' },
+            flex: showAbacusDock ? '1 1 60%' : '1 1 100%',
+            minHeight: 0,
+            minWidth: 0,
+            paddingTop: { base: '1rem', md: '2rem' },
+            paddingRight: { base: '1rem', md: '2rem' },
+            paddingBottom: { base: '1rem', md: '1.5rem' },
+            paddingLeft: { base: '1rem', md: '2rem' },
+            backgroundColor: isDark ? 'gray.800' : 'white',
+            borderRadius: '16px',
+            boxShadow: 'md',
+            overflow: 'hidden',
+          })}
+        >
         {/* Purpose badge with tooltip - shows retry indicator when in retry epoch */}
         {currentSlot && (
           <div
@@ -2052,26 +2045,6 @@ export function ActiveSession({
                   </DecompositionProvider>
                 </div>
               )}
-              {/* Abacus dock - positioned absolutely so it doesn't affect problem centering */}
-              {/* Width 100% matches problem width, height matches problem height */}
-              {currentPart.type === 'abacus' && !showHelpOverlay && (problemHeight ?? 0) > 0 && (
-                <AbacusDock
-                  id="practice-abacus"
-                  columns={calculateAbacusColumns(attempt.problem.terms)}
-                  interactive={true}
-                  showNumbers={false}
-                  animated={true}
-                  onValueChange={handleAbacusDockValueChange}
-                  className={css({
-                    position: 'absolute',
-                    left: '100%',
-                    top: 0,
-                    width: '100%',
-                    marginLeft: '1.5rem',
-                  })}
-                  style={{ height: problemHeight }}
-                />
-              )}
             </animated.div>
           </animated.div>
         </div>
@@ -2079,6 +2052,28 @@ export function ActiveSession({
         {/* Feedback message - only show for incorrect */}
         {showFeedback && (
           <PracticeFeedback isCorrect={false} correctAnswer={attempt.problem.answer} />
+        )}
+        </div>
+
+        {/* Abacus dock - flex sibling of problem-area for proper layout */}
+        {showAbacusDock && (
+          <AbacusDock
+            id="practice-abacus"
+            columns={calculateAbacusColumns(attempt.problem.terms)}
+            interactive={true}
+            showNumbers={false}
+            animated={true}
+            onValueChange={handleAbacusDockValueChange}
+            className={css({
+              flex: '0 0 auto',
+              // Responsive sizing based on viewport
+              width: 'clamp(200px, 25vw, 300px)',
+              alignSelf: 'center',
+              backgroundColor: isDark ? 'gray.800' : 'white',
+              borderRadius: '16px',
+              boxShadow: 'md',
+            })}
+          />
         )}
       </div>
 

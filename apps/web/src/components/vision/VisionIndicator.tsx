@@ -6,8 +6,8 @@ import { css } from '../../../styled-system/css'
 interface VisionIndicatorProps {
   /** Size variant */
   size?: 'small' | 'medium'
-  /** Position for absolute placement */
-  position?: 'top-left' | 'bottom-right'
+  /** Position for absolute placement, or 'inline' for flex container usage */
+  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'inline'
 }
 
 /**
@@ -61,9 +61,17 @@ export function VisionIndicator({
       : { w: '28px', h: '28px', fontSize: '14px' }
 
   const positionStyles =
-    position === 'top-left'
-      ? { top: 0, left: 0, margin: '4px' }
-      : { bottom: 0, right: 0, margin: '4px' }
+    position === 'inline'
+      ? {} // No absolute positioning for inline usage
+      : {
+          position: 'absolute' as const,
+          ...{
+            'top-left': { top: 0, left: 0, margin: '4px' },
+            'top-right': { top: 0, right: 0, margin: '4px' },
+            'bottom-left': { bottom: 0, left: 0, margin: '4px' },
+            'bottom-right': { bottom: 0, right: 0, margin: '4px' },
+          }[position],
+        }
 
   return (
     <button
@@ -74,10 +82,7 @@ export function VisionIndicator({
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       title={`${statusLabel} (right-click for settings)`}
-      style={{
-        position: 'absolute',
-        ...positionStyles,
-      }}
+      style={positionStyles}
       className={css({
         ...sizeStyles,
         display: 'flex',

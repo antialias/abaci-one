@@ -510,48 +510,54 @@ export function MyAbacus() {
               position: 'relative',
             })}
           >
-            {/* Vision indicator - positioned at top-right, before undock button */}
-            <VisionIndicator size="small" position="top-left" />
-
-            {/* Undock button - positioned at top-right of dock container */}
-            <button
-              data-action="undock-abacus"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleUndockClick()
-              }}
-              title="Undock abacus"
+            {/* Control buttons - stacked vertically on right side to avoid blocking beads */}
+            <div
+              data-element="dock-controls"
               style={{
                 position: 'absolute',
-                top: 0,
+                bottom: 0,
                 right: 0,
                 margin: '4px',
-              }}
-              className={css({
-                w: '24px',
-                h: '24px',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bg: 'rgba(0, 0, 0, 0.5)',
-                backdropFilter: 'blur(4px)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                borderRadius: 'md',
-                color: 'white',
-                fontSize: 'xs',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                zIndex: 10,
-                opacity: 0.7,
-                _hover: {
-                  bg: 'rgba(0, 0, 0, 0.7)',
-                  opacity: 1,
-                  transform: 'scale(1.1)',
-                },
-              })}
+                flexDirection: 'column',
+                gap: '4px',
+                alignItems: 'flex-end',
+              }}
             >
-              ↗
-            </button>
+              <VisionIndicator size="small" position="inline" />
+              <button
+                data-action="undock-abacus"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleUndockClick()
+                }}
+                title="Undock abacus"
+                className={css({
+                  w: '24px',
+                  h: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bg: 'rgba(0, 0, 0, 0.5)',
+                  backdropFilter: 'blur(4px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: 'md',
+                  color: 'white',
+                  fontSize: 'xs',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  zIndex: 10,
+                  opacity: 0.7,
+                  _hover: {
+                    bg: 'rgba(0, 0, 0, 0.7)',
+                    opacity: 1,
+                    transform: 'scale(1.1)',
+                  },
+                })}
+              >
+                ↗
+              </button>
+            </div>
             <div
               data-element="abacus-display"
               className={css({
