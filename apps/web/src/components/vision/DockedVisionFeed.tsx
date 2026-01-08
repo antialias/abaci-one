@@ -5,6 +5,8 @@ import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useFrameStability } from '@/hooks/useFrameStability'
 import { useMarkerDetection } from '@/hooks/useMarkerDetection'
 import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
+import { useColumnClassifier } from '@/hooks/useColumnClassifier'
+import { processVideoFrame, processImageFrame, digitsToNumber } from '@/lib/vision/frameProcessor'
 import { VisionCameraFeed } from './VisionCameraFeed'
 import { css } from '../../../styled-system/css'
 
@@ -12,7 +14,7 @@ import { css } from '../../../styled-system/css'
  * Feature flag: Enable automatic abacus value detection from video feed.
  *
  * When enabled:
- * - Runs CV-based bead detection on video frames
+ * - Runs ML-based digit classification on video frames
  * - Shows detected value overlay
  * - Calls setDockedValue and onValueDetected with detected values
  *
@@ -20,30 +22,8 @@ import { css } from '../../../styled-system/css'
  * - Only shows the video feed (no detection)
  * - Hides the detection overlay
  * - Does not interfere with student's manual input
- *
- * Set to true when ready to work on improving detection accuracy.
  */
-const ENABLE_AUTO_DETECTION = false
-
-// Only import detection modules when auto-detection is enabled
-// This ensures the detection code is tree-shaken when disabled
-let analyzeColumns: typeof import('@/lib/vision/beadDetector').analyzeColumns
-let analysesToDigits: typeof import('@/lib/vision/beadDetector').analysesToDigits
-let digitsToNumber: typeof import('@/lib/vision/beadDetector').digitsToNumber
-let processVideoFrame: typeof import('@/lib/vision/frameProcessor').processVideoFrame
-let processImageFrame: typeof import('@/lib/vision/frameProcessor').processImageFrame
-
-if (ENABLE_AUTO_DETECTION) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const beadDetector = require('@/lib/vision/beadDetector')
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const frameProcessor = require('@/lib/vision/frameProcessor')
-  analyzeColumns = beadDetector.analyzeColumns
-  analysesToDigits = beadDetector.analysesToDigits
-  digitsToNumber = beadDetector.digitsToNumber
-  processVideoFrame = frameProcessor.processVideoFrame
-  processImageFrame = frameProcessor.processImageFrame
-}
+const ENABLE_AUTO_DETECTION = true
 
 interface DockedVisionFeedProps {
   /** Called when a stable value is detected */
@@ -76,6 +56,7 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
   const animationFrameRef = useRef<number | null>(null)
   const lastInferenceTimeRef = useRef<number>(0)
   const lastBroadcastTimeRef = useRef<number>(0)
+  const isInferringRef = useRef(false) // Prevent concurrent inference
 
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -85,6 +66,16 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
 
   // Track video element in state for marker detection hook
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
+
+  // ML column classifier hook
+  const classifier = useColumnClassifier()
+
+  // Preload the ML model when component mounts
+  useEffect(() => {
+    if (ENABLE_AUTO_DETECTION) {
+      classifier.preload()
+    }
+  }, [classifier])
 
   // Stability tracking for detected values (hook must be called unconditionally)
   const stability = useFrameStability()
@@ -225,9 +216,11 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
   }, [isRemoteCamera, remoteIsPhoneConnected])
 
   // Process local camera frames for detection (only when enabled)
-  const processLocalFrame = useCallback(() => {
-    // Skip detection when feature is disabled
+  const processLocalFrame = useCallback(async () => {
+    // Skip detection when feature is disabled or model not ready
     if (!ENABLE_AUTO_DETECTION) return
+    if (!classifier.isModelLoaded) return
+    if (isInferringRef.current) return // Skip if already inferring
 
     const now = performance.now()
     if (now - lastInferenceTimeRef.current < INFERENCE_INTERVAL_MS) {
@@ -239,25 +232,36 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
     if (!video || video.readyState < 2) return
     if (!visionConfig.calibration) return
 
-    // Process video frame into column strips
-    const columnImages = processVideoFrame(video, visionConfig.calibration)
-    if (columnImages.length === 0) return
+    isInferringRef.current = true
 
-    // Use CV-based bead detection
-    const analyses = analyzeColumns(columnImages)
-    const { digits, minConfidence } = analysesToDigits(analyses)
+    try {
+      // Process video frame into column strips
+      const columnImages = processVideoFrame(video, visionConfig.calibration)
+      if (columnImages.length === 0) return
 
-    // Convert to number
-    const value = digitsToNumber(digits)
+      // Use ML-based digit classification
+      const results = await classifier.classifyColumns(columnImages)
+      if (!results || results.digits.length === 0) return
 
-    // Push to stability buffer
-    stability.pushFrame(value, minConfidence)
-  }, [visionConfig.calibration, stability])
+      // Extract digits and minimum confidence
+      const { digits, confidences } = results
+      const minConfidence = Math.min(...confidences)
+
+      // Convert to number
+      const value = digitsToNumber(digits)
+
+      // Push to stability buffer
+      stability.pushFrame(value, minConfidence)
+    } finally {
+      isInferringRef.current = false
+    }
+  }, [visionConfig.calibration, stability, classifier])
 
   // Process remote camera frames for detection (only when enabled)
   useEffect(() => {
-    // Skip detection when feature is disabled
+    // Skip detection when feature is disabled or model not ready
     if (!ENABLE_AUTO_DETECTION) return
+    if (!classifier.isModelLoaded) return
 
     if (!isRemoteCamera || !remoteIsPhoneConnected || !remoteLatestFrame) {
       return
@@ -267,32 +271,46 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
     if (now - lastInferenceTimeRef.current < INFERENCE_INTERVAL_MS) {
       return
     }
-    lastInferenceTimeRef.current = now
 
     const image = remoteImageRef.current
     if (!image || !image.complete || image.naturalWidth === 0) {
       return
     }
 
+    // Prevent concurrent inference
+    if (isInferringRef.current) return
+    isInferringRef.current = true
+    lastInferenceTimeRef.current = now
+
     // Phone sends pre-cropped frames in auto mode, so no calibration needed
     const columnImages = processImageFrame(image, null, columnCount)
-    if (columnImages.length === 0) return
+    if (columnImages.length === 0) {
+      isInferringRef.current = false
+      return
+    }
 
-    // Use CV-based bead detection
-    const analyses = analyzeColumns(columnImages)
-    const { digits, minConfidence } = analysesToDigits(analyses)
+    // Use ML-based digit classification (async)
+    classifier.classifyColumns(columnImages).then((results) => {
+      isInferringRef.current = false
+      if (!results || results.digits.length === 0) return
 
-    // Convert to number
-    const value = digitsToNumber(digits)
+      // Extract digits and minimum confidence
+      const { digits, confidences } = results
+      const minConfidence = Math.min(...confidences)
 
-    // Push to stability buffer
-    stability.pushFrame(value, minConfidence)
-  }, [isRemoteCamera, remoteIsPhoneConnected, remoteLatestFrame, columnCount, stability])
+      // Convert to number
+      const value = digitsToNumber(digits)
+
+      // Push to stability buffer
+      stability.pushFrame(value, minConfidence)
+    })
+  }, [isRemoteCamera, remoteIsPhoneConnected, remoteLatestFrame, columnCount, stability, classifier])
 
   // Local camera detection loop (only when enabled)
   useEffect(() => {
-    // Skip detection loop when feature is disabled
+    // Skip detection loop when feature is disabled or model not loaded
     if (!ENABLE_AUTO_DETECTION) return
+    if (!classifier.isModelLoaded) return
 
     if (!visionConfig.enabled || !isLocalCamera || !videoStream || !visionConfig.calibration) {
       return
@@ -303,6 +321,7 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
     const loop = () => {
       if (!running) return
 
+      // processLocalFrame is async but we don't await - it handles concurrency internally
       processLocalFrame()
       animationFrameRef.current = requestAnimationFrame(loop)
     }
@@ -322,6 +341,7 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
     videoStream,
     visionConfig.calibration,
     processLocalFrame,
+    classifier.isModelLoaded,
   ])
 
   // Handle stable value changes (only when auto-detection is enabled)
@@ -553,28 +573,40 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
             backdropFilter: 'blur(4px)',
           })}
         >
-          {/* Detected value */}
+          {/* Model loading or detected value */}
           <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
-            <span
-              className={css({
-                fontSize: 'lg',
-                fontWeight: 'bold',
-                color: 'white',
-                fontFamily: 'mono',
-              })}
-            >
-              {detectedValue !== null ? detectedValue : '---'}
-            </span>
-            {detectedValue !== null && (
-              <span className={css({ fontSize: 'xs', color: 'gray.400' })}>
-                {Math.round(confidence * 100)}%
+            {classifier.isLoading ? (
+              <span className={css({ fontSize: 'xs', color: 'yellow.400' })}>
+                Loading model...
               </span>
+            ) : !classifier.isModelLoaded ? (
+              <span className={css({ fontSize: 'xs', color: 'gray.500' })}>
+                Model unavailable
+              </span>
+            ) : (
+              <>
+                <span
+                  className={css({
+                    fontSize: 'lg',
+                    fontWeight: 'bold',
+                    color: 'white',
+                    fontFamily: 'mono',
+                  })}
+                >
+                  {detectedValue !== null ? detectedValue : '---'}
+                </span>
+                {detectedValue !== null && (
+                  <span className={css({ fontSize: 'xs', color: 'gray.400' })}>
+                    {Math.round(confidence * 100)}%
+                  </span>
+                )}
+              </>
             )}
           </div>
 
           {/* Stability indicator */}
           <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
-            {stability.consecutiveFrames > 0 && (
+            {classifier.isModelLoaded && stability.consecutiveFrames > 0 && (
               <div className={css({ display: 'flex', gap: 0.5 })}>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div

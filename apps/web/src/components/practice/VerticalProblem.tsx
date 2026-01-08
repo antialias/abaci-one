@@ -40,6 +40,8 @@ interface VerticalProblemProps {
   generationTrace?: GenerationTrace
   /** Complexity budget constraint (for debug overlay) */
   complexityBudget?: number
+  /** Index of detected prefix sum from vision (shows visual indicator on completed terms) */
+  detectedPrefixIndex?: number
 }
 
 /**
@@ -68,6 +70,7 @@ export function VerticalProblem({
   answerFadingOut = false,
   generationTrace,
   complexityBudget,
+  detectedPrefixIndex,
 }: VerticalProblemProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -163,12 +166,25 @@ export function VerticalProblem({
         const showNeedHelp = index === needHelpTermIndex && !isCurrentHelp
         // Check if this term is already included in the prefix sum (when in help mode)
         const isInPrefixSum = currentHelpTermIndex !== undefined && index < currentHelpTermIndex
+        // Check if this term is completed based on vision detection (before help mode)
+        const isVisionCompleted =
+          detectedPrefixIndex !== undefined &&
+          currentHelpTermIndex === undefined && // Only show when NOT in help mode
+          index <= detectedPrefixIndex
 
         return (
           <div
             key={index}
             data-element="term-row"
-            data-term-status={isCurrentHelp ? 'current' : showNeedHelp ? 'need-help' : 'pending'}
+            data-term-status={
+              isCurrentHelp
+                ? 'current'
+                : showNeedHelp
+                  ? 'need-help'
+                  : isVisionCompleted
+                    ? 'vision-completed'
+                    : 'pending'
+            }
             className={css({
               display: 'flex',
               alignItems: 'center',
@@ -229,6 +245,22 @@ export function VerticalProblem({
                 })}
               >
                 →
+              </div>
+            )}
+
+            {/* Checkmark indicator for vision-detected completed terms */}
+            {isVisionCompleted && (
+              <div
+                data-element="vision-completed"
+                className={css({
+                  position: 'absolute',
+                  left: '-2rem',
+                  color: isDark ? 'green.400' : 'green.600',
+                  fontSize: '1.25rem',
+                  opacity: 0.8,
+                })}
+              >
+                ✓
               </div>
             )}
 

@@ -1882,6 +1882,12 @@ export function ActiveSession({
                       : undefined
                   }
                   rejectedDigit={attempt.rejectedDigit}
+                  detectedPrefixIndex={
+                    // Show vision feedback for prefix sums (not final answer)
+                    matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
+                      ? matchedPrefixIndex
+                      : undefined
+                  }
                   helpOverlay={
                     // Always render overlay when in help mode (for exit transition)
                     showHelpOverlay && helpContext ? (
