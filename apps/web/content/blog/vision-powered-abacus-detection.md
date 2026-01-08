@@ -2,8 +2,8 @@
 title: "See What They're Doing: Vision-Powered Abacus Detection"
 description: "Our new ML-powered vision system watches your child's physical abacus in real-time, providing instant feedback as they work through problems—bridging the gap between hands-on learning and digital guidance."
 author: "Abaci.one Team"
-publishedAt: "2025-01-07"
-updatedAt: "2025-01-07"
+publishedAt: "2026-01-07"
+updatedAt: "2026-01-07"
 tags: ["vision", "machine-learning", "physical-abacus", "practice", "feedback"]
 featured: true
 ---
