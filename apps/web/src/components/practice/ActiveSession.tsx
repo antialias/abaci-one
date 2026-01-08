@@ -1663,7 +1663,7 @@ export function ActiveSession({
         gap: { base: '0.75rem', md: '1rem' },
         padding: { base: '0.5rem', md: '1rem' },
         // Widen container when dock is shown to accommodate side-by-side layout
-        maxWidth: showAbacusDock ? '900px' : '600px',
+        maxWidth: showAbacusDock ? '780px' : '600px',
         margin: '0 auto',
         height: '100%',
         overflow: 'hidden',
@@ -2066,12 +2066,13 @@ export function ActiveSession({
             onValueChange={handleAbacusDockValueChange}
             className={css({
               flex: '0 0 auto',
-              // Responsive sizing based on viewport
-              width: 'clamp(200px, 25vw, 300px)',
+              // Responsive sizing - constrain both width and height
+              // Width: scales from 140px (small) to 200px (large)
+              width: 'clamp(140px, 16vw, 200px)',
+              // Height: scales from 180px (small) to 260px (large)
+              height: 'clamp(180px, 24vh, 260px)',
               alignSelf: 'center',
-              backgroundColor: isDark ? 'gray.800' : 'white',
-              borderRadius: '16px',
-              boxShadow: 'md',
+              // Remove background/shadow - the docked content has its own styling
             })}
           />
         )}
