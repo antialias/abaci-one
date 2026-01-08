@@ -473,11 +473,13 @@ def export_to_tfjs(model, keras_path: str, output_dir: str, use_json: bool = Fal
 
         # Run tensorflowjs_converter on the SavedModel
         # Using tf_saved_model input format which handles nested models properly
+        # IMPORTANT: Do NOT use --quantize_uint8 - it corrupts model weights!
+        # See apps/web/.claude/CLAUDE.md "Quantization Corruption" section.
+        # Model size increases (556KB → 2.2MB) but predictions are correct.
         cmd = [
             sys.executable, "-m", "tensorflowjs.converters.converter",
             "--input_format=tf_saved_model",
             "--output_format=tfjs_graph_model",
-            "--quantize_uint8", "*",
             str(saved_model_path),
             str(output_path),
         ]
@@ -492,12 +494,11 @@ def export_to_tfjs(model, keras_path: str, output_dir: str, use_json: bool = Fal
                 "phase": "exporting"
             }, use_json)
 
-            # Fall back to Keras format conversion
+            # Fall back to Keras format conversion (no quantization!)
             cmd = [
                 sys.executable, "-m", "tensorflowjs.converters.converter",
                 "--input_format=keras",
                 "--output_format=tfjs_layers_model",
-                "--quantize_uint8", "*",
                 keras_path,
                 str(output_path),
             ]
@@ -511,13 +512,12 @@ def export_to_tfjs(model, keras_path: str, output_dir: str, use_json: bool = Fal
                     "phase": "exporting"
                 }, use_json)
 
-                # Fall back to direct Python API save
+                # Fall back to direct Python API save (no quantization!)
                 emit_progress("status", {"message": "Falling back to direct Python API save...", "phase": "exporting"}, use_json)
                 import tensorflowjs as tfjs
                 tfjs.converters.save_keras_model(
                     model,
                     str(output_path),
-                    quantization_dtype_map={"uint8": "*"},
                 )
 
     # Patch for Keras 3.x compatibility (if we used layers_model format)
