@@ -1704,355 +1704,356 @@ export function ActiveSession({
             overflow: 'hidden',
           })}
         >
-        {/* Purpose badge with tooltip - shows retry indicator when in retry epoch */}
-        {currentSlot && (
-          <div
-            data-element="purpose-retry-container"
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            })}
-          >
-            {/* Retry indicator badge */}
-            {inRetryEpoch && (
-              <div
-                data-element="retry-indicator"
-                data-epoch={retryEpochNumber}
-                className={css({
-                  padding: '0.25rem 0.75rem',
-                  borderRadius: '20px',
-                  fontSize: '0.75rem',
-                  fontWeight: 'bold',
-                  textTransform: 'uppercase',
-                  backgroundColor: isDark ? 'red.900' : 'red.100',
-                  color: isDark ? 'red.200' : 'red.700',
-                  border: '1px solid',
-                  borderColor: isDark ? 'red.700' : 'red.300',
-                })}
-              >
-                Retry {retryEpochNumber}/2
-              </div>
-            )}
-            <TooltipProvider>
-              <Tooltip
-                content={<PurposeTooltipContent slot={currentSlot} />}
-                side="bottom"
-                delayDuration={300}
-              >
+          {/* Purpose badge with tooltip - shows retry indicator when in retry epoch */}
+          {currentSlot && (
+            <div
+              data-element="purpose-retry-container"
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              })}
+            >
+              {/* Retry indicator badge */}
+              {inRetryEpoch && (
                 <div
-                  data-element="problem-purpose"
-                  data-purpose={currentSlot.purpose}
+                  data-element="retry-indicator"
+                  data-epoch={retryEpochNumber}
                   className={css({
-                    position: 'relative',
                     padding: '0.25rem 0.75rem',
                     borderRadius: '20px',
                     fontSize: '0.75rem',
                     fontWeight: 'bold',
                     textTransform: 'uppercase',
-                    cursor: 'help',
-                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                    _hover: {
-                      transform: 'scale(1.05)',
-                      boxShadow: 'sm',
-                    },
-                    backgroundColor:
-                      currentSlot.purpose === 'focus'
-                        ? isDark
-                          ? 'blue.900'
-                          : 'blue.100'
-                        : currentSlot.purpose === 'reinforce'
-                          ? isDark
-                            ? 'orange.900'
-                            : 'orange.100'
-                          : currentSlot.purpose === 'review'
-                            ? isDark
-                              ? 'green.900'
-                              : 'green.100'
-                            : isDark
-                              ? 'purple.900'
-                              : 'purple.100',
-                    color:
-                      currentSlot.purpose === 'focus'
-                        ? isDark
-                          ? 'blue.200'
-                          : 'blue.700'
-                        : currentSlot.purpose === 'reinforce'
-                          ? isDark
-                            ? 'orange.200'
-                            : 'orange.700'
-                          : currentSlot.purpose === 'review'
-                            ? isDark
-                              ? 'green.200'
-                              : 'green.700'
-                            : isDark
-                              ? 'purple.200'
-                              : 'purple.700',
+                    backgroundColor: isDark ? 'red.900' : 'red.100',
+                    color: isDark ? 'red.200' : 'red.700',
+                    border: '1px solid',
+                    borderColor: isDark ? 'red.700' : 'red.300',
                   })}
                 >
-                  {currentSlot.purpose}
+                  Retry {retryEpochNumber}/2
                 </div>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        )}
+              )}
+              <TooltipProvider>
+                <Tooltip
+                  content={<PurposeTooltipContent slot={currentSlot} />}
+                  side="bottom"
+                  delayDuration={300}
+                >
+                  <div
+                    data-element="problem-purpose"
+                    data-purpose={currentSlot.purpose}
+                    className={css({
+                      position: 'relative',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '20px',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      textTransform: 'uppercase',
+                      cursor: 'help',
+                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                      _hover: {
+                        transform: 'scale(1.05)',
+                        boxShadow: 'sm',
+                      },
+                      backgroundColor:
+                        currentSlot.purpose === 'focus'
+                          ? isDark
+                            ? 'blue.900'
+                            : 'blue.100'
+                          : currentSlot.purpose === 'reinforce'
+                            ? isDark
+                              ? 'orange.900'
+                              : 'orange.100'
+                            : currentSlot.purpose === 'review'
+                              ? isDark
+                                ? 'green.900'
+                                : 'green.100'
+                              : isDark
+                                ? 'purple.900'
+                                : 'purple.100',
+                      color:
+                        currentSlot.purpose === 'focus'
+                          ? isDark
+                            ? 'blue.200'
+                            : 'blue.700'
+                          : currentSlot.purpose === 'reinforce'
+                            ? isDark
+                              ? 'orange.200'
+                              : 'orange.700'
+                            : currentSlot.purpose === 'review'
+                              ? isDark
+                                ? 'green.200'
+                                : 'green.700'
+                              : isDark
+                                ? 'purple.200'
+                                : 'purple.700',
+                    })}
+                  >
+                    {currentSlot.purpose}
+                  </div>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
 
-        {/* Problem display - centered, with help panel positioned outside */}
-        <div
-          data-element="problem-with-help"
-          className={css({
-            display: 'flex',
-            justifyContent: 'center',
-            width: '100%',
-          })}
-        >
-          {/* Animated track for problem transitions */}
-          <animated.div
-            data-element="problem-track"
-            style={{
+          {/* Problem display - centered, with help panel positioned outside */}
+          <div
+            data-element="problem-with-help"
+            className={css({
               display: 'flex',
-              alignItems: 'flex-start',
-              transform: trackSpring.x.to((x) => `translateX(${x}px)`),
-            }}
+              justifyContent: 'center',
+              width: '100%',
+            })}
           >
-            {/* Outgoing problem (slides left during transition) */}
-            {outgoingAttempt && (
+            {/* Animated track for problem transitions */}
+            <animated.div
+              data-element="problem-track"
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                transform: trackSpring.x.to((x) => `translateX(${x}px)`),
+              }}
+            >
+              {/* Outgoing problem (slides left during transition) */}
+              {outgoingAttempt && (
+                <animated.div
+                  ref={outgoingRef}
+                  data-element="outgoing-problem"
+                  style={{
+                    opacity: trackSpring.outgoingOpacity,
+                    marginRight: '2rem',
+                    position: 'relative' as const,
+                  }}
+                >
+                  <VerticalProblem
+                    terms={outgoingAttempt.problem.terms}
+                    userAnswer={outgoingAttempt.userAnswer}
+                    isCompleted={true}
+                    correctAnswer={outgoingAttempt.problem.answer}
+                    size="large"
+                    generationTrace={outgoingAttempt.problem.generationTrace}
+                  />
+                  {/* Feedback stays with outgoing problem */}
+                  <PracticeFeedback
+                    isCorrect={true}
+                    correctAnswer={outgoingAttempt.problem.answer}
+                    className={css({
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      marginTop: '0.5rem',
+                      whiteSpace: 'nowrap',
+                    })}
+                  />
+                </animated.div>
+              )}
+
+              {/* Current problem */}
               <animated.div
-                ref={outgoingRef}
-                data-element="outgoing-problem"
+                ref={activeRef}
+                data-element="problem-container"
                 style={{
-                  opacity: trackSpring.outgoingOpacity,
-                  marginRight: '2rem',
+                  opacity: trackSpring.activeOpacity,
                   position: 'relative' as const,
                 }}
               >
-                <VerticalProblem
-                  terms={outgoingAttempt.problem.terms}
-                  userAnswer={outgoingAttempt.userAnswer}
-                  isCompleted={true}
-                  correctAnswer={outgoingAttempt.problem.answer}
-                  size="large"
-                  generationTrace={outgoingAttempt.problem.generationTrace}
-                />
-                {/* Feedback stays with outgoing problem */}
-                <PracticeFeedback
-                  isCorrect={true}
-                  correctAnswer={outgoingAttempt.problem.answer}
-                  className={css({
-                    position: 'absolute',
-                    top: '100%',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    marginTop: '0.5rem',
-                    whiteSpace: 'nowrap',
-                  })}
-                />
-              </animated.div>
-            )}
+                {currentPart.format === 'vertical' ? (
+                  <VerticalProblem
+                    terms={attempt.problem.terms}
+                    userAnswer={attempt.userAnswer}
+                    isFocused={inputIsFocused}
+                    isCompleted={showAsCompleted}
+                    correctAnswer={attempt.problem.answer}
+                    size="large"
+                    currentHelpTermIndex={helpContext?.termIndex}
+                    needHelpTermIndex={
+                      // Only show "need help?" prompt when not already in help mode
+                      !showHelpOverlay && ambiguousHelpTermIndex >= 0
+                        ? ambiguousHelpTermIndex
+                        : undefined
+                    }
+                    rejectedDigit={attempt.rejectedDigit}
+                    detectedPrefixIndex={
+                      // Show vision feedback for prefix sums (not final answer)
+                      matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
+                        ? matchedPrefixIndex
+                        : undefined
+                    }
+                    helpOverlay={
+                      // Always render overlay when in help mode (for exit transition)
+                      showHelpOverlay && helpContext ? (
+                        <PracticeHelpOverlay
+                          currentValue={helpContext.currentValue}
+                          targetValue={helpContext.targetValue}
+                          columns={Math.max(
+                            1,
+                            Math.max(helpContext.currentValue, helpContext.targetValue).toString()
+                              .length
+                          )}
+                          onTargetReached={handleTargetReached}
+                          onDismiss={() => {
+                            setHelpAbacusDismissed(true)
+                            clearAnswer()
+                          }}
+                          visible={!helpAbacusDismissed}
+                        />
+                      ) : undefined
+                    }
+                    helpOverlayVisible={showHelpOverlay && !helpAbacusDismissed}
+                    helpOverlayTransitionMs={helpAbacusDismissed ? 300 : 1000}
+                    onHelpOverlayTransitionEnd={clearAnswer}
+                    answerFadingOut={answerFadingOut}
+                    generationTrace={attempt.problem.generationTrace}
+                    complexityBudget={currentSlot?.constraints?.maxComplexityBudgetPerTerm}
+                  />
+                ) : (
+                  <LinearProblem
+                    terms={attempt.problem.terms}
+                    userAnswer={attempt.userAnswer}
+                    isFocused={inputIsFocused}
+                    isCompleted={showAsCompleted}
+                    correctAnswer={attempt.problem.answer}
+                    isDark={isDark}
+                    detectedPrefixIndex={
+                      matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
+                        ? matchedPrefixIndex
+                        : undefined
+                    }
+                  />
+                )}
 
-            {/* Current problem */}
-            <animated.div
-              ref={activeRef}
-              data-element="problem-container"
-              style={{
-                opacity: trackSpring.activeOpacity,
-                position: 'relative' as const,
-              }}
-            >
-              {currentPart.format === 'vertical' ? (
-                <VerticalProblem
-                  terms={attempt.problem.terms}
-                  userAnswer={attempt.userAnswer}
-                  isFocused={inputIsFocused}
-                  isCompleted={showAsCompleted}
-                  correctAnswer={attempt.problem.answer}
-                  size="large"
-                  currentHelpTermIndex={helpContext?.termIndex}
-                  needHelpTermIndex={
-                    // Only show "need help?" prompt when not already in help mode
-                    !showHelpOverlay && ambiguousHelpTermIndex >= 0
-                      ? ambiguousHelpTermIndex
-                      : undefined
-                  }
-                  rejectedDigit={attempt.rejectedDigit}
-                  detectedPrefixIndex={
-                    // Show vision feedback for prefix sums (not final answer)
-                    matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
-                      ? matchedPrefixIndex
-                      : undefined
-                  }
-                  helpOverlay={
-                    // Always render overlay when in help mode (for exit transition)
-                    showHelpOverlay && helpContext ? (
-                      <PracticeHelpOverlay
-                        currentValue={helpContext.currentValue}
-                        targetValue={helpContext.targetValue}
-                        columns={Math.max(
-                          1,
-                          Math.max(helpContext.currentValue, helpContext.targetValue).toString()
-                            .length
-                        )}
-                        onTargetReached={handleTargetReached}
-                        onDismiss={() => {
-                          setHelpAbacusDismissed(true)
-                          clearAnswer()
-                        }}
-                        visible={!helpAbacusDismissed}
-                      />
-                    ) : undefined
-                  }
-                  helpOverlayVisible={showHelpOverlay && !helpAbacusDismissed}
-                  helpOverlayTransitionMs={helpAbacusDismissed ? 300 : 1000}
-                  onHelpOverlayTransitionEnd={clearAnswer}
-                  answerFadingOut={answerFadingOut}
-                  generationTrace={attempt.problem.generationTrace}
-                  complexityBudget={currentSlot?.constraints?.maxComplexityBudgetPerTerm}
-                />
-              ) : (
-                <LinearProblem
-                  terms={attempt.problem.terms}
-                  userAnswer={attempt.userAnswer}
-                  isFocused={inputIsFocused}
-                  isCompleted={showAsCompleted}
-                  correctAnswer={attempt.problem.answer}
-                  isDark={isDark}
-                  detectedPrefixIndex={
-                    matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
-                      ? matchedPrefixIndex
-                      : undefined
-                  }
-                />
-              )}
-
-              {/* Help panel - absolutely positioned to the right of the problem */}
-              {showHelpOverlay && helpContext && !helpPanelDismissed && (
-                <div
-                  data-element="help-panel"
-                  className={css({
-                    position: 'absolute',
-                    left: '100%',
-                    top: 0,
-                    marginLeft: '1.5rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.75rem',
-                    padding: '1rem',
-                    backgroundColor: isDark ? 'blue.900' : 'blue.50',
-                    borderRadius: '12px',
-                    border: '2px solid',
-                    borderColor: isDark ? 'blue.700' : 'blue.200',
-                    minWidth: '200px',
-                    maxWidth: '280px',
-                  })}
-                >
-                  {/* Close button for help panel */}
-                  <button
-                    type="button"
-                    data-action="close-help-panel"
-                    onClick={() => setHelpPanelDismissed(true)}
+                {/* Help panel - absolutely positioned to the right of the problem */}
+                {showHelpOverlay && helpContext && !helpPanelDismissed && (
+                  <div
+                    data-element="help-panel"
                     className={css({
                       position: 'absolute',
-                      top: '-8px',
-                      right: '-8px',
-                      width: '24px',
-                      height: '24px',
+                      left: '100%',
+                      top: 0,
+                      marginLeft: '1.5rem',
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.875rem',
-                      fontWeight: 'bold',
-                      color: isDark ? 'gray.400' : 'gray.500',
-                      backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                      padding: '1rem',
+                      backgroundColor: isDark ? 'blue.900' : 'blue.50',
+                      borderRadius: '12px',
                       border: '2px solid',
-                      borderColor: isDark ? 'gray.600' : 'gray.300',
-                      borderRadius: '50%',
-                      cursor: 'pointer',
-                      zIndex: 10,
-                      _hover: {
-                        backgroundColor: isDark ? 'gray.600' : 'gray.300',
-                        color: isDark ? 'gray.200' : 'gray.700',
-                      },
+                      borderColor: isDark ? 'blue.700' : 'blue.200',
+                      minWidth: '200px',
+                      maxWidth: '280px',
                     })}
-                    aria-label="Close help panel"
                   >
-                    ×
-                  </button>
+                    {/* Close button for help panel */}
+                    <button
+                      type="button"
+                      data-action="close-help-panel"
+                      onClick={() => setHelpPanelDismissed(true)}
+                      className={css({
+                        position: 'absolute',
+                        top: '-8px',
+                        right: '-8px',
+                        width: '24px',
+                        height: '24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.875rem',
+                        fontWeight: 'bold',
+                        color: isDark ? 'gray.400' : 'gray.500',
+                        backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                        border: '2px solid',
+                        borderColor: isDark ? 'gray.600' : 'gray.300',
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        zIndex: 10,
+                        _hover: {
+                          backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                          color: isDark ? 'gray.200' : 'gray.700',
+                        },
+                      })}
+                      aria-label="Close help panel"
+                    >
+                      ×
+                    </button>
 
-                  {/* Coach hint */}
-                  {(() => {
-                    const hint = generateCoachHint(
-                      helpContext.currentValue,
-                      helpContext.targetValue
-                    )
-                    if (!hint) return null
-                    return (
-                      <div
-                        data-element="coach-hint"
+                    {/* Coach hint */}
+                    {(() => {
+                      const hint = generateCoachHint(
+                        helpContext.currentValue,
+                        helpContext.targetValue
+                      )
+                      if (!hint) return null
+                      return (
+                        <div
+                          data-element="coach-hint"
+                          className={css({
+                            padding: '0.5rem 0.75rem',
+                            backgroundColor: isDark ? 'gray.800' : 'white',
+                            borderRadius: '8px',
+                            border: '1px solid',
+                            borderColor: isDark ? 'blue.800' : 'blue.100',
+                          })}
+                        >
+                          <p
+                            className={css({
+                              fontSize: '0.875rem',
+                              color: isDark ? 'gray.300' : 'gray.700',
+                              lineHeight: '1.4',
+                              margin: 0,
+                            })}
+                          >
+                            {hint}
+                          </p>
+                        </div>
+                      )
+                    })()}
+
+                    {/* Decomposition display */}
+                    <DecompositionProvider
+                      startValue={helpContext.currentValue}
+                      targetValue={helpContext.targetValue}
+                      currentStepIndex={0}
+                      abacusColumns={Math.max(
+                        1,
+                        Math.max(helpContext.currentValue, helpContext.targetValue).toString()
+                          .length
+                      )}
+                    >
+                      <DecompositionSection
                         className={css({
                           padding: '0.5rem 0.75rem',
                           backgroundColor: isDark ? 'gray.800' : 'white',
                           borderRadius: '8px',
                           border: '1px solid',
                           borderColor: isDark ? 'blue.800' : 'blue.100',
+                          whiteSpace: 'nowrap',
                         })}
-                      >
-                        <p
-                          className={css({
-                            fontSize: '0.875rem',
-                            color: isDark ? 'gray.300' : 'gray.700',
-                            lineHeight: '1.4',
-                            margin: 0,
-                          })}
-                        >
-                          {hint}
-                        </p>
-                      </div>
-                    )
-                  })()}
-
-                  {/* Decomposition display */}
-                  <DecompositionProvider
-                    startValue={helpContext.currentValue}
-                    targetValue={helpContext.targetValue}
-                    currentStepIndex={0}
-                    abacusColumns={Math.max(
-                      1,
-                      Math.max(helpContext.currentValue, helpContext.targetValue).toString().length
-                    )}
-                  >
-                    <DecompositionSection
-                      className={css({
-                        padding: '0.5rem 0.75rem',
-                        backgroundColor: isDark ? 'gray.800' : 'white',
-                        borderRadius: '8px',
-                        border: '1px solid',
-                        borderColor: isDark ? 'blue.800' : 'blue.100',
-                        whiteSpace: 'nowrap',
-                      })}
-                      labelClassName={css({
-                        fontSize: '0.625rem',
-                        fontWeight: 'bold',
-                        color: isDark ? 'blue.300' : 'blue.600',
-                        marginBottom: '0.25rem',
-                        textTransform: 'uppercase',
-                      })}
-                      contentClassName={css({
-                        fontFamily: 'monospace',
-                        fontSize: '0.875rem',
-                        color: isDark ? 'gray.100' : 'gray.800',
-                      })}
-                    />
-                  </DecompositionProvider>
-                </div>
-              )}
+                        labelClassName={css({
+                          fontSize: '0.625rem',
+                          fontWeight: 'bold',
+                          color: isDark ? 'blue.300' : 'blue.600',
+                          marginBottom: '0.25rem',
+                          textTransform: 'uppercase',
+                        })}
+                        contentClassName={css({
+                          fontFamily: 'monospace',
+                          fontSize: '0.875rem',
+                          color: isDark ? 'gray.100' : 'gray.800',
+                        })}
+                      />
+                    </DecompositionProvider>
+                  </div>
+                )}
+              </animated.div>
             </animated.div>
-          </animated.div>
-        </div>
+          </div>
 
-        {/* Feedback message - only show for incorrect */}
-        {showFeedback && (
-          <PracticeFeedback isCorrect={false} correctAnswer={attempt.problem.answer} />
-        )}
+          {/* Feedback message - only show for incorrect */}
+          {showFeedback && (
+            <PracticeFeedback isCorrect={false} correctAnswer={attempt.problem.answer} />
+          )}
         </div>
 
         {/* Abacus dock - flex sibling of problem-area for proper layout */}

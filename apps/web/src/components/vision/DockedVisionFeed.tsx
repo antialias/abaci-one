@@ -43,12 +43,18 @@ interface DockedVisionFeedProps {
  * - For remote camera: Receives frames from phone, runs detection
  * - Shows the video feed with detection overlay
  */
-export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }: DockedVisionFeedProps) {
+export function DockedVisionFeed({
+  onValueDetected,
+  columnCount = 5,
+  onUndock,
+}: DockedVisionFeedProps) {
   const {
     visionConfig,
     setDockedValue,
     setVisionEnabled,
     setVisionCalibration,
+    setVisionCameraSource,
+    openVisionSetup,
     emitVisionFrame,
     visionSourceRef,
   } = useMyAbacus()
@@ -64,6 +70,7 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }:
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [connectionTimedOut, setConnectionTimedOut] = useState(false)
   const [detectedValue, setDetectedValue] = useState<number | null>(null)
   const [confidence, setConfidence] = useState(0)
   const [columnDigits, setColumnDigits] = useState<number[]>([])
@@ -221,8 +228,22 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }:
   useEffect(() => {
     if (isRemoteCamera && remoteIsPhoneConnected) {
       setIsLoading(false)
+      setConnectionTimedOut(false)
     }
   }, [isRemoteCamera, remoteIsPhoneConnected])
+
+  // Connection timeout for remote camera - show remediation options after 15 seconds
+  useEffect(() => {
+    if (!isRemoteCamera || !isLoading || remoteIsPhoneConnected) {
+      return
+    }
+
+    const timeoutId = setTimeout(() => {
+      setConnectionTimedOut(true)
+    }, 15000) // 15 seconds
+
+    return () => clearTimeout(timeoutId)
+  }, [isRemoteCamera, isLoading, remoteIsPhoneConnected])
 
   // Process local camera frames for detection (only when enabled)
   const processLocalFrame = useCallback(async () => {
@@ -400,7 +421,13 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }:
     if (isStable && columnDigits.length > 0) {
       setShowMirrorHint(true)
     }
-  }, [stability.consecutiveFrames, classifier.isModelLoaded, showAbacusMirror, columnDigits.length, showMirrorHint])
+  }, [
+    stability.consecutiveFrames,
+    classifier.isModelLoaded,
+    showAbacusMirror,
+    columnDigits.length,
+    showMirrorHint,
+  ])
 
   // Broadcast vision frames to observers (5fps to save bandwidth)
   const BROADCAST_INTERVAL_MS = 200
@@ -511,6 +538,7 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }:
       <div
         data-component="docked-vision-feed"
         data-status="loading"
+        data-timed-out={connectionTimedOut ? 'true' : undefined}
         className={css({
           display: 'flex',
           flexDirection: 'column',
@@ -524,9 +552,71 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }:
         })}
       >
         <span className={css({ fontSize: 'xl' })}>📷</span>
-        <span className={css({ fontSize: 'sm' })}>
-          {isRemoteCamera ? 'Connecting to phone...' : 'Starting camera...'}
+        <span className={css({ fontSize: 'sm', textAlign: 'center' })}>
+          {isRemoteCamera
+            ? connectionTimedOut
+              ? 'Phone not connecting'
+              : 'Connecting to phone...'
+            : 'Starting camera...'}
         </span>
+        {/* Remediation options when remote camera times out */}
+        {isRemoteCamera && connectionTimedOut && (
+          <div
+            data-element="connection-remediation"
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              mt: 2,
+              width: '100%',
+            })}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setConnectionTimedOut(false)
+                remoteUnsubscribe()
+                if (visionConfig.remoteCameraSessionId) {
+                  remoteSubscribe(visionConfig.remoteCameraSessionId)
+                }
+              }}
+              className={css({
+                px: 3,
+                py: 1.5,
+                bg: 'blue.600',
+                color: 'white',
+                borderRadius: 'md',
+                fontSize: 'xs',
+                fontWeight: 'medium',
+                border: 'none',
+                cursor: 'pointer',
+                _hover: { bg: 'blue.500' },
+              })}
+            >
+              Retry Connection
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                openVisionSetup()
+              }}
+              className={css({
+                px: 3,
+                py: 1.5,
+                bg: 'gray.700',
+                color: 'white',
+                borderRadius: 'md',
+                fontSize: 'xs',
+                fontWeight: 'medium',
+                border: 'none',
+                cursor: 'pointer',
+                _hover: { bg: 'gray.600' },
+              })}
+            >
+              Open Settings
+            </button>
+          </div>
+        )}
       </div>
     )
   }
@@ -575,42 +665,73 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }:
               p: '8px',
             })}
           >
-          {/* Main AbacusReact display - takes available space */}
-          <div
-            data-element="abacus-main"
-            className={css({
-              flex: '1 1 auto',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minWidth: 0,
-              height: '100%',
-            })}
-          >
-            <AbacusReact
-              value={detectedValue ?? 0}
-              columns={columnDigits.length}
-              interactive={false}
-              animated={true}
-              showNumbers={true}
-              scaleFactor={1.2}
-            />
-          </div>
+            {/* Main AbacusReact display - takes available space */}
+            <div
+              data-element="abacus-main"
+              className={css({
+                flex: '1 1 auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 0,
+                height: '100%',
+              })}
+            >
+              <AbacusReact
+                value={detectedValue ?? 0}
+                columns={columnDigits.length}
+                interactive={false}
+                animated={true}
+                showNumbers={true}
+                scaleFactor={1.2}
+              />
+            </div>
 
-          {/* Video preview - fixed width sidebar */}
-          <div
-            data-element="video-preview"
-            className={css({
-              flex: '0 0 auto',
-              width: '60px',
-              height: '80px',
-              borderRadius: 'md',
-              overflow: 'hidden',
-              border: '2px solid rgba(255,255,255,0.6)',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-              bg: 'black',
-            })}
-          >
+            {/* Video preview - fixed width sidebar */}
+            <div
+              data-element="video-preview"
+              className={css({
+                flex: '0 0 auto',
+                width: '60px',
+                height: '80px',
+                borderRadius: 'md',
+                overflow: 'hidden',
+                border: '2px solid rgba(255,255,255,0.6)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                bg: 'black',
+              })}
+            >
+              {isLocalCamera && (
+                <VisionCameraFeed
+                  videoStream={videoStream}
+                  calibration={visionConfig.calibration}
+                  showRectifiedView={true}
+                  videoRef={(el) => {
+                    videoRef.current = el
+                    setVideoElement(el)
+                  }}
+                  rectifiedCanvasRef={(el) => {
+                    rectifiedCanvasRef.current = el
+                  }}
+                />
+              )}
+              {isRemoteCamera && remoteLatestFrame && (
+                <img
+                  ref={remoteImageRef}
+                  src={`data:image/jpeg;base64,${remoteLatestFrame.imageData}`}
+                  alt="Phone camera view"
+                  className={css({
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  })}
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Rectified video feed - local camera */}
             {isLocalCamera && (
               <VisionCameraFeed
                 videoStream={videoStream}
@@ -618,13 +739,15 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }:
                 showRectifiedView={true}
                 videoRef={(el) => {
                   videoRef.current = el
-                  setVideoElement(el)
+                  setVideoElement(el) // Update state so marker detection hook can react
                 }}
                 rectifiedCanvasRef={(el) => {
                   rectifiedCanvasRef.current = el
                 }}
               />
             )}
+
+            {/* Remote camera feed */}
             {isRemoteCamera && remoteLatestFrame && (
               <img
                 ref={remoteImageRef}
@@ -632,62 +755,29 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }:
                 alt="Phone camera view"
                 className={css({
                   width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
+                  height: 'auto',
+                  objectFit: 'contain',
                 })}
               />
             )}
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Rectified video feed - local camera */}
-          {isLocalCamera && (
-            <VisionCameraFeed
-              videoStream={videoStream}
-              calibration={visionConfig.calibration}
-              showRectifiedView={true}
-              videoRef={(el) => {
-                videoRef.current = el
-                setVideoElement(el) // Update state so marker detection hook can react
-              }}
-              rectifiedCanvasRef={(el) => {
-                rectifiedCanvasRef.current = el
-              }}
-            />
-          )}
 
-          {/* Remote camera feed */}
-          {isRemoteCamera && remoteLatestFrame && (
-            <img
-              ref={remoteImageRef}
-              src={`data:image/jpeg;base64,${remoteLatestFrame.imageData}`}
-              alt="Phone camera view"
-              className={css({
-                width: '100%',
-                height: 'auto',
-                objectFit: 'contain',
-              })}
-            />
-          )}
-
-          {/* Waiting for remote frames */}
-          {isRemoteCamera && !remoteLatestFrame && remoteIsPhoneConnected && (
-            <div
-              className={css({
-                width: '100%',
-                aspectRatio: '2/1',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'gray.400',
-                fontSize: 'sm',
-              })}
-            >
-              Waiting for frames...
-            </div>
-          )}
-        </>
+            {/* Waiting for remote frames */}
+            {isRemoteCamera && !remoteLatestFrame && remoteIsPhoneConnected && (
+              <div
+                className={css({
+                  width: '100%',
+                  aspectRatio: '2/1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'gray.400',
+                  fontSize: 'sm',
+                })}
+              >
+                Waiting for frames...
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -749,7 +839,9 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }:
           </div>
 
           {/* Center: Mode toggle with text labels */}
-          <div className={css({ display: 'flex', alignItems: 'center', gap: 1, position: 'relative' })}>
+          <div
+            className={css({ display: 'flex', alignItems: 'center', gap: 1, position: 'relative' })}
+          >
             {columnDigits.length > 0 && (
               <>
                 <div

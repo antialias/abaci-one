@@ -56,6 +56,8 @@ export interface AbacusVisionBridgeProps {
   onToggleVision?: () => void
   /** Called when user clicks clear settings */
   onClearSettings?: () => void
+  /** Ref to the container element for drag constraints */
+  dragConstraintRef?: React.RefObject<HTMLDivElement>
 }
 
 /**
@@ -79,6 +81,7 @@ export function AbacusVisionBridge({
   isVisionSetupComplete = false,
   onToggleVision,
   onClearSettings,
+  dragConstraintRef,
 }: AbacusVisionBridgeProps): ReactNode {
   const [videoDimensions, setVideoDimensions] = useState<{
     width: number
@@ -106,6 +109,9 @@ export function AbacusVisionBridge({
   // Camera source selection
   const [cameraSource, setCameraSource] = useState<CameraSource>(initialCameraSource)
   const [remoteCameraSessionId, setRemoteCameraSessionId] = useState<string | null>(null)
+  // Track whether we've checked localStorage for persisted session - prevents race condition
+  // where RemoteCameraQRCode creates a new session before we read the persisted one
+  const [hasCheckedPersistence, setHasCheckedPersistence] = useState(false)
 
   // Remote camera state
   const [remoteCalibrationMode, setRemoteCalibrationMode] = useState<'auto' | 'manual'>('auto')
@@ -158,6 +164,7 @@ export function AbacusVisionBridge({
   const lastReportedRemoteSessionRef = useRef<string | null>(null)
 
   // Initialize remote camera session from localStorage on mount
+  // IMPORTANT: Must complete before rendering RemoteCameraQRCode to prevent race condition
   useEffect(() => {
     const persistedSessionId = remoteGetPersistedSessionId()
     if (persistedSessionId) {
@@ -167,6 +174,8 @@ export function AbacusVisionBridge({
       // This ensures the parent context stays in sync with localStorage
       onConfigurationChange?.({ remoteCameraSessionId: persistedSessionId })
     }
+    // Mark that we've checked - now safe to render RemoteCameraQRCode
+    setHasCheckedPersistence(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remoteGetPersistedSessionId]) // onConfigurationChange is intentionally omitted - only run on mount
 
@@ -549,7 +558,9 @@ export function AbacusVisionBridge({
       data-component="abacus-vision-bridge"
       drag={!isCalibrating}
       dragMomentum={false}
-      dragElastic={0}
+      dragElastic={0.1}
+      // Keep modal within parent container bounds
+      dragConstraints={dragConstraintRef}
       className={css({
         display: 'flex',
         flexDirection: 'column',
@@ -559,6 +570,9 @@ export function AbacusVisionBridge({
         borderRadius: 'xl',
         maxWidth: '400px',
         width: '100%',
+        // Constrain height to fit on most screens (leaving room for buttons)
+        maxHeight: 'calc(100vh - 120px)',
+        overflow: 'hidden',
         cursor: isCalibrating ? 'default' : 'grab',
         _active: { cursor: isCalibrating ? 'default' : 'grabbing' },
       })}
@@ -617,7 +631,14 @@ export function AbacusVisionBridge({
       <div
         ref={cameraFeedContainerRef}
         data-element="camera-feed-container"
-        className={css({ position: 'relative' })}
+        className={css({
+          position: 'relative',
+          // Constrain aspect ratio to prevent modal from getting too tall
+          aspectRatio: '4/3',
+          maxHeight: '50vh',
+          overflow: 'hidden',
+          borderRadius: 'lg',
+        })}
       >
         {cameraSource === 'local' ? (
           <>
@@ -783,14 +804,28 @@ export function AbacusVisionBridge({
             className={css({
               position: 'relative',
               width: '100%',
+              height: '100%',
               bg: 'gray.800',
               borderRadius: 'lg',
               overflow: 'hidden',
-              minHeight: '200px',
               userSelect: 'none',
             })}
           >
-            {!remoteCameraSessionId ? (
+            {!hasCheckedPersistence ? (
+              /* Still checking localStorage for persisted session - show loading state */
+              <div
+                className={css({
+                  aspectRatio: '4/3',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'gray.400',
+                  fontSize: 'sm',
+                })}
+              >
+                Loading...
+              </div>
+            ) : !remoteCameraSessionId ? (
               /* Show QR code to connect phone */
               <div
                 className={css({

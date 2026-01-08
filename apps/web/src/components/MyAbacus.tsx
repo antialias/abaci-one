@@ -503,7 +503,9 @@ export function MyAbacus() {
             data-component="my-abacus"
             data-mode="docked"
             data-dock-id={dock.id}
-            data-vision-status={visionConfig.enabled && isVisionSetupComplete ? 'enabled' : 'disabled'}
+            data-vision-status={
+              visionConfig.enabled && isVisionSetupComplete ? 'enabled' : 'disabled'
+            }
             className={css({
               display: 'flex',
               flexDirection: 'column',
@@ -649,7 +651,7 @@ export function MyAbacus() {
           data-component="my-abacus"
           data-mode={isOpen ? 'open' : isHeroMode ? 'hero' : 'button'}
           data-dockable={isDockable ? 'true' : undefined}
-          onClick={isOpen || isHeroMode ? undefined : isDockable ? handleDockClick : toggle}
+          onClick={isOpen || isHeroMode ? undefined : dock ? handleDockClick : toggle}
           style={
             // In button mode, position with offset for on-screen keyboards
             // Portrait: bottomOffset moves button up

@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef } from 'react'
 import { useAbacusConfig } from '@soroban/abacus-react'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { css } from '../../../styled-system/css'
@@ -12,6 +13,7 @@ import { AbacusVisionBridge } from './AbacusVisionBridge'
  * The bridge component handles all camera/calibration configuration.
  */
 export function VisionSetupModal() {
+  const constraintRef = useRef<HTMLDivElement>(null)
   const {
     isVisionSetupOpen,
     closeVisionSetup,
@@ -41,6 +43,7 @@ export function VisionSetupModal() {
 
   return (
     <div
+      ref={constraintRef}
       data-component="vision-setup-modal"
       className={css({
         position: 'fixed',
@@ -48,8 +51,11 @@ export function VisionSetupModal() {
         bg: 'rgba(0, 0, 0, 0.7)',
         backdropFilter: 'blur(4px)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
+        paddingTop: '60px', // Ensure header is always accessible for dragging
+        paddingBottom: '60px',
+        overflow: 'hidden',
         zIndex: 10000,
       })}
       onClick={closeVisionSetup}
@@ -93,6 +99,7 @@ export function VisionSetupModal() {
           isVisionSetupComplete={isVisionSetupComplete}
           onToggleVision={handleToggleVision}
           onClearSettings={handleClearSettings}
+          dragConstraintRef={constraintRef}
         />
       </div>
     </div>

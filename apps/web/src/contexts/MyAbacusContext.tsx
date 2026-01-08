@@ -285,8 +285,10 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   const unregisterDock = useCallback((element: HTMLElement) => {
     setDock((current) => {
       if (current?.element === element) {
-        // Also undock if this dock is being removed
-        setIsDockedByUser(false)
+        // NOTE: Do NOT set isDockedByUser to false here!
+        // This gets called during React re-renders when AbacusDock unmounts/remounts.
+        // Setting isDockedByUser=false would cause unwanted undocking during problem transitions.
+        // Users should only be undocked via explicit undock() call.
         return null
       }
       return current
