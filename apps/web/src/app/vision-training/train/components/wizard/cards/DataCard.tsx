@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { css } from '../../../../../../../styled-system/css'
 import type { SamplesData } from '../types'
 import { TrainingDataCapture } from '../../TrainingDataCapture'
+import { TrainingDataHubModal } from '../../TrainingDataHubModal'
 
 interface DataCardProps {
   samples: SamplesData | null
@@ -105,6 +106,7 @@ export function DataCard({
   const [syncChecking, setSyncChecking] = useState(true)
   const [activeTab, setActiveTab] = useState<AcquireTab>(null)
   const [showContinueWarning, setShowContinueWarning] = useState(false)
+  const [hubModalOpen, setHubModalOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   const requirements = computeRequirements(samples)
@@ -337,6 +339,33 @@ export function DataCard({
             </div>
           </div>
 
+          {/* Manage Data button */}
+          <button
+            type="button"
+            onClick={() => setHubModalOpen(true)}
+            className={css({
+              width: '100%',
+              py: 2,
+              mb: 3,
+              bg: 'gray.700',
+              color: 'gray.300',
+              borderRadius: 'lg',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+              _hover: { bg: 'gray.600', color: 'gray.100' },
+            })}
+          >
+            <span>📁</span>
+            <span>Manage Data</span>
+            <span className={css({ color: 'gray.500' })}>→</span>
+          </button>
+
           {/* Requirements warning */}
           {requirements.needsMore && (
             <div
@@ -358,7 +387,31 @@ export function DataCard({
         <div className={css({ textAlign: 'center', py: 4, mb: 4 })}>
           <div className={css({ fontSize: '2xl', mb: 2 })}>📷</div>
           <div className={css({ color: 'gray.300', mb: 2 })}>No training data yet</div>
-          <div className={css({ fontSize: 'sm', color: 'gray.500' })}>{requirements.message}</div>
+          <div className={css({ fontSize: 'sm', color: 'gray.500', mb: 3 })}>
+            {requirements.message}
+          </div>
+          <button
+            type="button"
+            onClick={() => setHubModalOpen(true)}
+            className={css({
+              py: 2,
+              px: 4,
+              bg: 'blue.600',
+              color: 'white',
+              borderRadius: 'lg',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 2,
+              _hover: { bg: 'blue.500' },
+            })}
+          >
+            <span>📸</span>
+            <span>Capture Training Data</span>
+          </button>
         </div>
       )}
 
@@ -714,6 +767,18 @@ export function DataCard({
           )}
         </div>
       )}
+
+      {/* Training Data Hub Modal */}
+      <TrainingDataHubModal
+        isOpen={hubModalOpen}
+        onClose={() => setHubModalOpen(false)}
+        samples={samples}
+        onDataChanged={() => onSyncComplete?.()}
+        syncStatus={syncStatus}
+        syncProgress={syncProgress}
+        onStartSync={startSync}
+        onCancelSync={cancelSync}
+      />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ClassificationResult } from '@/lib/vision/columnClassifier'
+import type { ClassificationResult, BeadPositionResult } from '@/lib/vision/columnClassifier'
 
 export interface UseColumnClassifierReturn {
   /** Whether the model is loaded and ready */
@@ -17,15 +17,20 @@ export interface UseColumnClassifierReturn {
   classifyColumn: (imageData: ImageData) => Promise<ClassificationResult | null>
 
   /** Classify multiple column images */
-  classifyColumns: (
-    columnImages: ImageData[]
-  ) => Promise<{ digits: number[]; confidences: number[] } | null>
+  classifyColumns: (columnImages: ImageData[]) => Promise<{
+    digits: number[]
+    confidences: number[]
+    beadPositions: BeadPositionResult[]
+  } | null>
 
   /** Preload the model. Returns true if successful, false if unavailable */
   preload: () => Promise<boolean>
 
   /** Dispose of the model */
   dispose: () => void
+
+  /** Reset model state to allow retrying after a failure */
+  reset: () => Promise<void>
 }
 
 /**
@@ -129,8 +134,12 @@ export function useColumnClassifier(): UseColumnClassifierReturn {
   const classifyColumns = useCallback(
     async (
       columnImages: ImageData[]
-    ): Promise<{ digits: number[]; confidences: number[] } | null> => {
-      if (columnImages.length === 0) return { digits: [], confidences: [] }
+    ): Promise<{
+      digits: number[]
+      confidences: number[]
+      beadPositions: BeadPositionResult[]
+    } | null> => {
+      if (columnImages.length === 0) return { digits: [], confidences: [], beadPositions: [] }
 
       try {
         const classifier = await loadClassifier()
@@ -149,6 +158,7 @@ export function useColumnClassifier(): UseColumnClassifierReturn {
         return {
           digits: results.map((r) => r.digit),
           confidences: results.map((r) => r.confidence),
+          beadPositions: results.map((r) => r.beadPosition),
         }
       } catch (err) {
         console.error('[useColumnClassifier] Batch classification failed:', err)
@@ -168,6 +178,18 @@ export function useColumnClassifier(): UseColumnClassifierReturn {
     }
   }, [])
 
+  /**
+   * Reset model state to allow retrying after a failure
+   */
+  const reset = useCallback(async (): Promise<void> => {
+    const classifier = await loadClassifier()
+    classifier.resetModelState()
+    setIsModelLoaded(false)
+    setIsModelUnavailable(false)
+    setError(null)
+    setIsLoading(false)
+  }, [loadClassifier])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -185,5 +207,6 @@ export function useColumnClassifier(): UseColumnClassifierReturn {
     classifyColumns,
     preload,
     dispose,
+    reset,
   }
 }

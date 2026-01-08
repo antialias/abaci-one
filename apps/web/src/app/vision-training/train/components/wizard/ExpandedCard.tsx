@@ -123,6 +123,7 @@ export function ExpandedCard({
             isGpu={isGpu}
             onStartTraining={onStartTraining}
             canStart={canStartTraining}
+            totalImages={samples?.totalImages ?? 0}
           />
         )
       case 'setup':

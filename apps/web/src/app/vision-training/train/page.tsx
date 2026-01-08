@@ -334,6 +334,9 @@ export default function TrainModelPage() {
       case 'cancelled':
         setServerPhase('idle')
         break
+      default:
+        // Log unhandled events for debugging
+        console.log(`[Training] Event: ${eventType}`, data)
     }
   }, [])
 

@@ -97,6 +97,7 @@ interface SetupResult {
  */
 const REQUIRED_MODULES = [
   { name: 'tensorflow', importName: 'tensorflow', pipName: 'tensorflow' },
+  { name: 'tensorflowjs', importName: 'tensorflowjs', pipName: 'tensorflowjs' },
   { name: 'PIL (Pillow)', importName: 'PIL', pipName: 'Pillow' },
   { name: 'sklearn (scikit-learn)', importName: 'sklearn', pipName: 'scikit-learn' },
   { name: 'numpy', importName: 'numpy', pipName: 'numpy' },
@@ -219,20 +220,15 @@ async function createVenv(): Promise<SetupResult> {
       timeout: 120000,
     })
 
-    // Install tensorflow (with Metal on Apple Silicon)
-    if (isAppleSilicon) {
-      console.log('[vision-training] Installing tensorflow with Metal support...')
-      // tensorflow-metal requires specific tensorflow versions
-      await execAsync(
-        `"${TRAINING_PYTHON}" -m pip install "tensorflow-macos>=2.16,<2.17" "tensorflow-metal>=1.1,<1.2"`,
-        { timeout: 600000 } // 10 minutes - tensorflow is large
-      )
-    } else {
-      console.log('[vision-training] Installing tensorflow...')
-      await execAsync(`"${TRAINING_PYTHON}" -m pip install tensorflow`, {
-        timeout: 600000,
-      })
-    }
+    // Install tensorflow and tensorflowjs together to get compatible versions
+    // Note: We skip tensorflow-metal because tensorflowjs requires a newer tensorflow
+    // version that's incompatible with the current Metal plugin. CPU training is
+    // fast enough for our small dataset (~500 images).
+    console.log('[vision-training] Installing tensorflow and tensorflowjs...')
+    await execAsync(
+      `"${TRAINING_PYTHON}" -m pip install tensorflow tensorflowjs`,
+      { timeout: 600000 } // 10 minutes - tensorflow is large
+    )
 
     // Install all other requirements from requirements.txt
     if (fs.existsSync(REQUIREMENTS_FILE)) {
@@ -242,10 +238,11 @@ async function createVenv(): Promise<SetupResult> {
       })
     } else {
       // Fallback: install known required packages individually
+      // Note: tensorflow and tensorflowjs are already installed above
       console.log(
         '[vision-training] requirements.txt not found, installing packages individually...'
       )
-      const packages = ['Pillow', 'scikit-learn', 'numpy', 'tensorflowjs']
+      const packages = ['Pillow', 'scikit-learn', 'numpy']
       for (const pkg of packages) {
         try {
           await execAsync(`"${TRAINING_PYTHON}" -m pip install "${pkg}"`, {

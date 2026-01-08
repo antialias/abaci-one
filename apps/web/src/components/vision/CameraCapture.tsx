@@ -14,8 +14,8 @@ export type CameraSource = 'local' | 'phone'
 export interface CameraCaptureProps {
   /** Initial camera source (default: 'local') */
   initialSource?: CameraSource
-  /** Called when a frame is captured (either from local video or phone) */
-  onCapture?: (imageElement: HTMLImageElement | HTMLVideoElement) => void
+  /** Called when a frame is captured (either from local video or phone, or rectified canvas) */
+  onCapture?: (element: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement) => void
   /** Called when camera source changes */
   onSourceChange?: (source: CameraSource) => void
   /** Called when phone connection status changes */
@@ -30,6 +30,8 @@ export interface CameraCaptureProps {
   columnCount?: number
   /** Called when calibration is updated from marker detection */
   onCalibrationChange?: (calibration: CalibrationGrid | null) => void
+  /** Called on each detection frame with current marker visibility (true = all 4 markers found) */
+  onMarkersVisible?: (visible: boolean) => void
   /** Show rectified (perspective-corrected) view when calibrated (default: false) */
   showRectifiedView?: boolean
 }
@@ -57,6 +59,7 @@ export function CameraCapture({
   enableMarkerDetection = false,
   columnCount = 4,
   onCalibrationChange,
+  onMarkersVisible,
   showRectifiedView = false,
 }: CameraCaptureProps) {
   const [cameraSource, setCameraSource] = useState<CameraSource>(initialSource)
@@ -78,6 +81,14 @@ export function CameraCapture({
     onCalibrationChange,
   })
 
+  // Notify marker visibility changes (all 4 markers = visible)
+  useEffect(() => {
+    onMarkersVisible?.(markersFound === 4)
+  }, [markersFound, onMarkersVisible])
+
+  // Phone camera canvas (for unified capture path)
+  const phoneCanvasRef = useRef<HTMLCanvasElement | null>(null)
+
   // Phone camera
   const {
     isPhoneConnected,
@@ -90,7 +101,6 @@ export function CameraCapture({
     clearSession,
   } = useRemoteCameraDesktop()
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const imageRef = useRef<HTMLImageElement | null>(null)
 
   // Notify phone connection changes
   useEffect(() => {
@@ -170,40 +180,85 @@ export function CameraCapture({
     setSessionId(null)
   }, [clearSession])
 
+  // Track rectified canvas element in state for onCapture updates
+  const [rectifiedCanvasElement, setRectifiedCanvasElement] = useState<HTMLCanvasElement | null>(
+    null
+  )
+
   // Video ref callback for VisionCameraFeed - also calls onCapture
+  // Only call onCapture with video if NOT showing rectified view
   const handleVideoRef = useCallback(
     (el: HTMLVideoElement | null) => {
       videoRef.current = el
       setVideoElement(el) // Update state so marker detection hook can react
-      if (el && onCapture) {
+      // Only pass video to onCapture if we're NOT in rectified view mode
+      // When rectified view is active, we'll pass the canvas instead
+      if (el && onCapture && !showRectifiedView) {
         onCapture(el)
       }
     },
-    [onCapture]
+    [onCapture, showRectifiedView]
   )
 
-  // Image ref callback - also calls onCapture
-  const handleImageRef = useCallback(
-    (el: HTMLImageElement | null) => {
-      imageRef.current = el
-      if (el && onCapture) {
+  // Rectified canvas ref callback - call onCapture with canvas when in rectified mode
+  const handleRectifiedCanvasRef = useCallback(
+    (el: HTMLCanvasElement | null) => {
+      rectifiedCanvasRef.current = el
+      setRectifiedCanvasElement(el)
+      if (el && onCapture && showRectifiedView) {
         onCapture(el)
       }
     },
-    [onCapture]
+    [onCapture, showRectifiedView]
   )
 
-  // Update capture element when phone frame changes
+  // When switching to rectified view, update onCapture with the canvas
   useEffect(() => {
-    if (
-      cameraSource === 'phone' &&
-      isPhoneConnected &&
-      latestFrame &&
-      imageRef.current &&
-      onCapture
-    ) {
-      onCapture(imageRef.current)
+    if (showRectifiedView && isCalibrated && rectifiedCanvasElement && onCapture) {
+      onCapture(rectifiedCanvasElement)
+    } else if (!showRectifiedView && videoRef.current && onCapture) {
+      onCapture(videoRef.current)
     }
+  }, [showRectifiedView, isCalibrated, rectifiedCanvasElement, onCapture])
+
+  // Phone canvas ref callback - stores ref and calls onCapture
+  const handlePhoneCanvasRef = useCallback(
+    (el: HTMLCanvasElement | null) => {
+      phoneCanvasRef.current = el
+      if (el && onCapture && cameraSource === 'phone') {
+        onCapture(el)
+      }
+    },
+    [onCapture, cameraSource]
+  )
+
+  // Draw phone frames to canvas when they arrive
+  useEffect(() => {
+    if (cameraSource !== 'phone' || !isPhoneConnected || !latestFrame) {
+      return
+    }
+
+    const canvas = phoneCanvasRef.current
+    if (!canvas) return
+
+    // Create an image from the frame data and draw to canvas
+    const img = new Image()
+    img.onload = () => {
+      // Set canvas size to match image (only if changed)
+      if (canvas.width !== img.width || canvas.height !== img.height) {
+        canvas.width = img.width
+        canvas.height = img.height
+      }
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(img, 0, 0)
+        // Update onCapture with the canvas after drawing
+        if (onCapture) {
+          onCapture(canvas)
+        }
+      }
+    }
+    img.src = `data:image/jpeg;base64,${latestFrame.imageData}`
   }, [cameraSource, isPhoneConnected, latestFrame, onCapture])
 
   // Determine if we have a usable frame
@@ -220,84 +275,11 @@ export function CameraCapture({
         display: 'flex',
         flexDirection: 'column',
         gap: compact ? 2 : 3,
+        height: '100%',
+        minHeight: 0,
       })}
     >
-      {/* Camera source selector tabs */}
-      {showSourceSelector && (
-        <div
-          data-element="source-selector"
-          className={css({
-            display: 'flex',
-            gap: 0,
-            bg: 'gray.800',
-            borderRadius: 'lg',
-            p: 1,
-          })}
-        >
-          <button
-            type="button"
-            data-source="local"
-            data-active={cameraSource === 'local' ? 'true' : 'false'}
-            onClick={() => handleSourceChange('local')}
-            className={css({
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 2,
-              py: 2,
-              px: 3,
-              bg: cameraSource === 'local' ? 'gray.700' : 'transparent',
-              color: cameraSource === 'local' ? 'white' : 'gray.400',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              fontSize: 'sm',
-              fontWeight: cameraSource === 'local' ? 'medium' : 'normal',
-              transition: 'all 0.15s',
-              _hover: {
-                color: 'white',
-                bg: cameraSource === 'local' ? 'gray.700' : 'gray.750',
-              },
-            })}
-          >
-            <span>💻</span>
-            <span>This Device</span>
-          </button>
-          <button
-            type="button"
-            data-source="phone"
-            data-active={cameraSource === 'phone' ? 'true' : 'false'}
-            onClick={() => handleSourceChange('phone')}
-            className={css({
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 2,
-              py: 2,
-              px: 3,
-              bg: cameraSource === 'phone' ? 'gray.700' : 'transparent',
-              color: cameraSource === 'phone' ? 'white' : 'gray.400',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              fontSize: 'sm',
-              fontWeight: cameraSource === 'phone' ? 'medium' : 'normal',
-              transition: 'all 0.15s',
-              _hover: {
-                color: 'white',
-                bg: cameraSource === 'phone' ? 'gray.700' : 'gray.750',
-              },
-            })}
-          >
-            <span>📱</span>
-            <span>Phone Camera</span>
-          </button>
-        </div>
-      )}
-
-      {/* Camera feed */}
+      {/* Camera feed - contains the source selector overlay */}
       <div
         data-element="camera-feed"
         className={css({
@@ -305,9 +287,93 @@ export function CameraCapture({
           borderRadius: 'lg',
           overflow: 'hidden',
           bg: 'gray.800',
-          minHeight: '150px',
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
         })}
       >
+        {/* Source selector - absolutely positioned so it doesn't affect width */}
+        {showSourceSelector && (
+          <div
+            data-element="source-selector"
+            className={css({
+              position: 'absolute',
+              top: 2,
+              left: 2,
+              right: 2,
+              zIndex: 10,
+              display: 'flex',
+              gap: 0,
+              bg: 'gray.800/90',
+              backdropFilter: 'blur(4px)',
+              borderRadius: 'lg',
+              p: 1,
+            })}
+          >
+            <button
+              type="button"
+              data-source="local"
+              data-active={cameraSource === 'local' ? 'true' : 'false'}
+              onClick={() => handleSourceChange('local')}
+              className={css({
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1.5,
+                py: 1.5,
+                px: 2,
+                bg: cameraSource === 'local' ? 'gray.700' : 'transparent',
+                color: cameraSource === 'local' ? 'white' : 'gray.400',
+                border: 'none',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                fontSize: 'xs',
+                fontWeight: cameraSource === 'local' ? 'medium' : 'normal',
+                transition: 'all 0.15s',
+                _hover: {
+                  color: 'white',
+                  bg: cameraSource === 'local' ? 'gray.700' : 'gray.750',
+                },
+              })}
+            >
+              <span>💻</span>
+              <span>Local</span>
+            </button>
+            <button
+              type="button"
+              data-source="phone"
+              data-active={cameraSource === 'phone' ? 'true' : 'false'}
+              onClick={() => handleSourceChange('phone')}
+              className={css({
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1.5,
+                py: 1.5,
+                px: 2,
+                bg: cameraSource === 'phone' ? 'gray.700' : 'transparent',
+                color: cameraSource === 'phone' ? 'white' : 'gray.400',
+                border: 'none',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                fontSize: 'xs',
+                fontWeight: cameraSource === 'phone' ? 'medium' : 'normal',
+                transition: 'all 0.15s',
+                _hover: {
+                  color: 'white',
+                  bg: cameraSource === 'phone' ? 'gray.700' : 'gray.750',
+                },
+              })}
+            >
+              <span>📱</span>
+              <span>Phone</span>
+            </button>
+          </div>
+        )}
         {cameraSource === 'local' ? (
           /* Local camera feed */
           <>
@@ -317,9 +383,8 @@ export function CameraCapture({
               videoRef={handleVideoRef}
               calibration={enableMarkerDetection ? calibration : undefined}
               showRectifiedView={showRectifiedView && isCalibrated}
-              rectifiedCanvasRef={(el) => {
-                rectifiedCanvasRef.current = el
-              }}
+              rectifiedCanvasRef={handleRectifiedCanvasRef}
+              columnCount={columnCount}
             />
 
             {/* Local camera toolbar */}
@@ -568,20 +633,19 @@ export function CameraCapture({
             </div>
           </div>
         ) : (
-          /* Show camera frames */
-          <div className={css({ position: 'relative' })}>
-            {latestFrame ? (
-              <img
-                ref={handleImageRef}
-                src={`data:image/jpeg;base64,${latestFrame.imageData}`}
-                alt="Remote camera view"
-                className={css({
-                  width: '100%',
-                  height: 'auto',
-                  display: 'block',
-                })}
-              />
-            ) : (
+          /* Show camera frames on canvas (unified capture path) */
+          <div className={css({ position: 'relative', flex: 1, minHeight: 0, display: 'flex' })}>
+            <canvas
+              ref={handlePhoneCanvasRef}
+              data-element="phone-camera-canvas"
+              className={css({
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                display: latestFrame ? 'block' : 'none',
+              })}
+            />
+            {!latestFrame && (
               <div
                 className={css({
                   width: '100%',

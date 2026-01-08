@@ -322,11 +322,16 @@ export function processImageFrame(
   }
 
   // Create a synthetic calibration for slicing if none provided
+  // IMPORTANT: When calibration is null (e.g., already-rectified canvas),
+  // use small margins - the rectified view includes the frame area between ArUco markers,
+  // but actual bead columns are slightly inset from the markers.
+  // Use smaller margins than default (2% instead of 6%) since rectification is more precise.
   const sliceCalibration: CalibrationGrid = calibration ?? {
     roi: { x: 0, y: 0, width: canvas.width, height: canvas.height },
     columnCount,
     columnDividers: Array.from({ length: columnCount - 1 }, (_, i) => (i + 1) / columnCount),
     rotation: 0,
+    margins: { left: 0.02, right: 0.02, top: 0.02, bottom: 0.02 }, // Small margins for rectified images
   }
 
   // Slice into columns

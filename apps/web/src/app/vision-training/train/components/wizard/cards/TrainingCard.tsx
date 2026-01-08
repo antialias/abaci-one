@@ -84,7 +84,7 @@ export function TrainingCard({
           bg: 'gray.900',
           borderRadius: 'lg',
           fontSize: 'xs',
-          mb: 4,
+          mb: 2,
         })}
       >
         <div>
@@ -106,6 +106,35 @@ export function TrainingCard({
           </div>
         </div>
       </div>
+
+      {/* Per-head accuracy (bead position detection) */}
+      {currentEpoch.val_heaven_accuracy !== undefined && (
+        <div
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: 2,
+            p: 2,
+            bg: 'gray.900',
+            borderRadius: 'lg',
+            fontSize: 'xs',
+            mb: 4,
+          })}
+        >
+          <div>
+            <div className={css({ color: 'gray.600' })}>Heaven (5s)</div>
+            <div className={css({ fontFamily: 'mono', color: 'purple.400' })}>
+              {((currentEpoch.val_heaven_accuracy ?? 0) * 100).toFixed(1)}%
+            </div>
+          </div>
+          <div>
+            <div className={css({ color: 'gray.600' })}>Earth (1s)</div>
+            <div className={css({ fontFamily: 'mono', color: 'blue.400' })}>
+              {((currentEpoch.val_earth_accuracy ?? 0) * 100).toFixed(1)}%
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Cancel button */}
       <button

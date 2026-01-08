@@ -25,6 +25,8 @@ export interface VisionCameraFeedProps {
   onVideoReady?: (width: number, height: number) => void
   /** Children rendered over the video (e.g., CalibrationOverlay) */
   children?: ReactNode
+  /** Number of abacus columns (used for fixed aspect ratio in rectified view) */
+  columnCount?: number
 }
 
 /**
@@ -60,10 +62,11 @@ export function VisionCameraFeed({
   rectifiedCanvasRef: externalCanvasRef,
   onVideoReady,
   children,
+  columnCount,
 }: VisionCameraFeedProps): ReactNode {
   const internalVideoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const rectifiedCanvasRef = useRef<HTMLCanvasElement>(null)
+  const rectifiedCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const animationFrameRef = useRef<number | null>(null)
 
@@ -87,12 +90,16 @@ export function VisionCameraFeed({
     }
   }, [externalVideoRef, videoStream])
 
-  // Set canvas ref for external access (when rectified view is active)
-  useEffect(() => {
-    if (externalCanvasRef && showRectifiedView) {
-      externalCanvasRef(rectifiedCanvasRef.current)
-    }
-  }, [externalCanvasRef, showRectifiedView])
+  // Combined ref callback for rectified canvas - sets internal ref AND calls external callback
+  const handleRectifiedCanvasRef = useCallback(
+    (el: HTMLCanvasElement | null) => {
+      rectifiedCanvasRef.current = el
+      if (externalCanvasRef) {
+        externalCanvasRef(el)
+      }
+    },
+    [externalCanvasRef]
+  )
 
   // Attach stream to video element
   useEffect(() => {
@@ -157,7 +164,7 @@ export function VisionCameraFeed({
       if (!running) return
 
       if (video.readyState >= 2 && isOpenCVReady()) {
-        rectifyQuadrilateral(video, corners, canvas)
+        rectifyQuadrilateral(video, corners, canvas, { columnCount })
       }
 
       animationFrameRef.current = requestAnimationFrame(processFrame)
@@ -394,6 +401,10 @@ export function VisionCameraFeed({
         borderRadius: 'lg',
         overflow: 'hidden',
         bg: 'black',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       })}
     >
       {/* Video element - always mounted (may be hidden when showing rectified view) */}
@@ -404,7 +415,8 @@ export function VisionCameraFeed({
         muted
         className={css({
           width: '100%',
-          height: 'auto',
+          height: '100%',
+          objectFit: 'contain',
           display: showRectifiedView && !isLoadingOpenCV ? 'none' : 'block',
         })}
       />
@@ -445,11 +457,12 @@ export function VisionCameraFeed({
       {/* Rectified view canvas */}
       {showRectifiedView && !isLoadingOpenCV && (
         <canvas
-          ref={rectifiedCanvasRef}
+          ref={handleRectifiedCanvasRef}
           data-element="rectified-canvas"
           className={css({
             width: '100%',
-            height: 'auto',
+            height: '100%',
+            objectFit: 'contain',
             display: 'block',
           })}
         />

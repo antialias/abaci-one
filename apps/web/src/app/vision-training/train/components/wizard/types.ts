@@ -176,6 +176,11 @@ export interface EpochData {
   accuracy: number
   val_loss: number
   val_accuracy: number
+  // Per-head metrics from two-head bead position model
+  heaven_accuracy?: number
+  val_heaven_accuracy?: number
+  earth_accuracy?: number
+  val_earth_accuracy?: number
 }
 
 export interface DatasetInfo {
@@ -189,6 +194,9 @@ export interface TrainingResult {
   epochs_trained: number
   output_dir: string
   tfjs_exported: boolean
+  // Per-head metrics from two-head bead position model
+  heaven_accuracy?: number
+  earth_accuracy?: number
 }
 
 export interface TrainingConfig {

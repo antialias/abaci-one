@@ -125,6 +125,14 @@ export interface RectifyOptions {
    * Set to false for phone cameras where no rotation is needed
    */
   rotate180?: boolean
+  /**
+   * Number of abacus columns (default: undefined)
+   * When provided, uses a fixed aspect ratio based on column count:
+   * - 5-column abacus = 1:1 aspect ratio (width:height)
+   * - 4-column abacus = 4:5 aspect ratio (taller than wide)
+   * Formula: width:height = columnCount:5
+   */
+  columnCount?: number
 }
 
 /**
@@ -170,8 +178,25 @@ export function rectifyQuadrilateral(
   const avgWidth = (topWidth + bottomWidth) / 2
   const avgHeight = (leftHeight + rightHeight) / 2
 
-  const outputWidth = options.outputWidth ?? Math.round(avgWidth)
-  const outputHeight = options.outputHeight ?? Math.round(avgHeight)
+  // Calculate output dimensions
+  let outputWidth: number
+  let outputHeight: number
+
+  if (options.columnCount !== undefined) {
+    // Use FIXED dimensions based on column count - completely independent of detected quad
+    // 5 columns = 1:1 (square)
+    // 4 columns = 4:5 (narrower, since fewer columns)
+    // Width scales with column count, height is fixed
+    //
+    // Use a fixed base size of 400 pixels for the height (5 units)
+    const BASE_SIZE = 400
+    outputWidth = options.outputWidth ?? Math.round((BASE_SIZE * options.columnCount) / 5)
+    outputHeight = options.outputHeight ?? BASE_SIZE
+  } else {
+    // Fall back to detected quad dimensions
+    outputWidth = options.outputWidth ?? Math.round(avgWidth)
+    outputHeight = options.outputHeight ?? Math.round(avgHeight)
+  }
 
   // Set canvas size
   canvas.width = outputWidth

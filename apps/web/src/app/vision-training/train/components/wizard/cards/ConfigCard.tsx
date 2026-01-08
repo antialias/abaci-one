@@ -9,6 +9,8 @@ interface ConfigCardProps {
   isGpu: boolean
   onStartTraining: () => void
   canStart: boolean
+  /** Total number of training images */
+  totalImages: number
 }
 
 interface Preset {
@@ -24,18 +26,41 @@ export function ConfigCard({
   isGpu,
   onStartTraining,
   canStart,
+  totalImages,
 }: ConfigCardProps) {
-  // Hardware-aware presets
+  // Recommend batch size based on dataset size
+  // Goal: at least 10-20 batches per epoch for meaningful gradient updates
+  const getRecommendedBatchSize = (images: number, hasGpu: boolean): number => {
+    if (images < 200) return 8
+    if (images < 500) return 16
+    if (images < 2000) return 32
+    return hasGpu ? 64 : 32
+  }
+
+  const recommendedBatchSize = getRecommendedBatchSize(totalImages, isGpu)
+  const batchesPerEpoch = Math.floor(totalImages / config.batchSize)
+
+  // Hardware and dataset-aware presets
   const presets: Record<string, Preset> = isGpu
     ? {
-        quick: { epochs: 10, batchSize: 32, label: '⚡ Quick', desc: '~2 min' },
-        balanced: { epochs: 50, batchSize: 64, label: '⚖️ Balanced', desc: '~10 min' },
-        best: { epochs: 100, batchSize: 64, label: '✨ Best', desc: '~20 min' },
+        quick: { epochs: 10, batchSize: recommendedBatchSize, label: '⚡ Quick', desc: '~2 min' },
+        balanced: {
+          epochs: 50,
+          batchSize: recommendedBatchSize,
+          label: '⚖️ Balanced',
+          desc: '~10 min',
+        },
+        best: { epochs: 100, batchSize: recommendedBatchSize, label: '✨ Best', desc: '~20 min' },
       }
     : {
-        quick: { epochs: 5, batchSize: 16, label: '⚡ Quick', desc: '~5 min' },
-        balanced: { epochs: 25, batchSize: 32, label: '⚖️ Balanced', desc: '~15 min' },
-        best: { epochs: 50, batchSize: 32, label: '✨ Best', desc: '~30 min' },
+        quick: { epochs: 5, batchSize: recommendedBatchSize, label: '⚡ Quick', desc: '~5 min' },
+        balanced: {
+          epochs: 25,
+          batchSize: recommendedBatchSize,
+          label: '⚖️ Balanced',
+          desc: '~15 min',
+        },
+        best: { epochs: 50, batchSize: recommendedBatchSize, label: '✨ Best', desc: '~30 min' },
       }
 
   const applyPreset = (preset: Preset) => {
@@ -120,30 +145,56 @@ export function ConfigCard({
           <span className={css({ fontSize: 'xs', color: 'gray.500' })}>Batch Size</span>
           <span className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.200' })}>
             {config.batchSize}
+            {config.batchSize === recommendedBatchSize && (
+              <span className={css({ color: 'green.400', ml: 1 })}>(recommended)</span>
+            )}
           </span>
         </div>
         <div className={css({ display: 'flex', gap: 2 })}>
-          {(isGpu ? [32, 64, 128] : [16, 32, 64]).map((size) => (
-            <button
-              key={size}
-              type="button"
-              onClick={() => setConfig((prev) => ({ ...prev, batchSize: size }))}
-              className={css({
-                flex: 1,
-                py: 1.5,
-                borderRadius: 'md',
-                border: '1px solid',
-                borderColor: config.batchSize === size ? 'blue.500' : 'gray.700',
-                bg: config.batchSize === size ? 'blue.900' : 'transparent',
-                color: config.batchSize === size ? 'blue.300' : 'gray.400',
-                fontSize: 'sm',
-                cursor: 'pointer',
-                _hover: { borderColor: 'blue.400' },
-              })}
-            >
-              {size}
-            </button>
-          ))}
+          {[8, 16, 32, 64].map((size) => {
+            const isRecommended = size === recommendedBatchSize
+            return (
+              <button
+                key={size}
+                type="button"
+                onClick={() => setConfig((prev) => ({ ...prev, batchSize: size }))}
+                className={css({
+                  flex: 1,
+                  py: 1.5,
+                  borderRadius: 'md',
+                  border: '1px solid',
+                  borderColor:
+                    config.batchSize === size
+                      ? 'blue.500'
+                      : isRecommended
+                        ? 'green.700'
+                        : 'gray.700',
+                  bg: config.batchSize === size ? 'blue.900' : 'transparent',
+                  color: config.batchSize === size ? 'blue.300' : 'gray.400',
+                  fontSize: 'sm',
+                  cursor: 'pointer',
+                  _hover: { borderColor: 'blue.400' },
+                })}
+              >
+                {size}
+              </button>
+            )
+          })}
+        </div>
+        {/* Batch size guidance */}
+        <div className={css({ fontSize: 'xs', color: 'gray.500', mt: 2 })}>
+          {totalImages === 0 ? (
+            <span>Smaller = better for small datasets, larger = faster training</span>
+          ) : batchesPerEpoch < 10 ? (
+            <span className={css({ color: 'yellow.400' })}>
+              ⚠️ Only {batchesPerEpoch} batches/epoch — consider smaller batch size
+            </span>
+          ) : (
+            <span>
+              {batchesPerEpoch} batches/epoch • Smaller = better for small datasets, larger = faster
+              training
+            </span>
+          )}
         </div>
       </div>
 

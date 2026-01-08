@@ -142,117 +142,87 @@ export async function GET(request: Request): Promise<NextResponse> {
 /**
  * DELETE /api/vision-training/images
  *
- * Bulk delete training images matching filter criteria.
+ * Delete specific training images by filename.
  * Body (JSON):
- *   - digit: Filter by digit (0-9)
- *   - playerId: Filter by player ID prefix
- *   - sessionId: Filter by session ID prefix
- *   - beforeTimestamp: Delete images before this timestamp (exclusive)
- *   - afterTimestamp: Delete images after this timestamp (exclusive)
- *   - filenames: Optional array of specific filenames to delete (with digit)
+ *   - filenames: REQUIRED array of { digit: number, filename: string } to delete
  *   - confirm: Must be true to actually delete (safety check)
  *
- * If no filters are provided and confirm is true, deletes ALL images.
+ * This endpoint ONLY deletes explicitly specified files. No bulk operations.
+ * If you need bulk delete by filter, use a separate admin tool.
  */
 export async function DELETE(request: Request): Promise<NextResponse> {
   try {
     const body = await request.json()
 
     const {
-      digit,
-      playerId,
-      sessionId,
-      beforeTimestamp,
-      afterTimestamp,
       filenames,
       confirm,
     }: {
-      digit?: string
-      playerId?: string
-      sessionId?: string
-      beforeTimestamp?: number
-      afterTimestamp?: number
       filenames?: { digit: number; filename: string }[]
       confirm?: boolean
     } = body
 
-    // If specific filenames provided, delete those
-    if (filenames && filenames.length > 0) {
-      if (!confirm) {
-        return NextResponse.json({
-          preview: true,
-          count: filenames.length,
-          message: `Would delete ${filenames.length} specified images. Set confirm=true to proceed.`,
-        })
-      }
-
-      let deleted = 0
-      const errors: string[] = []
-
-      for (const { digit: d, filename } of filenames) {
-        // Validate
-        if (!/^[0-9]$/.test(String(d))) {
-          errors.push(`Invalid digit for ${filename}`)
-          continue
-        }
-        if (filename.includes('..') || filename.includes('/') || !filename.endsWith('.png')) {
-          errors.push(`Invalid filename: ${filename}`)
-          continue
-        }
-
-        const filePath = path.join(TRAINING_DATA_DIR, String(d), filename)
-        try {
-          await fs.unlink(filePath)
-          deleted++
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-            errors.push(`Failed to delete ${filename}: ${(error as Error).message}`)
-          }
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        deleted,
-        errors: errors.length > 0 ? errors : undefined,
-      })
+    // REQUIRE filenames array - no implicit bulk delete
+    if (!filenames || !Array.isArray(filenames) || filenames.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            'filenames array is required. Provide an array of { digit, filename } objects to delete.',
+        },
+        { status: 400 }
+      )
     }
 
-    // Build filter criteria
-    const filters: FilterCriteria = {
-      digit,
-      playerId,
-      sessionId,
-      beforeTimestamp,
-      afterTimestamp,
+    // Safety limit - don't allow deleting too many at once
+    const MAX_DELETE_BATCH = 50
+    if (filenames.length > MAX_DELETE_BATCH) {
+      return NextResponse.json(
+        {
+          error: `Cannot delete more than ${MAX_DELETE_BATCH} files at once. You requested ${filenames.length}.`,
+        },
+        { status: 400 }
+      )
     }
 
-    // Collect matching images
-    const images = await collectMatchingImages(filters)
-
-    // If no confirm, return preview
+    // Preview mode if not confirmed
     if (!confirm) {
       return NextResponse.json({
         preview: true,
-        count: images.length,
-        message: `Would delete ${images.length} images matching filters. Set confirm=true to proceed.`,
-        filters,
+        count: filenames.length,
+        message: `Would delete ${filenames.length} specified images. Set confirm=true to proceed.`,
       })
     }
 
-    // Actually delete
     let deleted = 0
     const errors: string[] = []
 
-    for (const img of images) {
-      const filePath = path.join(TRAINING_DATA_DIR, String(img.digit), img.filename)
+    for (const { digit: d, filename } of filenames) {
+      // Validate digit
+      if (typeof d !== 'number' || d < 0 || d > 9 || !Number.isInteger(d)) {
+        errors.push(`Invalid digit for ${filename}`)
+        continue
+      }
+      // Validate filename - prevent path traversal
+      if (
+        typeof filename !== 'string' ||
+        filename.includes('..') ||
+        filename.includes('/') ||
+        filename.includes('\\') ||
+        !filename.endsWith('.png')
+      ) {
+        errors.push(`Invalid filename: ${filename}`)
+        continue
+      }
+
+      const filePath = path.join(TRAINING_DATA_DIR, String(d), filename)
       try {
         await fs.unlink(filePath)
         deleted++
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-          errors.push(`Failed to delete ${img.filename}: ${(error as Error).message}`)
+          errors.push(`Failed to delete ${filename}: ${(error as Error).message}`)
         }
+        // Silently ignore ENOENT - file already gone is fine
       }
     }
 

@@ -196,6 +196,39 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
             </div>
           </div>
 
+          {/* Per-head accuracy breakdown */}
+          {result.heaven_accuracy !== undefined && result.earth_accuracy !== undefined && (
+            <div
+              className={css({
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 2,
+                p: 3,
+                bg: 'gray.900',
+                borderRadius: 'lg',
+                fontSize: 'sm',
+                mb: 4,
+              })}
+            >
+              <div>
+                <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Heaven (5s bead)</div>
+                <div
+                  className={css({ fontFamily: 'mono', color: 'purple.400', fontWeight: 'medium' })}
+                >
+                  {(result.heaven_accuracy * 100).toFixed(1)}%
+                </div>
+              </div>
+              <div>
+                <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Earth (1s beads)</div>
+                <div
+                  className={css({ fontFamily: 'mono', color: 'blue.400', fontWeight: 'medium' })}
+                >
+                  {(result.earth_accuracy * 100).toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Model path */}
           {result.tfjs_exported && (
             <div className={css({ fontSize: 'xs', color: 'gray.500', mb: 4 })}>
