@@ -26,6 +26,8 @@ Until now, students using our practice system had two options:
 
 Neither option fully captured the experience of a teacher looking over a student's shoulder, nodding as they correctly add each term, gently redirecting when they slip.
 
+![Before and after comparison showing the difference between practice without and with vision detection](/blog/vision-examples/before-after-comparison.png)
+
 ## How It Works
 
 Our new vision system uses your device's camera to watch the physical abacus in real time. Here's what happens:
@@ -47,6 +49,8 @@ Here's where the magic happens. Our ML model analyzes each column of the abacus 
 - **Auto-submit triggers** when the correct final answer appears
 
 The student sees their physical actions reflected instantly in the digital interface—validation that they're doing it right.
+
+![Step-by-step vision detection showing checkmarks appearing as each term is completed](/blog/vision-examples/detection-progress-gallery.png)
 
 ## The Technology Behind It
 
@@ -70,6 +74,17 @@ Raw ML predictions can be noisy—a brief hand shadow might cause a misread. Our
 ### Immediate Feedback Loop
 
 Research consistently shows that immediate feedback accelerates learning. When a student adds 45 and sees a checkmark appear, they know instantly that they've got it right. No waiting, no uncertainty.
+
+<div style="display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap;">
+  <figure>
+    <img src="/blog/vision-examples/first-term-completed.png" alt="First term completed with checkmark" style="max-height: 300px;" />
+    <figcaption>First term detected</figcaption>
+  </figure>
+  <figure>
+    <img src="/blog/vision-examples/two-terms-completed.png" alt="Two terms completed with checkmarks" style="max-height: 300px;" />
+    <figcaption>Two terms detected</figcaption>
+  </figure>
+</div>
 
 ### Scaffolded Independence
 
