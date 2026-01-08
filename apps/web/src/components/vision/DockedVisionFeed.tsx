@@ -31,6 +31,8 @@ interface DockedVisionFeedProps {
   onValueDetected?: (value: number) => void
   /** Number of columns to detect */
   columnCount?: number
+  /** Called when user wants to undock the abacus */
+  onUndock?: () => void
 }
 
 /**
@@ -41,7 +43,7 @@ interface DockedVisionFeedProps {
  * - For remote camera: Receives frames from phone, runs detection
  * - Shows the video feed with detection overlay
  */
-export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVisionFeedProps) {
+export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }: DockedVisionFeedProps) {
   const {
     visionConfig,
     setDockedValue,
@@ -843,34 +845,68 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5 }: DockedVis
             )}
           </div>
 
-          {/* Right side: Close button */}
-          <button
-            type="button"
-            data-action="disable-vision"
-            onClick={handleDisableVision}
-            title="Turn off camera"
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              w: '24px',
-              h: '24px',
-              bg: 'transparent',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              borderRadius: 'md',
-              color: 'gray.400',
-              fontSize: 'xs',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              _hover: {
-                bg: 'red.600',
-                borderColor: 'red.600',
-                color: 'white',
-              },
-            })}
-          >
-            ✕
-          </button>
+          {/* Right side: Undock + Close buttons */}
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
+            {onUndock && (
+              <button
+                type="button"
+                data-action="undock-abacus"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onUndock()
+                }}
+                title="Undock abacus"
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  w: '24px',
+                  h: '24px',
+                  bg: 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: 'md',
+                  color: 'gray.400',
+                  fontSize: 'xs',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  _hover: {
+                    bg: 'blue.600',
+                    borderColor: 'blue.600',
+                    color: 'white',
+                  },
+                })}
+              >
+                ↗
+              </button>
+            )}
+            <button
+              type="button"
+              data-action="disable-vision"
+              onClick={handleDisableVision}
+              title="Turn off camera"
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                w: '24px',
+                h: '24px',
+                bg: 'transparent',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: 'md',
+                color: 'gray.400',
+                fontSize: 'xs',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                _hover: {
+                  bg: 'red.600',
+                  borderColor: 'red.600',
+                  color: 'white',
+                },
+              })}
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
     </div>

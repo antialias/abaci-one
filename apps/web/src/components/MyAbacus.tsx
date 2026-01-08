@@ -510,54 +510,56 @@ export function MyAbacus() {
               position: 'relative',
             })}
           >
-            {/* Control buttons - stacked vertically on right side to avoid blocking beads */}
-            <div
-              data-element="dock-controls"
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                right: 0,
-                margin: '4px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px',
-                alignItems: 'flex-end',
-              }}
-            >
-              <VisionIndicator size="small" position="inline" />
-              <button
-                data-action="undock-abacus"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleUndockClick()
-                }}
-                title="Undock abacus"
-                className={css({
-                  w: '24px',
-                  h: '24px',
+            {/* Control buttons - only show when NOT using vision feed (vision has its own status bar) */}
+            {!(visionConfig.enabled && isVisionSetupComplete) && (
+              <div
+                data-element="dock-controls"
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  margin: '4px',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  bg: 'rgba(0, 0, 0, 0.5)',
-                  backdropFilter: 'blur(4px)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: 'md',
-                  color: 'white',
-                  fontSize: 'xs',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  zIndex: 10,
-                  opacity: 0.7,
-                  _hover: {
-                    bg: 'rgba(0, 0, 0, 0.7)',
-                    opacity: 1,
-                    transform: 'scale(1.1)',
-                  },
-                })}
+                  flexDirection: 'column',
+                  gap: '4px',
+                  alignItems: 'flex-end',
+                }}
               >
-                ↗
-              </button>
-            </div>
+                <VisionIndicator size="small" position="inline" />
+                <button
+                  data-action="undock-abacus"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleUndockClick()
+                  }}
+                  title="Undock abacus"
+                  className={css({
+                    w: '24px',
+                    h: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bg: 'rgba(0, 0, 0, 0.5)',
+                    backdropFilter: 'blur(4px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    borderRadius: 'md',
+                    color: 'white',
+                    fontSize: 'xs',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    zIndex: 10,
+                    opacity: 0.7,
+                    _hover: {
+                      bg: 'rgba(0, 0, 0, 0.7)',
+                      opacity: 1,
+                      transform: 'scale(1.1)',
+                    },
+                  })}
+                >
+                  ↗
+                </button>
+              </div>
+            )}
             <div
               data-element="abacus-display"
               className={css({
@@ -584,6 +586,7 @@ export function MyAbacus() {
                       dock.onValueChange(value)
                     }
                   }}
+                  onUndock={handleUndockClick}
                 />
               ) : (
                 <AbacusReact
