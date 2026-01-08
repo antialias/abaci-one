@@ -2067,10 +2067,10 @@ export function ActiveSession({
             className={css({
               flex: '0 0 auto',
               // Responsive sizing - constrain both width and height
-              // Width: scales from 140px (small) to 200px (large)
-              width: 'clamp(140px, 16vw, 200px)',
-              // Height: scales from 180px (small) to 260px (large)
-              height: 'clamp(180px, 24vh, 260px)',
+              // Mobile: smaller (140px-180px), Desktop: larger (up to 240px)
+              width: { base: 'clamp(140px, 20vw, 180px)', md: 'clamp(180px, 18vw, 240px)' },
+              // Mobile: shorter, Desktop: taller
+              height: { base: 'clamp(180px, 28vh, 240px)', md: 'clamp(220px, 26vh, 300px)' },
               alignSelf: 'center',
               // Remove background/shadow - the docked content has its own styling
             })}

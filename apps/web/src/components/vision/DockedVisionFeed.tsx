@@ -386,17 +386,21 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }:
   ])
 
   // Show a subtle hint to try mirror mode when detection has been stable
-  // This is non-intrusive - user can ignore it, and it goes away once they've tried mirror
+  // Once shown, keep it visible until dismissed or mirror mode enabled
+  // This prevents flashing when stability temporarily drops
   useEffect(() => {
     if (!ENABLE_AUTO_DETECTION) return
     if (!classifier.isModelLoaded) return
-    if (hintDismissedRef.current) return // Don't show again if dismissed
+    if (hintDismissedRef.current) return // Don't show again if dismissed this session
     if (showAbacusMirror) return // Already in mirror mode, no need to suggest it
+    if (showMirrorHint) return // Already showing, don't re-evaluate
 
-    // Show hint when we have stable detection (3+ consecutive frames)
+    // Only SET to true when stable, never set back to false (sticky once shown)
     const isStable = stability.consecutiveFrames >= 3
-    setShowMirrorHint(isStable && columnDigits.length > 0)
-  }, [stability.consecutiveFrames, classifier.isModelLoaded, showAbacusMirror, columnDigits.length])
+    if (isStable && columnDigits.length > 0) {
+      setShowMirrorHint(true)
+    }
+  }, [stability.consecutiveFrames, classifier.isModelLoaded, showAbacusMirror, columnDigits.length, showMirrorHint])
 
   // Broadcast vision frames to observers (5fps to save bandwidth)
   const BROADCAST_INTERVAL_MS = 200
@@ -813,32 +817,78 @@ export function DockedVisionFeed({ onValueDetected, columnCount = 5, onUndock }:
                 {showMirrorHint && !showAbacusMirror && (
                   <div
                     data-element="mirror-hint"
-                    onClick={() => {
-                      hintDismissedRef.current = true
-                      setShowMirrorHint(false)
-                      setShowAbacusMirror(true)
-                    }}
                     className={css({
                       position: 'absolute',
-                      top: '-20px',
+                      top: '-22px',
                       left: '50%',
                       transform: 'translateX(-50%)',
-                      px: 2,
-                      py: 0.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '2px',
                       bg: 'green.600',
-                      color: 'white',
-                      fontSize: '10px',
-                      fontWeight: 'medium',
                       borderRadius: 'full',
-                      cursor: 'pointer',
                       whiteSpace: 'nowrap',
                       animation: 'pulse 2s ease-in-out infinite',
-                      _hover: {
-                        bg: 'green.500',
-                      },
                     })}
                   >
-                    ✨ Try Mirror
+                    {/* Main clickable area - enables mirror mode */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        hintDismissedRef.current = true
+                        setShowMirrorHint(false)
+                        setShowAbacusMirror(true)
+                      }}
+                      className={css({
+                        px: 2,
+                        py: 0.5,
+                        bg: 'transparent',
+                        border: 'none',
+                        color: 'white',
+                        fontSize: '10px',
+                        fontWeight: 'medium',
+                        cursor: 'pointer',
+                        _hover: {
+                          bg: 'green.500',
+                        },
+                        borderRadius: 'full',
+                        borderTopRightRadius: 0,
+                        borderBottomRightRadius: 0,
+                      })}
+                    >
+                      ✨ Try Mirror
+                    </button>
+                    {/* Dismiss button */}
+                    <button
+                      type="button"
+                      data-action="dismiss-mirror-hint"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        hintDismissedRef.current = true
+                        setShowMirrorHint(false)
+                      }}
+                      title="Dismiss"
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        w: '16px',
+                        h: '16px',
+                        mr: '2px',
+                        bg: 'transparent',
+                        border: 'none',
+                        color: 'green.200',
+                        fontSize: '10px',
+                        cursor: 'pointer',
+                        borderRadius: 'full',
+                        _hover: {
+                          bg: 'green.700',
+                          color: 'white',
+                        },
+                      })}
+                    >
+                      ✕
+                    </button>
                   </div>
                 )}
               </>
