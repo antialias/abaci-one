@@ -79,16 +79,83 @@ The system doesn't just watch—it helps. When a student shows a prefix sum (lik
 
 By validating physical abacus use rather than replacing it, students develop real tactile skills. Their fingers learn the movements. Their spatial sense strengthens. The digital system supports without substituting.
 
-## Getting Started
+## Setting Up Vision Mode: Step by Step
 
-To use vision-powered detection:
+Getting started takes just a few minutes, and the system remembers your setup for future sessions.
 
-1. **Print ArUco markers** from our setup guide
-2. **Position your camera** to see your abacus clearly
-3. **Calibrate once** (the system remembers your setup)
-4. **Practice normally** and watch the magic happen
+### Step 1: Print and Attach the ArUco Markers
 
-The feature works with any standard soroban and most webcams or phone cameras.
+The system uses four small printed patterns (called ArUco markers) to locate your abacus in the camera view. These markers enable automatic calibration—no manual adjustment needed.
+
+1. Go to [Create → Vision Markers](/create/vision-markers)
+2. Download the printable PDF or individual marker files
+3. Print at **100% scale** (don't use "fit to page")
+4. Cut out each marker with a small white border (2-3mm)
+5. Attach to your abacus frame corners:
+   - Marker 0 → Top-left
+   - Marker 1 → Top-right
+   - Marker 2 → Bottom-right
+   - Marker 3 → Bottom-left
+
+**Tip:** Double-sided tape works great. Keep the markers flat and visible.
+
+### Step 2: Start a Practice Session
+
+1. Navigate to your student's practice page
+2. Click the **abacus button** (bottom-right corner) to open your MyAbacus
+3. The abacus will **dock** into the practice interface
+
+### Step 3: Enable Vision Mode
+
+1. Look for the **camera icon** (📷) in the corner of the docked abacus
+   - 🔴 Red dot = not configured yet
+   - ⚪ Gray = configured but disabled
+   - 🟢 Green = active and detecting
+2. Click the camera icon to open **Vision Settings**
+
+### Step 4: Choose Your Camera
+
+You have two options:
+
+**Option A: Computer Camera (💻 This Device)**
+- Select your webcam from the dropdown
+- Grant camera permission when prompted
+- Position the camera to see your abacus clearly
+
+**Option B: Phone Camera (📱 Phone Camera)**
+- Scan the QR code with your phone
+- Your phone becomes a wireless camera
+- Great for overhead desk views
+
+### Step 5: Automatic Calibration
+
+Once your camera sees the ArUco markers:
+
+1. The system shows "Looking for markers (0/4 found)"
+2. As markers are detected: 1/4 → 2/4 → 3/4 → 4/4
+3. When all 4 are found: **"Auto-crop using markers"** appears in green
+4. A preview shows the perspective-corrected abacus view
+
+**No markers?** Click "Set crop manually instead" to drag corners and column dividers yourself.
+
+### Step 6: Enable and Practice!
+
+1. Click **"Enable Vision"**
+2. The camera feed replaces the digital abacus display
+3. You'll see:
+   - Live video of your physical abacus
+   - Detected value shown at the bottom
+   - Confidence percentage
+4. Start working problems—the system detects your moves automatically!
+
+### Your Settings Are Saved
+
+Once configured, the system remembers:
+- Your camera selection
+- Your calibration setup
+- Whether vision was enabled
+
+Next time you dock your abacus, just click the camera icon and enable—no recalibration needed unless you move your setup.
 
 ## What's Next
 
