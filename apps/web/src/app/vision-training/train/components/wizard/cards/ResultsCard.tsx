@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { css } from '../../../../../../../styled-system/css'
 import { ModelTester } from '../../ModelTester'
 import { useTrainingDiagnostics, type DiagnosticReason } from '../../TrainingDiagnosticsContext'
-import type { TrainingResult } from '../types'
+import { isColumnClassifierResult, isBoundaryDetectorResult, type TrainingResult } from '../types'
 
 interface ResultsCardProps {
   result: TrainingResult | null
@@ -21,7 +21,14 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
     return (
       <div className={css({ textAlign: 'center', py: 4 })}>
         <div className={css({ fontSize: '3xl', mb: 3 })}>❌</div>
-        <div className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'red.400', mb: 2 })}>
+        <div
+          className={css({
+            fontSize: 'lg',
+            fontWeight: 'bold',
+            color: 'red.400',
+            mb: 2,
+          })}
+        >
           Training Failed
         </div>
         <div
@@ -69,7 +76,13 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
   if (!result) {
     return (
       <div className={css({ textAlign: 'center', py: 6 })}>
-        <div className={css({ fontSize: '2xl', mb: 3, animation: 'spin 1s linear infinite' })}>
+        <div
+          className={css({
+            fontSize: '2xl',
+            mb: 3,
+            animation: 'spin 1s linear infinite',
+          })}
+        >
           ⏳
         </div>
         <div className={css({ color: 'gray.400' })}>Waiting for results...</div>
@@ -78,10 +91,12 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
   }
 
   const accuracy = result.final_accuracy ?? 0
+  const isColumnClassifier = isColumnClassifierResult(result)
+  const isBoundaryDetector = isBoundaryDetectorResult(result)
 
   return (
     <div>
-      {/* Tabs */}
+      {/* Tabs - only show test tab for column classifier (boundary detector testing not yet implemented) */}
       <div
         className={css({
           display: 'flex',
@@ -110,25 +125,27 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
         >
           Results
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('test')}
-          className={css({
-            px: 4,
-            py: 2,
-            bg: 'transparent',
-            color: activeTab === 'test' ? 'purple.400' : 'gray.500',
-            border: 'none',
-            borderBottom: '2px solid',
-            borderColor: activeTab === 'test' ? 'purple.400' : 'transparent',
-            cursor: 'pointer',
-            fontWeight: 'medium',
-            fontSize: 'sm',
-            _hover: { color: 'gray.300' },
-          })}
-        >
-          🔬 Test Model
-        </button>
+        {isColumnClassifier && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('test')}
+            className={css({
+              px: 4,
+              py: 2,
+              bg: 'transparent',
+              color: activeTab === 'test' ? 'purple.400' : 'gray.500',
+              border: 'none',
+              borderBottom: '2px solid',
+              borderColor: activeTab === 'test' ? 'purple.400' : 'transparent',
+              cursor: 'pointer',
+              fontWeight: 'medium',
+              fontSize: 'sm',
+              _hover: { color: 'gray.300' },
+            })}
+          >
+            🔬 Test Model
+          </button>
+        )}
       </div>
 
       {/* Tab content */}
@@ -138,7 +155,14 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
           <div className={css({ fontSize: '3xl', mb: 2 })}>🎉</div>
 
           {/* Title */}
-          <div className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'green.400', mb: 3 })}>
+          <div
+            className={css({
+              fontSize: 'lg',
+              fontWeight: 'bold',
+              color: 'green.400',
+              mb: 3,
+            })}
+          >
             Training Complete!
           </div>
 
@@ -170,21 +194,39 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
           >
             <div>
               <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Epochs</div>
-              <div className={css({ fontFamily: 'mono', color: 'gray.300', fontWeight: 'medium' })}>
+              <div
+                className={css({
+                  fontFamily: 'mono',
+                  color: 'gray.300',
+                  fontWeight: 'medium',
+                })}
+              >
                 {result.epochs_trained ?? '—'}
                 {result.epochs_trained && result.epochs_trained < configuredEpochs && (
                   <span className={css({ color: 'gray.500' })}>/{configuredEpochs}</span>
                 )}
               </div>
               {result.epochs_trained && result.epochs_trained < configuredEpochs && (
-                <div className={css({ color: 'green.500', fontSize: 'xs', fontWeight: 'medium' })}>
+                <div
+                  className={css({
+                    color: 'green.500',
+                    fontSize: 'xs',
+                    fontWeight: 'medium',
+                  })}
+                >
                   converged
                 </div>
               )}
             </div>
             <div>
               <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Final Loss</div>
-              <div className={css({ fontFamily: 'mono', color: 'gray.300', fontWeight: 'medium' })}>
+              <div
+                className={css({
+                  fontFamily: 'mono',
+                  color: 'gray.300',
+                  fontWeight: 'medium',
+                })}
+              >
                 {result.final_loss?.toFixed(4) ?? '—'}
               </div>
             </div>
@@ -196,35 +238,76 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
             </div>
           </div>
 
-          {/* Per-head accuracy breakdown */}
-          {result.heaven_accuracy !== undefined && result.earth_accuracy !== undefined && (
+          {/* Per-head accuracy breakdown (column classifier only) */}
+          {isColumnClassifier &&
+            result.heaven_accuracy !== undefined &&
+            result.earth_accuracy !== undefined && (
+              <div
+                className={css({
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: 2,
+                  p: 3,
+                  bg: 'gray.900',
+                  borderRadius: 'lg',
+                  fontSize: 'sm',
+                  mb: 4,
+                })}
+              >
+                <div>
+                  <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Heaven (5s bead)</div>
+                  <div
+                    className={css({
+                      fontFamily: 'mono',
+                      color: 'purple.400',
+                      fontWeight: 'medium',
+                    })}
+                  >
+                    {(result.heaven_accuracy * 100).toFixed(1)}%
+                  </div>
+                </div>
+                <div>
+                  <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Earth (1s beads)</div>
+                  <div
+                    className={css({
+                      fontFamily: 'mono',
+                      color: 'blue.400',
+                      fontWeight: 'medium',
+                    })}
+                  >
+                    {(result.earth_accuracy * 100).toFixed(1)}%
+                  </div>
+                </div>
+              </div>
+            )}
+
+          {/* MAE breakdown (boundary detector only) */}
+          {isBoundaryDetector && result.final_mae !== undefined && (
             <div
               className={css({
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: 2,
                 p: 3,
                 bg: 'gray.900',
                 borderRadius: 'lg',
                 fontSize: 'sm',
                 mb: 4,
+                textAlign: 'center',
               })}
             >
-              <div>
-                <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Heaven (5s bead)</div>
-                <div
-                  className={css({ fontFamily: 'mono', color: 'purple.400', fontWeight: 'medium' })}
-                >
-                  {(result.heaven_accuracy * 100).toFixed(1)}%
-                </div>
+              <div className={css({ color: 'gray.600', fontSize: 'xs', mb: 1 })}>
+                Mean Absolute Error
               </div>
-              <div>
-                <div className={css({ color: 'gray.600', fontSize: 'xs' })}>Earth (1s beads)</div>
-                <div
-                  className={css({ fontFamily: 'mono', color: 'blue.400', fontWeight: 'medium' })}
-                >
-                  {(result.earth_accuracy * 100).toFixed(1)}%
-                </div>
+              <div
+                className={css({
+                  fontFamily: 'mono',
+                  color: 'cyan.400',
+                  fontWeight: 'medium',
+                  fontSize: 'lg',
+                })}
+              >
+                {(result.final_mae * 100).toFixed(2)}%
+              </div>
+              <div className={css({ fontSize: 'xs', color: 'gray.500', mt: 1 })}>
+                Lower is better (corner position error)
               </div>
             </div>
           )}
@@ -261,8 +344,16 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
             Train Again
           </button>
         </div>
-      ) : (
+      ) : isColumnClassifier ? (
         <ModelTester columnCount={4} />
+      ) : (
+        <div className={css({ textAlign: 'center', py: 4, color: 'gray.400' })}>
+          <div className={css({ fontSize: '2xl', mb: 2 })}>🎯</div>
+          <div className={css({ mb: 2 })}>Boundary detector testing coming soon</div>
+          <div className={css({ fontSize: 'xs', color: 'gray.500' })}>
+            The model is ready to use in marker-free calibration mode
+          </div>
+        </div>
       )}
     </div>
   )

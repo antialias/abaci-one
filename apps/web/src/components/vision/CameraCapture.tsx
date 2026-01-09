@@ -634,7 +634,14 @@ export function CameraCapture({
           </div>
         ) : (
           /* Show camera frames on canvas (unified capture path) */
-          <div className={css({ position: 'relative', flex: 1, minHeight: 0, display: 'flex' })}>
+          <div
+            className={css({
+              position: 'relative',
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+            })}
+          >
             <canvas
               ref={handlePhoneCanvasRef}
               data-element="phone-camera-canvas"

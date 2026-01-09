@@ -411,7 +411,13 @@ export const AllDigitsShowcase: Story = {
         })}
       >
         <div className={css({ bg: 'gray.800', p: 4, borderRadius: 'lg' })}>
-          <div className={css({ color: 'blue.400', fontWeight: 'semibold', mb: 2 })}>
+          <div
+            className={css({
+              color: 'blue.400',
+              fontWeight: 'semibold',
+              mb: 2,
+            })}
+          >
             Heaven Bead (Top)
           </div>
           <p className={css({ color: 'gray.400', fontSize: 'sm' })}>
@@ -419,7 +425,13 @@ export const AllDigitsShowcase: Story = {
           </p>
         </div>
         <div className={css({ bg: 'gray.800', p: 4, borderRadius: 'lg' })}>
-          <div className={css({ color: 'green.400', fontWeight: 'semibold', mb: 2 })}>
+          <div
+            className={css({
+              color: 'green.400',
+              fontWeight: 'semibold',
+              mb: 2,
+            })}
+          >
             Earth Beads (Bottom)
           </div>
           <p className={css({ color: 'gray.400', fontSize: 'sm' })}>
@@ -427,7 +439,13 @@ export const AllDigitsShowcase: Story = {
           </p>
         </div>
         <div className={css({ bg: 'gray.800', p: 4, borderRadius: 'lg' })}>
-          <div className={css({ color: 'amber.400', fontWeight: 'semibold', mb: 2 })}>
+          <div
+            className={css({
+              color: 'amber.400',
+              fontWeight: 'semibold',
+              mb: 2,
+            })}
+          >
             Reckoning Bar
           </div>
           <p className={css({ color: 'gray.400', fontSize: 'sm' })}>

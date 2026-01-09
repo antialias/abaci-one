@@ -815,6 +815,7 @@ import { AbacusReact } from '@soroban/abacus-react'
 **The Problem:** Keras models often include preprocessing layers (like `Rescaling`) that are preserved in SavedModel export but easy to forget about.
 
 **The Failure Pattern (January 2025):**
+
 - Model trained with `Rescaling(scale=2.0, offset=-1.0)` layer (converts `[0,1]` → `[-1,1]`)
 - Browser code assumed the layer was stripped, manually applied `[-1,1]` normalization
 - Result: Double normalization, completely wrong predictions
@@ -831,6 +832,7 @@ python scripts/test_model.py --compare-norm --digit 3
 ```
 
 **The Fix:** Check your model architecture for preprocessing layers:
+
 ```python
 model.summary()  # Look for Rescaling, Normalization layers
 ```
@@ -842,11 +844,13 @@ If the model has internal normalization, your browser code should NOT duplicate 
 **The Problem:** TensorFlow.js `--quantize_uint8` flag can corrupt model weights.
 
 **Symptoms:**
+
 - Model works perfectly in Python
 - Same model gives completely different (wrong) results in browser
 - Not a normalization issue (verified with Python testing)
 
 **The Fix:** Export without quantization:
+
 ```bash
 # ❌ WRONG - quantization corrupts weights
 tensorflowjs_converter --quantize_uint8 ...
@@ -866,10 +870,11 @@ Model size increases (556KB → 2.2MB) but predictions are correct.
 **The Problem:** Multi-head models may have outputs in different order between Keras and GraphModel.
 
 **The Fix:** Detect output types by shape, not by index:
+
 ```typescript
 // Heaven output: shape [batch, 1] (binary sigmoid)
 // Earth output: shape [batch, 5] (5-class softmax)
-const shape0Last = output[0].shape[output[0].shape.length - 1]
+const shape0Last = output[0].shape[output[0].shape.length - 1];
 if (shape0Last === 1) {
   // output[0] is heaven
 } else if (shape0Last === 5) {

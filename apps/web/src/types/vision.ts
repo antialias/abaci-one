@@ -102,8 +102,11 @@ export interface FrameClassificationResult {
 
 /**
  * Calibration mode options
+ * - "auto": Uses ArUco markers for automatic corner detection
+ * - "manual": User drags corner handles manually
+ * - "marker-free": Uses ML model to detect abacus boundaries (no markers needed)
  */
-export type CalibrationMode = 'manual' | 'auto'
+export type CalibrationMode = 'auto' | 'manual' | 'marker-free'
 
 /**
  * ArUco marker detection status
@@ -152,6 +155,15 @@ export interface AbacusVisionState {
   isCalibrating: boolean
   calibrationMode: CalibrationMode
   markerDetection: MarkerDetectionStatus
+
+  // Boundary detector state (marker-free mode)
+  boundaryDetector: {
+    isReady: boolean
+    isLoading: boolean
+    isUnavailable: boolean
+    confidence: number
+    consecutiveFrames: number
+  }
 
   // Stability state
   isHandDetected: boolean

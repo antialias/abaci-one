@@ -1,12 +1,13 @@
 'use client'
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
-import type {
-  SamplesData,
-  DatasetInfo,
-  EpochData,
-  TrainingConfig,
-  TrainingResult,
+import {
+  isColumnClassifierSamples,
+  type SamplesData,
+  type DatasetInfo,
+  type EpochData,
+  type TrainingConfig,
+  type TrainingResult,
 } from './wizard/types'
 
 export interface DiagnosticReason {
@@ -96,8 +97,8 @@ function analyzeDiagnostics(
   const accuracy = result.final_accuracy
   const reasons: DiagnosticReason[] = []
 
-  // 1. Check for data imbalance
-  if (samples) {
+  // 1. Check for data imbalance (column classifier only)
+  if (samples && isColumnClassifierSamples(samples)) {
     const counts = Object.values(samples.digits).map((d) => d.count)
     const max = Math.max(...counts)
     const min = Math.min(...counts)
@@ -119,7 +120,9 @@ function analyzeDiagnostics(
   }
 
   // 2. Check for insufficient total data
-  const total = datasetInfo?.total_images ?? samples?.totalImages ?? 0
+  const total =
+    datasetInfo?.total_images ??
+    (samples ? (isColumnClassifierSamples(samples) ? samples.totalImages : samples.totalFrames) : 0)
   if (total < 200) {
     reasons.push({
       type: 'insufficient-data',

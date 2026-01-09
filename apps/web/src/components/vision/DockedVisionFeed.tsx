@@ -188,7 +188,10 @@ export function DockedVisionFeed({
       remoteIsPhoneConnected &&
       remoteLatestFrame
     ) {
-      visionSourceRef.current = { type: 'image', element: remoteImageRef.current }
+      visionSourceRef.current = {
+        type: 'image',
+        element: remoteImageRef.current,
+      }
     }
 
     return () => {
@@ -797,7 +800,14 @@ export function DockedVisionFeed({
           })}
         >
           {/* Left side: Status (detected value or loading message) */}
-          <div className={css({ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              minWidth: 0,
+            })}
+          >
             {classifier.isLoading ? (
               <span className={css({ fontSize: 'xs', color: 'yellow.400' })}>Loading...</span>
             ) : !classifier.isModelLoaded ? (
@@ -818,7 +828,11 @@ export function DockedVisionFeed({
                 {/* Stability dots - show detection stability */}
                 {stability.consecutiveFrames > 0 && (
                   <div
-                    className={css({ display: 'flex', gap: '2px', alignItems: 'center' })}
+                    className={css({
+                      display: 'flex',
+                      gap: '2px',
+                      alignItems: 'center',
+                    })}
                     title={`Stability: ${stability.consecutiveFrames}/3`}
                   >
                     {Array.from({ length: 3 }).map((_, i) => (
@@ -840,7 +854,12 @@ export function DockedVisionFeed({
 
           {/* Center: Mode toggle with text labels */}
           <div
-            className={css({ display: 'flex', alignItems: 'center', gap: 1, position: 'relative' })}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              position: 'relative',
+            })}
           >
             {columnDigits.length > 0 && (
               <>

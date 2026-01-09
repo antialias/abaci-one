@@ -2069,9 +2069,15 @@ export function ActiveSession({
               flex: '0 0 auto',
               // Responsive sizing - constrain both width and height
               // Mobile: smaller (140px-180px), Desktop: larger (up to 240px)
-              width: { base: 'clamp(140px, 20vw, 180px)', md: 'clamp(180px, 18vw, 240px)' },
+              width: {
+                base: 'clamp(140px, 20vw, 180px)',
+                md: 'clamp(180px, 18vw, 240px)',
+              },
               // Mobile: shorter, Desktop: taller
-              height: { base: 'clamp(180px, 28vh, 240px)', md: 'clamp(220px, 26vh, 300px)' },
+              height: {
+                base: 'clamp(180px, 28vh, 240px)',
+                md: 'clamp(220px, 26vh, 300px)',
+              },
               alignSelf: 'center',
               // Remove background/shadow - the docked content has its own styling
             })}

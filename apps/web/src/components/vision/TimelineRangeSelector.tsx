@@ -513,7 +513,9 @@ export function TimelineRangeSelector({
                     height: '10px',
                     borderRadius: 'sm',
                   })}
-                  style={{ backgroundColor: sessionColors.get(session.sessionId) }}
+                  style={{
+                    backgroundColor: sessionColors.get(session.sessionId),
+                  }}
                 />
                 <span className={css({ color: 'gray.400' })}>{session.sessionId.slice(0, 8)}</span>
                 <span className={css({ color: 'gray.500' })}>({session.imageCount})</span>

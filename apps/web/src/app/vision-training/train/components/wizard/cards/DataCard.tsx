@@ -2,23 +2,32 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { css } from '../../../../../../../styled-system/css'
-import type { SamplesData } from '../types'
+import type { SamplesData, ModelType } from '../types'
+import { isColumnClassifierSamples } from '../types'
 import { TrainingDataCapture } from '../../TrainingDataCapture'
+import { BoundaryDataCapture } from '../../BoundaryDataCapture'
 import { TrainingDataHubModal } from '../../TrainingDataHubModal'
+import { BoundaryDataHubModal } from '../../BoundaryDataHubModal'
 
 interface DataCardProps {
   samples: SamplesData | null
   samplesLoading: boolean
+  modelType: ModelType | null
   onProgress: () => void
   onSyncComplete?: () => void
   onDataWarningAcknowledged?: () => void
 }
 
-const REQUIREMENTS = {
+const COLUMN_CLASSIFIER_REQUIREMENTS = {
   minTotal: 50,
   minPerDigit: 3,
   goodTotal: 200,
   goodPerDigit: 10,
+}
+
+const BOUNDARY_DETECTOR_REQUIREMENTS = {
+  minTotal: 50,
+  goodTotal: 200,
 }
 
 interface SyncStatus {
@@ -52,61 +61,94 @@ const QUALITY_CONFIG: Record<
 
 type AcquireTab = 'sync' | 'capture' | null
 
-function computeRequirements(samples: SamplesData | null): {
+interface ColumnClassifierRequirements {
   needsMore: boolean
   totalNeeded: number
   missingDigits: number[]
   message: string
-} {
+}
+
+interface BoundaryDetectorRequirements {
+  needsMore: boolean
+  totalNeeded: number
+  message: string
+}
+
+type Requirements = ColumnClassifierRequirements | BoundaryDetectorRequirements
+
+function hasDigitRequirements(req: Requirements): req is ColumnClassifierRequirements {
+  return 'missingDigits' in req
+}
+
+function computeRequirements(samples: SamplesData | null): Requirements {
   if (!samples || !samples.hasData) {
+    // Default to column classifier requirements when no data
     return {
       needsMore: true,
-      totalNeeded: REQUIREMENTS.minTotal,
+      totalNeeded: COLUMN_CLASSIFIER_REQUIREMENTS.minTotal,
       missingDigits: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-      message: `Need ${REQUIREMENTS.minTotal}+ images total, ${REQUIREMENTS.minPerDigit}+ per digit`,
+      message: `Need ${COLUMN_CLASSIFIER_REQUIREMENTS.minTotal}+ images total, ${COLUMN_CLASSIFIER_REQUIREMENTS.minPerDigit}+ per digit`,
     }
   }
 
-  const digitCounts = Object.entries(samples.digits).map(([digit, data]) => ({
-    digit: parseInt(digit, 10),
-    count: data.count,
-  }))
+  if (isColumnClassifierSamples(samples)) {
+    // Column classifier requirements
+    const digitCounts = Object.entries(samples.digits).map(([digit, data]) => ({
+      digit: parseInt(digit, 10),
+      count: data.count,
+    }))
 
-  const missingDigits = digitCounts
-    .filter((d) => d.count < REQUIREMENTS.minPerDigit)
-    .map((d) => d.digit)
+    const missingDigits = digitCounts
+      .filter((d) => d.count < COLUMN_CLASSIFIER_REQUIREMENTS.minPerDigit)
+      .map((d) => d.digit)
 
-  const totalNeeded = Math.max(0, REQUIREMENTS.minTotal - samples.totalImages)
-  const needsMore = samples.totalImages < REQUIREMENTS.minTotal || missingDigits.length > 0
+    const totalNeeded = Math.max(0, COLUMN_CLASSIFIER_REQUIREMENTS.minTotal - samples.totalImages)
+    const needsMore =
+      samples.totalImages < COLUMN_CLASSIFIER_REQUIREMENTS.minTotal || missingDigits.length > 0
 
-  let message = ''
-  if (needsMore) {
-    const parts = []
-    if (totalNeeded > 0) {
-      parts.push(`${totalNeeded} more images`)
+    let message = ''
+    if (needsMore) {
+      const parts = []
+      if (totalNeeded > 0) {
+        parts.push(`${totalNeeded} more images`)
+      }
+      if (missingDigits.length > 0) {
+        parts.push(
+          `digits ${missingDigits.join(', ')} need ${COLUMN_CLASSIFIER_REQUIREMENTS.minPerDigit}+ each`
+        )
+      }
+      message = `Need: ${parts.join('; ')}`
     }
-    if (missingDigits.length > 0) {
-      parts.push(`digits ${missingDigits.join(', ')} need ${REQUIREMENTS.minPerDigit}+ each`)
-    }
-    message = `Need: ${parts.join('; ')}`
+
+    return { needsMore, totalNeeded, missingDigits, message }
   }
+  // Boundary detector requirements
+  const totalNeeded = Math.max(0, BOUNDARY_DETECTOR_REQUIREMENTS.minTotal - samples.totalFrames)
+  const needsMore = samples.totalFrames < BOUNDARY_DETECTOR_REQUIREMENTS.minTotal
 
-  return { needsMore, totalNeeded, missingDigits, message }
+  const message = needsMore ? `Need ${totalNeeded} more frames` : ''
+
+  return { needsMore, totalNeeded, message }
 }
 
 export function DataCard({
   samples,
   samplesLoading,
+  modelType,
   onProgress,
   onSyncComplete,
   onDataWarningAcknowledged,
 }: DataCardProps) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
-  const [syncProgress, setSyncProgress] = useState<SyncProgress>({ phase: 'idle', message: '' })
+  const [syncProgress, setSyncProgress] = useState<SyncProgress>({
+    phase: 'idle',
+    message: '',
+  })
   const [syncChecking, setSyncChecking] = useState(true)
   const [activeTab, setActiveTab] = useState<AcquireTab>(null)
   const [showContinueWarning, setShowContinueWarning] = useState(false)
   const [hubModalOpen, setHubModalOpen] = useState(false)
+  const [boundaryHubModalOpen, setBoundaryHubModalOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   const requirements = computeRequirements(samples)
@@ -114,35 +156,49 @@ export function DataCard({
     samples?.hasData && samples.dataQuality !== 'none' && samples.dataQuality !== 'insufficient'
   const isSyncing = syncProgress.phase === 'connecting' || syncProgress.phase === 'syncing'
 
+  // Auto-open capture tab for boundary detector (it's the primary way to add data)
+  useEffect(() => {
+    if (modelType === 'boundary-detector' && activeTab === null) {
+      setActiveTab('capture')
+    }
+  }, [modelType, activeTab])
+
   const handleContinueAnyway = useCallback(() => {
     if (!samples?.hasData) return
     onDataWarningAcknowledged?.()
     onProgress()
   }, [samples, onProgress, onDataWarningAcknowledged])
 
-  // Check sync availability on mount
+  // Check sync availability on mount (and when modelType changes)
   useEffect(() => {
     const checkSync = async () => {
+      if (!modelType) return
       setSyncChecking(true)
       try {
-        const response = await fetch('/api/vision-training/sync')
+        const response = await fetch(`/api/vision-training/sync?modelType=${modelType}`)
         const data = await response.json()
         setSyncStatus(data)
       } catch {
-        setSyncStatus({ available: false, error: 'Failed to check sync status' })
+        setSyncStatus({
+          available: false,
+          error: 'Failed to check sync status',
+        })
       } finally {
         setSyncChecking(false)
       }
     }
     checkSync()
-  }, [])
+  }, [modelType])
 
   const startSync = useCallback(async () => {
-    setSyncProgress({ phase: 'connecting', message: 'Connecting to production...' })
+    setSyncProgress({
+      phase: 'connecting',
+      message: 'Connecting to production...',
+    })
     abortRef.current = new AbortController()
 
     try {
-      const response = await fetch('/api/vision-training/sync', {
+      const response = await fetch(`/api/vision-training/sync?modelType=${modelType}`, {
         method: 'POST',
         signal: abortRef.current.signal,
       })
@@ -183,7 +239,7 @@ export function DataCard({
         })
       }
     }
-  }, [])
+  }, [modelType])
 
   const handleSyncEvent = (eventType: string, data: Record<string, unknown>) => {
     switch (eventType) {
@@ -240,7 +296,14 @@ export function DataCard({
   if (samplesLoading && syncChecking) {
     return (
       <div className={css({ textAlign: 'center', py: 4 })}>
-        <span className={css({ fontSize: 'lg', animation: 'spin 1s linear infinite' })}>⏳</span>
+        <span
+          className={css({
+            fontSize: 'lg',
+            animation: 'spin 1s linear infinite',
+          })}
+        >
+          ⏳
+        </span>
         <div className={css({ color: 'gray.400', mt: 2 })}>Loading...</div>
       </div>
     )
@@ -256,14 +319,29 @@ export function DataCard({
           ═══════════════════════════════════════════════════════════════════ */}
       {samples?.hasData ? (
         <div className={css({ mb: 4 })}>
-          {/* Image count */}
-          <div className={css({ fontSize: 'xl', fontWeight: 'bold', color: 'gray.100', mb: 3 })}>
-            {samples.totalImages.toLocaleString()} images
+          {/* Count - different label for each model type */}
+          <div
+            className={css({
+              fontSize: 'xl',
+              fontWeight: 'bold',
+              color: 'gray.100',
+              mb: 3,
+            })}
+          >
+            {isColumnClassifierSamples(samples)
+              ? `${samples.totalImages.toLocaleString()} images`
+              : `${samples.totalFrames.toLocaleString()} frames`}
           </div>
 
           {/* Quality indicator */}
           <div className={css({ mb: 3 })}>
-            <div className={css({ display: 'flex', justifyContent: 'space-between', mb: 1 })}>
+            <div
+              className={css({
+                display: 'flex',
+                justifyContent: 'space-between',
+                mb: 1,
+              })}
+            >
               <span className={css({ fontSize: 'sm', color: 'gray.400' })}>Quality</span>
               <span
                 className={css({
@@ -295,76 +373,127 @@ export function DataCard({
             </div>
           </div>
 
-          {/* Digit distribution mini-chart */}
-          <div className={css({ mb: 3 })}>
-            <div className={css({ fontSize: 'xs', color: 'gray.500', mb: 2 })}>Distribution</div>
-            <div className={css({ display: 'flex', gap: 1, justifyContent: 'space-between' })}>
-              {Object.entries(samples.digits).map(([digit, data]) => {
-                const digitNum = parseInt(digit, 10)
-                const maxCount = Math.max(...Object.values(samples.digits).map((d) => d.count))
-                const barHeight = maxCount > 0 ? (data.count / maxCount) * 30 : 0
-                const isMissing = requirements.missingDigits.includes(digitNum)
-                return (
-                  <div
-                    key={digit}
-                    className={css({
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      flex: 1,
-                    })}
-                  >
+          {/* Digit distribution mini-chart (column classifier only) */}
+          {isColumnClassifierSamples(samples) && (
+            <div className={css({ mb: 3 })}>
+              <div className={css({ fontSize: 'xs', color: 'gray.500', mb: 2 })}>Distribution</div>
+              <div
+                className={css({
+                  display: 'flex',
+                  gap: 1,
+                  justifyContent: 'space-between',
+                })}
+              >
+                {Object.entries(samples.digits).map(([digit, data]) => {
+                  const digitNum = parseInt(digit, 10)
+                  const maxCount = Math.max(...Object.values(samples.digits).map((d) => d.count))
+                  const barHeight = maxCount > 0 ? (data.count / maxCount) * 30 : 0
+                  const isMissing =
+                    hasDigitRequirements(requirements) &&
+                    requirements.missingDigits.includes(digitNum)
+                  return (
                     <div
+                      key={digit}
                       className={css({
-                        width: '100%',
-                        bg: isMissing ? 'red.500' : 'blue.600',
-                        borderRadius: 'sm',
-                        transition: 'height 0.3s ease',
-                      })}
-                      style={{ height: `${Math.max(barHeight, isMissing ? 4 : 0)}px` }}
-                    />
-                    <span
-                      className={css({
-                        fontSize: 'xs',
-                        color: isMissing ? 'red.400' : 'gray.500',
-                        mt: 1,
-                        fontWeight: isMissing ? 'bold' : 'normal',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        flex: 1,
                       })}
                     >
-                      {digit}
-                    </span>
-                  </div>
-                )
-              })}
+                      <div
+                        className={css({
+                          width: '100%',
+                          bg: isMissing ? 'red.500' : 'blue.600',
+                          borderRadius: 'sm',
+                          transition: 'height 0.3s ease',
+                        })}
+                        style={{
+                          height: `${Math.max(barHeight, isMissing ? 4 : 0)}px`,
+                        }}
+                      />
+                      <span
+                        className={css({
+                          fontSize: 'xs',
+                          color: isMissing ? 'red.400' : 'gray.500',
+                          mt: 1,
+                          fontWeight: isMissing ? 'bold' : 'normal',
+                        })}
+                      >
+                        {digit}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Manage Data button */}
-          <button
-            type="button"
-            onClick={() => setHubModalOpen(true)}
-            className={css({
-              width: '100%',
-              py: 2,
-              mb: 3,
-              bg: 'gray.700',
-              color: 'gray.300',
-              borderRadius: 'lg',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 2,
-              _hover: { bg: 'gray.600', color: 'gray.100' },
-            })}
-          >
-            <span>📁</span>
-            <span>Manage Data</span>
-            <span className={css({ color: 'gray.500' })}>→</span>
-          </button>
+          {/* Device info (boundary detector only) */}
+          {!isColumnClassifierSamples(samples) && samples.deviceCount > 0 && (
+            <div className={css({ mb: 3 })}>
+              <div className={css({ fontSize: 'xs', color: 'gray.500', mb: 1 })}>Sources</div>
+              <div className={css({ fontSize: 'sm', color: 'gray.400' })}>
+                {samples.deviceCount} {samples.deviceCount === 1 ? 'device' : 'devices'}
+              </div>
+            </div>
+          )}
+
+          {/* Manage Data button - different modal for each model type */}
+          {modelType === 'column-classifier' && (
+            <button
+              type="button"
+              onClick={() => setHubModalOpen(true)}
+              className={css({
+                width: '100%',
+                py: 2,
+                mb: 3,
+                bg: 'gray.700',
+                color: 'gray.300',
+                borderRadius: 'lg',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                _hover: { bg: 'gray.600', color: 'gray.100' },
+              })}
+            >
+              <span>📁</span>
+              <span>Manage Data</span>
+              <span className={css({ color: 'gray.500' })}>→</span>
+            </button>
+          )}
+          {modelType === 'boundary-detector' && (
+            <button
+              type="button"
+              onClick={() => setBoundaryHubModalOpen(true)}
+              className={css({
+                width: '100%',
+                py: 2,
+                mb: 3,
+                bg: 'gray.700',
+                color: 'gray.300',
+                borderRadius: 'lg',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                _hover: { bg: 'gray.600', color: 'gray.100' },
+              })}
+            >
+              <span>🎯</span>
+              <span>Manage Frames</span>
+              <span className={css({ color: 'gray.500' })}>→</span>
+            </button>
+          )}
 
           {/* Requirements warning */}
           {requirements.needsMore && (
@@ -388,30 +517,35 @@ export function DataCard({
           <div className={css({ fontSize: '2xl', mb: 2 })}>📷</div>
           <div className={css({ color: 'gray.300', mb: 2 })}>No training data yet</div>
           <div className={css({ fontSize: 'sm', color: 'gray.500', mb: 3 })}>
-            {requirements.message}
+            {modelType === 'boundary-detector'
+              ? 'Use the Capture tab below to collect frames'
+              : requirements.message}
           </div>
-          <button
-            type="button"
-            onClick={() => setHubModalOpen(true)}
-            className={css({
-              py: 2,
-              px: 4,
-              bg: 'blue.600',
-              color: 'white',
-              borderRadius: 'lg',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 2,
-              _hover: { bg: 'blue.500' },
-            })}
-          >
-            <span>📸</span>
-            <span>Capture Training Data</span>
-          </button>
+          {/* Only show hub modal button for column classifier */}
+          {modelType === 'column-classifier' && (
+            <button
+              type="button"
+              onClick={() => setHubModalOpen(true)}
+              className={css({
+                py: 2,
+                px: 4,
+                bg: 'blue.600',
+                color: 'white',
+                borderRadius: 'lg',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 2,
+                _hover: { bg: 'blue.500' },
+              })}
+            >
+              <span>📸</span>
+              <span>Capture Training Data</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -448,7 +582,7 @@ export function DataCard({
 
           {/* Tab buttons */}
           <div className={css({ display: 'flex' })}>
-            {/* Sync tab */}
+            {/* Sync tab - available for both model types */}
             {syncAvailable && (
               <button
                 type="button"
@@ -538,11 +672,18 @@ export function DataCard({
                 </div>
               ) : (
                 <>
-                  <div className={css({ fontSize: 'sm', color: 'gray.400', mb: 3 })}>
+                  <div
+                    className={css({
+                      fontSize: 'sm',
+                      color: 'gray.400',
+                      mb: 3,
+                    })}
+                  >
                     <strong className={css({ color: 'blue.400' })}>
                       {syncStatus?.remote?.totalImages?.toLocaleString() ?? 0}
                     </strong>{' '}
-                    images on {syncStatus?.remote?.host ?? 'production'}
+                    {modelType === 'boundary-detector' ? 'frames' : 'images'} on{' '}
+                    {syncStatus?.remote?.host ?? 'production'}
                     {hasNewOnRemote && (
                       <span className={css({ color: 'green.400' })}>
                         {' '}
@@ -576,7 +717,13 @@ export function DataCard({
                   )}
 
                   {syncProgress.phase === 'error' && (
-                    <div className={css({ color: 'red.400', fontSize: 'sm', mb: 3 })}>
+                    <div
+                      className={css({
+                        color: 'red.400',
+                        fontSize: 'sm',
+                        mb: 3,
+                      })}
+                    >
                       {syncProgress.message}
                     </div>
                   )}
@@ -599,7 +746,7 @@ export function DataCard({
                     })}
                   >
                     {hasNewOnRemote
-                      ? `Download ${syncStatus?.newOnRemote} Images`
+                      ? `Download ${syncStatus?.newOnRemote} ${modelType === 'boundary-detector' ? 'Frames' : 'Images'}`
                       : 'Already in sync'}
                   </button>
                 </>
@@ -609,7 +756,11 @@ export function DataCard({
 
           {activeTab === 'capture' && (
             <div className={css({ p: 3, bg: 'gray.850' })}>
-              <TrainingDataCapture onSamplesCollected={() => onSyncComplete?.()} />
+              {modelType === 'boundary-detector' ? (
+                <BoundaryDataCapture onSamplesCollected={() => onSyncComplete?.()} />
+              ) : (
+                <TrainingDataCapture onSamplesCollected={() => onSyncComplete?.()} />
+              )}
             </div>
           )}
         </div>
@@ -627,7 +778,14 @@ export function DataCard({
             borderRadius: 'lg',
           })}
         >
-          <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 2 })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              mb: 2,
+            })}
+          >
             <span className={css({ animation: 'spin 1s linear infinite' })}>🔄</span>
             <span className={css({ fontSize: 'sm', color: 'gray.300' })}>
               {syncProgress.message}
@@ -666,7 +824,14 @@ export function DataCard({
         <div>
           {isReady ? (
             <>
-              <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 3 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  mb: 3,
+                })}
+              >
                 <span className={css({ color: 'green.400' })}>✓</span>
                 <span className={css({ color: 'green.400', fontSize: 'sm' })}>Ready to train</span>
               </div>
@@ -688,87 +853,83 @@ export function DataCard({
                 Continue →
               </button>
             </>
+          ) : !showContinueWarning ? (
+            <button
+              type="button"
+              onClick={() => setShowContinueWarning(true)}
+              className={css({
+                width: '100%',
+                py: 2,
+                bg: 'transparent',
+                color: 'gray.400',
+                borderRadius: 'lg',
+                border: '1px solid',
+                borderColor: 'gray.600',
+                cursor: 'pointer',
+                fontSize: 'sm',
+                _hover: { borderColor: 'gray.500', color: 'gray.300' },
+              })}
+            >
+              Continue anyway...
+            </button>
           ) : (
-            <>
-              {!showContinueWarning ? (
+            <div
+              className={css({
+                p: 3,
+                bg: 'red.900/30',
+                border: '1px solid',
+                borderColor: 'red.700/50',
+                borderRadius: 'lg',
+              })}
+            >
+              <div className={css({ fontSize: 'sm', color: 'red.300', mb: 3 })}>
+                ⚠️ <strong>Warning:</strong> Training with insufficient data may produce a poor
+                model.
+              </div>
+              <div className={css({ display: 'flex', gap: 2 })}>
                 <button
                   type="button"
-                  onClick={() => setShowContinueWarning(true)}
+                  onClick={() => setShowContinueWarning(false)}
                   className={css({
-                    width: '100%',
+                    flex: 1,
                     py: 2,
                     bg: 'transparent',
                     color: 'gray.400',
-                    borderRadius: 'lg',
+                    borderRadius: 'md',
                     border: '1px solid',
                     borderColor: 'gray.600',
                     cursor: 'pointer',
                     fontSize: 'sm',
-                    _hover: { borderColor: 'gray.500', color: 'gray.300' },
+                    _hover: { borderColor: 'gray.500' },
                   })}
                 >
-                  Continue anyway...
+                  Cancel
                 </button>
-              ) : (
-                <div
+                <button
+                  type="button"
+                  onClick={handleContinueAnyway}
                   className={css({
-                    p: 3,
-                    bg: 'red.900/30',
-                    border: '1px solid',
-                    borderColor: 'red.700/50',
-                    borderRadius: 'lg',
+                    flex: 1,
+                    py: 2,
+                    bg: 'red.700',
+                    color: 'white',
+                    borderRadius: 'md',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    _hover: { bg: 'red.600' },
                   })}
                 >
-                  <div className={css({ fontSize: 'sm', color: 'red.300', mb: 3 })}>
-                    ⚠️ <strong>Warning:</strong> Training with insufficient data may produce a poor
-                    model.
-                  </div>
-                  <div className={css({ display: 'flex', gap: 2 })}>
-                    <button
-                      type="button"
-                      onClick={() => setShowContinueWarning(false)}
-                      className={css({
-                        flex: 1,
-                        py: 2,
-                        bg: 'transparent',
-                        color: 'gray.400',
-                        borderRadius: 'md',
-                        border: '1px solid',
-                        borderColor: 'gray.600',
-                        cursor: 'pointer',
-                        fontSize: 'sm',
-                        _hover: { borderColor: 'gray.500' },
-                      })}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleContinueAnyway}
-                      className={css({
-                        flex: 1,
-                        py: 2,
-                        bg: 'red.700',
-                        color: 'white',
-                        borderRadius: 'md',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: 'sm',
-                        fontWeight: 'medium',
-                        _hover: { bg: 'red.600' },
-                      })}
-                    >
-                      Continue Anyway
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
+                  Continue Anyway
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}
 
-      {/* Training Data Hub Modal */}
+      {/* Training Data Hub Modal (Column Classifier) */}
       <TrainingDataHubModal
         isOpen={hubModalOpen}
         onClose={() => setHubModalOpen(false)}
@@ -778,6 +939,13 @@ export function DataCard({
         syncProgress={syncProgress}
         onStartSync={startSync}
         onCancelSync={cancelSync}
+      />
+
+      {/* Boundary Data Hub Modal (Boundary Detector) */}
+      <BoundaryDataHubModal
+        isOpen={boundaryHubModalOpen}
+        onClose={() => setBoundaryHubModalOpen(false)}
+        onDataChanged={() => onSyncComplete?.()}
       />
     </div>
   )

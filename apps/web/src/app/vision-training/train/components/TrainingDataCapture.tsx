@@ -48,14 +48,20 @@ export function TrainingDataCapture({
   const captureTrainingData = useCallback(async () => {
     const value = parseInt(inputValue, 10)
     if (Number.isNaN(value) || value < 0) {
-      setLastCaptureStatus({ success: false, message: 'Enter a valid non-negative number' })
+      setLastCaptureStatus({
+        success: false,
+        message: 'Enter a valid non-negative number',
+      })
       return
     }
 
     // Get the current capture element
     const element = captureElementRef.current
     if (!element) {
-      setLastCaptureStatus({ success: false, message: 'No camera frame available' })
+      setLastCaptureStatus({
+        success: false,
+        message: 'No camera frame available',
+      })
       return
     }
 
@@ -70,7 +76,10 @@ export function TrainingDataCapture({
     // For image, check if it's loaded
     if (element instanceof HTMLImageElement) {
       if (!element.complete || element.naturalWidth === 0) {
-        setLastCaptureStatus({ success: false, message: 'Camera frame not ready' })
+        setLastCaptureStatus({
+          success: false,
+          message: 'Camera frame not ready',
+        })
         return
       }
     }
@@ -183,7 +192,14 @@ export function TrainingDataCapture({
       })}
     >
       {/* Header */}
-      <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 3 })}>
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          mb: 3,
+        })}
+      >
         <span>📸</span>
         <span className={css({ fontWeight: 'medium', color: 'blue.300' })}>
           Capture Training Data

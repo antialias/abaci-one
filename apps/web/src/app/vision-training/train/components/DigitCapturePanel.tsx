@@ -99,7 +99,10 @@ export function DigitCapturePanel({
 
     if (!element) {
       console.log('[DigitCapturePanel] captureTrainingData - NO ELEMENT!')
-      setCaptureStatus({ success: false, message: 'No camera frame available' })
+      setCaptureStatus({
+        success: false,
+        message: 'No camera frame available',
+      })
       return
     }
 
@@ -496,7 +499,11 @@ export function DigitCapturePanel({
               >
                 <span
                   data-element="recent-captures-label"
-                  className={css({ fontSize: 'xs', color: 'gray.500', flexShrink: 0 })}
+                  className={css({
+                    fontSize: 'xs',
+                    color: 'gray.500',
+                    flexShrink: 0,
+                  })}
                 >
                   Just captured:
                 </span>
@@ -541,7 +548,12 @@ export function DigitCapturePanel({
             {/* Capture button row */}
             <div
               data-element="capture-button-row"
-              className={css({ p: 3, display: 'flex', gap: 2, alignItems: 'center' })}
+              className={css({
+                p: 3,
+                display: 'flex',
+                gap: 2,
+                alignItems: 'center',
+              })}
             >
               {/* Manual capture button */}
               <button

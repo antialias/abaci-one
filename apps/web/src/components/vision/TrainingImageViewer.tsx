@@ -546,19 +546,37 @@ export function TrainingImageViewer({
         })}
       >
         <div>
-          <div className={css({ fontSize: 'xs', color: 'gray.500', textTransform: 'uppercase' })}>
+          <div
+            className={css({
+              fontSize: 'xs',
+              color: 'gray.500',
+              textTransform: 'uppercase',
+            })}
+          >
             Total Images
           </div>
           <div className={css({ fontSize: '2xl', fontWeight: 'bold' })}>{stats.total}</div>
         </div>
         <div>
-          <div className={css({ fontSize: 'xs', color: 'gray.500', textTransform: 'uppercase' })}>
+          <div
+            className={css({
+              fontSize: 'xs',
+              color: 'gray.500',
+              textTransform: 'uppercase',
+            })}
+          >
             Players
           </div>
           <div className={css({ fontSize: '2xl', fontWeight: 'bold' })}>{stats.players}</div>
         </div>
         <div>
-          <div className={css({ fontSize: 'xs', color: 'gray.500', textTransform: 'uppercase' })}>
+          <div
+            className={css({
+              fontSize: 'xs',
+              color: 'gray.500',
+              textTransform: 'uppercase',
+            })}
+          >
             Sessions
           </div>
           <div className={css({ fontSize: '2xl', fontWeight: 'bold' })}>{stats.sessions}</div>
@@ -608,7 +626,14 @@ export function TrainingImageViewer({
         })}
       >
         <div>
-          <label className={css({ display: 'block', fontSize: 'xs', color: 'gray.500', mb: 1 })}>
+          <label
+            className={css({
+              display: 'block',
+              fontSize: 'xs',
+              color: 'gray.500',
+              mb: 1,
+            })}
+          >
             Digit
           </label>
           <select
@@ -635,7 +660,14 @@ export function TrainingImageViewer({
         </div>
 
         <div>
-          <label className={css({ display: 'block', fontSize: 'xs', color: 'gray.500', mb: 1 })}>
+          <label
+            className={css({
+              display: 'block',
+              fontSize: 'xs',
+              color: 'gray.500',
+              mb: 1,
+            })}
+          >
             Player
           </label>
           <select
@@ -662,7 +694,14 @@ export function TrainingImageViewer({
         </div>
 
         <div>
-          <label className={css({ display: 'block', fontSize: 'xs', color: 'gray.500', mb: 1 })}>
+          <label
+            className={css({
+              display: 'block',
+              fontSize: 'xs',
+              color: 'gray.500',
+              mb: 1,
+            })}
+          >
             Session
           </label>
           <select
@@ -689,7 +728,14 @@ export function TrainingImageViewer({
         </div>
 
         <div>
-          <label className={css({ display: 'block', fontSize: 'xs', color: 'gray.500', mb: 1 })}>
+          <label
+            className={css({
+              display: 'block',
+              fontSize: 'xs',
+              color: 'gray.500',
+              mb: 1,
+            })}
+          >
             Group by
           </label>
           <select
@@ -924,7 +970,10 @@ export function TrainingImageViewer({
                                     py: 0.5,
                                     cursor: 'pointer',
                                     color: 'inherit',
-                                    _hover: { borderColor: 'blue.400', bg: 'gray.700' },
+                                    _hover: {
+                                      borderColor: 'blue.400',
+                                      bg: 'gray.700',
+                                    },
                                   })}
                                   title="Click to reclassify"
                                 >

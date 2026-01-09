@@ -106,7 +106,11 @@ export async function PATCH(request: Request, { params }: RouteParams): Promise<
 
     // No-op if same digit
     if (String(newDigit) === digit) {
-      return NextResponse.json({ success: true, reclassified: false, message: 'Same digit' })
+      return NextResponse.json({
+        success: true,
+        reclassified: false,
+        message: 'Same digit',
+      })
     }
 
     const srcPath = path.join(TRAINING_DATA_DIR, digit, filename)

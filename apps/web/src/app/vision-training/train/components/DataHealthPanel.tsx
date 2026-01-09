@@ -12,10 +12,25 @@ const QUALITY_CONFIG: Record<
   { color: string; bgColor: string; label: string; dots: number }
 > = {
   none: { color: 'gray.400', bgColor: 'gray.800', label: 'No Data', dots: 0 },
-  insufficient: { color: 'red.400', bgColor: 'red.900/50', label: 'Insufficient', dots: 1 },
-  minimal: { color: 'yellow.400', bgColor: 'yellow.900/50', label: 'Minimal', dots: 2 },
+  insufficient: {
+    color: 'red.400',
+    bgColor: 'red.900/50',
+    label: 'Insufficient',
+    dots: 1,
+  },
+  minimal: {
+    color: 'yellow.400',
+    bgColor: 'yellow.900/50',
+    label: 'Minimal',
+    dots: 2,
+  },
   good: { color: 'green.400', bgColor: 'green.900/50', label: 'Good', dots: 3 },
-  excellent: { color: 'green.300', bgColor: 'green.900/50', label: 'Excellent', dots: 4 },
+  excellent: {
+    color: 'green.300',
+    bgColor: 'green.900/50',
+    label: 'Excellent',
+    dots: 4,
+  },
 }
 
 interface SyncStatus {
@@ -109,7 +124,13 @@ export function DataHealthPanel({
       >
         {/* Image count + quality badge */}
         <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
-          <span className={css({ fontSize: 'sm', fontWeight: 'bold', color: 'gray.100' })}>
+          <span
+            className={css({
+              fontSize: 'sm',
+              fontWeight: 'bold',
+              color: 'gray.100',
+            })}
+          >
             {imageCount}
           </span>
           <span className={css({ fontSize: 'xs', color: 'gray.500' })}>images</span>
@@ -142,7 +163,13 @@ export function DataHealthPanel({
       {/* ─────────────────────────────────────────────────────────────────────────
           DATA HEALTH SECTION
           ───────────────────────────────────────────────────────────────────────── */}
-      <div className={css({ p: 4, borderBottom: '1px solid', borderColor: 'gray.800' })}>
+      <div
+        className={css({
+          p: 4,
+          borderBottom: '1px solid',
+          borderColor: 'gray.800',
+        })}
+      >
         <div
           className={css({
             fontSize: 'xs',
@@ -158,7 +185,13 @@ export function DataHealthPanel({
 
         {/* Image count */}
         <div className={css({ mb: 3 })}>
-          <div className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'gray.100' })}>
+          <div
+            className={css({
+              fontSize: '3xl',
+              fontWeight: 'bold',
+              color: 'gray.100',
+            })}
+          >
             {imageCount.toLocaleString()}
           </div>
           <div className={css({ fontSize: 'sm', color: 'gray.500' })}>training images</div>
@@ -220,7 +253,13 @@ export function DataHealthPanel({
                   _hover: isSyncing ? {} : { bg: 'gray.750', borderColor: 'gray.600' },
                 })}
               >
-                <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                  })}
+                >
                   <span>{isSyncing ? '🔄' : '☁️'}</span>
                   <span className={css({ fontWeight: 'medium' })}>
                     {isSyncing ? 'Syncing...' : 'Sync from Production'}
@@ -290,7 +329,13 @@ export function DataHealthPanel({
                   _hover: { bg: 'gray.750', borderColor: 'gray.600' },
                 })}
               >
-                <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                  })}
+                >
                   <span>📸</span>
                   <span className={css({ fontWeight: 'medium' })}>Capture New</span>
                 </div>
@@ -416,7 +461,14 @@ function SyncContent({
     >
       {isSyncing ? (
         <>
-          <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 2 })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              mb: 2,
+            })}
+          >
             <span className={css({ animation: 'spin 1s linear infinite' })}>🔄</span>
             <span className={css({ fontSize: 'sm', color: 'gray.300' })}>
               {syncProgress.message}

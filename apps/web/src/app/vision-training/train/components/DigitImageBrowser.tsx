@@ -307,7 +307,11 @@ export function DigitImageBrowser({
                     >
                       <div
                         data-element="bulk-reclassify-label"
-                        className={css({ fontSize: 'xs', color: 'gray.400', mb: 2 })}
+                        className={css({
+                          fontSize: 'xs',
+                          color: 'gray.400',
+                          mb: 2,
+                        })}
                       >
                         Move to digit:
                       </div>

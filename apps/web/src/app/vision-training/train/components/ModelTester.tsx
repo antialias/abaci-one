@@ -94,7 +94,13 @@ function BeadPositionDisplay({
       </div>
 
       {/* Confidence indicators */}
-      <div className={css({ fontSize: '2xs', color: 'gray.500', textAlign: 'center' })}>
+      <div
+        className={css({
+          fontSize: '2xs',
+          color: 'gray.500',
+          textAlign: 'center',
+        })}
+      >
         <span className={css({ color: heavenColor })}>
           H:{(heavenConfidence * 100).toFixed(0)}%
         </span>
@@ -349,7 +355,14 @@ export function ModelTester({ columnCount = 4 }: ModelTesterProps) {
       })}
     >
       {/* Header */}
-      <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 3 })}>
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          mb: 3,
+        })}
+      >
         <span>🔬</span>
         <span className={css({ fontWeight: 'medium', color: 'purple.300' })}>Test Model</span>
         <span className={css({ fontSize: 'xs', ml: 'auto' })}>
@@ -410,9 +423,22 @@ export function ModelTester({ columnCount = 4 }: ModelTesterProps) {
             borderRadius: 'lg',
           })}
         >
-          <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 2 })}>
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              mb: 2,
+            })}
+          >
             <span>🔍</span>
-            <span className={css({ fontWeight: 'medium', color: 'orange.300', fontSize: 'sm' })}>
+            <span
+              className={css({
+                fontWeight: 'medium',
+                color: 'orange.300',
+                fontSize: 'sm',
+              })}
+            >
               Debug: Column Images Fed to Model
             </span>
             <button
@@ -485,7 +511,14 @@ export function ModelTester({ columnCount = 4 }: ModelTesterProps) {
               </div>
             ))}
           </div>
-          <div className={css({ fontSize: '2xs', color: 'gray.500', mt: 2, textAlign: 'center' })}>
+          <div
+            className={css({
+              fontSize: '2xs',
+              color: 'gray.500',
+              mt: 2,
+              textAlign: 'center',
+            })}
+          >
             Model expects 64×128 grayscale • Canvas: {columnDebug.canvasSize?.width}×
             {columnDebug.canvasSize?.height} • Inferences: {inferenceCount} • Updated:{' '}
             {new Date(columnDebug.timestamp).toLocaleTimeString()}
@@ -585,7 +618,14 @@ export function ModelTester({ columnCount = 4 }: ModelTesterProps) {
       )}
 
       {/* Calibration status */}
-      <div className={css({ fontSize: 'xs', color: 'gray.500', mt: 3, textAlign: 'center' })}>
+      <div
+        className={css({
+          fontSize: 'xs',
+          color: 'gray.500',
+          mt: 3,
+          textAlign: 'center',
+        })}
+      >
         {calibration ? (
           <span className={css({ color: 'green.400' })}>✓ Markers detected</span>
         ) : (

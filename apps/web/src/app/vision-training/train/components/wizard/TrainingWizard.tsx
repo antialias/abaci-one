@@ -6,6 +6,10 @@ import { PhaseSection } from './PhaseSection'
 import {
   PHASES,
   serverPhaseToWizardPosition,
+  isColumnClassifierDatasetInfo,
+  isBoundaryDetectorDatasetInfo,
+  type ModelType,
+  type ModelsSummary,
   type SamplesData,
   type HardwareInfo,
   type PreflightInfo,
@@ -18,6 +22,11 @@ import {
 } from './types'
 
 interface TrainingWizardProps {
+  // Model selection state
+  modelType: ModelType | null
+  onSelectModel: (model: ModelType) => void
+  modelsSummary: ModelsSummary | null
+  modelsSummaryLoading: boolean
   // Data state
   samples: SamplesData | null
   samplesLoading: boolean
@@ -48,6 +57,10 @@ interface TrainingWizardProps {
 }
 
 export function TrainingWizard({
+  modelType,
+  onSelectModel,
+  modelsSummary,
+  modelsSummaryLoading,
   samples,
   samplesLoading,
   hardwareInfo,
@@ -140,9 +153,18 @@ export function TrainingWizard({
   // Card summaries for done states
   const getCardSummary = (cardId: string): { label: string; value: string } | null => {
     switch (cardId) {
-      case 'data':
+      case 'model':
+        if (!modelType) return null
+        return {
+          label: 'Model',
+          value: modelType === 'column-classifier' ? 'Column' : 'Boundary',
+        }
+      case 'data': {
         if (!samples?.hasData) return null
-        return { label: 'Images', value: `${samples.totalImages}` }
+        const count =
+          samples.type === 'column-classifier' ? samples.totalImages : samples.totalFrames
+        return { label: 'Samples', value: `${count}` }
+      }
       case 'hardware':
         if (!hardwareInfo) return null
         return {
@@ -160,14 +182,27 @@ export function TrainingWizard({
       case 'setup':
         return { label: 'Ready', value: '✓' }
       case 'loading':
-        return { label: 'Loaded', value: datasetInfo ? `${datasetInfo.total_images}` : '✓' }
+        if (!datasetInfo) return { label: 'Loaded', value: '✓' }
+        if (isColumnClassifierDatasetInfo(datasetInfo)) {
+          return { label: 'Loaded', value: `${datasetInfo.total_images}` }
+        }
+        if (isBoundaryDetectorDatasetInfo(datasetInfo)) {
+          return { label: 'Loaded', value: `${datasetInfo.total_frames}` }
+        }
+        return { label: 'Loaded', value: '✓' }
       case 'training':
-        return { label: 'Accuracy', value: `${(bestAccuracy * 100).toFixed(0)}%` }
+        return {
+          label: 'Accuracy',
+          value: `${(bestAccuracy * 100).toFixed(0)}%`,
+        }
       case 'export':
         return { label: 'Exported', value: '✓' }
       case 'results':
         return result
-          ? { label: 'Final', value: `${(result.final_accuracy * 100).toFixed(1)}%` }
+          ? {
+              label: 'Final',
+              value: `${(result.final_accuracy * 100).toFixed(1)}%`,
+            }
           : null
       default:
         return null
@@ -189,6 +224,11 @@ export function TrainingWizard({
           phase={phase}
           status={getPhaseStatus(phaseIndex)}
           currentCardIndex={phaseIndex === currentPhaseIndex ? currentCardIndex : -1}
+          // Model selection
+          modelType={modelType}
+          modelsSummary={modelsSummary}
+          modelsSummaryLoading={modelsSummaryLoading}
+          onSelectModel={onSelectModel}
           // Data for cards
           samples={samples}
           samplesLoading={samplesLoading}
@@ -218,8 +258,9 @@ export function TrainingWizard({
           onTrainAgain={handleTrainAgain}
           onSyncComplete={onSyncComplete}
           onDataWarningAcknowledged={handleDataWarningAcknowledged}
-          // Validation - require data (or acknowledged warning), hardware, and dependencies all ready
+          // Validation - require model selected, data, hardware, and dependencies all ready
           canStartTraining={
+            !!modelType &&
             !!canProceedWithData &&
             !hardwareLoading &&
             !hardwareInfo?.error &&

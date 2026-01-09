@@ -71,7 +71,13 @@ export function DependencyCard({
         data-status="loading"
         className={css({ textAlign: 'center', py: 6 })}
       >
-        <div className={css({ fontSize: '2xl', mb: 2, animation: 'spin 1s linear infinite' })}>
+        <div
+          className={css({
+            fontSize: '2xl',
+            mb: 2,
+            animation: 'spin 1s linear infinite',
+          })}
+        >
           📦
         </div>
         <div className={css({ color: 'gray.400' })}>Checking dependencies...</div>
@@ -148,7 +154,12 @@ export function DependencyCard({
             Missing ({missing.length})
           </div>
           <div
-            className={css({ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' })}
+            className={css({
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 1,
+              justifyContent: 'center',
+            })}
           >
             {missing.map((pkg) => (
               <span
@@ -289,7 +300,14 @@ export function DependencyCard({
       <div className={css({ fontSize: '3xl', mb: 2 })}>✅</div>
 
       {/* Title */}
-      <div className={css({ fontSize: 'xl', fontWeight: 'bold', color: 'gray.100', mb: 1 })}>
+      <div
+        className={css({
+          fontSize: 'xl',
+          fontWeight: 'bold',
+          color: 'gray.100',
+          mb: 1,
+        })}
+      >
         All Dependencies Ready
       </div>
 
@@ -313,7 +331,12 @@ export function DependencyCard({
       {/* Installed packages list */}
       <div className={css({ mb: 4 })}>
         <div
-          className={css({ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' })}
+          className={css({
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 1,
+            justifyContent: 'center',
+          })}
         >
           {installed.map((pkg) => (
             <span

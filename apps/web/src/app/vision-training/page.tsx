@@ -59,7 +59,10 @@ export default function VisionTrainingPage() {
     const id = `deletion-${++deletionIdCounter.current}`
     const deletion: PendingDeletion = {
       id,
-      images: imagesToDelete.map((img) => ({ digit: img.digit, filename: img.filename })),
+      images: imagesToDelete.map((img) => ({
+        digit: img.digit,
+        filename: img.filename,
+      })),
       message,
       createdAt: Date.now(),
     }

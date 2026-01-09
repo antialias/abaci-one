@@ -7,7 +7,7 @@ import { Z_INDEX } from '@/constants/zIndex'
 import { NumeralSelector } from './NumeralSelector'
 import { DigitImageBrowser, type TrainingImageMeta } from './DigitImageBrowser'
 import { DigitCapturePanel } from './DigitCapturePanel'
-import type { SamplesData } from './wizard/types'
+import { isColumnClassifierSamples, type SamplesData } from './wizard/types'
 
 interface SyncStatus {
   available: boolean
@@ -69,8 +69,9 @@ export function TrainingDataHubModal({
   const [imagesLoading, setImagesLoading] = useState(false)
 
   // Digit counts from samples or computed from loaded images
+  // (only available for column classifier samples)
   const digitCounts = useMemo(() => {
-    if (samples?.digits) {
+    if (samples && isColumnClassifierSamples(samples)) {
       const counts: Record<number, number> = {}
       for (let i = 0; i <= 9; i++) {
         counts[i] = samples.digits[i]?.count || 0
@@ -167,7 +168,10 @@ export function TrainingDataHubModal({
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            filenames: imagesToDelete.map((img) => ({ digit: img.digit, filename: img.filename })),
+            filenames: imagesToDelete.map((img) => ({
+              digit: img.digit,
+              filename: img.filename,
+            })),
             confirm: true,
           }),
         })
@@ -229,7 +233,10 @@ export function TrainingDataHubModal({
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            images: imagesToMove.map((img) => ({ digit: img.digit, filename: img.filename })),
+            images: imagesToMove.map((img) => ({
+              digit: img.digit,
+              filename: img.filename,
+            })),
             newDigit,
           }),
         })
@@ -318,7 +325,11 @@ export function TrainingDataHubModal({
               <div data-element="header-text">
                 <h2
                   data-element="header-title"
-                  className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'gray.100' })}
+                  className={css({
+                    fontSize: 'lg',
+                    fontWeight: 'bold',
+                    color: 'gray.100',
+                  })}
                 >
                   Training Data Hub
                 </h2>
@@ -362,22 +373,40 @@ export function TrainingDataHubModal({
                 >
                   {isSyncing ? (
                     <>
-                      <span className={css({ animation: 'spin 1s linear infinite' })}>🔄</span>
-                      <span className={css({ display: { base: 'none', md: 'inline' } })}>
+                      <span
+                        className={css({
+                          animation: 'spin 1s linear infinite',
+                        })}
+                      >
+                        🔄
+                      </span>
+                      <span
+                        className={css({
+                          display: { base: 'none', md: 'inline' },
+                        })}
+                      >
                         {syncProgress.message}
                       </span>
                     </>
                   ) : hasNewOnRemote ? (
                     <>
                       <span>☁️</span>
-                      <span className={css({ display: { base: 'none', md: 'inline' } })}>
+                      <span
+                        className={css({
+                          display: { base: 'none', md: 'inline' },
+                        })}
+                      >
                         Sync {syncStatus.newOnRemote} new
                       </span>
                     </>
                   ) : (
                     <>
                       <span>✓</span>
-                      <span className={css({ display: { base: 'none', md: 'inline' } })}>
+                      <span
+                        className={css({
+                          display: { base: 'none', md: 'inline' },
+                        })}
+                      >
                         In sync
                       </span>
                     </>
@@ -503,7 +532,10 @@ export function TrainingDataHubModal({
               data-element="browse-panel"
               data-visible={mobileTab === 'browse'}
               className={css({
-                display: { base: mobileTab === 'browse' ? 'flex' : 'none', lg: 'flex' },
+                display: {
+                  base: mobileTab === 'browse' ? 'flex' : 'none',
+                  lg: 'flex',
+                },
                 flexDirection: 'column',
                 flex: 1,
                 minWidth: 0,
@@ -536,7 +568,10 @@ export function TrainingDataHubModal({
               data-element="capture-panel"
               data-visible={mobileTab === 'capture'}
               className={css({
-                display: { base: mobileTab === 'capture' ? 'flex' : 'none', lg: 'flex' },
+                display: {
+                  base: mobileTab === 'capture' ? 'flex' : 'none',
+                  lg: 'flex',
+                },
                 flexDirection: 'column',
                 flexShrink: 0,
                 width: { lg: 'auto' },

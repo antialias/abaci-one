@@ -5,6 +5,7 @@ Trains the TensorFlow.js abacus column digit classifier using real images collec
 ## Overview
 
 Training data is collected automatically when users practice with vision mode enabled:
+
 - When a student answers correctly with vision enabled, column images are saved
 - Images are 64×128 grayscale PNGs, organized by digit (0-9)
 - Collection happens in the background without interrupting practice
@@ -31,6 +32,7 @@ tensorflowjs_converter \
 ## Data Collection
 
 Training data is collected by:
+
 - `POST /api/vision-training/collect` - saves column images when answer is correct
 - Images stored in `data/vision-training/collected/{digit}/*.png`
 

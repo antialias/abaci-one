@@ -1,27 +1,52 @@
 import { spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
+import type { NextRequest } from 'next/server'
 
 // Force dynamic rendering - this route reads from disk and runs rsync
 export const dynamic = 'force-dynamic'
 
-// Configuration - should match the sync script
+// Configuration
 const REMOTE_HOST = 'nas.home.network'
 const REMOTE_USER = 'antialias'
-const REMOTE_PATH = '/volume1/homes/antialias/projects/abaci.one/data/vision-training/collected/'
-const LOCAL_PATH = path.join(process.cwd(), 'data/vision-training/collected/')
+
+// Paths for each model type
+type ModelType = 'column-classifier' | 'boundary-detector'
+
+const MODEL_PATHS: Record<ModelType, { remote: string; local: string }> = {
+  'column-classifier': {
+    remote: '/volume1/homes/antialias/projects/abaci.one/data/vision-training/collected/',
+    local: path.join(process.cwd(), 'data/vision-training/collected/'),
+  },
+  'boundary-detector': {
+    remote: '/volume1/homes/antialias/projects/abaci.one/data/vision-training/boundary-frames/',
+    local: path.join(process.cwd(), 'data/vision-training/boundary-frames/'),
+  },
+}
 
 /**
- * File that tracks intentionally deleted images (to prevent re-syncing)
+ * Get the model type from request query params (defaults to column-classifier for backwards compatibility)
  */
-const DELETED_FILE = path.join(LOCAL_PATH, '.deleted')
+function getModelType(request: NextRequest): ModelType {
+  const modelType = request.nextUrl.searchParams.get('modelType')
+  if (modelType === 'boundary-detector') return 'boundary-detector'
+  return 'column-classifier'
+}
 
 /**
- * Read the list of intentionally deleted files
+ * Get the deleted files path for a model type
  */
-async function readDeletedFiles(): Promise<Set<string>> {
+function getDeletedFilePath(modelType: ModelType): string {
+  return path.join(MODEL_PATHS[modelType].local, '.deleted')
+}
+
+/**
+ * Read the list of intentionally deleted files for a model type
+ */
+async function readDeletedFiles(modelType: ModelType): Promise<Set<string>> {
   try {
-    const content = await fs.promises.readFile(DELETED_FILE, 'utf-8')
+    const deletedFile = getDeletedFilePath(modelType)
+    const content = await fs.promises.readFile(deletedFile, 'utf-8')
     const lines = content.split('\n').filter((line) => line.trim())
     return new Set(lines)
   } catch {
@@ -34,8 +59,13 @@ async function readDeletedFiles(): Promise<Set<string>> {
  * POST /api/vision-training/sync
  * Sync training data from production to local using rsync
  * Returns SSE stream with progress updates
+ *
+ * Query params:
+ * - modelType: 'column-classifier' | 'boundary-detector' (default: column-classifier)
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const modelType = getModelType(request)
+  const paths = MODEL_PATHS[modelType]
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
@@ -46,12 +76,15 @@ export async function POST() {
 
       try {
         // Ensure local directory exists
-        await fs.promises.mkdir(LOCAL_PATH, { recursive: true })
+        await fs.promises.mkdir(paths.local, { recursive: true })
 
-        send('status', { message: 'Connecting to production server...', phase: 'connecting' })
+        send('status', {
+          message: 'Connecting to production server...',
+          phase: 'connecting',
+        })
 
         // Read deleted files to exclude from sync
-        const deletedFiles = await readDeletedFiles()
+        const deletedFiles = await readDeletedFiles(modelType)
         const excludeArgs: string[] = []
 
         // Add each deleted file as an exclude pattern
@@ -72,8 +105,8 @@ export async function POST() {
           '--progress',
           '--stats',
           ...excludeArgs,
-          `${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}`,
-          LOCAL_PATH,
+          `${REMOTE_USER}@${REMOTE_HOST}:${paths.remote}`,
+          paths.local,
         ])
 
         let currentFile = ''
@@ -138,7 +171,7 @@ export async function POST() {
         })
 
         // Count final stats
-        const stats = await countLocalImages()
+        const stats = await countLocalData(modelType)
 
         send('complete', {
           filesTransferred,
@@ -166,8 +199,14 @@ export async function POST() {
 /**
  * GET /api/vision-training/sync
  * Check if sync is available (SSH connectivity) and what files would be synced
+ *
+ * Query params:
+ * - modelType: 'column-classifier' | 'boundary-detector' (default: column-classifier)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const modelType = getModelType(request)
+  const paths = MODEL_PATHS[modelType]
+
   try {
     // Quick check if we can reach the remote host
     const { exec } = await import('child_process')
@@ -183,17 +222,18 @@ export async function GET() {
     )
 
     // Get list of remote files (just filenames, not full paths)
+    // For both model types, we only count PNG files (boundary detector has PNG+JSON pairs)
     const { stdout: remoteFilesOutput } = await execAsync(
-      `ssh ${REMOTE_USER}@${REMOTE_HOST} "find '${REMOTE_PATH}' -name '*.png' -printf '%P\\n' 2>/dev/null"`,
+      `ssh ${REMOTE_USER}@${REMOTE_HOST} "find '${paths.remote}' -name '*.png' -printf '%P\\n' 2>/dev/null"`,
       { timeout: 15000 }
     )
     const remoteFiles = new Set(remoteFilesOutput.trim().split('\n').filter(Boolean))
     const remoteCount = remoteFiles.size
 
     // Get local files and deleted files
-    const localStats = await countLocalImages()
-    const localFiles = await listLocalFiles()
-    const deletedFiles = await readDeletedFiles()
+    const localStats = await countLocalData(modelType)
+    const localFiles = await listLocalFiles(modelType)
+    const deletedFiles = await readDeletedFiles(modelType)
 
     // Find files that exist on remote but not locally (excluding intentionally deleted)
     const newOnRemote: string[] = []
@@ -216,11 +256,16 @@ export async function GET() {
       }
     }
 
+    // Use appropriate terminology based on model type
+    const itemName = modelType === 'boundary-detector' ? 'frames' : 'images'
+
     return Response.json({
       available: true,
+      modelType,
       remote: {
         host: REMOTE_HOST,
-        totalImages: remoteCount,
+        totalImages: remoteCount, // Keep as totalImages for backwards compatibility
+        totalFrames: modelType === 'boundary-detector' ? remoteCount : undefined,
       },
       local: localStats,
       // Smart sync detection: there are files on remote that we don't have locally
@@ -229,50 +274,113 @@ export async function GET() {
       newOnLocal: newOnLocal.length,
       // Files that would sync but are in our deleted list
       excludedByDeletion: excludedByDeletion.length,
+      itemName, // 'frames' or 'images'
     })
   } catch (error) {
     console.error('[vision-training/sync] Error:', error)
     return Response.json({
       available: false,
+      modelType,
       error: 'Cannot connect to production server',
-      local: await countLocalImages(),
+      local: await countLocalData(modelType),
     })
   }
 }
 
-async function countLocalImages(): Promise<{
+/**
+ * Count local data for a model type
+ * - Column classifier: counts images per digit subdirectory
+ * - Boundary detector: counts PNG files (frames) in device subdirectories
+ */
+async function countLocalData(modelType: ModelType): Promise<{
   totalImages: number
-  digitCounts: Record<number, number>
+  totalFrames?: number
+  digitCounts?: Record<number, number>
+  deviceCount?: number
 }> {
-  const digitCounts: Record<number, number> = {}
-  let totalImages = 0
+  const localPath = MODEL_PATHS[modelType].local
 
-  for (let digit = 0; digit <= 9; digit++) {
-    const digitPath = path.join(LOCAL_PATH, String(digit))
-    try {
-      const files = await fs.promises.readdir(digitPath)
-      const pngCount = files.filter((f) => f.endsWith('.png')).length
-      digitCounts[digit] = pngCount
-      totalImages += pngCount
-    } catch {
-      digitCounts[digit] = 0
+  if (modelType === 'column-classifier') {
+    // Count images per digit (0-9)
+    const digitCounts: Record<number, number> = {}
+    let totalImages = 0
+
+    for (let digit = 0; digit <= 9; digit++) {
+      const digitPath = path.join(localPath, String(digit))
+      try {
+        const files = await fs.promises.readdir(digitPath)
+        const pngCount = files.filter((f) => f.endsWith('.png')).length
+        digitCounts[digit] = pngCount
+        totalImages += pngCount
+      } catch {
+        digitCounts[digit] = 0
+      }
     }
-  }
 
-  return { totalImages, digitCounts }
+    return { totalImages, digitCounts }
+  } else {
+    // Boundary detector: count PNG files in device subdirectories
+    let totalFrames = 0
+    let deviceCount = 0
+
+    try {
+      const entries = await fs.promises.readdir(localPath, { withFileTypes: true })
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          deviceCount++
+          const devicePath = path.join(localPath, entry.name)
+          const files = await fs.promises.readdir(devicePath)
+          const pngCount = files.filter((f) => f.endsWith('.png')).length
+          totalFrames += pngCount
+        }
+      }
+    } catch {
+      // Directory doesn't exist yet
+    }
+
+    return { totalImages: totalFrames, totalFrames, deviceCount }
+  }
 }
 
-async function listLocalFiles(): Promise<Set<string>> {
+/**
+ * List local PNG files for a model type (relative paths)
+ * - Column classifier: digit/filename.png format
+ * - Boundary detector: deviceId/filename.png format
+ */
+async function listLocalFiles(modelType: ModelType): Promise<Set<string>> {
   const files = new Set<string>()
+  const localPath = MODEL_PATHS[modelType].local
 
-  for (let digit = 0; digit <= 9; digit++) {
-    const digitPath = path.join(LOCAL_PATH, String(digit))
+  if (modelType === 'column-classifier') {
+    // Column classifier: iterate through digit subdirectories (0-9)
+    for (let digit = 0; digit <= 9; digit++) {
+      const digitPath = path.join(localPath, String(digit))
+      try {
+        const dirFiles = await fs.promises.readdir(digitPath)
+        for (const file of dirFiles) {
+          if (file.endsWith('.png')) {
+            // Use relative path format: digit/filename.png
+            files.add(`${digit}/${file}`)
+          }
+        }
+      } catch {
+        // Directory doesn't exist
+      }
+    }
+  } else {
+    // Boundary detector: iterate through device subdirectories
     try {
-      const dirFiles = await fs.promises.readdir(digitPath)
-      for (const file of dirFiles) {
-        if (file.endsWith('.png')) {
-          // Use relative path format: digit/filename.png
-          files.add(`${digit}/${file}`)
+      const entries = await fs.promises.readdir(localPath, { withFileTypes: true })
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const devicePath = path.join(localPath, entry.name)
+          const dirFiles = await fs.promises.readdir(devicePath)
+          for (const file of dirFiles) {
+            if (file.endsWith('.png')) {
+              // Use relative path format: deviceId/filename.png
+              files.add(`${entry.name}/${file}`)
+            }
+          }
         }
       }
     } catch {

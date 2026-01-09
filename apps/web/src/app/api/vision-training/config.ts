@@ -99,7 +99,11 @@ const REQUIRED_MODULES = [
   { name: 'tensorflow', importName: 'tensorflow', pipName: 'tensorflow' },
   { name: 'tensorflowjs', importName: 'tensorflowjs', pipName: 'tensorflowjs' },
   { name: 'PIL (Pillow)', importName: 'PIL', pipName: 'Pillow' },
-  { name: 'sklearn (scikit-learn)', importName: 'sklearn', pipName: 'scikit-learn' },
+  {
+    name: 'sklearn (scikit-learn)',
+    importName: 'sklearn',
+    pipName: 'scikit-learn',
+  },
   { name: 'numpy', importName: 'numpy', pipName: 'numpy' },
 ]
 
@@ -117,7 +121,10 @@ export async function checkDependencies(): Promise<DependencyCheckResult> {
   if (!fs.existsSync(TRAINING_PYTHON)) {
     return {
       allInstalled: false,
-      missing: REQUIRED_MODULES.map((m) => ({ name: m.name, pipName: m.pipName })),
+      missing: REQUIRED_MODULES.map((m) => ({
+        name: m.name,
+        pipName: m.pipName,
+      })),
       installed: [],
       error: 'Python virtual environment not found',
     }
@@ -213,7 +220,9 @@ async function createVenv(): Promise<SetupResult> {
 
   try {
     // Create venv (--clear removes existing incomplete venv)
-    await execAsync(`"${basePython}" -m venv --clear "${VENV_DIR}"`, { timeout: 60000 })
+    await execAsync(`"${basePython}" -m venv --clear "${VENV_DIR}"`, {
+      timeout: 60000,
+    })
 
     // Upgrade pip
     await execAsync(`"${TRAINING_PYTHON}" -m pip install --upgrade pip`, {

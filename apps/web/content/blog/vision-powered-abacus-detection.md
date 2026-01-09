@@ -10,7 +10,7 @@ featured: true
 
 # See What They're Doing: Vision-Powered Abacus Detection
 
-There's something magical about watching a child work through a math problem on a physical abacus. Their fingers move the beads, their mind calculates, and slowly the answer takes shape. But as a parent or teacher, you might wonder: *How do I know if they're on the right track?*
+There's something magical about watching a child work through a math problem on a physical abacus. Their fingers move the beads, their mind calculates, and slowly the answer takes shape. But as a parent or teacher, you might wonder: _How do I know if they're on the right track?_
 
 Today we're excited to announce a feature that bridges this gap: **real-time vision-powered abacus detection**.
 
@@ -21,6 +21,7 @@ The soroban (Japanese abacus) is a powerful tool for developing number sense and
 **The abacus is physical. The feedback is digital.**
 
 Until now, students using our practice system had two options:
+
 1. Use the on-screen digital abacus (convenient, but not the same as physical practice)
 2. Use their physical abacus, then manually enter the answer (loses the step-by-step feedback)
 
@@ -133,11 +134,13 @@ The system uses four small printed patterns (called ArUco markers) to locate you
 You have two options:
 
 **Option A: Computer Camera (💻 This Device)**
+
 - Select your webcam from the dropdown
 - Grant camera permission when prompted
 - Position the camera to see your abacus clearly
 
 **Option B: Phone Camera (📱 Phone Camera)**
+
 - Scan the QR code with your phone
 - Your phone becomes a wireless camera
 - Great for overhead desk views
@@ -166,6 +169,7 @@ Once your camera sees the ArUco markers:
 ### Your Settings Are Saved
 
 Once configured, the system remembers:
+
 - Your camera selection
 - Your calibration setup
 - Whether vision was enabled
@@ -184,4 +188,4 @@ The goal remains the same: make physical abacus practice as supported and insigh
 
 ---
 
-*Have questions about vision-powered practice? We'd love to hear from you. The best learning tools are built in partnership with the teachers and families who use them.*
+_Have questions about vision-powered practice? We'd love to hear from you. The best learning tools are built in partnership with the teachers and families who use them._

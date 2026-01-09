@@ -19,7 +19,13 @@ export function TrainingCard({
   if (!currentEpoch) {
     return (
       <div className={css({ textAlign: 'center', py: 6 })}>
-        <div className={css({ fontSize: '2xl', mb: 3, animation: 'spin 1s linear infinite' })}>
+        <div
+          className={css({
+            fontSize: '2xl',
+            mb: 3,
+            animation: 'spin 1s linear infinite',
+          })}
+        >
           🏋️
         </div>
         <div className={css({ color: 'gray.400' })}>Starting training...</div>

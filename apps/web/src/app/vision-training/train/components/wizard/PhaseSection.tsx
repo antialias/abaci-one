@@ -7,6 +7,8 @@ import {
   CARDS,
   type PhaseDefinition,
   type PhaseStatus,
+  type ModelType,
+  type ModelsSummary,
   type SamplesData,
   type HardwareInfo,
   type PreflightInfo,
@@ -21,6 +23,11 @@ interface PhaseSectionProps {
   phase: PhaseDefinition
   status: PhaseStatus
   currentCardIndex: number
+  // Model selection
+  modelType: ModelType | null
+  modelsSummary: ModelsSummary | null
+  modelsSummaryLoading: boolean
+  onSelectModel: (model: ModelType) => void
   // Data
   samples: SamplesData | null
   samplesLoading: boolean
@@ -63,6 +70,10 @@ export function PhaseSection({
   phase,
   status,
   currentCardIndex,
+  modelType,
+  modelsSummary,
+  modelsSummaryLoading,
+  onSelectModel,
   samples,
   samplesLoading,
   hardwareInfo,
@@ -168,6 +179,11 @@ export function PhaseSection({
           <CardCarousel
             cards={phase.cards}
             currentCardIndex={currentCardIndex}
+            // Model selection
+            modelType={modelType}
+            modelsSummary={modelsSummary}
+            modelsSummaryLoading={modelsSummaryLoading}
+            onSelectModel={onSelectModel}
             // Data
             samples={samples}
             samplesLoading={samplesLoading}
@@ -232,7 +248,12 @@ export function PhaseSection({
                   >
                     <span>{cardDef.icon}</span>
                     <span className={css({ color: 'gray.400' })}>{cardDef.title}:</span>
-                    <span className={css({ color: 'green.400', fontWeight: 'medium' })}>
+                    <span
+                      className={css({
+                        color: 'green.400',
+                        fontWeight: 'medium',
+                      })}
+                    >
                       {summary?.value || '✓'}
                     </span>
                   </div>
@@ -240,7 +261,13 @@ export function PhaseSection({
               })}
             </div>
           ) : (
-            <div className={css({ fontSize: 'xs', color: 'gray.500', fontStyle: 'italic' })}>
+            <div
+              className={css({
+                fontSize: 'xs',
+                color: 'gray.500',
+                fontStyle: 'italic',
+              })}
+            >
               {phase.id === 'results' ? 'Waiting for training to complete...' : 'Waiting...'}
             </div>
           )}

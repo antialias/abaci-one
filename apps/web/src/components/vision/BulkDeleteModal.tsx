@@ -231,7 +231,14 @@ export function BulkDeleteModal({
       >
         {/* Header */}
         <div className={css({ mb: 6 })}>
-          <h2 className={css({ fontSize: 'xl', fontWeight: 'bold', color: 'red.400', mb: 2 })}>
+          <h2
+            className={css({
+              fontSize: 'xl',
+              fontWeight: 'bold',
+              color: 'red.400',
+              mb: 2,
+            })}
+          >
             Bulk Delete Training Data
           </h2>
           <p className={css({ color: 'gray.400', fontSize: 'sm' })}>
@@ -241,7 +248,14 @@ export function BulkDeleteModal({
 
         {/* Filter Mode Selection */}
         <div className={css({ mb: 4 })}>
-          <label className={css({ display: 'block', fontSize: 'sm', color: 'gray.400', mb: 2 })}>
+          <label
+            className={css({
+              display: 'block',
+              fontSize: 'sm',
+              color: 'gray.400',
+              mb: 2,
+            })}
+          >
             Delete by:
           </label>
           <div className={css({ display: 'flex', flexWrap: 'wrap', gap: 2 })}>
@@ -297,7 +311,12 @@ export function BulkDeleteModal({
           {filterMode === 'session' && (
             <div>
               <label
-                className={css({ display: 'block', fontSize: 'sm', color: 'gray.400', mb: 2 })}
+                className={css({
+                  display: 'block',
+                  fontSize: 'sm',
+                  color: 'gray.400',
+                  mb: 2,
+                })}
               >
                 Select session:
               </label>
@@ -328,7 +347,12 @@ export function BulkDeleteModal({
           {filterMode === 'player' && (
             <div>
               <label
-                className={css({ display: 'block', fontSize: 'sm', color: 'gray.400', mb: 2 })}
+                className={css({
+                  display: 'block',
+                  fontSize: 'sm',
+                  color: 'gray.400',
+                  mb: 2,
+                })}
               >
                 Select player:
               </label>
@@ -359,7 +383,12 @@ export function BulkDeleteModal({
           {filterMode === 'digit' && (
             <div>
               <label
-                className={css({ display: 'block', fontSize: 'sm', color: 'gray.400', mb: 2 })}
+                className={css({
+                  display: 'block',
+                  fontSize: 'sm',
+                  color: 'gray.400',
+                  mb: 2,
+                })}
               >
                 Select digit:
               </label>
@@ -390,7 +419,12 @@ export function BulkDeleteModal({
           {filterMode === 'date' && (
             <div>
               <label
-                className={css({ display: 'block', fontSize: 'sm', color: 'gray.400', mb: 2 })}
+                className={css({
+                  display: 'block',
+                  fontSize: 'sm',
+                  color: 'gray.400',
+                  mb: 2,
+                })}
               >
                 Date range mode:
               </label>

@@ -58,9 +58,9 @@ This means the video element only exists AFTER the stream is acquired. The effec
 // In VisionCameraFeed - THIS IS CRITICAL
 useEffect(() => {
   if (externalVideoRef) {
-    externalVideoRef(internalVideoRef.current)
+    externalVideoRef(internalVideoRef.current);
   }
-}, [externalVideoRef, videoStream])  // ← videoStream dependency is essential!
+}, [externalVideoRef, videoStream]); // ← videoStream dependency is essential!
 ```
 
 Without `videoStream` in the dependency array, the parent's `videoElement` state stays `null`, marker detection never gets a video to analyze, and the rectified view never appears.

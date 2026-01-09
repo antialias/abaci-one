@@ -1,6 +1,7 @@
 'use client'
 
 import { css } from '../../../../../../styled-system/css'
+import { ModelCard } from './cards/ModelCard'
 import { DataCard } from './cards/DataCard'
 import { HardwareCard } from './cards/HardwareCard'
 import { DependencyCard } from './cards/DependencyCard'
@@ -12,7 +13,10 @@ import { ExportCard } from './cards/ExportCard'
 import { ResultsCard } from './cards/ResultsCard'
 import {
   CARDS,
+  isColumnClassifierSamples,
   type CardId,
+  type ModelType,
+  type ModelsSummary,
   type SamplesData,
   type HardwareInfo,
   type PreflightInfo,
@@ -25,6 +29,11 @@ import {
 
 interface ExpandedCardProps {
   cardId: CardId
+  // Model selection
+  modelType: ModelType | null
+  modelsSummary: ModelsSummary | null
+  modelsSummaryLoading: boolean
+  onSelectModel: (model: ModelType) => void
   // Data
   samples: SamplesData | null
   samplesLoading: boolean
@@ -57,6 +66,10 @@ interface ExpandedCardProps {
 
 export function ExpandedCard({
   cardId,
+  modelType,
+  modelsSummary,
+  modelsSummaryLoading,
+  onSelectModel,
   samples,
   samplesLoading,
   hardwareInfo,
@@ -87,11 +100,22 @@ export function ExpandedCard({
 
   const renderCardContent = () => {
     switch (cardId) {
+      case 'model':
+        return (
+          <ModelCard
+            modelsSummary={modelsSummary}
+            summaryLoading={modelsSummaryLoading}
+            selectedModel={modelType}
+            onSelectModel={onSelectModel}
+            onProgress={onProgress}
+          />
+        )
       case 'data':
         return (
           <DataCard
             samples={samples}
             samplesLoading={samplesLoading}
+            modelType={modelType}
             onProgress={onProgress}
             onSyncComplete={onSyncComplete}
             onDataWarningAcknowledged={onDataWarningAcknowledged}
@@ -115,7 +139,12 @@ export function ExpandedCard({
             onProgress={onProgress}
           />
         )
-      case 'config':
+      case 'config': {
+        const totalSamples = samples
+          ? isColumnClassifierSamples(samples)
+            ? samples.totalImages
+            : samples.totalFrames
+          : 0
         return (
           <ConfigCard
             config={config}
@@ -123,9 +152,10 @@ export function ExpandedCard({
             isGpu={isGpu}
             onStartTraining={onStartTraining}
             canStart={canStartTraining}
-            totalImages={samples?.totalImages ?? 0}
+            totalImages={totalSamples}
           />
         )
+      }
       case 'setup':
         return <SetupCard message={statusMessage} />
       case 'loading':

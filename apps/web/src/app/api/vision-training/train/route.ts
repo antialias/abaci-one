@@ -9,11 +9,28 @@ export const dynamic = 'force-dynamic'
  * Training configuration options
  */
 interface TrainingConfig {
+  modelType?: 'column-classifier' | 'boundary-detector'
   epochs?: number
   batchSize?: number
   validationSplit?: number
   noAugmentation?: boolean
 }
+
+/**
+ * Model-specific configuration
+ */
+const MODEL_CONFIG = {
+  'column-classifier': {
+    script: 'scripts/train-column-classifier/train_model.py',
+    dataDir: './data/vision-training/collected',
+    outputDir: './public/models/abacus-column-classifier',
+  },
+  'boundary-detector': {
+    script: 'scripts/train-boundary-detector/train_model.py',
+    dataDir: './data/vision-training/boundary-frames',
+    outputDir: './public/models/abacus-boundary-detector',
+  },
+} as const
 
 /**
  * Active training process (only one allowed at a time)
@@ -76,14 +93,34 @@ export async function POST(request: Request): Promise<Response> {
     // Use defaults if body parsing fails
   }
 
+  // Get model-specific configuration
+  const modelType = config.modelType || 'column-classifier'
+  const modelConfig = MODEL_CONFIG[modelType]
+
+  // Check if the training script exists for boundary detector
+  // (It may not be implemented yet)
+  if (modelType === 'boundary-detector') {
+    const fs = await import('fs')
+    const scriptPath = path.join(process.cwd(), modelConfig.script)
+    if (!fs.existsSync(scriptPath)) {
+      return new Response(
+        JSON.stringify({
+          error: 'Boundary detector training not yet implemented',
+          hint: 'The boundary detector training script has not been created yet',
+        }),
+        { status: 501, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+  }
+
   // Build command arguments
   const args = [
-    'scripts/train-column-classifier/train_model.py',
+    modelConfig.script,
     '--json-progress',
     '--data-dir',
-    './data/vision-training/collected',
+    modelConfig.dataDir,
     '--output-dir',
-    './public/models/abacus-column-classifier',
+    modelConfig.outputDir,
   ]
 
   if (config.epochs) {
@@ -160,9 +197,15 @@ export async function POST(request: Request): Promise<Response> {
       // Handle process exit
       activeProcess.on('close', (code) => {
         if (code === 0) {
-          sendEvent('finished', { message: 'Training completed successfully', code })
+          sendEvent('finished', {
+            message: 'Training completed successfully',
+            code,
+          })
         } else {
-          sendEvent('error', { message: `Training failed with code ${code}`, code })
+          sendEvent('error', {
+            message: `Training failed with code ${code}`,
+            code,
+          })
         }
         activeProcess = null
         activeAbortController = null

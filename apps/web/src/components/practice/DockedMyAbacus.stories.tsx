@@ -47,10 +47,22 @@ type Story = StoryObj
 function createMockStudent(name: string): StudentInfo {
   const students: Record<string, StudentInfo> = {
     Sonia: { id: 'student-sonia', name: 'Sonia', emoji: '🌟', color: 'purple' },
-    Marcus: { id: 'student-marcus', name: 'Marcus', emoji: '🚀', color: 'blue' },
+    Marcus: {
+      id: 'student-marcus',
+      name: 'Marcus',
+      emoji: '🚀',
+      color: 'blue',
+    },
     Luna: { id: 'student-luna', name: 'Luna', emoji: '🌙', color: 'indigo' },
   }
-  return students[name] ?? { id: `student-${name.toLowerCase()}`, name, emoji: '🎓', color: 'gray' }
+  return (
+    students[name] ?? {
+      id: `student-${name.toLowerCase()}`,
+      name,
+      emoji: '🎓',
+      color: 'gray',
+    }
+  )
 }
 
 function generateProblemWithSkills(

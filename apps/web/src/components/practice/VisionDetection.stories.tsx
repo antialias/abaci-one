@@ -211,7 +211,11 @@ function VisionProgressGallery() {
     { label: 'Starting', userAnswer: '', detectedPrefixIndex: undefined },
     { label: 'First term (45)', userAnswer: '45', detectedPrefixIndex: 0 },
     { label: 'Two terms (77)', userAnswer: '77', detectedPrefixIndex: 1 },
-    { label: 'Final answer (95)', userAnswer: '95', detectedPrefixIndex: undefined },
+    {
+      label: 'Final answer (95)',
+      userAnswer: '95',
+      detectedPrefixIndex: undefined,
+    },
   ]
 
   return (
@@ -336,7 +340,13 @@ function LiveDetectionSimulation() {
       })}
     >
       <div className={css({ textAlign: 'center' })}>
-        <h3 className={css({ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+        <h3
+          className={css({
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+          })}
+        >
           Live Vision Detection
         </h3>
         <p className={css({ fontSize: '0.875rem', color: 'gray.600' })}>
@@ -366,7 +376,13 @@ function LiveDetectionSimulation() {
           })}
         />
         <div className={css({ fontSize: '0.75rem', color: 'gray.400' })}>DETECTED</div>
-        <div className={css({ fontSize: '2rem', fontFamily: 'mono', fontWeight: 'bold' })}>
+        <div
+          className={css({
+            fontSize: '2rem',
+            fontFamily: 'mono',
+            fontWeight: 'bold',
+          })}
+        >
           {currentValue ?? '—'}
         </div>
         <div className={css({ fontSize: '0.75rem', color: 'gray.500' })}>
@@ -474,7 +490,13 @@ function BeforeAfterComparison() {
             size="large"
           />
         </div>
-        <div className={css({ fontSize: '0.75rem', color: 'gray.500', marginTop: '0.75rem' })}>
+        <div
+          className={css({
+            fontSize: '0.75rem',
+            color: 'gray.500',
+            marginTop: '0.75rem',
+          })}
+        >
           No feedback until answer is entered
         </div>
       </div>
@@ -509,7 +531,13 @@ function BeforeAfterComparison() {
             detectedPrefixIndex={1}
           />
         </div>
-        <div className={css({ fontSize: '0.75rem', color: 'green.600', marginTop: '0.75rem' })}>
+        <div
+          className={css({
+            fontSize: '0.75rem',
+            color: 'green.600',
+            marginTop: '0.75rem',
+          })}
+        >
           Real-time checkmarks as terms complete
         </div>
       </div>

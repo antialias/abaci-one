@@ -20,6 +20,7 @@ import type {
   MarkerDetectionStatus,
   UseAbacusVisionReturn,
 } from '@/types/vision'
+import { useBoundaryDetector } from './useBoundaryDetector'
 import { useCameraCalibration } from './useCameraCalibration'
 import { useColumnClassifier } from './useColumnClassifier'
 import { useDeskViewCamera } from './useDeskViewCamera'
@@ -74,6 +75,10 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
   const calibration = useCameraCalibration()
   const stability = useFrameStability()
   const classifier = useColumnClassifier()
+  const boundaryDetector = useBoundaryDetector({
+    enabled: isEnabled && calibrationMode === 'marker-free',
+    columnCount,
+  })
 
   // Classifier state
   const [columnConfidences, setColumnConfidences] = useState<number[]>([])
@@ -213,6 +218,101 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
       }
     }
   }, [isEnabled, camera.videoStream, calibrationMode, columnCount])
+
+  // Marker-free calibration loop using boundary detector ML model
+  const markerFreeFrameRef = useRef<number | null>(null)
+  const markerFreeLastTimeRef = useRef<number>(0)
+  const MARKER_FREE_INTERVAL_MS = 200 // 5fps for inference
+
+  useEffect(() => {
+    if (!isEnabled || !camera.videoStream || calibrationMode !== 'marker-free') {
+      if (markerFreeFrameRef.current) {
+        cancelAnimationFrame(markerFreeFrameRef.current)
+        markerFreeFrameRef.current = null
+      }
+      return
+    }
+
+    // Check if boundary detector is ready
+    if (!boundaryDetector.isReady && !boundaryDetector.isLoading) {
+      boundaryDetector.preload()
+      return
+    }
+
+    if (!boundaryDetector.isReady) {
+      return // Still loading
+    }
+
+    // Get video element from stream
+    const videoElements = document.querySelectorAll('video')
+    let video: HTMLVideoElement | null = null
+    for (const el of videoElements) {
+      if (el.srcObject === camera.videoStream) {
+        video = el
+        break
+      }
+    }
+
+    if (!video) return
+
+    let running = true
+
+    const detectLoop = async () => {
+      if (!running || !video || video.readyState < 2) {
+        if (running) {
+          markerFreeFrameRef.current = requestAnimationFrame(detectLoop)
+        }
+        return
+      }
+
+      // Throttle inference
+      const now = performance.now()
+      if (now - markerFreeLastTimeRef.current < MARKER_FREE_INTERVAL_MS) {
+        markerFreeFrameRef.current = requestAnimationFrame(detectLoop)
+        return
+      }
+      markerFreeLastTimeRef.current = now
+
+      // Run boundary detection (updates internal state in hook)
+      await boundaryDetector.detectFromVideo(video)
+
+      // If we have stable corners, update calibration
+      if (boundaryDetector.detectedCorners && boundaryDetector.confidence > 0.7) {
+        const grid = boundaryDetector.createCalibrationGrid()
+        if (grid) {
+          calibrationRef.current.updateCalibration(grid)
+          if (!calibrationRef.current.isCalibrated) {
+            calibrationRef.current.finishCalibration()
+          }
+        }
+      }
+
+      if (running) {
+        markerFreeFrameRef.current = requestAnimationFrame(detectLoop)
+      }
+    }
+
+    detectLoop()
+
+    return () => {
+      running = false
+      if (markerFreeFrameRef.current) {
+        cancelAnimationFrame(markerFreeFrameRef.current)
+        markerFreeFrameRef.current = null
+      }
+    }
+  }, [
+    isEnabled,
+    camera.videoStream,
+    calibrationMode,
+    boundaryDetector.isReady,
+    boundaryDetector.isLoading,
+    boundaryDetector.detectFromVideo,
+    boundaryDetector.detectedCorners,
+    boundaryDetector.confidence,
+    boundaryDetector.createCalibrationGrid,
+    boundaryDetector.preload,
+  ])
 
   /**
    * Enable vision mode - start camera and detection
@@ -465,6 +565,15 @@ export function useAbacusVision(options: UseAbacusVisionOptions = {}): UseAbacus
     isCalibrating: calibration.isCalibrating,
     calibrationMode,
     markerDetection,
+
+    // Boundary detector state (marker-free mode)
+    boundaryDetector: {
+      isReady: boundaryDetector.isReady,
+      isLoading: boundaryDetector.isLoading,
+      isUnavailable: boundaryDetector.isUnavailable,
+      confidence: boundaryDetector.confidence,
+      consecutiveFrames: boundaryDetector.consecutiveFrames,
+    },
 
     // Stability state
     isHandDetected: stability.isHandDetected,
