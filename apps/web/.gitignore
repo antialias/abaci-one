@@ -66,3 +66,7 @@ training-data/
 data/vision-training/collected/
 data/vision-training/.venv/
 scripts/train-column-classifier/.venv/
+
+# Python cache
+__pycache__/
+*.pyc
