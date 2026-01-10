@@ -6,6 +6,7 @@ import type { DataPanelProps } from '../../registry'
 import { NumeralSelector } from './NumeralSelector'
 import { DigitImageBrowser, type TrainingImageMeta } from './DigitImageBrowser'
 import { DigitCapturePanel } from './DigitCapturePanel'
+import { SyncHistoryIndicator } from './SyncHistoryIndicator'
 import { isColumnClassifierSamples, type SamplesData, type DataQuality } from './wizard/types'
 
 interface SyncStatus {
@@ -87,6 +88,9 @@ export function ColumnClassifierDataPanel({
   const syncStatus = syncStatusProp !== undefined ? syncStatusProp : selfSyncStatus
   const syncProgress = syncProgressProp ?? selfSyncProgress
 
+  // Counter to trigger sync history refresh after sync completes
+  const [syncHistoryRefreshTrigger, setSyncHistoryRefreshTrigger] = useState(0)
+
   // Fetch samples if not provided
   useEffect(() => {
     if (samplesProp !== undefined) return
@@ -147,6 +151,8 @@ export function ColumnClassifierDataPanel({
         message: error instanceof Error ? error.message : 'Sync failed',
       })
     }
+    // Refresh sync history after sync attempt (success or failure)
+    setSyncHistoryRefreshTrigger((prev) => prev + 1)
   }, [onStartSyncProp, onDataChanged])
 
   const handleCancelSync = useCallback(() => {
@@ -411,8 +417,16 @@ export function ColumnClassifierDataPanel({
 
           <div
             data-element="header-actions"
-            className={css({ display: 'flex', alignItems: 'center', gap: 2 })}
+            className={css({ display: 'flex', alignItems: 'center', gap: 3 })}
           >
+            {/* Sync history indicator */}
+            {syncStatus?.available && (
+              <SyncHistoryIndicator
+                modelType="column-classifier"
+                refreshTrigger={syncHistoryRefreshTrigger}
+              />
+            )}
+
             {/* Sync button */}
             {syncStatus?.available && (
               <button

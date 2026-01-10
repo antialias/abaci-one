@@ -637,7 +637,11 @@
       "Bash(.venv-tfjs/bin/python:*)",
       "Bash(for d in /Users/antialias/projects/soroban-abacus-flashcards/apps/web/data/vision-training/models/boundary-detector/*/)",
       "Bash(do echo '=== $\\(basename $d\\) ===' cat $d/preprocessing.json)",
-      "Bash(npx biome:*)"
+      "Bash(npx biome:*)",
+      "Bash(if [ -f /Users/antialias/projects/soroban-abacus-flashcards/apps/web/data/vision-training/collected/.deleted ])",
+      "Bash(then wc -l /Users/antialias/projects/soroban-abacus-flashcards/apps/web/data/vision-training/collected/.deleted)",
+      "Bash(else echo \"File does not exist\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []

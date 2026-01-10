@@ -233,3 +233,138 @@ export async function readTombstone(
     return new Set()
   }
 }
+
+/**
+ * Initialize a tombstone file if it doesn't exist.
+ *
+ * This should be called at the start of a sync operation to ensure
+ * the tombstone file exists. This prevents the scenario where:
+ * 1. User deletes files locally before ever syncing
+ * 2. User syncs from production
+ * 3. Deleted files reappear because there was no tombstone to record them
+ *
+ * By creating the tombstone file on first sync, we ensure that any
+ * subsequent deletions will be properly recorded.
+ *
+ * @param modelType - Which model's tombstone to initialize
+ * @returns True if initialized (created or already existed), false on error
+ */
+export async function initializeTombstone(
+  modelType: 'column-classifier' | 'boundary-detector'
+): Promise<boolean> {
+  const tombstonePath =
+    modelType === 'column-classifier' ? COLUMN_CLASSIFIER_TOMBSTONE : BOUNDARY_DETECTOR_TOMBSTONE
+
+  try {
+    // Check if file already exists
+    try {
+      await fs.access(tombstonePath)
+      // File exists, nothing to do
+      return true
+    } catch {
+      // File doesn't exist, create it
+    }
+
+    // Ensure parent directory exists
+    await fs.mkdir(path.dirname(tombstonePath), { recursive: true })
+
+    // Create empty tombstone file
+    await fs.writeFile(tombstonePath, '')
+    console.log(`[trainingDataDeletion] Initialized tombstone: ${tombstonePath}`)
+    return true
+  } catch (error) {
+    console.error('[trainingDataDeletion] Failed to initialize tombstone:', error)
+    return false
+  }
+}
+
+export interface PruneTombstoneResult {
+  success: boolean
+  /** Number of entries before pruning */
+  entriesBefore: number
+  /** Number of entries after pruning */
+  entriesAfter: number
+  /** Number of entries removed */
+  entriesPruned: number
+  /** Error message if pruning failed */
+  error?: string
+}
+
+/**
+ * Prune tombstone entries that no longer exist on production.
+ *
+ * IMPORTANT: This function requires a verified set of remote files.
+ * The caller MUST have successfully connected to production and retrieved
+ * the file list before calling this function. If SSH connection fails,
+ * do NOT call this function - it would incorrectly prune all entries.
+ *
+ * The pruning logic:
+ * - If a tombstoned file still exists on production → keep the entry
+ * - If a tombstoned file no longer exists on production → remove the entry
+ *   (no point excluding a file that doesn't exist)
+ *
+ * @param modelType - Which model's tombstone to prune
+ * @param remoteFiles - Set of file paths that exist on production (MUST be from successful SSH)
+ * @returns Result with pruning statistics
+ */
+export async function pruneTombstone(
+  modelType: 'column-classifier' | 'boundary-detector',
+  remoteFiles: Set<string>
+): Promise<PruneTombstoneResult> {
+  const tombstonePath =
+    modelType === 'column-classifier' ? COLUMN_CLASSIFIER_TOMBSTONE : BOUNDARY_DETECTOR_TOMBSTONE
+
+  try {
+    // Read current tombstone entries
+    const currentEntries = await readTombstone(modelType)
+    const entriesBefore = currentEntries.size
+
+    if (entriesBefore === 0) {
+      return {
+        success: true,
+        entriesBefore: 0,
+        entriesAfter: 0,
+        entriesPruned: 0,
+      }
+    }
+
+    // Keep only entries that still exist on production
+    // (if file doesn't exist on production, no need to exclude it from sync)
+    const entriesToKeep: string[] = []
+    for (const entry of currentEntries) {
+      if (remoteFiles.has(entry)) {
+        entriesToKeep.push(entry)
+      }
+    }
+
+    const entriesAfter = entriesToKeep.length
+    const entriesPruned = entriesBefore - entriesAfter
+
+    // Only write if something changed
+    if (entriesPruned > 0) {
+      // Write the pruned tombstone (with trailing newline if non-empty)
+      const content = entriesToKeep.length > 0 ? entriesToKeep.join('\n') + '\n' : ''
+      await fs.writeFile(tombstonePath, content)
+      console.log(
+        `[trainingDataDeletion] Pruned tombstone for ${modelType}: ` +
+          `${entriesPruned} entries removed, ${entriesAfter} remaining`
+      )
+    }
+
+    return {
+      success: true,
+      entriesBefore,
+      entriesAfter,
+      entriesPruned,
+    }
+  } catch (error) {
+    console.error('[trainingDataDeletion] Failed to prune tombstone:', error)
+    return {
+      success: false,
+      entriesBefore: 0,
+      entriesAfter: 0,
+      entriesPruned: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}

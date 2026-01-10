@@ -8,6 +8,7 @@ import { TrainingDataCapture } from '../../TrainingDataCapture'
 import { BoundaryDataCapture } from '../../BoundaryDataCapture'
 import { TrainingDataHubModal } from '../../TrainingDataHubModal'
 import { BoundaryDataHubModal } from '../../BoundaryDataHubModal'
+import { SyncHistoryIndicator } from '../../SyncHistoryIndicator'
 
 interface DataCardProps {
   samples: SamplesData | null
@@ -148,6 +149,7 @@ export function DataCard({
   const [activeTab, setActiveTab] = useState<AcquireTab>(null)
   const [showContinueWarning, setShowContinueWarning] = useState(false)
   const [hubModalOpen, setHubModalOpen] = useState(false)
+  const [syncHistoryRefreshTrigger, setSyncHistoryRefreshTrigger] = useState(0)
   const [boundaryHubModalOpen, setBoundaryHubModalOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -273,12 +275,16 @@ export function DataCard({
             : null
         )
         onSyncComplete?.()
+        // Refresh sync history after successful sync
+        setSyncHistoryRefreshTrigger((prev) => prev + 1)
         break
       case 'error':
         setSyncProgress({
           phase: 'error',
           message: data.message as string,
         })
+        // Refresh sync history after failed sync too
+        setSyncHistoryRefreshTrigger((prev) => prev + 1)
         break
     }
   }
@@ -714,6 +720,14 @@ export function DataCard({
                       </span>
                     </div>
                   )}
+
+                  {/* Sync history indicator */}
+                  <div className={css({ mb: 3 })}>
+                    <SyncHistoryIndicator
+                      modelType={modelType}
+                      refreshTrigger={syncHistoryRefreshTrigger}
+                    />
+                  </div>
 
                   {syncProgress.phase === 'error' && (
                     <div

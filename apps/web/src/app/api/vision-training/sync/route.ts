@@ -2,7 +2,13 @@ import { spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import type { NextRequest } from 'next/server'
-import { readTombstone } from '@/lib/vision/trainingDataDeletion'
+import { db } from '@/db'
+import { visionTrainingSyncHistory } from '@/db/schema'
+import {
+  initializeTombstone,
+  pruneTombstone,
+  readTombstone,
+} from '@/lib/vision/trainingDataDeletion'
 
 // Force dynamic rendering - this route reads from disk and runs rsync
 export const dynamic = 'force-dynamic'
@@ -53,17 +59,54 @@ export async function POST(request: NextRequest) {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
       }
 
+      // Track timing for history
+      const startedAt = new Date()
+      let localFilesBefore: number | null = null
+      let remoteFilesCount: number | null = null
+      let tombstoneEntriesBefore: number | null = null
+      let filesExcludedByTombstone: number | null = null
+
       try {
         // Ensure local directory exists
         await fs.promises.mkdir(paths.local, { recursive: true })
+
+        // Initialize tombstone file if it doesn't exist
+        // This ensures deletions are tracked even if user deletes before first sync
+        await initializeTombstone(modelType)
+
+        // Count local files before sync for history
+        const localStatsBefore = await countLocalData(modelType)
+        localFilesBefore = localStatsBefore.totalImages
 
         send('status', {
           message: 'Connecting to production server...',
           phase: 'connecting',
         })
 
+        // Get list of remote files via SSH (also verifies connectivity)
+        // This is needed for tombstone pruning after sync
+        const { exec } = await import('child_process')
+        const { promisify } = await import('util')
+        const execAsync = promisify(exec)
+
+        let remoteFiles: Set<string>
+        try {
+          const { stdout: remoteFilesOutput } = await execAsync(
+            `ssh -o ConnectTimeout=5 -o BatchMode=yes ${REMOTE_USER}@${REMOTE_HOST} "find '${paths.remote}' -name '*.png' -printf '%P\\n' 2>/dev/null"`,
+            { timeout: 30000 }
+          )
+          remoteFiles = new Set(remoteFilesOutput.trim().split('\n').filter(Boolean))
+          remoteFilesCount = remoteFiles.size
+        } catch (sshError) {
+          throw new Error(
+            `Cannot connect to production server: ${sshError instanceof Error ? sshError.message : 'SSH failed'}`
+          )
+        }
+
         // Read deleted files to exclude from sync
         const deletedFiles = await readTombstone(modelType)
+        tombstoneEntriesBefore = deletedFiles.size
+        filesExcludedByTombstone = deletedFiles.size
         const excludeArgs: string[] = []
 
         // Add each deleted file as an exclude pattern
@@ -152,14 +195,74 @@ export async function POST(request: NextRequest) {
         // Count final stats
         const stats = await countLocalData(modelType)
 
+        // Prune tombstone entries for files that no longer exist on production
+        // This keeps the tombstone file bounded and removes stale entries
+        // Safe to call here because we verified SSH connectivity above
+        const pruneResult = await pruneTombstone(modelType, remoteFiles)
+        if (pruneResult.entriesPruned > 0) {
+          send('status', {
+            message: `Cleaned up ${pruneResult.entriesPruned} stale tombstone entries`,
+            phase: 'complete',
+          })
+        }
+
+        // Record successful sync to history
+        const completedAt = new Date()
+        const durationMs = completedAt.getTime() - startedAt.getTime()
+        try {
+          await db.insert(visionTrainingSyncHistory).values({
+            modelType,
+            status: 'success',
+            startedAt,
+            completedAt,
+            durationMs,
+            filesTransferred,
+            remoteFilesCount,
+            localFilesBefore,
+            localFilesAfter: stats.totalImages,
+            tombstoneEntriesBefore,
+            tombstoneEntriesAfter: pruneResult.entriesAfter,
+            tombstonePruned: pruneResult.entriesPruned,
+            filesExcludedByTombstone,
+            remoteHost: REMOTE_HOST,
+          })
+        } catch (dbError) {
+          // Don't fail the sync if we can't record history
+          console.error('[vision-training/sync] Failed to record sync history:', dbError)
+        }
+
         send('complete', {
           filesTransferred,
           ...stats,
+          tombstonePruned: pruneResult.entriesPruned,
         })
       } catch (error) {
-        send('error', {
-          message: error instanceof Error ? error.message : 'Sync failed',
-        })
+        const errorMessage = error instanceof Error ? error.message : 'Sync failed'
+
+        // Record failed sync to history
+        const completedAt = new Date()
+        const durationMs = completedAt.getTime() - startedAt.getTime()
+        try {
+          await db.insert(visionTrainingSyncHistory).values({
+            modelType,
+            status: 'failed',
+            startedAt,
+            completedAt,
+            durationMs,
+            filesTransferred: 0,
+            remoteFilesCount,
+            localFilesBefore,
+            localFilesAfter: localFilesBefore, // Unchanged on failure
+            tombstoneEntriesBefore,
+            filesExcludedByTombstone,
+            error: errorMessage,
+            remoteHost: REMOTE_HOST,
+          })
+        } catch (dbError) {
+          console.error('[vision-training/sync] Failed to record sync history:', dbError)
+        }
+
+        send('error', { message: errorMessage })
       } finally {
         controller.close()
       }
