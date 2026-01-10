@@ -23,6 +23,8 @@ interface UseRemoteCameraPhoneOptions {
   rawWidth?: number
   /** Callback when desktop requests torch change */
   onTorchRequest?: (on: boolean) => void
+  /** Callback when desktop requests frame mode change (called BEFORE state updates) */
+  onDesktopSetMode?: (mode: FrameMode) => void
 }
 
 /**
@@ -56,6 +58,10 @@ interface UseRemoteCameraPhoneReturn {
   setFrameMode: (mode: FrameMode) => void
   /** Emit torch state to desktop */
   emitTorchState: (isTorchOn: boolean, isTorchAvailable: boolean) => void
+  /** Set detected corners to include with raw frames (from phone's marker detection) */
+  setDetectedCorners: (corners: QuadCorners | null) => void
+  /** Capture and send a raw frame with specific corners atomically (for boundary training) */
+  captureAndSendRawFrame: (video: HTMLVideoElement, corners: QuadCorners) => void
 }
 
 /**
@@ -74,13 +80,19 @@ export function useRemoteCameraPhone(
     targetWidth = 300,
     rawWidth = 640,
     onTorchRequest,
+    onDesktopSetMode,
   } = options
 
-  // Keep onTorchRequest in a ref to avoid stale closures
+  // Keep callbacks in refs to avoid stale closures
   const onTorchRequestRef = useRef(onTorchRequest)
   useEffect(() => {
     onTorchRequestRef.current = onTorchRequest
   }, [onTorchRequest])
+
+  const onDesktopSetModeRef = useRef(onDesktopSetMode)
+  useEffect(() => {
+    onDesktopSetModeRef.current = onDesktopSetMode
+  }, [onDesktopSetMode])
 
   // Calculate fixed output height based on aspect ratio (4 units tall by 3 units wide)
   const targetHeight = Math.round(targetWidth * ABACUS_ASPECT_RATIO)
@@ -104,6 +116,8 @@ export function useRemoteCameraPhone(
   const animationFrameRef = useRef<number | null>(null)
   const lastFrameTimeRef = useRef(0)
   const frameModeRef = useRef<FrameMode>('raw')
+  // Detected corners from phone's marker detection - sent with raw frames
+  const detectedCornersRef = useRef<QuadCorners | null>(null)
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -195,6 +209,8 @@ export function useRemoteCameraPhone(
     // Handle mode change from desktop
     const handleSetMode = ({ mode }: { mode: FrameMode }) => {
       console.log('[RemoteCameraPhone] Desktop set mode to:', mode)
+      // Call callback BEFORE state updates so caller can update refs immediately
+      onDesktopSetModeRef.current?.(mode)
       setFrameModeState(mode)
       frameModeRef.current = mode
     }
@@ -330,18 +346,52 @@ export function useRemoteCameraPhone(
     }
 
     if (imageData) {
-      socket.emit('remote-camera:frame', {
+      // Scale corners to match the JPEG's coordinate space
+      // The raw frame is scaled down from video dimensions to rawWidth
+      // Corners are detected in video coordinates, so we need to scale them too
+      let scaledCorners: typeof detectedCornersRef.current = null
+      if (mode === 'raw' && detectedCornersRef.current) {
+        const scale = rawWidth / video.videoWidth
+        const corners = detectedCornersRef.current
+        scaledCorners = {
+          topLeft: { x: corners.topLeft.x * scale, y: corners.topLeft.y * scale },
+          topRight: { x: corners.topRight.x * scale, y: corners.topRight.y * scale },
+          bottomLeft: { x: corners.bottomLeft.x * scale, y: corners.bottomLeft.y * scale },
+          bottomRight: { x: corners.bottomRight.x * scale, y: corners.bottomRight.y * scale },
+        }
+      }
+
+      const frameData = {
         sessionId,
         imageData,
         timestamp: Date.now(),
         mode, // Include mode so desktop knows what it's receiving
+        // Send the JPEG dimensions, not the original video dimensions
+        // This matches the coordinate space of the scaled corners
         videoDimensions:
-          mode === 'raw' ? { width: video.videoWidth, height: video.videoHeight } : undefined,
-      })
+          mode === 'raw'
+            ? {
+                width: rawWidth,
+                height: Math.round(video.videoHeight * (rawWidth / video.videoWidth)),
+              }
+            : undefined,
+        // Include scaled corners with raw frames so desktop doesn't need to re-detect
+        detectedCorners: mode === 'raw' ? scaledCorners : undefined,
+      }
+      // Log what we're sending (only log corners info, not full image data)
+      if (mode === 'raw') {
+        console.log('[PHONE-HOOK] Emitting frame:', {
+          mode: frameData.mode,
+          hasCorners: !!frameData.detectedCorners,
+          corners: frameData.detectedCorners ? JSON.stringify(frameData.detectedCorners) : null,
+          videoDimensions: frameData.videoDimensions,
+        })
+      }
+      socket.emit('remote-camera:frame', frameData)
     }
 
     animationFrameRef.current = requestAnimationFrame(captureFrame)
-  }, [targetFps, cropToQuad, captureRawFrame])
+  }, [targetFps, cropToQuad, captureRawFrame, rawWidth])
 
   const connect = useCallback(
     (sessionId: string) => {
@@ -429,6 +479,15 @@ export function useRemoteCameraPhone(
   }, [])
 
   /**
+   * Set detected corners from phone's marker detection
+   * These will be sent with raw frames so desktop doesn't need to re-detect
+   */
+  const setDetectedCorners = useCallback((corners: QuadCorners | null) => {
+    console.log('[PHONE-HOOK] setDetectedCorners called:', corners ? 'has corners' : 'null')
+    detectedCornersRef.current = corners
+  }, [])
+
+  /**
    * Emit torch state to desktop
    */
   const emitTorchState = useCallback((isTorchOn: boolean, isTorchAvailable: boolean) => {
@@ -442,6 +501,61 @@ export function useRemoteCameraPhone(
       isTorchAvailable,
     })
   }, [])
+
+  /**
+   * Capture and send a raw frame with specific corners atomically.
+   * This ensures the corners and frame are from the exact same video frame.
+   * Used for boundary training where frame/corner sync is critical.
+   */
+  const captureAndSendRawFrame = useCallback(
+    (video: HTMLVideoElement, corners: QuadCorners) => {
+      const socket = socketRef.current
+      const sessionId = sessionIdRef.current
+      // Note: caller is responsible for checking isSending before calling
+      if (!socket || !sessionId) return
+
+      // Capture the frame right now
+      try {
+        const canvas = document.createElement('canvas')
+        const scale = rawWidth / video.videoWidth
+        canvas.width = rawWidth
+        canvas.height = Math.round(video.videoHeight * scale)
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality)
+        const imageData = dataUrl.split(',')[1]
+
+        // Scale corners to match the JPEG's coordinate space
+        const scaledCorners: QuadCorners = {
+          topLeft: { x: corners.topLeft.x * scale, y: corners.topLeft.y * scale },
+          topRight: { x: corners.topRight.x * scale, y: corners.topRight.y * scale },
+          bottomLeft: { x: corners.bottomLeft.x * scale, y: corners.bottomLeft.y * scale },
+          bottomRight: { x: corners.bottomRight.x * scale, y: corners.bottomRight.y * scale },
+        }
+
+        const frameData = {
+          sessionId,
+          imageData,
+          timestamp: Date.now(),
+          mode: 'raw' as const,
+          videoDimensions: {
+            width: canvas.width,
+            height: canvas.height,
+          },
+          detectedCorners: scaledCorners,
+        }
+
+        console.log('[PHONE-HOOK] captureAndSendRawFrame: sending atomic frame+corners')
+        socket.emit('remote-camera:frame', frameData)
+      } catch (error) {
+        console.error('[PHONE-HOOK] captureAndSendRawFrame error:', error)
+      }
+    },
+    [rawWidth, jpegQuality]
+  )
 
   // Cleanup on unmount
   useEffect(() => {
@@ -469,5 +583,7 @@ export function useRemoteCameraPhone(
     updateCalibration,
     setFrameMode,
     emitTorchState,
+    setDetectedCorners,
+    captureAndSendRawFrame,
   }
 }

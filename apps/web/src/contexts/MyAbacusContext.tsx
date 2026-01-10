@@ -33,6 +33,8 @@ export interface VisionConfig {
   remoteCameraSessionId: string | null
   /** Currently active camera source - tracks which camera is in use */
   activeCameraSource: CameraSourceType | null
+  /** Whether to show digital abacus mirror instead of rectified video (persisted preference) */
+  showMirrorMode?: boolean
 }
 
 const DEFAULT_VISION_CONFIG: VisionConfig = {
@@ -225,6 +227,8 @@ interface MyAbacusContextValue {
   setVisionRemoteSession: (sessionId: string | null) => void
   /** Set the active camera source */
   setVisionCameraSource: (source: CameraSourceType | null) => void
+  /** Set whether to show digital abacus mirror instead of rectified video */
+  setVisionMirrorMode: (showMirror: boolean) => void
   /** Whether the vision setup modal is open */
   isVisionSetupOpen: boolean
   /** Open the vision setup modal */
@@ -401,6 +405,14 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  const setVisionMirrorMode = useCallback((showMirror: boolean) => {
+    setVisionConfig((prev) => {
+      const updated = { ...prev, showMirrorMode: showMirror }
+      saveVisionConfig(updated)
+      return updated
+    })
+  }, [])
+
   const openVisionSetup = useCallback(() => {
     setIsVisionSetupOpen(true)
   }, [])
@@ -537,6 +549,7 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
         setVisionCalibration,
         setVisionRemoteSession,
         setVisionCameraSource,
+        setVisionMirrorMode,
         isVisionSetupOpen,
         openVisionSetup,
         closeVisionSetup,

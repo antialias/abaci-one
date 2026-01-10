@@ -42,6 +42,22 @@ export default function RemoteCameraPage() {
     setTorch,
   } = usePhoneCamera({ initialFacingMode: 'environment' })
 
+  // Handler for when desktop requests a mode change - defined before hook call
+  // This is called BEFORE the React state updates, so we can set the ref immediately
+  // to prevent the race condition in the detection loop
+  const desktopIsCalibratingRef = useRef(false)
+  // NOTE: We use a ref to hold the state setter to avoid recreating the callback
+  const setDesktopIsCalibratingRef = useRef<(v: boolean) => void>(() => {})
+  const handleDesktopSetMode = useCallback((mode: 'raw' | 'cropped') => {
+    if (mode === 'raw') {
+      // Desktop requested raw mode - they're calibrating
+      // Set the ref IMMEDIATELY so detection loop sees it right away
+      desktopIsCalibratingRef.current = true
+      // Also set the state for UI (this is async but that's OK for UI)
+      setDesktopIsCalibratingRef.current(true)
+    }
+  }, [])
+
   // Remote camera connection - pass setTorch for desktop control
   const {
     isConnected,
@@ -56,8 +72,11 @@ export default function RemoteCameraPage() {
     updateCalibration,
     setFrameMode,
     emitTorchState,
+    setDetectedCorners,
+    captureAndSendRawFrame,
   } = useRemoteCameraPhone({
     onTorchRequest: setTorch,
+    onDesktopSetMode: handleDesktopSetMode,
   })
 
   // Auto-detection state
@@ -71,13 +90,22 @@ export default function RemoteCameraPage() {
 
   // Track if desktop is actively calibrating (has requested raw mode)
   // When true, we don't auto-switch to cropped even if markers are detected
+  // State is used for UI, the ref (defined above) is used in the detection loop
+  // to avoid race conditions
   const [desktopIsCalibrating, setDesktopIsCalibrating] = useState(false)
+  // Connect the state setter ref so the callback can update state
+  setDesktopIsCalibratingRef.current = setDesktopIsCalibrating
 
   // Track previous frame mode to detect changes (not just initial state)
   const prevFrameModeRef = useRef<typeof frameMode | null>(null)
 
   // Video element ref
   const videoRef = useRef<HTMLVideoElement | null>(null)
+
+  // Rate limiter for training data capture (separate from regular frame sending)
+  // We capture raw frames with corners for boundary detector training at 200ms intervals
+  const lastTrainingCaptureRef = useRef<number>(0)
+  const TRAINING_CAPTURE_INTERVAL_MS = 200
 
   // Refs for cleanup functions (to avoid stale closures in unmount effect)
   const stopSendingRef = useRef(stopSending)
@@ -90,6 +118,11 @@ export default function RemoteCameraPage() {
     disconnectRef.current = disconnect
     stopCameraRef.current = stopCamera
   }, [stopSending, disconnect, stopCamera])
+
+  // Keep desktopIsCalibratingRef in sync with state
+  useEffect(() => {
+    desktopIsCalibratingRef.current = desktopIsCalibrating
+  }, [desktopIsCalibrating])
 
   // Validate session on mount
   useEffect(() => {
@@ -231,6 +264,9 @@ export default function RemoteCameraPage() {
             bottomRight: result.quadCorners.topLeft, // marker 2 (physical BR)
             bottomLeft: result.quadCorners.topRight, // marker 3 (physical BL)
           }
+          console.log('[PHONE] Markers detected! phoneCorners:', JSON.stringify(phoneCorners))
+          console.log('[PHONE] desktopIsCalibratingRef.current:', desktopIsCalibratingRef.current)
+          console.log('[PHONE] isSending:', isSending, 'frameMode:', frameMode)
           const grid: CalibrationGrid = {
             roi: {
               x: Math.min(phoneCorners.topLeft.x, phoneCorners.bottomLeft.x),
@@ -248,12 +284,39 @@ export default function RemoteCameraPage() {
             rotation: 0,
           }
           setCalibration(grid)
+
+          // When desktop is calibrating (raw mode), capture and send frame atomically
+          // This ensures the corners and frame are from the exact same video frame
+          if (desktopIsCalibratingRef.current && isSending) {
+            console.log('[PHONE] Desktop calibrating - capturing atomic frame+corners')
+            captureAndSendRawFrame(video, phoneCorners)
+          } else {
+            // Normal mode: just store corners for the regular capture loop
+            console.log('[PHONE] Calling setDetectedCorners with phoneCorners')
+            setDetectedCorners(phoneCorners)
+
+            // TRAINING DATA CAPTURE: Also send raw frames for boundary detector training
+            // Rate-limited to 200ms intervals (5fps) - not every detection frame
+            if (isSending) {
+              const now = performance.now()
+              if (now - lastTrainingCaptureRef.current >= TRAINING_CAPTURE_INTERVAL_MS) {
+                lastTrainingCaptureRef.current = now
+                captureAndSendRawFrame(video, phoneCorners)
+              }
+            }
+          }
+
           // Update the calibration for the sending loop and switch to cropped mode
           // BUT: don't switch to cropped if desktop is actively calibrating (they need raw frames)
-          if (isSending && !desktopIsCalibrating) {
+          // CRITICAL: Use the ref, not state, to avoid race conditions. The ref is updated
+          // immediately when desktop requests raw mode, while state updates asynchronously.
+          if (isSending && !desktopIsCalibratingRef.current) {
             updateCalibration(phoneCorners)
             setFrameMode('cropped')
           }
+        } else {
+          // No markers found - clear detected corners so desktop knows
+          setDetectedCorners(null)
         }
         // Note: We intentionally do NOT clear calibration when markers are lost.
         // Once calibration is set, it persists until:
@@ -277,7 +340,11 @@ export default function RemoteCameraPage() {
     updateCalibration,
     setFrameMode,
     usingDesktopCalibration,
-    desktopIsCalibrating,
+    setDetectedCorners,
+    captureAndSendRawFrame,
+    // NOTE: desktopIsCalibrating state was removed from deps - we use the ref instead
+    // to avoid race conditions. The ref (desktopIsCalibratingRef) is accessed directly
+    // in the loop and is updated immediately when desktop requests raw mode.
   ])
 
   // When frameMode CHANGES to 'raw' from 'cropped', mark desktop as calibrating

@@ -3,15 +3,16 @@
 import { useCallback, useRef, useState } from 'react'
 import { css } from '../../../../../styled-system/css'
 import { CameraCapture, type CameraSource } from '@/components/vision/CameraCapture'
-import type { CalibrationGrid, QuadCorners } from '@/types/vision'
+import { saveBoundarySample } from '@/lib/vision/saveBoundarySample'
+import type { CalibrationGrid } from '@/types/vision'
 
 interface BoundaryDataCaptureProps {
   /** Called when samples are saved successfully */
   onSamplesCollected: () => void
 }
 
-/** Minimum time between auto-captures (ms) */
-const AUTO_CAPTURE_COOLDOWN_MS = 1500
+/** Minimum time between auto-captures (ms) - keep low to maximize training data */
+const AUTO_CAPTURE_COOLDOWN_MS = 200
 
 /**
  * Capture training data for the boundary detector model.
@@ -117,45 +118,18 @@ export function BoundaryDataCapture({ onSamplesCollected }: BoundaryDataCaptureP
         if (!ctx) throw new Error('Failed to create canvas context')
         ctx.drawImage(element, 0, 0)
 
-        // Convert to base64 PNG
+        // Convert to base64 PNG (saveBoundarySample handles the data URL prefix)
         const frameDataUrl = canvas.toDataURL('image/png')
-        const imageData = frameDataUrl.replace(/^data:image\/png;base64,/, '')
 
-        // Normalize corner coordinates to 0-1 range
+        // Use shared saveBoundarySample utility
         // CRITICAL: Use the corners from THIS callback, not stale state
-        const corners = calibration.corners!
-        const normalizedCorners: QuadCorners = {
-          topLeft: {
-            x: corners.topLeft.x / width,
-            y: corners.topLeft.y / height,
-          },
-          topRight: {
-            x: corners.topRight.x / width,
-            y: corners.topRight.y / height,
-          },
-          bottomLeft: {
-            x: corners.bottomLeft.x / width,
-            y: corners.bottomLeft.y / height,
-          },
-          bottomRight: {
-            x: corners.bottomRight.x / width,
-            y: corners.bottomRight.y / height,
-          },
-        }
-
-        // Send to boundary-samples API
-        const response = await fetch('/api/vision-training/boundary-samples', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageData,
-            corners: normalizedCorners,
-            frameWidth: width,
-            frameHeight: height,
-          }),
+        const result = await saveBoundarySample({
+          imageData: frameDataUrl,
+          corners: calibration.corners!,
+          frameWidth: width,
+          frameHeight: height,
+          deviceId: 'explicit-training',
         })
-
-        const result = await response.json()
 
         if (result.success) {
           setCaptureCount((c) => c + 1)
@@ -227,6 +201,7 @@ export function BoundaryDataCapture({ onSamplesCollected }: BoundaryDataCaptureP
         columnCount={4}
         onCalibrationChange={handleCalibrationChange}
         showRectifiedView={false}
+        forceRawMode
       />
 
       {/* Capture controls - show when camera is ready */}
@@ -332,7 +307,7 @@ export function BoundaryDataCapture({ onSamplesCollected }: BoundaryDataCaptureP
         <p className={css({ fontWeight: 'medium', mb: 1 })}>How it works:</p>
         <p>1. Click "Start Auto-Capture" to begin</p>
         <p>2. Point camera at abacus with all 4 ArUco markers visible</p>
-        <p>3. Frames auto-capture every {AUTO_CAPTURE_COOLDOWN_MS / 1000}s when markers detected</p>
+        <p>3. Frames auto-capture rapidly (~5/sec) when markers detected</p>
         <p>4. Move the abacus/camera to vary angle, lighting, distance</p>
         <p>5. Click "Stop Capturing" when done</p>
       </div>

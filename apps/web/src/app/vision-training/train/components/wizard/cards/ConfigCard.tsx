@@ -1,7 +1,7 @@
 'use client'
 
 import { css } from '../../../../../../../styled-system/css'
-import type { TrainingConfig } from '../types'
+import type { TrainingConfig, ModelType } from '../types'
 
 interface ConfigCardProps {
   config: TrainingConfig
@@ -11,6 +11,8 @@ interface ConfigCardProps {
   canStart: boolean
   /** Total number of training images */
   totalImages: number
+  /** Which model type is being trained */
+  modelType: ModelType | null
 }
 
 interface Preset {
@@ -27,6 +29,7 @@ export function ConfigCard({
   onStartTraining,
   canStart,
   totalImages,
+  modelType,
 }: ConfigCardProps) {
   // Recommend batch size based on dataset size
   // Goal: at least 10-20 batches per epoch for meaningful gradient updates
@@ -246,6 +249,59 @@ export function ConfigCard({
           )}
         </div>
       </div>
+
+      {/* Color augmentation toggle - only for boundary detector */}
+      {modelType === 'boundary-detector' && (
+        <div className={css({ mb: 4 })}>
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            })}
+          >
+            <div>
+              <span className={css({ fontSize: 'sm', color: 'gray.300' })}>Color Augmentation</span>
+              <div className={css({ fontSize: 'xs', color: 'gray.500' })}>
+                Random brightness/contrast/saturation variations
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setConfig((prev) => ({
+                  ...prev,
+                  colorAugmentation: !prev.colorAugmentation,
+                }))
+              }
+              className={css({
+                width: '48px',
+                height: '26px',
+                borderRadius: 'full',
+                border: 'none',
+                cursor: 'pointer',
+                position: 'relative',
+                transition: 'background 0.2s',
+                bg: config.colorAugmentation ? 'green.600' : 'gray.700',
+              })}
+              data-setting="color-augmentation"
+            >
+              <div
+                className={css({
+                  position: 'absolute',
+                  top: '3px',
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: 'full',
+                  bg: 'white',
+                  transition: 'left 0.2s',
+                  left: config.colorAugmentation ? '25px' : '3px',
+                })}
+              />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Start button */}
       <button

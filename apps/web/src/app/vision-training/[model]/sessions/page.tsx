@@ -111,10 +111,11 @@ export default function SessionsPage() {
     <div
       data-component="sessions-page"
       className={css({
-        minHeight: 'calc(100vh - var(--nav-height))',
         bg: 'gray.900',
         color: 'gray.100',
+        pt: 4,
       })}
+      style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
     >
       {/* Page header */}
       <div

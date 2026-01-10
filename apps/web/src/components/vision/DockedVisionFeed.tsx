@@ -7,6 +7,7 @@ import { useFrameStability } from '@/hooks/useFrameStability'
 import { useMarkerDetection } from '@/hooks/useMarkerDetection'
 import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
 import { useColumnClassifier } from '@/hooks/useColumnClassifier'
+import { usePassiveBoundaryCapture } from '@/hooks/usePassiveBoundaryCapture'
 import { processVideoFrame, processImageFrame, digitsToNumber } from '@/lib/vision/frameProcessor'
 import { VisionCameraFeed } from './VisionCameraFeed'
 import { css } from '../../../styled-system/css'
@@ -33,6 +34,10 @@ interface DockedVisionFeedProps {
   columnCount?: number
   /** Called when user wants to undock the abacus */
   onUndock?: () => void
+  /** Current practice session ID (for passive training data capture) */
+  practiceSessionId?: string
+  /** Current player/student ID (for passive training data capture) */
+  playerId?: string
 }
 
 /**
@@ -47,6 +52,8 @@ export function DockedVisionFeed({
   onValueDetected,
   columnCount = 5,
   onUndock,
+  practiceSessionId,
+  playerId,
 }: DockedVisionFeedProps) {
   const {
     visionConfig,
@@ -54,6 +61,7 @@ export function DockedVisionFeed({
     setVisionEnabled,
     setVisionCalibration,
     setVisionCameraSource,
+    setVisionMirrorMode,
     openVisionSetup,
     emitVisionFrame,
     visionSourceRef,
@@ -74,7 +82,9 @@ export function DockedVisionFeed({
   const [detectedValue, setDetectedValue] = useState<number | null>(null)
   const [confidence, setConfidence] = useState(0)
   const [columnDigits, setColumnDigits] = useState<number[]>([])
-  const [showAbacusMirror, setShowAbacusMirror] = useState(false)
+  // Use persisted mirror mode from context (survives component remounts)
+  const showAbacusMirror = visionConfig.showMirrorMode ?? false
+  const setShowAbacusMirror = setVisionMirrorMode
   // Show a subtle recommendation to try mirror mode when detection is working well
   const [showMirrorHint, setShowMirrorHint] = useState(false)
   // Track if user has dismissed the hint or engaged with mirror mode
@@ -106,6 +116,17 @@ export function DockedVisionFeed({
     videoElement,
     columnCount,
     onCalibrationChange: setVisionCalibration,
+  })
+
+  // Passive boundary capture for training data collection
+  // Captures raw frames with detected corners during practice
+  // Rate: 200ms (5fps) to match phone sending rate - we need massive training data
+  const { maybeCapture: maybeCaptureForTraining } = usePassiveBoundaryCapture({
+    enabled: visionConfig.enabled && isRemoteCamera,
+    captureIntervalMs: 200, // Match phone rate - 5fps when markers visible
+    deviceId: 'passive-practice-remote',
+    sessionId: practiceSessionId,
+    playerId,
   })
 
   // Remote camera hook
@@ -351,6 +372,35 @@ export function DockedVisionFeed({
     stability,
     classifier,
   ])
+
+  // Passive boundary capture: save raw frames with detected corners for training
+  // This runs when the phone is in raw mode and sending marker detection data
+  useEffect(() => {
+    if (!isRemoteCamera || !remoteIsPhoneConnected || !remoteLatestFrame) {
+      return
+    }
+
+    // Only capture raw mode frames with detected corners
+    if (remoteLatestFrame.mode !== 'raw') {
+      return
+    }
+
+    const corners = remoteLatestFrame.detectedCorners
+    const dimensions = remoteLatestFrame.videoDimensions
+
+    if (!corners || !dimensions) {
+      return
+    }
+
+    // Attempt to capture this frame for boundary detector training
+    // The hook handles rate-limiting internally
+    maybeCaptureForTraining(
+      remoteLatestFrame.imageData,
+      corners,
+      dimensions.width,
+      dimensions.height
+    )
+  }, [isRemoteCamera, remoteIsPhoneConnected, remoteLatestFrame, maybeCaptureForTraining])
 
   // Local camera detection loop (only when enabled)
   useEffect(() => {

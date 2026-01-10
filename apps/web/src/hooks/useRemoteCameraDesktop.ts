@@ -15,6 +15,7 @@ interface RemoteCameraFrame {
   timestamp: number
   mode?: FrameMode // What mode the frame was captured in
   videoDimensions?: { width: number; height: number } // Original video dimensions (for raw mode)
+  detectedCorners?: QuadCorners | null // Corners detected by phone's marker detection (only in raw mode)
 }
 
 interface UseRemoteCameraDesktopReturn {
@@ -28,6 +29,8 @@ interface UseRemoteCameraDesktopReturn {
   frameMode: FrameMode
   /** Video dimensions from the phone (only available in raw mode) */
   videoDimensions: { width: number; height: number } | null
+  /** Corners detected by phone's marker detection (only in raw mode) */
+  phoneDetectedCorners: QuadCorners | null
   /** Whether the phone's torch is on */
   isTorchOn: boolean
   /** Whether the phone has torch available */
@@ -74,6 +77,7 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     width: number
     height: number
   } | null>(null)
+  const [phoneDetectedCorners, setPhoneDetectedCorners] = useState<QuadCorners | null>(null)
   const [isTorchOn, setIsTorchOn] = useState(false)
   const [isTorchAvailable, setIsTorchAvailable] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -183,6 +187,15 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     }
 
     const handleFrame = (frame: RemoteCameraFrame) => {
+      // Log frame reception (only for raw mode to reduce spam)
+      if (frame.mode === 'raw') {
+        console.log('[DESKTOP-HOOK] Received frame:', {
+          mode: frame.mode,
+          hasCorners: !!frame.detectedCorners,
+          corners: frame.detectedCorners ? JSON.stringify(frame.detectedCorners) : null,
+          videoDimensions: frame.videoDimensions,
+        })
+      }
       setLatestFrame(frame)
       frameTimestamps.current.push(Date.now())
       calculateFrameRate()
@@ -194,6 +207,17 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
       // Track frame mode
       if (frame.mode) {
         setFrameMode(frame.mode)
+      }
+      // Track detected corners from phone's marker detection (raw mode only)
+      if (frame.mode === 'raw') {
+        console.log(
+          '[DESKTOP-HOOK] Setting phoneDetectedCorners:',
+          frame.detectedCorners ? 'has corners' : 'null'
+        )
+        setPhoneDetectedCorners(frame.detectedCorners ?? null)
+      } else {
+        // Clear detected corners when in cropped mode
+        setPhoneDetectedCorners(null)
       }
     }
 
@@ -287,6 +311,7 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     setFrameRate(0)
     setError(null)
     setVideoDimensions(null)
+    setPhoneDetectedCorners(null)
     setFrameMode('raw')
     setIsTorchOn(false)
     setIsTorchAvailable(false)
@@ -310,6 +335,7 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     setFrameRate(0)
     setError(null)
     setVideoDimensions(null)
+    setPhoneDetectedCorners(null)
     setFrameMode('raw')
     setIsTorchOn(false)
     setIsTorchAvailable(false)
@@ -398,6 +424,7 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
     frameRate,
     frameMode,
     videoDimensions,
+    phoneDetectedCorners,
     isTorchOn,
     isTorchAvailable,
     error,

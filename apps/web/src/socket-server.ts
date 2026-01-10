@@ -1166,19 +1166,31 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         timestamp,
         mode,
         videoDimensions,
+        detectedCorners,
       }: {
         sessionId: string
         imageData: string // Base64 JPEG
         timestamp: number
         mode?: 'raw' | 'cropped'
         videoDimensions?: { width: number; height: number }
+        detectedCorners?: {
+          topLeft: { x: number; y: number }
+          topRight: { x: number; y: number }
+          bottomLeft: { x: number; y: number }
+          bottomRight: { x: number; y: number }
+        } | null
       }) => {
+        // Log frame relay (only for raw mode to reduce spam)
+        if (mode === 'raw') {
+          console.log(`[SERVER] Relaying frame: mode=${mode}, hasCorners=${!!detectedCorners}`)
+        }
         // Forward frame to desktop (all other sockets in the room)
         socket.to(`remote-camera:${sessionId}`).emit('remote-camera:frame', {
           imageData,
           timestamp,
           mode,
           videoDimensions,
+          detectedCorners,
         })
       }
     )

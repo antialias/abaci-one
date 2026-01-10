@@ -549,12 +549,13 @@ export default function TrainModelPage() {
     <div
       data-component="train-model-page"
       className={css({
-        minHeight: 'calc(100vh - var(--nav-height))',
         bg: 'gray.900',
         color: 'gray.100',
         position: 'relative',
         overflow: 'hidden',
+        pt: 4,
       })}
+      style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
     >
       {/* Tiled Background Effect */}
       {allTiles.length > 0 && (

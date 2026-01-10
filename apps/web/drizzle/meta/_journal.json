@@ -428,6 +428,13 @@
       "when": 1767830400000,
       "tag": "0060_conscious_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "6",
+      "when": 1768001010748,
+      "tag": "0061_military_lionheart",
+      "breakpoints": true
     }
   ]
 }

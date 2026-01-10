@@ -105,6 +105,7 @@ const REQUIRED_MODULES = [
     pipName: 'scikit-learn',
   },
   { name: 'numpy', importName: 'numpy', pipName: 'numpy' },
+  { name: 'OpenCV', importName: 'cv2', pipName: 'opencv-python-headless' },
 ]
 
 export interface DependencyCheckResult {
@@ -251,7 +252,7 @@ async function createVenv(): Promise<SetupResult> {
       console.log(
         '[vision-training] requirements.txt not found, installing packages individually...'
       )
-      const packages = ['Pillow', 'scikit-learn', 'numpy']
+      const packages = ['Pillow', 'scikit-learn', 'numpy', 'opencv-python-headless']
       for (const pkg of packages) {
         try {
           await execAsync(`"${TRAINING_PYTHON}" -m pip install "${pkg}"`, {
@@ -307,6 +308,24 @@ export async function ensureVenvReady(): Promise<SetupResult> {
   // Check if already set up
   if (await isVenvReady()) {
     const isAppleSilicon = process.platform === 'darwin' && process.arch === 'arm64'
+
+    // Check for and install any missing dependencies
+    const depCheck = await checkDependencies()
+    if (!depCheck.allInstalled && depCheck.missing.length > 0) {
+      console.log(
+        `[vision-training] Installing missing dependencies: ${depCheck.missing.map((m) => m.pipName).join(', ')}`
+      )
+      for (const dep of depCheck.missing) {
+        try {
+          await execAsync(`"${TRAINING_PYTHON}" -m pip install "${dep.pipName}"`, {
+            timeout: 300000,
+          })
+          console.log(`[vision-training] Installed ${dep.pipName}`)
+        } catch (e) {
+          console.warn(`[vision-training] Failed to install ${dep.pipName}: ${e}`)
+        }
+      }
+    }
 
     // Quick GPU check
     let hasGpu = false

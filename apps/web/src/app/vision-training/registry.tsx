@@ -17,9 +17,7 @@ export interface DataPanelProps {
   onDataChanged?: () => void
 }
 
-export interface TrainPanelProps {
-  // Props passed from shell - can be extended as needed
-}
+export type TrainPanelProps = {}
 
 export interface TestPanelProps {
   sessionId?: string

@@ -4,6 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDeskViewCamera } from '@/hooks/useDeskViewCamera'
 import { useMarkerDetection } from '@/hooks/useMarkerDetection'
 import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
+import {
+  detectMarkersFromCanvas,
+  initArucoDetector,
+  isArucoAvailable,
+  loadAruco,
+} from '@/lib/vision/arucoDetection'
 import { css } from '../../../styled-system/css'
 import { RemoteCameraQRCode } from './RemoteCameraQRCode'
 import { VisionCameraFeed } from './VisionCameraFeed'
@@ -34,6 +40,13 @@ export interface CameraCaptureProps {
   onMarkersVisible?: (visible: boolean) => void
   /** Show rectified (perspective-corrected) view when calibrated (default: false) */
   showRectifiedView?: boolean
+  /**
+   * Force phone to send raw (uncropped) frames instead of auto-cropping.
+   * Use this for boundary detector training where you need the full frame with markers visible.
+   * When true, the phone won't auto-switch to cropped mode when it detects markers.
+   * (default: false)
+   */
+  forceRawMode?: boolean
 }
 
 /**
@@ -61,6 +74,7 @@ export function CameraCapture({
   onCalibrationChange,
   onMarkersVisible,
   showRectifiedView = false,
+  forceRawMode = false,
 }: CameraCaptureProps) {
   const [cameraSource, setCameraSource] = useState<CameraSource>(initialSource)
 
@@ -73,13 +87,58 @@ export function CameraCapture({
   // (refs don't trigger re-renders, so we need state for the hook)
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
 
-  // ArUco marker detection (using shared hook)
-  const { markersFound, calibration, isCalibrated } = useMarkerDetection({
+  // ArUco marker detection for LOCAL camera (using shared hook)
+  const {
+    markersFound: localMarkersFound,
+    calibration: localCalibration,
+    isCalibrated: localIsCalibrated,
+  } = useMarkerDetection({
     enabled: enableMarkerDetection && cameraSource === 'local',
     videoElement,
     columnCount,
     onCalibrationChange,
   })
+
+  // Phone camera marker detection state (runs separately from hook)
+  const [phoneMarkersFound, setPhoneMarkersFound] = useState(0)
+  const [phoneCalibration, setPhoneCalibration] = useState<CalibrationGrid | null>(null)
+  const [arucoReadyForPhone, setArucoReadyForPhone] = useState(false)
+  const lastPhoneCalibrationRef = useRef<CalibrationGrid | null>(null)
+
+  // Unified marker detection state based on camera source
+  const markersFound = cameraSource === 'local' ? localMarkersFound : phoneMarkersFound
+  const calibration = cameraSource === 'local' ? localCalibration : phoneCalibration
+  const isCalibrated = cameraSource === 'local' ? localIsCalibrated : phoneCalibration !== null
+
+  // Load ArUco when phone camera is active and marker detection is enabled
+  useEffect(() => {
+    if (cameraSource !== 'phone' || !enableMarkerDetection) {
+      setArucoReadyForPhone(false)
+      return
+    }
+
+    let cancelled = false
+
+    const initAruco = async () => {
+      try {
+        await loadAruco()
+        if (cancelled) return
+
+        if (isArucoAvailable()) {
+          initArucoDetector()
+          setArucoReadyForPhone(true)
+        }
+      } catch (err) {
+        console.error('[CameraCapture] Failed to load ArUco for phone:', err)
+      }
+    }
+
+    initAruco()
+
+    return () => {
+      cancelled = true
+    }
+  }, [cameraSource, enableMarkerDetection])
 
   // Notify marker visibility changes (all 4 markers = visible)
   useEffect(() => {
@@ -99,6 +158,9 @@ export function CameraCapture({
     unsubscribe,
     getPersistedSessionId,
     clearSession,
+    setPhoneFrameMode,
+    // Note: We use latestFrame.detectedCorners directly instead of phoneDetectedCorners state
+    // to ensure corners are always in sync with the frame they came from
   } = useRemoteCameraDesktop()
   const [sessionId, setSessionId] = useState<string | null>(null)
 
@@ -108,6 +170,14 @@ export function CameraCapture({
       onPhoneConnected?.(isPhoneConnected)
     }
   }, [cameraSource, isPhoneConnected, onPhoneConnected])
+
+  // Request raw mode from phone when forceRawMode is enabled
+  // This tells the phone not to auto-crop when it detects markers
+  useEffect(() => {
+    if (cameraSource === 'phone' && isPhoneConnected && forceRawMode) {
+      setPhoneFrameMode('raw')
+    }
+  }, [cameraSource, isPhoneConnected, forceRawMode, setPhoneFrameMode])
 
   // Start local camera when source is local
   useEffect(() => {
@@ -233,6 +303,7 @@ export function CameraCapture({
   )
 
   // Draw phone frames to canvas when they arrive
+  // Use phone's detected corners instead of re-detecting locally
   useEffect(() => {
     if (cameraSource !== 'phone' || !isPhoneConnected || !latestFrame) {
       return
@@ -256,10 +327,76 @@ export function CameraCapture({
         if (onCapture) {
           onCapture(canvas)
         }
+
+        // Use phone's detected corners instead of re-detecting locally
+        // This is more reliable because phone detects on high-quality video,
+        // not compressed JPEG frames
+        if (enableMarkerDetection) {
+          // Use corners from frame data directly to avoid stale closure issues
+          const frameCorners = latestFrame.detectedCorners
+          console.log(
+            '[CAMERA-CAPTURE] enableMarkerDetection=true, frameCorners:',
+            frameCorners ? 'has corners' : 'null/undefined'
+          )
+          if (frameCorners) {
+            // Phone detected all 4 markers - use its corners
+            console.log(
+              '[CAMERA-CAPTURE] Setting phoneMarkersFound=4, corners:',
+              JSON.stringify(frameCorners)
+            )
+            setPhoneMarkersFound(4)
+
+            const grid: CalibrationGrid = {
+              roi: {
+                x: Math.min(frameCorners.topLeft.x, frameCorners.bottomLeft.x),
+                y: Math.min(frameCorners.topLeft.y, frameCorners.topRight.y),
+                width:
+                  Math.max(frameCorners.topRight.x, frameCorners.bottomRight.x) -
+                  Math.min(frameCorners.topLeft.x, frameCorners.bottomLeft.x),
+                height:
+                  Math.max(frameCorners.bottomLeft.y, frameCorners.bottomRight.y) -
+                  Math.min(frameCorners.topLeft.y, frameCorners.topRight.y),
+              },
+              corners: frameCorners,
+              columnCount,
+              columnDividers: Array.from(
+                { length: columnCount - 1 },
+                (_, i) => (i + 1) / columnCount
+              ),
+              rotation: 0,
+            }
+
+            // Only update if changed to avoid infinite loops
+            const prev = lastPhoneCalibrationRef.current
+            const changed =
+              prev === null || JSON.stringify(prev.corners) !== JSON.stringify(grid.corners)
+
+            if (changed) {
+              console.log('[CAMERA-CAPTURE] Calibration changed, calling onCalibrationChange')
+              lastPhoneCalibrationRef.current = grid
+              setPhoneCalibration(grid)
+              onCalibrationChange?.(grid)
+            }
+          } else {
+            // Phone didn't detect all markers
+            console.log('[CAMERA-CAPTURE] No frameCorners, setting phoneMarkersFound=0')
+            setPhoneMarkersFound(0)
+          }
+        }
       }
     }
     img.src = `data:image/jpeg;base64,${latestFrame.imageData}`
-  }, [cameraSource, isPhoneConnected, latestFrame, onCapture])
+  }, [
+    cameraSource,
+    isPhoneConnected,
+    latestFrame,
+    onCapture,
+    enableMarkerDetection,
+    // Note: We use latestFrame.detectedCorners directly instead of phoneDetectedCorners state
+    // to ensure corners are always in sync with the frame they came from
+    columnCount,
+    onCalibrationChange,
+  ])
 
   // Determine if we have a usable frame
   const hasFrame =
@@ -685,6 +822,47 @@ export function CameraCapture({
                 backdropFilter: 'blur(4px)',
               })}
             >
+              {/* Marker status indicator (when marker detection is enabled) */}
+              {enableMarkerDetection && (
+                <div
+                  data-element="marker-status"
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    fontSize: 'xs',
+                    color: isCalibrated ? 'green.400' : 'gray.400',
+                  })}
+                >
+                  <div
+                    className={css({
+                      display: 'flex',
+                      gap: 0.5,
+                    })}
+                  >
+                    {[0, 1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className={css({
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: 'full',
+                          bg: i < phoneMarkersFound ? 'green.500' : 'gray.600',
+                          transition: 'background 0.15s',
+                        })}
+                      />
+                    ))}
+                  </div>
+                  <span>
+                    {isCalibrated
+                      ? 'Calibrated'
+                      : phoneMarkersFound > 0
+                        ? `${phoneMarkersFound}/4`
+                        : 'No markers'}
+                  </span>
+                </div>
+              )}
+
               <div
                 className={css({
                   display: 'flex',
@@ -692,6 +870,7 @@ export function CameraCapture({
                   gap: 2,
                   fontSize: 'xs',
                   color: 'white',
+                  ml: enableMarkerDetection ? 'auto' : undefined,
                 })}
               >
                 <span

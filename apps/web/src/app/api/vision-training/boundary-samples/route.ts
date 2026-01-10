@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 const BOUNDARY_DETECTOR_DIR = path.join(process.cwd(), 'data/vision-training/boundary-frames')
 
 interface BoundarySampleRequest {
-  /** Base64 PNG image data (without data URL prefix) */
+  /** Base64 image data - PNG or JPEG (without data URL prefix) */
   imageData: string
   /** Normalized corner coordinates (0-1 range) */
   corners: QuadCorners
@@ -20,6 +20,26 @@ interface BoundarySampleRequest {
   frameHeight: number
   /** Optional device identifier */
   deviceId?: string
+  /** Optional practice session ID (for passive captures) */
+  sessionId?: string
+  /** Optional player/student ID (for passive captures) */
+  playerId?: string
+}
+
+/**
+ * Detect image format from base64 data
+ * Returns 'png', 'jpeg', or 'unknown'
+ */
+function detectImageFormat(base64Data: string): 'png' | 'jpeg' | 'unknown' {
+  // PNG magic bytes: 89 50 4E 47 (iVBORw0KGgo in base64)
+  if (base64Data.startsWith('iVBORw0KGgo')) {
+    return 'png'
+  }
+  // JPEG magic bytes: FF D8 FF (/9j/ in base64)
+  if (base64Data.startsWith('/9j/')) {
+    return 'jpeg'
+  }
+  return 'unknown'
 }
 
 /**
@@ -76,12 +96,16 @@ export async function POST(request: NextRequest): Promise<Response> {
     // Ensure directory exists
     fs.mkdirSync(deviceDir, { recursive: true })
 
+    // Detect image format and determine file extension
+    const format = detectImageFormat(imageData)
+    const extension = format === 'jpeg' ? 'jpg' : 'png' // Default to png for unknown
+
     // Generate unique filename with timestamp
     const timestamp = Date.now()
     const randomSuffix = Math.random().toString(36).substring(2, 8)
     const baseName = `${timestamp}_${randomSuffix}`
 
-    const imagePath = path.join(deviceDir, `${baseName}.png`)
+    const imagePath = path.join(deviceDir, `${baseName}.${extension}`)
     const annotationPath = path.join(deviceDir, `${baseName}.json`)
 
     // Save the image
@@ -95,6 +119,8 @@ export async function POST(request: NextRequest): Promise<Response> {
       frameHeight,
       capturedAt: new Date().toISOString(),
       deviceId,
+      sessionId: body.sessionId || null,
+      playerId: body.playerId || null,
     }
     fs.writeFileSync(annotationPath, JSON.stringify(annotation, null, 2))
 
@@ -122,6 +148,8 @@ interface BoundaryFrame {
   corners: QuadCorners
   frameWidth: number
   frameHeight: number
+  sessionId: string | null
+  playerId: string | null
 }
 
 /**
@@ -153,7 +181,9 @@ export async function GET(request: NextRequest): Promise<Response> {
       if (entry.isDirectory()) {
         const deviceId = entry.name
         const deviceDir = path.join(BOUNDARY_DETECTOR_DIR, deviceId)
-        const files = fs.readdirSync(deviceDir).filter((f) => f.endsWith('.png'))
+        const files = fs
+          .readdirSync(deviceDir)
+          .filter((f) => f.endsWith('.png') || f.endsWith('.jpg'))
         const frameCount = files.length
         totalFrames += frameCount
         devices.push({ id: deviceId, frameCount })
@@ -161,7 +191,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         // If listing, load each frame's metadata
         if (listFrames) {
           for (const file of files) {
-            const baseName = file.replace('.png', '')
+            const baseName = file.replace(/\.(png|jpg)$/, '')
             const annotationPath = path.join(deviceDir, `${baseName}.json`)
 
             let annotation = {
@@ -174,6 +204,8 @@ export async function GET(request: NextRequest): Promise<Response> {
               frameWidth: 0,
               frameHeight: 0,
               capturedAt: '',
+              sessionId: null as string | null,
+              playerId: null as string | null,
             }
 
             if (fs.existsSync(annotationPath)) {
@@ -192,6 +224,8 @@ export async function GET(request: NextRequest): Promise<Response> {
               corners: annotation.corners,
               frameWidth: annotation.frameWidth,
               frameHeight: annotation.frameHeight,
+              sessionId: annotation.sessionId || null,
+              playerId: annotation.playerId || null,
             })
           }
         }
@@ -243,13 +277,21 @@ export async function DELETE(request: NextRequest): Promise<Response> {
     }
 
     const deviceDir = path.join(BOUNDARY_DETECTOR_DIR, deviceId)
-    const imagePath = path.join(deviceDir, `${baseName}.png`)
+    const pngPath = path.join(deviceDir, `${baseName}.png`)
+    const jpgPath = path.join(deviceDir, `${baseName}.jpg`)
     const annotationPath = path.join(deviceDir, `${baseName}.json`)
 
     let deleted = false
 
-    if (fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath)
+    // Try to delete PNG version
+    if (fs.existsSync(pngPath)) {
+      fs.unlinkSync(pngPath)
+      deleted = true
+    }
+
+    // Try to delete JPG version
+    if (fs.existsSync(jpgPath)) {
+      fs.unlinkSync(jpgPath)
       deleted = true
     }
 

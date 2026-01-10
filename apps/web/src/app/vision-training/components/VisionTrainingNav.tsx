@@ -69,7 +69,6 @@ export function VisionTrainingNav() {
         top: 0,
         left: 0,
         right: 0,
-        height: 'var(--nav-height)',
         bg: 'gray.900',
         borderBottom: '1px solid',
         borderColor: 'gray.800',
@@ -78,7 +77,7 @@ export function VisionTrainingNav() {
         px: 4,
         gap: 4,
       })}
-      style={{ zIndex: Z_INDEX.NAV_BAR }}
+      style={{ height: 'var(--nav-height)', zIndex: Z_INDEX.NAV_BAR }}
     >
       {/* Home link */}
       <Link

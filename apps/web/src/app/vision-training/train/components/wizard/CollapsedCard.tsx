@@ -15,10 +15,20 @@ interface CollapsedCardProps {
       }
     | string
   status: 'done' | 'upcoming'
+  // Optional click handler for done cards (to allow rewinding)
+  onClick?: () => void
 }
 
-export function CollapsedCard({ icon, title, summary, preview, status }: CollapsedCardProps) {
+export function CollapsedCard({
+  icon,
+  title,
+  summary,
+  preview,
+  status,
+  onClick,
+}: CollapsedCardProps) {
   const isDone = status === 'done'
+  const isClickable = isDone && !!onClick
 
   // Parse preview into lines
   const previewObj = typeof preview === 'string' ? { primary: preview } : preview
@@ -30,7 +40,19 @@ export function CollapsedCard({ icon, title, summary, preview, status }: Collaps
     <div
       data-element="collapsed-card"
       data-status={status}
-      title={title}
+      title={isClickable ? `Go back to ${title}` : title}
+      onClick={isClickable ? onClick : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                onClick()
+              }
+            }
+          : undefined
+      }
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
       className={css({
         width: hasRichPreview ? '90px' : '70px',
         minHeight: hasRichPreview ? '85px' : '70px',
@@ -45,7 +67,15 @@ export function CollapsedCard({ icon, title, summary, preview, status }: Collaps
         border: '2px solid',
         borderColor: isDone ? 'green.700' : 'gray.700',
         opacity: isDone ? 1 : 0.7,
-        transition: 'all 0.3s ease',
+        transition: 'all 0.15s ease',
+        cursor: isClickable ? 'pointer' : 'default',
+        _hover: isClickable
+          ? {
+              bg: 'gray.700',
+              borderColor: 'green.600',
+              transform: 'scale(1.05)',
+            }
+          : {},
       })}
     >
       {/* Icon */}

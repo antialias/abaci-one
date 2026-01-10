@@ -3,6 +3,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import {
   isColumnClassifierSamples,
+  isColumnClassifierDatasetInfo,
   type SamplesData,
   type DatasetInfo,
   type EpochData,
@@ -120,9 +121,15 @@ function analyzeDiagnostics(
   }
 
   // 2. Check for insufficient total data
-  const total =
-    datasetInfo?.total_images ??
-    (samples ? (isColumnClassifierSamples(samples) ? samples.totalImages : samples.totalFrames) : 0)
+  const total = datasetInfo
+    ? isColumnClassifierDatasetInfo(datasetInfo)
+      ? datasetInfo.total_images
+      : datasetInfo.total_frames
+    : samples
+      ? isColumnClassifierSamples(samples)
+        ? samples.totalImages
+        : samples.totalFrames
+      : 0
   if (total < 200) {
     reasons.push({
       type: 'insufficient-data',

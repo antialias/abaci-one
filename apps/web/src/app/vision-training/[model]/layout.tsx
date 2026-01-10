@@ -49,9 +49,9 @@ export default function VisionTrainingLayout({ children, params }: VisionTrainin
       <main
         data-element="vision-content"
         className={css({
-          paddingTop: 'var(--nav-height)',
           minHeight: '100vh',
         })}
+        style={{ paddingTop: 'var(--nav-height)' }}
       >
         {children}
       </main>

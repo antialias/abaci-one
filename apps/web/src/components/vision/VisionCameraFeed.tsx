@@ -70,7 +70,8 @@ export function VisionCameraFeed({
   const containerRef = useRef<HTMLDivElement>(null)
   const animationFrameRef = useRef<number | null>(null)
 
-  const [opencvReady, setOpencvReady] = useState(false)
+  // Initialize opencvReady synchronously if already loaded (avoids flash on remount)
+  const [opencvReady, setOpencvReady] = useState(() => isOpenCVReady())
 
   // Load OpenCV when rectified view is needed
   useEffect(() => {

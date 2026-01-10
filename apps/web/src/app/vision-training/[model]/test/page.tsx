@@ -75,10 +75,11 @@ export default function TestModelPage() {
     <div
       data-component="test-model-page"
       className={css({
-        minHeight: 'calc(100vh - var(--nav-height))',
         bg: 'gray.900',
         color: 'gray.100',
+        pt: 4,
       })}
+      style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
     >
       {/* Session Info Banner */}
       {sessionLoading && (

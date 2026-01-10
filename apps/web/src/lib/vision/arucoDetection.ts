@@ -223,12 +223,9 @@ function getInnerCorner(marker: MarkerCorners, markerId: number): Point {
 }
 
 /**
- * Detect ArUco markers in a video frame
+ * Internal function to detect markers from ImageData
  */
-export function detectMarkers(
-  video: HTMLVideoElement,
-  canvas?: HTMLCanvasElement
-): MarkerDetectionResult {
+function detectMarkersFromImageData(imageData: ImageData): MarkerDetectionResult {
   const result: MarkerDetectionResult = {
     allMarkersFound: false,
     markersFound: 0,
@@ -243,18 +240,6 @@ export function detectMarkers(
   }
 
   if (!detector) return result
-
-  // Create temporary canvas if not provided
-  const tempCanvas = canvas || document.createElement('canvas')
-  tempCanvas.width = video.videoWidth
-  tempCanvas.height = video.videoHeight
-
-  const ctx = tempCanvas.getContext('2d', { willReadFrequently: true })
-  if (!ctx) return result
-
-  // Draw video frame to canvas
-  ctx.drawImage(video, 0, 0)
-  const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height)
 
   try {
     // Detect markers using js-aruco2
@@ -307,6 +292,65 @@ export function detectMarkers(
   }
 
   return result
+}
+
+/**
+ * Detect ArUco markers in a video frame
+ */
+export function detectMarkers(
+  video: HTMLVideoElement,
+  canvas?: HTMLCanvasElement
+): MarkerDetectionResult {
+  // Create temporary canvas if not provided
+  const tempCanvas = canvas || document.createElement('canvas')
+  tempCanvas.width = video.videoWidth
+  tempCanvas.height = video.videoHeight
+
+  const ctx = tempCanvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) {
+    return {
+      allMarkersFound: false,
+      markersFound: 0,
+      markers: new Map(),
+      quadCorners: null,
+    }
+  }
+
+  // Draw video frame to canvas
+  ctx.drawImage(video, 0, 0)
+  const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height)
+
+  return detectMarkersFromImageData(imageData)
+}
+
+/**
+ * Detect ArUco markers from a canvas element
+ *
+ * This is useful for phone camera frames which arrive as canvas images
+ * rather than video elements.
+ */
+export function detectMarkersFromCanvas(canvas: HTMLCanvasElement): MarkerDetectionResult {
+  if (canvas.width === 0 || canvas.height === 0) {
+    return {
+      allMarkersFound: false,
+      markersFound: 0,
+      markers: new Map(),
+      quadCorners: null,
+    }
+  }
+
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) {
+    return {
+      allMarkersFound: false,
+      markersFound: 0,
+      markers: new Map(),
+      quadCorners: null,
+    }
+  }
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  return detectMarkersFromImageData(imageData)
 }
 
 /**

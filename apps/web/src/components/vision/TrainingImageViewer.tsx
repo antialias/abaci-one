@@ -514,6 +514,21 @@ export function TrainingImageViewer({
               </>
             )}
             <Link
+              href="/vision-training/sessions"
+              className={css({
+                px: 4,
+                py: 2,
+                bg: 'gray.700',
+                color: 'white',
+                fontWeight: 'semibold',
+                borderRadius: 'md',
+                textDecoration: 'none',
+                _hover: { bg: 'gray.600' },
+              })}
+            >
+              Sessions
+            </Link>
+            <Link
               href="/vision-training/train"
               className={css({
                 px: 4,

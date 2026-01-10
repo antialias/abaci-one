@@ -82,6 +82,12 @@ def parse_args():
         action="store_true",
         help="Output JSON progress for streaming to web UI",
     )
+    parser.add_argument(
+        "--session-id",
+        type=str,
+        default=None,
+        help="Session ID for tracking this training run (for session management)",
+    )
     return parser.parse_args()
 
 
@@ -941,6 +947,7 @@ def main():
         "epochs_trained": len(history.history.get("loss", [])),
         "output_dir": args.output_dir,
         "tfjs_exported": tfjs_available,
+        "session_id": args.session_id,  # Session ID for database tracking
         "phase": "complete"
     }, use_json)
 

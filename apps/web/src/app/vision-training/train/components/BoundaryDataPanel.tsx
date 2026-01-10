@@ -1,10 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { css } from '../../../../../styled-system/css'
 import type { QuadCorners } from '@/types/vision'
 import type { DataPanelProps } from '../../registry'
 import { BoundaryDataCapture } from './BoundaryDataCapture'
+import { BOUNDARY_SAMPLE_CHANNEL } from '@/lib/vision/saveBoundarySample'
+import {
+  BoundaryFrameFilters as BoundaryFrameFiltersComponent,
+  type BoundaryFrameFilters,
+  applyFilters,
+  getDefaultFilters,
+} from './BoundaryFrameFilters'
 
 interface BoundaryFrame {
   baseName: string
@@ -14,6 +21,8 @@ interface BoundaryFrame {
   corners: QuadCorners
   frameWidth: number
   frameHeight: number
+  sessionId: string | null
+  playerId: string | null
 }
 
 type ViewMode = 'browse' | 'capture'
@@ -80,6 +89,17 @@ export function BoundaryDataPanel({ onDataChanged, showHeader = false }: Boundar
   const [pipelineError, setPipelineError] = useState<string | null>(null)
   const [showPipelinePreview, setShowPipelinePreview] = useState(false)
 
+  // Track new samples from passive capture (for notification badge)
+  const [newSamplesCount, setNewSamplesCount] = useState(0)
+  const lastRefreshTimeRef = useRef<number>(Date.now())
+
+  // Filter state
+  const [filters, setFilters] = useState<BoundaryFrameFilters>(getDefaultFilters)
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
+
+  // Apply filters to get visible frames
+  const filteredFrames = useMemo(() => applyFilters(frames, filters), [frames, filters])
+
   // Load frames on mount
   const loadFrames = useCallback(async () => {
     setLoading(true)
@@ -88,6 +108,9 @@ export function BoundaryDataPanel({ onDataChanged, showHeader = false }: Boundar
       if (response.ok) {
         const data = await response.json()
         setFrames(data.frames || [])
+        // Reset new samples count and update refresh time
+        setNewSamplesCount(0)
+        lastRefreshTimeRef.current = Date.now()
       }
     } catch (error) {
       console.error('[BoundaryDataPanel] Failed to load frames:', error)
@@ -98,6 +121,29 @@ export function BoundaryDataPanel({ onDataChanged, showHeader = false }: Boundar
 
   useEffect(() => {
     loadFrames()
+  }, [loadFrames])
+
+  // Listen for cross-tab notifications when new samples are saved
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return
+
+    const channel = new BroadcastChannel(BOUNDARY_SAMPLE_CHANNEL)
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'sample-saved') {
+        // Increment the new samples counter
+        setNewSamplesCount((prev) => prev + 1)
+        // Auto-refresh the frames list
+        loadFrames()
+      }
+    }
+
+    channel.addEventListener('message', handleMessage)
+
+    return () => {
+      channel.removeEventListener('message', handleMessage)
+      channel.close()
+    }
   }, [loadFrames])
 
   // Fetch masked preview when frame is selected
@@ -316,11 +362,37 @@ export function BoundaryDataPanel({ onDataChanged, showHeader = false }: Boundar
             alignItems: 'center',
             justifyContent: 'center',
             gap: 2,
+            position: 'relative',
             _hover: { bg: 'gray.800', color: 'gray.200' },
           })}
         >
           <span>🖼️</span>
           <span>Browse Frames</span>
+          <span className={css({ fontSize: 'xs', color: 'gray.500' })}>({frames.length})</span>
+          {/* Live indicator when new samples coming in */}
+          {newSamplesCount > 0 && viewMode !== 'browse' && (
+            <span
+              className={css({
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                minWidth: '18px',
+                height: '18px',
+                borderRadius: 'full',
+                bg: 'green.500',
+                color: 'white',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                px: 1,
+                animation: 'pulse 2s ease-in-out infinite',
+              })}
+            >
+              +{newSamplesCount > 99 ? '99+' : newSamplesCount}
+            </span>
+          )}
         </button>
         <button
           type="button"
@@ -351,6 +423,40 @@ export function BoundaryDataPanel({ onDataChanged, showHeader = false }: Boundar
 
       {/* Content */}
       <div className={css({ flex: 1, overflow: 'auto', p: 4 })}>
+        {/* Live capture indicator - shows when passive capture is active in another tab */}
+        {viewMode === 'browse' && newSamplesCount > 0 && (
+          <div
+            data-element="live-capture-indicator"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              p: 3,
+              mb: 4,
+              bg: 'green.900/30',
+              border: '1px solid',
+              borderColor: 'green.700/50',
+              borderRadius: 'lg',
+            })}
+          >
+            <span
+              className={css({
+                width: '10px',
+                height: '10px',
+                borderRadius: 'full',
+                bg: 'green.400',
+                animation: 'pulse 1.5s ease-in-out infinite',
+              })}
+            />
+            <span className={css({ color: 'green.300', fontWeight: 'medium', fontSize: 'sm' })}>
+              Live Capture Active
+            </span>
+            <span className={css({ color: 'green.400', fontSize: 'sm' })}>
+              +{newSamplesCount} new frame{newSamplesCount !== 1 ? 's' : ''} captured
+            </span>
+          </div>
+        )}
+
         {viewMode === 'capture' ? (
           <BoundaryDataCapture onSamplesCollected={handleSamplesCollected} />
         ) : loading ? (
@@ -384,229 +490,430 @@ export function BoundaryDataPanel({ onDataChanged, showHeader = false }: Boundar
             </button>
           </div>
         ) : (
-          <div className={css({ display: 'flex', gap: 4, height: '100%', minHeight: '400px' })}>
-            {/* Frame grid */}
-            <div
-              className={css({
-                flex: 1,
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                gap: 2,
-                alignContent: 'start',
-                overflow: 'auto',
-              })}
-            >
-              {frames.map((frame) => (
-                <button
-                  key={frame.baseName}
-                  type="button"
-                  onClick={() => setSelectedFrame(frame)}
-                  className={css({
-                    position: 'relative',
-                    // Use actual image aspect ratio to ensure overlay aligns correctly
-                    aspectRatio: `${frame.frameWidth}/${frame.frameHeight}`,
-                    bg: 'gray.800',
-                    border: '2px solid',
-                    borderColor:
-                      selectedFrame?.baseName === frame.baseName ? 'purple.500' : 'gray.700',
-                    borderRadius: 'lg',
-                    overflow: 'hidden',
-                    cursor: 'pointer',
-                    _hover: { borderColor: 'purple.400' },
-                  })}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={frame.imagePath}
-                    alt={`Frame ${frame.baseName}`}
-                    className={css({
-                      width: '100%',
-                      height: '100%',
-                      // Use 'fill' since container now matches image aspect ratio exactly
-                      objectFit: 'fill',
-                    })}
-                  />
-                  {/* Corner overlay */}
-                  <svg
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                    className={css({
-                      position: 'absolute',
-                      inset: 0,
-                      width: '100%',
-                      height: '100%',
-                      pointerEvents: 'none',
-                    })}
-                  >
-                    <polygon
-                      points={`${frame.corners.topLeft.x * 100},${frame.corners.topLeft.y * 100} ${frame.corners.topRight.x * 100},${frame.corners.topRight.y * 100} ${frame.corners.bottomRight.x * 100},${frame.corners.bottomRight.y * 100} ${frame.corners.bottomLeft.x * 100},${frame.corners.bottomLeft.y * 100}`}
-                      fill="none"
-                      stroke="rgba(147, 51, 234, 0.8)"
-                      strokeWidth="2"
-                    />
-                    {/* Corner dots */}
-                    <circle
-                      cx={frame.corners.topLeft.x * 100}
-                      cy={frame.corners.topLeft.y * 100}
-                      r="3"
-                      fill="#22c55e"
-                    />
-                    <circle
-                      cx={frame.corners.topRight.x * 100}
-                      cy={frame.corners.topRight.y * 100}
-                      r="3"
-                      fill="#22c55e"
-                    />
-                    <circle
-                      cx={frame.corners.bottomRight.x * 100}
-                      cy={frame.corners.bottomRight.y * 100}
-                      r="3"
-                      fill="#22c55e"
-                    />
-                    <circle
-                      cx={frame.corners.bottomLeft.x * 100}
-                      cy={frame.corners.bottomLeft.y * 100}
-                      r="3"
-                      fill="#22c55e"
-                    />
-                  </svg>
-                </button>
-              ))}
-            </div>
+          <div
+            className={css({ display: 'flex', flexDirection: 'column', gap: 4, height: '100%' })}
+          >
+            {/* Filters */}
+            <BoundaryFrameFiltersComponent
+              frames={frames}
+              filters={filters}
+              onFiltersChange={setFilters}
+              isExpanded={filtersExpanded}
+              onToggleExpanded={() => setFiltersExpanded(!filtersExpanded)}
+            />
 
-            {/* Selected frame details */}
-            {selectedFrame && (
+            {/* Frame grid and detail panel */}
+            <div className={css({ display: 'flex', gap: 4, flex: 1, minHeight: '400px' })}>
+              {/* Frame grid */}
               <div
                 className={css({
-                  width: '300px',
-                  flexShrink: 0,
-                  bg: 'gray.800',
-                  borderRadius: 'lg',
-                  p: 4,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 4,
+                  flex: 1,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                  gap: 2,
+                  alignContent: 'start',
+                  overflow: 'auto',
                 })}
               >
-                {/* Preview with corners */}
-                <div
-                  className={css({
-                    position: 'relative',
-                    borderRadius: 'md',
-                    overflow: 'hidden',
-                  })}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={selectedFrame.imagePath}
-                    alt="Selected frame"
-                    className={css({ width: '100%', display: 'block' })}
-                  />
-                  <svg
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                    className={css({
-                      position: 'absolute',
-                      inset: 0,
-                      width: '100%',
-                      height: '100%',
-                      pointerEvents: 'none',
-                    })}
-                  >
-                    <polygon
-                      points={`${selectedFrame.corners.topLeft.x * 100},${selectedFrame.corners.topLeft.y * 100} ${selectedFrame.corners.topRight.x * 100},${selectedFrame.corners.topRight.y * 100} ${selectedFrame.corners.bottomRight.x * 100},${selectedFrame.corners.bottomRight.y * 100} ${selectedFrame.corners.bottomLeft.x * 100},${selectedFrame.corners.bottomLeft.y * 100}`}
-                      fill="rgba(147, 51, 234, 0.1)"
-                      stroke="rgba(147, 51, 234, 0.9)"
-                      strokeWidth="1"
-                    />
-                    <circle
-                      cx={selectedFrame.corners.topLeft.x * 100}
-                      cy={selectedFrame.corners.topLeft.y * 100}
-                      r="2"
-                      fill="#22c55e"
-                    />
-                    <circle
-                      cx={selectedFrame.corners.topRight.x * 100}
-                      cy={selectedFrame.corners.topRight.y * 100}
-                      r="2"
-                      fill="#22c55e"
-                    />
-                    <circle
-                      cx={selectedFrame.corners.bottomRight.x * 100}
-                      cy={selectedFrame.corners.bottomRight.y * 100}
-                      r="2"
-                      fill="#22c55e"
-                    />
-                    <circle
-                      cx={selectedFrame.corners.bottomLeft.x * 100}
-                      cy={selectedFrame.corners.bottomLeft.y * 100}
-                      r="2"
-                      fill="#22c55e"
-                    />
-                  </svg>
-                </div>
-
-                {/* Masked Preview Section */}
-                <div
-                  className={css({
-                    mt: 3,
-                    p: 2,
-                    bg: 'gray.900',
-                    borderRadius: 'md',
-                    border: '1px solid',
-                    borderColor: 'orange.700/50',
-                  })}
-                >
-                  {/* Header with toggle */}
+                {filteredFrames.length === 0 ? (
                   <div
                     className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      mb: showMaskedPreview ? 2 : 0,
+                      gridColumn: '1 / -1',
+                      textAlign: 'center',
+                      py: 8,
                     })}
                   >
-                    <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
-                      <span className={css({ fontSize: 'sm' })}>🎭</span>
-                      <span
-                        className={css({
-                          fontSize: 'sm',
-                          fontWeight: 'medium',
-                          color: 'orange.300',
-                        })}
-                      >
-                        Marker Masking Preview
-                      </span>
+                    <div className={css({ fontSize: '2xl', mb: 2 })}>🔍</div>
+                    <div className={css({ color: 'gray.400' })}>
+                      No frames match the current filters
                     </div>
                     <button
                       type="button"
-                      onClick={() => setShowMaskedPreview(!showMaskedPreview)}
+                      onClick={() => setFilters(getDefaultFilters())}
                       className={css({
-                        fontSize: 'xs',
-                        color: 'gray.400',
-                        bg: 'transparent',
+                        mt: 3,
+                        px: 4,
+                        py: 2,
+                        bg: 'gray.700',
+                        color: 'gray.200',
                         border: 'none',
+                        borderRadius: 'md',
                         cursor: 'pointer',
-                        _hover: { color: 'gray.200' },
+                        _hover: { bg: 'gray.600' },
                       })}
                     >
-                      {showMaskedPreview ? 'Hide' : 'Show'}
+                      Clear Filters
                     </button>
                   </div>
-
-                  {showMaskedPreview && (
-                    <>
-                      {/* Masked image preview */}
-                      <div
+                ) : (
+                  filteredFrames.map((frame) => (
+                    <button
+                      key={frame.baseName}
+                      type="button"
+                      onClick={() => setSelectedFrame(frame)}
+                      className={css({
+                        position: 'relative',
+                        // Use actual image aspect ratio to ensure overlay aligns correctly
+                        aspectRatio: `${frame.frameWidth}/${frame.frameHeight}`,
+                        bg: 'gray.800',
+                        border: '2px solid',
+                        borderColor:
+                          selectedFrame?.baseName === frame.baseName ? 'purple.500' : 'gray.700',
+                        borderRadius: 'lg',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        _hover: { borderColor: 'purple.400' },
+                      })}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={frame.imagePath}
+                        alt={`Frame ${frame.baseName}`}
                         className={css({
-                          position: 'relative',
-                          borderRadius: 'md',
-                          overflow: 'hidden',
-                          bg: 'gray.800',
-                          minHeight: '100px',
+                          width: '100%',
+                          height: '100%',
+                          // Use 'fill' since container now matches image aspect ratio exactly
+                          objectFit: 'fill',
+                        })}
+                      />
+                      {/* Corner overlay */}
+                      <svg
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="none"
+                        className={css({
+                          position: 'absolute',
+                          inset: 0,
+                          width: '100%',
+                          height: '100%',
+                          pointerEvents: 'none',
                         })}
                       >
-                        {maskingInProgress ? (
+                        <polygon
+                          points={`${frame.corners.topLeft.x * 100},${frame.corners.topLeft.y * 100} ${frame.corners.topRight.x * 100},${frame.corners.topRight.y * 100} ${frame.corners.bottomRight.x * 100},${frame.corners.bottomRight.y * 100} ${frame.corners.bottomLeft.x * 100},${frame.corners.bottomLeft.y * 100}`}
+                          fill="none"
+                          stroke="rgba(147, 51, 234, 0.8)"
+                          strokeWidth="2"
+                        />
+                        {/* Corner dots */}
+                        <circle
+                          cx={frame.corners.topLeft.x * 100}
+                          cy={frame.corners.topLeft.y * 100}
+                          r="3"
+                          fill="#22c55e"
+                        />
+                        <circle
+                          cx={frame.corners.topRight.x * 100}
+                          cy={frame.corners.topRight.y * 100}
+                          r="3"
+                          fill="#22c55e"
+                        />
+                        <circle
+                          cx={frame.corners.bottomRight.x * 100}
+                          cy={frame.corners.bottomRight.y * 100}
+                          r="3"
+                          fill="#22c55e"
+                        />
+                        <circle
+                          cx={frame.corners.bottomLeft.x * 100}
+                          cy={frame.corners.bottomLeft.y * 100}
+                          r="3"
+                          fill="#22c55e"
+                        />
+                      </svg>
+                    </button>
+                  ))
+                )}
+              </div>
+
+              {/* Selected frame details */}
+              {selectedFrame && (
+                <div
+                  className={css({
+                    width: '300px',
+                    flexShrink: 0,
+                    bg: 'gray.800',
+                    borderRadius: 'lg',
+                    p: 4,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                  })}
+                >
+                  {/* Preview with corners */}
+                  <div
+                    className={css({
+                      position: 'relative',
+                      borderRadius: 'md',
+                      overflow: 'hidden',
+                    })}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={selectedFrame.imagePath}
+                      alt="Selected frame"
+                      className={css({ width: '100%', display: 'block' })}
+                    />
+                    <svg
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                      className={css({
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        pointerEvents: 'none',
+                      })}
+                    >
+                      <polygon
+                        points={`${selectedFrame.corners.topLeft.x * 100},${selectedFrame.corners.topLeft.y * 100} ${selectedFrame.corners.topRight.x * 100},${selectedFrame.corners.topRight.y * 100} ${selectedFrame.corners.bottomRight.x * 100},${selectedFrame.corners.bottomRight.y * 100} ${selectedFrame.corners.bottomLeft.x * 100},${selectedFrame.corners.bottomLeft.y * 100}`}
+                        fill="rgba(147, 51, 234, 0.1)"
+                        stroke="rgba(147, 51, 234, 0.9)"
+                        strokeWidth="1"
+                      />
+                      <circle
+                        cx={selectedFrame.corners.topLeft.x * 100}
+                        cy={selectedFrame.corners.topLeft.y * 100}
+                        r="2"
+                        fill="#22c55e"
+                      />
+                      <circle
+                        cx={selectedFrame.corners.topRight.x * 100}
+                        cy={selectedFrame.corners.topRight.y * 100}
+                        r="2"
+                        fill="#22c55e"
+                      />
+                      <circle
+                        cx={selectedFrame.corners.bottomRight.x * 100}
+                        cy={selectedFrame.corners.bottomRight.y * 100}
+                        r="2"
+                        fill="#22c55e"
+                      />
+                      <circle
+                        cx={selectedFrame.corners.bottomLeft.x * 100}
+                        cy={selectedFrame.corners.bottomLeft.y * 100}
+                        r="2"
+                        fill="#22c55e"
+                      />
+                    </svg>
+                  </div>
+
+                  {/* Masked Preview Section */}
+                  <div
+                    className={css({
+                      mt: 3,
+                      p: 2,
+                      bg: 'gray.900',
+                      borderRadius: 'md',
+                      border: '1px solid',
+                      borderColor: 'orange.700/50',
+                    })}
+                  >
+                    {/* Header with toggle */}
+                    <div
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mb: showMaskedPreview ? 2 : 0,
+                      })}
+                    >
+                      <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                        <span className={css({ fontSize: 'sm' })}>🎭</span>
+                        <span
+                          className={css({
+                            fontSize: 'sm',
+                            fontWeight: 'medium',
+                            color: 'orange.300',
+                          })}
+                        >
+                          Marker Masking Preview
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowMaskedPreview(!showMaskedPreview)}
+                        className={css({
+                          fontSize: 'xs',
+                          color: 'gray.400',
+                          bg: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          _hover: { color: 'gray.200' },
+                        })}
+                      >
+                        {showMaskedPreview ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+
+                    {showMaskedPreview && (
+                      <>
+                        {/* Masked image preview */}
+                        <div
+                          className={css({
+                            position: 'relative',
+                            borderRadius: 'md',
+                            overflow: 'hidden',
+                            bg: 'gray.800',
+                            minHeight: '100px',
+                          })}
+                        >
+                          {maskingInProgress ? (
+                            <div
+                              className={css({
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '100px',
+                                color: 'gray.400',
+                              })}
+                            >
+                              <span className={css({ animation: 'spin 1s linear infinite' })}>
+                                ⏳
+                              </span>
+                              <span className={css({ ml: 2, fontSize: 'sm' })}>
+                                Generating masked preview...
+                              </span>
+                            </div>
+                          ) : maskingError ? (
+                            <div
+                              className={css({
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '100px',
+                                color: 'red.400',
+                                fontSize: 'sm',
+                                textAlign: 'center',
+                                p: 2,
+                              })}
+                            >
+                              <span>❌ {maskingError}</span>
+                            </div>
+                          ) : maskedImageUrl ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={maskedImageUrl}
+                                alt="Marker-masked preview"
+                                className={css({ width: '100%', display: 'block' })}
+                              />
+                              {/* Show corner overlay on masked image too */}
+                              <svg
+                                viewBox="0 0 100 100"
+                                preserveAspectRatio="none"
+                                className={css({
+                                  position: 'absolute',
+                                  inset: 0,
+                                  width: '100%',
+                                  height: '100%',
+                                  pointerEvents: 'none',
+                                })}
+                              >
+                                <polygon
+                                  points={`${selectedFrame.corners.topLeft.x * 100},${selectedFrame.corners.topLeft.y * 100} ${selectedFrame.corners.topRight.x * 100},${selectedFrame.corners.topRight.y * 100} ${selectedFrame.corners.bottomRight.x * 100},${selectedFrame.corners.bottomRight.y * 100} ${selectedFrame.corners.bottomLeft.x * 100},${selectedFrame.corners.bottomLeft.y * 100}`}
+                                  fill="rgba(249, 115, 22, 0.1)"
+                                  stroke="rgba(249, 115, 22, 0.9)"
+                                  strokeWidth="1"
+                                />
+                              </svg>
+                            </>
+                          ) : (
+                            <div
+                              className={css({
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '100px',
+                                color: 'gray.500',
+                                fontSize: 'sm',
+                              })}
+                            >
+                              No masked preview
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Masking stats */}
+                        {maskedImageUrl && maskRegions.length > 0 && (
+                          <div
+                            className={css({
+                              mt: 2,
+                              fontSize: 'xs',
+                              color: 'gray.400',
+                            })}
+                          >
+                            {maskRegions.length} marker region
+                            {maskRegions.length !== 1 ? 's' : ''} masked
+                          </div>
+                        )}
+
+                        {/* Info text */}
+                        <div
+                          className={css({
+                            mt: 2,
+                            fontSize: 'xs',
+                            color: 'gray.500',
+                          })}
+                        >
+                          Training with masked images forces the model to learn frame edges, not
+                          markers.
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Pipeline Preview Section */}
+                  <div
+                    className={css({
+                      mt: 3,
+                      p: 2,
+                      bg: 'gray.900',
+                      borderRadius: 'md',
+                      border: '1px solid',
+                      borderColor: 'blue.700/50',
+                    })}
+                  >
+                    {/* Header with toggle */}
+                    <div
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mb: showPipelinePreview ? 2 : 0,
+                      })}
+                    >
+                      <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                        <span className={css({ fontSize: 'sm' })}>🔬</span>
+                        <span
+                          className={css({
+                            fontSize: 'sm',
+                            fontWeight: 'medium',
+                            color: 'blue.300',
+                          })}
+                        >
+                          Preprocessing Pipeline
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowPipelinePreview(!showPipelinePreview)}
+                        className={css({
+                          fontSize: 'xs',
+                          color: 'gray.400',
+                          bg: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          _hover: { color: 'gray.200' },
+                        })}
+                      >
+                        {showPipelinePreview ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+
+                    {showPipelinePreview && (
+                      <>
+                        {pipelineLoading ? (
                           <div
                             className={css({
                               display: 'flex',
@@ -620,10 +927,10 @@ export function BoundaryDataPanel({ onDataChanged, showHeader = false }: Boundar
                               ⏳
                             </span>
                             <span className={css({ ml: 2, fontSize: 'sm' })}>
-                              Generating masked preview...
+                              Generating pipeline preview...
                             </span>
                           </div>
-                        ) : maskingError ? (
+                        ) : pipelineError ? (
                           <div
                             className={css({
                               display: 'flex',
@@ -637,398 +944,249 @@ export function BoundaryDataPanel({ onDataChanged, showHeader = false }: Boundar
                               p: 2,
                             })}
                           >
-                            <span>❌ {maskingError}</span>
+                            <span>❌ {pipelineError}</span>
                           </div>
-                        ) : maskedImageUrl ? (
-                          <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={maskedImageUrl}
-                              alt="Marker-masked preview"
-                              className={css({ width: '100%', display: 'block' })}
-                            />
-                            {/* Show corner overlay on masked image too */}
-                            <svg
-                              viewBox="0 0 100 100"
-                              preserveAspectRatio="none"
-                              className={css({
-                                position: 'absolute',
-                                inset: 0,
-                                width: '100%',
-                                height: '100%',
-                                pointerEvents: 'none',
-                              })}
-                            >
-                              <polygon
-                                points={`${selectedFrame.corners.topLeft.x * 100},${selectedFrame.corners.topLeft.y * 100} ${selectedFrame.corners.topRight.x * 100},${selectedFrame.corners.topRight.y * 100} ${selectedFrame.corners.bottomRight.x * 100},${selectedFrame.corners.bottomRight.y * 100} ${selectedFrame.corners.bottomLeft.x * 100},${selectedFrame.corners.bottomLeft.y * 100}`}
-                                fill="rgba(249, 115, 22, 0.1)"
-                                stroke="rgba(249, 115, 22, 0.9)"
-                                strokeWidth="1"
-                              />
-                            </svg>
-                          </>
+                        ) : pipelinePreview ? (
+                          <div
+                            className={css({ display: 'flex', flexDirection: 'column', gap: 3 })}
+                          >
+                            {pipelinePreview.steps.map((step) => (
+                              <div
+                                key={step.step}
+                                className={css({
+                                  p: 2,
+                                  bg: 'gray.800',
+                                  borderRadius: 'md',
+                                  border: '1px solid',
+                                  borderColor: 'gray.700',
+                                })}
+                              >
+                                {/* Step header */}
+                                <div
+                                  className={css({
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    mb: 2,
+                                  })}
+                                >
+                                  <span
+                                    className={css({
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: '20px',
+                                      height: '20px',
+                                      bg: 'blue.600',
+                                      color: 'white',
+                                      borderRadius: 'full',
+                                      fontSize: 'xs',
+                                      fontWeight: 'bold',
+                                    })}
+                                  >
+                                    {step.step}
+                                  </span>
+                                  <span
+                                    className={css({
+                                      fontSize: 'sm',
+                                      fontWeight: 'medium',
+                                      color: 'gray.100',
+                                    })}
+                                  >
+                                    {step.title}
+                                  </span>
+                                </div>
+
+                                {/* Step description */}
+                                <div
+                                  className={css({
+                                    fontSize: 'xs',
+                                    color: 'gray.400',
+                                    mb: 2,
+                                  })}
+                                >
+                                  {step.description}
+                                </div>
+
+                                {/* Single image step */}
+                                {step.image_base64 && (
+                                  <div
+                                    className={css({
+                                      borderRadius: 'sm',
+                                      overflow: 'hidden',
+                                      border: '1px solid',
+                                      borderColor: 'gray.600',
+                                    })}
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={`data:image/jpeg;base64,${step.image_base64}`}
+                                      alt={step.title}
+                                      className={css({
+                                        width: '100%',
+                                        display: 'block',
+                                      })}
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Augmentation variants */}
+                                {step.variants && (
+                                  <div
+                                    className={css({
+                                      display: 'grid',
+                                      gridTemplateColumns: 'repeat(3, 1fr)',
+                                      gap: 1,
+                                    })}
+                                  >
+                                    {step.variants.map((variant, i) => (
+                                      <div
+                                        key={i}
+                                        className={css({
+                                          position: 'relative',
+                                          borderRadius: 'sm',
+                                          overflow: 'hidden',
+                                          border:
+                                            variant.label === 'Original'
+                                              ? '2px solid'
+                                              : '1px solid',
+                                          borderColor:
+                                            variant.label === 'Original' ? 'green.500' : 'gray.600',
+                                        })}
+                                      >
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                          src={`data:image/jpeg;base64,${variant.image_base64}`}
+                                          alt={variant.label}
+                                          className={css({
+                                            width: '100%',
+                                            aspectRatio: '1',
+                                            objectFit: 'cover',
+                                          })}
+                                        />
+                                        <div
+                                          className={css({
+                                            position: 'absolute',
+                                            bottom: 0,
+                                            left: 0,
+                                            right: 0,
+                                            bg: 'black/80',
+                                            fontSize: '8px',
+                                            color: 'gray.200',
+                                            textAlign: 'center',
+                                            py: '2px',
+                                            px: 1,
+                                          })}
+                                          title={variant.description}
+                                        >
+                                          {variant.label}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Notes */}
+                                {step.note && (
+                                  <div
+                                    className={css({
+                                      mt: 2,
+                                      fontSize: 'xs',
+                                      color: 'gray.500',
+                                      fontStyle: 'italic',
+                                    })}
+                                  >
+                                    Note: {step.note}
+                                  </div>
+                                )}
+
+                                {/* Error */}
+                                {step.error && (
+                                  <div
+                                    className={css({
+                                      mt: 2,
+                                      fontSize: 'xs',
+                                      color: 'red.400',
+                                    })}
+                                  >
+                                    Error: {step.error}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+
+                            {/* Info text */}
+                            <div className={css({ fontSize: 'xs', color: 'gray.500' })}>
+                              This shows the exact preprocessing pipeline used during training. Each
+                              image goes through these steps in order.
+                            </div>
+                          </div>
                         ) : (
                           <div
                             className={css({
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              height: '100px',
+                              height: '60px',
                               color: 'gray.500',
                               fontSize: 'sm',
                             })}
                           >
-                            No masked preview
+                            Click "Show" to load pipeline preview
                           </div>
                         )}
-                      </div>
+                      </>
+                    )}
+                  </div>
 
-                      {/* Masking stats */}
-                      {maskedImageUrl && maskRegions.length > 0 && (
-                        <div
-                          className={css({
-                            mt: 2,
-                            fontSize: 'xs',
-                            color: 'gray.400',
-                          })}
-                        >
-                          {maskRegions.length} marker region
-                          {maskRegions.length !== 1 ? 's' : ''} masked
-                        </div>
-                      )}
+                  {/* Metadata */}
+                  <div className={css({ fontSize: 'sm' })}>
+                    <div className={css({ color: 'gray.400', mb: 1 })}>Captured</div>
+                    <div className={css({ color: 'gray.200' })}>
+                      {selectedFrame.capturedAt
+                        ? new Date(selectedFrame.capturedAt).toLocaleString()
+                        : 'Unknown'}
+                    </div>
+                  </div>
 
-                      {/* Info text */}
-                      <div
-                        className={css({
-                          mt: 2,
-                          fontSize: 'xs',
-                          color: 'gray.500',
-                        })}
-                      >
-                        Training with masked images forces the model to learn frame edges, not
-                        markers.
-                      </div>
-                    </>
-                  )}
-                </div>
+                  <div className={css({ fontSize: 'sm' })}>
+                    <div className={css({ color: 'gray.400', mb: 1 })}>Resolution</div>
+                    <div className={css({ color: 'gray.200' })}>
+                      {selectedFrame.frameWidth} × {selectedFrame.frameHeight}
+                    </div>
+                  </div>
 
-                {/* Pipeline Preview Section */}
-                <div
-                  className={css({
-                    mt: 3,
-                    p: 2,
-                    bg: 'gray.900',
-                    borderRadius: 'md',
-                    border: '1px solid',
-                    borderColor: 'blue.700/50',
-                  })}
-                >
-                  {/* Header with toggle */}
-                  <div
+                  <div className={css({ fontSize: 'sm' })}>
+                    <div className={css({ color: 'gray.400', mb: 1 })}>Device</div>
+                    <div className={css({ color: 'gray.200', fontFamily: 'mono', fontSize: 'xs' })}>
+                      {selectedFrame.deviceId}
+                    </div>
+                  </div>
+
+                  {/* Delete button */}
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(selectedFrame)}
+                    disabled={deleting === selectedFrame.baseName}
                     className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      mb: showPipelinePreview ? 2 : 0,
+                      mt: 'auto',
+                      py: 2,
+                      bg: 'red.600/20',
+                      color: 'red.400',
+                      border: '1px solid',
+                      borderColor: 'red.600/50',
+                      borderRadius: 'md',
+                      cursor: 'pointer',
+                      fontWeight: 'medium',
+                      _hover: { bg: 'red.600/30', borderColor: 'red.500' },
+                      _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                     })}
                   >
-                    <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
-                      <span className={css({ fontSize: 'sm' })}>🔬</span>
-                      <span
-                        className={css({
-                          fontSize: 'sm',
-                          fontWeight: 'medium',
-                          color: 'blue.300',
-                        })}
-                      >
-                        Preprocessing Pipeline
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowPipelinePreview(!showPipelinePreview)}
-                      className={css({
-                        fontSize: 'xs',
-                        color: 'gray.400',
-                        bg: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        _hover: { color: 'gray.200' },
-                      })}
-                    >
-                      {showPipelinePreview ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-
-                  {showPipelinePreview && (
-                    <>
-                      {pipelineLoading ? (
-                        <div
-                          className={css({
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            height: '100px',
-                            color: 'gray.400',
-                          })}
-                        >
-                          <span className={css({ animation: 'spin 1s linear infinite' })}>⏳</span>
-                          <span className={css({ ml: 2, fontSize: 'sm' })}>
-                            Generating pipeline preview...
-                          </span>
-                        </div>
-                      ) : pipelineError ? (
-                        <div
-                          className={css({
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            height: '100px',
-                            color: 'red.400',
-                            fontSize: 'sm',
-                            textAlign: 'center',
-                            p: 2,
-                          })}
-                        >
-                          <span>❌ {pipelineError}</span>
-                        </div>
-                      ) : pipelinePreview ? (
-                        <div className={css({ display: 'flex', flexDirection: 'column', gap: 3 })}>
-                          {pipelinePreview.steps.map((step) => (
-                            <div
-                              key={step.step}
-                              className={css({
-                                p: 2,
-                                bg: 'gray.800',
-                                borderRadius: 'md',
-                                border: '1px solid',
-                                borderColor: 'gray.700',
-                              })}
-                            >
-                              {/* Step header */}
-                              <div
-                                className={css({
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 2,
-                                  mb: 2,
-                                })}
-                              >
-                                <span
-                                  className={css({
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    width: '20px',
-                                    height: '20px',
-                                    bg: 'blue.600',
-                                    color: 'white',
-                                    borderRadius: 'full',
-                                    fontSize: 'xs',
-                                    fontWeight: 'bold',
-                                  })}
-                                >
-                                  {step.step}
-                                </span>
-                                <span
-                                  className={css({
-                                    fontSize: 'sm',
-                                    fontWeight: 'medium',
-                                    color: 'gray.100',
-                                  })}
-                                >
-                                  {step.title}
-                                </span>
-                              </div>
-
-                              {/* Step description */}
-                              <div
-                                className={css({
-                                  fontSize: 'xs',
-                                  color: 'gray.400',
-                                  mb: 2,
-                                })}
-                              >
-                                {step.description}
-                              </div>
-
-                              {/* Single image step */}
-                              {step.image_base64 && (
-                                <div
-                                  className={css({
-                                    borderRadius: 'sm',
-                                    overflow: 'hidden',
-                                    border: '1px solid',
-                                    borderColor: 'gray.600',
-                                  })}
-                                >
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={`data:image/jpeg;base64,${step.image_base64}`}
-                                    alt={step.title}
-                                    className={css({
-                                      width: '100%',
-                                      display: 'block',
-                                    })}
-                                  />
-                                </div>
-                              )}
-
-                              {/* Augmentation variants */}
-                              {step.variants && (
-                                <div
-                                  className={css({
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(3, 1fr)',
-                                    gap: 1,
-                                  })}
-                                >
-                                  {step.variants.map((variant, i) => (
-                                    <div
-                                      key={i}
-                                      className={css({
-                                        position: 'relative',
-                                        borderRadius: 'sm',
-                                        overflow: 'hidden',
-                                        border:
-                                          variant.label === 'Original' ? '2px solid' : '1px solid',
-                                        borderColor:
-                                          variant.label === 'Original' ? 'green.500' : 'gray.600',
-                                      })}
-                                    >
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img
-                                        src={`data:image/jpeg;base64,${variant.image_base64}`}
-                                        alt={variant.label}
-                                        className={css({
-                                          width: '100%',
-                                          aspectRatio: '1',
-                                          objectFit: 'cover',
-                                        })}
-                                      />
-                                      <div
-                                        className={css({
-                                          position: 'absolute',
-                                          bottom: 0,
-                                          left: 0,
-                                          right: 0,
-                                          bg: 'black/80',
-                                          fontSize: '8px',
-                                          color: 'gray.200',
-                                          textAlign: 'center',
-                                          py: '2px',
-                                          px: 1,
-                                        })}
-                                        title={variant.description}
-                                      >
-                                        {variant.label}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Notes */}
-                              {step.note && (
-                                <div
-                                  className={css({
-                                    mt: 2,
-                                    fontSize: 'xs',
-                                    color: 'gray.500',
-                                    fontStyle: 'italic',
-                                  })}
-                                >
-                                  Note: {step.note}
-                                </div>
-                              )}
-
-                              {/* Error */}
-                              {step.error && (
-                                <div
-                                  className={css({
-                                    mt: 2,
-                                    fontSize: 'xs',
-                                    color: 'red.400',
-                                  })}
-                                >
-                                  Error: {step.error}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-
-                          {/* Info text */}
-                          <div className={css({ fontSize: 'xs', color: 'gray.500' })}>
-                            This shows the exact preprocessing pipeline used during training. Each
-                            image goes through these steps in order.
-                          </div>
-                        </div>
-                      ) : (
-                        <div
-                          className={css({
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            height: '60px',
-                            color: 'gray.500',
-                            fontSize: 'sm',
-                          })}
-                        >
-                          Click "Show" to load pipeline preview
-                        </div>
-                      )}
-                    </>
-                  )}
+                    {deleting === selectedFrame.baseName ? 'Deleting...' : '🗑️ Delete Frame'}
+                  </button>
                 </div>
-
-                {/* Metadata */}
-                <div className={css({ fontSize: 'sm' })}>
-                  <div className={css({ color: 'gray.400', mb: 1 })}>Captured</div>
-                  <div className={css({ color: 'gray.200' })}>
-                    {selectedFrame.capturedAt
-                      ? new Date(selectedFrame.capturedAt).toLocaleString()
-                      : 'Unknown'}
-                  </div>
-                </div>
-
-                <div className={css({ fontSize: 'sm' })}>
-                  <div className={css({ color: 'gray.400', mb: 1 })}>Resolution</div>
-                  <div className={css({ color: 'gray.200' })}>
-                    {selectedFrame.frameWidth} × {selectedFrame.frameHeight}
-                  </div>
-                </div>
-
-                <div className={css({ fontSize: 'sm' })}>
-                  <div className={css({ color: 'gray.400', mb: 1 })}>Device</div>
-                  <div className={css({ color: 'gray.200', fontFamily: 'mono', fontSize: 'xs' })}>
-                    {selectedFrame.deviceId}
-                  </div>
-                </div>
-
-                {/* Delete button */}
-                <button
-                  type="button"
-                  onClick={() => handleDelete(selectedFrame)}
-                  disabled={deleting === selectedFrame.baseName}
-                  className={css({
-                    mt: 'auto',
-                    py: 2,
-                    bg: 'red.600/20',
-                    color: 'red.400',
-                    border: '1px solid',
-                    borderColor: 'red.600/50',
-                    borderRadius: 'md',
-                    cursor: 'pointer',
-                    fontWeight: 'medium',
-                    _hover: { bg: 'red.600/30', borderColor: 'red.500' },
-                    _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-                  })}
-                >
-                  {deleting === selectedFrame.baseName ? 'Deleting...' : '🗑️ Delete Frame'}
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>

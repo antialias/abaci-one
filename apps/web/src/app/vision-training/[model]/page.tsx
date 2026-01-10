@@ -21,9 +21,10 @@ export default function VisionTrainingDataPage() {
     <div
       data-component="vision-data-hub"
       className={css({
-        height: 'calc(100vh - var(--nav-height))',
         overflow: 'hidden',
+        pt: 4,
       })}
+      style={{ height: 'calc(100vh - var(--nav-height))' }}
     >
       {modelType === 'boundary-detector' && <BoundaryDataPanel showHeader />}
       {modelType === 'column-classifier' && <ColumnClassifierDataPanel showHeader />}

@@ -307,13 +307,14 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
     return (
       <div
         className={css({
-          minHeight: 'calc(100vh - var(--nav-height))',
           bg: 'gray.900',
           color: 'gray.100',
+          pt: 4,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         })}
+        style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
       >
         Loading...
       </div>
@@ -324,15 +325,16 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
     return (
       <div
         className={css({
-          minHeight: 'calc(100vh - var(--nav-height))',
           bg: 'gray.900',
           color: 'gray.100',
+          pt: 4,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           gap: 4,
         })}
+        style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
       >
         <div className={css({ color: 'red.400' })}>Error: {error || 'Session not found'}</div>
         <Link
@@ -364,10 +366,11 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
     <div
       data-component="session-detail-page"
       className={css({
-        minHeight: 'calc(100vh - var(--nav-height))',
         bg: 'gray.900',
         color: 'gray.100',
+        pt: 4,
       })}
+      style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
     >
       {/* Page header */}
       <div
@@ -487,7 +490,9 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
 
           {/* Configuration */}
           <div className={css({ p: 4, bg: 'gray.800', borderRadius: 'lg' })}>
-            <h2 className={css({ fontSize: 'lg', fontWeight: 'semibold', mb: 4 })}>Configuration</h2>
+            <h2 className={css({ fontSize: 'lg', fontWeight: 'semibold', mb: 4 })}>
+              Configuration
+            </h2>
             <InfoRow label="Epochs" value={session.config.epochs} />
             <InfoRow label="Batch Size" value={session.config.batchSize} />
             <InfoRow

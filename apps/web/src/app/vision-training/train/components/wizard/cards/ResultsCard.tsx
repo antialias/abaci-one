@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { css } from '../../../../../../../styled-system/css'
 import { ModelTester } from '../../ModelTester'
 import { useTrainingDiagnostics, type DiagnosticReason } from '../../TrainingDiagnosticsContext'
@@ -11,9 +12,16 @@ interface ResultsCardProps {
   error: string | null
   configuredEpochs: number
   onTrainAgain: () => void
+  onRerunTraining?: () => void
 }
 
-export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: ResultsCardProps) {
+export function ResultsCard({
+  result,
+  error,
+  configuredEpochs,
+  onTrainAgain,
+  onRerunTraining,
+}: ResultsCardProps) {
   const [activeTab, setActiveTab] = useState<'results' | 'test'>('results')
   const diagnostics = useTrainingDiagnostics()
 
@@ -166,18 +174,40 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
             Training Complete!
           </div>
 
-          {/* Main accuracy */}
-          <div
-            className={css({
-              fontSize: '4xl',
-              fontWeight: 'bold',
-              color: 'green.400',
-              mb: 0.5,
-            })}
-          >
-            {(accuracy * 100).toFixed(1)}%
-          </div>
-          <div className={css({ fontSize: 'sm', color: 'gray.500', mb: 4 })}>Final Accuracy</div>
+          {/* Main metric - pixel error for boundary detector, accuracy for column classifier */}
+          {isBoundaryDetector && result.final_pixel_error !== undefined ? (
+            <>
+              <div
+                className={css({
+                  fontSize: '4xl',
+                  fontWeight: 'bold',
+                  color: 'orange.400',
+                  mb: 0.5,
+                })}
+              >
+                {result.final_pixel_error.toFixed(1)}px
+              </div>
+              <div className={css({ fontSize: 'sm', color: 'gray.500', mb: 4 })}>
+                Avg Corner Error
+              </div>
+            </>
+          ) : (
+            <>
+              <div
+                className={css({
+                  fontSize: '4xl',
+                  fontWeight: 'bold',
+                  color: 'green.400',
+                  mb: 0.5,
+                })}
+              >
+                {(accuracy * 100).toFixed(1)}%
+              </div>
+              <div className={css({ fontSize: 'sm', color: 'gray.500', mb: 4 })}>
+                Final Accuracy
+              </div>
+            </>
+          )}
 
           {/* Stats grid */}
           <div
@@ -281,8 +311,8 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
               </div>
             )}
 
-          {/* MAE breakdown (boundary detector only) */}
-          {isBoundaryDetector && result.final_mae !== undefined && (
+          {/* Pixel error quality indicator (boundary detector only) */}
+          {isBoundaryDetector && result.final_pixel_error !== undefined && (
             <div
               className={css({
                 p: 3,
@@ -293,21 +323,29 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
                 textAlign: 'center',
               })}
             >
-              <div className={css({ color: 'gray.600', fontSize: 'xs', mb: 1 })}>
-                Mean Absolute Error
-              </div>
+              <div className={css({ color: 'gray.600', fontSize: 'xs', mb: 1 })}>Quality</div>
               <div
                 className={css({
-                  fontFamily: 'mono',
-                  color: 'cyan.400',
                   fontWeight: 'medium',
-                  fontSize: 'lg',
+                  fontSize: 'md',
+                  color:
+                    result.final_pixel_error < 5
+                      ? 'green.400'
+                      : result.final_pixel_error < 10
+                        ? 'yellow.400'
+                        : 'orange.400',
                 })}
               >
-                {(result.final_mae * 100).toFixed(2)}%
+                {result.final_pixel_error < 5
+                  ? '✓ Excellent'
+                  : result.final_pixel_error < 10
+                    ? '◐ Good'
+                    : result.final_pixel_error < 15
+                      ? '○ Acceptable'
+                      : '⚠ Needs more data'}
               </div>
               <div className={css({ fontSize: 'xs', color: 'gray.500', mt: 1 })}>
-                Lower is better (corner position error)
+                &lt;5px excellent, &lt;10px good, &lt;15px acceptable
               </div>
             </div>
           )}
@@ -324,25 +362,87 @@ export function ResultsCard({ result, error, configuredEpochs, onTrainAgain }: R
             <RemediationSection reasons={diagnostics.reasons} />
           )}
 
-          {/* Train again button */}
-          <button
-            type="button"
-            onClick={onTrainAgain}
+          {/* Action buttons */}
+          <div
             className={css({
-              px: 6,
-              py: 3,
-              bg: 'blue.600',
-              color: 'white',
-              borderRadius: 'lg',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              fontSize: 'md',
-              _hover: { bg: 'blue.500' },
+              display: 'flex',
+              gap: 3,
+              justifyContent: 'center',
+              flexWrap: 'wrap',
             })}
           >
-            Train Again
-          </button>
+            {/* Re-run Training button (same config, train immediately) */}
+            {onRerunTraining && (
+              <button
+                type="button"
+                onClick={onRerunTraining}
+                className={css({
+                  px: 5,
+                  py: 2.5,
+                  bg: 'green.600',
+                  color: 'white',
+                  borderRadius: 'lg',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: 'sm',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  _hover: { bg: 'green.500' },
+                })}
+              >
+                <span>🔄</span>
+                <span>Re-run Training</span>
+              </button>
+            )}
+
+            {/* Start Over button (go back to model selection) */}
+            <button
+              type="button"
+              onClick={onTrainAgain}
+              className={css({
+                px: 5,
+                py: 2.5,
+                bg: 'gray.700',
+                color: 'white',
+                borderRadius: 'lg',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 'medium',
+                fontSize: 'sm',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                _hover: { bg: 'gray.600' },
+              })}
+            >
+              <span>⏮</span>
+              <span>Start Over</span>
+            </button>
+
+            {/* View All Sessions link */}
+            <Link
+              href="/vision-training/sessions"
+              className={css({
+                px: 5,
+                py: 2.5,
+                bg: 'blue.600',
+                color: 'white',
+                borderRadius: 'lg',
+                textDecoration: 'none',
+                fontWeight: 'medium',
+                fontSize: 'sm',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                _hover: { bg: 'blue.500' },
+              })}
+            >
+              <span>📋</span>
+              <span>View Sessions</span>
+            </Link>
+          </div>
         </div>
       ) : isColumnClassifier ? (
         <ModelTester columnCount={4} />
