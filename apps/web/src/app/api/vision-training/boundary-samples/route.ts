@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import type { NextRequest } from 'next/server'
 import type { QuadCorners } from '@/types/vision'
+import { deleteBoundaryDetectorSample } from '@/lib/vision/trainingDataDeletion'
 
 // Force dynamic rendering - this route writes to disk
 export const dynamic = 'force-dynamic'
@@ -255,7 +256,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 /**
  * DELETE /api/vision-training/boundary-samples
  *
- * Delete a specific boundary sample.
+ * Delete a specific boundary sample and record to tombstone.
  *
  * Query params:
  * - deviceId: Device directory (default: "default")
@@ -271,40 +272,21 @@ export async function DELETE(request: NextRequest): Promise<Response> {
       return Response.json({ success: false, error: 'Missing baseName' }, { status: 400 })
     }
 
-    // Validate baseName to prevent path traversal
-    if (baseName.includes('/') || baseName.includes('\\') || baseName.includes('..')) {
-      return Response.json({ success: false, error: 'Invalid baseName' }, { status: 400 })
+    const result = await deleteBoundaryDetectorSample(deviceId, baseName)
+
+    if (!result.success) {
+      return Response.json({ success: false, error: result.error }, { status: 400 })
     }
 
-    const deviceDir = path.join(BOUNDARY_DETECTOR_DIR, deviceId)
-    const pngPath = path.join(deviceDir, `${baseName}.png`)
-    const jpgPath = path.join(deviceDir, `${baseName}.jpg`)
-    const annotationPath = path.join(deviceDir, `${baseName}.json`)
-
-    let deleted = false
-
-    // Try to delete PNG version
-    if (fs.existsSync(pngPath)) {
-      fs.unlinkSync(pngPath)
-      deleted = true
-    }
-
-    // Try to delete JPG version
-    if (fs.existsSync(jpgPath)) {
-      fs.unlinkSync(jpgPath)
-      deleted = true
-    }
-
-    if (fs.existsSync(annotationPath)) {
-      fs.unlinkSync(annotationPath)
-      deleted = true
-    }
-
-    if (!deleted) {
+    if (!result.deleted) {
       return Response.json({ success: false, error: 'Sample not found' }, { status: 404 })
     }
 
-    return Response.json({ success: true })
+    return Response.json({
+      success: true,
+      tombstoneRecorded: result.tombstoneRecorded,
+      warning: result.tombstoneRecorded ? undefined : result.error,
+    })
   } catch (error) {
     console.error('[boundary-samples] DELETE Error:', error)
     return Response.json({ success: false, error: 'Failed to delete sample' }, { status: 500 })

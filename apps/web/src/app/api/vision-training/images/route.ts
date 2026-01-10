@@ -1,6 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 import { NextResponse } from 'next/server'
+import { deleteColumnClassifierSample } from '@/lib/vision/trainingDataDeletion'
 
 /**
  * Directory where collected training data is stored
@@ -195,34 +196,28 @@ export async function DELETE(request: Request): Promise<NextResponse> {
 
     let deleted = 0
     const errors: string[] = []
+    const warnings: string[] = []
 
     for (const { digit: d, filename } of filenames) {
-      // Validate digit
-      if (typeof d !== 'number' || d < 0 || d > 9 || !Number.isInteger(d)) {
-        errors.push(`Invalid digit for ${filename}`)
-        continue
-      }
-      // Validate filename - prevent path traversal
-      if (
-        typeof filename !== 'string' ||
-        filename.includes('..') ||
-        filename.includes('/') ||
-        filename.includes('\\') ||
-        !filename.endsWith('.png')
-      ) {
-        errors.push(`Invalid filename: ${filename}`)
+      // Basic type validation (detailed validation happens in deleteColumnClassifierSample)
+      if (typeof d !== 'number' || typeof filename !== 'string') {
+        errors.push(`Invalid input for ${filename}`)
         continue
       }
 
-      const filePath = path.join(TRAINING_DATA_DIR, String(d), filename)
-      try {
-        await fs.unlink(filePath)
+      const result = await deleteColumnClassifierSample(d, filename)
+
+      if (!result.success) {
+        errors.push(`${filename}: ${result.error}`)
+        continue
+      }
+
+      if (result.deleted) {
         deleted++
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-          errors.push(`Failed to delete ${filename}: ${(error as Error).message}`)
-        }
-        // Silently ignore ENOENT - file already gone is fine
+      }
+
+      if (!result.tombstoneRecorded) {
+        warnings.push(`${filename}: ${result.error}`)
       }
     }
 
@@ -230,6 +225,7 @@ export async function DELETE(request: Request): Promise<NextResponse> {
       success: true,
       deleted,
       errors: errors.length > 0 ? errors : undefined,
+      warnings: warnings.length > 0 ? warnings : undefined,
     })
   } catch (error) {
     console.error('[vision-training] Error deleting images:', error)

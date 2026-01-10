@@ -2,6 +2,7 @@ import { spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import type { NextRequest } from 'next/server'
+import { readTombstone } from '@/lib/vision/trainingDataDeletion'
 
 // Force dynamic rendering - this route reads from disk and runs rsync
 export const dynamic = 'force-dynamic'
@@ -34,28 +35,6 @@ function getModelType(request: NextRequest): ModelType {
 }
 
 /**
- * Get the deleted files path for a model type
- */
-function getDeletedFilePath(modelType: ModelType): string {
-  return path.join(MODEL_PATHS[modelType].local, '.deleted')
-}
-
-/**
- * Read the list of intentionally deleted files for a model type
- */
-async function readDeletedFiles(modelType: ModelType): Promise<Set<string>> {
-  try {
-    const deletedFile = getDeletedFilePath(modelType)
-    const content = await fs.promises.readFile(deletedFile, 'utf-8')
-    const lines = content.split('\n').filter((line) => line.trim())
-    return new Set(lines)
-  } catch {
-    // File doesn't exist yet - no deletions recorded
-    return new Set()
-  }
-}
-
-/**
  * POST /api/vision-training/sync
  * Sync training data from production to local using rsync
  * Returns SSE stream with progress updates
@@ -84,7 +63,7 @@ export async function POST(request: NextRequest) {
         })
 
         // Read deleted files to exclude from sync
-        const deletedFiles = await readDeletedFiles(modelType)
+        const deletedFiles = await readTombstone(modelType)
         const excludeArgs: string[] = []
 
         // Add each deleted file as an exclude pattern
@@ -233,7 +212,7 @@ export async function GET(request: NextRequest) {
     // Get local files and deleted files
     const localStats = await countLocalData(modelType)
     const localFiles = await listLocalFiles(modelType)
-    const deletedFiles = await readDeletedFiles(modelType)
+    const deletedFiles = await readTombstone(modelType)
 
     // Find files that exist on remote but not locally (excluding intentionally deleted)
     const newOnRemote: string[] = []
