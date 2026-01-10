@@ -321,7 +321,7 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
     )
   }
 
-  if (error || !session) {
+  if (error || !session || !session.result) {
     return (
       <div
         className={css({
@@ -336,7 +336,9 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
         })}
         style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
       >
-        <div className={css({ color: 'red.400' })}>Error: {error || 'Session not found'}</div>
+        <div className={css({ color: 'red.400' })}>
+          Error: {error || (!session ? 'Session not found' : 'Session has no result data')}
+        </div>
         <Link
           href={`/vision-training/${modelType}/sessions`}
           className={css({ color: 'blue.400', textDecoration: 'underline' })}
@@ -462,10 +464,10 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
             <h2 className={css({ fontSize: 'lg', fontWeight: 'semibold', mb: 4 })}>Results</h2>
             <InfoRow
               label="Final Accuracy"
-              value={`${(result.final_accuracy * 100).toFixed(1)}%`}
+              value={`${((result.final_accuracy ?? 0) * 100).toFixed(1)}%`}
               highlight
             />
-            <InfoRow label="Final Loss" value={result.final_loss.toFixed(4)} />
+            <InfoRow label="Final Loss" value={(result.final_loss ?? 0).toFixed(4)} />
             {session.modelType === 'boundary-detector' && 'final_pixel_error' in result && (
               <InfoRow
                 label="Pixel Error"
@@ -497,7 +499,7 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
             <InfoRow label="Batch Size" value={session.config.batchSize} />
             <InfoRow
               label="Validation Split"
-              value={`${(session.config.validationSplit * 100).toFixed(0)}%`}
+              value={`${((session.config.validationSplit ?? 0.2) * 100).toFixed(0)}%`}
             />
             <InfoRow
               label="Color Augmentation"

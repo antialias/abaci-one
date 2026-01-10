@@ -36,9 +36,20 @@ export async function GET(request: NextRequest): Promise<Response> {
       return new Response('Invalid deviceId', { status: 400 })
     }
 
-    const imagePath = path.join(BOUNDARY_DETECTOR_DIR, deviceId, `${baseName}.png`)
+    // Try PNG first, then JPG (passive captures from phone are JPEG)
+    const pngPath = path.join(BOUNDARY_DETECTOR_DIR, deviceId, `${baseName}.png`)
+    const jpgPath = path.join(BOUNDARY_DETECTOR_DIR, deviceId, `${baseName}.jpg`)
 
-    if (!fs.existsSync(imagePath)) {
+    let imagePath: string
+    let contentType: string
+
+    if (fs.existsSync(pngPath)) {
+      imagePath = pngPath
+      contentType = 'image/png'
+    } else if (fs.existsSync(jpgPath)) {
+      imagePath = jpgPath
+      contentType = 'image/jpeg'
+    } else {
       return new Response('Image not found', { status: 404 })
     }
 
@@ -46,7 +57,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 
     return new Response(imageBuffer, {
       headers: {
-        'Content-Type': 'image/png',
+        'Content-Type': contentType,
         'Cache-Control': 'public, max-age=3600',
       },
     })
