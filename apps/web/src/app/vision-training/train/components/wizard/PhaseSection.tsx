@@ -8,7 +8,6 @@ import {
   type PhaseDefinition,
   type PhaseStatus,
   type ModelType,
-  type ModelsSummary,
   type SamplesData,
   type HardwareInfo,
   type PreflightInfo,
@@ -16,18 +15,18 @@ import {
   type ServerPhase,
   type EpochData,
   type DatasetInfo,
+  type LoadingProgress,
   type TrainingResult,
 } from './types'
 
 interface PhaseSectionProps {
   phase: PhaseDefinition
+  phaseIndex: number
   status: PhaseStatus
   currentCardIndex: number
-  // Model selection
-  modelType: ModelType | null
-  modelsSummary: ModelsSummary | null
-  modelsSummaryLoading: boolean
-  onSelectModel: (model: ModelType) => void
+  onGoToCard: (phaseIndex: number, cardIndex: number) => void
+  // Model type (from URL)
+  modelType: ModelType
   // Data
   samples: SamplesData | null
   samplesLoading: boolean
@@ -44,8 +43,11 @@ interface PhaseSectionProps {
   serverPhase: ServerPhase
   statusMessage: string
   currentEpoch: EpochData | null
+  epochHistory: EpochData[]
   bestAccuracy: number
+  bestPixelError: number | null
   datasetInfo: DatasetInfo | null
+  loadingProgress: LoadingProgress | null
   result: TrainingResult | null
   error: string | null
   // Summaries
@@ -54,7 +56,9 @@ interface PhaseSectionProps {
   onProgress: () => void
   onStartTraining: () => void
   onCancel: () => void
+  onStopAndSave?: () => void
   onTrainAgain: () => void
+  onRerunTraining?: () => void
   onSyncComplete?: () => void
   onDataWarningAcknowledged?: () => void
   canStartTraining: boolean
@@ -68,12 +72,11 @@ const STATUS_STYLES: Record<PhaseStatus, { borderColor: string; bg: string; opac
 
 export function PhaseSection({
   phase,
+  phaseIndex,
   status,
   currentCardIndex,
+  onGoToCard,
   modelType,
-  modelsSummary,
-  modelsSummaryLoading,
-  onSelectModel,
   samples,
   samplesLoading,
   hardwareInfo,
@@ -88,15 +91,20 @@ export function PhaseSection({
   serverPhase,
   statusMessage,
   currentEpoch,
+  epochHistory,
   bestAccuracy,
+  bestPixelError,
   datasetInfo,
+  loadingProgress,
   result,
   error,
   getCardSummary,
   onProgress,
   onStartTraining,
   onCancel,
+  onStopAndSave,
   onTrainAgain,
+  onRerunTraining,
   onSyncComplete,
   onDataWarningAcknowledged,
   canStartTraining,
@@ -175,15 +183,13 @@ export function PhaseSection({
       {/* Phase Content */}
       {status === 'current' ? (
         <div className={css({ p: 4 })}>
-          {/* Card Carousel */}
+          {/* Card Carousel - for current phase */}
           <CardCarousel
             cards={phase.cards}
             currentCardIndex={currentCardIndex}
-            // Model selection
+            onCardClick={(cardIndex) => onGoToCard(phaseIndex, cardIndex)}
+            // Model type (from URL)
             modelType={modelType}
-            modelsSummary={modelsSummary}
-            modelsSummaryLoading={modelsSummaryLoading}
-            onSelectModel={onSelectModel}
             // Data
             samples={samples}
             samplesLoading={samplesLoading}
@@ -200,8 +206,11 @@ export function PhaseSection({
             serverPhase={serverPhase}
             statusMessage={statusMessage}
             currentEpoch={currentEpoch}
+            epochHistory={epochHistory}
             bestAccuracy={bestAccuracy}
+            bestPixelError={bestPixelError}
             datasetInfo={datasetInfo}
+            loadingProgress={loadingProgress}
             result={result}
             error={error}
             // Summaries
@@ -210,7 +219,9 @@ export function PhaseSection({
             onProgress={onProgress}
             onStartTraining={onStartTraining}
             onCancel={onCancel}
+            onStopAndSave={onStopAndSave}
             onTrainAgain={onTrainAgain}
+            onRerunTraining={onRerunTraining}
             onSyncComplete={onSyncComplete}
             onDataWarningAcknowledged={onDataWarningAcknowledged}
             canStartTraining={canStartTraining}
@@ -228,13 +239,37 @@ export function PhaseSection({
         /* Collapsed summary for done/upcoming */
         <div className={css({ px: 4, py: 2 })}>
           {status === 'done' ? (
-            <div className={css({ display: 'flex', gap: 3, flexWrap: 'wrap' })}>
-              {phase.cards.map((cardId) => {
+            <div
+              className={css({ display: 'flex', gap: 3, flexWrap: 'wrap', cursor: 'pointer' })}
+              onClick={() => onGoToCard(phaseIndex, phase.cards.length - 1)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  onGoToCard(phaseIndex, phase.cards.length - 1)
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              title={`Go back to ${phase.title}`}
+            >
+              {phase.cards.map((cardId, cardIndex) => {
                 const summary = getCardSummary(cardId)
                 const cardDef = CARDS[cardId]
                 return (
                   <div
                     key={cardId}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onGoToCard(phaseIndex, cardIndex)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation()
+                        onGoToCard(phaseIndex, cardIndex)
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    title={`Go back to ${cardDef.title}`}
                     className={css({
                       display: 'flex',
                       alignItems: 'center',
@@ -244,6 +279,12 @@ export function PhaseSection({
                       bg: 'gray.800',
                       borderRadius: 'md',
                       fontSize: 'xs',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      _hover: {
+                        bg: 'gray.700',
+                        transform: 'scale(1.02)',
+                      },
                     })}
                   >
                     <span>{cardDef.icon}</span>

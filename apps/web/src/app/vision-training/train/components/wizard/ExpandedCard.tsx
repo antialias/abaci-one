@@ -1,7 +1,6 @@
 'use client'
 
 import { css } from '../../../../../../styled-system/css'
-import { ModelCard } from './cards/ModelCard'
 import { DataCard } from './cards/DataCard'
 import { HardwareCard } from './cards/HardwareCard'
 import { DependencyCard } from './cards/DependencyCard'
@@ -16,7 +15,6 @@ import {
   isColumnClassifierSamples,
   type CardId,
   type ModelType,
-  type ModelsSummary,
   type SamplesData,
   type HardwareInfo,
   type PreflightInfo,
@@ -24,16 +22,14 @@ import {
   type ServerPhase,
   type EpochData,
   type DatasetInfo,
+  type LoadingProgress,
   type TrainingResult,
 } from './types'
 
 interface ExpandedCardProps {
   cardId: CardId
-  // Model selection
-  modelType: ModelType | null
-  modelsSummary: ModelsSummary | null
-  modelsSummaryLoading: boolean
-  onSelectModel: (model: ModelType) => void
+  // Model type (from URL)
+  modelType: ModelType
   // Data
   samples: SamplesData | null
   samplesLoading: boolean
@@ -50,15 +46,20 @@ interface ExpandedCardProps {
   serverPhase: ServerPhase
   statusMessage: string
   currentEpoch: EpochData | null
+  epochHistory: EpochData[]
   bestAccuracy: number
+  bestPixelError: number | null
   datasetInfo: DatasetInfo | null
+  loadingProgress: LoadingProgress | null
   result: TrainingResult | null
   error: string | null
   // Actions
   onProgress: () => void
   onStartTraining: () => void
   onCancel: () => void
+  onStopAndSave?: () => void
   onTrainAgain: () => void
+  onRerunTraining?: () => void
   onSyncComplete?: () => void
   onDataWarningAcknowledged?: () => void
   canStartTraining: boolean
@@ -67,9 +68,6 @@ interface ExpandedCardProps {
 export function ExpandedCard({
   cardId,
   modelType,
-  modelsSummary,
-  modelsSummaryLoading,
-  onSelectModel,
   samples,
   samplesLoading,
   hardwareInfo,
@@ -84,14 +82,19 @@ export function ExpandedCard({
   serverPhase,
   statusMessage,
   currentEpoch,
+  epochHistory,
   bestAccuracy,
+  bestPixelError,
   datasetInfo,
+  loadingProgress,
   result,
   error,
   onProgress,
   onStartTraining,
   onCancel,
+  onStopAndSave,
   onTrainAgain,
+  onRerunTraining,
   onSyncComplete,
   onDataWarningAcknowledged,
   canStartTraining,
@@ -100,16 +103,6 @@ export function ExpandedCard({
 
   const renderCardContent = () => {
     switch (cardId) {
-      case 'model':
-        return (
-          <ModelCard
-            modelsSummary={modelsSummary}
-            summaryLoading={modelsSummaryLoading}
-            selectedModel={modelType}
-            onSelectModel={onSelectModel}
-            onProgress={onProgress}
-          />
-        )
       case 'data':
         return (
           <DataCard
@@ -153,20 +146,31 @@ export function ExpandedCard({
             onStartTraining={onStartTraining}
             canStart={canStartTraining}
             totalImages={totalSamples}
+            modelType={modelType}
           />
         )
       }
       case 'setup':
         return <SetupCard message={statusMessage} />
       case 'loading':
-        return <LoadingCard datasetInfo={datasetInfo} message={statusMessage} />
+        return (
+          <LoadingCard
+            datasetInfo={datasetInfo}
+            loadingProgress={loadingProgress}
+            message={statusMessage}
+          />
+        )
       case 'training':
         return (
           <TrainingCard
             currentEpoch={currentEpoch}
+            epochHistory={epochHistory}
             totalEpochs={config.epochs}
             bestAccuracy={bestAccuracy}
+            bestPixelError={bestPixelError}
+            statusMessage={statusMessage}
             onCancel={onCancel}
+            onStopAndSave={onStopAndSave}
           />
         )
       case 'export':
@@ -178,6 +182,7 @@ export function ExpandedCard({
             error={error}
             configuredEpochs={config.epochs}
             onTrainAgain={onTrainAgain}
+            onRerunTraining={onRerunTraining}
           />
         )
       default:

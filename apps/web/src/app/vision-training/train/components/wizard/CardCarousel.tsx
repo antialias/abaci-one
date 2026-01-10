@@ -7,7 +7,6 @@ import {
   CARDS,
   type CardId,
   type ModelType,
-  type ModelsSummary,
   type SamplesData,
   type HardwareInfo,
   type PreflightInfo,
@@ -15,17 +14,16 @@ import {
   type ServerPhase,
   type EpochData,
   type DatasetInfo,
+  type LoadingProgress,
   type TrainingResult,
 } from './types'
 
 interface CardCarouselProps {
   cards: CardId[]
   currentCardIndex: number
-  // Model selection
-  modelType: ModelType | null
-  modelsSummary: ModelsSummary | null
-  modelsSummaryLoading: boolean
-  onSelectModel: (model: ModelType) => void
+  onCardClick: (cardIndex: number) => void
+  // Model type (from URL)
+  modelType: ModelType
   // Data
   samples: SamplesData | null
   samplesLoading: boolean
@@ -42,8 +40,11 @@ interface CardCarouselProps {
   serverPhase: ServerPhase
   statusMessage: string
   currentEpoch: EpochData | null
+  epochHistory: EpochData[]
   bestAccuracy: number
+  bestPixelError: number | null
   datasetInfo: DatasetInfo | null
+  loadingProgress: LoadingProgress | null
   result: TrainingResult | null
   error: string | null
   // Summaries
@@ -52,7 +53,9 @@ interface CardCarouselProps {
   onProgress: () => void
   onStartTraining: () => void
   onCancel: () => void
+  onStopAndSave?: () => void
   onTrainAgain: () => void
+  onRerunTraining?: () => void
   onSyncComplete?: () => void
   onDataWarningAcknowledged?: () => void
   canStartTraining: boolean
@@ -61,10 +64,8 @@ interface CardCarouselProps {
 export function CardCarousel({
   cards,
   currentCardIndex,
+  onCardClick,
   modelType,
-  modelsSummary,
-  modelsSummaryLoading,
-  onSelectModel,
   samples,
   samplesLoading,
   hardwareInfo,
@@ -79,15 +80,20 @@ export function CardCarousel({
   serverPhase,
   statusMessage,
   currentEpoch,
+  epochHistory,
   bestAccuracy,
+  bestPixelError,
   datasetInfo,
+  loadingProgress,
   result,
   error,
   getCardSummary,
   onProgress,
   onStartTraining,
   onCancel,
+  onStopAndSave,
   onTrainAgain,
+  onRerunTraining,
   onSyncComplete,
   onDataWarningAcknowledged,
   canStartTraining,
@@ -98,15 +104,6 @@ export function CardCarousel({
     cardId: CardId
   ): { primary: string; secondary?: string; tertiary?: string } | string => {
     switch (cardId) {
-      case 'model':
-        if (modelType) {
-          return {
-            primary: modelType === 'column-classifier' ? 'Column' : 'Boundary',
-            secondary: 'Selected',
-          }
-        }
-        return 'Select model'
-
       case 'data':
         if (samples?.hasData) {
           const count =
@@ -197,9 +194,9 @@ export function CardCarousel({
         mb: 4,
       })}
     >
-      {/* Done cards (left side) */}
+      {/* Done cards (left side) - clickable to go back */}
       <div className={css({ display: 'flex', gap: 2 })}>
-        {cards.slice(0, currentCardIndex).map((cardId) => {
+        {cards.slice(0, currentCardIndex).map((cardId, index) => {
           const cardDef = CARDS[cardId]
           const summary = getCardSummary(cardId)
           return (
@@ -209,6 +206,7 @@ export function CardCarousel({
               title={cardDef.title}
               summary={summary?.value}
               status="done"
+              onClick={() => onCardClick(index)}
             />
           )
         })}
@@ -218,11 +216,8 @@ export function CardCarousel({
       {currentCardIndex >= 0 && currentCardIndex < cards.length && (
         <ExpandedCard
           cardId={cards[currentCardIndex]}
-          // Model selection
+          // Model type (from URL)
           modelType={modelType}
-          modelsSummary={modelsSummary}
-          modelsSummaryLoading={modelsSummaryLoading}
-          onSelectModel={onSelectModel}
           // Data
           samples={samples}
           samplesLoading={samplesLoading}
@@ -239,15 +234,20 @@ export function CardCarousel({
           serverPhase={serverPhase}
           statusMessage={statusMessage}
           currentEpoch={currentEpoch}
+          epochHistory={epochHistory}
           bestAccuracy={bestAccuracy}
+          bestPixelError={bestPixelError}
           datasetInfo={datasetInfo}
+          loadingProgress={loadingProgress}
           result={result}
           error={error}
           // Actions
           onProgress={onProgress}
           onStartTraining={onStartTraining}
           onCancel={onCancel}
+          onStopAndSave={onStopAndSave}
           onTrainAgain={onTrainAgain}
+          onRerunTraining={onRerunTraining}
           onSyncComplete={onSyncComplete}
           onDataWarningAcknowledged={onDataWarningAcknowledged}
           canStartTraining={canStartTraining}

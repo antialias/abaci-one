@@ -2,130 +2,151 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { css } from '../../../../styled-system/css'
-import { ModelTester } from '../train/components/ModelTester'
+import { useSearchParams } from 'next/navigation'
+import { css } from '../../../../../styled-system/css'
+import { ModelTester } from '../../train/components/ModelTester'
 import { useColumnClassifier } from '@/hooks/useColumnClassifier'
 import { useBoundaryDetector } from '@/hooks/useBoundaryDetector'
+import { useModelType } from '../../hooks/useModelType'
 import type { QuadCorners } from '@/types/vision'
 
-type TestModelType = 'column-classifier' | 'boundary-detector'
+interface SessionInfo {
+  id: string
+  modelType: 'column-classifier' | 'boundary-detector'
+  displayName: string
+  finalAccuracy: number
+  finalPixelError?: number
+  isActive: boolean
+  trainedAt: number
+}
 
 /**
- * Quick model testing page - access the ModelTester directly without going through the training wizard.
+ * Model Testing Page
  *
- * URL: /vision-training/test
+ * Located at /vision-training/[model]/test
+ * Model type is determined by the URL path.
+ *
+ * URL params:
+ *   - session: ID of a specific session to test (optional)
  */
 export default function TestModelPage() {
-  const [selectedModelType, setSelectedModelType] = useState<TestModelType>('column-classifier')
+  const modelType = useModelType()
+  const searchParams = useSearchParams()
+  const sessionId = searchParams.get('session')
+
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null)
+  const [sessionLoading, setSessionLoading] = useState(false)
+
+  // Fetch session info if session ID provided
+  useEffect(() => {
+    if (!sessionId) {
+      setSessionInfo(null)
+      return
+    }
+
+    setSessionLoading(true)
+    fetch(`/api/vision/sessions/${sessionId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Session not found')
+        return res.json()
+      })
+      .then((data) => {
+        const session = data.session
+        setSessionInfo({
+          id: session.id,
+          modelType: session.modelType,
+          displayName: session.displayName,
+          finalAccuracy: session.result?.final_accuracy ?? 0,
+          finalPixelError: session.result?.final_pixel_error,
+          isActive: session.isActive,
+          trainedAt: session.trainedAt,
+        })
+      })
+      .catch((err) => {
+        console.error('[TestModelPage] Failed to load session:', err)
+        setSessionInfo(null)
+      })
+      .finally(() => {
+        setSessionLoading(false)
+      })
+  }, [sessionId])
 
   return (
     <div
       data-component="test-model-page"
       className={css({
-        minHeight: '100vh',
+        minHeight: 'calc(100vh - var(--nav-height))',
         bg: 'gray.900',
         color: 'gray.100',
       })}
     >
-      {/* Header */}
-      <header
-        className={css({
-          p: 4,
-          borderBottom: '1px solid',
-          borderColor: 'gray.800',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        })}
-      >
-        <Link
-          href="/vision-training"
-          className={css({
-            color: 'gray.400',
-            textDecoration: 'none',
-            fontSize: 'sm',
-            _hover: { color: 'gray.200' },
-          })}
-        >
-          ← Back to Training Data
-        </Link>
-        <Link
-          href="/vision-training/train"
-          className={css({
-            color: 'purple.400',
-            textDecoration: 'none',
-            fontSize: 'sm',
-            _hover: { color: 'purple.300' },
-          })}
-        >
-          Training Wizard →
-        </Link>
-      </header>
-
-      {/* Model Type Selector */}
-      <div
-        className={css({
-          display: 'flex',
-          justifyContent: 'center',
-          py: 4,
-          borderBottom: '1px solid',
-          borderColor: 'gray.800',
-        })}
-      >
+      {/* Session Info Banner */}
+      {sessionLoading && (
         <div
           className={css({
-            display: 'flex',
-            bg: 'gray.800',
-            borderRadius: 'lg',
-            p: 1,
+            py: 3,
+            px: 4,
+            bg: 'blue.900/30',
+            borderBottom: '1px solid',
+            borderColor: 'blue.800',
+            textAlign: 'center',
+            color: 'blue.300',
+            fontSize: 'sm',
           })}
         >
-          <button
-            type="button"
-            onClick={() => setSelectedModelType('column-classifier')}
-            className={css({
-              py: 2,
-              px: 4,
-              borderRadius: 'md',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 'medium',
-              fontSize: 'sm',
-              transition: 'all 0.2s',
-              bg: selectedModelType === 'column-classifier' ? 'blue.600' : 'transparent',
-              color: selectedModelType === 'column-classifier' ? 'white' : 'gray.400',
-              _hover:
-                selectedModelType === 'column-classifier'
-                  ? {}
-                  : { color: 'gray.200', bg: 'gray.700' },
-            })}
-          >
-            🔢 Column Classifier
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedModelType('boundary-detector')}
-            className={css({
-              py: 2,
-              px: 4,
-              borderRadius: 'md',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 'medium',
-              fontSize: 'sm',
-              transition: 'all 0.2s',
-              bg: selectedModelType === 'boundary-detector' ? 'purple.600' : 'transparent',
-              color: selectedModelType === 'boundary-detector' ? 'white' : 'gray.400',
-              _hover:
-                selectedModelType === 'boundary-detector'
-                  ? {}
-                  : { color: 'gray.200', bg: 'gray.700' },
-            })}
-          >
-            🎯 Boundary Detector
-          </button>
+          Loading session info...
         </div>
-      </div>
+      )}
+      {sessionInfo && (
+        <div
+          className={css({
+            py: 3,
+            px: 4,
+            bg: sessionInfo.isActive ? 'green.900/30' : 'yellow.900/30',
+            borderBottom: '1px solid',
+            borderColor: sessionInfo.isActive ? 'green.800' : 'yellow.800',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+            fontSize: 'sm',
+          })}
+        >
+          <span className={css({ color: sessionInfo.isActive ? 'green.300' : 'yellow.300' })}>
+            {sessionInfo.isActive ? 'Testing Active Model:' : 'Testing Session:'}
+          </span>
+          <span className={css({ fontWeight: 'medium', color: 'white' })}>
+            {sessionInfo.displayName}
+          </span>
+          {sessionInfo.modelType === 'boundary-detector' &&
+          sessionInfo.finalPixelError !== undefined ? (
+            <span className={css({ color: 'gray.400' })}>
+              ({sessionInfo.finalPixelError.toFixed(1)}px error)
+            </span>
+          ) : (
+            <span className={css({ color: 'gray.400' })}>
+              ({(sessionInfo.finalAccuracy * 100).toFixed(1)}% accuracy)
+            </span>
+          )}
+          {!sessionInfo.isActive && (
+            <span className={css({ color: 'yellow.400', fontSize: 'xs' })}>
+              Note: Non-active session testing requires model loader updates
+            </span>
+          )}
+          <Link
+            href={`/vision-training/${modelType}/sessions`}
+            className={css({
+              ml: 'auto',
+              color: 'gray.400',
+              textDecoration: 'none',
+              fontSize: 'xs',
+              _hover: { color: 'gray.200' },
+            })}
+          >
+            View All Sessions
+          </Link>
+        </div>
+      )}
 
       {/* Main Content */}
       <main
@@ -137,16 +158,16 @@ export default function TestModelPage() {
       >
         {/* Title */}
         <div className={css({ textAlign: 'center', mb: 6 })}>
-          <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 2 })}>🔬 Model Tester</h1>
+          <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 2 })}>Model Tester</h1>
           <p className={css({ color: 'gray.400', fontSize: 'sm' })}>
-            {selectedModelType === 'column-classifier'
+            {modelType === 'column-classifier'
               ? 'Test the column classifier with live camera feed or uploaded images'
-              : 'Test the boundary detector with uploaded frame images'}
+              : 'Test the boundary detector with uploaded frame images or live camera'}
           </p>
         </div>
 
         {/* Column Classifier Testing */}
-        {selectedModelType === 'column-classifier' && (
+        {modelType === 'column-classifier' && (
           <>
             {/* Image Upload Tester */}
             <ImageUploadTester />
@@ -196,7 +217,7 @@ export default function TestModelPage() {
         )}
 
         {/* Boundary Detector Testing */}
-        {selectedModelType === 'boundary-detector' && (
+        {modelType === 'boundary-detector' && (
           <>
             {/* Real-time Camera Tester */}
             <BoundaryCameraTester />
@@ -388,10 +409,7 @@ function ImageUploadTester() {
           mb: 3,
         })}
       >
-        <span>📤</span>
-        <span className={css({ fontWeight: 'medium', color: 'blue.300' })}>
-          Upload Training Image
-        </span>
+        <span>Upload Training Image</span>
         <span className={css({ fontSize: 'xs', color: 'gray.500', ml: 'auto' })}>
           {classifier.isModelLoaded ? (
             <span className={css({ color: 'green.400' })}>Model loaded</span>
@@ -445,7 +463,7 @@ function ImageUploadTester() {
             />
           ) : (
             <div className={css({ textAlign: 'center', color: 'gray.500', p: 2 })}>
-              <div className={css({ fontSize: '2xl', mb: 1 })}>📁</div>
+              <div className={css({ fontSize: '2xl', mb: 1 })}>+</div>
               <div className={css({ fontSize: 'xs' })}>Click to upload PNG from training data</div>
             </div>
           )}
@@ -473,7 +491,7 @@ function ImageUploadTester() {
                 _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >
-              {isLoading ? 'Running...' : '🔍 Run Inference'}
+              {isLoading ? 'Running...' : 'Run Inference'}
             </button>
           )}
 
@@ -540,7 +558,7 @@ function ImageUploadTester() {
                         ml: 2,
                       })}
                     >
-                      {isCorrect ? '✅' : '❌'}
+                      {isCorrect ? 'Correct' : 'Wrong'}
                     </div>
                   </>
                 )}
@@ -566,14 +584,14 @@ function ImageUploadTester() {
 
               {/* Formula reminder */}
               <div className={css({ mt: 2, fontSize: 'xs', color: 'gray.500' })}>
-                digit = heaven × 5 + earth = {result.heaven} × 5 + {result.earth} = {result.digit}
+                digit = heaven x 5 + earth = {result.heaven} x 5 + {result.earth} = {result.digit}
               </div>
             </div>
           )}
 
           {!uploadedImage && (
             <div className={css({ color: 'gray.500', fontSize: 'sm' })}>
-              <p>Upload a training image (64×128 PNG) to test inference.</p>
+              <p>Upload a training image (64x128 PNG) to test inference.</p>
               <p className={css({ mt: 2, fontSize: 'xs' })}>
                 Training images are in:{' '}
                 <code className={css({ color: 'gray.400' })}>
@@ -702,7 +720,6 @@ function BoundaryImageTester() {
           mb: 3,
         })}
       >
-        <span>🎯</span>
         <span className={css({ fontWeight: 'medium', color: 'purple.300' })}>
           Upload Frame Image
         </span>
@@ -855,7 +872,7 @@ function BoundaryImageTester() {
             </>
           ) : (
             <div className={css({ textAlign: 'center', color: 'gray.500', p: 4 })}>
-              <div className={css({ fontSize: '3xl', mb: 2 })}>📷</div>
+              <div className={css({ fontSize: '3xl', mb: 2 })}>+</div>
               <div className={css({ fontSize: 'sm' })}>Click to upload a frame image</div>
               <div className={css({ fontSize: 'xs', mt: 2, color: 'gray.600' })}>
                 From data/vision-training/boundary-frames/
@@ -884,7 +901,7 @@ function BoundaryImageTester() {
               _disabled: { opacity: 0.5, cursor: 'not-allowed' },
             })}
           >
-            {isLoading ? 'Running...' : '🔍 Run Inference'}
+            {isLoading ? 'Running...' : 'Run Inference'}
           </button>
         )}
 
@@ -934,9 +951,6 @@ function BoundaryImageTester() {
               >
                 {(result.confidence * 100).toFixed(1)}%
               </span>
-              {result.confidence >= 0.8 && <span>✅</span>}
-              {result.confidence >= 0.5 && result.confidence < 0.8 && <span>⚠️</span>}
-              {result.confidence < 0.5 && <span>❌</span>}
             </div>
 
             {/* Corner coordinates */}
@@ -1117,8 +1131,7 @@ function BoundaryCameraTester() {
     ctx.fill()
 
     // Stroke
-    const strokeColor =
-      confidence >= 0.8 ? '#22c55e' : confidence >= 0.5 ? '#eab308' : '#ef4444'
+    const strokeColor = confidence >= 0.8 ? '#22c55e' : confidence >= 0.5 ? '#eab308' : '#ef4444'
     ctx.strokeStyle = strokeColor
     ctx.lineWidth = 3
     ctx.stroke()
@@ -1209,10 +1222,7 @@ function BoundaryCameraTester() {
           mb: 3,
         })}
       >
-        <span>📹</span>
-        <span className={css({ fontWeight: 'medium', color: 'purple.300' })}>
-          Live Camera Test
-        </span>
+        <span className={css({ fontWeight: 'medium', color: 'purple.300' })}>Live Camera Test</span>
         <span className={css({ fontSize: 'xs', color: 'gray.500', ml: 'auto' })}>
           {detector.isReady ? (
             <span className={css({ color: 'green.400' })}>Model loaded</span>
@@ -1274,7 +1284,7 @@ function BoundaryCameraTester() {
               fontFamily: 'mono',
             })}
           >
-            {fps} FPS • #{frameCount}
+            {fps} FPS - #{frameCount}
           </div>
         )}
 
@@ -1292,7 +1302,7 @@ function BoundaryCameraTester() {
               color: 'gray.500',
             })}
           >
-            <span className={css({ fontSize: '3xl' })}>📷</span>
+            <span className={css({ fontSize: '3xl' })}>Camera</span>
             <span className={css({ fontSize: 'sm' })}>Click "Start Testing" to begin</span>
           </div>
         )}
@@ -1346,9 +1356,6 @@ function BoundaryCameraTester() {
             >
               {(result.confidence * 100).toFixed(1)}%
             </span>
-            {result.confidence >= 0.8 && <span>✅</span>}
-            {result.confidence >= 0.5 && result.confidence < 0.8 && <span>⚠️</span>}
-            {result.confidence < 0.5 && <span>❌</span>}
           </div>
 
           {/* Corner coordinates */}

@@ -1,13 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
-import { css } from '../../../../styled-system/css'
-import { TrainingDiagnosticsProvider } from './components/TrainingDiagnosticsContext'
-import { TrainingWizard } from './components/wizard/TrainingWizard'
+import { css } from '../../../../../styled-system/css'
+import { TrainingDiagnosticsProvider } from '../../train/components/TrainingDiagnosticsContext'
+import { TrainingWizard } from '../../train/components/wizard/TrainingWizard'
+import { useModelType } from '../../hooks/useModelType'
 import type {
-  ModelType,
-  ModelsSummary,
   SamplesData,
   HardwareInfo,
   PreflightInfo,
@@ -16,8 +14,12 @@ import type {
   EpochData,
   DatasetInfo,
   TrainingResult,
-} from './components/wizard/types'
-import { isColumnClassifierSamples } from './components/wizard/types'
+  LoadingProgress,
+} from '../../train/components/wizard/types'
+import { isColumnClassifierSamples } from '../../train/components/wizard/types'
+
+// localStorage key for config persistence
+const STORAGE_KEY_CONFIG = 'vision-training-config'
 
 /** Animated background tile that transitions between image and digit */
 function AnimatedTile({ src, digit, index }: { src: string; digit: number; index: number }) {
@@ -103,18 +105,54 @@ function AnimatedTile({ src, digit, index }: { src: string; digit: number; index
   )
 }
 
-export default function TrainModelPage() {
-  // Model selection
-  const [modelType, setModelType] = useState<ModelType | null>(null)
-  const [modelsSummary, setModelsSummary] = useState<ModelsSummary | null>(null)
-  const [modelsSummaryLoading, setModelsSummaryLoading] = useState(true)
+// Default config
+const DEFAULT_CONFIG: TrainingConfig = {
+  epochs: 50,
+  batchSize: 32,
+  validationSplit: 0.2,
+  colorAugmentation: false,
+}
 
-  // Configuration
-  const [config, setConfig] = useState<TrainingConfig>({
-    epochs: 50,
-    batchSize: 32,
-    validationSplit: 0.2,
-  })
+/**
+ * Training Wizard Page
+ *
+ * Located at /vision-training/[model]/train
+ * Model type is determined by the URL path.
+ */
+export default function TrainModelPage() {
+  // Get model type from URL path - this is the single source of truth
+  const modelType = useModelType()
+
+  // Configuration - will be loaded from localStorage if available
+  const [config, setConfig] = useState<TrainingConfig>(DEFAULT_CONFIG)
+  const configInitializedRef = useRef(false)
+
+  // Load config from localStorage on mount
+  useEffect(() => {
+    if (configInitializedRef.current) return
+    configInitializedRef.current = true
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_CONFIG)
+      if (saved) {
+        const savedConfig = JSON.parse(saved) as TrainingConfig
+        setConfig(savedConfig)
+      }
+    } catch {
+      // Ignore
+    }
+  }, [])
+
+  // Save config to localStorage when it changes
+  useEffect(() => {
+    if (!configInitializedRef.current) return
+
+    try {
+      localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config))
+    } catch {
+      // Ignore
+    }
+  }, [config])
 
   // Hardware info
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo | null>(null)
@@ -130,6 +168,7 @@ export default function TrainModelPage() {
   const [epochHistory, setEpochHistory] = useState<EpochData[]>([])
   const [currentEpoch, setCurrentEpoch] = useState<EpochData | null>(null)
   const [datasetInfo, setDatasetInfo] = useState<DatasetInfo | null>(null)
+  const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null)
   const [result, setResult] = useState<TrainingResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -142,39 +181,8 @@ export default function TrainModelPage() {
   // Track stderr logs for error messages
   const stderrLogsRef = useRef<string[]>([])
 
-  // Fetch models summary (for model selection card)
-  const fetchModelsSummary = useCallback(async () => {
-    setModelsSummaryLoading(true)
-    try {
-      const response = await fetch('/api/vision-training/models-summary')
-      const data = await response.json()
-      setModelsSummary(data)
-    } catch {
-      // Set empty summary on error
-      setModelsSummary({
-        columnClassifier: {
-          totalImages: 0,
-          hasData: false,
-          dataQuality: 'none',
-        },
-        boundaryDetector: {
-          totalFrames: 0,
-          hasData: false,
-          dataQuality: 'none',
-        },
-      })
-    } finally {
-      setModelsSummaryLoading(false)
-    }
-  }, [])
-
-  // Fetch training samples for selected model type
+  // Fetch training samples for the model type (from URL)
   const fetchSamples = useCallback(async () => {
-    if (!modelType) {
-      setSamples(null)
-      setSamplesLoading(false)
-      return
-    }
     setSamplesLoading(true)
     try {
       const response = await fetch(`/api/vision-training/samples?type=${modelType}`)
@@ -239,12 +247,11 @@ export default function TrainModelPage() {
     }
   }, [])
 
-  // Fetch initial data (hardware, preflight, models summary)
+  // Fetch initial data (hardware, preflight)
   useEffect(() => {
     fetchHardware()
     fetchPreflight()
-    fetchModelsSummary()
-  }, [fetchHardware, fetchPreflight, fetchModelsSummary])
+  }, [fetchHardware, fetchPreflight])
 
   // Fetch samples when model type changes
   useEffect(() => {
@@ -272,6 +279,7 @@ export default function TrainModelPage() {
     setEpochHistory([])
     setCurrentEpoch(null)
     setDatasetInfo(null)
+    setLoadingProgress(null)
     setResult(null)
     setError(null)
 
@@ -284,7 +292,7 @@ export default function TrainModelPage() {
           epochs: config.epochs,
           batchSize: config.batchSize,
           validationSplit: config.validationSplit,
-          noAugmentation: true, // Always disable augmentation - doesn't work well
+          colorAugmentation: config.colorAugmentation,
         }),
       })
 
@@ -323,82 +331,177 @@ export default function TrainModelPage() {
     }
   }, [config, modelType])
 
-  const handleEvent = useCallback((eventType: string, data: Record<string, unknown>) => {
-    switch (eventType) {
-      case 'started':
-        setServerPhase('setup')
-        setStatusMessage('Training started')
-        // Reset stderr logs on new training
-        stderrLogsRef.current = []
-        break
-      case 'status':
-        setStatusMessage(data.message as string)
-        if (data.phase) setServerPhase(data.phase as ServerPhase)
-        break
-      case 'log':
-        // Track stderr logs for error messages
-        if (data.type === 'stderr' && data.message) {
-          stderrLogsRef.current.push(data.message as string)
-          // Keep only last 20 lines to avoid memory issues
-          if (stderrLogsRef.current.length > 20) {
-            stderrLogsRef.current.shift()
+  const handleEvent = useCallback(
+    (eventType: string, data: Record<string, unknown>) => {
+      switch (eventType) {
+        case 'started':
+          setServerPhase('setup')
+          setStatusMessage('Training started')
+          // Reset stderr logs on new training
+          stderrLogsRef.current = []
+          break
+        case 'status':
+          setStatusMessage(data.message as string)
+          if (data.phase) setServerPhase(data.phase as ServerPhase)
+          break
+        case 'log':
+          // Track stderr logs for error messages
+          if (data.type === 'stderr' && data.message) {
+            stderrLogsRef.current.push(data.message as string)
+            // Keep only last 20 lines to avoid memory issues
+            if (stderrLogsRef.current.length > 20) {
+              stderrLogsRef.current.shift()
+            }
           }
-        }
-        break
-      case 'dataset_loaded':
-        // Different fields depending on model type
-        if (modelType === 'column-classifier') {
-          setDatasetInfo({
-            type: 'column-classifier',
-            total_images: data.total_images as number,
-            digit_counts: data.digit_counts as Record<number, number>,
+          break
+        case 'loading_progress':
+          setLoadingProgress({
+            step: data.step as LoadingProgress['step'],
+            current: data.current as number,
+            total: data.total as number,
+            message: data.message as string,
           })
-        } else if (modelType === 'boundary-detector') {
-          setDatasetInfo({
-            type: 'boundary-detector',
-            total_frames: (data.total_frames as number) || (data.total_images as number) || 0,
-            device_count: (data.device_count as number) || 1,
+          setStatusMessage(data.message as string)
+          break
+        case 'dataset_loaded':
+          // Clear loading progress when done
+          setLoadingProgress(null)
+          // Different fields depending on model type
+          if (modelType === 'column-classifier') {
+            setDatasetInfo({
+              type: 'column-classifier',
+              total_images: data.total_images as number,
+              digit_counts: data.digit_counts as Record<number, number>,
+            })
+          } else if (modelType === 'boundary-detector') {
+            setDatasetInfo({
+              type: 'boundary-detector',
+              total_frames: (data.total_frames as number) || (data.total_images as number) || 0,
+              device_count: (data.device_count as number) || 1,
+              color_augmentation_enabled: data.color_augmentation_enabled as boolean | undefined,
+              raw_frames: data.raw_frames as number | undefined,
+            })
+          }
+          break
+        case 'epoch': {
+          const epochData = data as unknown as EpochData
+          setCurrentEpoch(epochData)
+          setEpochHistory((prev) => [...prev, epochData])
+          setServerPhase('training')
+          break
+        }
+        case 'exported':
+          setServerPhase('exporting')
+          break
+        case 'complete': {
+          setServerPhase('complete')
+          const completeResult = data as unknown as TrainingResult
+          setResult(completeResult)
+
+          // Debug logging to diagnose session save issues
+          console.log('[Training] Complete event received:', {
+            modelType,
+            hasDatasetInfo: !!datasetInfo,
+            hasConfig: !!config,
+            session_id: completeResult.session_id,
+            tfjs_exported: completeResult.tfjs_exported,
+            output_dir: (completeResult as { output_dir?: string }).output_dir,
+            rawData: data,
           })
+
+          // Save session to database if we have all required data
+          if (
+            modelType &&
+            datasetInfo &&
+            config &&
+            completeResult.session_id &&
+            completeResult.tfjs_exported
+          ) {
+            // Get model path relative to data/vision-training/models/
+            // The output_dir from the script is e.g. "data/vision-training/models/boundary-detector/abc123"
+            // We want just "boundary-detector/abc123" for the modelPath field
+            const outputDir = (completeResult as { output_dir?: string }).output_dir || ''
+            const modelPath = outputDir.replace(/^\.?\/?(data\/vision-training\/models\/)?/, '')
+
+            // Create a display name from model type and date
+            const now = new Date()
+            const displayName = `${modelType === 'column-classifier' ? 'Column Classifier' : 'Boundary Detector'} - ${now.toLocaleDateString()}`
+
+            // Prepare epoch history with required fields
+            const epochHistoryForSession = epochHistory.map((e) => ({
+              epoch: e.epoch,
+              total_epochs: e.total_epochs,
+              loss: e.loss,
+              val_loss: e.val_loss,
+              accuracy: e.accuracy,
+              val_accuracy: e.val_accuracy,
+              val_pixel_error: e.val_pixel_error,
+              val_heaven_accuracy: e.val_heaven_accuracy,
+              val_earth_accuracy: e.val_earth_accuracy,
+            }))
+
+            // POST to sessions API
+            fetch('/api/vision/sessions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                modelType,
+                displayName,
+                config,
+                datasetInfo,
+                result: completeResult,
+                epochHistory: epochHistoryForSession,
+                modelPath,
+                setActive: true, // Auto-activate on successful training
+              }),
+            })
+              .then((res) => {
+                if (!res.ok) {
+                  console.error('[Training] Failed to save session:', res.statusText)
+                } else {
+                  console.log('[Training] Session saved successfully')
+                }
+              })
+              .catch((err) => {
+                console.error('[Training] Error saving session:', err)
+              })
+          } else {
+            console.warn('[Training] Skipping session save - missing required data:', {
+              modelType: !!modelType,
+              datasetInfo: !!datasetInfo,
+              config: !!config,
+              session_id: !!completeResult.session_id,
+              tfjs_exported: !!completeResult.tfjs_exported,
+            })
+          }
+          break
         }
-        break
-      case 'epoch': {
-        const epochData = data as unknown as EpochData
-        setCurrentEpoch(epochData)
-        setEpochHistory((prev) => [...prev, epochData])
-        setServerPhase('training')
-        break
-      }
-      case 'exported':
-        setServerPhase('exporting')
-        break
-      case 'complete':
-        setServerPhase('complete')
-        setResult(data as unknown as TrainingResult)
-        break
-      case 'error': {
-        setServerPhase('error')
-        // Extract meaningful error from stderr logs
-        const stderrText = stderrLogsRef.current.join('\n')
-        // Look for Python ValueError, Exception, or Error messages
-        const errorMatch = stderrText.match(/(ValueError|Exception|Error):\s*(.+?)(?:\n|$)/s)
-        if (errorMatch) {
-          setError(errorMatch[0].trim())
-        } else if (stderrLogsRef.current.length > 0) {
-          // Use last few stderr lines if no specific error pattern found
-          setError(stderrLogsRef.current.slice(-3).join('\n'))
-        } else {
-          setError(data.message as string)
+        case 'error': {
+          setServerPhase('error')
+          // Extract meaningful error from stderr logs
+          const stderrText = stderrLogsRef.current.join('\n')
+          // Look for Python ValueError, Exception, or Error messages
+          const errorMatch = stderrText.match(/(ValueError|Exception|Error):\s*(.+?)(?:\n|$)/s)
+          if (errorMatch) {
+            setError(errorMatch[0].trim())
+          } else if (stderrLogsRef.current.length > 0) {
+            // Use last few stderr lines if no specific error pattern found
+            setError(stderrLogsRef.current.slice(-3).join('\n'))
+          } else {
+            setError(data.message as string)
+          }
+          break
         }
-        break
+        case 'cancelled':
+          setServerPhase('idle')
+          break
+        default:
+          // Log unhandled events for debugging
+          console.log(`[Training] Event: ${eventType}`, data)
       }
-      case 'cancelled':
-        setServerPhase('idle')
-        break
-      default:
-        // Log unhandled events for debugging
-        console.log(`[Training] Event: ${eventType}`, data)
-    }
-  }, [modelType])
+    },
+    [modelType]
+  )
 
   const cancelTraining = useCallback(async () => {
     try {
@@ -408,22 +511,45 @@ export default function TrainModelPage() {
     }
   }, [])
 
+  const handleStopAndSave = useCallback(async () => {
+    try {
+      const response = await fetch('/api/vision-training/train', { method: 'PUT' })
+      if (!response.ok) {
+        console.error('[Training] Stop and save request failed:', await response.text())
+      }
+    } catch (e) {
+      console.error('[Training] Stop and save error:', e)
+    }
+  }, [])
+
   const resetToIdle = useCallback(() => {
     setServerPhase('idle')
     setResult(null)
     setError(null)
   }, [])
 
-  // Handle model selection
-  const handleSelectModel = useCallback((model: ModelType) => {
-    setModelType(model)
-  }, [])
+  // Re-run training with the same config (called from results page)
+  const handleRerunTraining = useCallback(() => {
+    // Reset training state but keep config
+    setServerPhase('idle')
+    setResult(null)
+    setError(null)
+    setEpochHistory([])
+    setCurrentEpoch(null)
+    setDatasetInfo(null)
+    setLoadingProgress(null)
+    // Start training immediately
+    // Use setTimeout to ensure state is updated before starting
+    setTimeout(() => {
+      startTraining()
+    }, 0)
+  }, [startTraining])
 
   return (
     <div
       data-component="train-model-page"
       className={css({
-        minHeight: '100vh',
+        minHeight: 'calc(100vh - var(--nav-height))',
         bg: 'gray.900',
         color: 'gray.100',
         position: 'relative',
@@ -473,30 +599,8 @@ export default function TrainModelPage() {
           </div>
         </div>
       )}
-      {/* Header */}
-      <header
-        className={css({
-          p: 4,
-          borderBottom: '1px solid',
-          borderColor: 'gray.800',
-          position: 'relative',
-          zIndex: 1,
-        })}
-      >
-        <Link
-          href="/vision-training"
-          className={css({
-            color: 'gray.400',
-            textDecoration: 'none',
-            fontSize: 'sm',
-            _hover: { color: 'gray.200' },
-          })}
-        >
-          ← Back to Training Data
-        </Link>
-      </header>
 
-      {/* Main Content - Centered */}
+      {/* Main Content - Centered (no header needed, nav is in layout) */}
       <main
         className={css({
           maxWidth: '800px',
@@ -533,11 +637,8 @@ export default function TrainModelPage() {
           result={result}
         >
           <TrainingWizard
-            // Model selection
+            // Model type (from URL path - single source of truth)
             modelType={modelType}
-            onSelectModel={handleSelectModel}
-            modelsSummary={modelsSummary}
-            modelsSummaryLoading={modelsSummaryLoading}
             // Data
             samples={samples}
             samplesLoading={samplesLoading}
@@ -555,13 +656,16 @@ export default function TrainModelPage() {
             currentEpoch={currentEpoch}
             epochHistory={epochHistory}
             datasetInfo={datasetInfo}
+            loadingProgress={loadingProgress}
             result={result}
             error={error}
             // Actions
             onStart={startTraining}
             onCancel={cancelTraining}
+            onStopAndSave={handleStopAndSave}
             onReset={resetToIdle}
             onSyncComplete={fetchSamples}
+            onRerunTraining={handleRerunTraining}
           />
         </TrainingDiagnosticsProvider>
       </main>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { css } from '../../../../../../styled-system/css'
 import { PhaseSection } from './PhaseSection'
 import {
@@ -8,8 +8,8 @@ import {
   serverPhaseToWizardPosition,
   isColumnClassifierDatasetInfo,
   isBoundaryDetectorDatasetInfo,
+  isBoundaryDetectorResult,
   type ModelType,
-  type ModelsSummary,
   type SamplesData,
   type HardwareInfo,
   type PreflightInfo,
@@ -17,16 +17,25 @@ import {
   type ServerPhase,
   type EpochData,
   type DatasetInfo,
+  type LoadingProgress,
   type TrainingResult,
   type PhaseStatus,
 } from './types'
 
+// localStorage keys for persistence
+const STORAGE_KEY_POSITION = 'vision-training-wizard-position'
+
+// Position state saved to localStorage
+// Note: modelType is no longer saved - it's determined by the URL path
+interface WizardPositionState {
+  currentPhaseIndex: number
+  currentCardIndex: number
+  dataWarningAcknowledged: boolean
+}
+
 interface TrainingWizardProps {
-  // Model selection state
-  modelType: ModelType | null
-  onSelectModel: (model: ModelType) => void
-  modelsSummary: ModelsSummary | null
-  modelsSummaryLoading: boolean
+  // Model type (determined by URL path, not user selection)
+  modelType: ModelType
   // Data state
   samples: SamplesData | null
   samplesLoading: boolean
@@ -47,20 +56,21 @@ interface TrainingWizardProps {
   currentEpoch: EpochData | null
   epochHistory: EpochData[]
   datasetInfo: DatasetInfo | null
+  loadingProgress: LoadingProgress | null
   result: TrainingResult | null
   error: string | null
   // Actions
   onStart: () => void
   onCancel: () => void
+  onStopAndSave?: () => void
   onReset: () => void
   onSyncComplete?: () => void
+  // Called to re-run training with same config (from results)
+  onRerunTraining?: () => void
 }
 
 export function TrainingWizard({
   modelType,
-  onSelectModel,
-  modelsSummary,
-  modelsSummaryLoading,
   samples,
   samplesLoading,
   hardwareInfo,
@@ -76,23 +86,73 @@ export function TrainingWizard({
   currentEpoch,
   epochHistory,
   datasetInfo,
+  loadingProgress,
   result,
   error,
   onStart,
   onCancel,
+  onStopAndSave,
   onReset,
   onSyncComplete,
+  onRerunTraining,
 }: TrainingWizardProps) {
   // Wizard position state
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0)
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
   // Track if user explicitly bypassed insufficient data warning
   const [dataWarningAcknowledged, setDataWarningAcknowledged] = useState(false)
+  // Track if we've initialized from localStorage
+  const initializedRef = useRef(false)
+
+  // Load position state from localStorage on mount
+  // Note: modelType is no longer restored from localStorage - it comes from the URL
+  useEffect(() => {
+    if (initializedRef.current) return
+    initializedRef.current = true
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_POSITION)
+      if (saved) {
+        const state = JSON.parse(saved) as WizardPositionState
+        // Only restore if we're not actively training
+        if (serverPhase === 'idle') {
+          setCurrentPhaseIndex(state.currentPhaseIndex)
+          setCurrentCardIndex(state.currentCardIndex)
+          setDataWarningAcknowledged(state.dataWarningAcknowledged)
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [serverPhase])
+
+  // Save position state to localStorage when it changes
+  // Note: modelType is not saved - it comes from the URL
+  useEffect(() => {
+    // Don't save until we've initialized
+    if (!initializedRef.current) return
+    // Don't save during active training (let server phase drive position)
+    if (serverPhase !== 'idle' && serverPhase !== 'complete' && serverPhase !== 'error') return
+
+    const state: WizardPositionState = {
+      currentPhaseIndex,
+      currentCardIndex,
+      dataWarningAcknowledged,
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY_POSITION, JSON.stringify(state))
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [currentPhaseIndex, currentCardIndex, dataWarningAcknowledged, serverPhase])
 
   // Derive state
   const isGpu = hardwareInfo?.deviceType === 'gpu'
   const bestAccuracy =
     epochHistory.length > 0 ? Math.max(...epochHistory.map((e) => e.val_accuracy)) : 0
+  // Best pixel error (lower is better) - for boundary detector
+  const pixelErrors = epochHistory.map((e) => e.val_pixel_error).filter((e) => e !== undefined)
+  const bestPixelError = pixelErrors.length > 0 ? Math.min(...pixelErrors) : null
   const hasEnoughData =
     samples?.hasData && samples.dataQuality !== 'none' && samples.dataQuality !== 'insufficient'
   // Allow training if data is sufficient OR user acknowledged the warning
@@ -135,6 +195,12 @@ export function TrainingWizard({
     setCurrentPhaseIndex(0)
     setCurrentCardIndex(0)
     setDataWarningAcknowledged(false)
+    // Clear localStorage when fully resetting
+    try {
+      localStorage.removeItem(STORAGE_KEY_POSITION)
+    } catch {
+      // Ignore
+    }
     onReset()
   }, [onReset])
 
@@ -142,6 +208,21 @@ export function TrainingWizard({
   const handleDataWarningAcknowledged = useCallback(() => {
     setDataWarningAcknowledged(true)
   }, [])
+
+  // Navigate to a specific card (for rewinding to prior cards)
+  const goToCard = useCallback(
+    (phaseIndex: number, cardIndex: number) => {
+      // Only allow going backwards or to current position
+      if (
+        phaseIndex < currentPhaseIndex ||
+        (phaseIndex === currentPhaseIndex && cardIndex <= currentCardIndex)
+      ) {
+        setCurrentPhaseIndex(phaseIndex)
+        setCurrentCardIndex(cardIndex)
+      }
+    },
+    [currentPhaseIndex, currentCardIndex]
+  )
 
   // Get phase status based on current position
   const getPhaseStatus = (phaseIndex: number): PhaseStatus => {
@@ -153,12 +234,6 @@ export function TrainingWizard({
   // Card summaries for done states
   const getCardSummary = (cardId: string): { label: string; value: string } | null => {
     switch (cardId) {
-      case 'model':
-        if (!modelType) return null
-        return {
-          label: 'Model',
-          value: modelType === 'column-classifier' ? 'Column' : 'Boundary',
-        }
       case 'data': {
         if (!samples?.hasData) return null
         const count =
@@ -191,6 +266,13 @@ export function TrainingWizard({
         }
         return { label: 'Loaded', value: '✓' }
       case 'training':
+        // Show pixel error for boundary detector, accuracy for column classifier
+        if (modelType === 'boundary-detector' && bestPixelError !== null) {
+          return {
+            label: 'Error',
+            value: `${bestPixelError.toFixed(0)}px`,
+          }
+        }
         return {
           label: 'Accuracy',
           value: `${(bestAccuracy * 100).toFixed(0)}%`,
@@ -198,12 +280,18 @@ export function TrainingWizard({
       case 'export':
         return { label: 'Exported', value: '✓' }
       case 'results':
-        return result
-          ? {
-              label: 'Final',
-              value: `${(result.final_accuracy * 100).toFixed(1)}%`,
-            }
-          : null
+        if (!result) return null
+        // Show pixel error for boundary detector, accuracy for column classifier
+        if (isBoundaryDetectorResult(result) && result.final_pixel_error !== undefined) {
+          return {
+            label: 'Final',
+            value: `${result.final_pixel_error.toFixed(0)}px`,
+          }
+        }
+        return {
+          label: 'Final',
+          value: `${(result.final_accuracy * 100).toFixed(1)}%`,
+        }
       default:
         return null
     }
@@ -222,13 +310,12 @@ export function TrainingWizard({
         <PhaseSection
           key={phase.id}
           phase={phase}
+          phaseIndex={phaseIndex}
           status={getPhaseStatus(phaseIndex)}
           currentCardIndex={phaseIndex === currentPhaseIndex ? currentCardIndex : -1}
-          // Model selection
+          onGoToCard={goToCard}
+          // Model type (from URL)
           modelType={modelType}
-          modelsSummary={modelsSummary}
-          modelsSummaryLoading={modelsSummaryLoading}
-          onSelectModel={onSelectModel}
           // Data for cards
           samples={samples}
           samplesLoading={samplesLoading}
@@ -245,8 +332,11 @@ export function TrainingWizard({
           serverPhase={serverPhase}
           statusMessage={statusMessage}
           currentEpoch={currentEpoch}
+          epochHistory={epochHistory}
           bestAccuracy={bestAccuracy}
+          bestPixelError={bestPixelError}
           datasetInfo={datasetInfo}
+          loadingProgress={loadingProgress}
           result={result}
           error={error}
           // Summaries
@@ -255,12 +345,14 @@ export function TrainingWizard({
           onProgress={progressToNextCard}
           onStartTraining={handleStartTraining}
           onCancel={onCancel}
+          onStopAndSave={onStopAndSave}
           onTrainAgain={handleTrainAgain}
+          onRerunTraining={onRerunTraining}
           onSyncComplete={onSyncComplete}
           onDataWarningAcknowledged={handleDataWarningAcknowledged}
-          // Validation - require model selected, data, hardware, and dependencies all ready
+          // Validation - require data, hardware, and dependencies all ready
+          // Note: modelType is always defined (comes from URL)
           canStartTraining={
-            !!modelType &&
             !!canProceedWithData &&
             !hardwareLoading &&
             !hardwareInfo?.error &&

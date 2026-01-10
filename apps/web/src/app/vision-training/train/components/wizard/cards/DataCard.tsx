@@ -12,7 +12,7 @@ import { BoundaryDataHubModal } from '../../BoundaryDataHubModal'
 interface DataCardProps {
   samples: SamplesData | null
   samplesLoading: boolean
-  modelType: ModelType | null
+  modelType: ModelType
   onProgress: () => void
   onSyncComplete?: () => void
   onDataWarningAcknowledged?: () => void
@@ -172,7 +172,6 @@ export function DataCard({
   // Check sync availability on mount (and when modelType changes)
   useEffect(() => {
     const checkSync = async () => {
-      if (!modelType) return
       setSyncChecking(true)
       try {
         const response = await fetch(`/api/vision-training/sync?modelType=${modelType}`)

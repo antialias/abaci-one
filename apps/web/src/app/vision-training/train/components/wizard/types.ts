@@ -29,11 +29,13 @@ export interface PhaseDefinition {
 }
 
 // All phases in order
+// Note: Model selection is now handled by the URL path (/vision-training/[model]/train)
+// and the nav bar model selector. The 'model' card has been removed from the wizard.
 export const PHASES: PhaseDefinition[] = [
   {
     id: 'preparation',
     title: 'Preparation',
-    cards: ['model', 'data', 'hardware', 'dependencies', 'config'],
+    cards: ['data', 'hardware', 'dependencies', 'config'],
   },
   {
     id: 'training',
@@ -235,6 +237,14 @@ export interface PreflightInfo {
   }
 }
 
+// Inference sample for visualization during training (boundary detector)
+export interface InferenceSample {
+  imageBase64: string // Base64 encoded JPEG image
+  predicted: [number, number, number, number, number, number, number, number] // TL, TR, BR, BL (x,y pairs, normalized 0-1)
+  groundTruth: [number, number, number, number, number, number, number, number] // TL, TR, BR, BL (x,y pairs, normalized 0-1)
+  pixelError: number // Mean corner error in pixels for this sample
+}
+
 export interface EpochData {
   epoch: number
   total_epochs: number
@@ -242,11 +252,15 @@ export interface EpochData {
   accuracy: number
   val_loss: number
   val_accuracy: number
+  // Pixel error for boundary detector (more intuitive than abstract accuracy)
+  val_pixel_error?: number // Mean corner error in pixels
   // Per-head metrics from two-head bead position model
   heaven_accuracy?: number
   val_heaven_accuracy?: number
   earth_accuracy?: number
   val_earth_accuracy?: number
+  // Inference samples for visualization (boundary detector only)
+  inference_samples?: InferenceSample[]
 }
 
 // Column classifier dataset info
@@ -261,10 +275,20 @@ export interface BoundaryDetectorDatasetInfo {
   type: 'boundary-detector'
   total_frames: number
   device_count: number
+  color_augmentation_enabled?: boolean
+  raw_frames?: number // Original frames before augmentation
 }
 
 // Union type for dataset info
 export type DatasetInfo = ColumnClassifierDatasetInfo | BoundaryDetectorDatasetInfo
+
+// Loading progress for dataset loading phase
+export interface LoadingProgress {
+  step: 'scanning' | 'loading_raw' | 'augmenting' | 'finalizing'
+  current: number
+  total: number
+  message: string
+}
 
 // Type guards for dataset info
 export function isColumnClassifierDatasetInfo(
@@ -286,6 +310,16 @@ export interface BaseTrainingResult {
   epochs_trained: number
   output_dir: string
   tfjs_exported: boolean
+  session_id?: string // Session ID for database tracking
+  // Timing metadata
+  started_at?: string // ISO timestamp
+  completed_at?: string // ISO timestamp
+  training_duration_seconds?: number
+  // Hardware and environment metadata
+  hardware?: TrainingHardwareInfo
+  environment?: TrainingEnvironmentInfo
+  // Full epoch history for graphs
+  epoch_history?: EpochData[]
 }
 
 // Column classifier training result
@@ -300,6 +334,7 @@ export interface ColumnClassifierResult extends BaseTrainingResult {
 export interface BoundaryDetectorResult extends BaseTrainingResult {
   type: 'boundary-detector'
   final_mae?: number // Mean Absolute Error (0-1 normalized) from training
+  final_pixel_error?: number // Average corner error in pixels (= final_mae * 224)
   mean_corner_error?: number // Mean error in pixels (optional, from inference testing)
   iou_score?: number // Intersection over Union (optional, from inference testing)
 }
@@ -311,6 +346,44 @@ export interface TrainingConfig {
   epochs: number
   batchSize: number
   validationSplit: number
+  colorAugmentation: boolean
+  // Additional config fields from Python script
+  heatmap_size?: number
+  heatmap_sigma?: number
+  marker_masking?: boolean
+  [key: string]: unknown // Allow additional config fields
+}
+
+// Hardware info captured during training
+export interface TrainingHardwareInfo {
+  device: string // 'metal' | 'cuda' | 'cpu'
+  deviceName: string // e.g., 'Apple M2 Pro GPU (Metal)'
+  deviceType: string // 'gpu' | 'cpu'
+  tensorflowVersion?: string
+  platform?: string
+  machine?: string
+  processor?: string
+  chipType?: string // Apple Silicon chip type
+  systemMemory?: string
+  gpuCount?: number
+}
+
+// Environment info captured during training
+export interface TrainingEnvironmentInfo {
+  hostname: string
+  username: string
+  pythonVersion: string
+  workingDirectory: string
+  platform: string
+  platformVersion: string
+  architecture: string
+}
+
+// Training timing info
+export interface TrainingTimingInfo {
+  started_at: string // ISO timestamp
+  completed_at: string // ISO timestamp
+  training_duration_seconds: number
 }
 
 // Server-side training phase (from SSE events)
