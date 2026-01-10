@@ -33,6 +33,7 @@ export default function TestModelPage() {
   const modelType = useModelType()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session')
+  const preloadImageUrl = searchParams.get('image')
 
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null)
   const [sessionLoading, setSessionLoading] = useState(false)
@@ -171,7 +172,7 @@ export default function TestModelPage() {
         {modelType === 'column-classifier' && (
           <>
             {/* Image Upload Tester */}
-            <ImageUploadTester />
+            <ImageUploadTester preloadImageUrl={preloadImageUrl} />
 
             {/* Divider */}
             <div
@@ -238,7 +239,7 @@ export default function TestModelPage() {
             </div>
 
             {/* Image Upload Tester */}
-            <BoundaryImageTester />
+            <BoundaryImageTester preloadImageUrl={preloadImageUrl} />
 
             {/* Quick info */}
             <div
@@ -271,10 +272,15 @@ export default function TestModelPage() {
   )
 }
 
+interface ImageUploadTesterProps {
+  /** Optional URL to preload an image from */
+  preloadImageUrl?: string | null
+}
+
 /**
  * Component for uploading and testing individual training images
  */
-function ImageUploadTester() {
+function ImageUploadTester({ preloadImageUrl }: ImageUploadTesterProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [imageData, setImageData] = useState<ImageData | null>(null)
@@ -297,6 +303,69 @@ function ImageUploadTester() {
     classifier.preload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run once on mount
+
+  // Load preloaded image URL if provided
+  useEffect(() => {
+    if (!preloadImageUrl) return
+
+    const loadPreloadedImage = async () => {
+      setError(null)
+      setResult(null)
+      setIsLoading(true)
+
+      try {
+        // Fetch the image and convert to data URL
+        const response = await fetch(preloadImageUrl)
+        const blob = await response.blob()
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        })
+        setUploadedImage(dataUrl)
+
+        // Load as image and convert to ImageData
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.src = dataUrl
+        await new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = reject
+        })
+
+        // Draw to canvas to get ImageData
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })
+        if (!ctx) throw new Error('Failed to get canvas context')
+
+        ctx.drawImage(img, 0, 0)
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        setImageData(imgData)
+
+        // Try to extract digit from URL path
+        const urlParts = preloadImageUrl.split('/')
+        const digitMatch = urlParts.find((p) => /^[0-9]$/.test(p))
+        if (digitMatch) {
+          setExpectedDigit(parseInt(digitMatch, 10))
+        }
+
+        console.log('[ImageUploadTester] Preloaded image:', {
+          width: imgData.width,
+          height: imgData.height,
+          url: preloadImageUrl,
+        })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load preloaded image')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadPreloadedImage()
+  }, [preloadImageUrl])
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -607,10 +676,15 @@ function ImageUploadTester() {
   )
 }
 
+interface BoundaryImageTesterProps {
+  /** Optional URL to preload an image from */
+  preloadImageUrl?: string | null
+}
+
 /**
  * Component for uploading and testing boundary detection on frame images
  */
-function BoundaryImageTester() {
+function BoundaryImageTester({ preloadImageUrl }: BoundaryImageTesterProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
@@ -628,6 +702,52 @@ function BoundaryImageTester() {
     detector.preload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run once on mount
+
+  // Load preloaded image URL if provided
+  useEffect(() => {
+    if (!preloadImageUrl) return
+
+    const loadPreloadedImage = async () => {
+      setError(null)
+      setResult(null)
+      setIsLoading(true)
+
+      try {
+        // Fetch the image and convert to data URL
+        const response = await fetch(preloadImageUrl)
+        const blob = await response.blob()
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        })
+        setUploadedImage(dataUrl)
+
+        // Load as image element
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.src = dataUrl
+        await new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = reject
+        })
+        setImageElement(img)
+
+        console.log('[BoundaryImageTester] Preloaded image:', {
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+          url: preloadImageUrl,
+        })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load preloaded image')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadPreloadedImage()
+  }, [preloadImageUrl])
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

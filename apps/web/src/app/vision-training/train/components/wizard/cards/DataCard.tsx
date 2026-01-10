@@ -946,12 +946,7 @@ export function DataCard({
       <TrainingDataHubModal
         isOpen={hubModalOpen}
         onClose={() => setHubModalOpen(false)}
-        samples={samples}
         onDataChanged={() => onSyncComplete?.()}
-        syncStatus={syncStatus}
-        syncProgress={syncProgress}
-        onStartSync={startSync}
-        onCancelSync={cancelSync}
       />
 
       {/* Boundary Data Hub Modal (Boundary Detector) */}

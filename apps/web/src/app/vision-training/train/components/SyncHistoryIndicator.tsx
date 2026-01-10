@@ -28,10 +28,7 @@ interface SyncHistoryIndicatorProps {
  * Shows "Last sync: X ago" with expandable dropdown showing recent syncs.
  * Unobtrusive by default, informative on interaction.
  */
-export function SyncHistoryIndicator({
-  modelType,
-  refreshTrigger = 0,
-}: SyncHistoryIndicatorProps) {
+export function SyncHistoryIndicator({ modelType, refreshTrigger = 0 }: SyncHistoryIndicatorProps) {
   const [history, setHistory] = useState<SyncHistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(false)
@@ -110,9 +107,7 @@ export function SyncHistoryIndicator({
         })}
       >
         <span>{isSuccess ? '✓' : '⚠'}</span>
-        <span>
-          {isSuccess ? `Last sync: ${timeAgo}` : `Sync failed ${timeAgo}`}
-        </span>
+        <span>{isSuccess ? `Last sync: ${timeAgo}` : `Sync failed ${timeAgo}`}</span>
         <span
           className={css({
             fontSize: '10px',

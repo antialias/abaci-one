@@ -3,7 +3,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { css } from '../../../../../styled-system/css'
 import { Z_INDEX } from '@/constants/zIndex'
-import { BoundaryDataPanel } from './BoundaryDataPanel'
+import { UnifiedDataPanel } from './data-panel/UnifiedDataPanel'
 
 interface BoundaryDataHubModalProps {
   isOpen: boolean
@@ -14,7 +14,7 @@ interface BoundaryDataHubModalProps {
 /**
  * Boundary Data Hub Modal
  *
- * Modal wrapper for BoundaryDataPanel.
+ * Modal wrapper for boundary detector data panel.
  * Provides quick access to boundary detector training data management.
  */
 export function BoundaryDataHubModal({
@@ -41,8 +41,9 @@ export function BoundaryDataHubModal({
             left: '50%',
             transform: 'translate(-50%, -50%)',
             width: '95vw',
-            maxWidth: '1000px',
-            maxHeight: '90vh',
+            maxWidth: '1200px',
+            height: '90vh',
+            maxHeight: '800px',
             bg: 'gray.900',
             borderRadius: 'xl',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
@@ -53,48 +54,34 @@ export function BoundaryDataHubModal({
           })}
           style={{ zIndex: Z_INDEX.MODAL + 1 }}
         >
-          {/* Header */}
-          <div
+          {/* Accessible title (visually hidden) */}
+          <Dialog.Title className={css({ srOnly: true })}>Boundary Training Data</Dialog.Title>
+          <Dialog.Description className={css({ srOnly: true })}>
+            Manage boundary detector training samples
+          </Dialog.Description>
+
+          {/* Close button */}
+          <Dialog.Close
             className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              p: 4,
-              borderBottom: '1px solid',
-              borderColor: 'gray.800',
+              position: 'absolute',
+              top: 2,
+              right: 2,
+              p: 2,
+              bg: 'transparent',
+              border: 'none',
+              color: 'gray.400',
+              cursor: 'pointer',
+              borderRadius: 'md',
+              zIndex: 10,
+              _hover: { color: 'gray.200', bg: 'gray.800' },
             })}
           >
-            <div className={css({ display: 'flex', alignItems: 'center', gap: 3 })}>
-              <span className={css({ fontSize: 'xl' })}>🎯</span>
-              <div>
-                <Dialog.Title
-                  className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'gray.100' })}
-                >
-                  Boundary Training Data
-                </Dialog.Title>
-                <Dialog.Description className={css({ fontSize: 'sm', color: 'gray.400' })}>
-                  Manage boundary detector training samples
-                </Dialog.Description>
-              </div>
-            </div>
-            <Dialog.Close
-              className={css({
-                p: 2,
-                bg: 'transparent',
-                border: 'none',
-                color: 'gray.400',
-                cursor: 'pointer',
-                borderRadius: 'md',
-                _hover: { color: 'gray.200', bg: 'gray.800' },
-              })}
-            >
-              ✕
-            </Dialog.Close>
-          </div>
+            ✕
+          </Dialog.Close>
 
           {/* Panel content */}
           <div className={css({ flex: 1, overflow: 'hidden' })}>
-            <BoundaryDataPanel onDataChanged={onDataChanged} />
+            <UnifiedDataPanel modelType="boundary-detector" onDataChanged={onDataChanged} />
           </div>
         </Dialog.Content>
       </Dialog.Portal>
