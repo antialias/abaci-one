@@ -226,7 +226,8 @@ export function MiniColumnTester({ imagePath, groundTruthDigit }: MiniColumnTest
             borderRadius: 'sm',
           })}
         >
-          Expected: <span className={css({ fontWeight: 'bold', color: 'white' })}>{groundTruthDigit}</span>
+          Expected:{' '}
+          <span className={css({ fontWeight: 'bold', color: 'white' })}>{groundTruthDigit}</span>
         </div>
       </div>
 
@@ -291,7 +292,9 @@ export function MiniColumnTester({ imagePath, groundTruthDigit }: MiniColumnTest
           >
             <div>
               <span className={css({ color: 'gray.500' })}>Heaven:</span>{' '}
-              <span className={css({ fontFamily: 'mono', color: 'gray.200' })}>{result.heaven}</span>
+              <span className={css({ fontFamily: 'mono', color: 'gray.200' })}>
+                {result.heaven}
+              </span>
               <span className={css({ color: 'gray.500', fontSize: 'xs', ml: 1 })}>
                 ({(result.heavenConf * 100).toFixed(0)}%)
               </span>

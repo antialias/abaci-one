@@ -2,7 +2,7 @@
 
 import { css } from '../../../../../../styled-system/css'
 import type { ModelType } from '../wizard/types'
-import type { AnyDataItem, BoundaryDataItem, ColumnDataItem } from './types'
+import type { AnyDataItem, ColumnDataItem } from './types'
 import { isBoundaryDataItem, isColumnDataItem } from './types'
 import { BoundaryDetailContent } from './BoundaryDetailContent'
 import { ColumnDetailContent } from './ColumnDetailContent'

@@ -55,9 +55,14 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
   const [items, setItems] = useState<AnyDataItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Selection
-  const [selectedItem, setSelectedItem] = useState<AnyDataItem | null>(null)
+  // Selection - multi-select support
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null)
+  const [focusedItem, setFocusedItem] = useState<AnyDataItem | null>(null) // For detail panel
   const [selectedDigit, setSelectedDigit] = useState(0) // column-classifier only
+
+  // Bulk action state
+  const [bulkActionInProgress, setBulkActionInProgress] = useState(false)
 
   // Filters
   const [filters, setFilters] = useState<FilterState>(getDefaultFilters)
@@ -116,6 +121,12 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
 
   // Item label for filters
   const itemLabel = modelType === 'boundary-detector' ? 'frames' : 'images'
+
+  // Selected items (objects, not just IDs)
+  const selectedItems = useMemo(
+    () => filteredItems.filter((item) => selectedIds.has(item.id)),
+    [filteredItems, selectedIds]
+  )
 
   // === Data fetching ===
 
@@ -240,16 +251,75 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
 
   // === Handlers ===
 
-  const handleSelectItem = useCallback((item: AnyDataItem) => {
-    setSelectedItem(item)
+  // Toggle selection with shift+click support for range selection
+  // Also opens detail panel for the clicked item (unless shift-clicking)
+  const toggleSelect = useCallback(
+    (id: string, index: number, shiftKey: boolean) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+
+        // Shift+click for range selection/deselection
+        if (shiftKey && lastClickedIndex !== null) {
+          const start = Math.min(lastClickedIndex, index)
+          const end = Math.max(lastClickedIndex, index)
+          const shouldSelect = !prev.has(id)
+          for (let i = start; i <= end; i++) {
+            if (filteredItems[i]) {
+              if (shouldSelect) {
+                next.add(filteredItems[i].id)
+              } else {
+                next.delete(filteredItems[i].id)
+              }
+            }
+          }
+        } else {
+          // Normal toggle
+          if (next.has(id)) {
+            next.delete(id)
+          } else {
+            next.add(id)
+          }
+        }
+
+        return next
+      })
+
+      // Update last clicked index (but not for shift clicks to allow extending range)
+      if (!shiftKey) {
+        setLastClickedIndex(index)
+
+        // Also open detail panel for the clicked item (not for shift+click range selection)
+        const clickedItem = filteredItems[index]
+        if (clickedItem) {
+          setFocusedItem(clickedItem)
+          setRightPanelMode('detail')
+        }
+      }
+    },
+    [lastClickedIndex, filteredItems]
+  )
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(filteredItems.map((item) => item.id)))
+  }, [filteredItems])
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set())
+    setLastClickedIndex(null)
+  }, [])
+
+  // Open detail panel for an item (double-click or dedicated button)
+  const handleViewDetails = useCallback((item: AnyDataItem) => {
+    setFocusedItem(item)
     setRightPanelMode('detail')
   }, [])
 
   const handleCloseDetail = useCallback(() => {
-    setSelectedItem(null)
+    setFocusedItem(null)
     setRightPanelMode('capture')
   }, [])
 
+  // Delete a single item
   const handleDelete = useCallback(
     async (item: AnyDataItem) => {
       if (!confirm('Delete this item? This cannot be undone.')) return
@@ -263,7 +333,12 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
           )
           if (response.ok) {
             setItems((prev) => prev.filter((i) => i.id !== item.id))
-            if (selectedItem?.id === item.id) {
+            setSelectedIds((prev) => {
+              const next = new Set(prev)
+              next.delete(item.id)
+              return next
+            })
+            if (focusedItem?.id === item.id) {
               handleCloseDetail()
             }
             onDataChanged?.()
@@ -281,7 +356,12 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
           })
           if (response.ok) {
             setItems((prev) => prev.filter((i) => i.id !== item.id))
-            if (selectedItem?.id === item.id) {
+            setSelectedIds((prev) => {
+              const next = new Set(prev)
+              next.delete(item.id)
+              return next
+            })
+            if (focusedItem?.id === item.id) {
               handleCloseDetail()
             }
             onDataChanged?.()
@@ -296,9 +376,122 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
         setDeleting(null)
       }
     },
-    [selectedItem, handleCloseDetail, onDataChanged]
+    [focusedItem, handleCloseDetail, onDataChanged]
   )
 
+  // Bulk delete selected items
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedItems.length === 0) return
+    if (!confirm(`Delete ${selectedItems.length} ${itemLabel}? This cannot be undone.`)) return
+
+    setBulkActionInProgress(true)
+
+    // Optimistically remove from UI
+    const idsToDelete = new Set(selectedItems.map((item) => item.id))
+    setItems((prev) => prev.filter((item) => !idsToDelete.has(item.id)))
+    setSelectedIds(new Set())
+
+    try {
+      if (modelType === 'boundary-detector') {
+        // Delete boundary frames one by one (API doesn't support bulk)
+        for (const item of selectedItems) {
+          if (isBoundaryDataItem(item)) {
+            await fetch(
+              `/api/vision-training/boundary-samples?deviceId=${item.deviceId}&baseName=${item.baseName}`,
+              { method: 'DELETE' }
+            )
+          }
+        }
+      } else {
+        // Column classifier supports bulk delete
+        const filenames = selectedItems
+          .filter(isColumnDataItem)
+          .map((item) => ({ digit: item.digit, filename: item.filename }))
+
+        await fetch('/api/vision-training/images', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames, confirm: true }),
+        })
+      }
+
+      // Close detail if focused item was deleted
+      if (focusedItem && idsToDelete.has(focusedItem.id)) {
+        handleCloseDetail()
+      }
+
+      onDataChanged?.()
+      // Reload to get accurate counts
+      loadItems()
+    } catch (error) {
+      console.error('[UnifiedDataPanel] Bulk delete error:', error)
+      alert('Failed to delete some items')
+      // Reload to restore state
+      loadItems()
+    } finally {
+      setBulkActionInProgress(false)
+    }
+  }, [
+    selectedItems,
+    itemLabel,
+    modelType,
+    focusedItem,
+    handleCloseDetail,
+    onDataChanged,
+    loadItems,
+  ])
+
+  // Bulk reclassify selected column items to a new digit
+  const handleBulkReclassify = useCallback(
+    async (newDigit: number) => {
+      const columnItems = selectedItems.filter(isColumnDataItem)
+      if (columnItems.length === 0 || newDigit === selectedDigit) return
+
+      setBulkActionInProgress(true)
+
+      // Optimistically remove from current view
+      const idsToMove = new Set(columnItems.map((item) => item.id))
+      setItems((prev) => prev.filter((item) => !idsToMove.has(item.id)))
+      setSelectedIds(new Set())
+
+      try {
+        const response = await fetch('/api/vision-training/images', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            images: columnItems.map((item) => ({
+              digit: item.digit,
+              filename: item.filename,
+            })),
+            newDigit,
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to reclassify images')
+        }
+
+        // Close detail if focused item was moved
+        if (focusedItem && idsToMove.has(focusedItem.id)) {
+          handleCloseDetail()
+        }
+
+        onDataChanged?.()
+        // Reload to get accurate counts
+        loadItems()
+      } catch (error) {
+        console.error('[UnifiedDataPanel] Bulk reclassify error:', error)
+        alert('Failed to reclassify some images')
+        // Reload to restore state
+        loadItems()
+      } finally {
+        setBulkActionInProgress(false)
+      }
+    },
+    [selectedItems, selectedDigit, focusedItem, handleCloseDetail, onDataChanged, loadItems]
+  )
+
+  // Reclassify a single column item
   const handleReclassify = useCallback(
     async (item: ColumnDataItem, newDigit: number) => {
       setReclassifying(true)
@@ -309,8 +502,13 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
           body: JSON.stringify({ newDigit }),
         })
         if (response.ok) {
-          // Remove from current view and close detail
+          // Remove from current view, clear from selection, and close detail
           setItems((prev) => prev.filter((i) => i.id !== item.id))
+          setSelectedIds((prev) => {
+            const next = new Set(prev)
+            next.delete(item.id)
+            return next
+          })
           handleCloseDetail()
           onDataChanged?.()
           // Reload to get updated counts
@@ -581,47 +779,112 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
               </div>
             </div>
           ) : (
-            <div
-              data-element="grid-scroll-container"
-              className={css({
-                flex: 1,
-                overflow: 'auto',
-                minHeight: 0,
-              })}
-            >
+            <>
+              {/* Selection bar */}
               <div
-                data-element="grid"
+                data-element="selection-bar"
                 className={css({
-                  p: 3,
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                  gap: 2,
-                  alignContent: 'start',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  px: 3,
+                  py: 2,
+                  borderBottom: '1px solid',
+                  borderColor: 'gray.800',
+                  bg: 'gray.875',
+                  flexShrink: 0,
                 })}
               >
-                {filteredItems.map((item) =>
-                  isBoundaryDataItem(item) ? (
-                    <BoundaryGridItem
-                      key={item.id}
-                      item={item}
-                      isSelected={selectedItem?.id === item.id}
-                      onClick={() => handleSelectItem(item)}
-                    />
-                  ) : isColumnDataItem(item) ? (
-                    <ColumnGridItem
-                      key={item.id}
-                      item={item}
-                      isSelected={selectedItem?.id === item.id}
-                      onClick={() => handleSelectItem(item)}
-                    />
-                  ) : null
-                )}
+                <div
+                  data-element="item-count"
+                  className={css({ fontSize: 'sm', color: 'gray.400' })}
+                >
+                  <strong className={css({ color: 'gray.200' })}>{filteredItems.length}</strong>{' '}
+                  {itemLabel}
+                  {selectedIds.size > 0 && (
+                    <span
+                      data-element="selection-count"
+                      className={css({ color: 'blue.400', ml: 2 })}
+                    >
+                      ({selectedIds.size} selected)
+                    </span>
+                  )}
+                </div>
+
+                <div data-element="selection-actions" className={css({ display: 'flex', gap: 2 })}>
+                  {selectedIds.size === 0 && (
+                    <button
+                      type="button"
+                      data-action="select-all"
+                      onClick={selectAll}
+                      className={css({
+                        px: 2,
+                        py: 1,
+                        fontSize: 'xs',
+                        color: 'gray.400',
+                        bg: 'transparent',
+                        border: '1px solid',
+                        borderColor: 'gray.700',
+                        borderRadius: 'md',
+                        cursor: 'pointer',
+                        _hover: { borderColor: 'gray.600', color: 'gray.300' },
+                      })}
+                    >
+                      Select All
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+
+              {/* Grid */}
+              <div
+                data-element="grid-scroll-container"
+                className={css({
+                  flex: 1,
+                  overflow: 'auto',
+                  minHeight: 0,
+                })}
+              >
+                <div
+                  data-element="grid"
+                  className={css({
+                    p: 3,
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                    gap: 2,
+                    alignContent: 'start',
+                  })}
+                >
+                  {filteredItems.map((item, index) =>
+                    isBoundaryDataItem(item) ? (
+                      <BoundaryGridItem
+                        key={item.id}
+                        item={item}
+                        isSelected={selectedIds.has(item.id)}
+                        isFocused={focusedItem?.id === item.id}
+                        onSelect={(shiftKey) => toggleSelect(item.id, index, shiftKey)}
+                        onViewDetails={() => handleViewDetails(item)}
+                        onDelete={() => handleDelete(item)}
+                      />
+                    ) : isColumnDataItem(item) ? (
+                      <ColumnGridItem
+                        key={item.id}
+                        item={item}
+                        isSelected={selectedIds.has(item.id)}
+                        isFocused={focusedItem?.id === item.id}
+                        onSelect={(shiftKey) => toggleSelect(item.id, index, shiftKey)}
+                        onViewDetails={() => handleViewDetails(item)}
+                        onDelete={() => handleDelete(item)}
+                      />
+                    ) : null
+                  )}
+                </div>
+              </div>
+            </>
           )}
         </div>
 
-        {/* Right panel: Capture or Detail */}
+        {/* Right panel: Bulk Selection, Detail, or Capture */}
         <div
           data-element="right-panel"
           className={css({
@@ -630,20 +893,172 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
               lg: 'flex',
             },
             flexDirection: 'column',
-            width: { lg: rightPanelMode === 'detail' ? 'auto' : '400px' },
+            width: { lg: selectedIds.size > 1 || rightPanelMode === 'detail' ? 'auto' : '400px' },
             maxWidth: { lg: '50%' },
             flexShrink: 0,
             minHeight: 0,
             overflow: 'auto',
           })}
         >
-          {rightPanelMode === 'detail' && selectedItem ? (
+          {selectedIds.size > 1 ? (
+            /* Bulk selection panel */
+            <div
+              data-element="bulk-selection-panel"
+              className={css({
+                p: 4,
+                bg: 'gray.850',
+                borderRadius: 'lg',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+              })}
+            >
+              {/* Header */}
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                })}
+              >
+                <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                  <span className={css({ fontSize: 'xl' })}>📦</span>
+                  <span className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'gray.100' })}>
+                    {selectedIds.size} {itemLabel} selected
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className={css({
+                    px: 2,
+                    py: 1,
+                    fontSize: 'sm',
+                    color: 'gray.400',
+                    bg: 'transparent',
+                    border: '1px solid',
+                    borderColor: 'gray.700',
+                    borderRadius: 'md',
+                    cursor: 'pointer',
+                    _hover: { borderColor: 'gray.600', color: 'gray.300' },
+                  })}
+                >
+                  Clear Selection
+                </button>
+              </div>
+
+              {/* Bulk actions */}
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 3,
+                  p: 4,
+                  bg: 'gray.900',
+                  borderRadius: 'md',
+                })}
+              >
+                <div className={css({ fontSize: 'sm', color: 'gray.400', mb: 1 })}>
+                  Bulk Actions
+                </div>
+
+                {/* Bulk delete */}
+                <button
+                  type="button"
+                  data-action="bulk-delete"
+                  onClick={handleBulkDelete}
+                  disabled={bulkActionInProgress}
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 2,
+                    py: 3,
+                    px: 4,
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    color: 'red.300',
+                    bg: 'red.900/30',
+                    border: '1px solid',
+                    borderColor: 'red.700/50',
+                    borderRadius: 'md',
+                    cursor: bulkActionInProgress ? 'not-allowed' : 'pointer',
+                    opacity: bulkActionInProgress ? 0.5 : 1,
+                    _hover: { bg: 'red.900/50', borderColor: 'red.600' },
+                  })}
+                >
+                  <span>🗑️</span>
+                  <span>
+                    Delete {selectedIds.size} {itemLabel}
+                  </span>
+                </button>
+
+                {/* Bulk reclassify (column-classifier only) */}
+                {modelType === 'column-classifier' && (
+                  <div className={css({ display: 'flex', flexDirection: 'column', gap: 2 })}>
+                    <div className={css({ fontSize: 'sm', color: 'gray.400' })}>Move to digit:</div>
+                    <div
+                      className={css({
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(5, 1fr)',
+                        gap: 2,
+                      })}
+                    >
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          data-action="bulk-reclassify-to"
+                          data-target-digit={d}
+                          onClick={() => handleBulkReclassify(d)}
+                          disabled={d === selectedDigit || bulkActionInProgress}
+                          className={css({
+                            py: 2,
+                            fontSize: 'lg',
+                            fontWeight: 'bold',
+                            fontFamily: 'mono',
+                            color: d === selectedDigit ? 'gray.600' : 'gray.100',
+                            bg: d === selectedDigit ? 'gray.800' : 'blue.900/30',
+                            border: '1px solid',
+                            borderColor: d === selectedDigit ? 'gray.700' : 'blue.700/50',
+                            borderRadius: 'md',
+                            cursor:
+                              d === selectedDigit || bulkActionInProgress
+                                ? 'not-allowed'
+                                : 'pointer',
+                            opacity: bulkActionInProgress ? 0.5 : 1,
+                            _hover:
+                              d === selectedDigit || bulkActionInProgress
+                                ? {}
+                                : { bg: 'blue.600', borderColor: 'blue.500', color: 'white' },
+                          })}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Selection tip */}
+              <div
+                className={css({
+                  fontSize: 'xs',
+                  color: 'gray.500',
+                  textAlign: 'center',
+                })}
+              >
+                Tip: Shift+click to select a range of {itemLabel}
+              </div>
+            </div>
+          ) : rightPanelMode === 'detail' && focusedItem ? (
             <DataPanelDetailPanel
               modelType={modelType}
-              selectedItem={selectedItem}
+              selectedItem={focusedItem}
               onClose={handleCloseDetail}
               onDelete={handleDelete}
-              isDeleting={deleting === selectedItem.id}
+              isDeleting={deleting === focusedItem.id}
               onReclassify={handleReclassify}
               isReclassifying={reclassifying}
             />
