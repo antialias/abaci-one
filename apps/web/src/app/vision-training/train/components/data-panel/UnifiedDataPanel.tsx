@@ -199,13 +199,11 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
     loadItems()
   }, [loadItems])
 
-  // Fetch sync status for column classifier
+  // Fetch sync status (works for both model types)
   useEffect(() => {
-    if (modelType !== 'column-classifier') return
-
     const fetchSyncStatus = async () => {
       try {
-        const response = await fetch('/api/vision-training/sync/status')
+        const response = await fetch(`/api/vision-training/sync?modelType=${modelType}`)
         if (response.ok) {
           const data = await response.json()
           setSyncStatus(data)
@@ -338,7 +336,7 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
   const handleStartSync = useCallback(async () => {
     setSyncProgress({ phase: 'connecting', message: 'Connecting...' })
     try {
-      const response = await fetch('/api/vision-training/sync', { method: 'POST' })
+      const response = await fetch(`/api/vision-training/sync?modelType=${modelType}`, { method: 'POST' })
       if (response.ok) {
         setSyncProgress({ phase: 'complete', message: 'Sync complete!' })
         loadItems()
@@ -353,7 +351,7 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
       })
     }
     setSyncHistoryRefreshTrigger((prev) => prev + 1)
-  }, [loadItems, onDataChanged])
+  }, [modelType, loadItems, onDataChanged])
 
   const handleCancelSync = useCallback(() => {
     setSyncProgress({ phase: 'idle', message: '' })
