@@ -534,7 +534,9 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
   const handleStartSync = useCallback(async () => {
     setSyncProgress({ phase: 'connecting', message: 'Connecting...' })
     try {
-      const response = await fetch(`/api/vision-training/sync?modelType=${modelType}`, { method: 'POST' })
+      const response = await fetch(`/api/vision-training/sync?modelType=${modelType}`, {
+        method: 'POST',
+      })
       if (response.ok) {
         setSyncProgress({ phase: 'complete', message: 'Sync complete!' })
         loadItems()

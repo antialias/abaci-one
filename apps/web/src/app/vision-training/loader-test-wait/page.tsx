@@ -46,9 +46,7 @@ export default function LoaderTestWaitPage() {
         gap: 4,
       })}
     >
-      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>
-        Wait Test (Imported Promise)
-      </h1>
+      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>Wait Test (Imported Promise)</h1>
       <p className={css({ color: 'gray.400', mb: 4 })}>
         Adds script tag then waits with imported Promise function.
       </p>
@@ -79,7 +77,8 @@ export default function LoaderTestWaitPage() {
           Status:{' '}
           <span
             className={css({
-              color: status === 'success' ? 'green.400' : status === 'error' ? 'red.400' : 'gray.400',
+              color:
+                status === 'success' ? 'green.400' : status === 'error' ? 'red.400' : 'gray.400',
             })}
           >
             {status}

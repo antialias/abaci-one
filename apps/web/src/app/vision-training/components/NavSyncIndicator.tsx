@@ -339,8 +339,8 @@ export function NavSyncIndicator({ sync }: NavSyncIndicatorProps) {
                 </div>
                 {sync.status?.local && sync.status?.remote && (
                   <div className={css({ color: 'gray.400', fontSize: 'xs' })}>
-                    Local: {sync.status.local.totalImages?.toLocaleString() || 0} •{' '}
-                    Remote: {sync.status.remote.totalImages?.toLocaleString() || 0}
+                    Local: {sync.status.local.totalImages?.toLocaleString() || 0} • Remote:{' '}
+                    {sync.status.remote.totalImages?.toLocaleString() || 0}
                   </div>
                 )}
               </div>

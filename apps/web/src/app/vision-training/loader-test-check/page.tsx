@@ -32,9 +32,7 @@ export default function LoaderTestCheckPage() {
         gap: 4,
       })}
     >
-      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>
-        Check window.cv (No Loading)
-      </h1>
+      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>Check window.cv (No Loading)</h1>
       <p className={css({ color: 'gray.400', mb: 4 })}>
         Just checks if window.cv exists - no loading.
       </p>

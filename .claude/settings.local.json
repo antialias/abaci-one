@@ -641,7 +641,16 @@
       "Bash(if [ -f /Users/antialias/projects/soroban-abacus-flashcards/apps/web/data/vision-training/collected/.deleted ])",
       "Bash(then wc -l /Users/antialias/projects/soroban-abacus-flashcards/apps/web/data/vision-training/collected/.deleted)",
       "Bash(else echo \"File does not exist\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "WebFetch(domain:docs.opencv.org)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__close_page",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(git branch:*)",
+      "WebFetch(domain:scanbot.io)",
+      "WebFetch(domain:learnopencv.com)",
+      "WebFetch(domain:news.ycombinator.com)",
+      "Bash(npm run typecheck:*)"
     ],
     "deny": [],
     "ask": []

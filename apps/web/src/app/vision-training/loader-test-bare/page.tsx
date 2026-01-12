@@ -80,7 +80,8 @@ export default function LoaderTestBarePage() {
           Status:{' '}
           <span
             className={css({
-              color: status === 'success' ? 'green.400' : status === 'error' ? 'red.400' : 'gray.400',
+              color:
+                status === 'success' ? 'green.400' : status === 'error' ? 'red.400' : 'gray.400',
             })}
           >
             {status}

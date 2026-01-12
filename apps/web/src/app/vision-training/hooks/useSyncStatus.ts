@@ -118,7 +118,9 @@ export function useSyncStatus(modelType: ModelType): UseSyncStatusResult {
   const refreshHistory = useCallback(async () => {
     setHistoryLoading(true)
     try {
-      const response = await fetch(`/api/vision-training/sync/history?modelType=${modelType}&limit=5`)
+      const response = await fetch(
+        `/api/vision-training/sync/history?modelType=${modelType}&limit=5`
+      )
       if (response.ok) {
         const data = await response.json()
         setHistory(data.history || [])

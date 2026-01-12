@@ -24,7 +24,12 @@ export type {
 } from '@/lib/vision/quadDetection'
 
 // Re-export utility functions
-export { loadImageToCanvas, captureVideoFrame, orderCorners, distance } from '@/lib/vision/quadDetection'
+export {
+  loadImageToCanvas,
+  captureVideoFrame,
+  orderCorners,
+  distance,
+} from '@/lib/vision/quadDetection'
 
 /**
  * React hook for quad detection in static images.
@@ -89,13 +94,10 @@ export function useQuadDetection(options?: QuadDetectionOptions) {
    * Detect quads in a canvas.
    * Returns null if detector is not loaded.
    */
-  const detect = useCallback(
-    (canvas: HTMLCanvasElement): QuadDetectionResult | null => {
-      if (!detectorRef.current) return null
-      return detectorRef.current.detect(canvas, optionsRef.current)
-    },
-    []
-  )
+  const detect = useCallback((canvas: HTMLCanvasElement): QuadDetectionResult | null => {
+    if (!detectorRef.current) return null
+    return detectorRef.current.detect(canvas, optionsRef.current)
+  }, [])
 
   /**
    * Detect quads in an image file.
@@ -155,10 +157,13 @@ export function useQuadDetection(options?: QuadDetectionOptions) {
   /**
    * Extract a quad region using perspective transform.
    */
-  const extract = useCallback((canvas: HTMLCanvasElement, corners: Corner[]): HTMLCanvasElement | null => {
-    if (!detectorRef.current) return null
-    return detectorRef.current.extract(canvas, corners)
-  }, [])
+  const extract = useCallback(
+    (canvas: HTMLCanvasElement, corners: Corner[]): HTMLCanvasElement | null => {
+      if (!detectorRef.current) return null
+      return detectorRef.current.extract(canvas, corners)
+    },
+    []
+  )
 
   /**
    * Analyze document orientation.

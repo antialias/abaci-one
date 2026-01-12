@@ -49,9 +49,7 @@ export default function LoaderTestHookCustomPage() {
         gap: 4,
       })}
     >
-      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>
-        Custom Hook Test
-      </h1>
+      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>Custom Hook Test</h1>
       <p className={css({ color: 'gray.400', mb: 4 })}>
         Uses custom useOpenCV hook from separate file.
       </p>
@@ -82,7 +80,8 @@ export default function LoaderTestHookCustomPage() {
           Status:{' '}
           <span
             className={css({
-              color: status === 'success' ? 'green.400' : status === 'error' ? 'red.400' : 'gray.400',
+              color:
+                status === 'success' ? 'green.400' : status === 'error' ? 'red.400' : 'gray.400',
             })}
           >
             {status}

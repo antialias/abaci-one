@@ -44,9 +44,7 @@ export default function LoaderTestV5Page() {
       <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>
         Loader V5 Test (No Internal Await)
       </h1>
-      <p className={css({ color: 'gray.400', mb: 4 })}>
-        Returns Promise, consumer awaits it.
-      </p>
+      <p className={css({ color: 'gray.400', mb: 4 })}>Returns Promise, consumer awaits it.</p>
 
       <button
         type="button"
@@ -74,7 +72,8 @@ export default function LoaderTestV5Page() {
           Status:{' '}
           <span
             className={css({
-              color: status === 'success' ? 'green.400' : status === 'error' ? 'red.400' : 'gray.400',
+              color:
+                status === 'success' ? 'green.400' : status === 'error' ? 'red.400' : 'gray.400',
             })}
           >
             {status}

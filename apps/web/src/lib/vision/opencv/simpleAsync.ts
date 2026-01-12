@@ -6,7 +6,7 @@
  */
 export async function simpleDelay(ms: number): Promise<string> {
   console.log('[simpleAsync] simpleDelay called with', ms)
-  await new Promise(resolve => setTimeout(resolve, ms))
+  await new Promise((resolve) => setTimeout(resolve, ms))
   console.log('[simpleAsync] delay complete')
   return 'done'
 }

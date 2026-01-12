@@ -41,9 +41,7 @@ export default function LoaderTestScriptPage() {
         gap: 4,
       })}
     >
-      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>
-        Script Tag Test (No Waiting)
-      </h1>
+      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>Script Tag Test (No Waiting)</h1>
       <p className={css({ color: 'gray.400', mb: 4 })}>
         Step 1: Add script tag. Step 2: Check if cv loaded.
       </p>

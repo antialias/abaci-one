@@ -9,11 +9,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import type { CV } from '@/lib/vision/opencv/types'
-import {
-  loadOpenCV as loadOpenCVCore,
-  getOpenCV,
-  isOpenCVReady,
-} from '@/lib/vision/opencv/loader'
+import { loadOpenCV as loadOpenCVCore, getOpenCV, isOpenCVReady } from '@/lib/vision/opencv/loader'
 
 export interface UseOpenCVReturn {
   /** OpenCV instance (null if not loaded) */

@@ -47,9 +47,7 @@ export default function LoaderTestDirectPage() {
         gap: 4,
       })}
     >
-      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>
-        Direct Import Test
-      </h1>
+      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>Direct Import Test</h1>
       <p className={css({ color: 'gray.400', mb: 4 })}>
         Imports directly from loader.ts (not barrel index.ts).
       </p>
@@ -80,7 +78,8 @@ export default function LoaderTestDirectPage() {
           Status:{' '}
           <span
             className={css({
-              color: status === 'success' ? 'green.400' : status === 'error' ? 'red.400' : 'gray.400',
+              color:
+                status === 'success' ? 'green.400' : status === 'error' ? 'red.400' : 'gray.400',
             })}
           >
             {status}
