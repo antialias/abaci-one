@@ -19,6 +19,7 @@ const manifest: GameManifest = {
   chips: ['⚔️ Strategy', '🔢 Mathematical', '🏛️ Historical', '🎯 Two-Player'],
   ...getGameTheme('purple'),
   available: true,
+  practiceBreakReady: false,
 }
 
 /**

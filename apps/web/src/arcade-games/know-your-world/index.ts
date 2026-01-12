@@ -25,6 +25,7 @@ Choose from multiple maps (World, USA States) and difficulty levels!`,
   gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)',
   borderColor: 'blue.200',
   available: true,
+  practiceBreakReady: false,
 }
 
 const defaultConfig: KnowYourWorldConfig = {

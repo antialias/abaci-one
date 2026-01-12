@@ -25,6 +25,7 @@ const manifest: GameManifest = {
   chips: ['👥 Multiplayer', '🧠 Memory', '🧮 Soroban'],
   ...getGameTheme('purple'),
   available: true,
+  practiceBreakReady: false,
 }
 
 const defaultConfig: MemoryQuizConfig = {

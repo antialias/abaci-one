@@ -26,6 +26,7 @@ const manifest: GameManifest = {
   chips: ['🤝 Collaborative', '⚡ Real-time', '🔬 Demo'],
   ...getGameTheme('teal'),
   available: true,
+  practiceBreakReady: false,
 }
 
 const defaultConfig: YjsDemoConfig = {

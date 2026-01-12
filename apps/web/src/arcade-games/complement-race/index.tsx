@@ -23,6 +23,7 @@ const manifest: GameManifest = {
   ...getGameTheme('blue'),
   difficulty: 'Intermediate',
   available: true,
+  practiceBreakReady: false,
 }
 
 // Default configuration

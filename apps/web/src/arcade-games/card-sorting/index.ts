@@ -26,6 +26,7 @@ const manifest: GameManifest = {
   chips: ['🧠 Pattern Recognition', '🎯 Solo Challenge', '📊 Smart Scoring'],
   ...getGameTheme('green'),
   available: true,
+  practiceBreakReady: false,
 }
 
 const defaultConfig: CardSortingConfig = {
