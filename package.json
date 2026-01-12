@@ -56,5 +56,8 @@
     "typescript"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "opencv-react": "^0.0.6"
+  }
 }
