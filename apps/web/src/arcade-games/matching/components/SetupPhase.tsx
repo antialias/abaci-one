@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { css } from '../../../../styled-system/css'
 import { useGameMode } from '@/contexts/GameModeContext'
+import { useGameLayoutMode } from '@/contexts/GameLayoutContext'
 import { useMatching } from '../Provider'
 
 // Add bounce animation for the start button
@@ -42,6 +43,8 @@ export function SetupPhase() {
   } = useMatching()
 
   const { activePlayerCount, gameMode: _globalGameMode } = useGameMode()
+  const layoutMode = useGameLayoutMode()
+  const isCompact = layoutMode === 'container' // Practice game break mode
 
   // PAUSE/RESUME: Warning dialog state
   const [showConfigWarning, setShowConfigWarning] = useState(false)
@@ -122,13 +125,13 @@ export function SetupPhase() {
   ) => {
     const baseStyles = {
       border: 'none',
-      borderRadius: { base: '12px', md: '16px' },
-      padding: { base: '12px 16px', sm: '14px 20px', md: '16px 24px' },
-      fontSize: { base: '14px', sm: '15px', md: '16px' },
+      borderRadius: isCompact ? '12px' : { base: '12px', md: '16px' },
+      padding: isCompact ? '10px 14px' : { base: '12px 16px', sm: '14px 20px', md: '16px 24px' },
+      fontSize: isCompact ? '14px' : { base: '14px', sm: '15px', md: '16px' },
       fontWeight: 'bold',
       cursor: 'pointer',
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      minWidth: { base: '120px', sm: '140px', md: '160px' },
+      minWidth: isCompact ? '100px' : { base: '120px', sm: '140px', md: '160px' },
       textAlign: 'center' as const,
       position: 'relative' as const,
       overflow: 'hidden' as const,
@@ -204,29 +207,38 @@ export function SetupPhase() {
 
   return (
     <div
+      data-component="setup-phase"
+      data-game-type={state.gameType}
+      data-difficulty={state.difficulty}
+      data-compact={isCompact}
       className={css({
         textAlign: 'center',
-        padding: { base: '12px 16px', sm: '16px 20px', md: '20px' },
+        padding: isCompact ? '12px 16px' : { base: '12px 16px', sm: '16px 20px', md: '20px' },
         maxWidth: '800px',
         margin: '0 auto',
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0, // Allow shrinking
-        overflow: 'auto', // Enable scrolling if needed
+        height: isCompact ? '100%' : 'auto',
+        overflow: isCompact ? 'hidden' : 'auto', // No scrolling in compact mode
       })}
     >
       <div
+        data-element="setup-content"
         className={css({
-          display: 'grid',
-          gap: { base: '8px', sm: '12px', md: '16px' },
+          display: 'flex',
+          flexDirection: 'column',
+          gap: isCompact ? '12px' : { base: '8px', sm: '12px', md: '16px' },
           margin: '0 auto',
           flex: 1,
           minHeight: 0, // Allow shrinking
+          width: '100%',
         })}
       >
         {/* PAUSE/RESUME: Config change warning */}
         {showConfigWarning && (
           <div
+            data-element="config-warning-dialog"
             className={css({
               p: '4',
               background:
@@ -239,6 +251,7 @@ export function SetupPhase() {
             })}
           >
             <p
+              data-element="config-warning-title"
               className={css({
                 color: 'yellow.700',
                 fontSize: { base: '15px', md: '17px' },
@@ -249,6 +262,7 @@ export function SetupPhase() {
               ⚠️ Warning: Changing Settings Will End Current Game
             </p>
             <p
+              data-element="config-warning-message"
               className={css({
                 color: 'gray.600',
                 fontSize: { base: '13px', md: '14px' },
@@ -259,6 +273,7 @@ export function SetupPhase() {
               able to resume.
             </p>
             <div
+              data-element="config-warning-actions"
               className={css({
                 display: 'flex',
                 gap: '8px',
@@ -267,6 +282,7 @@ export function SetupPhase() {
               })}
             >
               <button
+                data-action="keep-game"
                 className={css({
                   background: 'linear-gradient(135deg, #10b981, #059669)',
                   color: 'white',
@@ -288,6 +304,7 @@ export function SetupPhase() {
                 ✓ Keep Game & Cancel Change
               </button>
               <button
+                data-action="end-game"
                 className={css({
                   background: 'linear-gradient(135deg, #ef4444, #dc2626)',
                   color: 'white',
@@ -315,6 +332,7 @@ export function SetupPhase() {
         {/* Warning if no players */}
         {activePlayerCount === 0 && (
           <div
+            data-element="no-players-warning"
             className={css({
               p: '4',
               background: 'rgba(239, 68, 68, 0.1)',
@@ -325,6 +343,7 @@ export function SetupPhase() {
             })}
           >
             <p
+              data-element="no-players-warning-text"
               className={css({
                 color: 'red.700',
                 fontSize: { base: '14px', md: '16px' },
@@ -337,158 +356,177 @@ export function SetupPhase() {
         )}
 
         {/* Game Type Selection */}
-        <div>
+        <div data-section="game-type-selection">
           <label
+            data-element="game-type-label"
             className={css({
               display: 'block',
-              fontSize: { base: '16px', sm: '18px', md: '20px' },
+              fontSize: isCompact ? '16px' : { base: '16px', sm: '18px', md: '20px' },
               fontWeight: 'bold',
-              marginBottom: { base: '12px', md: '16px' },
+              marginBottom: isCompact ? '8px' : { base: '12px', md: '16px' },
               color: 'gray.700',
             })}
           >
             Game Type
           </label>
           <div
+            data-element="game-type-buttons"
             className={css({
               display: 'grid',
-              gridTemplateColumns: {
-                base: '1fr',
-                sm: 'repeat(2, 1fr)',
-              },
-              gap: { base: '8px', sm: '10px', md: '12px' },
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: isCompact ? '8px' : { base: '8px', sm: '10px', md: '12px' },
               justifyItems: 'stretch',
             })}
           >
             <button
+              data-action="select-game-type"
+              data-game-type="abacus-numeral"
+              data-selected={state.gameType === 'abacus-numeral'}
               className={getButtonStyles(state.gameType === 'abacus-numeral', 'secondary')}
               onClick={() => handleSetGameType('abacus-numeral')}
             >
               <div
+                data-element="button-content"
                 className={css({
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: { base: '4px', md: '6px' },
+                  gap: isCompact ? '4px' : { base: '4px', md: '6px' },
                 })}
               >
                 <div
+                  data-element="button-icons"
                   className={css({
-                    fontSize: { base: '20px', sm: '24px', md: '28px' },
+                    fontSize: isCompact ? '22px' : { base: '20px', sm: '24px', md: '28px' },
                     display: 'flex',
                     alignItems: 'center',
-                    gap: { base: '4px', md: '8px' },
+                    gap: isCompact ? '4px' : { base: '4px', md: '8px' },
                   })}
                 >
                   <span>🧮</span>
-                  <span className={css({ fontSize: { base: '16px', md: '20px' } })}>↔️</span>
+                  <span className={css({ fontSize: isCompact ? '16px' : { base: '16px', md: '20px' } })}>↔️</span>
                   <span>🔢</span>
                 </div>
                 <div
+                  data-element="button-title"
                   className={css({
                     fontWeight: 'bold',
-                    fontSize: { base: '12px', sm: '13px', md: '14px' },
+                    fontSize: isCompact ? '13px' : { base: '12px', sm: '13px', md: '14px' },
                   })}
                 >
                   Abacus-Numeral
                 </div>
-                <div
-                  className={css({
-                    fontSize: { base: '10px', sm: '11px', md: '12px' },
-                    opacity: 0.8,
-                    textAlign: 'center',
-                    display: { base: 'none', sm: 'block' },
-                  })}
-                >
-                  Match visual patterns
-                  <br />
-                  with numbers
-                </div>
+                {!isCompact && (
+                  <div
+                    data-element="button-description"
+                    className={css({
+                      fontSize: { base: '10px', sm: '11px', md: '12px' },
+                      opacity: 0.8,
+                      textAlign: 'center',
+                      display: { base: 'none', sm: 'block' },
+                    })}
+                  >
+                    Match visual patterns
+                    <br />
+                    with numbers
+                  </div>
+                )}
               </div>
             </button>
             <button
+              data-action="select-game-type"
+              data-game-type="complement-pairs"
+              data-selected={state.gameType === 'complement-pairs'}
               className={getButtonStyles(state.gameType === 'complement-pairs', 'secondary')}
               onClick={() => handleSetGameType('complement-pairs')}
             >
               <div
+                data-element="button-content"
                 className={css({
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: { base: '4px', md: '6px' },
+                  gap: isCompact ? '4px' : { base: '4px', md: '6px' },
                 })}
               >
                 <div
+                  data-element="button-icons"
                   className={css({
-                    fontSize: { base: '20px', sm: '24px', md: '28px' },
+                    fontSize: isCompact ? '22px' : { base: '20px', sm: '24px', md: '28px' },
                     display: 'flex',
                     alignItems: 'center',
-                    gap: { base: '4px', md: '8px' },
+                    gap: isCompact ? '4px' : { base: '4px', md: '8px' },
                   })}
                 >
                   <span>🤝</span>
-                  <span className={css({ fontSize: { base: '16px', md: '20px' } })}>➕</span>
+                  <span className={css({ fontSize: isCompact ? '16px' : { base: '16px', md: '20px' } })}>➕</span>
                   <span>🔟</span>
                 </div>
                 <div
+                  data-element="button-title"
                   className={css({
                     fontWeight: 'bold',
-                    fontSize: { base: '12px', sm: '13px', md: '14px' },
+                    fontSize: isCompact ? '13px' : { base: '12px', sm: '13px', md: '14px' },
                   })}
                 >
                   Complement Pairs
                 </div>
-                <div
-                  className={css({
-                    fontSize: { base: '10px', sm: '11px', md: '12px' },
-                    opacity: 0.8,
-                    textAlign: 'center',
-                    display: { base: 'none', sm: 'block' },
-                  })}
-                >
-                  Find number friends
-                  <br />
-                  that add to 5 or 10
-                </div>
+                {!isCompact && (
+                  <div
+                    data-element="button-description"
+                    className={css({
+                      fontSize: { base: '10px', sm: '11px', md: '12px' },
+                      opacity: 0.8,
+                      textAlign: 'center',
+                      display: { base: 'none', sm: 'block' },
+                    })}
+                  >
+                    Find number friends
+                    <br />
+                    that add to 5 or 10
+                  </div>
+                )}
               </div>
             </button>
           </div>
-          <p
-            className={css({
-              fontSize: { base: '12px', md: '14px' },
-              color: 'gray.500',
-              marginTop: { base: '6px', md: '8px' },
-              textAlign: 'center',
-              display: { base: 'none', sm: 'block' },
-            })}
-          >
-            {state.gameType === 'abacus-numeral'
-              ? 'Match abacus representations with their numerical values'
-              : 'Find pairs of numbers that add up to 5 or 10'}
-          </p>
+          {!isCompact && (
+            <p
+              data-element="game-type-hint"
+              className={css({
+                fontSize: { base: '12px', md: '14px' },
+                color: 'gray.500',
+                marginTop: { base: '6px', md: '8px' },
+                textAlign: 'center',
+                display: { base: 'none', sm: 'block' },
+              })}
+            >
+              {state.gameType === 'abacus-numeral'
+                ? 'Match abacus representations with their numerical values'
+                : 'Find pairs of numbers that add up to 5 or 10'}
+            </p>
+          )}
         </div>
 
         {/* Difficulty Selection */}
-        <div>
+        <div data-section="difficulty-selection">
           <label
+            data-element="difficulty-label"
             className={css({
               display: 'block',
-              fontSize: { base: '16px', sm: '18px', md: '20px' },
+              fontSize: isCompact ? '16px' : { base: '16px', sm: '18px', md: '20px' },
               fontWeight: 'bold',
-              marginBottom: { base: '12px', md: '16px' },
+              marginBottom: isCompact ? '8px' : { base: '12px', md: '16px' },
               color: 'gray.700',
             })}
           >
             Difficulty ({state.difficulty} pairs)
           </label>
           <div
+            data-element="difficulty-buttons"
             className={css({
               display: 'grid',
-              gridTemplateColumns: {
-                base: 'repeat(2, 1fr)',
-                sm: 'repeat(4, 1fr)',
-              },
-              gap: { base: '8px', sm: '10px', md: '12px' },
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: isCompact ? '8px' : { base: '8px', sm: '10px', md: '12px' },
               justifyItems: 'stretch',
             })}
           >
@@ -519,55 +557,80 @@ export function SetupPhase() {
               return (
                 <button
                   key={difficulty}
+                  data-action="select-difficulty"
+                  data-difficulty={difficulty}
+                  data-selected={state.difficulty === difficulty}
                   className={getButtonStyles(state.difficulty === difficulty, 'difficulty')}
                   onClick={() => handleSetDifficulty(difficulty)}
                 >
                   <div
+                    data-element="button-content"
                     className={css({
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: '4px',
+                      gap: isCompact ? '2px' : '4px',
                     })}
                   >
-                    <div className={css({ fontSize: '32px' })}>
+                    <div
+                      data-element="button-icon"
+                      className={css({ fontSize: isCompact ? '24px' : '32px' })}
+                    >
                       {difficultyInfo[difficulty].icon}
                     </div>
-                    <div className={css({ fontSize: '18px', fontWeight: 'bold' })}>
-                      {difficulty} pairs
-                    </div>
-                    <div className={css({ fontSize: '14px', fontWeight: 'bold' })}>
-                      {difficultyInfo[difficulty].label}
-                    </div>
                     <div
+                      data-element="button-pairs"
                       className={css({
-                        fontSize: '11px',
-                        opacity: 0.9,
-                        textAlign: 'center',
+                        fontSize: isCompact ? '14px' : '18px',
+                        fontWeight: 'bold',
                       })}
                     >
-                      {difficultyInfo[difficulty].description}
+                      {difficulty}
                     </div>
+                    {!isCompact && (
+                      <>
+                        <div
+                          data-element="button-level"
+                          className={css({ fontSize: '14px', fontWeight: 'bold' })}
+                        >
+                          {difficultyInfo[difficulty].label}
+                        </div>
+                        <div
+                          data-element="button-description"
+                          className={css({
+                            fontSize: '11px',
+                            opacity: 0.9,
+                            textAlign: 'center',
+                          })}
+                        >
+                          {difficultyInfo[difficulty].description}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </button>
               )
             })}
           </div>
-          <p
-            className={css({
-              fontSize: '14px',
-              color: 'gray.500',
-              marginTop: '8px',
-            })}
-          >
-            {state.difficulty} pairs = {state.difficulty * 2} cards total
-          </p>
+          {!isCompact && (
+            <p
+              data-element="difficulty-hint"
+              className={css({
+                fontSize: '14px',
+                color: 'gray.500',
+                marginTop: '8px',
+              })}
+            >
+              {state.difficulty} pairs = {state.difficulty * 2} cards total
+            </p>
+          )}
         </div>
 
         {/* Multi-Player Timer Setting */}
         {activePlayerCount > 1 && (
-          <div>
+          <div data-section="turn-timer-selection">
             <label
+              data-element="turn-timer-label"
               className={css({
                 display: 'block',
                 fontSize: '20px',
@@ -579,6 +642,7 @@ export function SetupPhase() {
               Turn Timer
             </label>
             <div
+              data-element="turn-timer-buttons"
               className={css({
                 display: 'flex',
                 gap: '12px',
@@ -597,10 +661,14 @@ export function SetupPhase() {
                 return (
                   <button
                     key={timer}
+                    data-action="select-turn-timer"
+                    data-timer={timer}
+                    data-selected={state.turnTimer === timer}
                     className={getButtonStyles(state.turnTimer === timer, 'secondary')}
                     onClick={() => handleSetTurnTimer(timer)}
                   >
                     <div
+                      data-element="button-content"
                       className={css({
                         display: 'flex',
                         flexDirection: 'column',
@@ -608,8 +676,11 @@ export function SetupPhase() {
                         gap: '4px',
                       })}
                     >
-                      <span className={css({ fontSize: '24px' })}>{timerInfo[timer].icon}</span>
+                      <span data-element="button-icon" className={css({ fontSize: '24px' })}>
+                        {timerInfo[timer].icon}
+                      </span>
                       <span
+                        data-element="button-duration"
                         className={css({
                           fontSize: '18px',
                           fontWeight: 'bold',
@@ -617,7 +688,10 @@ export function SetupPhase() {
                       >
                         {timer}s
                       </span>
-                      <span className={css({ fontSize: '12px', opacity: 0.8 })}>
+                      <span
+                        data-element="button-label"
+                        className={css({ fontSize: '12px', opacity: 0.8 })}
+                      >
                         {timerInfo[timer].label}
                       </span>
                     </div>
@@ -626,6 +700,7 @@ export function SetupPhase() {
               })}
             </div>
             <p
+              data-element="turn-timer-hint"
               className={css({
                 fontSize: '14px',
                 color: 'gray.500',
@@ -639,28 +714,31 @@ export function SetupPhase() {
 
         {/* Start Game Button - Sticky at bottom */}
         <div
+          data-section="start-button-container"
           className={css({
             marginTop: 'auto', // Push to bottom
-            paddingTop: { base: '12px', md: '16px' },
-            position: 'sticky',
+            paddingTop: isCompact ? '12px' : { base: '12px', md: '16px' },
+            position: isCompact ? 'relative' : 'sticky',
             bottom: 0,
-            background: 'rgba(255,255,255,0.95)',
-            backdropFilter: 'blur(10px)',
-            borderTop: '1px solid rgba(0,0,0,0.1)',
-            margin: '0 -16px -12px -16px', // Extend to edges
-            padding: { base: '12px 16px', md: '16px' },
+            background: isCompact ? 'transparent' : 'rgba(255,255,255,0.95)',
+            backdropFilter: isCompact ? 'none' : 'blur(10px)',
+            borderTop: isCompact ? 'none' : '1px solid rgba(0,0,0,0.1)',
+            margin: isCompact ? '0' : '0 -16px -12px -16px', // Extend to edges only in non-compact
+            padding: isCompact ? '0' : { base: '12px 16px', md: '16px' },
           })}
         >
           <button
+            data-action={canResumeGame ? 'resume-game' : 'start-game'}
+            data-can-resume={canResumeGame}
             className={css({
               background: canResumeGame
                 ? 'linear-gradient(135deg, #10b981 0%, #059669 50%, #34d399 100%)'
                 : 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 50%, #ff9ff3 100%)',
               color: 'white',
               border: 'none',
-              borderRadius: { base: '16px', sm: '20px', md: '24px' },
-              padding: { base: '14px 28px', sm: '16px 32px', md: '18px 36px' },
-              fontSize: { base: '16px', sm: '18px', md: '20px' },
+              borderRadius: isCompact ? '16px' : { base: '16px', sm: '20px', md: '24px' },
+              padding: isCompact ? '12px 24px' : { base: '14px 28px', sm: '16px 32px', md: '18px 36px' },
+              fontSize: isCompact ? '16px' : { base: '16px', sm: '18px', md: '20px' },
               fontWeight: 'black',
               cursor: 'pointer',
               transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -704,26 +782,31 @@ export function SetupPhase() {
             onClick={handleStartOrResumeGame}
           >
             <div
+              data-element="button-content"
               className={css({
                 display: 'flex',
                 alignItems: 'center',
-                gap: { base: '6px', md: '8px' },
+                gap: isCompact ? '6px' : { base: '6px', md: '8px' },
                 justifyContent: 'center',
               })}
             >
               <span
+                data-element="button-icon-left"
                 className={css({
-                  fontSize: { base: '18px', sm: '20px', md: '24px' },
-                  animation: 'bounce 2s infinite',
+                  fontSize: isCompact ? '18px' : { base: '18px', sm: '20px', md: '24px' },
+                  animation: isCompact ? 'none' : 'bounce 2s infinite',
                 })}
               >
                 {canResumeGame ? '▶️' : '🚀'}
               </span>
-              <span>{canResumeGame ? 'RESUME GAME' : 'START GAME'}</span>
+              <span data-element="button-text">
+                {canResumeGame ? 'RESUME GAME' : 'START GAME'}
+              </span>
               <span
+                data-element="button-icon-right"
                 className={css({
-                  fontSize: { base: '18px', sm: '20px', md: '24px' },
-                  animation: 'bounce 2s infinite',
+                  fontSize: isCompact ? '18px' : { base: '18px', sm: '20px', md: '24px' },
+                  animation: isCompact ? 'none' : 'bounce 2s infinite',
                   animationDelay: '0.5s',
                 })}
               >

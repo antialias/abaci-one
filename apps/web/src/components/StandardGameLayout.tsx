@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
+import { useGameLayoutMode } from '@/contexts/GameLayoutContext'
 import { css } from '../../styled-system/css'
 
 interface StandardGameLayoutProps {
@@ -15,11 +16,21 @@ interface StandardGameLayoutProps {
  * 3. Perfect viewport fit on all devices
  * 4. Consistent experience across all games
  * 5. Dynamically calculates nav height for proper spacing
+ *
+ * Layout modes (controlled via GameLayoutContext):
+ * - 'viewport' (default): Uses 100vh, calculates nav padding (arcade mode)
+ * - 'container': Uses 100% height, no nav padding (practice game break mode)
  */
 export function StandardGameLayout({ children, className }: StandardGameLayoutProps) {
+  const layoutMode = useGameLayoutMode()
+  const isContainerMode = layoutMode === 'container'
+
   const [navHeight, setNavHeight] = useState(80) // Default fallback
 
   useEffect(() => {
+    // Skip nav measurement in container mode - parent handles positioning
+    if (isContainerMode) return
+
     // Measure the actual nav height from the fixed header
     const measureNavHeight = () => {
       const header = document.querySelector('header')
@@ -42,16 +53,17 @@ export function StandardGameLayout({ children, className }: StandardGameLayoutPr
       window.removeEventListener('resize', measureNavHeight)
       clearTimeout(timer)
     }
-  }, [])
+  }, [isContainerMode])
 
   return (
     <div
       data-layout="standard-game-layout"
-      data-nav-height={navHeight}
+      data-layout-mode={layoutMode}
+      data-nav-height={isContainerMode ? 0 : navHeight}
       className={`${css({
-        // Exact viewport sizing - no scrolling ever
-        height: '100vh',
-        width: '100vw',
+        // Sizing depends on layout mode
+        height: isContainerMode ? '100%' : '100vh',
+        width: isContainerMode ? '100%' : '100vw',
         overflow: 'hidden',
 
         paddingRight: '4px', // Ensure nav doesn't overlap content on right side
@@ -69,8 +81,8 @@ export function StandardGameLayout({ children, className }: StandardGameLayoutPr
         background: 'transparent',
       })} ${className || ''}`}
       style={{
-        // Dynamic padding based on measured nav height
-        paddingTop: `${navHeight}px`,
+        // Dynamic padding based on measured nav height (only in viewport mode)
+        paddingTop: isContainerMode ? '4px' : `${navHeight}px`,
       }}
     >
       {children}

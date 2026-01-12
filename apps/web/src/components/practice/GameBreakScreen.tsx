@@ -9,6 +9,7 @@ import {
 } from '@/lib/arcade/practice-approved-games'
 import { useGameBreakRoom } from '@/hooks/useGameBreakRoom'
 import type { GameBreakSelectionMode } from '@/db/schema/session-plans'
+import { GameLayoutProvider } from '@/contexts/GameLayoutContext'
 import { css } from '../../../styled-system/css'
 import { PracticeGameModeProvider } from './PracticeGameModeProvider'
 
@@ -203,15 +204,17 @@ export function GameBreakScreen({
           overflow: 'hidden',
         })}
       >
-        <PracticeGameModeProvider
-          student={student}
-          roomData={room}
-          onGameComplete={() => handleComplete('gameFinished')}
-        >
-          <Provider>
-            <GameComponent />
-          </Provider>
-        </PracticeGameModeProvider>
+        <GameLayoutProvider mode="container">
+          <PracticeGameModeProvider
+            student={student}
+            roomData={room}
+            onGameComplete={() => handleComplete('gameFinished')}
+          >
+            <Provider>
+              <GameComponent />
+            </Provider>
+          </PracticeGameModeProvider>
+        </GameLayoutProvider>
       </div>
     )
   }
