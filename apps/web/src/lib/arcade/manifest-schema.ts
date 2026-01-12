@@ -11,6 +11,10 @@ import { z } from 'zod'
 export const GameManifestSchema = z.object({
   name: z.string().min(1).describe('Internal game identifier (e.g., "matching")'),
   displayName: z.string().min(1).describe('Display name shown to users'),
+  shortName: z
+    .string()
+    .optional()
+    .describe('Short name for compact UI spaces (defaults to displayName)'),
   icon: z.string().min(1).describe('Emoji icon for the game'),
   description: z.string().min(1).describe('Short description'),
   longDescription: z.string().min(1).describe('Detailed description'),

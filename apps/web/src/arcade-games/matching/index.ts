@@ -15,6 +15,7 @@ import { matchingGameValidator } from './Validator'
 const manifest: GameManifest = {
   name: 'matching',
   displayName: 'Matching Pairs Battle',
+  shortName: 'Matching Pairs',
   icon: '⚔️',
   description: 'Multiplayer memory battle with friends',
   longDescription:

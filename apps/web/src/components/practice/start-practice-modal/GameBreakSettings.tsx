@@ -147,7 +147,7 @@ export function GameBreakSettings() {
                     },
                   })}
                 >
-                  {singleGame.manifest.displayName.replace(' Battle', '').replace(' Lightning', '')}
+                  {singleGame.manifest.shortName || singleGame.manifest.displayName}
                 </span>
               </div>
 
@@ -510,7 +510,7 @@ export function GameBreakSettings() {
                     (g) => g.manifest.name === gameBreakSelectedGame
                   )
                   return game
-                    ? `${game.manifest.icon} ${game.manifest.displayName.replace(' Battle', '').replace(' Lightning', '')}`
+                    ? `${game.manifest.icon} ${game.manifest.shortName || game.manifest.displayName}`
                     : 'Select game'
                 })()}
               </Select.Value>
@@ -591,8 +591,7 @@ export function GameBreakSettings() {
                       })}
                     >
                       <Select.ItemText>
-                        {game.manifest.icon}{' '}
-                        {game.manifest.displayName.replace(' Battle', '').replace(' Lightning', '')}
+                        {game.manifest.icon} {game.manifest.shortName || game.manifest.displayName}
                       </Select.ItemText>
                     </Select.Item>
                   ))}
