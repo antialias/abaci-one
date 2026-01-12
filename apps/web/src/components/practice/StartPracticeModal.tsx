@@ -15,7 +15,11 @@ import { sessionModeKeys } from '@/hooks/useSessionMode'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { css } from '../../../styled-system/css'
 import { SkillTutorialLauncher } from '../tutorial/SkillTutorialLauncher'
-import { StartPracticeModalProvider, useStartPracticeModal } from './StartPracticeModalContext'
+import {
+  StartPracticeModalProvider,
+  useStartPracticeModal,
+  type GameInfo,
+} from './StartPracticeModalContext'
 import {
   SessionConfigSummary,
   DurationSelector,
@@ -27,16 +31,6 @@ import {
   ErrorDisplay,
   StartButton,
 } from './start-practice-modal'
-
-// Game info type for overrides
-type GameInfo = {
-  manifest: {
-    name: string
-    displayName: string
-    shortName?: string
-    icon: string
-  }
-}
 
 interface StartPracticeModalProps {
   studentId: string

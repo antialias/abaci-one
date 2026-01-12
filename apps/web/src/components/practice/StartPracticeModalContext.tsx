@@ -48,8 +48,15 @@ export type EnabledParts = {
 
 export type PartType = 'abacus' | 'visualization' | 'linear'
 
-// Game info type from practice-approved-games
-type GameInfo = ReturnType<typeof getPracticeApprovedGames>[number]
+// Minimal game info interface for the context (used for both real games and mock overrides)
+export interface GameInfo {
+  manifest: {
+    name: string
+    displayName: string
+    shortName?: string
+    icon: string
+  }
+}
 
 interface StartPracticeModalContextValue {
   // Read-only props from parent
