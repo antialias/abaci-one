@@ -187,7 +187,12 @@ export const WithExistingPlan: Story = {
           pausedBy: null,
           pauseReason: null,
           retryState: null,
-          gameBreakSettings: { enabled: true, maxDurationMinutes: 5 },
+          gameBreakSettings: {
+            enabled: true,
+            maxDurationMinutes: 5,
+            selectionMode: 'kid-chooses',
+            selectedGame: null,
+          },
         }}
       />
     </StoryWrapper>

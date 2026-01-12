@@ -25,6 +25,7 @@ const manifest: GameManifest = {
   chips: ['👥 Multiplayer', '🎯 Strategic', '🏆 Competitive'],
   ...getGameTheme('pink'),
   available: true,
+  practiceBreakReady: true, // Works as single-player, quick 2-5 minute sessions
 }
 
 const defaultConfig: MatchingConfig = {

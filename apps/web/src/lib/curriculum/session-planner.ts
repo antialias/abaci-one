@@ -1393,7 +1393,7 @@ function getPartDescription(type: SessionPartType): string {
     case 'visualization':
       return 'Mental Math (Visualization)'
     case 'linear':
-      return 'Mental Math (Linear)'
+      return 'Linear Math'
   }
 }
 

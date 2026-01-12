@@ -23,6 +23,15 @@ export const GameManifestSchema = z.object({
   gradient: z.string().min(1).describe('CSS gradient for card background'),
   borderColor: z.string().min(1).describe('Border color (e.g., "purple.200")'),
   available: z.boolean().describe('Whether game is available to play'),
+  practiceBreakReady: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      'Whether game is ready for practice session game breaks. ' +
+        'Games must be single-player capable, work in 2-10 minute sessions, ' +
+        'and not require complex setup or multiplayer coordination.'
+    ),
 })
 
 /**

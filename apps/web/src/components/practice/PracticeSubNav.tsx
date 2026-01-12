@@ -10,7 +10,12 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { useStudentStakeholders } from '@/hooks/useStudentStakeholders'
 import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import { useStudentActions, type StudentActionData } from '@/hooks/useStudentActions'
-import type { SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import type {
+  GameBreakSettings,
+  SessionPart,
+  SessionPlan,
+  SlotResult,
+} from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 import { EnrollChildModal } from '@/components/classroom/EnrollChildModal'
 import { FamilyCodeDisplay } from '@/components/family'
@@ -19,6 +24,7 @@ import { RelationshipSummary } from './RelationshipBadge'
 import { SessionMoodIndicator } from './SessionMoodIndicator'
 import { SessionProgressIndicator } from './SessionProgressIndicator'
 import { ACTION_DEFINITIONS } from './studentActions'
+import { getGame } from '@/lib/arcade/game-registry'
 
 /**
  * Timing data for the current problem attempt
@@ -90,6 +96,10 @@ export interface GameBreakHudData {
   maxDurationMs: number
   /** Callback to end the game break early */
   onSkip: () => void
+  /** Optional: The specific game being played (icon emoji) */
+  gameIcon?: string
+  /** Optional: The specific game name being played */
+  gameName?: string
 }
 
 interface PracticeSubNavProps {
@@ -139,6 +149,117 @@ function calculateStats(times: number[]): {
   const stdDev = Math.sqrt(variance)
 
   return { mean, stdDev, count }
+}
+
+/**
+ * Game Break Countdown Badge
+ * Shows remaining problems until game break with color-coded excitement levels
+ */
+interface GameBreakCountdownBadgeProps {
+  /** Number of problems remaining before the game break */
+  problemsRemaining: number
+  /** Dark mode */
+  isDark: boolean
+  /** Optional: specific game icon to show instead of generic 🎮 */
+  gameIcon?: string
+}
+
+function GameBreakCountdownBadge({
+  problemsRemaining,
+  isDark,
+  gameIcon,
+}: GameBreakCountdownBadgeProps) {
+  // Determine color/style based on how close we are
+  // 1 = celebration, 2-3 = excited, 4+ = informational
+  const isAlmostThere = problemsRemaining === 1
+  const isExcited = problemsRemaining >= 2 && problemsRemaining <= 3
+  const isInformational = problemsRemaining >= 4
+
+  // Use specific game icon if provided, otherwise default to 🎮
+  const displayIcon = gameIcon || '🎮'
+
+  // Colors based on excitement level
+  const backgroundColor = isAlmostThere
+    ? isDark
+      ? 'rgba(34, 197, 94, 0.25)'
+      : 'rgba(34, 197, 94, 0.15)'
+    : isExcited
+      ? isDark
+        ? 'rgba(234, 179, 8, 0.25)'
+        : 'rgba(234, 179, 8, 0.15)'
+      : isDark
+        ? 'rgba(156, 163, 175, 0.2)'
+        : 'rgba(156, 163, 175, 0.15)'
+
+  const textColor = isAlmostThere
+    ? isDark
+      ? '#86efac'
+      : '#16a34a'
+    : isExcited
+      ? isDark
+        ? '#fde047'
+        : '#ca8a04'
+      : isDark
+        ? '#9ca3af'
+        : '#6b7280'
+
+  const borderColor = isAlmostThere
+    ? isDark
+      ? 'rgba(34, 197, 94, 0.4)'
+      : 'rgba(34, 197, 94, 0.3)'
+    : isExcited
+      ? isDark
+        ? 'rgba(234, 179, 8, 0.4)'
+        : 'rgba(234, 179, 8, 0.3)'
+      : isDark
+        ? 'rgba(156, 163, 175, 0.3)'
+        : 'rgba(156, 163, 175, 0.25)'
+
+  // Text content
+  const text = isAlmostThere ? 'Next one!' : `${problemsRemaining} until`
+
+  return (
+    <div
+      data-element="game-break-countdown"
+      data-remaining={problemsRemaining}
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.25rem',
+        padding: '0.25rem 0.5rem',
+        borderRadius: '6px',
+        border: '1px solid',
+        flexShrink: 0,
+        fontSize: '0.75rem',
+        fontWeight: '500',
+        transition: 'all 0.3s ease',
+        // Pulse animation for "almost there" state
+        animation: isAlmostThere ? 'badgePulse 1.5s ease-in-out infinite' : undefined,
+      })}
+      style={{
+        backgroundColor,
+        color: textColor,
+        borderColor,
+      }}
+      title={`${problemsRemaining} problem${problemsRemaining === 1 ? '' : 's'} until game break`}
+    >
+      <span>{text}</span>
+      <span className={css({ fontSize: '0.875rem' })}>{displayIcon}</span>
+      {/* Add keyframe animation via style tag */}
+      {isAlmostThere && (
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              @keyframes badgePulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+              }
+            `,
+          }}
+        />
+      )}
+    </div>
+  )
 }
 
 /**
@@ -306,6 +427,44 @@ export function PracticeSubNav({
     if (!sessionHud?.results) return []
     return sessionHud.results.slice(-10).map((r) => r.isCorrect)
   }, [sessionHud?.results])
+
+  // Game break indicator calculations
+  const gameBreakInfo = useMemo(() => {
+    if (!sessionHud?.plan) return null
+
+    const gameBreakSettings = sessionHud.plan.gameBreakSettings as GameBreakSettings | null
+    const enabled = gameBreakSettings?.enabled ?? false
+    if (!enabled) return null
+
+    // Check if we're on the last part (no game break after last part)
+    const isLastPart = sessionHud.currentPartIndex >= sessionHud.parts.length - 1
+    if (isLastPart) return null
+
+    // Calculate problems remaining in current part until game break
+    const currentPart = sessionHud.parts[sessionHud.currentPartIndex]
+    const problemsUntilBreak = currentPart
+      ? currentPart.slots.length - sessionHud.currentSlotIndex
+      : 0
+
+    // Get the specific game icon if a game is selected (not random, not null)
+    let gameIcon: string | undefined
+    const selectedGame = gameBreakSettings?.selectedGame
+    if (selectedGame && selectedGame !== 'random') {
+      const game = getGame(selectedGame)
+      gameIcon = game?.manifest.icon
+    }
+
+    return {
+      enabled: true,
+      problemsUntilBreak,
+      gameIcon,
+    }
+  }, [
+    sessionHud?.plan,
+    sessionHud?.currentPartIndex,
+    sessionHud?.currentSlotIndex,
+    sessionHud?.parts,
+  ])
 
   return (
     <nav
@@ -795,7 +954,7 @@ export function PracticeSubNav({
               flexShrink: 0,
             })}
           >
-            <span className={css({ fontSize: '1.25rem' })}>🎮</span>
+            <span className={css({ fontSize: '1.25rem' })}>{gameBreakHud.gameIcon || '🎮'}</span>
             <span
               className={css({
                 fontWeight: '600',
@@ -804,7 +963,7 @@ export function PracticeSubNav({
                 display: { base: 'none', sm: 'inline' },
               })}
             >
-              Game Break
+              {gameBreakHud.gameName || 'Game Break'}
             </span>
           </div>
 
@@ -1129,6 +1288,7 @@ export function PracticeSubNav({
               isDark={isDark}
               compact={true}
               plan={sessionHud.plan}
+              gameBreakEnabled={gameBreakInfo?.enabled ?? false}
             />
           </div>
 
@@ -1147,6 +1307,15 @@ export function PracticeSubNav({
               healthStatus={sessionHud.sessionHealth?.overall ?? 'good'}
               isPaused={sessionHud.isPaused}
               isDark={isDark}
+            />
+          )}
+
+          {/* Game Break Countdown Badge - shows problems until next game break */}
+          {gameBreakInfo && gameBreakInfo.problemsUntilBreak > 0 && (
+            <GameBreakCountdownBadge
+              problemsRemaining={gameBreakInfo.problemsUntilBreak}
+              isDark={isDark}
+              gameIcon={gameBreakInfo.gameIcon}
             />
           )}
         </div>

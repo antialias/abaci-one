@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import type { ProblemSlot, SessionPart, SlotResult } from '@/db/schema/session-plans'
@@ -15,6 +16,12 @@ const meta: Meta<typeof PracticeSubNav> = {
   component: PracticeSubNav,
   parameters: {
     layout: 'fullscreen',
+    nextjs: {
+      appDirectory: true,
+      navigation: {
+        pathname: '/practice/student-1',
+      },
+    },
   },
   tags: ['autodocs'],
 }
@@ -121,6 +128,8 @@ function createSessionHud(config: {
   timing?: TimingData
   health?: { overall: 'good' | 'warning' | 'struggling'; accuracy: number }
   isBrowseMode?: boolean
+  /** Include a mock plan with game break settings */
+  gameBreakEnabled?: boolean
 }): SessionHudData {
   const partNumber = config.partType === 'abacus' ? 1 : config.partType === 'visualization' ? 2 : 3
   const parts = createMockParts()
@@ -154,6 +163,52 @@ function createSessionHud(config: {
     remaining -= slotsToFill
   }
 
+  // Create a mock plan with game break settings if enabled
+  const mockPlan = config.gameBreakEnabled
+    ? {
+        id: 'mock-plan-1',
+        playerId: 'student-1',
+        targetDurationMinutes: 10,
+        estimatedProblemCount: 15,
+        avgTimePerProblemSeconds: 40,
+        parts,
+        summary: {
+          focusDescription: 'Basic Addition',
+          totalProblemCount: 15,
+          estimatedMinutes: 10,
+          parts: parts.map((p) => ({
+            partNumber: p.partNumber,
+            type: p.type,
+            description: p.type,
+            problemCount: p.slots.length,
+            estimatedMinutes: p.estimatedMinutes,
+          })),
+        },
+        masteredSkillIds: [],
+        status: 'in_progress' as const,
+        currentPartIndex,
+        currentSlotIndex: config.completedProblems % 5,
+        sessionHealth: null,
+        adjustments: [],
+        results,
+        createdAt: new Date(),
+        approvedAt: new Date(),
+        startedAt: new Date(),
+        completedAt: null,
+        isPaused: false,
+        pausedAt: null,
+        pausedBy: null,
+        pauseReason: null,
+        retryState: null,
+        gameBreakSettings: {
+          enabled: true,
+          maxDurationMinutes: 5,
+          selectionMode: 'kid-chooses' as const,
+          selectedGame: null,
+        },
+      }
+    : undefined
+
   return {
     isPaused: config.isPaused ?? false,
     parts,
@@ -175,12 +230,23 @@ function createSessionHud(config: {
     onEndEarly: () => console.log('End early clicked'),
     onToggleBrowse: () => console.log('Toggle browse clicked'),
     onBrowseNavigate: (index) => console.log(`Navigate to problem ${index}`),
+    plan: mockPlan,
   }
 }
 
 // =============================================================================
 // Wrapper Component
 // =============================================================================
+
+// Create a stable QueryClient for stories
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      staleTime: Infinity,
+    },
+  },
+})
 
 function NavWrapper({
   children,
@@ -190,56 +256,58 @@ function NavWrapper({
   darkMode?: boolean
 }) {
   return (
-    <ThemeProvider>
-      <div
-        className={css({
-          minHeight: '300px',
-          backgroundColor: darkMode ? '#1a1a2e' : 'gray.50',
-          paddingTop: '80px', // Space for fake main nav
-        })}
-      >
-        {/* Fake main nav placeholder */}
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
         <div
           className={css({
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '80px',
-            backgroundColor: darkMode ? 'gray.900' : 'white',
-            borderBottom: '1px solid',
-            borderColor: darkMode ? 'gray.700' : 'gray.200',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 100,
+            minHeight: '300px',
+            backgroundColor: darkMode ? '#1a1a2e' : 'gray.50',
+            paddingTop: '80px', // Space for fake main nav
           })}
         >
-          <span
-            className={css({
-              color: darkMode ? 'gray.400' : 'gray.500',
-              fontSize: '0.875rem',
-            })}
-          >
-            Main Navigation Bar
-          </span>
-        </div>
-        {children}
-        {/* Content placeholder */}
-        <div className={css({ padding: '2rem' })}>
+          {/* Fake main nav placeholder */}
           <div
             className={css({
-              padding: '2rem',
-              backgroundColor: darkMode ? 'gray.800' : 'white',
-              borderRadius: '8px',
-              color: darkMode ? 'gray.300' : 'gray.600',
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '80px',
+              backgroundColor: darkMode ? 'gray.900' : 'white',
+              borderBottom: '1px solid',
+              borderColor: darkMode ? 'gray.700' : 'gray.200',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 100,
             })}
           >
-            Page content goes here...
+            <span
+              className={css({
+                color: darkMode ? 'gray.400' : 'gray.500',
+                fontSize: '0.875rem',
+              })}
+            >
+              Main Navigation Bar
+            </span>
+          </div>
+          {children}
+          {/* Content placeholder */}
+          <div className={css({ padding: '2rem' })}>
+            <div
+              className={css({
+                padding: '2rem',
+                backgroundColor: darkMode ? 'gray.800' : 'white',
+                borderRadius: '8px',
+                color: darkMode ? 'gray.300' : 'gray.600',
+              })}
+            >
+              Page content goes here...
+            </div>
           </div>
         </div>
-      </div>
-    </ThemeProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   )
 }
 
@@ -1087,6 +1155,162 @@ export const GameBreakLongName: Story = {
         student={mockStudentLongName}
         pageContext="session"
         gameBreakHud={createGameBreakHud(MAX_DURATION_MS * 0.8)}
+      />
+    </NavWrapper>
+  ),
+}
+
+// =============================================================================
+// Game Break Indicator Stories (shown DURING practice, not during actual break)
+// =============================================================================
+
+export const GameBreakIndicatorStart: Story = {
+  name: 'Game Break Indicator: Part 1 Start (5 until break)',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        sessionHud={createSessionHud({
+          partType: 'abacus',
+          completedProblems: 0,
+          totalProblems: 15,
+          gameBreakEnabled: true,
+          timing: createTimingData(0, 'abacus'),
+        })}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakIndicatorMidway: Story = {
+  name: 'Game Break Indicator: Part 1 Progress (3 until break)',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        sessionHud={createSessionHud({
+          partType: 'abacus',
+          completedProblems: 2,
+          totalProblems: 15,
+          gameBreakEnabled: true,
+          timing: createTimingData(2, 'abacus'),
+        })}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakIndicatorAlmostThere: Story = {
+  name: 'Game Break Indicator: Almost Done (1 until break) - Green Pulse',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        sessionHud={createSessionHud({
+          partType: 'abacus',
+          completedProblems: 4,
+          totalProblems: 15,
+          gameBreakEnabled: true,
+          timing: createTimingData(4, 'abacus'),
+        })}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakIndicatorPart2: Story = {
+  name: 'Game Break Indicator: Part 2 (Shows passed break from Part 1)',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        sessionHud={createSessionHud({
+          partType: 'visualization',
+          completedProblems: 6,
+          totalProblems: 15,
+          gameBreakEnabled: true,
+          timing: createTimingData(6, 'visualization'),
+        })}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakIndicatorLastPart: Story = {
+  name: 'Game Break Indicator: Part 3/Last (No countdown - no break after)',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        sessionHud={createSessionHud({
+          partType: 'linear',
+          completedProblems: 11,
+          totalProblems: 15,
+          gameBreakEnabled: true,
+          timing: createTimingData(11, 'linear'),
+        })}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakIndicatorDisabled: Story = {
+  name: 'Game Break Indicator: Game Breaks Disabled (No icons or badge)',
+  render: () => (
+    <NavWrapper>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        sessionHud={createSessionHud({
+          partType: 'abacus',
+          completedProblems: 2,
+          totalProblems: 15,
+          gameBreakEnabled: false,
+          timing: createTimingData(2, 'abacus'),
+        })}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakIndicatorDarkMode: Story = {
+  name: 'Game Break Indicator: Dark Mode (3 until break)',
+  render: () => (
+    <NavWrapper darkMode>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        sessionHud={createSessionHud({
+          partType: 'abacus',
+          completedProblems: 2,
+          totalProblems: 15,
+          gameBreakEnabled: true,
+          timing: createTimingData(2, 'abacus'),
+        })}
+      />
+    </NavWrapper>
+  ),
+}
+
+export const GameBreakIndicatorDarkAlmostThere: Story = {
+  name: 'Game Break Indicator: Dark Mode Almost There (1 until break)',
+  render: () => (
+    <NavWrapper darkMode>
+      <PracticeSubNav
+        student={mockStudent}
+        pageContext="session"
+        sessionHud={createSessionHud({
+          partType: 'abacus',
+          completedProblems: 4,
+          totalProblems: 15,
+          gameBreakEnabled: true,
+          timing: createTimingData(4, 'abacus'),
+        })}
       />
     </NavWrapper>
   ),

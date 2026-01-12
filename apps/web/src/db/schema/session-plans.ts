@@ -298,6 +298,13 @@ export type SessionStatus =
 // ============================================================================
 
 /**
+ * Mode for how the game is selected during a break.
+ * - 'auto-start': Pre-selected game starts immediately (kid can skip)
+ * - 'kid-chooses': Show game selection screen with optional default highlighted
+ */
+export type GameBreakSelectionMode = 'auto-start' | 'kid-chooses'
+
+/**
  * Settings for game breaks between practice session parts.
  *
  * When enabled, students get rewarded game time between parts
@@ -308,12 +315,22 @@ export interface GameBreakSettings {
   enabled: boolean
   /** Maximum duration in minutes (default: 5) */
   maxDurationMinutes: number
+  /** How the game is selected: auto-start bypasses selection, kid-chooses shows grid */
+  selectionMode: GameBreakSelectionMode
+  /**
+   * Selected game name, 'random', or null.
+   * - For auto-start: This game starts immediately (or random picks one)
+   * - For kid-chooses: This game is highlighted as default (or null for no highlight)
+   */
+  selectedGame: string | 'random' | null
 }
 
 /** Default game break settings */
 export const DEFAULT_GAME_BREAK_SETTINGS: GameBreakSettings = {
   enabled: true,
   maxDurationMinutes: 5,
+  selectionMode: 'kid-chooses',
+  selectedGame: null,
 }
 
 // ============================================================================

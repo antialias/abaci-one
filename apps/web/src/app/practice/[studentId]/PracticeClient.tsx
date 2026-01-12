@@ -15,7 +15,6 @@ import {
   type SessionHudData,
 } from '@/components/practice'
 import { GameBreakScreen } from '@/components/practice/GameBreakScreen'
-import { PracticeGameModeProvider } from '@/components/practice/PracticeGameModeProvider'
 import type { Player } from '@/db/schema/players'
 import type {
   GameBreakSettings,
@@ -373,6 +372,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
               maxDurationMinutes={gameBreakSettings?.maxDurationMinutes ?? 5}
               startTime={gameBreakStartTime}
               onComplete={handleGameBreakEnd}
+              selectionMode={gameBreakSettings?.selectionMode ?? 'kid-chooses'}
+              selectedGame={gameBreakSettings?.selectedGame ?? null}
             />
           ) : (
             <ActiveSession

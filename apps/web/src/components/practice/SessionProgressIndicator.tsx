@@ -40,6 +40,8 @@ export interface SessionProgressIndicatorProps {
   compact?: boolean
   /** Optional session plan for retry status display */
   plan?: SessionPlan
+  /** Whether game breaks are enabled (shows game break icons between parts) */
+  gameBreakEnabled?: boolean
 }
 
 function getPartEmoji(type: SessionPart['type']): string {
@@ -62,6 +64,101 @@ function getPartLabel(type: SessionPart['type']): string {
     case 'linear':
       return 'Mental'
   }
+}
+
+/**
+ * Game Break Icon - shown between parts when game breaks are enabled
+ * Indicates an upcoming game break with animated glow as the student progresses
+ */
+interface GameBreakIconProps {
+  /** Icon state based on position relative to current part */
+  state: 'upcoming' | 'current' | 'passed'
+  /** Progress through current part (0-100) - used for glow intensity */
+  progressPercent: number
+  /** Dark mode */
+  isDark: boolean
+}
+
+function GameBreakIcon({ state, progressPercent, isDark }: GameBreakIconProps) {
+  // Calculate glow intensity based on progress (only for current state)
+  const glowIntensity = state === 'current' ? progressPercent / 100 : 0
+
+  // Determine progress level for data attribute (used for styling)
+  const progressLevel = progressPercent >= 75 ? 'high' : progressPercent >= 40 ? 'medium' : 'low'
+
+  return (
+    <div
+      data-element="game-break-icon"
+      data-state={state}
+      data-progress={progressLevel}
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        fontSize: '0.875rem',
+        transition: 'all 0.3s ease',
+        // Base styling
+        opacity: state === 'upcoming' ? 0.4 : state === 'passed' ? 0.6 : 1,
+        transform: state === 'upcoming' ? 'scale(0.8)' : 'scale(1)',
+        // Passed state shows checkmark overlay effect
+        position: 'relative',
+      })}
+      style={{
+        // Dynamic glow for current state
+        filter:
+          state === 'current'
+            ? `drop-shadow(0 0 ${glowIntensity * 8}px ${isDark ? '#fbbf24' : '#f59e0b'})`
+            : undefined,
+      }}
+      title={
+        state === 'passed'
+          ? 'Game break completed'
+          : state === 'current'
+            ? 'Game break coming up!'
+            : 'Future game break'
+      }
+    >
+      <span
+        className={css({
+          // Pulse animation for current state at high progress
+          animation:
+            state === 'current' && progressPercent >= 60
+              ? 'pulse 1.5s ease-in-out infinite'
+              : undefined,
+        })}
+      >
+        🎮
+      </span>
+      {/* Checkmark overlay for passed breaks */}
+      {state === 'passed' && (
+        <span
+          className={css({
+            position: 'absolute',
+            bottom: '-2px',
+            right: '-4px',
+            fontSize: '0.5rem',
+            color: isDark ? 'green.400' : 'green.600',
+          })}
+        >
+          ✓
+        </span>
+      )}
+      {/* Add keyframe animation via style tag */}
+      {state === 'current' && progressPercent >= 60 && (
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.15); }
+              }
+            `,
+          }}
+        />
+      )}
+    </div>
+  )
 }
 
 /**
@@ -371,6 +468,7 @@ export function SessionProgressIndicator({
   isDark,
   compact = false,
   plan,
+  gameBreakEnabled = false,
 }: SessionProgressIndicatorProps) {
   // Calculate linear index for current position
   const currentLinearIndex = useMemo(() => {
@@ -379,6 +477,13 @@ export function SessionProgressIndicator({
       index += parts[i].slots.length
     }
     return index + currentSlotIndex
+  }, [parts, currentPartIndex, currentSlotIndex])
+
+  // Calculate progress through current part (for game break icon glow)
+  const currentPartProgress = useMemo(() => {
+    const currentPart = parts[currentPartIndex]
+    if (!currentPart || currentPart.slots.length === 0) return 0
+    return (currentSlotIndex / currentPart.slots.length) * 100
   }, [parts, currentPartIndex, currentSlotIndex])
 
   // Track linear offset for each part
@@ -431,6 +536,17 @@ export function SessionProgressIndicator({
           // In practice mode: collapse non-current sections (both completed and future)
           const shouldCollapse = !isBrowseMode && !isCurrentPart
 
+          // Determine if we should show a game break icon AFTER this part
+          // Only show between parts (not after the last part)
+          const showGameBreakAfter = gameBreakEnabled && partIndex < parts.length - 1
+
+          // Game break icon state for the icon after this part
+          const gameBreakState: 'upcoming' | 'current' | 'passed' = isCompletedPart
+            ? 'passed'
+            : isCurrentPart
+              ? 'current'
+              : 'upcoming'
+
           return (
             <div
               key={part.partNumber}
@@ -440,8 +556,8 @@ export function SessionProgressIndicator({
                 gap: '0.25rem',
               })}
             >
-              {/* Part separator for non-first parts */}
-              {partIndex > 0 && (
+              {/* Part separator for non-first parts (when game breaks disabled) */}
+              {partIndex > 0 && !gameBreakEnabled && (
                 <div
                   className={css({
                     width: '1px',
@@ -449,6 +565,21 @@ export function SessionProgressIndicator({
                     backgroundColor: isDark ? 'gray.600' : 'gray.300',
                     flexShrink: 0,
                   })}
+                />
+              )}
+
+              {/* Game break icon BEFORE this part (from previous part) */}
+              {partIndex > 0 && gameBreakEnabled && (
+                <GameBreakIcon
+                  state={
+                    partIndex - 1 < currentPartIndex
+                      ? 'passed'
+                      : partIndex - 1 === currentPartIndex
+                        ? 'current'
+                        : 'upcoming'
+                  }
+                  progressPercent={partIndex - 1 === currentPartIndex ? currentPartProgress : 0}
+                  isDark={isDark}
                 />
               )}
 

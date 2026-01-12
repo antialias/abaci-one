@@ -212,7 +212,12 @@ function createMockSessionPlanWithProblems(config: {
     targetDurationMinutes: 10,
     estimatedProblemCount: totalProblems,
     avgTimePerProblemSeconds: 40,
-    gameBreakSettings: { enabled: false, maxDurationMinutes: 5 },
+    gameBreakSettings: {
+      enabled: false,
+      maxDurationMinutes: 5,
+      selectionMode: 'kid-chooses',
+      selectedGame: null,
+    },
     parts,
     summary,
     masteredSkillIds: ['basic.+1', 'basic.+2', 'basic.+3', 'fiveComplements.4=5-1'],

@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
-import { getAvailableGames, getGame } from '@/lib/arcade/game-registry'
+import { getGame } from '@/lib/arcade/game-registry'
+import {
+  getPracticeApprovedGames,
+  getRandomPracticeApprovedGame,
+} from '@/lib/arcade/practice-approved-games'
 import { useGameBreakRoom } from '@/hooks/useGameBreakRoom'
+import type { GameBreakSelectionMode } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 import { PracticeGameModeProvider } from './PracticeGameModeProvider'
 
@@ -19,9 +24,13 @@ export interface GameBreakScreenProps {
   }
   onComplete: (reason: 'timeout' | 'gameFinished' | 'skipped') => void
   onGameSelected?: (gameType: string) => void
+  /** How the game is selected: auto-start or kid-chooses */
+  selectionMode?: GameBreakSelectionMode
+  /** Pre-selected game name, 'random', or null */
+  selectedGame?: string | 'random' | null
 }
 
-type GameBreakPhase = 'initializing' | 'selecting' | 'playing' | 'completed'
+type GameBreakPhase = 'initializing' | 'auto-starting' | 'selecting' | 'playing' | 'completed'
 
 export function GameBreakScreen({
   isVisible,
@@ -30,11 +39,17 @@ export function GameBreakScreen({
   student,
   onComplete,
   onGameSelected,
+  selectionMode = 'kid-chooses',
+  selectedGame = null,
 }: GameBreakScreenProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  const availableGames = useMemo(() => getAvailableGames(), [])
+  // Use practice-approved games instead of all available games
+  const availableGames = useMemo(() => getPracticeApprovedGames(), [])
+
+  // Track the game name to auto-start (resolved from 'random' if needed)
+  const [autoStartGameName, setAutoStartGameName] = useState<string | null>(null)
 
   const [phase, setPhase] = useState<GameBreakPhase>('initializing')
   const [selectedGameName, setSelectedGameName] = useState<string | null>(null)
@@ -50,10 +65,44 @@ export function GameBreakScreen({
     enabled: isVisible,
     onRoomReady: () => {
       if (phase === 'initializing') {
-        setPhase('selecting')
+        if (selectionMode === 'auto-start') {
+          // Determine which game to auto-start
+          let gameName: string | null = null
+
+          if (selectedGame === 'random' || selectedGame === null) {
+            // Pick a random practice-approved game
+            const randomGame = getRandomPracticeApprovedGame()
+            gameName = randomGame?.manifest.name ?? null
+          } else {
+            // Use the pre-selected game
+            gameName = selectedGame
+          }
+
+          if (gameName) {
+            setAutoStartGameName(gameName)
+            setPhase('auto-starting')
+          } else {
+            // Fallback to kid-chooses if no game available
+            setPhase('selecting')
+          }
+        } else {
+          // Kid-chooses mode: show selection screen
+          setPhase('selecting')
+        }
       }
     },
   })
+
+  // Handle auto-start delay - start game after brief message
+  useEffect(() => {
+    if (phase === 'auto-starting' && autoStartGameName) {
+      const timer = setTimeout(() => {
+        handleSelectGame(autoStartGameName)
+      }, 1500) // 1.5 second delay to show "Playing X!" message
+
+      return () => clearTimeout(timer)
+    }
+  }, [phase, autoStartGameName])
 
   const handleComplete = useCallback(
     async (reason: 'timeout' | 'gameFinished' | 'skipped') => {
@@ -95,6 +144,7 @@ export function GameBreakScreen({
       setElapsedMs(0)
       setPhase('initializing')
       setSelectedGameName(null)
+      setAutoStartGameName(null)
       return
     }
 
@@ -135,10 +185,10 @@ export function GameBreakScreen({
   const remainingSeconds = Math.floor((remainingMs % 60000) / 1000)
   const percentRemaining = (remainingMs / maxDurationMs) * 100
 
-  const selectedGame = selectedGameName ? getGame(selectedGameName) : null
+  const activeGame = selectedGameName ? getGame(selectedGameName) : null
 
-  if (phase === 'playing' && selectedGame && room?.gameName) {
-    const { Provider, GameComponent } = selectedGame
+  if (phase === 'playing' && activeGame && room?.gameName) {
+    const { Provider, GameComponent } = activeGame
     // Game break timer/progress bar is now shown in PracticeSubNav via gameBreakHud prop
     // This component just renders the game itself
     return (
@@ -304,9 +354,11 @@ export function GameBreakScreen({
           >
             {phase === 'initializing'
               ? 'Setting up...'
-              : phase === 'selecting'
-                ? 'Pick a game to play'
-                : 'Great job!'}
+              : phase === 'auto-starting'
+                ? 'Get ready!'
+                : phase === 'selecting'
+                  ? 'Pick a game to play'
+                  : 'Great job!'}
           </p>
         </div>
 
@@ -330,6 +382,45 @@ export function GameBreakScreen({
           </div>
         )}
 
+        {phase === 'auto-starting' && autoStartGameName && (
+          <div
+            data-element="auto-start-message"
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1rem',
+              padding: '2rem',
+            })}
+          >
+            <span
+              className={css({
+                fontSize: '4rem',
+                animation: 'pulse 1s ease-in-out infinite',
+              })}
+            >
+              {getGame(autoStartGameName)?.manifest.icon ?? '🎮'}
+            </span>
+            <span
+              className={css({
+                fontSize: '1.25rem',
+                fontWeight: '600',
+                color: isDark ? 'gray.200' : 'gray.700',
+              })}
+            >
+              Playing {getGame(autoStartGameName)?.manifest.displayName ?? 'Game'}!
+            </span>
+            <span
+              className={css({
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+              })}
+            >
+              Starting...
+            </span>
+          </div>
+        )}
+
         {phase === 'selecting' && (
           <div
             data-element="game-grid"
@@ -345,44 +436,87 @@ export function GameBreakScreen({
               overflowY: 'auto',
             })}
           >
-            {availableGames.map((game) => (
-              <button
-                key={game.manifest.name}
-                type="button"
-                data-game={game.manifest.name}
-                onClick={() => handleSelectGame(game.manifest.name)}
-                className={css({
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '1rem',
-                  borderRadius: '12px',
-                  border: '2px solid',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  _hover: {
-                    transform: 'translateY(-2px)',
-                  },
-                })}
-                style={{
-                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                }}
-              >
-                <span className={css({ fontSize: '2rem' })}>{game.manifest.icon}</span>
-                <span
+            {availableGames.map((game) => {
+              // Highlight this game if it's the pre-selected default (in kid-chooses mode)
+              const isDefault =
+                selectionMode === 'kid-chooses' &&
+                selectedGame !== null &&
+                selectedGame !== 'random' &&
+                game.manifest.name === selectedGame
+
+              return (
+                <button
+                  key={game.manifest.name}
+                  type="button"
+                  data-game={game.manifest.name}
+                  data-default={isDefault}
+                  onClick={() => handleSelectGame(game.manifest.name)}
                   className={css({
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    color: isDark ? 'gray.300' : 'gray.600',
-                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '1rem',
+                    borderRadius: '12px',
+                    border: '2px solid',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    position: 'relative',
+                    _hover: {
+                      transform: 'translateY(-2px)',
+                    },
                   })}
+                  style={{
+                    borderColor: isDefault
+                      ? isDark
+                        ? 'rgba(34, 197, 94, 0.5)'
+                        : 'rgba(34, 197, 94, 0.6)'
+                      : isDark
+                        ? 'rgba(255,255,255,0.1)'
+                        : 'rgba(0,0,0,0.08)',
+                    backgroundColor: isDefault
+                      ? isDark
+                        ? 'rgba(34, 197, 94, 0.15)'
+                        : 'rgba(34, 197, 94, 0.1)'
+                      : isDark
+                        ? 'rgba(255,255,255,0.05)'
+                        : 'rgba(0,0,0,0.02)',
+                    boxShadow: isDefault
+                      ? `0 0 0 3px ${isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.25)'}`
+                      : undefined,
+                  }}
                 >
-                  {game.manifest.displayName}
-                </span>
-              </button>
-            ))}
+                  {isDefault && (
+                    <span
+                      className={css({
+                        position: 'absolute',
+                        top: '-8px',
+                        right: '-8px',
+                        fontSize: '0.625rem',
+                        fontWeight: '600',
+                        padding: '0.125rem 0.375rem',
+                        borderRadius: '4px',
+                        backgroundColor: isDark ? 'green.600' : 'green.500',
+                        color: 'white',
+                      })}
+                    >
+                      Suggested
+                    </span>
+                  )}
+                  <span className={css({ fontSize: '2rem' })}>{game.manifest.icon}</span>
+                  <span
+                    className={css({
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      color: isDark ? 'gray.300' : 'gray.600',
+                      textAlign: 'center',
+                    })}
+                  >
+                    {game.manifest.displayName}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         )}
 
