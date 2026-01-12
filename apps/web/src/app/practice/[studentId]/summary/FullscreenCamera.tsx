@@ -3,6 +3,9 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDocumentDetection } from '@/components/practice/useDocumentDetection'
+import { ScannerControlsDrawer } from '@/components/practice/ScannerControlsDrawer'
+import { useScannerSettings, useUpdateScannerSettings } from '@/hooks/useScannerSettings'
+import type { QuadDetectorConfig } from '@/lib/vision/quadDetector'
 import { css } from '../../../../../styled-system/css'
 
 // Dynamic import for DocumentAdjuster (pulls in OpenCV)
@@ -10,6 +13,108 @@ const DocumentAdjuster = dynamic(
   () => import('@/components/practice/DocumentAdjuster').then((m) => m.DocumentAdjuster),
   { ssr: false }
 )
+
+// Lighting presets for different conditions
+const LIGHTING_PRESETS = {
+  normal: {
+    label: 'Normal',
+    icon: '☀️',
+    config: {
+      preprocessing: 'multi' as const,
+      enableHistogramEqualization: true,
+      enableAdaptiveThreshold: true,
+      enableMorphGradient: true,
+      cannyThresholds: [50, 150] as [number, number],
+      adaptiveBlockSize: 11,
+      adaptiveC: 2,
+    },
+  },
+  lowLight: {
+    label: 'Low Light',
+    icon: '🌙',
+    config: {
+      preprocessing: 'multi' as const,
+      enableHistogramEqualization: true,
+      enableAdaptiveThreshold: true,
+      enableMorphGradient: true,
+      cannyThresholds: [30, 100] as [number, number],
+      adaptiveBlockSize: 15,
+      adaptiveC: 5,
+    },
+  },
+  bright: {
+    label: 'Bright',
+    icon: '🔆',
+    config: {
+      preprocessing: 'enhanced' as const,
+      enableHistogramEqualization: true,
+      enableAdaptiveThreshold: false,
+      enableMorphGradient: false,
+      cannyThresholds: [80, 200] as [number, number],
+      adaptiveBlockSize: 11,
+      adaptiveC: 2,
+    },
+  },
+}
+
+// Analyze video frame to determine best preset
+function analyzeFrameLighting(video: HTMLVideoElement): {
+  preset: 'normal' | 'lowLight' | 'bright'
+  brightness: number
+  contrast: number
+} {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return { preset: 'normal', brightness: 128, contrast: 50 }
+
+  // Sample at lower resolution for speed
+  const sampleWidth = 160
+  const sampleHeight = 120
+  canvas.width = sampleWidth
+  canvas.height = sampleHeight
+
+  ctx.drawImage(video, 0, 0, sampleWidth, sampleHeight)
+  const imageData = ctx.getImageData(0, 0, sampleWidth, sampleHeight)
+  const data = imageData.data
+
+  // Calculate luminance for each pixel (simple average)
+  let totalLuminance = 0
+  const luminances: number[] = []
+  const pixelCount = data.length / 4
+
+  for (let i = 0; i < data.length; i += 4) {
+    // Weighted luminance: 0.299*R + 0.587*G + 0.114*B
+    const luminance = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+    luminances.push(luminance)
+    totalLuminance += luminance
+  }
+
+  const avgBrightness = totalLuminance / pixelCount
+
+  // Calculate contrast (standard deviation)
+  let varianceSum = 0
+  for (const lum of luminances) {
+    varianceSum += (lum - avgBrightness) ** 2
+  }
+  const contrast = Math.sqrt(varianceSum / pixelCount)
+
+  // Determine preset based on metrics
+  let preset: 'normal' | 'lowLight' | 'bright' = 'normal'
+
+  if (avgBrightness < 70) {
+    // Dark scene
+    preset = 'lowLight'
+  } else if (avgBrightness > 180 && contrast < 40) {
+    // Bright and washed out
+    preset = 'bright'
+  } else if (avgBrightness > 160) {
+    // Just bright
+    preset = 'bright'
+  }
+  // Otherwise normal
+
+  return { preset, brightness: avgBrightness, contrast }
+}
 
 interface FullscreenCameraProps {
   /** Called with cropped file, original file, corners, and rotation for later re-editing */
@@ -28,7 +133,6 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const animationFrameRef = useRef<number | null>(null)
-  const lastDetectionRef = useRef<number>(0)
   const autoCaptureTriggeredRef = useRef(false)
 
   const [isReady, setIsReady] = useState(false)
@@ -36,11 +140,32 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
   const [isCapturing, setIsCapturing] = useState(false)
   const [documentDetected, setDocumentDetected] = useState(false)
 
+  // Camera controls state
+  const [torchAvailable, setTorchAvailable] = useState(false)
+  const [torchOn, setTorchOn] = useState(false)
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false)
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment')
+
+  // Preset selector state
+  const [presetMode, setPresetMode] = useState<'auto' | 'normal' | 'lowLight' | 'bright'>('auto')
+  const [detectedPreset, setDetectedPreset] = useState<'normal' | 'lowLight' | 'bright'>('normal')
+  const [presetPopoverOpen, setPresetPopoverOpen] = useState(false)
+  const [fingerOcclusionMode, setFingerOcclusionMode] = useState(false)
+
   // Adjustment mode state
   const [adjustmentMode, setAdjustmentMode] = useState<{
     sourceCanvas: HTMLCanvasElement
     corners: Array<{ x: number; y: number }>
   } | null>(null)
+
+  // Advanced controls drawer state
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const drawerSwipeRef = useRef<{ startX: number; startY: number } | null>(null)
+  const settingsInitializedRef = useRef(false)
+
+  // Load persisted scanner settings from database
+  const { data: savedSettings } = useScannerSettings()
+  const updateSettingsMutation = useUpdateScannerSettings()
 
   // Document detection hook (lazy loads OpenCV.js)
   const {
@@ -55,7 +180,100 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
     captureSourceFrame,
     highlightDocument,
     detectQuadsInImage: detectQuadsInCamera,
+    resetTracking,
+    updateDetectorConfig,
+    detectorConfig,
   } = useDocumentDetection()
+
+  // Initialize detector config with saved settings when they load
+  useEffect(() => {
+    if (savedSettings && !settingsInitializedRef.current) {
+      settingsInitializedRef.current = true
+      updateDetectorConfig(savedSettings)
+    }
+  }, [savedSettings, updateDetectorConfig])
+
+  // Handle config changes - update both local state and persist to database
+  const handleConfigChange = useCallback(
+    (newConfig: Partial<QuadDetectorConfig>) => {
+      // Update local detector immediately for instant feedback
+      updateDetectorConfig(newConfig)
+      // Persist to database (uses optimistic update)
+      updateSettingsMutation.mutate(newConfig)
+    },
+    [updateDetectorConfig, updateSettingsMutation]
+  )
+
+  // Apply preset config when preset mode or finger occlusion changes
+  const applyPresetConfig = useCallback(
+    (presetKey: 'normal' | 'lowLight' | 'bright') => {
+      const preset = LIGHTING_PRESETS[presetKey]
+      const config = { ...preset.config }
+
+      // Add finger occlusion enhancements if enabled
+      if (fingerOcclusionMode) {
+        config.enableHoughLines = true
+        config.enableMorphGradient = true
+        // Slightly lower thresholds to catch partial edges
+        config.cannyThresholds = [
+          Math.max(20, config.cannyThresholds[0] - 15),
+          Math.max(80, config.cannyThresholds[1] - 30),
+        ] as [number, number]
+      }
+
+      updateDetectorConfig(config)
+    },
+    [fingerOcclusionMode, updateDetectorConfig]
+  )
+
+  // Analyze frame periodically when in auto mode
+  useEffect(() => {
+    if (presetMode !== 'auto' || !isReady || !videoRef.current || adjustmentMode) return
+
+    const analyzeInterval = setInterval(() => {
+      if (videoRef.current) {
+        const analysis = analyzeFrameLighting(videoRef.current)
+        if (analysis.preset !== detectedPreset) {
+          setDetectedPreset(analysis.preset)
+          applyPresetConfig(analysis.preset)
+        }
+      }
+    }, 2000) // Analyze every 2 seconds
+
+    // Initial analysis
+    const analysis = analyzeFrameLighting(videoRef.current)
+    setDetectedPreset(analysis.preset)
+    applyPresetConfig(analysis.preset)
+
+    return () => clearInterval(analyzeInterval)
+  }, [presetMode, isReady, adjustmentMode, detectedPreset, applyPresetConfig])
+
+  // Apply preset when manually selected
+  useEffect(() => {
+    if (presetMode !== 'auto') {
+      applyPresetConfig(presetMode)
+    }
+  }, [presetMode, applyPresetConfig])
+
+  // Reapply current preset when finger occlusion mode changes
+  useEffect(() => {
+    const currentPreset = presetMode === 'auto' ? detectedPreset : presetMode
+    applyPresetConfig(currentPreset)
+  }, [fingerOcclusionMode, presetMode, detectedPreset, applyPresetConfig])
+
+  // Check for multiple cameras on mount
+  useEffect(() => {
+    const checkCameras = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const videoDevices = devices.filter((d) => d.kind === 'videoinput')
+        setHasMultipleCameras(videoDevices.length > 1)
+      } catch {
+        // Ignore errors - just won't show flip button
+      }
+    }
+    checkCameras()
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -68,7 +286,7 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
 
         const constraints: MediaStreamConstraints = {
           video: {
-            facingMode: { ideal: 'environment' },
+            facingMode: { ideal: facingMode },
             width: { ideal: 1920 },
             height: { ideal: 1080 },
           },
@@ -83,6 +301,16 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
         }
 
         streamRef.current = stream
+
+        // Check for torch capability
+        const videoTrack = stream.getVideoTracks()[0]
+        if (videoTrack) {
+          const capabilities = videoTrack.getCapabilities?.()
+          // @ts-expect-error - torch is not in the standard types but exists on mobile
+          const hasTorch = capabilities?.torch === true
+          setTorchAvailable(hasTorch)
+          setTorchOn(false) // Reset torch state when camera changes
+        }
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream
@@ -110,11 +338,12 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
         streamRef.current = null
       }
     }
-  }, [ensureOpenCVLoaded])
+  }, [ensureOpenCVLoaded, facingMode])
 
-  // Detection loop - runs when camera and scanner are ready
+  // Detection loop - runs when camera and scanner are ready, and NOT in adjustment mode
   useEffect(() => {
-    if (!isReady || !isScannerReady) return
+    // Don't run detection loop while in adjustment mode
+    if (!isReady || !isScannerReady || adjustmentMode) return
 
     const video = videoRef.current
     const overlay = overlayCanvasRef.current
@@ -130,14 +359,11 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
     syncCanvasSize()
 
     const detectLoop = () => {
-      const now = Date.now()
-      // Throttle detection to every 150ms for performance
-      if (now - lastDetectionRef.current > 150) {
-        if (video && overlay) {
-          const detected = highlightDocument(video, overlay)
-          setDocumentDetected(detected)
-        }
-        lastDetectionRef.current = now
+      // Run detection every frame for smooth tracking
+      // Detection typically takes ~8-10ms, well within 60fps budget
+      if (video && overlay) {
+        const detected = highlightDocument(video, overlay)
+        setDocumentDetected(detected)
       }
       animationFrameRef.current = requestAnimationFrame(detectLoop)
     }
@@ -155,7 +381,7 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
       }
       window.removeEventListener('resize', syncCanvasSize)
     }
-  }, [isReady, isScannerReady, highlightDocument])
+  }, [isReady, isScannerReady, highlightDocument, adjustmentMode])
 
   // Enter adjustment mode with captured frame and detected corners
   // Always shows the adjustment UI - uses fallback corners if no quad detected
@@ -248,49 +474,84 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
   )
 
   // Handle adjustment cancel - return to camera
+  // The detection loop will automatically restart via useEffect when adjustmentMode becomes null
   const handleAdjustmentCancel = useCallback(() => {
     setAdjustmentMode(null)
     autoCaptureTriggeredRef.current = false // Allow auto-capture again
-    // Restart detection loop
-    if (videoRef.current && overlayCanvasRef.current && isScannerReady) {
-      const detectLoop = () => {
-        const now = Date.now()
-        if (now - lastDetectionRef.current > 150) {
-          if (videoRef.current && overlayCanvasRef.current) {
-            const detected = highlightDocument(videoRef.current, overlayCanvasRef.current)
-            setDocumentDetected(detected)
-          }
-          lastDetectionRef.current = now
-        }
-        animationFrameRef.current = requestAnimationFrame(detectLoop)
-      }
-      animationFrameRef.current = requestAnimationFrame(detectLoop)
-    }
-  }, [isScannerReady, highlightDocument])
+    resetTracking() // Clear old quad detection state
+  }, [resetTracking])
 
-  // Show adjustment UI if in adjustment mode
-  if (adjustmentMode && opencvRef) {
-    return (
-      <DocumentAdjuster
-        sourceCanvas={adjustmentMode.sourceCanvas}
-        initialCorners={adjustmentMode.corners}
-        onConfirm={handleAdjustmentConfirm}
-        onCancel={handleAdjustmentCancel}
-        cv={opencvRef}
-        detectQuadsInImage={detectQuadsInCamera}
-      />
-    )
-  }
+  // Show adjustment UI if in adjustment mode (overlay on top of camera)
+  // Keep camera mounted but hidden to preserve video stream
+  const showAdjuster = !!(adjustmentMode && opencvRef)
+
+  // Toggle torch/flashlight
+  const toggleTorch = useCallback(async () => {
+    if (!streamRef.current || !torchAvailable) return
+
+    const videoTrack = streamRef.current.getVideoTracks()[0]
+    if (!videoTrack) return
+
+    try {
+      const newTorchState = !torchOn
+      await videoTrack.applyConstraints({
+        // @ts-expect-error - advanced torch constraint exists on mobile
+        advanced: [{ torch: newTorchState }],
+      })
+      setTorchOn(newTorchState)
+    } catch (err) {
+      console.error('Failed to toggle torch:', err)
+    }
+  }, [torchAvailable, torchOn])
+
+  // Flip between front and back camera
+  const flipCamera = useCallback(() => {
+    // Reset tracking and torch state before switching
+    resetTracking()
+    setTorchOn(false)
+    setIsReady(false)
+    setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'))
+  }, [resetTracking])
+
+  // Swipe handlers for drawer
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    // Only track swipes starting from left edge (first 30px)
+    if (touch.clientX < 30) {
+      drawerSwipeRef.current = { startX: touch.clientX, startY: touch.clientY }
+    }
+  }, [])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!drawerSwipeRef.current) return
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - drawerSwipeRef.current.startX
+    const deltaY = Math.abs(touch.clientY - drawerSwipeRef.current.startY)
+
+    // If swiping right and more horizontal than vertical, open drawer
+    if (deltaX > 50 && deltaX > deltaY * 2) {
+      setIsDrawerOpen(true)
+      drawerSwipeRef.current = null
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    drawerSwipeRef.current = null
+  }, [])
 
   return (
     <div
       data-component="fullscreen-camera"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       className={css({
         position: 'absolute',
         inset: 0,
         bg: 'black',
       })}
     >
+      {/* Always render video to keep stream alive */}
       <video
         ref={videoRef}
         playsInline
@@ -301,24 +562,43 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
           width: '100%',
           height: '100%',
           objectFit: 'cover',
+          // Hide when in adjustment mode but keep mounted
+          display: showAdjuster ? 'none' : 'block',
         })}
       />
 
-      {/* Overlay canvas for document detection visualization */}
-      <canvas
-        ref={overlayCanvasRef}
-        className={css({
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-        })}
-      />
+      {/* Document adjuster overlay */}
+      {showAdjuster && (
+        <DocumentAdjuster
+          sourceCanvas={adjustmentMode.sourceCanvas}
+          initialCorners={adjustmentMode.corners}
+          onConfirm={handleAdjustmentConfirm}
+          onCancel={handleAdjustmentCancel}
+          cv={opencvRef}
+          detectQuadsInImage={detectQuadsInCamera}
+        />
+      )}
 
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
+      {/* Camera UI - hidden when adjuster is shown */}
+      {!showAdjuster && (
+        <>
+          {/* Overlay canvas for document detection visualization */}
+          <canvas
+            ref={overlayCanvasRef}
+            className={css({
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+            })}
+          />
 
-      {!isReady && !error && (
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
+        </>
+      )}
+
+      {!showAdjuster && !isReady && !error && (
         <div
           className={css({
             position: 'absolute',
@@ -333,7 +613,7 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
         </div>
       )}
 
-      {error && (
+      {!showAdjuster && error && (
         <div
           className={css({
             position: 'absolute',
@@ -375,32 +655,259 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
         </div>
       )}
 
-      {!error && (
+      {!showAdjuster && !error && (
         <>
-          <button
-            type="button"
-            onClick={onClose}
+          {/* Top right controls */}
+          <div
+            data-element="top-controls"
             className={css({
               position: 'absolute',
               top: 4,
               right: 4,
-              width: '48px',
-              height: '48px',
-              bg: 'rgba(0, 0, 0, 0.5)',
-              color: 'white',
-              borderRadius: 'full',
-              fontSize: '2xl',
-              fontWeight: 'bold',
-              cursor: 'pointer',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backdropFilter: 'blur(4px)',
-              _hover: { bg: 'rgba(0, 0, 0, 0.7)' },
+              gap: 2,
+              zIndex: 10,
             })}
           >
-            ×
-          </button>
+            {/* Preset selector with popover */}
+            <div className={css({ position: 'relative' })}>
+              <button
+                type="button"
+                onClick={() => setPresetPopoverOpen(!presetPopoverOpen)}
+                className={css({
+                  height: '44px',
+                  px: 3,
+                  bg: 'rgba(0, 0, 0, 0.5)',
+                  color: 'white',
+                  borderRadius: 'full',
+                  fontSize: 'sm',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  backdropFilter: 'blur(4px)',
+                  _hover: { bg: 'rgba(0, 0, 0, 0.7)' },
+                })}
+                title="Lighting preset"
+              >
+                <span>
+                  {presetMode === 'auto'
+                    ? `🅰️ ${LIGHTING_PRESETS[detectedPreset].icon}`
+                    : LIGHTING_PRESETS[presetMode].icon}
+                </span>
+                <span className={css({ fontSize: 'xs' })}>
+                  {presetMode === 'auto' ? 'Auto' : LIGHTING_PRESETS[presetMode].label}
+                </span>
+              </button>
+
+              {/* Popover */}
+              {presetPopoverOpen && (
+                <>
+                  {/* Backdrop to close popover */}
+                  <div
+                    onClick={() => setPresetPopoverOpen(false)}
+                    className={css({
+                      position: 'fixed',
+                      inset: 0,
+                      zIndex: 5,
+                    })}
+                  />
+                  <div
+                    data-element="preset-popover"
+                    className={css({
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      mt: 2,
+                      bg: 'rgba(0, 0, 0, 0.9)',
+                      backdropFilter: 'blur(8px)',
+                      borderRadius: 'lg',
+                      border: '1px solid',
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
+                      overflow: 'hidden',
+                      zIndex: 10,
+                      minWidth: '140px',
+                    })}
+                  >
+                    {/* Auto option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPresetMode('auto')
+                        setPresetPopoverOpen(false)
+                      }}
+                      className={css({
+                        width: '100%',
+                        px: 3,
+                        py: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        bg: presetMode === 'auto' ? 'rgba(59, 130, 246, 0.3)' : 'transparent',
+                        color: 'white',
+                        fontSize: 'sm',
+                        cursor: 'pointer',
+                        _hover: { bg: 'rgba(255, 255, 255, 0.1)' },
+                      })}
+                    >
+                      <span>🅰️</span>
+                      <span>Auto</span>
+                      {presetMode === 'auto' && (
+                        <span className={css({ ml: 'auto', fontSize: 'xs', color: 'blue.400' })}>
+                          ✓
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Divider */}
+                    <div className={css({ h: '1px', bg: 'rgba(255, 255, 255, 0.1)' })} />
+
+                    {/* Preset options */}
+                    {(Object.keys(LIGHTING_PRESETS) as Array<keyof typeof LIGHTING_PRESETS>).map(
+                      (key) => (
+                        <button
+                          type="button"
+                          key={key}
+                          onClick={() => {
+                            setPresetMode(key)
+                            setPresetPopoverOpen(false)
+                          }}
+                          className={css({
+                            width: '100%',
+                            px: 3,
+                            py: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                            bg: presetMode === key ? 'rgba(59, 130, 246, 0.3)' : 'transparent',
+                            color: 'white',
+                            fontSize: 'sm',
+                            cursor: 'pointer',
+                            _hover: { bg: 'rgba(255, 255, 255, 0.1)' },
+                          })}
+                        >
+                          <span>{LIGHTING_PRESETS[key].icon}</span>
+                          <span>{LIGHTING_PRESETS[key].label}</span>
+                          {presetMode === key && (
+                            <span
+                              className={css({ ml: 'auto', fontSize: 'xs', color: 'blue.400' })}
+                            >
+                              ✓
+                            </span>
+                          )}
+                          {presetMode === 'auto' && detectedPreset === key && (
+                            <span
+                              className={css({ ml: 'auto', fontSize: '9px', color: 'gray.400' })}
+                            >
+                              detected
+                            </span>
+                          )}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Finger occlusion mode toggle */}
+            <button
+              type="button"
+              onClick={() => setFingerOcclusionMode(!fingerOcclusionMode)}
+              className={css({
+                width: '44px',
+                height: '44px',
+                bg: fingerOcclusionMode ? 'purple.600' : 'rgba(0, 0, 0, 0.5)',
+                color: 'white',
+                borderRadius: 'full',
+                fontSize: 'lg',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(4px)',
+                transition: 'all 0.2s',
+                _hover: { bg: fingerOcclusionMode ? 'purple.500' : 'rgba(0, 0, 0, 0.7)' },
+              })}
+              title={fingerOcclusionMode ? 'Finger mode ON' : 'Finger mode OFF (experimental)'}
+            >
+              👆
+            </button>
+
+            {/* Torch toggle - only shown when available */}
+            {torchAvailable && (
+              <button
+                type="button"
+                onClick={toggleTorch}
+                className={css({
+                  width: '44px',
+                  height: '44px',
+                  bg: torchOn ? 'yellow.400' : 'rgba(0, 0, 0, 0.5)',
+                  color: torchOn ? 'black' : 'white',
+                  borderRadius: 'full',
+                  fontSize: 'xl',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backdropFilter: 'blur(4px)',
+                  transition: 'all 0.2s',
+                  _hover: { bg: torchOn ? 'yellow.300' : 'rgba(0, 0, 0, 0.7)' },
+                })}
+                title={torchOn ? 'Turn off flashlight' : 'Turn on flashlight'}
+              >
+                {torchOn ? '🔦' : '💡'}
+              </button>
+            )}
+
+            {/* Camera flip - only shown when multiple cameras */}
+            {hasMultipleCameras && (
+              <button
+                type="button"
+                onClick={flipCamera}
+                className={css({
+                  width: '44px',
+                  height: '44px',
+                  bg: 'rgba(0, 0, 0, 0.5)',
+                  color: 'white',
+                  borderRadius: 'full',
+                  fontSize: 'xl',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backdropFilter: 'blur(4px)',
+                  _hover: { bg: 'rgba(0, 0, 0, 0.7)' },
+                })}
+                title="Flip camera"
+              >
+                🔄
+              </button>
+            )}
+
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={onClose}
+              className={css({
+                width: '44px',
+                height: '44px',
+                bg: 'rgba(0, 0, 0, 0.5)',
+                color: 'white',
+                borderRadius: 'full',
+                fontSize: '2xl',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(4px)',
+                _hover: { bg: 'rgba(0, 0, 0, 0.7)' },
+              })}
+            >
+              ×
+            </button>
+          </div>
 
           {/* Debug overlay panel - always shown to help diagnose detection */}
           <div
@@ -599,6 +1106,15 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
               )}
             </button>
           </div>
+
+          {/* Advanced controls drawer - swipe from left edge or click hint to open */}
+          <ScannerControlsDrawer
+            isOpen={isDrawerOpen}
+            onClose={() => setIsDrawerOpen(false)}
+            onOpen={() => setIsDrawerOpen(true)}
+            config={detectorConfig}
+            onConfigChange={handleConfigChange}
+          />
         </>
       )}
     </div>
