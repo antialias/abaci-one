@@ -91,8 +91,13 @@ export async function POST(request: NextRequest) {
 
         let remoteFiles: Set<string>
         try {
+          // Boundary detector can have PNG or JPG images; column-classifier is PNG only
+          const findPattern =
+            modelType === 'boundary-detector'
+              ? `-name '*.png' -o -name '*.jpg'`
+              : `-name '*.png'`
           const { stdout: remoteFilesOutput } = await execAsync(
-            `ssh -o ConnectTimeout=5 -o BatchMode=yes ${REMOTE_USER}@${REMOTE_HOST} "find '${paths.remote}' -name '*.png' -printf '%P\\n' 2>/dev/null"`,
+            `ssh -o ConnectTimeout=5 -o BatchMode=yes ${REMOTE_USER}@${REMOTE_HOST} "find '${paths.remote}' \\( ${findPattern} \\) -printf '%P\\n' 2>/dev/null"`,
             { timeout: 30000 }
           )
           remoteFiles = new Set(remoteFilesOutput.trim().split('\n').filter(Boolean))
@@ -141,7 +146,8 @@ export async function POST(request: NextRequest) {
 
           for (const line of lines) {
             // File being transferred (lines that end with file size info)
-            const fileMatch = line.match(/^(\d+\/\d+\.png)/)
+            // Matches both PNG and JPG files in subdirectory format
+            const fileMatch = line.match(/^(\S+\/\S+\.(png|jpg))/)
             if (fileMatch) {
               currentFile = fileMatch[1]
             }
@@ -304,9 +310,13 @@ export async function GET(request: NextRequest) {
     )
 
     // Get list of remote files (just filenames, not full paths)
-    // For both model types, we only count PNG files (boundary detector has PNG+JSON pairs)
+    // Boundary detector can have PNG or JPG images; column-classifier is PNG only
+    const findPattern =
+      modelType === 'boundary-detector'
+        ? `-name '*.png' -o -name '*.jpg'`
+        : `-name '*.png'`
     const { stdout: remoteFilesOutput } = await execAsync(
-      `ssh ${REMOTE_USER}@${REMOTE_HOST} "find '${paths.remote}' -name '*.png' -printf '%P\\n' 2>/dev/null"`,
+      `ssh ${REMOTE_USER}@${REMOTE_HOST} "find '${paths.remote}' \\( ${findPattern} \\) -printf '%P\\n' 2>/dev/null"`,
       { timeout: 15000 }
     )
     const remoteFiles = new Set(remoteFilesOutput.trim().split('\n').filter(Boolean))
@@ -401,7 +411,7 @@ async function countLocalData(modelType: ModelType): Promise<{
 
     return { totalImages, digitCounts }
   } else {
-    // Boundary detector: count PNG files in device subdirectories
+    // Boundary detector: count PNG and JPG files in device subdirectories
     let totalFrames = 0
     let deviceCount = 0
 
@@ -412,8 +422,9 @@ async function countLocalData(modelType: ModelType): Promise<{
           deviceCount++
           const devicePath = path.join(localPath, entry.name)
           const files = await fs.promises.readdir(devicePath)
-          const pngCount = files.filter((f) => f.endsWith('.png')).length
-          totalFrames += pngCount
+          // Count both PNG and JPG images (boundary detector saves as either depending on source)
+          const imageCount = files.filter((f) => f.endsWith('.png') || f.endsWith('.jpg')).length
+          totalFrames += imageCount
         }
       }
     } catch {
@@ -425,9 +436,9 @@ async function countLocalData(modelType: ModelType): Promise<{
 }
 
 /**
- * List local PNG files for a model type (relative paths)
- * - Column classifier: digit/filename.png format
- * - Boundary detector: deviceId/filename.png format
+ * List local image files for a model type (relative paths)
+ * - Column classifier: digit/filename.png format (PNG only)
+ * - Boundary detector: deviceId/filename.{png,jpg} format (PNG or JPG)
  */
 async function listLocalFiles(modelType: ModelType): Promise<Set<string>> {
   const files = new Set<string>()
@@ -458,8 +469,9 @@ async function listLocalFiles(modelType: ModelType): Promise<Set<string>> {
           const devicePath = path.join(localPath, entry.name)
           const dirFiles = await fs.promises.readdir(devicePath)
           for (const file of dirFiles) {
-            if (file.endsWith('.png')) {
-              // Use relative path format: deviceId/filename.png
+            // Boundary detector supports both PNG and JPG images
+            if (file.endsWith('.png') || file.endsWith('.jpg')) {
+              // Use relative path format: deviceId/filename.{png,jpg}
               files.add(`${entry.name}/${file}`)
             }
           }
