@@ -127,6 +127,44 @@ const mockRemediationModeManySkills: RemediationModeType = {
   focusDescription: 'Strengthening: +1, +2, +3, +4, -1, -2',
 }
 
+// Mock games for multi-game scenarios
+const mockMultipleGames = [
+  {
+    manifest: {
+      name: 'matching',
+      displayName: 'Matching Pairs Battle',
+      shortName: 'Matching Pairs',
+      icon: '⚔️',
+    },
+  },
+  {
+    manifest: {
+      name: 'memory-quiz',
+      displayName: 'Memory Quiz',
+      icon: '🧠',
+    },
+  },
+  {
+    manifest: {
+      name: 'complement-race',
+      displayName: 'Complement Race',
+      icon: '🏃',
+    },
+  },
+]
+
+// Single game for single-game scenarios
+const mockSingleGame = [
+  {
+    manifest: {
+      name: 'matching',
+      displayName: 'Matching Pairs Battle',
+      shortName: 'Matching Pairs',
+      icon: '⚔️',
+    },
+  },
+]
+
 // Default props
 const defaultProps = {
   studentId: 'test-student-1',
@@ -140,12 +178,80 @@ const defaultProps = {
 }
 
 /**
- * Default state - no existing plan, no new skill ready
+ * Default state - collapsed, single game (current production state)
  */
 export const Default: Story = {
   render: () => (
     <StoryWrapper>
-      <StartPracticeModal {...defaultProps} />
+      <StartPracticeModal {...defaultProps} practiceApprovedGamesOverride={mockSingleGame} />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Expanded settings - single game mode
+ *
+ * Shows the simplified game break UI when only one practice-approved game exists.
+ */
+export const ExpandedSingleGame: Story = {
+  render: () => (
+    <StoryWrapper>
+      <StartPracticeModal
+        {...defaultProps}
+        practiceApprovedGamesOverride={mockSingleGame}
+        initialExpanded={true}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Expanded settings - multiple games available
+ *
+ * Shows the full game break UI with selection mode toggle and game dropdown.
+ */
+export const ExpandedMultipleGames: Story = {
+  render: () => (
+    <StoryWrapper>
+      <StartPracticeModal
+        {...defaultProps}
+        practiceApprovedGamesOverride={mockMultipleGames}
+        initialExpanded={true}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Multiple games - dark theme
+ */
+export const ExpandedMultipleGamesDark: Story = {
+  render: () => (
+    <StoryWrapper theme="dark">
+      <div data-theme="dark">
+        <StartPracticeModal
+          {...defaultProps}
+          practiceApprovedGamesOverride={mockMultipleGames}
+          initialExpanded={true}
+        />
+      </div>
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Single game - dark theme
+ */
+export const ExpandedSingleGameDark: Story = {
+  render: () => (
+    <StoryWrapper theme="dark">
+      <div data-theme="dark">
+        <StartPracticeModal
+          {...defaultProps}
+          practiceApprovedGamesOverride={mockSingleGame}
+          initialExpanded={true}
+        />
+      </div>
     </StoryWrapper>
   ),
 }
@@ -158,6 +264,7 @@ export const WithExistingPlan: Story = {
     <StoryWrapper>
       <StartPracticeModal
         {...defaultProps}
+        practiceApprovedGamesOverride={mockMultipleGames}
         existingPlan={{
           id: 'plan-123',
           playerId: 'test-student-1',
@@ -200,19 +307,6 @@ export const WithExistingPlan: Story = {
 }
 
 /**
- * Dark theme variant
- */
-export const DarkTheme: Story = {
-  render: () => (
-    <StoryWrapper theme="dark">
-      <div data-theme="dark">
-        <StartPracticeModal {...defaultProps} />
-      </div>
-    </StoryWrapper>
-  ),
-}
-
-/**
  * Remediation mode - student has weak skills to strengthen (2 skills)
  */
 export const RemediationMode: Story = {
@@ -223,6 +317,7 @@ export const RemediationMode: Story = {
         studentName="Alex"
         sessionMode={mockRemediationMode}
         focusDescription={mockRemediationMode.focusDescription}
+        practiceApprovedGamesOverride={mockMultipleGames}
       />
     </StoryWrapper>
   ),
@@ -239,6 +334,7 @@ export const RemediationModeSingleSkill: Story = {
         studentName="Jordan"
         sessionMode={mockRemediationModeSingleSkill}
         focusDescription={mockRemediationModeSingleSkill.focusDescription}
+        practiceApprovedGamesOverride={mockMultipleGames}
       />
     </StoryWrapper>
   ),
@@ -255,6 +351,7 @@ export const RemediationModeManySkills: Story = {
         studentName="Riley"
         sessionMode={mockRemediationModeManySkills}
         focusDescription={mockRemediationModeManySkills.focusDescription}
+        practiceApprovedGamesOverride={mockMultipleGames}
       />
     </StoryWrapper>
   ),
@@ -272,6 +369,7 @@ export const RemediationModeDark: Story = {
           studentName="Alex"
           sessionMode={mockRemediationMode}
           focusDescription={mockRemediationMode.focusDescription}
+          practiceApprovedGamesOverride={mockMultipleGames}
         />
       </div>
     </StoryWrapper>
@@ -289,15 +387,16 @@ export const ProgressionMode: Story = {
         studentName="Maya"
         sessionMode={mockProgressionMode}
         focusDescription={mockProgressionMode.focusDescription}
+        practiceApprovedGamesOverride={mockMultipleGames}
       />
     </StoryWrapper>
   ),
 }
 
 /**
- * Documentation note about the SessionMode system
+ * Documentation note about the Game Break UI modes
  */
-export const DocumentationNote: Story = {
+export const GameBreakDocumentation: Story = {
   render: () => (
     <StoryWrapper>
       <div
@@ -316,12 +415,15 @@ export const DocumentationNote: Story = {
             marginBottom: '1rem',
           })}
         >
-          Session Mode System
+          Game Break UI Modes
         </h2>
         <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
-          The StartPracticeModal receives a <strong>sessionMode</strong> prop that determines the
-          type of session:
+          The Game Break settings adapt based on the number of practice-approved games:
         </p>
+
+        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+          Single Game Mode
+        </h3>
         <ul
           className={css({
             paddingLeft: '1.5rem',
@@ -329,16 +431,29 @@ export const DocumentationNote: Story = {
             lineHeight: 1.8,
           })}
         >
-          <li>
-            <strong>Maintenance:</strong> All skills are strong, mixed practice
-          </li>
-          <li>
-            <strong>Remediation:</strong> Weak skills need strengthening (shown in targeting info)
-          </li>
-          <li>
-            <strong>Progression:</strong> Ready to learn new skill, may include tutorial gate
-          </li>
+          <li>Game icon + name inline with duration buttons</li>
+          <li>Duration options: 2m, 3m, 5m (no 10m)</li>
+          <li>No selection mode toggle</li>
+          <li>No game dropdown</li>
+          <li>"More games coming soon!" teaser</li>
         </ul>
+
+        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+          Multiple Games Mode
+        </h3>
+        <ul
+          className={css({
+            paddingLeft: '1.5rem',
+            marginBottom: '1rem',
+            lineHeight: 1.8,
+          })}
+        >
+          <li>Duration options: 2m, 3m, 5m, 10m</li>
+          <li>Selection mode: Auto-start vs Kid picks</li>
+          <li>Game dropdown with Random option</li>
+          <li>Helper text explains selected mode</li>
+        </ul>
+
         <p
           className={css({
             fontSize: '0.875rem',
@@ -346,8 +461,9 @@ export const DocumentationNote: Story = {
             fontStyle: 'italic',
           })}
         >
-          The sessionMode is fetched via useSessionMode() hook and passed to the modal. See
-          SessionModeBanner stories for the dashboard banner component.
+          Use <code>practiceApprovedGamesOverride</code> prop to test different game counts. In
+          production, this is determined by which games have{' '}
+          <code>practiceBreakReady: true</code> in their manifests AND are in the whitelist.
         </p>
       </div>
     </StoryWrapper>

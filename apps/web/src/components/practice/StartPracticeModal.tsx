@@ -28,6 +28,16 @@ import {
   StartButton,
 } from './start-practice-modal'
 
+// Game info type for overrides
+type GameInfo = {
+  manifest: {
+    name: string
+    displayName: string
+    shortName?: string
+    icon: string
+  }
+}
+
 interface StartPracticeModalProps {
   studentId: string
   studentName: string
@@ -41,6 +51,10 @@ interface StartPracticeModalProps {
   onClose: () => void
   onStarted?: () => void
   open?: boolean
+  /** Initial expanded state for settings panel (for Storybook) */
+  initialExpanded?: boolean
+  /** Override practice-approved games list (for Storybook/testing) */
+  practiceApprovedGamesOverride?: GameInfo[]
 }
 
 export function StartPracticeModal({
@@ -54,6 +68,8 @@ export function StartPracticeModal({
   onClose,
   onStarted,
   open = true,
+  initialExpanded,
+  practiceApprovedGamesOverride,
 }: StartPracticeModalProps) {
   return (
     <StartPracticeModalProvider
@@ -65,6 +81,8 @@ export function StartPracticeModal({
       avgSecondsPerProblem={avgSecondsPerProblem}
       existingPlan={existingPlan}
       onStarted={onStarted}
+      initialExpanded={initialExpanded}
+      practiceApprovedGamesOverride={practiceApprovedGamesOverride}
     >
       <StartPracticeModalContent
         studentId={studentId}
@@ -351,7 +369,7 @@ function StartPracticeModalContent({
                     },
                   })}
                   style={{
-                    maxHeight: isExpanded ? '520px' : '0px',
+                    maxHeight: isExpanded ? '620px' : '0px',
                     opacity: isExpanded ? 1 : 0,
                   }}
                 >

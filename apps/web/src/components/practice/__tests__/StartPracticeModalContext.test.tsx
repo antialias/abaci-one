@@ -511,4 +511,22 @@ describe('StartPracticeModalContext', () => {
       })
     })
   })
+
+  describe('Multi-Game Mode (default)', () => {
+    it('should set hasSingleGame to false when multiple games available', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      expect(result.current.hasSingleGame).toBe(false)
+    })
+
+    it('should set singleGame to null when multiple games available', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      expect(result.current.singleGame).toBeNull()
+    })
+  })
 })

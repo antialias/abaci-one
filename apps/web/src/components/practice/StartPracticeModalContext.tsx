@@ -131,6 +131,10 @@ interface StartPracticeModalProviderProps {
   avgSecondsPerProblem?: number
   existingPlan?: SessionPlan | null
   onStarted?: () => void
+  /** Initial expanded state for settings panel (for Storybook) */
+  initialExpanded?: boolean
+  /** Override practice-approved games list (for Storybook/testing) */
+  practiceApprovedGamesOverride?: GameInfo[]
 }
 
 export function StartPracticeModalProvider({
@@ -143,13 +147,15 @@ export function StartPracticeModalProvider({
   avgSecondsPerProblem,
   existingPlan = null,
   onStarted,
+  initialExpanded = false,
+  practiceApprovedGamesOverride,
 }: StartPracticeModalProviderProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
 
   // Session config state
   const [durationMinutes, setDurationMinutes] = useState(existingPlan?.targetDurationMinutes ?? 10)
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(initialExpanded)
   const [enabledParts, setEnabledParts] = useState<EnabledParts>({
     abacus: true,
     visualization: true,
@@ -192,7 +198,10 @@ export function StartPracticeModalProvider({
     return (3 + abacusMaxTerms) / 2
   }, [abacusMaxTerms])
 
-  const practiceApprovedGames = useMemo(() => getPracticeApprovedGames(), [])
+  const practiceApprovedGames = useMemo(
+    () => practiceApprovedGamesOverride ?? getPracticeApprovedGames(),
+    [practiceApprovedGamesOverride]
+  )
   const hasSingleGame = practiceApprovedGames.length === 1
   const singleGame = hasSingleGame ? practiceApprovedGames[0] : null
 
