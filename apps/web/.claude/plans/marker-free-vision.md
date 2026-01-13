@@ -3,6 +3,7 @@
 ## Goal
 
 Train a neural network to detect the abacus boundary (quadrilateral corners) without requiring ArUco markers. This provides a third calibration mode alongside:
+
 1. **Auto (Markers)** - Current ArUco-based detection
 2. **Manual** - User drags corners
 3. **Marker-Free (ML)** - NEW: Neural network detects abacus boundary
@@ -14,37 +15,48 @@ Train a neural network to detect the abacus boundary (quadrilateral corners) wit
 **Solutions** (in order of preference):
 
 ### Option A: Marker Inpainting (Recommended)
+
 Use OpenCV's inpainting to fill marker regions with surrounding texture:
+
 ```python
 # For each marker region
 mask = create_marker_mask(corners, padding=10)
 inpainted = cv2.inpaint(frame, mask, inpaintRadius=5, flags=cv2.INPAINT_TELEA)
 ```
+
 - **Pros**: Seamless removal, preserves abacus structure
 - **Cons**: Requires OpenCV, slightly slower
 
 ### Option B: Marker Blurring
+
 Apply strong Gaussian blur to marker regions:
+
 ```python
 for marker in markers:
     roi = frame[marker_region]
     frame[marker_region] = cv2.GaussianBlur(roi, (31, 31), 0)
 ```
+
 - **Pros**: Fast, simple
 - **Cons**: Visible blur spots, NN might learn "blur = corner"
 
 ### Option C: Solid Color Fill
+
 Replace marker regions with average background color:
+
 ```python
 for marker in markers:
     avg_color = np.mean(surrounding_pixels, axis=0)
     frame[marker_region] = avg_color
 ```
+
 - **Pros**: Very fast
 - **Cons**: Visible patches, unnatural
 
 ### Option D: Corner Crop (Not Recommended)
+
 Crop slightly inside the markers to exclude them entirely.
+
 - **Cons**: Loses valuable edge context the NN needs to learn
 
 **Recommendation**: Use **Option A (Inpainting)** for training data, with fallback to **Option B (Blurring)** for simplicity.
@@ -58,10 +70,12 @@ Crop slightly inside the markers to exclude them entirely.
 **Input**: 224×224 RGB image (resized from camera frame)
 
 **Output**: 8 values (4 corners × 2 coordinates)
+
 - Normalized to [0, 1] range (relative to image dimensions)
 - Order: `[tl_x, tl_y, tr_x, tr_y, br_x, br_y, bl_x, bl_y]`
 
 **Architecture** (transfer learning):
+
 ```
 MobileNetV2 (pretrained, frozen initially)
   ↓
@@ -77,16 +91,19 @@ Dense(8, activation='sigmoid')  # Corner coordinates [0,1]
 ```
 
 **Why MobileNetV2**:
+
 - Small enough for real-time inference in browser (TF.js)
 - Pretrained features excellent for edge/shape detection
 - ~3MB model size
 
 **Loss Function**: MSE on corner coordinates
+
 ```python
 loss = mean((predicted_corners - true_corners)^2)
 ```
 
 **Metrics**:
+
 - Mean corner distance (pixels)
 - IoU of predicted vs true quadrilateral
 
@@ -95,7 +112,9 @@ loss = mean((predicted_corners - true_corners)^2)
 ## Training Data Collection
 
 ### Source
+
 Any frame where `markerDetection.allMarkersFound === true`:
+
 - Ground truth corners come from marker detection
 - Already have this data flowing through the system
 
@@ -131,6 +150,7 @@ data/vision-training/abacus-boundary/
 ```
 
 **Label format** (`frame_XXXX.json`):
+
 ```json
 {
   "corners": {
@@ -152,6 +172,7 @@ data/vision-training/abacus-boundary/
 ```
 
 ### Data Augmentation (at training time)
+
 - Random brightness/contrast
 - Random rotation (±5°)
 - Random scale (0.9-1.1)
@@ -163,6 +184,7 @@ data/vision-training/abacus-boundary/
 ## Unified Training UI
 
 The `/vision-training/train` page will handle training for BOTH model types:
+
 1. **Column Classifier** (existing) - Recognizes digit values from abacus columns
 2. **Boundary Detector** (new) - Detects abacus quadrilateral corners
 
@@ -199,7 +221,7 @@ export type ModelType = "column-classifier" | "boundary-detector";
 export const PHASES: PhaseDefinition[] = [
   {
     id: "preparation",
-    cards: ["model", "data", "hardware", "dependencies", "config"],  // "model" is NEW
+    cards: ["model", "data", "hardware", "dependencies", "config"], // "model" is NEW
   },
   {
     id: "training",
@@ -214,7 +236,10 @@ export const PHASES: PhaseDefinition[] = [
 // Model-specific samples data
 export interface ColumnClassifierSamples {
   type: "column-classifier";
-  digits: Record<number, { count: number; samplePath: string | null; tilePaths: string[] }>;
+  digits: Record<
+    number,
+    { count: number; samplePath: string | null; tilePaths: string[] }
+  >;
   totalImages: number;
   hasData: boolean;
   dataQuality: "none" | "insufficient" | "minimal" | "good" | "excellent";
@@ -226,9 +251,9 @@ export interface BoundaryDetectorSamples {
   hasData: boolean;
   dataQuality: "none" | "insufficient" | "minimal" | "good" | "excellent";
   // Distribution info
-  deviceCount: number;       // Unique devices captured from
-  lightingVariety: number;   // Estimated lighting condition variety
-  angleVariety: number;      // Estimated angle variety
+  deviceCount: number; // Unique devices captured from
+  lightingVariety: number; // Estimated lighting condition variety
+  angleVariety: number; // Estimated angle variety
 }
 
 export type SamplesData = ColumnClassifierSamples | BoundaryDetectorSamples;
@@ -242,8 +267,8 @@ export interface ColumnClassifierResult extends BaseTrainingResult {
 
 export interface BoundaryDetectorResult extends BaseTrainingResult {
   type: "boundary-detector";
-  mean_corner_error: number;  // pixels
-  iou_score: number;          // 0-1
+  mean_corner_error: number; // pixels
+  iou_score: number; // 0-1
 }
 
 export type TrainingResult = ColumnClassifierResult | BoundaryDetectorResult;
@@ -251,19 +276,19 @@ export type TrainingResult = ColumnClassifierResult | BoundaryDetectorResult;
 
 ### Shared vs Model-Specific Components
 
-| Component | Shared? | Notes |
-|-----------|---------|-------|
-| `ModelCard.tsx` | N/A | NEW - Model selection |
-| `DataCard.tsx` | ❌ | Different for each model type |
-| `HardwareCard.tsx` | ✅ | Same hardware detection |
-| `DependencyCard.tsx` | ✅ | Same dependencies |
-| `ConfigCard.tsx` | ✅ | Same config (epochs, batch size) |
-| `SetupCard.tsx` | ✅ | Same setup phase |
-| `LoadingCard.tsx` | ✅ | Same loading indicator |
-| `TrainingCard.tsx` | ✅ | Same progress display |
-| `ExportCard.tsx` | ✅ | Same export phase |
-| `ResultsCard.tsx` | ❌ | Different metrics display |
-| `ModelTester.tsx` | ❌ | Different testing UI |
+| Component            | Shared? | Notes                            |
+| -------------------- | ------- | -------------------------------- |
+| `ModelCard.tsx`      | N/A     | NEW - Model selection            |
+| `DataCard.tsx`       | ❌      | Different for each model type    |
+| `HardwareCard.tsx`   | ✅      | Same hardware detection          |
+| `DependencyCard.tsx` | ✅      | Same dependencies                |
+| `ConfigCard.tsx`     | ✅      | Same config (epochs, batch size) |
+| `SetupCard.tsx`      | ✅      | Same setup phase                 |
+| `LoadingCard.tsx`    | ✅      | Same loading indicator           |
+| `TrainingCard.tsx`   | ✅      | Same progress display            |
+| `ExportCard.tsx`     | ✅      | Same export phase                |
+| `ResultsCard.tsx`    | ❌      | Different metrics display        |
+| `ModelTester.tsx`    | ❌      | Different testing UI             |
 
 ### API Changes
 
@@ -301,43 +326,43 @@ TrainingWizard
 
 ### New Files
 
-| File | Purpose |
-|------|---------|
-| `src/lib/vision/abacusBoundaryDetector.ts` | TF.js model loading and inference |
-| `src/lib/vision/markerInpainting.ts` | Marker removal for training data |
-| `src/hooks/useAbacusBoundaryDetector.ts` | Hook for boundary detection |
-| `scripts/train-boundary-detector/train_model.py` | Python training script |
-| `scripts/train-boundary-detector/prepare_data.py` | Data preprocessing |
+| File                                                    | Purpose                                     |
+| ------------------------------------------------------- | ------------------------------------------- |
+| `src/lib/vision/abacusBoundaryDetector.ts`              | TF.js model loading and inference           |
+| `src/lib/vision/markerInpainting.ts`                    | Marker removal for training data            |
+| `src/hooks/useAbacusBoundaryDetector.ts`                | Hook for boundary detection                 |
+| `scripts/train-boundary-detector/train_model.py`        | Python training script                      |
+| `scripts/train-boundary-detector/prepare_data.py`       | Data preprocessing                          |
 | `src/app/api/vision-training/boundary-samples/route.ts` | API for collecting/listing boundary samples |
-| `public/models/abacus-boundary-detector/model.json` | Trained model |
+| `public/models/abacus-boundary-detector/model.json`     | Trained model                               |
 
 ### Training UI Refactoring
 
-| File | Changes |
-|------|---------|
-| `train/components/wizard/types.ts` | Add `ModelType`, update `SamplesData`, `TrainingResult` |
-| `train/components/wizard/cards/ModelCard.tsx` | NEW - Model selection card |
-| `train/components/wizard/cards/DataCard.tsx` | Refactor to dispatch to model-specific cards |
-| `train/components/wizard/cards/ColumnClassifierDataCard.tsx` | Extract existing column classifier data UI |
-| `train/components/wizard/cards/BoundaryDetectorDataCard.tsx` | NEW - Boundary detector data UI |
-| `train/components/wizard/cards/ResultsCard.tsx` | Refactor to dispatch to model-specific results |
-| `train/components/wizard/cards/ColumnClassifierResultsCard.tsx` | Extract existing results UI |
-| `train/components/wizard/cards/BoundaryDetectorResultsCard.tsx` | NEW - Boundary detector results |
-| `train/components/wizard/TrainingWizard.tsx` | Add `modelType` state, pass to children |
-| `train/components/wizard/ExpandedCard.tsx` | Pass `modelType` to cards |
-| `train/page.tsx` | Fetch samples for selected model, route training API |
+| File                                                            | Changes                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------- |
+| `train/components/wizard/types.ts`                              | Add `ModelType`, update `SamplesData`, `TrainingResult` |
+| `train/components/wizard/cards/ModelCard.tsx`                   | NEW - Model selection card                              |
+| `train/components/wizard/cards/DataCard.tsx`                    | Refactor to dispatch to model-specific cards            |
+| `train/components/wizard/cards/ColumnClassifierDataCard.tsx`    | Extract existing column classifier data UI              |
+| `train/components/wizard/cards/BoundaryDetectorDataCard.tsx`    | NEW - Boundary detector data UI                         |
+| `train/components/wizard/cards/ResultsCard.tsx`                 | Refactor to dispatch to model-specific results          |
+| `train/components/wizard/cards/ColumnClassifierResultsCard.tsx` | Extract existing results UI                             |
+| `train/components/wizard/cards/BoundaryDetectorResultsCard.tsx` | NEW - Boundary detector results                         |
+| `train/components/wizard/TrainingWizard.tsx`                    | Add `modelType` state, pass to children                 |
+| `train/components/wizard/ExpandedCard.tsx`                      | Pass `modelType` to cards                               |
+| `train/page.tsx`                                                | Fetch samples for selected model, route training API    |
 
 ### Vision Integration Files
 
-| File | Changes |
-|------|---------|
-| `src/types/vision.ts` | Add `CalibrationMode = "auto" \| "manual" \| "marker-free"` |
-| `src/hooks/useAbacusVision.ts` | Add marker-free detection loop |
-| `src/components/vision/AbacusVisionBridge.tsx` | Add third calibration mode UI |
-| `src/components/vision/CameraCapture.tsx` | Support marker-free mode |
-| `src/components/vision/DockedVisionFeed.tsx` | Handle marker-free calibration |
-| `src/contexts/MyAbacusContext.tsx` | Add `calibrationMode` to VisionConfig |
-| `src/hooks/useCameraCalibration.ts` | Support marker-free calibration storage |
+| File                                           | Changes                                                     |
+| ---------------------------------------------- | ----------------------------------------------------------- |
+| `src/types/vision.ts`                          | Add `CalibrationMode = "auto" \| "manual" \| "marker-free"` |
+| `src/hooks/useAbacusVision.ts`                 | Add marker-free detection loop                              |
+| `src/components/vision/AbacusVisionBridge.tsx` | Add third calibration mode UI                               |
+| `src/components/vision/CameraCapture.tsx`      | Support marker-free mode                                    |
+| `src/components/vision/DockedVisionFeed.tsx`   | Handle marker-free calibration                              |
+| `src/contexts/MyAbacusContext.tsx`             | Add `calibrationMode` to VisionConfig                       |
+| `src/hooks/useCameraCalibration.ts`            | Support marker-free calibration storage                     |
 
 ---
 
@@ -424,6 +449,7 @@ TrainingWizard
     - Stability filtering (similar to digit detection)
 
 14. **Update CalibrationMode type**
+
     ```typescript
     export type CalibrationMode = "auto" | "manual" | "marker-free";
     ```
@@ -442,12 +468,13 @@ TrainingWizard
     - Add indicator showing which mode is active
 
 17. **Add calibration mode to VisionConfig**
+
     ```typescript
     interface VisionConfig {
       enabled: boolean;
       cameraDeviceId: string | null;
       calibration: CalibrationGrid | null;
-      calibrationMode: CalibrationMode;  // NEW
+      calibrationMode: CalibrationMode; // NEW
       // ...
     }
     ```
@@ -506,11 +533,13 @@ TrainingWizard
 ## Confidence & Fallback Strategy
 
 ### Inference Confidence
+
 - Compute confidence from prediction consistency across frames
 - If corners "jump" significantly between frames → low confidence
 - Threshold: require 5 consecutive stable predictions
 
 ### Fallback Chain
+
 ```
 1. Try marker-free ML detection
    ↓ (if confidence < threshold OR model not loaded)
@@ -520,6 +549,7 @@ TrainingWizard
 ```
 
 ### Quality Indicators
+
 - Green: High confidence, stable detection
 - Yellow: Medium confidence, some jitter
 - Red: Low confidence, using fallback
@@ -528,13 +558,13 @@ TrainingWizard
 
 ## Model Performance Targets
 
-| Metric | Target |
-|--------|--------|
-| Mean corner error | < 10 pixels (at 640×480) |
-| Inference time | < 50ms per frame |
-| Model size | < 5MB (TF.js) |
-| Min training samples | 200 frames |
-| Ideal training samples | 1000+ frames |
+| Metric                 | Target                   |
+| ---------------------- | ------------------------ |
+| Mean corner error      | < 10 pixels (at 640×480) |
+| Inference time         | < 50ms per frame         |
+| Model size             | < 5MB (TF.js)            |
+| Min training samples   | 200 frames               |
+| Ideal training samples | 1000+ frames             |
 
 ---
 

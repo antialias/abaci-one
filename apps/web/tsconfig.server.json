@@ -1,6 +1,11 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@styled/*": ["./styled-system/*"]
+    },
     "module": "commonjs",
     "target": "es2022",
     "outDir": "./dist",
