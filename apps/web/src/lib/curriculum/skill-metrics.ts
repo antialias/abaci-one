@@ -40,11 +40,31 @@ export const SKILL_CATEGORY_INFO: Record<
   { name: string; shortName: string; emoji: string }
 > = {
   basic: { name: 'Basic Operations', shortName: 'Basic', emoji: '🔢' },
-  fiveComplements: { name: "Five's (Addition)", shortName: "5's Add", emoji: '✋' },
-  fiveComplementsSub: { name: "Five's (Subtraction)", shortName: "5's Sub", emoji: '✋' },
-  tenComplements: { name: "Ten's (Addition)", shortName: "10's Add", emoji: '🔟' },
-  tenComplementsSub: { name: "Ten's (Subtraction)", shortName: "10's Sub", emoji: '🔟' },
-  advanced: { name: 'Advanced (Cascading)', shortName: 'Advanced', emoji: '⚡' },
+  fiveComplements: {
+    name: "Five's (Addition)",
+    shortName: "5's Add",
+    emoji: '✋',
+  },
+  fiveComplementsSub: {
+    name: "Five's (Subtraction)",
+    shortName: "5's Sub",
+    emoji: '✋',
+  },
+  tenComplements: {
+    name: "Ten's (Addition)",
+    shortName: "10's Add",
+    emoji: '🔟',
+  },
+  tenComplementsSub: {
+    name: "Ten's (Subtraction)",
+    shortName: "10's Sub",
+    emoji: '🔟',
+  },
+  advanced: {
+    name: 'Advanced (Cascading)',
+    shortName: 'Advanced',
+    emoji: '⚡',
+  },
 }
 
 /**
@@ -171,11 +191,36 @@ export function calculateCategoryMastery(
   // Initialize all categories
   const categories: Record<SkillCategory, CategoryMetrics> = {
     basic: { pKnownAvg: 0, skillCount: 0, masteredCount: 0, practicedCount: 0 },
-    fiveComplements: { pKnownAvg: 0, skillCount: 0, masteredCount: 0, practicedCount: 0 },
-    fiveComplementsSub: { pKnownAvg: 0, skillCount: 0, masteredCount: 0, practicedCount: 0 },
-    tenComplements: { pKnownAvg: 0, skillCount: 0, masteredCount: 0, practicedCount: 0 },
-    tenComplementsSub: { pKnownAvg: 0, skillCount: 0, masteredCount: 0, practicedCount: 0 },
-    advanced: { pKnownAvg: 0, skillCount: 0, masteredCount: 0, practicedCount: 0 },
+    fiveComplements: {
+      pKnownAvg: 0,
+      skillCount: 0,
+      masteredCount: 0,
+      practicedCount: 0,
+    },
+    fiveComplementsSub: {
+      pKnownAvg: 0,
+      skillCount: 0,
+      masteredCount: 0,
+      practicedCount: 0,
+    },
+    tenComplements: {
+      pKnownAvg: 0,
+      skillCount: 0,
+      masteredCount: 0,
+      practicedCount: 0,
+    },
+    tenComplementsSub: {
+      pKnownAvg: 0,
+      skillCount: 0,
+      masteredCount: 0,
+      practicedCount: 0,
+    },
+    advanced: {
+      pKnownAvg: 0,
+      skillCount: 0,
+      masteredCount: 0,
+      practicedCount: 0,
+    },
   }
 
   // Group skills by category and compute averages

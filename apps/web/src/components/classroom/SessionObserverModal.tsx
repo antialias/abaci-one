@@ -172,6 +172,10 @@ export function SessionObserverView({
     sendControl,
     sendPause,
     sendResume,
+    dvrBufferInfo,
+    isLive,
+    scrubTo,
+    goLive,
   } = useSessionObserver(session.sessionId, observerId, session.playerId, true, shareToken)
 
   // Track if we've paused the session (teacher controls resume)
@@ -787,7 +791,14 @@ export function SessionObserverView({
                   >
                     {/* Show vision feed if available, otherwise show teacher's abacus dock */}
                     {visionFrame ? (
-                      <ObserverVisionFeed frame={visionFrame} />
+                      <ObserverVisionFeed
+                        frame={visionFrame}
+                        sessionId={session.sessionId}
+                        dvrBufferInfo={dvrBufferInfo}
+                        isLive={isLive}
+                        onScrub={scrubTo}
+                        onGoLive={goLive}
+                      />
                     ) : (
                       <AbacusDock
                         id="teacher-observer-dock"

@@ -284,55 +284,205 @@ const mockClassroomLeaderboard: ClassroomSkillsLeaderboard = {
   computedAt: new Date(),
   playerCount: 8,
   byWeeklyProblems: [
-    { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 95, rank: 1 },
-    { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 78, rank: 2 },
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 65, rank: 3 },
-    { playerId: 'p4', playerName: 'Kai', playerEmoji: '🐬', value: 42, rank: 4 },
-    { playerId: 'p5', playerName: 'Emma', playerEmoji: '🌸', value: 38, rank: 5 },
+    {
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
+      value: 95,
+      rank: 1,
+    },
+    {
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
+      value: 78,
+      rank: 2,
+    },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 65,
+      rank: 3,
+    },
+    {
+      playerId: 'p4',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
+      value: 42,
+      rank: 4,
+    },
+    {
+      playerId: 'p5',
+      playerName: 'Emma',
+      playerEmoji: '🌸',
+      value: 38,
+      rank: 5,
+    },
   ],
   byTotalProblems: [
-    { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 1850, rank: 1 },
-    { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 1620, rank: 2 },
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 1250, rank: 3 },
-    { playerId: 'p5', playerName: 'Emma', playerEmoji: '🌸', value: 980, rank: 4 },
+    {
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
+      value: 1850,
+      rank: 1,
+    },
+    {
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
+      value: 1620,
+      rank: 2,
+    },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 1250,
+      rank: 3,
+    },
+    {
+      playerId: 'p5',
+      playerName: 'Emma',
+      playerEmoji: '🌸',
+      value: 980,
+      rank: 4,
+    },
   ],
   byPracticeStreak: [
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 45, rank: 1 },
-    { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 32, rank: 2 },
-    { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 28, rank: 3 },
-    { playerId: 'p4', playerName: 'Kai', playerEmoji: '🐬', value: 15, rank: 4 },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 45,
+      rank: 1,
+    },
+    {
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
+      value: 32,
+      rank: 2,
+    },
+    {
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
+      value: 28,
+      rank: 3,
+    },
+    {
+      playerId: 'p4',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
+      value: 15,
+      rank: 4,
+    },
   ],
   byImprovementRate: [
-    { playerId: 'p4', playerName: 'Kai', playerEmoji: '🐬', value: 12.5, rank: 1 },
-    { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 8.2, rank: 2 },
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 5.8, rank: 3 },
-    { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 3.1, rank: 4 },
+    {
+      playerId: 'p4',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
+      value: 12.5,
+      rank: 1,
+    },
+    {
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
+      value: 8.2,
+      rank: 2,
+    },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 5.8,
+      rank: 3,
+    },
+    {
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
+      value: 3.1,
+      rank: 4,
+    },
   ],
   speedChampions: [
     {
       category: 'basic' as SkillCategory,
       categoryName: 'Basic Operations',
       leaders: [
-        { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 0.8, rank: 1 },
-        { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 1.1, rank: 2 },
-        { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 1.3, rank: 3 },
+        {
+          playerId: 'p2',
+          playerName: 'Luna',
+          playerEmoji: '🌙',
+          value: 0.8,
+          rank: 1,
+        },
+        {
+          playerId: 'current',
+          playerName: 'Sonia',
+          playerEmoji: '🦋',
+          value: 1.1,
+          rank: 2,
+        },
+        {
+          playerId: 'p1',
+          playerName: 'Marcus',
+          playerEmoji: '🦖',
+          value: 1.3,
+          rank: 3,
+        },
       ],
     },
     {
       category: 'fiveComplements' as SkillCategory,
       categoryName: 'Five Complements',
       leaders: [
-        { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 1.4, rank: 1 },
-        { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 1.6, rank: 2 },
-        { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 1.9, rank: 3 },
+        {
+          playerId: 'current',
+          playerName: 'Sonia',
+          playerEmoji: '🦋',
+          value: 1.4,
+          rank: 1,
+        },
+        {
+          playerId: 'p2',
+          playerName: 'Luna',
+          playerEmoji: '🌙',
+          value: 1.6,
+          rank: 2,
+        },
+        {
+          playerId: 'p1',
+          playerName: 'Marcus',
+          playerEmoji: '🦖',
+          value: 1.9,
+          rank: 3,
+        },
       ],
     },
     {
       category: 'tenComplements' as SkillCategory,
       categoryName: 'Ten Complements',
       leaders: [
-        { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 1.8, rank: 1 },
-        { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 2.0, rank: 2 },
+        {
+          playerId: 'p1',
+          playerName: 'Marcus',
+          playerEmoji: '🦖',
+          value: 1.8,
+          rank: 1,
+        },
+        {
+          playerId: 'p2',
+          playerName: 'Luna',
+          playerEmoji: '🌙',
+          value: 2.0,
+          rank: 2,
+        },
       ],
     },
   ],
@@ -342,20 +492,68 @@ const mockClassroomLeaderboardSmall: ClassroomSkillsLeaderboard = {
   computedAt: new Date(),
   playerCount: 3,
   byWeeklyProblems: [
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 42, rank: 1 },
-    { playerId: 'p2', playerName: 'Alex', playerEmoji: '🚀', value: 28, rank: 2 },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 42,
+      rank: 1,
+    },
+    {
+      playerId: 'p2',
+      playerName: 'Alex',
+      playerEmoji: '🚀',
+      value: 28,
+      rank: 2,
+    },
   ],
   byTotalProblems: [
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 320, rank: 1 },
-    { playerId: 'p2', playerName: 'Alex', playerEmoji: '🚀', value: 180, rank: 2 },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 320,
+      rank: 1,
+    },
+    {
+      playerId: 'p2',
+      playerName: 'Alex',
+      playerEmoji: '🚀',
+      value: 180,
+      rank: 2,
+    },
   ],
   byPracticeStreak: [
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 12, rank: 1 },
-    { playerId: 'p2', playerName: 'Alex', playerEmoji: '🚀', value: 5, rank: 2 },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 12,
+      rank: 1,
+    },
+    {
+      playerId: 'p2',
+      playerName: 'Alex',
+      playerEmoji: '🚀',
+      value: 5,
+      rank: 2,
+    },
   ],
   byImprovementRate: [
-    { playerId: 'p2', playerName: 'Alex', playerEmoji: '🚀', value: 15.2, rank: 1 },
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 8.5, rank: 2 },
+    {
+      playerId: 'p2',
+      playerName: 'Alex',
+      playerEmoji: '🚀',
+      value: 15.2,
+      rank: 1,
+    },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 8.5,
+      rank: 2,
+    },
   ],
   speedChampions: [],
 }
@@ -364,48 +562,192 @@ const mockClassroomLeaderboardCurrentNotTop: ClassroomSkillsLeaderboard = {
   computedAt: new Date(),
   playerCount: 12,
   byWeeklyProblems: [
-    { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 120, rank: 1 },
-    { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 95, rank: 2 },
-    { playerId: 'p3', playerName: 'Kai', playerEmoji: '🐬', value: 88, rank: 3 },
-    { playerId: 'p4', playerName: 'Emma', playerEmoji: '🌸', value: 72, rank: 4 },
-    { playerId: 'p5', playerName: 'Oliver', playerEmoji: '🦁', value: 65, rank: 5 },
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 42, rank: 7 },
+    {
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
+      value: 120,
+      rank: 1,
+    },
+    {
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
+      value: 95,
+      rank: 2,
+    },
+    {
+      playerId: 'p3',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
+      value: 88,
+      rank: 3,
+    },
+    {
+      playerId: 'p4',
+      playerName: 'Emma',
+      playerEmoji: '🌸',
+      value: 72,
+      rank: 4,
+    },
+    {
+      playerId: 'p5',
+      playerName: 'Oliver',
+      playerEmoji: '🦁',
+      value: 65,
+      rank: 5,
+    },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 42,
+      rank: 7,
+    },
   ],
   byTotalProblems: [
-    { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 2500, rank: 1 },
-    { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 2200, rank: 2 },
-    { playerId: 'p3', playerName: 'Kai', playerEmoji: '🐬', value: 1800, rank: 3 },
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 1250, rank: 5 },
+    {
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
+      value: 2500,
+      rank: 1,
+    },
+    {
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
+      value: 2200,
+      rank: 2,
+    },
+    {
+      playerId: 'p3',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
+      value: 1800,
+      rank: 3,
+    },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 1250,
+      rank: 5,
+    },
   ],
   byPracticeStreak: [
-    { playerId: 'p3', playerName: 'Kai', playerEmoji: '🐬', value: 60, rank: 1 },
-    { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 45, rank: 2 },
-    { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 38, rank: 3 },
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 12, rank: 6 },
+    {
+      playerId: 'p3',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
+      value: 60,
+      rank: 1,
+    },
+    {
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
+      value: 45,
+      rank: 2,
+    },
+    {
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
+      value: 38,
+      rank: 3,
+    },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 12,
+      rank: 6,
+    },
   ],
   byImprovementRate: [
-    { playerId: 'p4', playerName: 'Emma', playerEmoji: '🌸', value: 18.5, rank: 1 },
-    { playerId: 'p5', playerName: 'Oliver', playerEmoji: '🦁', value: 14.2, rank: 2 },
-    { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 10.8, rank: 3 },
-    { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 5.2, rank: 8 },
+    {
+      playerId: 'p4',
+      playerName: 'Emma',
+      playerEmoji: '🌸',
+      value: 18.5,
+      rank: 1,
+    },
+    {
+      playerId: 'p5',
+      playerName: 'Oliver',
+      playerEmoji: '🦁',
+      value: 14.2,
+      rank: 2,
+    },
+    {
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
+      value: 10.8,
+      rank: 3,
+    },
+    {
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
+      value: 5.2,
+      rank: 8,
+    },
   ],
   speedChampions: [
     {
       category: 'basic' as SkillCategory,
       categoryName: 'Basic Operations',
       leaders: [
-        { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 0.6, rank: 1 },
-        { playerId: 'p3', playerName: 'Kai', playerEmoji: '🐬', value: 0.8, rank: 2 },
-        { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 0.9, rank: 3 },
+        {
+          playerId: 'p2',
+          playerName: 'Luna',
+          playerEmoji: '🌙',
+          value: 0.6,
+          rank: 1,
+        },
+        {
+          playerId: 'p3',
+          playerName: 'Kai',
+          playerEmoji: '🐬',
+          value: 0.8,
+          rank: 2,
+        },
+        {
+          playerId: 'p1',
+          playerName: 'Marcus',
+          playerEmoji: '🦖',
+          value: 0.9,
+          rank: 3,
+        },
       ],
     },
     {
       category: 'fiveComplements' as SkillCategory,
       categoryName: 'Five Complements',
       leaders: [
-        { playerId: 'p1', playerName: 'Marcus', playerEmoji: '🦖', value: 1.2, rank: 1 },
-        { playerId: 'p2', playerName: 'Luna', playerEmoji: '🌙', value: 1.4, rank: 2 },
-        { playerId: 'current', playerName: 'Sonia', playerEmoji: '🦋', value: 1.5, rank: 3 },
+        {
+          playerId: 'p1',
+          playerName: 'Marcus',
+          playerEmoji: '🦖',
+          value: 1.2,
+          rank: 1,
+        },
+        {
+          playerId: 'p2',
+          playerName: 'Luna',
+          playerEmoji: '🌙',
+          value: 1.4,
+          rank: 2,
+        },
+        {
+          playerId: 'current',
+          playerName: 'Sonia',
+          playerEmoji: '🦋',
+          value: 1.5,
+          rank: 3,
+        },
       ],
     },
   ],
@@ -569,7 +911,13 @@ export const DarkModeNoClassroom: Story = {
 export const MasteryBarVariations: StoryObj = {
   render: () => (
     <StoryWrapper>
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5rem' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+        })}
+      >
         <div>
           <h3 className={css({ fontWeight: 'bold', marginBottom: '0.5rem' })}>
             High Mastery (80%+)
@@ -633,7 +981,13 @@ export const MasteryBarVariations: StoryObj = {
 export const MasteryBarDarkMode: StoryObj = {
   render: () => (
     <StoryWrapper isDark>
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '1rem' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem',
+        })}
+      >
         <MasteryBar value={0.85} label="Basic Operations" detail="3/3 mastered" emoji="🔢" isDark />
         <MasteryBar value={0.58} label="Five Complements" detail="2/4 mastered" emoji="✋" isDark />
         <MasteryBar value={0.22} label="Ten Complements" detail="2/9 practiced" emoji="🔟" isDark />
@@ -740,7 +1094,10 @@ export const SkillsProgressEmpty: StoryObj = {
         <SkillsProgressSection
           metrics={{
             ...mockSkillMetricsBeginner,
-            progress: { ...mockSkillMetricsBeginner.progress, totalProblems: 0 },
+            progress: {
+              ...mockSkillMetricsBeginner.progress,
+              totalProblems: 0,
+            },
           }}
           isLoading={false}
           isDark={false}

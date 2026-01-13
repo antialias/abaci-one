@@ -19,6 +19,11 @@ describe('ObserverVisionFeed', () => {
     ...overrides,
   })
 
+  // Default props that are always required
+  const defaultProps = {
+    sessionId: 'test-session-123',
+  }
+
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -30,14 +35,14 @@ describe('ObserverVisionFeed', () => {
   describe('rendering', () => {
     it('renders the vision feed container', () => {
       const frame = createMockFrame()
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByRole('img')).toBeInTheDocument()
     })
 
     it('displays the image with correct src', () => {
       const frame = createMockFrame({ imageData: 'testImageData123' })
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       const img = screen.getByRole('img') as HTMLImageElement
       // Check the src property (not attribute) because our test setup
@@ -47,7 +52,7 @@ describe('ObserverVisionFeed', () => {
 
     it('has appropriate alt text for accessibility', () => {
       const frame = createMockFrame()
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       const img = screen.getByRole('img')
       expect(img).toHaveAttribute('alt', "Student's abacus vision feed")
@@ -57,35 +62,35 @@ describe('ObserverVisionFeed', () => {
   describe('detected value display', () => {
     it('displays the detected value', () => {
       const frame = createMockFrame({ detectedValue: 456, confidence: 0.87 })
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByText('456')).toBeInTheDocument()
     })
 
     it('displays confidence percentage', () => {
       const frame = createMockFrame({ detectedValue: 123, confidence: 0.87 })
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByText('87%')).toBeInTheDocument()
     })
 
     it('displays dashes when detectedValue is null', () => {
       const frame = createMockFrame({ detectedValue: null, confidence: 0 })
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByText('---')).toBeInTheDocument()
     })
 
     it('hides confidence when value is null', () => {
       const frame = createMockFrame({ detectedValue: null, confidence: 0.95 })
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.queryByText('95%')).not.toBeInTheDocument()
     })
 
     it('handles zero as a valid detected value', () => {
       const frame = createMockFrame({ detectedValue: 0, confidence: 0.99 })
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByText('0')).toBeInTheDocument()
       expect(screen.getByText('99%')).toBeInTheDocument()
@@ -98,7 +103,7 @@ describe('ObserverVisionFeed', () => {
       vi.setSystemTime(now)
 
       const frame = createMockFrame({ receivedAt: now - 500 }) // 500ms ago
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByText('Live')).toBeInTheDocument()
     })
@@ -108,7 +113,7 @@ describe('ObserverVisionFeed', () => {
       vi.setSystemTime(now)
 
       const frame = createMockFrame({ receivedAt: now - 1500 }) // 1.5 seconds ago
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByText('Stale')).toBeInTheDocument()
     })
@@ -118,7 +123,7 @@ describe('ObserverVisionFeed', () => {
       vi.setSystemTime(now)
 
       const frame = createMockFrame({ receivedAt: now - 2000 }) // 2 seconds ago
-      const { container } = render(<ObserverVisionFeed frame={frame} />)
+      const { container } = render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       const component = container.querySelector('[data-component="observer-vision-feed"]')
       expect(component).toHaveAttribute('data-stale', 'true')
@@ -129,7 +134,7 @@ describe('ObserverVisionFeed', () => {
       vi.setSystemTime(now)
 
       const frame = createMockFrame({ receivedAt: now - 100 }) // 100ms ago
-      const { container } = render(<ObserverVisionFeed frame={frame} />)
+      const { container } = render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       const component = container.querySelector('[data-component="observer-vision-feed"]')
       expect(component).toHaveAttribute('data-stale', 'false')
@@ -140,7 +145,7 @@ describe('ObserverVisionFeed', () => {
       vi.setSystemTime(now)
 
       const frame = createMockFrame({ receivedAt: now - 2000 })
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       const img = screen.getByRole('img')
       // The opacity should be reduced for stale frames
@@ -151,7 +156,7 @@ describe('ObserverVisionFeed', () => {
   describe('vision badge', () => {
     it('displays the vision badge', () => {
       const frame = createMockFrame()
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByText('📷')).toBeInTheDocument()
       expect(screen.getByText('Vision')).toBeInTheDocument()
@@ -161,7 +166,7 @@ describe('ObserverVisionFeed', () => {
   describe('edge cases', () => {
     it('handles very large detected values', () => {
       const frame = createMockFrame({ detectedValue: 99999, confidence: 1.0 })
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByText('99999')).toBeInTheDocument()
       expect(screen.getByText('100%')).toBeInTheDocument()
@@ -169,21 +174,21 @@ describe('ObserverVisionFeed', () => {
 
     it('rounds confidence to nearest integer', () => {
       const frame = createMockFrame({ detectedValue: 123, confidence: 0.876 })
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByText('88%')).toBeInTheDocument()
     })
 
     it('handles confidence edge case of exactly 1', () => {
       const frame = createMockFrame({ detectedValue: 123, confidence: 1.0 })
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByText('100%')).toBeInTheDocument()
     })
 
     it('handles confidence edge case of exactly 0', () => {
       const frame = createMockFrame({ detectedValue: 123, confidence: 0 })
-      render(<ObserverVisionFeed frame={frame} />)
+      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.getByText('0%')).toBeInTheDocument()
     })

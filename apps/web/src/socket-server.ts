@@ -24,6 +24,11 @@ import {
   markPhoneConnected,
   markPhoneDisconnected,
 } from './lib/remote-camera/session-manager'
+import { VisionRecorder, type VisionFrame } from './lib/vision/recording'
+import type { ProblemMarker } from './db/schema/vision-recordings'
+
+// Throttle map for DVR buffer info emissions (sessionId -> last emit timestamp)
+const lastDvrBufferInfoEmit = new Map<string, number>()
 
 // Yjs server-side imports
 import * as Y from 'yjs'
@@ -867,6 +872,21 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               `👁️ Shared observer joined session: ${sessionId} (token: ${shareToken.substring(0, 4)}...)`
             )
 
+            // Send initial DVR buffer info if recording is active
+            const sharedRecorder = VisionRecorder.getInstance()
+            const isRecording = sharedRecorder.isRecording(sessionId)
+            console.log(`[Socket] Shared observer joined, checking DVR: isRecording=${isRecording}`)
+            if (isRecording) {
+              const bufferInfo = sharedRecorder.getDvrBufferInfo(sessionId)
+              console.log(`[Socket] Initial DVR buffer info for shared observer:`, bufferInfo)
+              if (bufferInfo) {
+                socket.emit('vision-buffer-info', {
+                  sessionId,
+                  ...bufferInfo,
+                })
+              }
+            }
+
             // Notify session that a guest observer joined
             socket.to(`session:${sessionId}`).emit('observer-joined', {
               observerId: 'guest',
@@ -900,6 +920,21 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
           await socket.join(`session:${sessionId}`)
           console.log(`👁️ Observer ${observerId} started watching session: ${sessionId}`)
+
+          // Send initial DVR buffer info if recording is active
+          const authRecorder = VisionRecorder.getInstance()
+          const isRecordingAuth = authRecorder.isRecording(sessionId)
+          console.log(`[Socket] Auth observer joined, checking DVR: isRecording=${isRecordingAuth}`)
+          if (isRecordingAuth) {
+            const bufferInfo = authRecorder.getDvrBufferInfo(sessionId)
+            console.log(`[Socket] Initial DVR buffer info for auth observer:`, bufferInfo)
+            if (bufferInfo) {
+              socket.emit('vision-buffer-info', {
+                sessionId,
+                ...bufferInfo,
+              })
+            }
+          }
 
           // Notify session that an observer joined
           socket.to(`session:${sessionId}`).emit('observer-joined', { observerId })
@@ -1011,7 +1046,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     // Session Observation: Broadcast vision frame from student's abacus camera
     socket.on(
       'vision-frame',
-      (data: {
+      async (data: {
         sessionId: string
         imageData: string
         detectedValue: number | null
@@ -1020,8 +1055,154 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }) => {
         // Broadcast to all observers in the session channel
         socket.to(`session:${data.sessionId}`).emit('vision-frame', data)
+
+        // Add frame to recording if active
+        const recorder = VisionRecorder.getInstance()
+        const isRecordingActive = recorder.isRecording(data.sessionId)
+        console.log(
+          `[Socket] vision-frame received for session ${data.sessionId}, isRecording: ${isRecordingActive}`
+        )
+
+        if (isRecordingActive) {
+          const frame: VisionFrame = {
+            sessionId: data.sessionId,
+            imageData: data.imageData,
+            detectedValue: data.detectedValue,
+            confidence: data.confidence,
+            timestamp: data.timestamp,
+          }
+          const frameAdded = await recorder.addFrame(frame)
+          console.log(`[Socket] Frame added to recording: ${frameAdded}`)
+
+          // Emit DVR buffer info to observers (throttled to once per second)
+          if (frameAdded) {
+            const now = Date.now()
+            const lastEmit = lastDvrBufferInfoEmit.get(data.sessionId) || 0
+            const timeSinceLastEmit = now - lastEmit
+            if (timeSinceLastEmit >= 1000) {
+              const bufferInfo = recorder.getDvrBufferInfo(data.sessionId)
+              console.log(`[Socket] DVR buffer info for ${data.sessionId}:`, bufferInfo)
+              if (bufferInfo) {
+                lastDvrBufferInfoEmit.set(data.sessionId, now)
+                console.log(`[Socket] Emitting vision-buffer-info to session:${data.sessionId}`)
+                socket.to(`session:${data.sessionId}`).emit('vision-buffer-info', {
+                  sessionId: data.sessionId,
+                  ...bufferInfo,
+                })
+              }
+            }
+          }
+        }
       }
     )
+
+    // Vision Recording: Start recording for a practice session
+    socket.on(
+      'start-vision-recording',
+      async ({ sessionId, playerId }: { sessionId: string; playerId: string }) => {
+        console.log(
+          `[Socket] Received start-vision-recording for session ${sessionId}, player ${playerId}`
+        )
+        try {
+          const recorder = VisionRecorder.getInstance()
+          const recordingId = await recorder.startRecording(sessionId, playerId)
+          console.log(
+            `📹 Started vision recording for session ${sessionId}, recordingId: ${recordingId}`
+          )
+
+          // Notify the session that recording started
+          socket.emit('vision-recording-started', { sessionId, recordingId })
+          socket
+            .to(`session:${sessionId}`)
+            .emit('vision-recording-started', { sessionId, recordingId })
+        } catch (error) {
+          console.error('Error starting vision recording:', error)
+          socket.emit('vision-recording-error', {
+            sessionId,
+            error: error instanceof Error ? error.message : 'Failed to start recording',
+          })
+        }
+      }
+    )
+
+    // Vision Recording: Stop recording for a practice session
+    socket.on('stop-vision-recording', async ({ sessionId }: { sessionId: string }) => {
+      try {
+        const recorder = VisionRecorder.getInstance()
+        const recordingId = recorder.getRecordingId(sessionId)
+        await recorder.stopRecording(sessionId)
+        console.log(`📹 Stopped vision recording for session ${sessionId}`)
+
+        // Clean up throttle map
+        lastDvrBufferInfoEmit.delete(sessionId)
+
+        // Notify the session that recording stopped
+        socket.emit('vision-recording-stopped', { sessionId, recordingId })
+        socket
+          .to(`session:${sessionId}`)
+          .emit('vision-recording-stopped', { sessionId, recordingId })
+      } catch (error) {
+        console.error('Error stopping vision recording:', error)
+      }
+    })
+
+    // Vision Recording: Add problem marker for timeline synchronization
+    socket.on(
+      'vision-problem-marker',
+      ({
+        sessionId,
+        problemNumber,
+        partIndex,
+        eventType,
+        isCorrect,
+      }: {
+        sessionId: string
+        problemNumber: number
+        partIndex: number
+        eventType: 'problem-shown' | 'answer-submitted' | 'feedback-shown'
+        isCorrect?: boolean
+      }) => {
+        const recorder = VisionRecorder.getInstance()
+        if (recorder.isRecording(sessionId)) {
+          recorder.addProblemMarker(sessionId, {
+            problemNumber,
+            partIndex,
+            eventType,
+            isCorrect,
+          })
+        }
+      }
+    )
+
+    // Vision Recording: DVR scrub request (get frame at offset)
+    socket.on(
+      'vision-scrub',
+      ({ sessionId, offsetMs }: { sessionId: string; offsetMs: number }) => {
+        const recorder = VisionRecorder.getInstance()
+        const frame = recorder.getDvrFrame(sessionId, offsetMs)
+
+        if (frame) {
+          socket.emit('vision-scrub-frame', {
+            sessionId,
+            imageData: frame.imageData,
+            timestamp: frame.timestamp,
+            offsetMs,
+          })
+        }
+      }
+    )
+
+    // Vision Recording: Get DVR buffer availability info
+    socket.on('vision-buffer-info', ({ sessionId }: { sessionId: string }) => {
+      const recorder = VisionRecorder.getInstance()
+      const info = recorder.getDvrBufferInfo(sessionId)
+
+      socket.emit('vision-buffer-info', {
+        sessionId,
+        available: info !== null,
+        ...(info || {}),
+      })
+    })
 
     // Skill Tutorial: Broadcast state from student to classroom (for teacher observation)
     // The student joins the classroom channel and emits their tutorial state

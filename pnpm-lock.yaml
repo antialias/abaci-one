@@ -170,6 +170,9 @@ importers:
       "@tensorflow/tfjs":
         specifier: ^4.22.0
         version: 4.22.0(seedrandom@3.0.5)
+      "@types/fluent-ffmpeg":
+        specifier: ^2.1.28
+        version: 2.1.28
       "@types/jsdom":
         specifier: ^21.1.7
         version: 21.1.7
@@ -209,6 +212,9 @@ importers:
       emojibase-data:
         specifier: ^16.0.3
         version: 16.0.3(emojibase@16.0.0)
+      fluent-ffmpeg:
+        specifier: ^2.1.3
+        version: 2.1.3
       framer-motion:
         specifier: ^12.23.26
         version: 12.23.26(@emotion/is-prop-valid@1.4.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -6397,6 +6403,12 @@ packages:
         integrity: sha512-frsJrz2t/CeGifcu/6uRo4b+SzAwT4NYCVPu1GN8IB9XTzrpPkGuV0tmh9mN+/L0PklAlsC3u5Fxt0ju00LXIw==,
       }
 
+  "@types/fluent-ffmpeg@2.1.28":
+    resolution:
+      {
+        integrity: sha512-5ovxsDwBcPfJ+eYs1I/ZpcYCnkce7pvH9AHSvrZllAp1ZPpTRDZAFjF3TRFbukxSgIYTTNYePbS0rKUmaxVbXw==,
+      }
+
   "@types/glob@7.2.0":
     resolution:
       {
@@ -7692,6 +7704,12 @@ packages:
     resolution:
       {
         integrity: sha512-csOlWGAcRFJaI6m+F2WKdnMKr4HhdhFVBk0H/QbJFMCr+uO2kwohwXQPxw/9OCxp05r5ghVBFSyioixx3gfkNQ==,
+      }
+
+  async@0.2.10:
+    resolution:
+      {
+        integrity: sha512-eAkdoKxU6/LkKDBzLpT+t6Ff5EtfSF4wx1WfJiPEEV7WNLnDaRXk0oVysiEPm262roaachGexwUv94WhSgN5TQ==,
       }
 
   async@3.2.6:
@@ -10503,6 +10521,14 @@ packages:
         integrity: sha512-92XfPmSg6zV/UD/R3Hw+sxBUi3SiIL8COqD7p3HRZysX1ksrw5MdPhpqox0U0Hd5lqQ9F1AJCi92fnRO7WDgFw==,
       }
     engines: { node: ">=0.4.0" }
+
+  fluent-ffmpeg@2.1.3:
+    resolution:
+      {
+        integrity: sha512-Be3narBNt2s6bsaqP6Jzq91heDgOEaDCJAXcE3qcma/EJBSy5FB4cvO31XBInuAuKBx8Kptf8dkhjK0IOru39Q==,
+      }
+    engines: { node: ">=18" }
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   for-each@0.3.5:
     resolution:
@@ -17660,6 +17686,13 @@ packages:
       }
     engines: { node: ">= 0.4" }
 
+  which@1.3.1:
+    resolution:
+      {
+        integrity: sha512-HxJdYWq1MTIQbJ3nw0cqssHoTNU267KlrDuGZ1WYlxDStUtKUhOaJmh112/TZmHxxUfuJqPXSOm7tDyas0OSIQ==,
+      }
+    hasBin: true
+
   which@2.0.2:
     resolution:
       {
@@ -22423,6 +22456,10 @@ snapshots:
 
   "@types/find-cache-dir@3.2.1": {}
 
+  "@types/fluent-ffmpeg@2.1.28":
+    dependencies:
+      "@types/node": 20.19.19
+
   "@types/glob@7.2.0":
     dependencies:
       "@types/minimatch": 6.0.0
@@ -23241,6 +23278,8 @@ snapshots:
   async-function@1.0.0: {}
 
   async-limiter@1.0.1: {}
+
+  async@0.2.10: {}
 
   async@3.2.6: {}
 
@@ -25197,6 +25236,11 @@ snapshots:
   flatted@3.3.3: {}
 
   flow-parser@0.287.0: {}
+
+  fluent-ffmpeg@2.1.3:
+    dependencies:
+      async: 0.2.10
+      which: 1.3.1
 
   for-each@0.3.5:
     dependencies:
@@ -29929,6 +29973,10 @@ snapshots:
       get-proto: 1.0.1
       gopd: 1.2.0
       has-tostringtag: 1.0.2
+
+  which@1.3.1:
+    dependencies:
+      isexe: 2.0.0
 
   which@2.0.2:
     dependencies:

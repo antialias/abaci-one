@@ -110,6 +110,19 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const [showGameBreakResults, setShowGameBreakResults] = useState(false)
   // Track previous part index to detect part transitions
   const previousPartIndexRef = useRef<number>(initialSession.currentPartIndex)
+  // Ref to store stopVisionRecording - populated later when useSessionBroadcast is called
+  // This allows early-defined callbacks to access the function
+  const stopRecordingRef = useRef<(() => void) | undefined>(undefined)
+  // Ref to store sendProblemMarker for timeline sync
+  const sendProblemMarkerRef = useRef<
+    | ((
+        problemNumber: number,
+        partIndex: number,
+        eventType: 'problem-shown' | 'answer-submitted' | 'feedback-shown',
+        isCorrect?: boolean
+      ) => void)
+    | undefined
+  >(undefined)
   // Redo state - allows students to re-attempt any completed problem
   const [redoState, setRedoState] = useState<RedoState | null>(null)
 
@@ -207,6 +220,15 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const handleAnswer = useCallback(
     async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>): Promise<void> => {
       try {
+        // Send problem marker for timeline sync (before mutation so it captures the submit moment)
+        const currentProblemNumber = currentPlan.currentSlotIndex + 1
+        sendProblemMarkerRef.current?.(
+          currentProblemNumber,
+          currentPlan.currentPartIndex,
+          'answer-submitted',
+          result.isCorrect
+        )
+
         const previousPartIndex = previousPartIndexRef.current
         const updatedPlan = await recordResult.mutateAsync({
           playerId: studentId,
@@ -219,6 +241,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
 
         // If session just completed, redirect to summary with completed flag
         if (updatedPlan.completedAt) {
+          // Stop vision recording if it was started
+          stopRecordingRef.current?.()
           router.push(`/practice/${studentId}/summary?completed=1`, {
             scroll: false,
           })
@@ -263,6 +287,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
           planId: currentPlan.id,
           reason,
         })
+        // Stop vision recording if it was started
+        stopRecordingRef.current?.()
         // Redirect to summary after ending early with completed flag
         router.push(`/practice/${studentId}/summary?completed=1`, {
           scroll: false,
@@ -285,6 +311,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
 
   // Handle session completion (called by ActiveSession when all problems done)
   const handleSessionComplete = useCallback(() => {
+    // Stop vision recording if it was started
+    stopRecordingRef.current?.()
     // Redirect to summary with completed flag
     router.push(`/practice/${studentId}/summary?completed=1`, {
       scroll: false,
@@ -367,16 +395,50 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
   // onAbacusControl receives control events from observing teacher
   // onTeacherPause/onTeacherResume receive pause/resume commands from teacher
-  const { sendPartTransition, sendPartTransitionComplete, sendVisionFrame } = useSessionBroadcast(
-    currentPlan.id,
-    studentId,
-    broadcastState,
-    {
-      onAbacusControl: setTeacherControl,
-      onTeacherPause: setTeacherPauseRequest,
-      onTeacherResume: () => setTeacherResumeRequest(true),
+  const {
+    sendPartTransition,
+    sendPartTransitionComplete,
+    sendVisionFrame,
+    isRecording,
+    startVisionRecording,
+    stopVisionRecording,
+    sendProblemMarker,
+  } = useSessionBroadcast(currentPlan.id, studentId, broadcastState, {
+    onAbacusControl: setTeacherControl,
+    onTeacherPause: setTeacherPauseRequest,
+    onTeacherResume: () => setTeacherResumeRequest(true),
+  })
+
+  // Track whether we've started vision recording for this session
+  const hasStartedRecordingRef = useRef(false)
+  // Track previous problem number to detect when new problems appear
+  const previousProblemNumberRef = useRef<number | null>(null)
+  // Update the refs so callbacks defined earlier can access these functions
+  stopRecordingRef.current = stopVisionRecording
+  sendProblemMarkerRef.current = sendProblemMarker
+
+  // Emit 'problem-shown' marker when a new problem appears (including first problem)
+  useEffect(() => {
+    if (!broadcastState) return
+
+    const currentProblemNumber = broadcastState.currentProblemNumber
+    const previousProblemNumber = previousProblemNumberRef.current
+
+    // Emit if this is a new problem OR the first problem (previousProblemNumber is null)
+    if (currentProblemNumber !== previousProblemNumber) {
+      console.log(
+        `[PracticeClient] Problem shown: ${previousProblemNumber ?? 'none'} → ${currentProblemNumber}, emitting problem-shown marker`
+      )
+      sendProblemMarker(
+        currentProblemNumber,
+        broadcastState.currentPartIndex ?? currentPlan.currentPartIndex,
+        'problem-shown'
+      )
     }
-  )
+
+    // Update ref for next comparison
+    previousProblemNumberRef.current = currentProblemNumber
+  }, [broadcastState?.currentProblemNumber, broadcastState?.currentPartIndex, currentPlan.currentPartIndex, sendProblemMarker])
 
   // Handle part transition complete - called when transition screen finishes
   // This is where we trigger game break (after "put away abacus" message is shown)
@@ -394,15 +456,31 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   }, [sendPartTransitionComplete, pendingGameBreak])
 
   // Wire vision frame callback to broadcast vision frames to observers
+  // Also auto-start recording when vision frames start flowing
   useEffect(() => {
+    console.log('[PracticeClient] Setting up vision frame callback')
     setVisionFrameCallback((frame) => {
+      console.log(
+        '[PracticeClient] Vision frame received, hasStartedRecording:',
+        hasStartedRecordingRef.current,
+        'isRecording:',
+        isRecording
+      )
+
+      // Start recording on first vision frame (if not already recording)
+      if (!hasStartedRecordingRef.current && !isRecording) {
+        console.log('[PracticeClient] First vision frame received, calling startVisionRecording()')
+        hasStartedRecordingRef.current = true
+        startVisionRecording()
+      }
+
       sendVisionFrame(frame.imageData, frame.detectedValue, frame.confidence)
     })
 
     return () => {
       setVisionFrameCallback(null)
     }
-  }, [setVisionFrameCallback, sendVisionFrame])
+  }, [setVisionFrameCallback, sendVisionFrame, isRecording, startVisionRecording])
 
   // Build session HUD data for PracticeSubNav
   const sessionHud: SessionHudData | undefined = currentPart

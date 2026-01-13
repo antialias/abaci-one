@@ -40,6 +40,11 @@ const PhotoViewerEditor = dynamic(
   { ssr: false }
 )
 
+const VisionRecordingPlayer = dynamic(
+  () => import('@/components/vision/VisionRecordingPlayer').then((m) => m.VisionRecordingPlayer),
+  { ssr: false }
+)
+
 import { useToast } from '@/components/common/ToastContext'
 import {
   SessionModeBannerProvider,
@@ -53,6 +58,7 @@ import { canUploadPhotos, usePlayerAccess } from '@/hooks/usePlayerAccess'
 import { usePhotoManagement } from '@/hooks/usePhotoManagement'
 import { usePhotoViewer } from '@/hooks/usePhotoViewer'
 import { useSessionMode } from '@/hooks/useSessionMode'
+import { useSessionRecording } from '@/hooks/useSessionRecording'
 import {
   getPendingAttachmentId,
   useApproveAndCreateSession,
@@ -150,6 +156,12 @@ export function SummaryClient({
   // Player access - pre-flight authorization check for upload capability
   const { data: playerAccess } = usePlayerAccess(studentId)
   const canUpload = canUploadPhotos(playerAccess)
+
+  // Vision recording for this session (if available)
+  const { data: recordingData, isLoading: isLoadingRecording } = useSessionRecording(
+    studentId,
+    session?.id ?? ''
+  )
 
   // Fetch attachments for this session (includes parsing data)
   const { data: attachmentsData } = useQuery({
@@ -409,6 +421,36 @@ export function SummaryClient({
                           />
                         </div>
                       )}
+
+                      {/* Vision recording playback (if available) */}
+                      {recordingData?.hasRecording &&
+                        recordingData.recording?.status === 'ready' &&
+                        recordingData.recording?.videoUrl &&
+                        recordingData.recording?.durationMs && (
+                          <div
+                            data-scrollspy-section="recording"
+                            className={css({
+                              mb: 6,
+                              px: { base: 4, md: 0 },
+                            })}
+                          >
+                            <h3
+                              className={css({
+                                fontSize: 'lg',
+                                fontWeight: 'semibold',
+                                color: isDark ? 'gray.100' : 'gray.900',
+                                mb: 3,
+                              })}
+                            >
+                              Session Recording
+                            </h3>
+                            <VisionRecordingPlayer
+                              videoUrl={recordingData.recording.videoUrl}
+                              durationMs={recordingData.recording.durationMs}
+                              problemMarkers={recordingData.recording.problemMarkers}
+                            />
+                          </div>
+                        )}
 
                       {/* Evidence section: Photos + All Problems */}
                       <div data-scrollspy-section="evidence">

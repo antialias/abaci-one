@@ -15,3 +15,11 @@ export type { CalibrationOverlayProps } from './CalibrationOverlay'
 
 export { VisionStatusIndicator } from './VisionStatusIndicator'
 export type { VisionStatusIndicatorProps } from './VisionStatusIndicator'
+
+export { VisionRecordingPlayer } from './VisionRecordingPlayer'
+export type { ProblemMarker } from './VisionRecordingPlayer'
+
+export { VisionDvrControls } from './VisionDvrControls'
+
+export { ObserverVisionFeed } from './ObserverVisionFeed'
+export type { ObserverVisionFeedProps } from './ObserverVisionFeed'

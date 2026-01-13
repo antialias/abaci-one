@@ -125,6 +125,20 @@ export interface ObservedVisionFrame {
   receivedAt: number
 }
 
+/**
+ * DVR buffer info for live scrub-back (per-problem scope)
+ */
+export interface DvrBufferInfo {
+  /** Start of available buffer (ms from recording start) */
+  availableFromMs: number
+  /** End of available buffer (ms from recording start) */
+  availableToMs: number
+  /** When the current problem started (ms from recording start), null if not yet shown */
+  currentProblemStartMs: number | null
+  /** Current problem number (1-indexed), null if not yet shown */
+  currentProblemNumber: number | null
+}
+
 interface UseSessionObserverResult {
   /** Current observed state (null if not yet received) */
   state: ObservedSessionState | null
@@ -148,6 +162,14 @@ interface UseSessionObserverResult {
   sendPause: (message?: string) => void
   /** Resume the student's session */
   sendResume: () => void
+  /** DVR buffer info (null if DVR not available) */
+  dvrBufferInfo: DvrBufferInfo | null
+  /** Whether currently viewing live feed (vs scrubbing) */
+  isLive: boolean
+  /** Request a scrub frame at specific offset */
+  scrubTo: (offsetMs: number) => void
+  /** Return to live feed */
+  goLive: () => void
 }
 
 /**
@@ -176,6 +198,8 @@ export function useSessionObserver(
   const [isConnected, setIsConnected] = useState(false)
   const [isObserving, setIsObserving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dvrBufferInfo, setDvrBufferInfo] = useState<DvrBufferInfo | null>(null)
+  const [isLive, setIsLive] = useState(true)
 
   const socketRef = useRef<Socket | null>(null)
   // Track which problem numbers we've already recorded to avoid duplicates
@@ -194,6 +218,8 @@ export function useSessionObserver(
       setResults([])
       setTransitionState(null)
       setVisionFrame(null)
+      setDvrBufferInfo(null)
+      setIsLive(true)
       recordedProblemsRef.current.clear()
       hasSeededHistoryRef.current = false
     }
@@ -374,15 +400,72 @@ export function useSessionObserver(
       setTransitionState(null)
     })
 
-    // Listen for vision frames from student's camera
+    // Listen for vision frames from student's camera (only update if in live mode)
     socket.on('vision-frame', (data: VisionFrameEvent) => {
+      // When in live mode, update the vision frame
+      // When scrubbing, we'll get frames from vision-scrub-frame events
+      setIsLive((currentIsLive) => {
+        if (currentIsLive) {
+          setVisionFrame({
+            imageData: data.imageData,
+            detectedValue: data.detectedValue,
+            confidence: data.confidence,
+            receivedAt: Date.now(),
+          })
+        }
+        return currentIsLive
+      })
+    })
+
+    // Listen for scrub frame responses (DVR playback)
+    socket.on('vision-scrub-frame', (data: { imageData: string; timestamp: number }) => {
+      console.log('[SessionObserver] Received scrub frame')
       setVisionFrame({
         imageData: data.imageData,
-        detectedValue: data.detectedValue,
-        confidence: data.confidence,
+        detectedValue: null,
+        confidence: 0,
         receivedAt: Date.now(),
       })
     })
+
+    // Listen for DVR buffer info updates
+    socket.on(
+      'vision-buffer-info',
+      (data: {
+        sessionId: string
+        availableFromMs: number
+        availableToMs: number
+        currentProblemStartMs: number | null
+        currentProblemNumber: number | null
+      }) => {
+        // Only process buffer info for our session
+        if (data.sessionId !== sessionId) return
+
+        console.log('[SessionObserver] Received DVR buffer info:', data)
+
+        // Check if problem changed - auto-reset to live when new problem starts
+        setDvrBufferInfo((prevInfo) => {
+          const problemChanged =
+            prevInfo !== null &&
+            data.currentProblemNumber !== null &&
+            prevInfo.currentProblemNumber !== data.currentProblemNumber
+
+          if (problemChanged) {
+            console.log(
+              `[SessionObserver] Problem changed: ${prevInfo?.currentProblemNumber} → ${data.currentProblemNumber}, resetting to live`
+            )
+            setIsLive(true)
+          }
+
+          return {
+            availableFromMs: data.availableFromMs,
+            availableToMs: data.availableToMs,
+            currentProblemStartMs: data.currentProblemStartMs,
+            currentProblemNumber: data.currentProblemNumber,
+          }
+        })
+      }
+    )
 
     // Listen for session ended event
     socket.on('session-ended', () => {
@@ -471,6 +554,27 @@ export function useSessionObserver(
     console.log('[SessionObserver] Sent session-resume')
   }, [isConnected, sessionId])
 
+  // Scrub to a specific offset in the DVR buffer
+  const scrubTo = useCallback(
+    (offsetMs: number) => {
+      if (!socketRef.current || !isConnected || !sessionId) {
+        console.warn('[SessionObserver] Cannot scrub - not connected or no sessionId')
+        return
+      }
+
+      setIsLive(false)
+      socketRef.current.emit('vision-scrub', { sessionId, offsetMs })
+      console.log('[SessionObserver] Requested scrub to:', offsetMs)
+    },
+    [isConnected, sessionId]
+  )
+
+  // Return to live feed
+  const goLive = useCallback(() => {
+    console.log('[SessionObserver] Going back to live feed')
+    setIsLive(true)
+  }, [])
+
   return {
     state,
     results,
@@ -483,5 +587,9 @@ export function useSessionObserver(
     sendControl,
     sendPause,
     sendResume,
+    dvrBufferInfo,
+    isLive,
+    scrubTo,
+    goLive,
   }
 }

@@ -692,7 +692,12 @@ export function SkillsProgressSection({
             {metrics.timing.avgSecondsPerTerm !== null
               ? `${metrics.timing.avgSecondsPerTerm.toFixed(1)}s/term`
               : '-'}
-            <span className={css({ marginLeft: '0.25rem', color: timingTrend.color })}>
+            <span
+              className={css({
+                marginLeft: '0.25rem',
+                color: timingTrend.color,
+              })}
+            >
               {timingTrend.arrow}
             </span>
           </div>
@@ -724,7 +729,12 @@ export function SkillsProgressSection({
             })}
           >
             {Math.round(metrics.accuracy.recentPercent)}%
-            <span className={css({ marginLeft: '0.25rem', color: accuracyTrend.color })}>
+            <span
+              className={css({
+                marginLeft: '0.25rem',
+                color: accuracyTrend.color,
+              })}
+            >
               {accuracyTrend.arrow}
             </span>
           </div>
@@ -751,7 +761,12 @@ export function SkillsProgressSection({
           >
             {metrics.progress.weeklyProblems}
           </div>
-          <div className={css({ fontSize: '0.75rem', color: isDark ? 'gray.400' : 'gray.500' })}>
+          <div
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+            })}
+          >
             This Week
           </div>
         </div>
@@ -765,7 +780,12 @@ export function SkillsProgressSection({
           >
             {metrics.progress.practiceStreak}
           </div>
-          <div className={css({ fontSize: '0.75rem', color: isDark ? 'gray.400' : 'gray.500' })}>
+          <div
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+            })}
+          >
             Day Streak
           </div>
         </div>
@@ -779,7 +799,12 @@ export function SkillsProgressSection({
           >
             {metrics.progress.totalProblems}
           </div>
-          <div className={css({ fontSize: '0.75rem', color: isDark ? 'gray.400' : 'gray.500' })}>
+          <div
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+            })}
+          >
             Total
           </div>
         </div>
@@ -868,7 +893,13 @@ export function SkillsLeaderboardSection({
           <span>{emoji}</span>
           <span>{title}</span>
         </h4>
-        <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.25rem' })}>
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.25rem',
+          })}
+        >
           {rankings.slice(0, 3).map((player) => {
             const isCurrentPlayer = player.playerId === currentPlayerId
             return (
@@ -950,7 +981,11 @@ export function SkillsLeaderboardSection({
   return (
     <div
       data-element="skills-leaderboard"
-      className={css({ display: 'flex', flexDirection: 'column', gap: '0.75rem' })}
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.75rem',
+      })}
     >
       {/* Effort-based rankings */}
       <div
@@ -1045,7 +1080,11 @@ export function SkillsLeaderboardSection({
                       <span>
                         {player.rank}. {player.playerEmoji} {player.playerName}
                       </span>
-                      <span className={css({ color: isDark ? 'cyan.400' : 'cyan.600' })}>
+                      <span
+                        className={css({
+                          color: isDark ? 'cyan.400' : 'cyan.600',
+                        })}
+                      >
                         {player.value.toFixed(1)}s
                       </span>
                     </div>

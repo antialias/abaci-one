@@ -56,6 +56,10 @@ export interface UseSessionBroadcastOptions {
 export interface UseSessionBroadcastResult {
   isConnected: boolean
   isBroadcasting: boolean
+  /** Whether vision recording is active */
+  isRecording: boolean
+  /** Recording ID if currently recording */
+  recordingId: string | null
   /** Send part transition event to observers */
   sendPartTransition: (
     previousPartType: SessionPartType | null,
@@ -67,6 +71,17 @@ export interface UseSessionBroadcastResult {
   sendPartTransitionComplete: () => void
   /** Send vision frame to observers (when student has vision mode enabled) */
   sendVisionFrame: (imageData: string, detectedValue: number | null, confidence: number) => void
+  /** Start vision recording for this session */
+  startVisionRecording: () => void
+  /** Stop vision recording for this session */
+  stopVisionRecording: () => void
+  /** Send a problem marker for timeline synchronization */
+  sendProblemMarker: (
+    problemNumber: number,
+    partIndex: number,
+    eventType: 'problem-shown' | 'answer-submitted' | 'feedback-shown',
+    isCorrect?: boolean
+  ) => void
 }
 
 export function useSessionBroadcast(
@@ -84,6 +99,10 @@ export function useSessionBroadcast(
   // Keep options in a ref so socket event handlers can access current callbacks
   const optionsRef = useRef(options)
   optionsRef.current = options
+
+  // Vision recording state
+  const isRecordingRef = useRef(false)
+  const recordingIdRef = useRef<string | null>(null)
 
   // Helper to broadcast current state
   const broadcastState = useCallback(() => {
@@ -210,6 +229,24 @@ export function useSessionBroadcast(
       optionsRef.current?.onTeacherResume?.()
     })
 
+    // Listen for recording started event
+    socket.on('vision-recording-started', (data: { sessionId: string; recordingId: string }) => {
+      console.log('[SessionBroadcast] Recording started:', data.recordingId)
+      if (data.sessionId === sessionId) {
+        isRecordingRef.current = true
+        recordingIdRef.current = data.recordingId
+      }
+    })
+
+    // Listen for recording stopped event
+    socket.on('vision-recording-stopped', (data: { sessionId: string; durationMs: number }) => {
+      console.log('[SessionBroadcast] Recording stopped, duration:', data.durationMs)
+      if (data.sessionId === sessionId) {
+        isRecordingRef.current = false
+        recordingIdRef.current = null
+      }
+    })
+
     return () => {
       console.log('[SessionBroadcast] Cleaning up socket connection')
       socket.disconnect()
@@ -294,11 +331,90 @@ export function useSessionBroadcast(
     [sessionId]
   )
 
+  // Start vision recording for this session
+  const startVisionRecording = useCallback(() => {
+    console.log('[SessionBroadcast] startVisionRecording called', {
+      hasSocket: !!socketRef.current,
+      isConnected: isConnectedRef.current,
+      sessionId,
+      playerId,
+      isRecording: isRecordingRef.current,
+    })
+
+    if (!socketRef.current || !isConnectedRef.current || !sessionId || !playerId) {
+      console.warn('[SessionBroadcast] Cannot start recording - not connected or missing IDs')
+      return
+    }
+
+    if (isRecordingRef.current) {
+      console.log('[SessionBroadcast] Recording already active')
+      return
+    }
+
+    console.log('[SessionBroadcast] Emitting start-vision-recording event')
+    socketRef.current.emit('start-vision-recording', { sessionId, playerId })
+  }, [sessionId, playerId])
+
+  // Stop vision recording for this session
+  const stopVisionRecording = useCallback(() => {
+    if (!socketRef.current || !isConnectedRef.current || !sessionId) {
+      console.warn('[SessionBroadcast] Cannot stop recording - not connected')
+      return
+    }
+
+    if (!isRecordingRef.current) {
+      console.log('[SessionBroadcast] No recording active')
+      return
+    }
+
+    console.log('[SessionBroadcast] Stopping vision recording')
+    socketRef.current.emit('stop-vision-recording', { sessionId })
+  }, [sessionId])
+
+  // Send a problem marker for timeline synchronization
+  const sendProblemMarker = useCallback(
+    (
+      problemNumber: number,
+      partIndex: number,
+      eventType: 'problem-shown' | 'answer-submitted' | 'feedback-shown',
+      isCorrect?: boolean
+    ) => {
+      if (!socketRef.current || !isConnectedRef.current || !sessionId) {
+        return
+      }
+
+      // Only send markers if recording is active
+      if (!isRecordingRef.current) {
+        return
+      }
+
+      socketRef.current.emit('vision-problem-marker', {
+        sessionId,
+        problemNumber,
+        partIndex,
+        eventType,
+        isCorrect,
+      })
+      console.log('[SessionBroadcast] Sent problem marker:', {
+        problemNumber,
+        partIndex,
+        eventType,
+        isCorrect,
+      })
+    },
+    [sessionId]
+  )
+
   return {
     isConnected: isConnectedRef.current,
     isBroadcasting: isConnectedRef.current && !!state,
+    isRecording: isRecordingRef.current,
+    recordingId: recordingIdRef.current,
     sendPartTransition,
     sendPartTransitionComplete,
     sendVisionFrame,
+    startVisionRecording,
+    stopVisionRecording,
+    sendProblemMarker,
   }
 }

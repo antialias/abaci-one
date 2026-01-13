@@ -636,7 +636,6 @@ export function AbacusVisionBridge({
           // Constrain aspect ratio to prevent modal from getting too tall
           aspectRatio: '4/3',
           maxHeight: '50vh',
-          overflow: 'hidden',
           borderRadius: 'lg',
         })}
       >
@@ -807,7 +806,6 @@ export function AbacusVisionBridge({
               height: '100%',
               bg: 'gray.800',
               borderRadius: 'lg',
-              overflow: 'hidden',
               userSelect: 'none',
             })}
           >

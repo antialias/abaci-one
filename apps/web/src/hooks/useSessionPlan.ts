@@ -382,7 +382,10 @@ async function setRemoteCameraSession({
   const res = await api(`curriculum/${playerId}/sessions/plans/${planId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'set_remote_camera', remoteCameraSessionId }),
+    body: JSON.stringify({
+      action: 'set_remote_camera',
+      remoteCameraSessionId,
+    }),
   })
   if (!res.ok) {
     const error = await res.json().catch(() => ({}))

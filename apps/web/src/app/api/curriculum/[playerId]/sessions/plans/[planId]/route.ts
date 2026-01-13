@@ -138,7 +138,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         // remoteCameraSessionId can be string (to set) or null (to clear)
         if (remoteCameraSessionId === undefined) {
           return NextResponse.json(
-            { error: 'remoteCameraSessionId is required for set_remote_camera action' },
+            {
+              error: 'remoteCameraSessionId is required for set_remote_camera action',
+            },
             { status: 400 }
           )
         }
