@@ -126,6 +126,7 @@ import {
   type GeneratedProblem as GenProblem,
 } from '../src/utils/problemGenerator'
 import { createEmptySkillSet, type SkillSet } from '../src/types/tutorial'
+import type { GameResultsReport } from '../src/lib/arcade/game-sdk/types'
 
 // =============================================================================
 // BKT Simulation Utilities
@@ -557,10 +558,32 @@ interface SuccessCriteria {
 interface TuningAdjustment {
   /** Skill ID to adjust (or 'all' for all skills) */
   skillId: string | 'all'
+  /** Multiply accuracy by this factor */
+  accuracyMultiplier?: number
   /** Add this many problems */
   problemsAdd?: number
   /** Multiply problems by this factor */
   problemsMultiplier?: number
+}
+
+/**
+ * Configuration for seeding game results (scoreboard data)
+ */
+interface GameResultConfig {
+  /** Which game: 'matching', 'card-sorting', 'complement-race', etc. */
+  gameName: string
+  /** Human-readable display name */
+  displayName: string
+  /** Game icon emoji */
+  icon: string
+  /** Category for leaderboard grouping */
+  category: 'puzzle' | 'memory' | 'speed' | 'strategy' | 'geography'
+  /** Target score range (0-100), actual will vary within ±5 */
+  targetScore: number
+  /** Number of games to seed */
+  gameCount: number
+  /** Days ago spread (games will be distributed over this period) */
+  spreadDays?: number
 }
 
 /** Profile category for CLI filtering */
@@ -606,6 +629,11 @@ interface TestStudentProfile {
    * Default: 30
    */
   sessionSpreadDays?: number
+  /**
+   * Game results to seed for scoreboard testing.
+   * Each entry creates multiple game result records.
+   */
+  gameHistory?: GameResultConfig[]
 }
 
 // =============================================================================
@@ -692,6 +720,18 @@ Use this student to test how the UI handles intervention alerts for foundational
         problems: 12,
       },
     ],
+    // Game history: Struggling student - low scores, few games
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 35, // Struggling
+        gameCount: 3,
+        spreadDays: 14,
+      },
+    ],
     // Tuning: Need at least 2 weak skills
     successCriteria: { minWeak: 2 },
     tuningAdjustments: [{ skillId: 'all', problemsAdd: 10 }],
@@ -748,6 +788,27 @@ Use this student to test targeted intervention recommendations.`,
         skillId: 'fiveComplements.3=5-2',
         targetClassification: 'weak',
         problems: 18,
+      },
+    ],
+    // Game history: Mixed results - good at some games, struggling with blocker skill
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 65, // Decent but not great
+        gameCount: 5,
+        spreadDays: 21,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 70, // Better at puzzles
+        gameCount: 4,
+        spreadDays: 21,
       },
     ],
   },
@@ -808,6 +869,27 @@ Use this student to verify:
     ],
     // Success criteria: Need at least 1 developing to prove the system works
     successCriteria: { minDeveloping: 1 },
+    // Game history: Healthy player - good scores, regular game play
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 75, // Good scores
+        gameCount: 8,
+        spreadDays: 30,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 72,
+        gameCount: 6,
+        spreadDays: 30,
+      },
+    ],
   },
   {
     name: '⭐ Ready to Level Up',
@@ -870,6 +952,36 @@ Use this student to test:
         skillId: 'fiveComplements.1=5-4',
         targetClassification: 'strong',
         problems: 18,
+      },
+    ],
+    // Game history: Excellent player - high scores, ready to advance
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 88, // Excellent scores
+        gameCount: 12,
+        spreadDays: 45,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 85,
+        gameCount: 10,
+        spreadDays: 45,
+      },
+      {
+        gameName: 'complement-race',
+        displayName: 'Complement Race',
+        icon: '🏁',
+        category: 'speed',
+        targetScore: 82,
+        gameCount: 8,
+        spreadDays: 45,
       },
     ],
   },
@@ -996,6 +1108,45 @@ Use this student to test:
         problems: 18,
       },
     ],
+    // Game history: Top-tier player - highest scores, extensive game history
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 95, // Near-perfect
+        gameCount: 25,
+        spreadDays: 90,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 92,
+        gameCount: 20,
+        spreadDays: 90,
+      },
+      {
+        gameName: 'complement-race',
+        displayName: 'Complement Race',
+        icon: '🏁',
+        category: 'speed',
+        targetScore: 90,
+        gameCount: 18,
+        spreadDays: 90,
+      },
+      {
+        gameName: 'memory-quiz',
+        displayName: 'Memory Quiz',
+        icon: '🧠',
+        category: 'memory',
+        targetScore: 88,
+        gameCount: 15,
+        spreadDays: 90,
+      },
+    ],
   },
 
   // =============================================================================
@@ -1063,6 +1214,18 @@ Use this to test the remediation UI in dashboard and modal.`,
         problems: 18,
       },
     ],
+    // Game history: Struggling student - low scores, few games
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 40, // Struggling
+        gameCount: 3,
+        spreadDays: 14,
+      },
+    ],
   },
   {
     name: '📚 Progression Tutorial Test',
@@ -1126,6 +1289,27 @@ Use this to test the progression UI and tutorial gate flow.`,
         problems: 20,
       },
     ],
+    // Game history: Good player learning new skills - solid scores
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 78,
+        gameCount: 6,
+        spreadDays: 21,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 75,
+        gameCount: 5,
+        spreadDays: 21,
+      },
+    ],
   },
   {
     name: '🚀 Progression Ready Test',
@@ -1187,6 +1371,27 @@ Use this to test the progression UI when tutorial is already satisfied.`,
         skillId: 'fiveComplements.4=5-1',
         targetClassification: 'strong',
         problems: 20,
+      },
+    ],
+    // Game history: Strong player ready for more - consistent scores
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 80,
+        gameCount: 7,
+        spreadDays: 28,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 78,
+        gameCount: 5,
+        spreadDays: 28,
       },
     ],
   },
@@ -1276,6 +1481,36 @@ Use this to test the maintenance mode UI in dashboard and modal.`,
         problems: 20,
       },
     ],
+    // Game history: Excellent all-around player - high scores across many games
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 90,
+        gameCount: 15,
+        spreadDays: 60,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 88,
+        gameCount: 12,
+        spreadDays: 60,
+      },
+      {
+        gameName: 'complement-race',
+        displayName: 'Complement Race',
+        icon: '🏁',
+        category: 'speed',
+        targetScore: 85,
+        gameCount: 10,
+        spreadDays: 60,
+      },
+    ],
   },
 
   // =============================================================================
@@ -1303,6 +1538,7 @@ This tests the empty state handling in the dashboard.
 
 Use this to verify the dashboard handles zero practicing skills gracefully.`,
     skillHistory: [], // No history at all
+    // NO gameHistory - intentionally empty for testing empty states
   },
   {
     name: '🔢 Single Skill Only',
@@ -1328,6 +1564,18 @@ Use this to verify the dashboard handles single-skill students correctly.`,
         skillId: 'basic.directAddition',
         targetClassification: 'developing',
         problems: 12,
+      },
+    ],
+    // Game history: Just getting started - few games, developing scores
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 55, // Still learning
+        gameCount: 2,
+        spreadDays: 7,
       },
     ],
   },
@@ -1424,6 +1672,45 @@ Use this to verify:
         problems: 12,
       },
     ],
+    // Game history: Lots of gameplay - many games across all types
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 82,
+        gameCount: 30,
+        spreadDays: 90,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 80,
+        gameCount: 25,
+        spreadDays: 90,
+      },
+      {
+        gameName: 'complement-race',
+        displayName: 'Complement Race',
+        icon: '🏁',
+        category: 'speed',
+        targetScore: 78,
+        gameCount: 20,
+        spreadDays: 90,
+      },
+      {
+        gameName: 'memory-quiz',
+        displayName: 'Memory Quiz',
+        icon: '🧠',
+        category: 'memory',
+        targetScore: 75,
+        gameCount: 15,
+        spreadDays: 90,
+      },
+    ],
   },
   {
     name: '⚖️ Multi-Weak Remediation',
@@ -1500,6 +1787,27 @@ Complements 🔴 Multi-Skill Deficient (which has only 2 weak).`,
     ],
     // Need at least 2 weak for remediation testing
     successCriteria: { minWeak: 2 },
+    // Game history: Struggling student - low scores across games
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 42,
+        gameCount: 5,
+        spreadDays: 30,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 38,
+        gameCount: 4,
+        spreadDays: 30,
+      },
+    ],
   },
   {
     name: '🕰️ Stale Skills Test',
@@ -1581,6 +1889,18 @@ Use this to test:
         targetClassification: 'strong',
         problems: 16,
         ageDays: 45,
+      },
+    ],
+    // Game history: Some old games to match staleness theme
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 70,
+        gameCount: 8,
+        spreadDays: 60, // Games spread over 60 days (some stale)
       },
     ],
   },
@@ -1679,6 +1999,18 @@ Use this profile to verify:
         simulateLegacyData: true,
       },
     ],
+    // Game history: Random mix for stress testing
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 60, // Middle-of-the-road
+        gameCount: 6,
+        spreadDays: 45,
+      },
+    ],
   },
   {
     name: '🧊 Forgotten Weaknesses',
@@ -1772,6 +2104,18 @@ are both - the forgotten weaknesses that need urgent attention.`,
     ],
     // Need at least 3 weak for this profile
     successCriteria: { minWeak: 3 },
+    // Game history: Low scores from struggling + old games
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 45,
+        gameCount: 4,
+        spreadDays: 45, // Some games are old
+      },
+    ],
   },
 
   // =============================================================================
@@ -1828,6 +2172,18 @@ Use this to verify the chart gracefully handles the minimum history case.`,
         problems: 3,
       },
     ],
+    // Game history: Minimal - just started
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 50,
+        gameCount: 1,
+        spreadDays: 1,
+      },
+    ],
   },
   {
     name: '📊 Chart: 2 Sessions (Min)',
@@ -1876,6 +2232,18 @@ Use this to verify the chart renders correctly at the minimum viable history.`,
         skillId: 'fiveComplements.3=5-2',
         targetClassification: 'weak',
         problems: 5,
+      },
+    ],
+    // Game history: 2 games to match 2 sessions
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 55,
+        gameCount: 2,
+        spreadDays: 7,
       },
     ],
   },
@@ -1943,6 +2311,27 @@ Use this to verify:
         skillId: 'fiveComplements.1=5-4',
         targetClassification: 'developing',
         problems: 20,
+      },
+    ],
+    // Game history: Moderate amount of games over 2 months
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 75,
+        gameCount: 15,
+        spreadDays: 60,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 72,
+        gameCount: 10,
+        spreadDays: 60,
       },
     ],
   },
@@ -2069,6 +2458,45 @@ Use this to verify:
         problems: 35,
       },
     ],
+    // Game history: LOTS of games over 6 months to match 150 sessions
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 88,
+        gameCount: 75,
+        spreadDays: 180,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 85,
+        gameCount: 50,
+        spreadDays: 180,
+      },
+      {
+        gameName: 'complement-race',
+        displayName: 'Complement Race',
+        icon: '🏁',
+        category: 'speed',
+        targetScore: 82,
+        gameCount: 40,
+        spreadDays: 180,
+      },
+      {
+        gameName: 'memory-quiz',
+        displayName: 'Memory Quiz',
+        icon: '🧠',
+        category: 'memory',
+        targetScore: 80,
+        gameCount: 30,
+        spreadDays: 180,
+      },
+    ],
   },
   {
     name: '🌈 Chart: Dramatic Progress',
@@ -2134,6 +2562,27 @@ Use this to verify:
         skillId: 'fiveComplements.1=5-4',
         targetClassification: 'weak',
         problems: 10,
+      },
+    ],
+    // Game history: Showing improvement - scores getting better over time
+    gameHistory: [
+      {
+        gameName: 'matching',
+        displayName: 'Matching Pairs',
+        icon: '⚔️',
+        category: 'memory',
+        targetScore: 78, // Good but still improving
+        gameCount: 12,
+        spreadDays: 45,
+      },
+      {
+        gameName: 'card-sorting',
+        displayName: 'Card Sorting',
+        icon: '🔢',
+        category: 'puzzle',
+        targetScore: 75,
+        gameCount: 8,
+        spreadDays: 45,
       },
     ],
   },
@@ -2770,6 +3219,96 @@ async function createTestStudent(
 }
 
 /**
+ * Generate game results for scoreboard testing.
+ * Creates realistic game history based on the profile's gameHistory configs.
+ */
+async function generateGameResults(playerId: string, profile: TestStudentProfile): Promise<number> {
+  if (!profile.gameHistory || profile.gameHistory.length === 0) {
+    return 0
+  }
+
+  let totalGames = 0
+  const now = Date.now()
+
+  for (const gameConfig of profile.gameHistory) {
+    const spreadMs = (gameConfig.spreadDays ?? 30) * 24 * 60 * 60 * 1000
+
+    for (let i = 0; i < gameConfig.gameCount; i++) {
+      // Spread games evenly over the time period
+      const gameAgeMs = (spreadMs * i) / Math.max(1, gameConfig.gameCount - 1)
+      const playedAt = new Date(now - spreadMs + gameAgeMs)
+
+      // Add some variation to scores (±5 from target)
+      const scoreVariation = (Math.random() - 0.5) * 10
+      const normalizedScore = Math.max(0, Math.min(100, gameConfig.targetScore + scoreVariation))
+
+      // Calculate accuracy based on score (roughly correlate)
+      const accuracy = normalizedScore * (0.8 + Math.random() * 0.2)
+
+      // Determine difficulty based on score
+      let difficulty: 'easy' | 'medium' | 'hard' | 'expert'
+      if (normalizedScore >= 85) difficulty = 'hard'
+      else if (normalizedScore >= 70) difficulty = 'medium'
+      else difficulty = 'easy'
+
+      // Generate duration (2-10 minutes)
+      const durationMs = (120 + Math.random() * 480) * 1000
+
+      // Create a minimal fullReport for display
+      const fullReport: GameResultsReport = {
+        gameName: gameConfig.gameName,
+        gameDisplayName: gameConfig.displayName,
+        gameIcon: gameConfig.icon,
+        durationMs,
+        completedNormally: true,
+        startedAt: playedAt.getTime() - durationMs,
+        endedAt: playedAt.getTime(),
+        gameMode: 'single-player',
+        playerCount: 1,
+        playerResults: [
+          {
+            playerId,
+            playerName: profile.name.replace(/^[^\s]+\s*/, ''), // Remove emoji prefix
+            playerEmoji: profile.emoji,
+            userId: '',
+            score: Math.round(normalizedScore),
+            rank: 1,
+          },
+        ],
+        leaderboardEntry: {
+          normalizedScore,
+          category: gameConfig.category,
+          difficulty,
+        },
+        headline:
+          normalizedScore >= 90 ? 'Excellent!' : normalizedScore >= 70 ? 'Great Job!' : 'Good Try!',
+        resultTheme: normalizedScore >= 90 ? 'success' : normalizedScore >= 70 ? 'good' : 'neutral',
+      }
+
+      await db.insert(schema.gameResults).values({
+        playerId,
+        gameName: gameConfig.gameName,
+        gameDisplayName: gameConfig.displayName,
+        gameIcon: gameConfig.icon,
+        sessionType: 'practice-break',
+        normalizedScore,
+        rawScore: Math.round(normalizedScore),
+        accuracy,
+        category: gameConfig.category,
+        difficulty,
+        durationMs: Math.round(durationMs),
+        playedAt,
+        fullReport,
+      })
+
+      totalGames++
+    }
+  }
+
+  return totalGames
+}
+
+/**
  * Create a test student with iterative tuning (up to maxRounds)
  */
 async function createTestStudentWithTuning(
@@ -2840,6 +3379,12 @@ async function createTestStudentWithTuning(
     .update(schema.players)
     .set({ notes: fullNotes })
     .where(eq(schema.players.id, result!.playerId))
+
+  // Generate game results for this student
+  const gameCount = await generateGameResults(result!.playerId, profile)
+  if (gameCount > 0) {
+    console.log(`      Generated ${gameCount} game results`)
+  }
 
   return {
     playerId: result!.playerId,
