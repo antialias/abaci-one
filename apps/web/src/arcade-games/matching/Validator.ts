@@ -11,6 +11,20 @@ import type {
   PracticeBreakOptions,
   ValidationResult,
 } from '@/lib/arcade/validation/types'
+import type { GameResultsReport, PlayerResult } from '@/lib/arcade/game-sdk/types'
+
+/**
+ * Format duration in milliseconds to a human-readable string
+ */
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  if (minutes > 0) {
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+  return `${seconds}s`
+}
 
 // Default config for practice breaks (quick games)
 const PRACTICE_BREAK_DEFAULTS: MatchingConfig = {
@@ -542,6 +556,45 @@ export class MatchingGameValidator implements GameValidator<MatchingState, Match
   }
 
   getInitialState(config: MatchingConfig): MatchingState {
+    // If skipSetupPhase is true, start directly in playing phase with generated cards
+    if (config.skipSetupPhase) {
+      const gameCards = generateGameCards(config.gameType, config.difficulty)
+      return {
+        cards: gameCards,
+        gameCards,
+        flippedCards: [],
+        gameType: config.gameType,
+        difficulty: config.difficulty,
+        turnTimer: config.turnTimer,
+        gamePhase: 'playing', // Skip setup - start playing immediately
+        currentPlayer: '', // Will be set when first player joins/acts
+        matchedPairs: 0,
+        totalPairs: config.difficulty,
+        moves: 0,
+        scores: {},
+        activePlayers: [],
+        playerMetadata: {},
+        consecutiveMatches: {},
+        gameStartTime: Date.now(),
+        gameEndTime: null,
+        currentMoveStartTime: null,
+        timerInterval: null,
+        celebrationAnimations: [],
+        isProcessingMove: false,
+        showMismatchFeedback: false,
+        lastMatchedPair: null,
+        originalConfig: {
+          gameType: config.gameType,
+          difficulty: config.difficulty,
+          turnTimer: config.turnTimer,
+        },
+        pausedGamePhase: undefined,
+        pausedGameState: undefined,
+        playerHovers: {},
+      }
+    }
+
+    // Normal setup phase
     return {
       cards: [],
       gameCards: [],
@@ -645,6 +698,180 @@ export class MatchingGameValidator implements GameValidator<MatchingState, Match
       pausedGamePhase: undefined,
       pausedGameState: undefined,
       playerHovers: {},
+    }
+  }
+
+  /**
+   * Generate a standardized results report for the matching game.
+   * Called when game completes to capture performance metrics.
+   *
+   * @param state The final game state (gamePhase should be 'results')
+   * @param config The game configuration used
+   * @returns Standardized results report for display and scoreboard
+   */
+  getResultsReport(state: MatchingState, config: MatchingConfig): GameResultsReport {
+    const startedAt = state.gameStartTime ?? Date.now()
+    const endedAt = state.gameEndTime ?? Date.now()
+    const durationMs = endedAt - startedAt
+
+    // Build player results sorted by score (winner first)
+    const playerResults: PlayerResult[] = state.activePlayers
+      .map((playerId) => {
+        const meta = state.playerMetadata[playerId]
+        const playerScore = state.scores[playerId] ?? 0
+
+        // In single player, all moves are theirs
+        // In multiplayer, we can't attribute moves per-player without additional tracking
+        // So we use total moves for accuracy calculation in single-player only
+        const isSinglePlayer = state.activePlayers.length === 1
+        const movesForAccuracy = isSinglePlayer ? state.moves : playerScore * 2 // Assume best case for MP
+        const accuracy =
+          movesForAccuracy > 0 ? Math.round(((playerScore * 2) / movesForAccuracy) * 100) : 0
+
+        return {
+          playerId,
+          playerName: meta?.name ?? 'Player',
+          playerEmoji: meta?.emoji ?? '👤',
+          userId: meta?.userId ?? playerId,
+          score: playerScore,
+          rank: 0, // Will be set after sorting
+          isWinner: false, // Will be set after sorting
+          correctCount: playerScore,
+          totalAttempts: isSinglePlayer ? state.moves : undefined,
+          accuracy: isSinglePlayer ? accuracy : undefined,
+          bestStreak: state.consecutiveMatches[playerId] ?? 0,
+        }
+      })
+      .sort((a, b) => b.score - a.score)
+      .map((p, idx) => ({ ...p, rank: idx + 1, isWinner: idx === 0 }))
+
+    const winner = playerResults[0]
+    const isSinglePlayer = playerResults.length === 1
+
+    // Calculate overall accuracy for single-player (for headline determination)
+    const overallAccuracy =
+      isSinglePlayer && state.moves > 0
+        ? Math.round(((state.matchedPairs * 2) / state.moves) * 100)
+        : (winner?.accuracy ?? 0)
+
+    // Determine headline and theme based on performance
+    let headline = 'Game Complete!'
+    let resultTheme: GameResultsReport['resultTheme'] = 'neutral'
+    let celebrationType: GameResultsReport['celebrationType'] = 'none'
+
+    if (isSinglePlayer) {
+      // Single-player: base on accuracy
+      if (overallAccuracy >= 100) {
+        headline = 'Perfect Memory!'
+        resultTheme = 'success'
+        celebrationType = 'confetti'
+      } else if (overallAccuracy >= 80) {
+        headline = 'Great Job!'
+        resultTheme = 'good'
+        celebrationType = 'stars'
+      } else if (overallAccuracy >= 50) {
+        headline = 'Nice Work!'
+        resultTheme = 'neutral'
+      } else {
+        headline = 'Keep Practicing!'
+        resultTheme = 'needs-practice'
+      }
+    } else {
+      // Multiplayer: winner announcement
+      headline = `${winner?.playerName ?? 'Player'} Wins!`
+      resultTheme = 'success'
+      celebrationType = 'confetti'
+    }
+
+    // Build custom stats
+    const customStats: GameResultsReport['customStats'] = [
+      {
+        label: 'Pairs Found',
+        value: `${state.matchedPairs}/${state.totalPairs}`,
+        icon: '🎯',
+        highlight: state.matchedPairs === state.totalPairs,
+      },
+      { label: 'Total Moves', value: state.moves, icon: '👆' },
+      { label: 'Time', value: formatDuration(durationMs), icon: '⏱️' },
+    ]
+
+    // Add accuracy stat for single-player
+    if (isSinglePlayer) {
+      customStats.push({
+        label: 'Accuracy',
+        value: `${overallAccuracy}%`,
+        icon: '📊',
+        highlight: overallAccuracy >= 80,
+      })
+    }
+
+    // Add best streak if notable
+    const bestStreak = Math.max(...Object.values(state.consecutiveMatches), 0)
+    if (bestStreak >= 3) {
+      customStats.push({
+        label: 'Best Streak',
+        value: bestStreak,
+        icon: '🔥',
+        highlight: true,
+      })
+    }
+
+    // Determine difficulty label
+    let difficultyLabel: string
+    if (config.difficulty <= 6) {
+      difficultyLabel = 'easy'
+    } else if (config.difficulty <= 8) {
+      difficultyLabel = 'medium'
+    } else if (config.difficulty <= 12) {
+      difficultyLabel = 'hard'
+    } else {
+      difficultyLabel = 'expert'
+    }
+
+    return {
+      // Game identity
+      gameName: 'matching',
+      gameDisplayName: 'Matching Pairs Battle',
+      gameIcon: '⚔️',
+
+      // Session metadata
+      durationMs,
+      completedNormally: state.matchedPairs === state.totalPairs,
+      startedAt,
+      endedAt,
+
+      // Game mode
+      gameMode: isSinglePlayer ? 'single-player' : 'competitive',
+      playerCount: playerResults.length,
+
+      // Player results
+      playerResults,
+
+      // Victory conditions (for multiplayer)
+      winnerId: isSinglePlayer ? null : (winner?.playerId ?? null),
+
+      // Aggregate metrics
+      itemsCompleted: state.matchedPairs,
+      itemsTotal: state.totalPairs,
+      completionPercent: Math.round((state.matchedPairs / state.totalPairs) * 100),
+
+      // Leaderboard entry for universal scoreboard
+      leaderboardEntry: {
+        normalizedScore: isSinglePlayer ? overallAccuracy : (winner?.score ?? 0) * 10,
+        category: 'memory',
+        difficulty: difficultyLabel,
+      },
+
+      // Custom stats
+      customStats,
+
+      // Display hints
+      headline,
+      subheadline: isSinglePlayer
+        ? `${state.matchedPairs} pairs in ${formatDuration(durationMs)}`
+        : `Final Score: ${winner?.score ?? 0} pairs`,
+      resultTheme,
+      celebrationType,
     }
   }
 }

@@ -24,12 +24,16 @@ interface PracticeGameModeProviderProps {
    * This enables the practice system to detect when a student finishes a game
    * and end the game break early (before the timer expires).
    *
+   * The callback receives the full game state so the caller can generate
+   * a results report using the game's validator.getResultsReport() method.
+   *
    * Note: Not all games have a 'results' phase. Endless games (e.g., complement-race)
    * will only end via timeout or manual skip. This is expected behavior.
    *
+   * @param gameState The final game state when transitioning to 'results'
    * @see docs in .claude/ARCADE_ROOM_ARCHITECTURE.md for the full protocol
    */
-  onGameComplete?: () => void
+  onGameComplete?: (gameState: Record<string, unknown>) => void
 }
 
 /**
@@ -71,7 +75,8 @@ export function PracticeGameModeProvider({
       !hasNotifiedCompletionRef.current
     ) {
       hasNotifiedCompletionRef.current = true
-      onGameCompleteRef.current?.()
+      // Pass the full game state so caller can generate results report
+      onGameCompleteRef.current?.(gameState as Record<string, unknown>)
     }
 
     previousPhaseRef.current = currentPhase
@@ -137,14 +142,19 @@ export function PracticeGameModeProvider({
   // Inject the fake player into roomData.memberPlayers
   // This is necessary because getRoomActivePlayers() queries the DB,
   // but our practice student isn't a real DB player.
+  // Use viewerId if available, or a fallback key for practice mode
+  // (this handles the race condition where viewerId is still loading)
   const enrichedRoomData: RoomData | null = useMemo(() => {
-    if (!roomData || !viewerId) return roomData
+    if (!roomData) return roomData
+
+    // Use viewerId or fallback to ensure student is always in memberPlayers
+    const memberKey = viewerId ?? 'practice-user'
 
     return {
       ...roomData,
       memberPlayers: {
         ...roomData.memberPlayers,
-        [viewerId]: [
+        [memberKey]: [
           {
             id: student.id,
             name: student.name,

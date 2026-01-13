@@ -42,6 +42,11 @@ const manifest: GameManifest = {
       hard: { difficulty: 12, gameType: 'complement-pairs' },
     },
   },
+  resultsConfig: {
+    supportsResults: true,
+    resultsDisplayDurationMs: 5000,
+    scoreboardCategory: 'memory',
+  },
 }
 
 const defaultConfig: MatchingConfig = {

@@ -15,6 +15,8 @@ import {
   type SessionHudData,
 } from '@/components/practice'
 import { GameBreakScreen } from '@/components/practice/GameBreakScreen'
+import { GameBreakResultsScreen } from '@/components/practice/GameBreakResultsScreen'
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import type { Player } from '@/db/schema/players'
 import type {
   GameBreakSettings,
@@ -57,6 +59,7 @@ import {
   useRecordSlotResult,
 } from '@/hooks/useSessionPlan'
 import { useQueryClient } from '@tanstack/react-query'
+import { useSaveGameResult } from '@/hooks/useGameResults'
 import { css } from '../../../../styled-system/css'
 
 interface PracticeClientProps {
@@ -101,6 +104,10 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const [gameBreakStartTime, setGameBreakStartTime] = useState<number>(Date.now())
   // Track pending game break - set when part transition happens, triggers after transition screen
   const [pendingGameBreak, setPendingGameBreak] = useState(false)
+  // Game break results - captured when game completes to show on interstitial screen
+  const [gameBreakResults, setGameBreakResults] = useState<GameResultsReport | null>(null)
+  // Show results interstitial before returning to practice
+  const [showGameBreakResults, setShowGameBreakResults] = useState(false)
   // Track previous part index to detect part transitions
   const previousPartIndexRef = useRef<number>(initialSession.currentPartIndex)
   // Redo state - allows students to re-attempt any completed problem
@@ -131,6 +138,9 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const recordRedo = useRecordRedoResult()
   const endEarly = useEndSessionEarly()
 
+  // Game results mutation - saves to scoreboard when game break completes
+  const saveGameResult = useSaveGameResult()
+
   // Fetch active session plan from cache or API with server data as initial
   const { data: fetchedPlan } = useActiveSessionPlan(studentId, initialSession)
 
@@ -139,6 +149,35 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
 
   // Game break settings from the session plan
   const gameBreakSettings = currentPlan.gameBreakSettings as GameBreakSettings | null
+
+  // Build game config with skipSetupPhase merged into each game's config
+  // This allows games to start immediately without showing their setup screen
+  const gameBreakGameConfig = useMemo(() => {
+    const baseConfig = gameBreakSettings?.gameConfig ?? {}
+    const skipSetup = gameBreakSettings?.skipSetupPhase ?? true // Default to true for practice breaks
+
+    if (!skipSetup) {
+      return baseConfig
+    }
+
+    // Merge skipSetupPhase into each game's config
+    const mergedConfig: Record<string, Record<string, unknown>> = {}
+    for (const [gameName, config] of Object.entries(baseConfig)) {
+      mergedConfig[gameName] = { ...config, skipSetupPhase: true }
+    }
+
+    // Also add skipSetupPhase for the selected game if not already in config
+    const selectedGame = gameBreakSettings?.selectedGame
+    if (selectedGame && selectedGame !== 'random' && !mergedConfig[selectedGame]) {
+      mergedConfig[selectedGame] = { skipSetupPhase: true }
+    }
+
+    return mergedConfig
+  }, [
+    gameBreakSettings?.gameConfig,
+    gameBreakSettings?.skipSetupPhase,
+    gameBreakSettings?.selectedGame,
+  ])
 
   // Compute HUD data from current plan
   const currentPart = currentPlan.parts[currentPlan.currentPartIndex] as SessionPart | undefined
@@ -293,9 +332,35 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     setRedoState(null)
   }, [])
 
-  // Handle game break end - return to practice
-  const handleGameBreakEnd = useCallback(() => {
-    setShowGameBreak(false)
+  // Handle game break end - show results screen if game finished normally
+  const handleGameBreakEnd = useCallback(
+    (reason: 'timeout' | 'gameFinished' | 'skipped', results?: GameResultsReport) => {
+      setShowGameBreak(false)
+
+      // If game finished normally with results, save to scoreboard and show interstitial
+      if (reason === 'gameFinished' && results) {
+        // Save result to database for scoreboard
+        saveGameResult.mutate({
+          playerId: player.id,
+          sessionType: 'practice-break',
+          sessionId: currentPlan.id,
+          report: results,
+        })
+
+        setGameBreakResults(results)
+        setShowGameBreakResults(true)
+      } else {
+        // Timeout or skip - no results to show, return to practice immediately
+        setGameBreakResults(null)
+      }
+    },
+    [saveGameResult, player.id, currentPlan.id]
+  )
+
+  // Handle results screen completion - return to practice
+  const handleGameBreakResultsComplete = useCallback(() => {
+    setShowGameBreakResults(false)
+    setGameBreakResults(null)
   }, [])
 
   // Broadcast session state if student is in a classroom
@@ -431,7 +496,14 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
           }}
         />
         <PracticeErrorBoundary studentName={player.name}>
-          {showGameBreak ? (
+          {showGameBreakResults && gameBreakResults ? (
+            <GameBreakResultsScreen
+              isVisible={showGameBreakResults}
+              results={gameBreakResults}
+              student={{ name: player.name, emoji: player.emoji }}
+              onComplete={handleGameBreakResultsComplete}
+            />
+          ) : showGameBreak ? (
             <GameBreakScreen
               isVisible={showGameBreak}
               student={{
@@ -445,6 +517,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
               onComplete={handleGameBreakEnd}
               selectionMode={gameBreakSettings?.selectionMode ?? 'kid-chooses'}
               selectedGame={gameBreakSettings?.selectedGame ?? null}
+              gameConfig={gameBreakGameConfig}
             />
           ) : (
             <ActiveSession

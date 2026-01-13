@@ -8,8 +8,9 @@ import {
   getRandomPracticeApprovedGame,
 } from '@/lib/arcade/practice-approved-games'
 import { useGameBreakRoom } from '@/hooks/useGameBreakRoom'
-import type { GameBreakSelectionMode } from '@/db/schema/session-plans'
+import type { GameBreakSelectionMode, PracticeBreakGameConfig } from '@/db/schema/session-plans'
 import { GameLayoutProvider } from '@/contexts/GameLayoutContext'
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { css } from '../../../styled-system/css'
 import { PracticeGameModeProvider } from './PracticeGameModeProvider'
 
@@ -23,12 +24,17 @@ export interface GameBreakScreenProps {
     emoji: string
     color: string
   }
-  onComplete: (reason: 'timeout' | 'gameFinished' | 'skipped') => void
+  onComplete: (reason: 'timeout' | 'gameFinished' | 'skipped', results?: GameResultsReport) => void
   onGameSelected?: (gameType: string) => void
   /** How the game is selected: auto-start or kid-chooses */
   selectionMode?: GameBreakSelectionMode
   /** Pre-selected game name, 'random', or null */
   selectedGame?: string | 'random' | null
+  /**
+   * Pre-configured game settings, nested by game name.
+   * Example: { 'matching': { difficulty: 6, gameType: 'abacus-numeral', skipSetupPhase: true } }
+   */
+  gameConfig?: PracticeBreakGameConfig
 }
 
 type GameBreakPhase = 'initializing' | 'auto-starting' | 'selecting' | 'playing' | 'completed'
@@ -42,6 +48,7 @@ export function GameBreakScreen({
   onGameSelected,
   selectionMode = 'kid-chooses',
   selectedGame = null,
+  gameConfig,
 }: GameBreakScreenProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -64,6 +71,7 @@ export function GameBreakScreen({
   const { room, isCreating, selectGame, cleanup } = useGameBreakRoom({
     studentName: student.name,
     enabled: isVisible,
+    gameConfig,
     onRoomReady: () => {
       if (phase === 'initializing') {
         if (selectionMode === 'auto-start') {
@@ -106,18 +114,33 @@ export function GameBreakScreen({
   }, [phase, autoStartGameName])
 
   const handleComplete = useCallback(
-    async (reason: 'timeout' | 'gameFinished' | 'skipped') => {
+    async (reason: 'timeout' | 'gameFinished' | 'skipped', gameState?: Record<string, unknown>) => {
       if (hasCompletedRef.current) return
       hasCompletedRef.current = true
+
+      // Generate results report if game finished normally
+      let results: GameResultsReport | undefined
+      if (reason === 'gameFinished' && gameState && selectedGameName) {
+        const game = getGame(selectedGameName)
+        if (game?.validator?.getResultsReport && gameConfig) {
+          // Get the config for this specific game
+          const config = gameConfig[selectedGameName] ?? game.defaultConfig
+          try {
+            results = game.validator.getResultsReport(gameState, config)
+          } catch (err) {
+            console.error('Failed to generate results report:', err)
+          }
+        }
+      }
 
       if (!hasCleanedUpRef.current) {
         hasCleanedUpRef.current = true
         await cleanup()
       }
 
-      onComplete(reason)
+      onComplete(reason, results)
     },
-    [cleanup, onComplete]
+    [cleanup, onComplete, selectedGameName, gameConfig]
   )
 
   const handleSkip = useCallback(() => {
@@ -208,7 +231,7 @@ export function GameBreakScreen({
           <PracticeGameModeProvider
             student={student}
             roomData={room}
-            onGameComplete={() => handleComplete('gameFinished')}
+            onGameComplete={(gameState) => handleComplete('gameFinished', gameState)}
           >
             <Provider>
               <GameComponent />

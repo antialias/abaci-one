@@ -57,12 +57,13 @@ import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
 import { api } from '@/lib/queryClient'
 import { curriculumKeys } from '@/lib/queryKeys'
 import { css } from '../../../../../styled-system/css'
+import { ScoreboardTab } from './ScoreboardTab'
 
 // ============================================================================
 // Types
 // ============================================================================
 
-type TabId = 'overview' | 'skills' | 'history' | 'notes'
+type TabId = 'overview' | 'skills' | 'history' | 'scoreboard' | 'notes'
 
 /**
  * Reason why BKT classification is unavailable.
@@ -451,6 +452,7 @@ function TabNavigation({
     { id: 'overview', label: 'Overview', icon: '📋' },
     { id: 'skills', label: 'Skills', icon: '📊' },
     { id: 'history', label: 'History', icon: '📈' },
+    { id: 'scoreboard', label: 'Scoreboard', icon: '🏆' },
     { id: 'notes', label: 'Notes', icon: '📝' },
   ]
 
@@ -2892,6 +2894,10 @@ export function DashboardClient({
                   activeSession={activeSession}
                   onOpenActiveSession={() => setIsObserving(true)}
                 />
+              )}
+
+              {activeTab === 'scoreboard' && (
+                <ScoreboardTab studentId={studentId} classroomId={classroomId} isDark={isDark} />
               )}
 
               {activeTab === 'notes' && (
