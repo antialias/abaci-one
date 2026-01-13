@@ -127,6 +127,11 @@ import {
 } from '../src/utils/problemGenerator'
 import { createEmptySkillSet, type SkillSet } from '../src/types/tutorial'
 import type { GameResultsReport } from '../src/lib/arcade/game-sdk/types'
+import {
+  createClassroom,
+  getTeacherClassroom,
+  directEnrollStudent,
+} from '../src/lib/classroom'
 
 // =============================================================================
 // BKT Simulation Utilities
@@ -3510,8 +3515,46 @@ async function main() {
 
   console.log(`   Found user via ${foundVia}`)
 
+  // Step 2: Ensure the user has a classroom (create one if needed)
+  console.log('\n2. Setting up teacher classroom...')
+
+  // Look up the user record
+  let user = await db.query.users.findFirst({
+    where: eq(schema.users.guestId, userId),
+  })
+
+  if (!user) {
+    // Create the user record if it doesn't exist
+    const [newUser] = await db
+      .insert(schema.users)
+      .values({ guestId: userId })
+      .returning()
+    user = newUser
+    console.log(`   Created user record for ${userId}`)
+  }
+
+  // Check if they have a classroom
+  let classroom = await getTeacherClassroom(user.id)
+
+  if (!classroom) {
+    // Create a classroom for them
+    const result = await createClassroom({
+      teacherId: user.id,
+      name: 'Test Classroom',
+    })
+    if (result.success) {
+      classroom = result.classroom
+      console.log(`   Created classroom: ${classroom.name} (code: ${classroom.code})`)
+    } else {
+      console.error(`   ❌ Failed to create classroom: ${result.error}`)
+      process.exit(1)
+    }
+  } else {
+    console.log(`   Using existing classroom: ${classroom.name} (code: ${classroom.code})`)
+  }
+
   // Create each test profile with iterative tuning (up to 3 rounds)
-  console.log('\n2. Creating test students (with up to 2 tuning rounds if needed)...\n')
+  console.log('\n3. Creating test students (with up to 2 tuning rounds if needed)...\n')
 
   for (const profile of profilesToSeed) {
     const { playerId, classifications, tuningHistory } = await createTestStudentWithTuning(
@@ -3520,6 +3563,9 @@ async function main() {
       3 // maxRounds: initial + 2 tuning rounds
     )
     const { weak, developing, strong } = classifications
+
+    // Enroll the student in the teacher's classroom
+    await directEnrollStudent(classroom.id, playerId)
 
     console.log(`   ${profile.name}`)
     console.log(`      ${profile.description}`)
@@ -3544,7 +3590,9 @@ async function main() {
     console.log('')
   }
 
-  console.log('✅ All test students created!')
+  console.log('✅ All test students created and enrolled!')
+  console.log(`\n   Classroom: ${classroom.name} (code: ${classroom.code})`)
+  console.log(`   Students enrolled: ${profilesToSeed.length}`)
   console.log('\n   Visit http://localhost:3000/practice to see them.')
 }
 
