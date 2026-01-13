@@ -59,6 +59,14 @@ export const entryPromptKeys = {
   pending: () => [...entryPromptKeys.all, 'pending'] as const,
 }
 
+// Game results query keys (for scoreboard and history)
+export const gameResultsKeys = {
+  all: ['game-results'] as const,
+  playerHistory: (playerId: string) => [...gameResultsKeys.all, 'player', playerId] as const,
+  classroomLeaderboard: (classroomId: string, gameName?: string) =>
+    [...gameResultsKeys.all, 'leaderboard', 'classroom', classroomId, gameName] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player
