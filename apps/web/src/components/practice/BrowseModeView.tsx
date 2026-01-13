@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { ProblemSlot, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
+import { AttemptHistoryPanel } from './AttemptHistoryPanel'
 import { calculateAutoPauseInfo } from './autoPauseCalculator'
 import { DetailedProblemCard } from './DetailedProblemCard'
 import { PracticePreview } from './PracticePreview'
@@ -73,10 +74,14 @@ export interface BrowseModeViewProps {
   browseIndex: number
   /** The actual current practice problem index (to highlight) */
   currentPracticeIndex: number
+  /** Student ID for edit API calls */
+  studentId: string
+  /** Callback when results are edited (to refetch plan) */
+  onResultEdited?: () => void
 }
 
 /**
- * Get result for a specific problem if it exists
+ * Get the first/original result for a specific problem if it exists
  */
 function getResultForProblem(
   results: SlotResult[],
@@ -86,7 +91,40 @@ function getResultForProblem(
   return results.find((r) => r.partNumber === partNumber && r.slotIndex === slotIndex)
 }
 
-export function BrowseModeView({ plan, browseIndex, currentPracticeIndex }: BrowseModeViewProps) {
+/**
+ * Result with its global index in the plan.results array
+ */
+export interface ResultWithGlobalIndex {
+  result: SlotResult
+  globalIndex: number
+}
+
+/**
+ * Get ALL results for a specific slot (including retries) with their global indices
+ * Results are matched by partNumber and originalSlotIndex (or slotIndex for non-retries)
+ */
+function getAllResultsForSlot(
+  results: SlotResult[],
+  partNumber: number,
+  slotIndex: number
+): ResultWithGlobalIndex[] {
+  const matches: ResultWithGlobalIndex[] = []
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i]
+    if (r.partNumber === partNumber && (r.originalSlotIndex ?? r.slotIndex) === slotIndex) {
+      matches.push({ result: r, globalIndex: i })
+    }
+  }
+  return matches
+}
+
+export function BrowseModeView({
+  plan,
+  browseIndex,
+  currentPracticeIndex,
+  studentId,
+  onResultEdited,
+}: BrowseModeViewProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
@@ -98,10 +136,16 @@ export function BrowseModeView({ plan, browseIndex, currentPracticeIndex }: Brow
 
   const currentItem = linearProblems[browseIndex]
 
-  // Get result for current browse item
+  // Get result for current browse item (for DetailedProblemCard display)
   const result = useMemo(() => {
     if (!currentItem) return undefined
     return getResultForProblem(plan.results, currentItem.partNumber, currentItem.slotIndex)
+  }, [plan.results, currentItem])
+
+  // Get ALL results for current slot (including retries) for AttemptHistoryPanel
+  const allResults = useMemo(() => {
+    if (!currentItem) return []
+    return getAllResultsForSlot(plan.results, currentItem.partNumber, currentItem.slotIndex)
   }, [plan.results, currentItem])
 
   // Calculate auto-pause stats at this position
@@ -271,6 +315,18 @@ export function BrowseModeView({ plan, browseIndex, currentPracticeIndex }: Brow
             inline
           />
         </div>
+      )}
+
+      {/* Attempt History Panel - show all attempts with edit options */}
+      {allResults.length > 0 && currentItem.slot.problem && (
+        <AttemptHistoryPanel
+          results={allResults}
+          correctAnswer={currentItem.slot.problem.answer}
+          isDark={isDark}
+          studentId={studentId}
+          planId={plan.id}
+          onResultEdited={onResultEdited}
+        />
       )}
 
       {/* Status indicator */}

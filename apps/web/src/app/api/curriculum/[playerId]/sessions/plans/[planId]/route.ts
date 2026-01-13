@@ -15,6 +15,8 @@ import {
   approveSessionPlan,
   completeSessionPlanEarly,
   getSessionPlan,
+  type RedoContext,
+  recordRedoResult,
   recordSlotResult,
   startSessionPlan,
 } from '@/lib/curriculum'
@@ -78,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json()
-    const { action, result, reason } = body
+    const { action, result, reason, redoContext } = body
 
     let plan
 
@@ -103,6 +105,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         plan = await recordSlotResult(planId, result as Omit<SlotResult, 'timestamp'>)
         break
 
+      case 'record_redo':
+        if (!result || !redoContext) {
+          return NextResponse.json(
+            { error: 'result and redoContext are required for record_redo action' },
+            { status: 400 }
+          )
+        }
+        plan = await recordRedoResult(
+          planId,
+          result as Omit<SlotResult, 'timestamp' | 'partNumber'>,
+          redoContext as RedoContext
+        )
+        break
+
       case 'end_early':
         plan = await completeSessionPlanEarly(planId, reason)
         // Emit session events to player channel (parents) and classroom channel (if present)
@@ -118,7 +134,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       default:
         return NextResponse.json(
           {
-            error: 'Invalid action. Must be: approve, start, record, end_early, or abandon',
+            error:
+              'Invalid action. Must be: approve, start, record, record_redo, end_early, or abandon',
           },
           { status: 400 }
         )

@@ -219,8 +219,16 @@ export interface SessionAdjustment {
  * - 'recency-refresh': Teacher marked skill as recently practiced offline.
  *   These records update lastPracticedAt but are ZERO-WEIGHT for BKT mastery.
  *   They don't affect pKnown calculation - they only reset staleness.
+ * - 'teacher-corrected': Teacher/parent marked an incorrect result as correct.
+ *   This is used for typo fixes or verbal confirmation. Affects BKT calculation.
+ * - 'teacher-excluded': Teacher/parent excluded this result from tracking.
+ *   BKT should skip these entirely (zero-weight, no effect on pKnown).
  */
-export type SlotResultSource = 'practice' | 'recency-refresh'
+export type SlotResultSource =
+  | 'practice'
+  | 'recency-refresh'
+  | 'teacher-corrected'
+  | 'teacher-excluded'
 
 /**
  * Result of a single problem slot
@@ -283,6 +291,14 @@ export interface SlotResult {
 
   /** Original slot index (for retries, tracks which slot is being retried) */
   originalSlotIndex?: number
+
+  // ---- Manual Redo Tracking ----
+
+  /**
+   * Whether this result was from a manual redo (student tapped a completed problem).
+   * Manual redos don't advance the session position but can affect the retry queue.
+   */
+  isManualRedo?: boolean
 }
 
 export type SessionStatus =
@@ -419,6 +435,12 @@ export interface PartRetryState {
    * Index into currentEpochItems (which retry we're on within this epoch).
    */
   currentRetryIndex: number
+
+  /**
+   * Slot indices that were redeemed via manual redo (correct answer on originally wrong problem).
+   * When processing retry epochs, these slots are skipped since the student already got them right.
+   */
+  redeemedSlots?: number[]
 }
 
 /**
@@ -745,19 +767,27 @@ export function getCurrentProblemInfo(plan: SessionPlan): {
 
   // Check if we're in a retry epoch
   if (retryState && retryState.currentEpochItems.length > 0 && retryState.currentEpoch > 0) {
-    if (retryState.currentRetryIndex >= retryState.currentEpochItems.length) {
-      // Edge case: all retries in this epoch done, should have transitioned
-      return null
+    // Find the first non-redeemed retry item starting from currentRetryIndex
+    let itemIndex = retryState.currentRetryIndex
+    while (itemIndex < retryState.currentEpochItems.length) {
+      const item = retryState.currentEpochItems[itemIndex]
+      // Skip items that were redeemed via manual redo
+      if (retryState.redeemedSlots?.includes(item.originalSlotIndex)) {
+        itemIndex++
+        continue
+      }
+      // Found a non-redeemed item
+      return {
+        problem: item.problem,
+        isRetry: true,
+        epochNumber: item.epochNumber,
+        originalSlotIndex: item.originalSlotIndex,
+        purpose: item.originalPurpose,
+        partNumber: part.partNumber,
+      }
     }
-    const item = retryState.currentEpochItems[retryState.currentRetryIndex]
-    return {
-      problem: item.problem,
-      isRetry: true,
-      epochNumber: item.epochNumber,
-      originalSlotIndex: item.originalSlotIndex,
-      purpose: item.originalPurpose,
-      partNumber: part.partNumber,
-    }
+    // All remaining items were redeemed, epoch is effectively done
+    return null
   }
 
   // Working original slots

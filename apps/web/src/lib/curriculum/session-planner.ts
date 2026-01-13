@@ -929,6 +929,120 @@ export async function recordSlotResult(
 }
 
 /**
+ * Context for a manual redo operation
+ */
+export interface RedoContext {
+  /** Part index of the problem being redone */
+  originalPartIndex: number
+  /** Slot index of the problem being redone */
+  originalSlotIndex: number
+  /** Whether the original answer was correct (affects recording logic) */
+  originalWasCorrect: boolean
+}
+
+/**
+ * Record a result from a manual redo (student tapped a completed problem to redo it).
+ *
+ * Key differences from recordSlotResult:
+ * - Does NOT advance currentPartIndex/currentSlotIndex (session position unchanged)
+ * - If original was wrong and redo is correct: removes from retry queue (redeems)
+ * - Result is marked with isManualRedo: true
+ */
+export async function recordRedoResult(
+  planId: string,
+  result: Omit<SlotResult, 'timestamp' | 'partNumber'>,
+  redoContext: RedoContext
+): Promise<SessionPlan> {
+  const plan = await getSessionPlan(planId)
+  if (!plan) throw new Error(`Plan not found: ${planId}`)
+
+  // Validate part index
+  if (redoContext.originalPartIndex < 0 || redoContext.originalPartIndex >= plan.parts.length) {
+    throw new Error(`Invalid part index: ${redoContext.originalPartIndex}`)
+  }
+
+  const part = plan.parts[redoContext.originalPartIndex]
+
+  // Build the result with manual redo flag
+  const newResult: SlotResult = {
+    ...result,
+    partNumber: part.partNumber,
+    timestamp: new Date(),
+    isManualRedo: true,
+    // For manual redos, we use epoch 0 and no retry flags since this is user-initiated
+    epochNumber: 0,
+    masteryWeight: result.isCorrect ? 1.0 : 0,
+    isRetry: false,
+    originalSlotIndex: redoContext.originalSlotIndex,
+  }
+
+  const updatedResults = [...(plan.results || []), newResult]
+
+  // Handle retry queue updates if original was wrong and redo is correct
+  const updatedRetryState = plan.retryState ? { ...plan.retryState } : {}
+
+  if (!redoContext.originalWasCorrect && result.isCorrect) {
+    // Original was wrong, redo is correct - redeem from retry queue
+    const partRetryState = updatedRetryState[redoContext.originalPartIndex]
+
+    if (partRetryState) {
+      // Remove from pendingRetries (if not yet in active epoch)
+      partRetryState.pendingRetries = partRetryState.pendingRetries.filter(
+        (item) => item.originalSlotIndex !== redoContext.originalSlotIndex
+      )
+
+      // Add to redeemedSlots (for skipping in currentEpochItems)
+      partRetryState.redeemedSlots = partRetryState.redeemedSlots || []
+      if (!partRetryState.redeemedSlots.includes(redoContext.originalSlotIndex)) {
+        partRetryState.redeemedSlots.push(redoContext.originalSlotIndex)
+      }
+
+      updatedRetryState[redoContext.originalPartIndex] = partRetryState
+    }
+  }
+
+  // Calculate updated health (redo results affect accuracy)
+  const elapsedMs = plan.startedAt ? Date.now() - plan.startedAt.getTime() : 0
+  const updatedHealth = calculateSessionHealth({ ...plan, results: updatedResults }, elapsedMs)
+
+  // Update database - note: currentPartIndex/currentSlotIndex are NOT modified
+  const [updated] = await db
+    .update(schema.sessionPlans)
+    .set({
+      results: updatedResults,
+      sessionHealth: updatedHealth,
+      retryState: updatedRetryState,
+    })
+    .where(eq(schema.sessionPlans.id, planId))
+    .returning()
+
+  if (!updated) {
+    throw new Error(`Failed to update plan ${planId}: no rows returned`)
+  }
+
+  // Update global skill mastery timestamps
+  if (result.skillsExercised && result.skillsExercised.length > 0) {
+    const skillResults = result.skillsExercised.map((skillId) => ({
+      skillId,
+      isCorrect: result.isCorrect,
+    }))
+    try {
+      await recordSkillAttemptsWithHelp(
+        plan.playerId,
+        skillResults,
+        result.hadHelp ?? false,
+        result.responseTimeMs
+      )
+    } catch (skillError) {
+      console.error(`[recordRedoResult] recordSkillAttemptsWithHelp FAILED:`, skillError)
+      // Don't throw - redo result was already recorded
+    }
+  }
+
+  return updated
+}
+
+/**
  * Complete a session early (teacher ends it)
  */
 export async function completeSessionPlanEarly(
@@ -990,6 +1104,41 @@ export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
   } catch (shareError) {
     console.error(`[abandonSessionPlan] revokeSharesForSession FAILED:`, shareError)
   }
+
+  return updated
+}
+
+/**
+ * Update session plan results directly.
+ * Used for teacher/parent edits (mark correct, exclude, etc.)
+ */
+export async function updateSessionPlanResults(
+  planId: string,
+  results: SlotResult[]
+): Promise<SessionPlan> {
+  // Get the current plan to recalculate health
+  const plan = await getSessionPlan(planId)
+  if (!plan) {
+    throw new Error(`Plan ${planId} not found`)
+  }
+
+  // Create a temporary plan with updated results to calculate health
+  const tempPlan = { ...plan, results }
+
+  // Calculate elapsed time since session started
+  const startedAt = plan.startedAt instanceof Date ? plan.startedAt : new Date(plan.startedAt ?? 0)
+  const elapsedTimeMs = Date.now() - startedAt.getTime()
+
+  const newHealth = calculateSessionHealth(tempPlan, elapsedTimeMs)
+
+  const [updated] = await db
+    .update(schema.sessionPlans)
+    .set({
+      results,
+      sessionHealth: newHealth,
+    })
+    .where(eq(schema.sessionPlans.id, planId))
+    .returning()
 
   return updated
 }

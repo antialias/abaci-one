@@ -80,6 +80,10 @@ export interface SessionHudData {
   onToggleBrowse: () => void
   /** Navigate to specific problem in browse mode */
   onBrowseNavigate?: (linearIndex: number) => void
+  /** Redo a previously completed problem (tap on completed dot) */
+  onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  /** Linear index of the problem currently being redone (undefined = not in redo mode) */
+  redoLinearIndex?: number
   /** Whether the end session request is in flight */
   isEndingSession?: boolean
   /** Full session plan for retry status display */
@@ -1285,6 +1289,8 @@ export function PracticeSubNav({
               currentSlotIndex={sessionHud.currentSlotIndex}
               isBrowseMode={sessionHud.isBrowseMode}
               onNavigate={sessionHud.onBrowseNavigate}
+              onRedoProblem={sessionHud.onRedoProblem}
+              redoLinearIndex={sessionHud.redoLinearIndex}
               isDark={isDark}
               compact={true}
               plan={sessionHud.plan}

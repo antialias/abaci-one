@@ -34,6 +34,10 @@ export interface SessionProgressIndicatorProps {
   isBrowseMode: boolean
   /** Callback when clicking a problem in browse mode */
   onNavigate?: (linearIndex: number) => void
+  /** Callback when clicking a completed problem to redo it */
+  onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  /** Linear index of the problem currently being redone (shows pulsing highlight) */
+  redoLinearIndex?: number
   /** Dark mode */
   isDark: boolean
   /** Compact mode for smaller screens */
@@ -185,6 +189,8 @@ function CollapsedSection({
   isDark,
   isBrowseMode,
   onNavigate,
+  onRedoProblem,
+  redoLinearIndex,
   isCompleted,
   plan,
 }: {
@@ -195,6 +201,8 @@ function CollapsedSection({
   isDark: boolean
   isBrowseMode: boolean
   onNavigate?: (linearIndex: number) => void
+  onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  redoLinearIndex?: number
   isCompleted: boolean
   plan?: SessionPlan
 }) {
@@ -220,6 +228,8 @@ function CollapsedSection({
         isDark={isDark}
         isBrowseMode={true}
         onNavigate={onNavigate}
+        onRedoProblem={onRedoProblem}
+        redoLinearIndex={redoLinearIndex}
         plan={plan}
       />
     )
@@ -287,6 +297,8 @@ function ExpandedSection({
   isDark,
   isBrowseMode,
   onNavigate,
+  onRedoProblem,
+  redoLinearIndex,
   plan,
 }: {
   part: SessionPart
@@ -297,6 +309,8 @@ function ExpandedSection({
   isDark: boolean
   isBrowseMode: boolean
   onNavigate?: (linearIndex: number) => void
+  onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  redoLinearIndex?: number
   plan?: SessionPlan
 }) {
   return (
@@ -330,6 +344,7 @@ function ExpandedSection({
         const linearIndex = linearOffset + slotIndex
         const result = getSlotResult(results, part.partNumber, slotIndex)
         const isCurrent = linearIndex === currentLinearIndex
+        const isRedo = linearIndex === redoLinearIndex
         const isCompleted = result !== undefined
         const isCorrect = result?.isCorrect
 
@@ -338,7 +353,22 @@ function ExpandedSection({
         const attemptCount = retryStatus?.attemptCount ?? (isCompleted ? 1 : 0)
         const hasRetried = attemptCount > 1
 
-        const isClickable = isBrowseMode && onNavigate
+        // Clickable in browse mode for navigation, or on completed problems for redo
+        // But not clickable if already in redo mode (can't start a new redo from another redo)
+        const isInRedoMode = redoLinearIndex !== undefined
+        const isClickableForBrowse = isBrowseMode && onNavigate
+        const isClickableForRedo =
+          !isBrowseMode && !isInRedoMode && isCompleted && !isCurrent && onRedoProblem && result
+        const isClickable = isClickableForBrowse || isClickableForRedo
+
+        // Handle click - browse navigation or redo
+        const handleClick = () => {
+          if (isClickableForBrowse) {
+            onNavigate!(linearIndex)
+          } else if (isClickableForRedo && result) {
+            onRedoProblem!(linearIndex, result)
+          }
+        }
 
         return (
           <div
@@ -353,16 +383,20 @@ function ExpandedSection({
               data-slot-index={slotIndex}
               data-linear-index={linearIndex}
               data-attempt-count={attemptCount}
+              data-clickable-for-redo={isClickableForRedo || undefined}
+              data-redo={isRedo || undefined}
               data-status={
-                isCurrent
-                  ? 'current'
-                  : isCompleted
-                    ? isCorrect
-                      ? 'correct'
-                      : 'incorrect'
-                    : 'pending'
+                isRedo
+                  ? 'redo'
+                  : isCurrent
+                    ? 'current'
+                    : isCompleted
+                      ? isCorrect
+                        ? 'correct'
+                        : 'incorrect'
+                      : 'pending'
               }
-              onClick={isClickable ? () => onNavigate(linearIndex) : undefined}
+              onClick={isClickable ? handleClick : undefined}
               disabled={!isClickable}
               className={css({
                 width: '20px',
@@ -382,6 +416,14 @@ function ExpandedSection({
                   borderColor: isDark ? 'yellow.500' : 'yellow.500',
                   color: isDark ? 'yellow.100' : 'yellow.900',
                   boxShadow: `0 0 0 2px ${isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.4)'}`,
+                }),
+                // Problem being redone (pulsing orange)
+                ...(isRedo && {
+                  backgroundColor: isDark ? 'orange.600' : 'orange.400',
+                  borderColor: isDark ? 'orange.500' : 'orange.500',
+                  color: isDark ? 'orange.100' : 'orange.900',
+                  boxShadow: `0 0 0 3px ${isDark ? 'rgba(251, 146, 60, 0.5)' : 'rgba(249, 115, 22, 0.5)'}`,
+                  animation: 'redoPulse 1.5s ease-in-out infinite',
                 }),
                 // Completed correct
                 ...(!isCurrent &&
@@ -406,20 +448,24 @@ function ExpandedSection({
                     borderColor: isDark ? 'gray.600' : 'gray.300',
                     color: isDark ? 'gray.400' : 'gray.500',
                   }),
-                // Hover effect in browse mode
+                // Hover effect in browse mode or redo mode
                 ...(isClickable && {
                   _hover: {
                     transform: 'scale(1.15)',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    boxShadow: isClickableForRedo
+                      ? `0 0 0 2px ${isDark ? 'rgba(251, 146, 60, 0.5)' : 'rgba(249, 115, 22, 0.4)'}, 0 2px 4px rgba(0,0,0,0.2)`
+                      : '0 2px 4px rgba(0,0,0,0.2)',
                   },
                 }),
               })}
               title={
                 isBrowseMode
                   ? `Go to problem ${linearIndex + 1}`
-                  : hasRetried
-                    ? `Attempt ${attemptCount} of 3`
-                    : undefined
+                  : isClickableForRedo
+                    ? `Tap to redo problem ${linearIndex + 1}`
+                    : hasRetried
+                      ? `Attempt ${attemptCount} of 3`
+                      : undefined
               }
             >
               {isBrowseMode ? linearIndex + 1 : isCompleted ? (isCorrect ? '✓' : '✗') : '○'}
@@ -451,6 +497,19 @@ function ExpandedSection({
                 {attemptCount}
               </span>
             )}
+            {/* Redo pulse animation */}
+            {isRedo && (
+              <style
+                dangerouslySetInnerHTML={{
+                  __html: `
+                    @keyframes redoPulse {
+                      0%, 100% { box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.5); }
+                      50% { box-shadow: 0 0 0 5px rgba(251, 146, 60, 0.8), 0 0 8px rgba(251, 146, 60, 0.6); }
+                    }
+                  `,
+                }}
+              />
+            )}
           </div>
         )
       })}
@@ -465,6 +524,8 @@ export function SessionProgressIndicator({
   currentSlotIndex,
   isBrowseMode,
   onNavigate,
+  onRedoProblem,
+  redoLinearIndex,
   isDark,
   compact = false,
   plan,
@@ -592,6 +653,8 @@ export function SessionProgressIndicator({
                   isDark={isDark}
                   isBrowseMode={isBrowseMode}
                   onNavigate={onNavigate}
+                  onRedoProblem={onRedoProblem}
+                  redoLinearIndex={redoLinearIndex}
                   isCompleted={isCompletedPart}
                   plan={plan}
                 />
@@ -605,6 +668,8 @@ export function SessionProgressIndicator({
                   isDark={isDark}
                   isBrowseMode={isBrowseMode}
                   onNavigate={onNavigate}
+                  onRedoProblem={onRedoProblem}
+                  redoLinearIndex={redoLinearIndex}
                   plan={plan}
                 />
               )}

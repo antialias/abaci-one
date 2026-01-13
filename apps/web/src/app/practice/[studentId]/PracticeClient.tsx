@@ -23,16 +23,40 @@ import type {
   SessionPlan,
   SlotResult,
 } from '@/db/schema/session-plans'
+
+/**
+ * State for redoing a previously completed problem
+ * Allows students to tap any completed problem dot to practice it again
+ */
+export interface RedoState {
+  /** Whether redo mode is currently active */
+  isActive: boolean
+  /** Linear index of the problem being redone (flat across all parts) */
+  linearIndex: number
+  /** Part index containing the redo problem */
+  originalPartIndex: number
+  /** Slot index within the part */
+  originalSlotIndex: number
+  /** The original result (to check if it was correct) */
+  originalResult: SlotResult
+  /** Part index to return to after redo */
+  returnToPartIndex: number
+  /** Slot index to return to after redo */
+  returnToSlotIndex: number
+}
 import {
   type ReceivedAbacusControl,
   type TeacherPauseRequest,
   useSessionBroadcast,
 } from '@/hooks/useSessionBroadcast'
 import {
+  sessionPlanKeys,
   useActiveSessionPlan,
   useEndSessionEarly,
+  useRecordRedoResult,
   useRecordSlotResult,
 } from '@/hooks/useSessionPlan'
+import { useQueryClient } from '@tanstack/react-query'
 import { css } from '../../../../styled-system/css'
 
 interface PracticeClientProps {
@@ -53,6 +77,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const router = useRouter()
   const { showError } = useToast()
   const { setVisionFrameCallback } = useMyAbacus()
+  const queryClient = useQueryClient()
 
   // Track pause state for HUD display (ActiveSession owns the modal and actual pause logic)
   const [isPaused, setIsPaused] = useState(false)
@@ -78,6 +103,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   const [pendingGameBreak, setPendingGameBreak] = useState(false)
   // Track previous part index to detect part transitions
   const previousPartIndexRef = useRef<number>(initialSession.currentPartIndex)
+  // Redo state - allows students to re-attempt any completed problem
+  const [redoState, setRedoState] = useState<RedoState | null>(null)
 
   // Dev shortcut: Ctrl+Shift+G to trigger game break for testing
   useEffect(() => {
@@ -101,6 +128,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
 
   // Session plan mutations
   const recordResult = useRecordSlotResult()
+  const recordRedo = useRecordRedoResult()
   const endEarly = useEndSessionEarly()
 
   // Fetch active session plan from cache or API with server data as initial
@@ -224,6 +252,47 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     })
   }, [studentId, router])
 
+  // Handle redoing a previously completed problem
+  // Called when student taps a completed problem dot in the progress indicator
+  const handleRedoProblem = useCallback(
+    (linearIndex: number, originalResult: SlotResult) => {
+      // Find the part and slot for this linear index
+      let partIndex = 0
+      let remaining = linearIndex
+      for (let i = 0; i < currentPlan.parts.length; i++) {
+        const partSlotCount = currentPlan.parts[i].slots.length
+        if (remaining < partSlotCount) {
+          partIndex = i
+          break
+        }
+        remaining -= partSlotCount
+      }
+      const slotIndex = remaining
+
+      // Exit browse mode if active
+      if (isBrowseMode) {
+        setIsBrowseMode(false)
+      }
+
+      // Set redo state
+      setRedoState({
+        isActive: true,
+        linearIndex,
+        originalPartIndex: partIndex,
+        originalSlotIndex: slotIndex,
+        originalResult,
+        returnToPartIndex: currentPlan.currentPartIndex,
+        returnToSlotIndex: currentPlan.currentSlotIndex,
+      })
+    },
+    [currentPlan.parts, currentPlan.currentPartIndex, currentPlan.currentSlotIndex, isBrowseMode]
+  )
+
+  // Handle canceling a redo - exit without recording
+  const handleCancelRedo = useCallback(() => {
+    setRedoState(null)
+  }, [])
+
   // Handle game break end - return to practice
   const handleGameBreakEnd = useCallback(() => {
     setShowGameBreak(false)
@@ -307,6 +376,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
         isBrowseMode,
         onToggleBrowse: () => setIsBrowseMode((prev) => !prev),
         onBrowseNavigate: setBrowseIndex,
+        onRedoProblem: redoState ? undefined : handleRedoProblem, // Disable redo when already in redo mode
+        redoLinearIndex: redoState?.linearIndex,
         plan: currentPlan,
       }
     : undefined
@@ -404,6 +475,16 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
               onManualPauseHandled={() => setManualPauseRequest(false)}
               onPartTransition={sendPartTransition}
               onPartTransitionComplete={handlePartTransitionComplete}
+              redoState={redoState}
+              onRecordRedo={recordRedo.mutateAsync}
+              onRedoComplete={() => setRedoState(null)}
+              onCancelRedo={handleCancelRedo}
+              onResultEdited={() => {
+                // Invalidate the session plan query to refetch updated results
+                queryClient.invalidateQueries({
+                  queryKey: sessionPlanKeys.active(studentId),
+                })
+              }}
             />
           )}
         </PracticeErrorBoundary>

@@ -59,8 +59,11 @@ export {
   generateSessionPlan,
   getActiveSessionPlan,
   getSessionPlan,
+  type RedoContext,
+  recordRedoResult,
   recordSlotResult,
   startSessionPlan,
+  updateSessionPlanResults,
 } from './session-planner'
 
 // Session mode - unified session state computation

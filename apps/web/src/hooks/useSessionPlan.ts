@@ -132,6 +132,42 @@ async function updateSessionPlan({
   return data.plan
 }
 
+/**
+ * Context for recording a redo result
+ */
+export interface RedoContext {
+  /** Part index of the problem being redone */
+  originalPartIndex: number
+  /** Slot index of the problem being redone */
+  originalSlotIndex: number
+  /** Whether the original answer was correct (affects recording logic) */
+  originalWasCorrect: boolean
+}
+
+async function recordRedoResult({
+  playerId,
+  planId,
+  result,
+  redoContext,
+}: {
+  playerId: string
+  planId: string
+  result: Omit<SlotResult, 'timestamp' | 'partNumber'>
+  redoContext: RedoContext
+}): Promise<SessionPlan> {
+  const res = await api(`curriculum/${playerId}/sessions/plans/${planId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'record_redo', result, redoContext }),
+  })
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}))
+    throw new Error(error.error || 'Failed to record redo result')
+  }
+  const data = await res.json()
+  return data.plan
+}
+
 // ============================================================================
 // Hooks
 // ============================================================================
@@ -294,6 +330,39 @@ export function useAbandonSession() {
     },
     onError: (err) => {
       console.error('Failed to abandon session:', err.message)
+    },
+  })
+}
+
+/**
+ * Hook: Record a redo result (student re-attempts a previously completed problem)
+ *
+ * This is different from useRecordSlotResult because:
+ * - It doesn't advance the session position (student returns to where they were)
+ * - It can "redeem" incorrect answers (remove from retry queue if original was wrong and redo is correct)
+ * - If original was correct and redo is wrong, no result is recorded (avoid penalty)
+ */
+export function useRecordRedoResult() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      playerId,
+      planId,
+      result,
+      redoContext,
+    }: {
+      playerId: string
+      planId: string
+      result: Omit<SlotResult, 'timestamp' | 'partNumber'>
+      redoContext: RedoContext
+    }) => recordRedoResult({ playerId, planId, result, redoContext }),
+    onSuccess: (plan, { playerId }) => {
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+    },
+    onError: (err) => {
+      console.error('Failed to record redo result:', err.message)
     },
   })
 }

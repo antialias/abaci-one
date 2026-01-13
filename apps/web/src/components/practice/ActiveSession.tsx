@@ -159,6 +159,31 @@ interface ActiveSessionProps {
   ) => void
   /** Called when a part transition completes (for broadcasting to observers) */
   onPartTransitionComplete?: () => void
+  /** Redo state - when set, show a redo problem instead of current session problem */
+  redoState?: {
+    isActive: boolean
+    linearIndex: number
+    originalPartIndex: number
+    originalSlotIndex: number
+    originalResult: SlotResult
+  } | null
+  /** Called to record a redo result (separate from onAnswer since it doesn't advance position) */
+  onRecordRedo?: (params: {
+    playerId: string
+    planId: string
+    result: Omit<SlotResult, 'timestamp' | 'partNumber'>
+    redoContext: {
+      originalPartIndex: number
+      originalSlotIndex: number
+      originalWasCorrect: boolean
+    }
+  }) => Promise<SessionPlan>
+  /** Called when the redo is complete or cancelled */
+  onRedoComplete?: () => void
+  /** Called to cancel the redo without recording */
+  onCancelRedo?: () => void
+  /** Called when a result is edited in browse mode (to trigger refetch) */
+  onResultEdited?: () => void
 }
 
 /**
@@ -624,6 +649,11 @@ export function ActiveSession({
   onManualPauseHandled,
   onPartTransition,
   onPartTransitionComplete,
+  redoState,
+  onRecordRedo,
+  onRedoComplete,
+  onCancelRedo,
+  onResultEdited,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -1201,7 +1231,7 @@ export function ActiveSession({
   const currentSlotIndex = plan.currentSlotIndex
   const currentPart = parts[currentPartIndex] as SessionPart | undefined
   // Use getCurrentProblemInfo which handles both original slots and retry epochs
-  const currentSlot = currentProblemInfo
+  const regularSlot = currentProblemInfo
     ? {
         index: currentProblemInfo.originalSlotIndex,
         purpose: currentProblemInfo.purpose,
@@ -1210,6 +1240,37 @@ export function ActiveSession({
       }
     : (currentPart?.slots[currentSlotIndex] as ProblemSlot | undefined)
   const sessionHealth = plan.sessionHealth as SessionHealth | null
+
+  // Redo mode: get the redo problem slot if in redo mode
+  const isInRedoMode = redoState?.isActive ?? false
+  const redoSlot = useMemo(() => {
+    if (!redoState?.isActive) return null
+    const redoPart = parts[redoState.originalPartIndex]
+    if (!redoPart) return null
+    return redoPart.slots[redoState.originalSlotIndex] as ProblemSlot | undefined
+  }, [redoState, parts])
+
+  // Use redo slot when in redo mode, otherwise regular slot
+  const currentSlot = isInRedoMode && redoSlot ? redoSlot : regularSlot
+  // Whether the original redo problem was correct (for display and recording logic)
+  const redoOriginalWasCorrect = redoState?.originalResult?.isCorrect ?? false
+
+  // Track previous redo state to detect when redo mode is entered
+  const prevRedoStateRef = useRef<typeof redoState>(null)
+
+  // When entering redo mode, load the redo problem and clear the answer
+  useEffect(() => {
+    const wasInRedoMode = prevRedoStateRef.current?.isActive
+    const isNowInRedoMode = redoState?.isActive
+
+    // Entering redo mode
+    if (!wasInRedoMode && isNowInRedoMode && redoSlot?.problem) {
+      // Load the redo problem
+      loadProblem(redoSlot.problem, redoState!.originalSlotIndex, redoState!.originalPartIndex)
+    }
+
+    prevRedoStateRef.current = redoState
+  }, [redoState, redoSlot, loadProblem])
 
   // Retry epoch tracking
   const inRetryEpoch = currentProblemInfo?.isRetry ?? false
@@ -1411,6 +1472,47 @@ export function ActiveSession({
       hadHelp: phase.phase === 'helpMode',
     }
 
+    // Handle redo mode differently - use onRecordRedo which doesn't advance session position
+    if (isInRedoMode && redoState) {
+      // Only record if the original problem was incorrect
+      // (Original correct = pure practice, no recording to avoid unintentional penalty)
+      if (!redoOriginalWasCorrect && onRecordRedo) {
+        // Add retry tracking fields
+        const redoResult: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
+          ...result,
+          // Override slotIndex with the original slot index from the redo
+          slotIndex: redoState.originalSlotIndex,
+          isRetry: true,
+          epochNumber: (redoState.originalResult.epochNumber ?? 0) + 1,
+          originalSlotIndex: redoState.originalSlotIndex,
+        }
+        // Use the special redo mutation that doesn't advance session position
+        await onRecordRedo({
+          playerId: student.id,
+          planId: plan.id,
+          result: redoResult,
+          redoContext: {
+            originalPartIndex: redoState.originalPartIndex,
+            originalSlotIndex: redoState.originalSlotIndex,
+            originalWasCorrect: redoOriginalWasCorrect,
+          },
+        })
+      }
+
+      // Complete submit with result
+      completeSubmit(isCorrect ? 'correct' : 'incorrect')
+
+      // After redo feedback, exit redo mode and return to original position
+      setTimeout(
+        () => {
+          clearToLoading()
+          onRedoComplete?.()
+        },
+        isCorrect ? 500 : 1500
+      )
+      return
+    }
+
     await onAnswer(result)
 
     // Complete submit with result
@@ -1444,6 +1546,9 @@ export function ActiveSession({
   }, [
     phase,
     onAnswer,
+    onRecordRedo,
+    student.id,
+    plan.id,
     currentSlotIndex,
     currentPart,
     currentPartIndex,
@@ -1455,6 +1560,10 @@ export function ActiveSession({
     prefixSums,
     enterHelpMode,
     collectVisionTrainingData,
+    isInRedoMode,
+    redoState,
+    redoOriginalWasCorrect,
+    onRedoComplete,
   ])
 
   // Auto-submit when correct answer is entered
@@ -1643,6 +1752,8 @@ export function ActiveSession({
         plan={plan}
         browseIndex={browseIndex}
         currentPracticeIndex={currentPracticeLinearIndex}
+        studentId={student.id}
+        onResultEdited={onResultEdited}
       />
     )
   }
@@ -1703,8 +1814,70 @@ export function ActiveSession({
             overflow: 'hidden',
           })}
         >
+          {/* Redo mode banner */}
+          {isInRedoMode && redoState && (
+            <div
+              data-element="redo-mode-banner"
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.75rem',
+                padding: '0.5rem 1rem',
+                backgroundColor: isDark ? 'orange.900/80' : 'orange.100',
+                borderRadius: '12px',
+                border: '2px solid',
+                borderColor: isDark ? 'orange.600' : 'orange.400',
+                marginBottom: '0.5rem',
+              })}
+            >
+              <span className={css({ fontSize: '1.25rem' })}>🔄</span>
+              <span
+                className={css({
+                  fontWeight: '600',
+                  fontSize: '0.875rem',
+                  color: isDark ? 'orange.100' : 'orange.800',
+                })}
+              >
+                Redoing Problem #{redoState.linearIndex + 1}
+                {redoOriginalWasCorrect && (
+                  <span
+                    className={css({
+                      marginLeft: '0.5rem',
+                      fontWeight: '400',
+                      fontSize: '0.75rem',
+                      color: isDark ? 'orange.300' : 'orange.600',
+                    })}
+                  >
+                    (Practice Only)
+                  </span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={onCancelRedo}
+                className={css({
+                  padding: '0.25rem 0.5rem',
+                  fontSize: '0.75rem',
+                  fontWeight: '500',
+                  color: isDark ? 'gray.300' : 'gray.600',
+                  backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  _hover: {
+                    backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                  },
+                })}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
           {/* Purpose badge with tooltip - shows retry indicator when in retry epoch */}
-          {currentSlot && (
+          {currentSlot && !isInRedoMode && (
             <div
               data-element="purpose-retry-container"
               className={css({
