@@ -26,9 +26,14 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${remainingSeconds}s`
 }
 
-function formatRelativeTime(date: Date | number): string {
+function formatRelativeTime(date: Date | number | string): string {
   const now = Date.now()
-  const timestamp = typeof date === 'number' ? date : date.getTime()
+  const timestamp =
+    typeof date === 'number'
+      ? date
+      : typeof date === 'string'
+        ? new Date(date).getTime()
+        : date.getTime()
   const diff = now - timestamp
   const minutes = Math.floor(diff / 60000)
   const hours = Math.floor(diff / 3600000)
