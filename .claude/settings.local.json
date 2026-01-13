@@ -650,7 +650,14 @@
       "WebFetch(domain:scanbot.io)",
       "WebFetch(domain:learnopencv.com)",
       "WebFetch(domain:news.ycombinator.com)",
-      "Bash(npm run typecheck:*)"
+      "Bash(npm run typecheck:*)",
+      "mcp__chrome-devtools__press_key",
+      "mcp__chrome-devtools__wait_for",
+      "mcp__chrome-devtools__evaluate_script",
+      "Bash(npx tsc-alias:*)",
+      "Bash(tsc-alias:*)",
+      "Bash(npm run:*)",
+      "Bash(npx panda:*)"
     ],
     "deny": [],
     "ask": []
