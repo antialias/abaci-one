@@ -162,6 +162,35 @@ describe('findMatchedPrefixIndex', () => {
     expect(result.helpTermIndex).toBe(-1)
   })
 
+  describe('intermediate prefix sum equals final answer', () => {
+    // Problem: 65 - 34 - 15 + 33 - 18 = 31
+    // Prefix sums: [65, 31, 16, 49, 31]
+    // prefixSums[1] = 31 AND prefixSums[4] = 31 (final answer)
+    // BUG FIX: indexOf(31) returns 1, but we should return 4 (final answer)
+    const sumsWithDuplicateFinal = [65, 31, 16, 49, 31]
+
+    it('returns final answer index when answer matches both intermediate and final prefix sums', () => {
+      const result = findMatchedPrefixIndex('31', sumsWithDuplicateFinal)
+      expect(result.matchedIndex).toBe(4) // Final answer index, NOT 1
+      expect(result.isAmbiguous).toBe(false)
+      expect(result.helpTermIndex).toBe(-1) // No help for final answer
+    })
+
+    it('correctly identifies intermediate prefix sum when not matching final answer', () => {
+      const result = findMatchedPrefixIndex('65', sumsWithDuplicateFinal)
+      expect(result.matchedIndex).toBe(0) // First prefix sum
+      expect(result.isAmbiguous).toBe(false)
+      expect(result.helpTermIndex).toBe(1) // Help with next term
+    })
+
+    it('correctly identifies middle prefix sum', () => {
+      const result = findMatchedPrefixIndex('16', sumsWithDuplicateFinal)
+      expect(result.matchedIndex).toBe(2) // Third prefix sum
+      expect(result.isAmbiguous).toBe(false)
+      expect(result.helpTermIndex).toBe(3) // Help with next term
+    })
+  })
+
   describe('leading zeros disambiguation', () => {
     // Problem: [2, 1, 30] -> prefix sums [2, 3, 33]
     const ambiguousSums = [2, 3, 33]

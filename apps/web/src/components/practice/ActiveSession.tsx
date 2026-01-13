@@ -41,7 +41,7 @@ import { DecompositionProvider, DecompositionSection } from '../decomposition'
 import { Tooltip, TooltipProvider } from '../ui/Tooltip'
 import { generateCoachHint } from './coachHintGenerator'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
-import { useInteractionPhase } from './hooks/useInteractionPhase'
+import { findMatchedPrefixIndex, useInteractionPhase } from './hooks/useInteractionPhase'
 import { usePracticeSoundEffects } from './hooks/usePracticeSoundEffects'
 import { NumericKeypad } from './NumericKeypad'
 import { PracticeFeedback } from './PracticeFeedback'
@@ -1373,16 +1373,15 @@ export function ActiveSession({
 
     // When abacus is docked and not already in help mode, check if answer is a prefix sum
     // If so, trigger help mode instead of submitting (mimic auto-help behavior on submit)
+    // NOTE: We use findMatchedPrefixIndex which correctly handles the case where an
+    // intermediate prefix sum equals the final answer (e.g., 65-34-15+33-18=31 where
+    // prefixSums = [65, 31, 16, 49, 31] - indexOf(31) would return 1, not 4)
     if (isDockedByUser && phase.phase !== 'helpMode') {
-      // Check if the answer matches a prefix sum (but not the final answer)
-      const prefixIndex = prefixSums.indexOf(answerNum)
-      if (prefixIndex >= 0 && prefixIndex < prefixSums.length - 1) {
-        // Answer matches a prefix sum - enter help mode instead of submitting
-        const newConfirmedCount = prefixIndex + 1
-        if (newConfirmedCount < attemptData.problem.terms.length) {
-          enterHelpMode(newConfirmedCount)
-          return
-        }
+      const prefixMatch = findMatchedPrefixIndex(attemptData.userAnswer, prefixSums)
+      // helpTermIndex >= 0 means this is an intermediate prefix sum, not the final answer
+      if (prefixMatch.matchedIndex >= 0 && prefixMatch.helpTermIndex >= 0) {
+        enterHelpMode(prefixMatch.helpTermIndex)
+        return
       }
     }
 
