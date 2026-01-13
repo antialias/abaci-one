@@ -456,7 +456,7 @@ export function ScoreboardTab({ studentId, classroomId, isDark }: ScoreboardTabP
       <section
         data-section="personal-bests"
         className={css({
-          backgroundColor: isDark ? 'gray.850' : 'gray.50',
+          backgroundColor: isDark ? 'gray.800' : 'gray.50',
           borderRadius: '16px',
           padding: '1.25rem',
         })}
@@ -494,7 +494,7 @@ export function ScoreboardTab({ studentId, classroomId, isDark }: ScoreboardTabP
       <section
         data-section="recent-games"
         className={css({
-          backgroundColor: isDark ? 'gray.850' : 'gray.50',
+          backgroundColor: isDark ? 'gray.800' : 'gray.50',
           borderRadius: '16px',
           padding: '1.25rem',
         })}
@@ -533,7 +533,7 @@ export function ScoreboardTab({ studentId, classroomId, isDark }: ScoreboardTabP
         <section
           data-section="classroom-leaderboard"
           className={css({
-            backgroundColor: isDark ? 'gray.850' : 'gray.50',
+            backgroundColor: isDark ? 'gray.800' : 'gray.50',
             borderRadius: '16px',
             padding: '1.25rem',
           })}
@@ -584,7 +584,7 @@ export function ScoreboardTab({ studentId, classroomId, isDark }: ScoreboardTabP
         <section
           data-section="no-classroom"
           className={css({
-            backgroundColor: isDark ? 'gray.850' : 'gray.50',
+            backgroundColor: isDark ? 'gray.800' : 'gray.50',
             borderRadius: '16px',
             padding: '1.25rem',
             textAlign: 'center',
