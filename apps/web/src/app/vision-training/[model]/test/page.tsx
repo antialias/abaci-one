@@ -114,7 +114,11 @@ export default function TestModelPage() {
             fontSize: 'sm',
           })}
         >
-          <span className={css({ color: sessionInfo.isActive ? 'green.300' : 'yellow.300' })}>
+          <span
+            className={css({
+              color: sessionInfo.isActive ? 'green.300' : 'yellow.300',
+            })}
+          >
             {sessionInfo.isActive ? 'Testing Active Model:' : 'Testing Session:'}
           </span>
           <span className={css({ fontWeight: 'medium', color: 'white' })}>
@@ -202,10 +206,22 @@ export default function TestModelPage() {
                 color: 'gray.400',
               })}
             >
-              <h3 className={css({ fontWeight: 'medium', color: 'gray.300', mb: 2 })}>
+              <h3
+                className={css({
+                  fontWeight: 'medium',
+                  color: 'gray.300',
+                  mb: 2,
+                })}
+              >
                 How to use:
               </h3>
-              <ol className={css({ listStyle: 'decimal', pl: 4, '& li': { mb: 1 } })}>
+              <ol
+                className={css({
+                  listStyle: 'decimal',
+                  pl: 4,
+                  '& li': { mb: 1 },
+                })}
+              >
                 <li>Upload a training image PNG to test inference directly</li>
                 <li>Or point your camera at the abacus with ArUco markers visible</li>
                 <li>Wait for markers to be detected (green indicator)</li>
@@ -252,10 +268,22 @@ export default function TestModelPage() {
                 color: 'gray.400',
               })}
             >
-              <h3 className={css({ fontWeight: 'medium', color: 'gray.300', mb: 2 })}>
+              <h3
+                className={css({
+                  fontWeight: 'medium',
+                  color: 'gray.300',
+                  mb: 2,
+                })}
+              >
                 How to use:
               </h3>
-              <ol className={css({ listStyle: 'decimal', pl: 4, '& li': { mb: 1 } })}>
+              <ol
+                className={css({
+                  listStyle: 'decimal',
+                  pl: 4,
+                  '& li': { mb: 1 },
+                })}
+              >
                 <li>Point camera at the abacus (no markers needed)</li>
                 <li>Click "Start Testing" to run continuous inference</li>
                 <li>View detected corners overlaid in real-time</li>
@@ -1076,7 +1104,13 @@ function BoundaryImageTester({ preloadImageUrl }: BoundaryImageTesterProps) {
 
             {/* Corner coordinates */}
             <div className={css({ fontSize: 'sm' })}>
-              <div className={css({ color: 'gray.400', mb: 2, fontWeight: 'medium' })}>
+              <div
+                className={css({
+                  color: 'gray.400',
+                  mb: 2,
+                  fontWeight: 'medium',
+                })}
+              >
                 Corner Coordinates (normalized 0-1):
               </div>
               <div
@@ -1481,7 +1515,13 @@ function BoundaryCameraTester() {
 
           {/* Corner coordinates */}
           <div className={css({ fontSize: 'xs' })}>
-            <div className={css({ color: 'gray.400', mb: 1, fontWeight: 'medium' })}>
+            <div
+              className={css({
+                color: 'gray.400',
+                mb: 1,
+                fontWeight: 'medium',
+              })}
+            >
               Corners (normalized):
             </div>
             <div

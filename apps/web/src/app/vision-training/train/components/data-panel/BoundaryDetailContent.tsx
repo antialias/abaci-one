@@ -259,7 +259,13 @@ export function BoundaryDetailContent({ item, onDelete, isDeleting }: BoundaryDe
         >
           <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
             <span className={css({ fontSize: 'sm' })}>🎭</span>
-            <span className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'orange.300' })}>
+            <span
+              className={css({
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: 'orange.300',
+              })}
+            >
               Marker Masking Preview
             </span>
           </div>
@@ -366,7 +372,8 @@ export function BoundaryDetailContent({ item, onDelete, isDeleting }: BoundaryDe
 
             {maskedImageUrl && maskRegions.length > 0 && (
               <div className={css({ mt: 2, fontSize: 'xs', color: 'gray.400' })}>
-                {maskRegions.length} marker region{maskRegions.length !== 1 ? 's' : ''} masked
+                {maskRegions.length} marker region
+                {maskRegions.length !== 1 ? 's' : ''} masked
               </div>
             )}
 
@@ -397,7 +404,13 @@ export function BoundaryDetailContent({ item, onDelete, isDeleting }: BoundaryDe
         >
           <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
             <span className={css({ fontSize: 'sm' })}>🔬</span>
-            <span className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'blue.300' })}>
+            <span
+              className={css({
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: 'blue.300',
+              })}
+            >
               Preprocessing Pipeline
             </span>
           </div>
@@ -451,7 +464,13 @@ export function BoundaryDetailContent({ item, onDelete, isDeleting }: BoundaryDe
                 <span>❌ {pipelineError}</span>
               </div>
             ) : pipelinePreview ? (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 3 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 3,
+                })}
+              >
                 {pipelinePreview.steps.map((step) => (
                   <div
                     key={step.step}
@@ -463,7 +482,14 @@ export function BoundaryDetailContent({ item, onDelete, isDeleting }: BoundaryDe
                       borderColor: 'gray.700',
                     })}
                   >
-                    <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 2 })}>
+                    <div
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        mb: 2,
+                      })}
+                    >
                       <span
                         className={css({
                           display: 'flex',
@@ -481,13 +507,23 @@ export function BoundaryDetailContent({ item, onDelete, isDeleting }: BoundaryDe
                         {step.step}
                       </span>
                       <span
-                        className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.100' })}
+                        className={css({
+                          fontSize: 'sm',
+                          fontWeight: 'medium',
+                          color: 'gray.100',
+                        })}
                       >
                         {step.title}
                       </span>
                     </div>
 
-                    <div className={css({ fontSize: 'xs', color: 'gray.400', mb: 2 })}>
+                    <div
+                      className={css({
+                        fontSize: 'xs',
+                        color: 'gray.400',
+                        mb: 2,
+                      })}
+                    >
                       {step.description}
                     </div>
 
@@ -574,7 +610,13 @@ export function BoundaryDetailContent({ item, onDelete, isDeleting }: BoundaryDe
                     )}
 
                     {step.error && (
-                      <div className={css({ mt: 2, fontSize: 'xs', color: 'red.400' })}>
+                      <div
+                        className={css({
+                          mt: 2,
+                          fontSize: 'xs',
+                          color: 'red.400',
+                        })}
+                      >
                         Error: {step.error}
                       </div>
                     )}
@@ -623,7 +665,13 @@ export function BoundaryDetailContent({ item, onDelete, isDeleting }: BoundaryDe
 
       <div className={css({ fontSize: 'sm' })}>
         <div className={css({ color: 'gray.400', mb: 1 })}>Device</div>
-        <div className={css({ color: 'gray.200', fontFamily: 'mono', fontSize: 'xs' })}>
+        <div
+          className={css({
+            color: 'gray.200',
+            fontFamily: 'mono',
+            fontSize: 'xs',
+          })}
+        >
           {item.deviceId}
         </div>
       </div>

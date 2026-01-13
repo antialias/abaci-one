@@ -10,6 +10,7 @@ Research notes on improving quad/document detection, particularly for handling f
 ## The Core Problem
 
 Standard Canny edge detection fails for document scanning because:
+
 > "The sections of text inside the document are strongly amplified, whereas the document edges—what we're interested in—show up very weakly."
 > — Dropbox Engineering
 
@@ -20,6 +21,7 @@ Traditional CV approaches (Canny + Hough) can only work with **visible edges**. 
 ## Industry Approaches
 
 ### Dropbox (2016)
+
 **Source**: [Fast and Accurate Document Detection for Scanning](https://dropbox.tech/machine-learning/fast-and-accurate-document-detection-for-scanning)
 
 1. **Custom ML-based edge detector** - trained to suppress text edges while keeping document boundaries (details proprietary)
@@ -28,17 +30,21 @@ Traditional CV approaches (Canny + Hough) can only work with **visible edges**. 
 4. **Result**: 8-10 FPS, 60% fewer manual corrections vs Apple's SDK
 
 Follow-up: [Improving the Responsiveness of the Document Detector](https://dropbox.tech/machine-learning/improving-the-responsiveness-of-the-document-detector)
+
 - Motion-based quad tracking between frames
 - Hybrid: full detection every ~100ms + fast tracking on intermediate frames
 
 ### Genius Scan (2024)
+
 **Source**: [Document Detection - How Deep Learning Has Changed The Game](https://blog.thegrizzlylabs.com/2024/10/document-detection.html)
 
 **Key insight**: Combining DL + traditional CV raised accuracy from 51% → 75% → 85%:
+
 - DL provides **robustness** (handles occlusion, complex backgrounds)
 - Traditional CV provides **precision** (sub-pixel corner refinement)
 
 Architecture:
+
 - MobileNet V2 backbone
 - Input resolution: 96×96 pixels
 - Training dataset: 1M+ images
@@ -46,14 +52,17 @@ Architecture:
 - Performance: 25+ FPS on mobile
 
 ### Scanner Pro (Readdle)
+
 **Source**: [Inside ScannerPro: the Tech behind perfect scans](https://readdle.com/blog/scanner-pro-border-detection)
 
 Evolution:
+
 1. Traditional CV (Canny + Hough) - baseline
 2. Semantic segmentation - too slow (5 FPS on iPhone X)
 3. **Keypoint detection** - direct corner prediction, 30+ FPS
 
 Key techniques:
+
 - MobileNet-based keypoint detector
 - Kalman filter + IMU data for temporal smoothing
 - Two-stage: lightweight detector for streaming, heavier model on capture
@@ -61,11 +70,13 @@ Key techniques:
 ### Academic Approaches
 
 **Multi-document detection via corner localization**:
+
 - Joint Corner Detector (JCD) with attention mechanism
 - Coarse-to-fine: rough prediction → corner-specific refinement
 - Datasets: ICDAR 2015 SmartDoc, SEECS-NUSF, MIDV-500
 
 **Semantic segmentation** (LearnOpenCV tutorial):
+
 - DeepLabv3 with MobileNetV3-Large backbone
 - Binary segmentation (document vs background)
 - Trained on synthetic data with augmentation
@@ -98,7 +109,7 @@ Input Image (downscaled to 96-256px)
 └───────────────────┘
 ```
 
-**Why this works for occlusion**: The network learns document shape priors and can predict where corners *should* be even when they're not visible.
+**Why this works for occlusion**: The network learns document shape priors and can predict where corners _should_ be even when they're not visible.
 
 ---
 
@@ -107,6 +118,7 @@ Input Image (downscaled to 96-256px)
 ### Document-Specific
 
 **[ordaktaktak/Document-Scanner](https://huggingface.co/ordaktaktak/Document-Scanner)**
+
 - Architecture: U-Net semantic segmentation
 - Input: Grayscale 256×256
 - Output: Binary mask → extract corners via contour detection
@@ -116,6 +128,7 @@ Input Image (downscaled to 96-256px)
 ### Background Removal (Could Adapt)
 
 **[briaai/RMBG-2.0](https://huggingface.co/briaai/RMBG-2.0)**
+
 - Architecture: BiRefNet (0.2B params) - too large for real-time
 - Input: 1024×1024 RGB
 - Output: Alpha matte
@@ -123,21 +136,23 @@ Input Image (downscaled to 96-256px)
 - License: CC BY-NC 4.0 (non-commercial)
 
 **[briaai/RMBG-1.4](https://huggingface.co/briaai/RMBG-1.4)**
+
 - Smaller version (44.1M params)
 - Same approach, might be more practical
 
 ### General Segmentation (Transformers.js Ready)
 
-| Model | Size | Use Case |
-|-------|------|----------|
-| `Xenova/deeplabv3-mobilevit-xx-small` | Tiny | Fast, low accuracy |
-| `Xenova/deeplabv3-mobilevit-small` | Small | Balanced |
-| `Xenova/deeplabv3-mobilevit-x-small` | X-Small | Middle ground |
-| `nnny/onnx-mobile-sam` | ~5MB | General segmentation with prompts |
+| Model                                 | Size    | Use Case                          |
+| ------------------------------------- | ------- | --------------------------------- |
+| `Xenova/deeplabv3-mobilevit-xx-small` | Tiny    | Fast, low accuracy                |
+| `Xenova/deeplabv3-mobilevit-small`    | Small   | Balanced                          |
+| `Xenova/deeplabv3-mobilevit-x-small`  | X-Small | Middle ground                     |
+| `nnny/onnx-mobile-sam`                | ~5MB    | General segmentation with prompts |
 
 ### SAM-based Approach
 
 Could use Segment Anything Model with point prompts:
+
 1. User taps roughly in document area
 2. SAM segments the document
 3. Extract corners from segmentation mask
@@ -167,9 +182,9 @@ Cons: Still outputs mask, need CV for corners
 ### Option 2: SAM with Point Prompts
 
 ```typescript
-import { pipeline } from '@huggingface/transformers';
+import { pipeline } from "@huggingface/transformers";
 
-const segmenter = await pipeline('image-segmentation', 'nnny/onnx-mobile-sam');
+const segmenter = await pipeline("image-segmentation", "nnny/onnx-mobile-sam");
 const result = await segmenter(image, { points: [[centerX, centerY]] });
 // Extract corners from mask
 ```
@@ -202,12 +217,12 @@ This is what Dropbox, Genius Scan, and Scanner Pro actually do.
 
 ## Datasets
 
-| Dataset | Size | Notes |
-|---------|------|-------|
-| SmartDoc (ICDAR 2015) | 4,260 images | Competition dataset, labeled corners |
-| MIDV-500 | 500 video clips | ID documents, challenging conditions |
-| DocVQA | 50K+ images | Document images (need corner labels) |
-| Synthetic | Unlimited | Generate documents on backgrounds |
+| Dataset               | Size            | Notes                                |
+| --------------------- | --------------- | ------------------------------------ |
+| SmartDoc (ICDAR 2015) | 4,260 images    | Competition dataset, labeled corners |
+| MIDV-500              | 500 video clips | ID documents, challenging conditions |
+| DocVQA                | 50K+ images     | Document images (need corner labels) |
+| Synthetic             | Unlimited       | Generate documents on backgrounds    |
 
 ---
 

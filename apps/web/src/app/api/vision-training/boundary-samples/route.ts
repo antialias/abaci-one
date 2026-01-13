@@ -173,7 +173,9 @@ export async function GET(request: NextRequest): Promise<Response> {
       })
     }
 
-    const entries = fs.readdirSync(BOUNDARY_DETECTOR_DIR, { withFileTypes: true })
+    const entries = fs.readdirSync(BOUNDARY_DETECTOR_DIR, {
+      withFileTypes: true,
+    })
     const devices: { id: string; frameCount: number }[] = []
     const frames: BoundaryFrame[] = []
     let totalFrames = 0

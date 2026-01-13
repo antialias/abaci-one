@@ -10,7 +10,10 @@ import { checkWindowCv } from '@/lib/vision/opencv/checkCv'
  */
 export default function LoaderTestScriptPage() {
   const [added, setAdded] = useState(false)
-  const [cvStatus, setCvStatus] = useState<{ exists: boolean; hasImread: boolean } | null>(null)
+  const [cvStatus, setCvStatus] = useState<{
+    exists: boolean
+    hasImread: boolean
+  } | null>(null)
 
   const handleAddScript = () => {
     console.log('[LoaderTestScript] Add Script clicked')

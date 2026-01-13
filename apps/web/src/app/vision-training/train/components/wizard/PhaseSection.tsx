@@ -240,7 +240,12 @@ export function PhaseSection({
         <div className={css({ px: 4, py: 2 })}>
           {status === 'done' ? (
             <div
-              className={css({ display: 'flex', gap: 3, flexWrap: 'wrap', cursor: 'pointer' })}
+              className={css({
+                display: 'flex',
+                gap: 3,
+                flexWrap: 'wrap',
+                cursor: 'pointer',
+              })}
               onClick={() => onGoToCard(phaseIndex, phase.cards.length - 1)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {

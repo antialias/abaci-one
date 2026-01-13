@@ -54,7 +54,9 @@ export async function POST(request: NextRequest) {
     // Validate corners format
     if (!corners.topLeft || !corners.topRight || !corners.bottomLeft || !corners.bottomRight) {
       return NextResponse.json(
-        { error: 'Invalid corners format - need topLeft, topRight, bottomLeft, bottomRight' },
+        {
+          error: 'Invalid corners format - need topLeft, topRight, bottomLeft, bottomRight',
+        },
         { status: 400 }
       )
     }

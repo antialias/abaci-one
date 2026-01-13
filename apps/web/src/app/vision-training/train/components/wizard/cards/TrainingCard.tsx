@@ -194,7 +194,12 @@ export function TrainingCard({
         borderColor: '#4a5568',
         textStyle: { color: '#e2e8f0', fontSize: 11 },
         formatter: (
-          params: Array<{ seriesName: string; value: number; axisValue: number; color: string }>
+          params: Array<{
+            seriesName: string
+            value: number
+            axisValue: number
+            color: string
+          }>
         ) => {
           const epoch = params[0]?.axisValue
           const lines = params.map((p) => {
@@ -304,7 +309,14 @@ export function TrainingCard({
           {/* Inference samples visualization (boundary detector only) */}
           {currentEpoch.inference_samples && currentEpoch.inference_samples.length > 0 && (
             <div className={css({ mb: 3 })}>
-              <div className={css({ fontSize: 'xs', color: 'gray.600', mb: 1, textAlign: 'left' })}>
+              <div
+                className={css({
+                  fontSize: 'xs',
+                  color: 'gray.600',
+                  mb: 1,
+                  textAlign: 'left',
+                })}
+              >
                 <span className={css({ color: 'green.400' })}>●</span> Predicted{' '}
                 <span className={css({ color: 'purple.400' })}>●</span> Ground Truth
               </div>

@@ -236,7 +236,9 @@ describe('Training Data Deletion', () => {
     })
 
     it('should return not deleted if no files exist', async () => {
-      const enoentError = Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+      const enoentError = Object.assign(new Error('ENOENT'), {
+        code: 'ENOENT',
+      })
       vi.mocked(fs.unlink).mockRejectedValue(enoentError)
       vi.mocked(fs.mkdir).mockResolvedValue(undefined)
       vi.mocked(fs.appendFile).mockResolvedValue(undefined)

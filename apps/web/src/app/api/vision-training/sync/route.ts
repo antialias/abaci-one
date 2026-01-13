@@ -55,8 +55,25 @@ export async function POST(request: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      // Track if controller is closed to avoid "Controller is already closed" errors
+      // from async callbacks (rsync stdout) that fire after stream completion
+      let isClosed = false
+
       const send = (event: string, data: Record<string, unknown>) => {
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+        if (isClosed) return
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+        } catch {
+          // Controller may have been closed between check and enqueue
+          isClosed = true
+        }
+      }
+
+      const closeStream = () => {
+        if (!isClosed) {
+          isClosed = true
+          controller.close()
+        }
       }
 
       // Track timing for history
@@ -93,9 +110,7 @@ export async function POST(request: NextRequest) {
         try {
           // Boundary detector can have PNG or JPG images; column-classifier is PNG only
           const findPattern =
-            modelType === 'boundary-detector'
-              ? `-name '*.png' -o -name '*.jpg'`
-              : `-name '*.png'`
+            modelType === 'boundary-detector' ? `-name '*.png' -o -name '*.jpg'` : `-name '*.png'`
           const { stdout: remoteFilesOutput } = await execAsync(
             `ssh -o ConnectTimeout=5 -o BatchMode=yes ${REMOTE_USER}@${REMOTE_HOST} "find '${paths.remote}' \\( ${findPattern} \\) -printf '%P\\n' 2>/dev/null"`,
             { timeout: 30000 }
@@ -270,7 +285,7 @@ export async function POST(request: NextRequest) {
 
         send('error', { message: errorMessage })
       } finally {
-        controller.close()
+        closeStream()
       }
     },
   })
@@ -312,9 +327,7 @@ export async function GET(request: NextRequest) {
     // Get list of remote files (just filenames, not full paths)
     // Boundary detector can have PNG or JPG images; column-classifier is PNG only
     const findPattern =
-      modelType === 'boundary-detector'
-        ? `-name '*.png' -o -name '*.jpg'`
-        : `-name '*.png'`
+      modelType === 'boundary-detector' ? `-name '*.png' -o -name '*.jpg'` : `-name '*.png'`
     const { stdout: remoteFilesOutput } = await execAsync(
       `ssh ${REMOTE_USER}@${REMOTE_HOST} "find '${paths.remote}' \\( ${findPattern} \\) -printf '%P\\n' 2>/dev/null"`,
       { timeout: 15000 }
@@ -416,7 +429,9 @@ async function countLocalData(modelType: ModelType): Promise<{
     let deviceCount = 0
 
     try {
-      const entries = await fs.promises.readdir(localPath, { withFileTypes: true })
+      const entries = await fs.promises.readdir(localPath, {
+        withFileTypes: true,
+      })
       for (const entry of entries) {
         if (entry.isDirectory()) {
           deviceCount++
@@ -463,7 +478,9 @@ async function listLocalFiles(modelType: ModelType): Promise<Set<string>> {
   } else {
     // Boundary detector: iterate through device subdirectories
     try {
-      const entries = await fs.promises.readdir(localPath, { withFileTypes: true })
+      const entries = await fs.promises.readdir(localPath, {
+        withFileTypes: true,
+      })
       for (const entry of entries) {
         if (entry.isDirectory()) {
           const devicePath = path.join(localPath, entry.name)

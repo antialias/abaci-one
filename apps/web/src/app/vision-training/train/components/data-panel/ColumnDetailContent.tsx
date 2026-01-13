@@ -94,7 +94,14 @@ export function ColumnDetailContent({
           borderColor: 'gray.700',
         })}
       >
-        <div className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.300', mb: 2 })}>
+        <div
+          className={css({
+            fontSize: 'sm',
+            fontWeight: 'medium',
+            color: 'gray.300',
+            mb: 2,
+          })}
+        >
           Reclassify to different digit
         </div>
 
@@ -167,7 +174,13 @@ export function ColumnDetailContent({
       {/* Metadata */}
       <div className={css({ fontSize: 'sm' })}>
         <div className={css({ color: 'gray.400', mb: 1 })}>Filename</div>
-        <div className={css({ color: 'gray.200', fontFamily: 'mono', fontSize: 'xs' })}>
+        <div
+          className={css({
+            color: 'gray.200',
+            fontFamily: 'mono',
+            fontSize: 'xs',
+          })}
+        >
           {item.filename}
         </div>
       </div>
@@ -181,7 +194,13 @@ export function ColumnDetailContent({
 
       <div className={css({ fontSize: 'sm' })}>
         <div className={css({ color: 'gray.400', mb: 1 })}>Device</div>
-        <div className={css({ color: 'gray.200', fontFamily: 'mono', fontSize: 'xs' })}>
+        <div
+          className={css({
+            color: 'gray.200',
+            fontFamily: 'mono',
+            fontSize: 'xs',
+          })}
+        >
           {item.deviceId}
         </div>
       </div>

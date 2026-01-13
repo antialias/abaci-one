@@ -8,7 +8,10 @@ import { checkWindowCv } from '@/lib/vision/opencv/checkCv'
  * Test checking window.cv from separate file - no loading.
  */
 export default function LoaderTestCheckPage() {
-  const [result, setResult] = useState<{ exists: boolean; hasImread: boolean } | null>(null)
+  const [result, setResult] = useState<{
+    exists: boolean
+    hasImread: boolean
+  } | null>(null)
 
   const handleTest = () => {
     console.log('[LoaderTestCheck] Button clicked')

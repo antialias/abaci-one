@@ -333,8 +333,12 @@ function QuadTestContent() {
       houghMinLineLength,
       houghMaxLineGap,
       // Profile-specific area constraints
-      ...(profile?.minAreaRatio !== undefined && { minAreaRatio: profile.minAreaRatio }),
-      ...(profile?.maxAreaRatio !== undefined && { maxAreaRatio: profile.maxAreaRatio }),
+      ...(profile?.minAreaRatio !== undefined && {
+        minAreaRatio: profile.minAreaRatio,
+      }),
+      ...(profile?.maxAreaRatio !== undefined && {
+        maxAreaRatio: profile.maxAreaRatio,
+      }),
     }
   }, [
     activeProfile,
@@ -799,7 +803,14 @@ function QuadTestContent() {
             Camera Feed (Real-time Detection)
           </h2>
 
-          <div className={css({ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' })}>
+          <div
+            className={css({
+              mb: 3,
+              display: 'flex',
+              gap: 2,
+              flexWrap: 'wrap',
+            })}
+          >
             {!isCameraActive ? (
               <button
                 type="button"
@@ -903,7 +914,12 @@ function QuadTestContent() {
             {/* Profile Selector */}
             <div className={css({ mb: 3 })}>
               <div
-                className={css({ fontSize: 'xs', color: 'gray.300', mb: 2, fontWeight: 'medium' })}
+                className={css({
+                  fontSize: 'xs',
+                  color: 'gray.300',
+                  mb: 2,
+                  fontWeight: 'medium',
+                })}
               >
                 Quick Profiles
               </div>
@@ -942,7 +958,14 @@ function QuadTestContent() {
                 ))}
               </div>
               {activeProfile && DETECTION_PROFILES[activeProfile] && (
-                <div className={css({ fontSize: 'xs', color: 'gray.400', mt: 2, lineHeight: 1.3 })}>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    color: 'gray.400',
+                    mt: 2,
+                    lineHeight: 1.3,
+                  })}
+                >
                   <strong className={css({ color: 'gray.300' })}>
                     {DETECTION_PROFILES[activeProfile].name}:
                   </strong>{' '}
@@ -951,7 +974,14 @@ function QuadTestContent() {
               )}
             </div>
 
-            <div className={css({ fontSize: 'xs', color: 'gray.400', mb: 3, lineHeight: 1.4 })}>
+            <div
+              className={css({
+                fontSize: 'xs',
+                color: 'gray.400',
+                mb: 3,
+                lineHeight: 1.4,
+              })}
+            >
               Select a profile above for quick setup, or adjust individual settings below.
             </div>
 
@@ -988,7 +1018,14 @@ function QuadTestContent() {
                 <option value="adaptive">Adaptive - Best for uneven lighting</option>
                 <option value="multi">Multi - Tries everything (recommended)</option>
               </select>
-              <div className={css({ fontSize: 'xs', color: 'gray.500', mt: 1, lineHeight: 1.3 })}>
+              <div
+                className={css({
+                  fontSize: 'xs',
+                  color: 'gray.500',
+                  mt: 1,
+                  lineHeight: 1.3,
+                })}
+              >
                 {preprocessingStrategy === 'standard' &&
                   'Fast but needs good lighting and clear edges.'}
                 {preprocessingStrategy === 'enhanced' &&
@@ -1003,11 +1040,22 @@ function QuadTestContent() {
             {/* Toggle switches with descriptions */}
             <div className={css({ mb: 3 })}>
               <div
-                className={css({ fontSize: 'xs', color: 'gray.300', mb: 2, fontWeight: 'medium' })}
+                className={css({
+                  fontSize: 'xs',
+                  color: 'gray.300',
+                  mb: 2,
+                  fontWeight: 'medium',
+                })}
               >
                 Enhancement Options
               </div>
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 2 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                })}
+              >
                 <div>
                   <ToggleSwitch
                     label="Histogram Equalization"
@@ -1015,7 +1063,12 @@ function QuadTestContent() {
                     onChange={setEnableHistogramEqualization}
                   />
                   <div
-                    className={css({ fontSize: 'xs', color: 'gray.500', ml: '44px', mt: '2px' })}
+                    className={css({
+                      fontSize: 'xs',
+                      color: 'gray.500',
+                      ml: '44px',
+                      mt: '2px',
+                    })}
                   >
                     Spreads out brightness levels. Turn ON for low-contrast images.
                   </div>
@@ -1027,7 +1080,12 @@ function QuadTestContent() {
                     onChange={setEnableAdaptiveThreshold}
                   />
                   <div
-                    className={css({ fontSize: 'xs', color: 'gray.500', ml: '44px', mt: '2px' })}
+                    className={css({
+                      fontSize: 'xs',
+                      color: 'gray.500',
+                      ml: '44px',
+                      mt: '2px',
+                    })}
                   >
                     Detects edges locally. Turn ON when lighting is uneven across the document.
                   </div>
@@ -1039,7 +1097,12 @@ function QuadTestContent() {
                     onChange={setEnableMorphGradient}
                   />
                   <div
-                    className={css({ fontSize: 'xs', color: 'gray.500', ml: '44px', mt: '2px' })}
+                    className={css({
+                      fontSize: 'xs',
+                      color: 'gray.500',
+                      ml: '44px',
+                      mt: '2px',
+                    })}
                   >
                     Finds edges by dilation-erosion. Turn ON for thick or blurry edges.
                   </div>
@@ -1050,11 +1113,22 @@ function QuadTestContent() {
             {/* Sliders with descriptions */}
             <div className={css({ mb: 2 })}>
               <div
-                className={css({ fontSize: 'xs', color: 'gray.300', mb: 2, fontWeight: 'medium' })}
+                className={css({
+                  fontSize: 'xs',
+                  color: 'gray.300',
+                  mb: 2,
+                  fontWeight: 'medium',
+                })}
               >
                 Fine-Tuning
               </div>
-              <div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 })}>
+              <div
+                className={css({
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 3,
+                })}
+              >
                 <div>
                   <SliderControl
                     label="Adaptive Block Size"
@@ -1065,7 +1139,12 @@ function QuadTestContent() {
                     step={2}
                   />
                   <div
-                    className={css({ fontSize: 'xs', color: 'gray.500', mt: 1, lineHeight: 1.2 })}
+                    className={css({
+                      fontSize: 'xs',
+                      color: 'gray.500',
+                      mt: 1,
+                      lineHeight: 1.2,
+                    })}
                   >
                     Neighborhood size for local thresholding. Larger = smoother edges, smaller =
                     more detail.
@@ -1081,7 +1160,12 @@ function QuadTestContent() {
                     step={1}
                   />
                   <div
-                    className={css({ fontSize: 'xs', color: 'gray.500', mt: 1, lineHeight: 1.2 })}
+                    className={css({
+                      fontSize: 'xs',
+                      color: 'gray.500',
+                      mt: 1,
+                      lineHeight: 1.2,
+                    })}
                   >
                     Threshold offset. Higher = fewer edges detected, lower = more noise.
                   </div>
@@ -1096,7 +1180,12 @@ function QuadTestContent() {
                     step={5}
                   />
                   <div
-                    className={css({ fontSize: 'xs', color: 'gray.500', mt: 1, lineHeight: 1.2 })}
+                    className={css({
+                      fontSize: 'xs',
+                      color: 'gray.500',
+                      mt: 1,
+                      lineHeight: 1.2,
+                    })}
                   >
                     Weak edge threshold. Lower = detect faint edges (more noise).
                   </div>
@@ -1111,7 +1200,12 @@ function QuadTestContent() {
                     step={10}
                   />
                   <div
-                    className={css({ fontSize: 'xs', color: 'gray.500', mt: 1, lineHeight: 1.2 })}
+                    className={css({
+                      fontSize: 'xs',
+                      color: 'gray.500',
+                      mt: 1,
+                      lineHeight: 1.2,
+                    })}
                   >
                     Strong edge threshold. Lower = more edges, higher = only strong edges.
                   </div>
@@ -1122,7 +1216,12 @@ function QuadTestContent() {
             {/* Hough Line Detection */}
             <div className={css({ mb: 3 })}>
               <div
-                className={css({ fontSize: 'xs', color: 'gray.300', mb: 2, fontWeight: 'medium' })}
+                className={css({
+                  fontSize: 'xs',
+                  color: 'gray.300',
+                  mb: 2,
+                  fontWeight: 'medium',
+                })}
               >
                 Hough Line Detection (Finger Occlusion)
               </div>
@@ -1132,7 +1231,14 @@ function QuadTestContent() {
                   checked={enableHoughLines}
                   onChange={setEnableHoughLines}
                 />
-                <div className={css({ fontSize: 'xs', color: 'gray.500', ml: '44px', mt: '2px' })}>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    color: 'gray.500',
+                    ml: '44px',
+                    mt: '2px',
+                  })}
+                >
                   Detects straight lines and infers corners from intersections. Fallback when
                   contours fail.
                 </div>
@@ -1156,7 +1262,12 @@ function QuadTestContent() {
                       step={5}
                     />
                     <div
-                      className={css({ fontSize: 'xs', color: 'gray.500', mt: 1, lineHeight: 1.2 })}
+                      className={css({
+                        fontSize: 'xs',
+                        color: 'gray.500',
+                        mt: 1,
+                        lineHeight: 1.2,
+                      })}
                     >
                       Min votes. Lower = more lines.
                     </div>
@@ -1171,7 +1282,12 @@ function QuadTestContent() {
                       step={10}
                     />
                     <div
-                      className={css({ fontSize: 'xs', color: 'gray.500', mt: 1, lineHeight: 1.2 })}
+                      className={css({
+                        fontSize: 'xs',
+                        color: 'gray.500',
+                        mt: 1,
+                        lineHeight: 1.2,
+                      })}
                     >
                       Min line segment length.
                     </div>
@@ -1186,7 +1302,12 @@ function QuadTestContent() {
                       step={5}
                     />
                     <div
-                      className={css({ fontSize: 'xs', color: 'gray.500', mt: 1, lineHeight: 1.2 })}
+                      className={css({
+                        fontSize: 'xs',
+                        color: 'gray.500',
+                        mt: 1,
+                        lineHeight: 1.2,
+                      })}
                     >
                       Max gap to merge segments.
                     </div>
@@ -1207,7 +1328,14 @@ function QuadTestContent() {
               })}
             >
               <strong className={css({ color: 'gray.300' })}>Tips:</strong>
-              <ul className={css({ mt: 1, pl: 3, listStyleType: 'disc', lineHeight: 1.4 })}>
+              <ul
+                className={css({
+                  mt: 1,
+                  pl: 3,
+                  listStyleType: 'disc',
+                  lineHeight: 1.4,
+                })}
+              >
                 <li>Document not detected? Lower Canny thresholds or enable Histogram Eq.</li>
                 <li>Too many false edges? Raise Canny thresholds or increase Adaptive C.</li>
                 <li>
@@ -1371,7 +1499,13 @@ function QuadTestContent() {
 
           {staticDetectionResult && (
             <div
-              className={css({ mt: 3, p: 2, bg: 'gray.700', borderRadius: 'md', fontSize: 'sm' })}
+              className={css({
+                mt: 3,
+                p: 2,
+                bg: 'gray.700',
+                borderRadius: 'md',
+                fontSize: 'sm',
+              })}
             >
               <div>
                 Detection:{' '}
@@ -1613,12 +1747,30 @@ function drawDebugOverlay(
 
   // Color map for each status
   const statusColors: Record<DebugPolygon['status'], { stroke: string; fill: string }> = {
-    accepted: { stroke: 'rgba(0, 255, 100, 0.9)', fill: 'rgba(0, 255, 100, 0.2)' },
-    too_small: { stroke: 'rgba(100, 100, 100, 0.5)', fill: 'rgba(100, 100, 100, 0.1)' },
-    too_large: { stroke: 'rgba(255, 50, 50, 0.7)', fill: 'rgba(255, 50, 50, 0.1)' },
-    too_few_vertices: { stroke: 'rgba(150, 150, 150, 0.5)', fill: 'rgba(150, 150, 150, 0.1)' },
-    too_many_vertices: { stroke: 'rgba(255, 150, 0, 0.7)', fill: 'rgba(255, 150, 0, 0.1)' },
-    bad_aspect_ratio: { stroke: 'rgba(255, 220, 0, 0.8)', fill: 'rgba(255, 220, 0, 0.1)' },
+    accepted: {
+      stroke: 'rgba(0, 255, 100, 0.9)',
+      fill: 'rgba(0, 255, 100, 0.2)',
+    },
+    too_small: {
+      stroke: 'rgba(100, 100, 100, 0.5)',
+      fill: 'rgba(100, 100, 100, 0.1)',
+    },
+    too_large: {
+      stroke: 'rgba(255, 50, 50, 0.7)',
+      fill: 'rgba(255, 50, 50, 0.1)',
+    },
+    too_few_vertices: {
+      stroke: 'rgba(150, 150, 150, 0.5)',
+      fill: 'rgba(150, 150, 150, 0.1)',
+    },
+    too_many_vertices: {
+      stroke: 'rgba(255, 150, 0, 0.7)',
+      fill: 'rgba(255, 150, 0, 0.1)',
+    },
+    bad_aspect_ratio: {
+      stroke: 'rgba(255, 220, 0, 0.8)',
+      fill: 'rgba(255, 220, 0, 0.1)',
+    },
     corner_extraction_failed: {
       stroke: 'rgba(255, 100, 200, 0.7)',
       fill: 'rgba(255, 100, 200, 0.1)',
@@ -1705,8 +1857,14 @@ function drawDebugOverlay(
 
   const legendItems: Array<{ color: string; label: string }> = [
     { color: statusColors['accepted'].stroke, label: 'Accepted (quad found)' },
-    { color: statusColors['bad_aspect_ratio'].stroke, label: 'Bad aspect ratio' },
-    { color: statusColors['too_many_vertices'].stroke, label: 'Too many vertices (>8)' },
+    {
+      color: statusColors['bad_aspect_ratio'].stroke,
+      label: 'Bad aspect ratio',
+    },
+    {
+      color: statusColors['too_many_vertices'].stroke,
+      label: 'Too many vertices (>8)',
+    },
     { color: statusColors['too_large'].stroke, label: 'Too large (>95%)' },
     { color: 'rgba(0, 200, 255, 0.8)', label: 'Convex hull (dashed)' },
   ]
@@ -1814,7 +1972,13 @@ function SliderControl({
 }) {
   return (
     <div className={css({ fontSize: 'xs' })}>
-      <div className={css({ display: 'flex', justifyContent: 'space-between', mb: 1 })}>
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-between',
+          mb: 1,
+        })}
+      >
         <span className={css({ color: 'gray.400' })}>{label}</span>
         <span className={css({ color: 'gray.200', fontFamily: 'mono' })}>{value}</span>
       </div>

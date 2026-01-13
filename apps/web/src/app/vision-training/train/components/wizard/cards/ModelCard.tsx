@@ -130,7 +130,11 @@ function ModelOption({
                 bg: qualityConfig.color,
               })}
             />
-            <span style={{ color: `var(--colors-${qualityConfig.color.replace('.', '-')})` }}>
+            <span
+              style={{
+                color: `var(--colors-${qualityConfig.color.replace('.', '-')})`,
+              }}
+            >
               {qualityConfig.label}
             </span>
           </>

@@ -65,10 +65,20 @@ export async function deleteColumnClassifierSample(
 ): Promise<DeletionResult> {
   // Validate inputs
   if (!Number.isInteger(digit) || digit < 0 || digit > 9) {
-    return { success: false, deleted: false, tombstoneRecorded: false, error: 'Invalid digit' }
+    return {
+      success: false,
+      deleted: false,
+      tombstoneRecorded: false,
+      error: 'Invalid digit',
+    }
   }
   if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-    return { success: false, deleted: false, tombstoneRecorded: false, error: 'Invalid filename' }
+    return {
+      success: false,
+      deleted: false,
+      tombstoneRecorded: false,
+      error: 'Invalid filename',
+    }
   }
   if (!filename.endsWith('.png')) {
     return {
@@ -129,10 +139,20 @@ export async function deleteBoundaryDetectorSample(
 ): Promise<DeletionResult> {
   // Validate inputs
   if (!deviceId || deviceId.includes('..') || deviceId.includes('/') || deviceId.includes('\\')) {
-    return { success: false, deleted: false, tombstoneRecorded: false, error: 'Invalid deviceId' }
+    return {
+      success: false,
+      deleted: false,
+      tombstoneRecorded: false,
+      error: 'Invalid deviceId',
+    }
   }
   if (!baseName || baseName.includes('..') || baseName.includes('/') || baseName.includes('\\')) {
-    return { success: false, deleted: false, tombstoneRecorded: false, error: 'Invalid baseName' }
+    return {
+      success: false,
+      deleted: false,
+      tombstoneRecorded: false,
+      error: 'Invalid baseName',
+    }
   }
 
   const deviceDir = path.join(BOUNDARY_DETECTOR_DIR, deviceId)

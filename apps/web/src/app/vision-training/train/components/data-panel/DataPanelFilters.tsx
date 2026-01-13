@@ -173,9 +173,22 @@ export function DataPanelFilters<T extends DataPanelItem>({
           })}
         >
           {/* Quick filters row */}
-          <div className={css({ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 3,
+              mb: 4,
+            })}
+          >
             {/* Capture type toggle */}
-            <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+              })}
+            >
               <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Capture Type</label>
               <div
                 className={css({
@@ -220,7 +233,13 @@ export function DataPanelFilters<T extends DataPanelItem>({
 
             {/* Device dropdown */}
             {devices.length > 1 && (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                })}
+              >
                 <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Device</label>
                 <select
                   value={filters.deviceId}
@@ -250,7 +269,13 @@ export function DataPanelFilters<T extends DataPanelItem>({
 
             {/* Session dropdown */}
             {sessions.length > 0 && (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                })}
+              >
                 <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Session</label>
                 <select
                   value={filters.sessionId}
@@ -280,7 +305,13 @@ export function DataPanelFilters<T extends DataPanelItem>({
 
             {/* Player dropdown */}
             {players.length > 0 && (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                })}
+              >
                 <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Player</label>
                 <select
                   value={filters.playerId}
@@ -333,8 +364,21 @@ export function DataPanelFilters<T extends DataPanelItem>({
           </div>
 
           {/* Time range filter */}
-          <div className={css({ borderTop: '1px solid', borderColor: 'gray.700', pt: 4 })}>
-            <div className={css({ display: 'flex', alignItems: 'center', gap: 3, mb: 3 })}>
+          <div
+            className={css({
+              borderTop: '1px solid',
+              borderColor: 'gray.700',
+              pt: 4,
+            })}
+          >
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: 3,
+                mb: 3,
+              })}
+            >
               <label className={css({ fontSize: 'sm', color: 'gray.400' })}>Time Range</label>
               <div
                 className={css({

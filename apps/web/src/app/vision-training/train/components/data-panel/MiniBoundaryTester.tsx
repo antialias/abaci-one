@@ -119,7 +119,13 @@ export function MiniBoundaryTester({ imagePath, groundTruthCorners }: MiniBounda
       >
         <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
           <span className={css({ fontSize: 'sm' })}>🧪</span>
-          <span className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'purple.300' })}>
+          <span
+            className={css({
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              color: 'purple.300',
+            })}
+          >
             Model Tester
           </span>
         </div>
@@ -305,7 +311,14 @@ export function MiniBoundaryTester({ imagePath, groundTruthCorners }: MiniBounda
             gap: 2,
           })}
         >
-          <div className={css({ p: 2, bg: 'gray.800', borderRadius: 'md', textAlign: 'center' })}>
+          <div
+            className={css({
+              p: 2,
+              bg: 'gray.800',
+              borderRadius: 'md',
+              textAlign: 'center',
+            })}
+          >
             <div className={css({ fontSize: 'xs', color: 'gray.400', mb: 1 })}>Confidence</div>
             <div
               className={css({
@@ -318,7 +331,14 @@ export function MiniBoundaryTester({ imagePath, groundTruthCorners }: MiniBounda
               {(result.confidence * 100).toFixed(1)}%
             </div>
           </div>
-          <div className={css({ p: 2, bg: 'gray.800', borderRadius: 'md', textAlign: 'center' })}>
+          <div
+            className={css({
+              p: 2,
+              bg: 'gray.800',
+              borderRadius: 'md',
+              textAlign: 'center',
+            })}
+          >
             <div className={css({ fontSize: 'xs', color: 'gray.400', mb: 1 })}>Avg Error</div>
             <div
               className={css({

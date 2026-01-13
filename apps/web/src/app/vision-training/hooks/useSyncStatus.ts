@@ -72,7 +72,10 @@ export function useSyncStatus(modelType: ModelType): UseSyncStatusResult {
   const [isLoading, setIsLoading] = useState(true)
 
   // Progress state
-  const [progress, setProgress] = useState<SyncProgress>({ phase: 'idle', message: '' })
+  const [progress, setProgress] = useState<SyncProgress>({
+    phase: 'idle',
+    message: '',
+  })
 
   // History state
   const [history, setHistory] = useState<SyncHistoryEntry[]>([])
@@ -135,7 +138,10 @@ export function useSyncStatus(modelType: ModelType): UseSyncStatusResult {
 
   // Start sync
   const startSync = useCallback(async () => {
-    setProgress({ phase: 'connecting', message: 'Connecting to production...' })
+    setProgress({
+      phase: 'connecting',
+      message: 'Connecting to production...',
+    })
 
     try {
       const response = await fetch(`/api/vision-training/sync?modelType=${modelType}`, {

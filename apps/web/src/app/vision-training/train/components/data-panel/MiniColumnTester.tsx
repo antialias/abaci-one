@@ -119,7 +119,13 @@ export function MiniColumnTester({ imagePath, groundTruthDigit }: MiniColumnTest
       >
         <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
           <span className={css({ fontSize: 'sm' })}>🧪</span>
-          <span className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'blue.300' })}>
+          <span
+            className={css({
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              color: 'blue.300',
+            })}
+          >
             Model Tester
           </span>
         </div>
@@ -307,7 +313,14 @@ export function MiniColumnTester({ imagePath, groundTruthDigit }: MiniColumnTest
               </span>
             </div>
           </div>
-          <div className={css({ mt: 2, fontSize: 'xs', color: 'gray.500', textAlign: 'center' })}>
+          <div
+            className={css({
+              mt: 2,
+              fontSize: 'xs',
+              color: 'gray.500',
+              textAlign: 'center',
+            })}
+          >
             {result.heaven} × 5 + {result.earth} = {result.digit}
           </div>
         </div>

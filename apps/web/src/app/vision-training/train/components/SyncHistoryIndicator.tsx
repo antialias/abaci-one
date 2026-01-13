@@ -228,7 +228,8 @@ function SyncHistoryRow({ entry }: { entry: SyncHistoryEntry }) {
           truncateError(entry.error || 'Unknown error')
         ) : (
           <>
-            {entry.filesTransferred} file{entry.filesTransferred !== 1 ? 's' : ''}
+            {entry.filesTransferred} file
+            {entry.filesTransferred !== 1 ? 's' : ''}
             {entry.durationMs !== null && (
               <span className={css({ color: 'gray.500', ml: 1 })}>
                 · {formatDuration(entry.durationMs)}

@@ -173,7 +173,9 @@ function getBoundaryDetectorSamples(): Response {
   // Scan the boundary frames directory
   // Expected structure: boundary-frames/{device-id}/{frame-timestamp}.png
   // Each frame should have a corresponding .json file with corner annotations
-  const entries = fs.readdirSync(BOUNDARY_DETECTOR_DIR, { withFileTypes: true })
+  const entries = fs.readdirSync(BOUNDARY_DETECTOR_DIR, {
+    withFileTypes: true,
+  })
 
   for (const entry of entries) {
     if (entry.isDirectory()) {

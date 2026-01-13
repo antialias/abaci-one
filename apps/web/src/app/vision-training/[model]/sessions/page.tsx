@@ -288,7 +288,13 @@ export default function SessionsPage() {
                   </div>
                   <div>
                     <div className={css({ fontSize: 'xs', color: 'gray.500' })}>Epochs</div>
-                    <div className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'gray.300' })}>
+                    <div
+                      className={css({
+                        fontSize: 'lg',
+                        fontWeight: 'bold',
+                        color: 'gray.300',
+                      })}
+                    >
                       {session.epochsTrained}
                     </div>
                   </div>

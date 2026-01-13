@@ -248,7 +248,13 @@ export function NavSyncIndicator({ sync }: NavSyncIndicatorProps) {
             )}
 
             {state === 'syncing' && (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 2 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                })}
+              >
                 <div className={css({ color: 'blue.300', fontSize: 'sm' })}>
                   <span
                     className={css({
@@ -277,7 +283,13 @@ export function NavSyncIndicator({ sync }: NavSyncIndicatorProps) {
             )}
 
             {state === 'error' && (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 2 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                })}
+              >
                 <div className={css({ color: 'orange.400', fontSize: 'sm' })}>
                   <span className={css({ mr: 2 })}>⚠️</span>
                   {sync.progress.message || 'Sync failed'}
@@ -304,7 +316,13 @@ export function NavSyncIndicator({ sync }: NavSyncIndicatorProps) {
             )}
 
             {state === 'new-available' && (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 3 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 3,
+                })}
+              >
                 <div className={css({ color: 'blue.300', fontSize: 'sm' })}>
                   <span className={css({ mr: 2 })}>☁️</span>
                   {sync.newCount} new {sync.newCount === 1 ? 'item' : 'items'} available
@@ -332,7 +350,13 @@ export function NavSyncIndicator({ sync }: NavSyncIndicatorProps) {
             )}
 
             {state === 'in-sync' && (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 2 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                })}
+              >
                 <div className={css({ color: 'green.400', fontSize: 'sm' })}>
                   <span className={css({ mr: 2 })}>✓</span>
                   All synced
@@ -437,7 +461,8 @@ function SyncHistoryRow({ entry }: { entry: SyncHistoryEntry }) {
           truncateError(entry.error || 'Unknown error')
         ) : (
           <>
-            {entry.filesTransferred} file{entry.filesTransferred !== 1 ? 's' : ''}
+            {entry.filesTransferred} file
+            {entry.filesTransferred !== 1 ? 's' : ''}
             {entry.durationMs !== null && (
               <span className={css({ color: 'gray.500', ml: 1 })}>
                 · {formatDuration(entry.durationMs)}

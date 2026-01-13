@@ -249,7 +249,13 @@ export function BoundaryDataCapture({ onSamplesCollected }: BoundaryDataCaptureP
             })}
           >
             {isAutoCapturing ? (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                })}
+              >
                 {/* Live marker status */}
                 <div
                   className={css({

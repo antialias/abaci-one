@@ -875,7 +875,10 @@ function preprocessImage(cv: CV, gray: CVMat, edges: CVMat, cfg: QuadDetectorCon
  * @param config - Optional configuration overrides
  */
 export function createQuadDetector(cv: CV, config: Partial<QuadDetectorConfig> = {}) {
-  const cfg: QuadDetectorConfig = { ...DEFAULT_QUAD_DETECTOR_CONFIG, ...config }
+  const cfg: QuadDetectorConfig = {
+    ...DEFAULT_QUAD_DETECTOR_CONFIG,
+    ...config,
+  }
 
   // Validate and sanitize parameters to prevent OpenCV errors
   // Blur size must be odd and >= 1

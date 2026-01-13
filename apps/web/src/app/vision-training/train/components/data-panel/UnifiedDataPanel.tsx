@@ -78,7 +78,10 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
 
   // Sync state
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
-  const [syncProgress, setSyncProgress] = useState<SyncProgress>({ phase: 'idle', message: '' })
+  const [syncProgress, setSyncProgress] = useState<SyncProgress>({
+    phase: 'idle',
+    message: '',
+  })
   const [syncHistoryRefreshTrigger, setSyncHistoryRefreshTrigger] = useState(0)
 
   // Live capture tracking (boundary only)
@@ -642,7 +645,13 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
               animation: 'pulse 1.5s ease-in-out infinite',
             })}
           />
-          <span className={css({ color: 'green.300', fontWeight: 'medium', fontSize: 'sm' })}>
+          <span
+            className={css({
+              color: 'green.300',
+              fontWeight: 'medium',
+              fontSize: 'sm',
+            })}
+          >
             Live Capture Active
           </span>
           <span className={css({ color: 'green.400', fontSize: 'sm' })}>
@@ -737,7 +746,12 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
               })}
             >
               <div className={css({ textAlign: 'center' })}>
-                <div className={css({ fontSize: '2xl', animation: 'spin 1s linear infinite' })}>
+                <div
+                  className={css({
+                    fontSize: '2xl',
+                    animation: 'spin 1s linear infinite',
+                  })}
+                >
                   ⏳
                 </div>
                 <div className={css({ color: 'gray.400', mt: 2 })}>Loading {itemLabel}...</div>
@@ -895,7 +909,9 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
               lg: 'flex',
             },
             flexDirection: 'column',
-            width: { lg: selectedIds.size > 1 || rightPanelMode === 'detail' ? 'auto' : '400px' },
+            width: {
+              lg: selectedIds.size > 1 || rightPanelMode === 'detail' ? 'auto' : '400px',
+            },
             maxWidth: { lg: '50%' },
             flexShrink: 0,
             minHeight: 0,
@@ -923,9 +939,21 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
                   justifyContent: 'space-between',
                 })}
               >
-                <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                  })}
+                >
                   <span className={css({ fontSize: 'xl' })}>📦</span>
-                  <span className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'gray.100' })}>
+                  <span
+                    className={css({
+                      fontSize: 'lg',
+                      fontWeight: 'bold',
+                      color: 'gray.100',
+                    })}
+                  >
                     {selectedIds.size} {itemLabel} selected
                   </span>
                 </div>
@@ -997,7 +1025,13 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
 
                 {/* Bulk reclassify (column-classifier only) */}
                 {modelType === 'column-classifier' && (
-                  <div className={css({ display: 'flex', flexDirection: 'column', gap: 2 })}>
+                  <div
+                    className={css({
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                    })}
+                  >
                     <div className={css({ fontSize: 'sm', color: 'gray.400' })}>Move to digit:</div>
                     <div
                       className={css({
@@ -1032,7 +1066,11 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
                             _hover:
                               d === selectedDigit || bulkActionInProgress
                                 ? {}
-                                : { bg: 'blue.600', borderColor: 'blue.500', color: 'white' },
+                                : {
+                                    bg: 'blue.600',
+                                    borderColor: 'blue.500',
+                                    color: 'white',
+                                  },
                           })}
                         >
                           {d}

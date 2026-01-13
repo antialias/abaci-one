@@ -951,7 +951,10 @@ export class QuadTracker {
     return quad.frameCount >= LOCKED_FRAME_COUNT && quad.stabilityScore > 0.5
   }
 
-  private getQuadStyle(quad: TrackedQuad): { color: string; lineWidth: number } {
+  private getQuadStyle(quad: TrackedQuad): {
+    color: string
+    lineWidth: number
+  } {
     const isStable = quad.frameCount >= MIN_FRAMES_FOR_STABLE
     const isLocked = this.isQuadLocked(quad)
 

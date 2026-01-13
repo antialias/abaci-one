@@ -216,16 +216,37 @@ function TrainingGraph({ epochHistory, modelType }: TrainingGraphProps) {
         })}
       >
         <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
-          <div className={css({ width: 3, height: 3, borderRadius: 'full', bg: '#60A5FA' })} />
+          <div
+            className={css({
+              width: 3,
+              height: 3,
+              borderRadius: 'full',
+              bg: '#60A5FA',
+            })}
+          />
           <span className={css({ color: 'gray.400' })}>Train Loss</span>
         </div>
         <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
-          <div className={css({ width: 3, height: 3, borderRadius: 'full', bg: '#F87171' })} />
+          <div
+            className={css({
+              width: 3,
+              height: 3,
+              borderRadius: 'full',
+              bg: '#F87171',
+            })}
+          />
           <span className={css({ color: 'gray.400' })}>Val Loss</span>
         </div>
         {hasPixelError && (
           <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
-            <div className={css({ width: 3, height: 3, borderRadius: 'full', bg: '#FBBF24' })} />
+            <div
+              className={css({
+                width: 3,
+                height: 3,
+                borderRadius: 'full',
+                bg: '#FBBF24',
+              })}
+            />
             <span className={css({ color: 'gray.400' })}>Pixel Error</span>
           </div>
         )}
@@ -519,7 +540,15 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
           {/* Hardware */}
           {hardware && (
             <div className={css({ p: 4, bg: 'gray.800', borderRadius: 'lg' })}>
-              <h2 className={css({ fontSize: 'lg', fontWeight: 'semibold', mb: 4 })}>Hardware</h2>
+              <h2
+                className={css({
+                  fontSize: 'lg',
+                  fontWeight: 'semibold',
+                  mb: 4,
+                })}
+              >
+                Hardware
+              </h2>
               <InfoRow label="Device" value={hardware.deviceName} highlight />
               <InfoRow label="Device Type" value={hardware.deviceType?.toUpperCase()} />
               {hardware.chipType && <InfoRow label="Chip" value={hardware.chipType} />}
@@ -534,7 +563,13 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
           {/* Environment */}
           {environment && (
             <div className={css({ p: 4, bg: 'gray.800', borderRadius: 'lg' })}>
-              <h2 className={css({ fontSize: 'lg', fontWeight: 'semibold', mb: 4 })}>
+              <h2
+                className={css({
+                  fontSize: 'lg',
+                  fontWeight: 'semibold',
+                  mb: 4,
+                })}
+              >
                 Environment
               </h2>
               <InfoRow label="Hostname" value={environment.hostname} highlight />

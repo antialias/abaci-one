@@ -513,7 +513,9 @@ export default function TrainModelPage() {
 
   const handleStopAndSave = useCallback(async () => {
     try {
-      const response = await fetch('/api/vision-training/train', { method: 'PUT' })
+      const response = await fetch('/api/vision-training/train', {
+        method: 'PUT',
+      })
       if (!response.ok) {
         console.error('[Training] Stop and save request failed:', await response.text())
       }

@@ -105,7 +105,24 @@ export function getDefaultFilters(): DataPanelFilters {
 }
 
 /**
- * Determines if a device ID represents passive capture
+ * Determines if an item represents passive capture.
+ *
+ * Passive captures are identified by:
+ * - Boundary detector: deviceId starts with 'passive-' (directory name)
+ * - Column classifier: sessionId is present (collected during practice session)
+ */
+export function isPassiveCapture(item: AnyDataItem): boolean {
+  // Boundary detector: uses directory names like 'passive-practice-remote'
+  if (item.deviceId.startsWith('passive-')) return true
+
+  // Column classifier: images collected during practice have sessionId
+  if (item.type === 'column' && item.sessionId) return true
+
+  return false
+}
+
+/**
+ * @deprecated Use isPassiveCapture(item) instead
  */
 export function isPassiveDevice(deviceId: string): boolean {
   return deviceId.startsWith('passive-')
@@ -113,13 +130,13 @@ export function isPassiveDevice(deviceId: string): boolean {
 
 /**
  * Apply filters to a list of items.
- * Works with any DataPanelItem.
+ * Works with BoundaryDataItem or ColumnDataItem arrays.
  */
-export function applyFilters<T extends DataPanelItem>(items: T[], filters: DataPanelFilters): T[] {
+export function applyFilters<T extends AnyDataItem>(items: T[], filters: DataPanelFilters): T[] {
   return items.filter((item) => {
     // Capture type filter
     if (filters.captureType !== 'all') {
-      const isPassive = isPassiveDevice(item.deviceId)
+      const isPassive = isPassiveCapture(item)
       if (filters.captureType === 'passive' && !isPassive) return false
       if (filters.captureType === 'explicit' && isPassive) return false
     }

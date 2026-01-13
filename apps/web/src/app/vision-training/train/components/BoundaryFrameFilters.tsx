@@ -262,9 +262,22 @@ export function BoundaryFrameFilters({
           })}
         >
           {/* Quick filters row */}
-          <div className={css({ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 3,
+              mb: 4,
+            })}
+          >
             {/* Capture type toggle */}
-            <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+              })}
+            >
               <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Capture Type</label>
               <div
                 className={css({
@@ -309,7 +322,13 @@ export function BoundaryFrameFilters({
 
             {/* Device dropdown */}
             {devices.length > 1 && (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                })}
+              >
                 <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Device</label>
                 <select
                   value={filters.deviceId}
@@ -339,7 +358,13 @@ export function BoundaryFrameFilters({
 
             {/* Session dropdown */}
             {sessions.length > 0 && (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                })}
+              >
                 <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Session</label>
                 <select
                   value={filters.sessionId}
@@ -369,7 +394,13 @@ export function BoundaryFrameFilters({
 
             {/* Player dropdown */}
             {players.length > 0 && (
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: 1 })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                })}
+              >
                 <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Player</label>
                 <select
                   value={filters.playerId}
@@ -422,8 +453,21 @@ export function BoundaryFrameFilters({
           </div>
 
           {/* Time range filter */}
-          <div className={css({ borderTop: '1px solid', borderColor: 'gray.700', pt: 4 })}>
-            <div className={css({ display: 'flex', alignItems: 'center', gap: 3, mb: 3 })}>
+          <div
+            className={css({
+              borderTop: '1px solid',
+              borderColor: 'gray.700',
+              pt: 4,
+            })}
+          >
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: 3,
+                mb: 3,
+              })}
+            >
               <label className={css({ fontSize: 'sm', color: 'gray.400' })}>Time Range</label>
               <div
                 className={css({
