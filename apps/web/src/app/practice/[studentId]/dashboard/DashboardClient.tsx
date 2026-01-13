@@ -34,7 +34,7 @@ import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import type { Player } from '@/db/schema/players'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
-import { useMyClassroom } from '@/hooks/useClassroom'
+import { useMyClassroom, useEnrolledClassrooms } from '@/hooks/useClassroom'
 import { usePlayerPresenceSocket } from '@/hooks/usePlayerPresenceSocket'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
@@ -2589,9 +2589,14 @@ export function DashboardClient({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  // Get teacher's classroom for entry prompts
+  // Get teacher's classroom for entry prompts and session observer
   const { data: myClassroom } = useMyClassroom()
-  const classroomId = myClassroom?.id
+  const teacherClassroomId = myClassroom?.id ?? null
+
+  // Get student's enrolled classrooms for scoreboard
+  const { data: enrolledClassrooms } = useEnrolledClassrooms(studentId)
+  // Use the first enrolled classroom for the scoreboard (student may be in multiple)
+  const studentClassroomId = enrolledClassrooms?.[0]?.id ?? null
 
   // React Query: Use server props as initial data, get live updates from cache
   const { data: activeSession } = useActiveSessionPlan(studentId, initialActiveSession)
@@ -2897,7 +2902,7 @@ export function DashboardClient({
               )}
 
               {activeTab === 'scoreboard' && (
-                <ScoreboardTab studentId={studentId} classroomId={classroomId} isDark={isDark} />
+                <ScoreboardTab studentId={studentId} classroomId={studentClassroomId} isDark={isDark} />
               )}
 
               {activeTab === 'notes' && (
@@ -2967,7 +2972,7 @@ export function DashboardClient({
               }}
               observerId={userId}
               canShare={true}
-              classroomId={classroomId}
+              classroomId={teacherClassroomId ?? undefined}
             />
           )}
         </PracticeErrorBoundary>
