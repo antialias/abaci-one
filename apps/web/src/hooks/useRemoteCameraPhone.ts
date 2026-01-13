@@ -354,10 +354,22 @@ export function useRemoteCameraPhone(
         const scale = rawWidth / video.videoWidth
         const corners = detectedCornersRef.current
         scaledCorners = {
-          topLeft: { x: corners.topLeft.x * scale, y: corners.topLeft.y * scale },
-          topRight: { x: corners.topRight.x * scale, y: corners.topRight.y * scale },
-          bottomLeft: { x: corners.bottomLeft.x * scale, y: corners.bottomLeft.y * scale },
-          bottomRight: { x: corners.bottomRight.x * scale, y: corners.bottomRight.y * scale },
+          topLeft: {
+            x: corners.topLeft.x * scale,
+            y: corners.topLeft.y * scale,
+          },
+          topRight: {
+            x: corners.topRight.x * scale,
+            y: corners.topRight.y * scale,
+          },
+          bottomLeft: {
+            x: corners.bottomLeft.x * scale,
+            y: corners.bottomLeft.y * scale,
+          },
+          bottomRight: {
+            x: corners.bottomRight.x * scale,
+            y: corners.bottomRight.y * scale,
+          },
         }
       }
 
@@ -530,10 +542,22 @@ export function useRemoteCameraPhone(
 
         // Scale corners to match the JPEG's coordinate space
         const scaledCorners: QuadCorners = {
-          topLeft: { x: corners.topLeft.x * scale, y: corners.topLeft.y * scale },
-          topRight: { x: corners.topRight.x * scale, y: corners.topRight.y * scale },
-          bottomLeft: { x: corners.bottomLeft.x * scale, y: corners.bottomLeft.y * scale },
-          bottomRight: { x: corners.bottomRight.x * scale, y: corners.bottomRight.y * scale },
+          topLeft: {
+            x: corners.topLeft.x * scale,
+            y: corners.topLeft.y * scale,
+          },
+          topRight: {
+            x: corners.topRight.x * scale,
+            y: corners.topRight.y * scale,
+          },
+          bottomLeft: {
+            x: corners.bottomLeft.x * scale,
+            y: corners.bottomLeft.y * scale,
+          },
+          bottomRight: {
+            x: corners.bottomRight.x * scale,
+            y: corners.bottomRight.y * scale,
+          },
         }
 
         const frameData = {

@@ -21,12 +21,16 @@ export const scannerSettings = sqliteTable('scanner_settings', {
     .default('multi'),
 
   /** Enable histogram equalization - improves contrast in low light */
-  enableHistogramEqualization: integer('enable_histogram_equalization', { mode: 'boolean' })
+  enableHistogramEqualization: integer('enable_histogram_equalization', {
+    mode: 'boolean',
+  })
     .notNull()
     .default(true),
 
   /** Enable adaptive threshold - better for uneven lighting */
-  enableAdaptiveThreshold: integer('enable_adaptive_threshold', { mode: 'boolean' })
+  enableAdaptiveThreshold: integer('enable_adaptive_threshold', {
+    mode: 'boolean',
+  })
     .notNull()
     .default(true),
 

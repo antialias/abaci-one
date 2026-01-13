@@ -365,14 +365,44 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             const room = await getRoomById(roomId)
             if (room) {
               // Fetch all active player IDs from room members (respects isActive flag)
-              const roomPlayerIds = await getRoomPlayerIds(roomId)
+              let roomPlayerIds = await getRoomPlayerIds(roomId)
+
+              // PRACTICE MODE FIX: If no players found in database but we have a userId,
+              // use the userId as a fallback player. This handles practice sessions where
+              // the student isn't in the players table.
+              if (roomPlayerIds.length === 0 && userId) {
+                roomPlayerIds = [userId]
+              }
 
               // Get initial state from the correct validator based on game type
               const validator = await getValidator(room.gameName as GameName)
 
               // Get game-specific config from database (type-safe)
               const gameConfig = await getGameConfig(roomId, room.gameName as GameName)
-              const initialState = validator.getInitialState(gameConfig)
+              const initialState = validator.getInitialState(gameConfig) as Record<string, unknown>
+
+              // CRITICAL: Update the game state's activePlayers and currentPlayer
+              // The initialState from validator has empty activePlayers, so we need to
+              // set them before creating the session. Without this, moves will fail
+              // with "playerId is required" errors.
+              if (roomPlayerIds.length > 0) {
+                initialState.activePlayers = roomPlayerIds
+                initialState.currentPlayer = roomPlayerIds[0]
+                // Also initialize playerMetadata for the players
+                const existingMetadata =
+                  (initialState.playerMetadata as Record<string, unknown>) || {}
+                for (const playerId of roomPlayerIds) {
+                  if (!existingMetadata[playerId]) {
+                    existingMetadata[playerId] = {
+                      id: playerId,
+                      name: 'Player',
+                      emoji: '🎮',
+                      userId: playerId,
+                    }
+                  }
+                }
+                initialState.playerMetadata = existingMetadata
+              }
 
               session = await createArcadeSession({
                 userId,

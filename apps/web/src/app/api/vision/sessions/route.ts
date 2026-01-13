@@ -157,7 +157,9 @@ export async function POST(request: NextRequest) {
     // Validate modelType
     if (modelType !== 'column-classifier' && modelType !== 'boundary-detector') {
       return NextResponse.json(
-        { error: 'Invalid modelType. Must be column-classifier or boundary-detector' },
+        {
+          error: 'Invalid modelType. Must be column-classifier or boundary-detector',
+        },
         { status: 400 }
       )
     }
