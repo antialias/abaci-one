@@ -463,6 +463,13 @@
       "when": 1768320442668,
       "tag": "0065_sour_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "6",
+      "when": 1768328780110,
+      "tag": "0066_minor_living_tribunal",
+      "breakpoints": true
     }
   ]
 }

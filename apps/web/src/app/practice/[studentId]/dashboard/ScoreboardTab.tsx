@@ -2,7 +2,15 @@
 
 import { css } from '../../../../../styled-system/css'
 import { usePlayerGameHistory, usePlayerClassroomRank } from '@/hooks/useGameResults'
+import { usePlayerSkillMetrics, useClassroomSkillsLeaderboard } from '@/hooks/useSkillMetrics'
 import type { GameResult } from '@/db/schema'
+import type {
+  StudentSkillMetrics,
+  ClassroomSkillsLeaderboard,
+  SkillCategory,
+  Trend,
+} from '@/lib/curriculum/skill-metrics'
+import { SKILL_CATEGORY_INFO } from '@/lib/curriculum/skill-metrics'
 
 // ============================================================================
 // Types
@@ -433,6 +441,626 @@ function LeaderboardTable({
 }
 
 // ============================================================================
+// Skills Progress Components
+// ============================================================================
+
+/**
+ * Get trend arrow and color
+ */
+function getTrendDisplay(trend: Trend, isDark: boolean): { arrow: string; color: string } {
+  switch (trend) {
+    case 'improving':
+      return { arrow: '↑', color: isDark ? 'green.400' : 'green.600' }
+    case 'declining':
+      return { arrow: '↓', color: isDark ? 'red.400' : 'red.600' }
+    default:
+      return { arrow: '→', color: isDark ? 'gray.400' : 'gray.500' }
+  }
+}
+
+/**
+ * Progress bar component for mastery visualization
+ */
+export function MasteryBar({
+  value,
+  label,
+  detail,
+  emoji,
+  isDark,
+}: {
+  value: number
+  label: string
+  detail?: string
+  emoji: string
+  isDark: boolean
+}) {
+  const percent = Math.round(value * 100)
+  const barColor =
+    percent >= 80
+      ? isDark
+        ? 'green.500'
+        : 'green.500'
+      : percent >= 50
+        ? isDark
+          ? 'yellow.500'
+          : 'yellow.500'
+        : isDark
+          ? 'blue.500'
+          : 'blue.500'
+
+  return (
+    <div data-element="mastery-bar" className={css({ marginBottom: '0.5rem' })}>
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginBottom: '0.25rem',
+        })}
+      >
+        <span
+          className={css({
+            fontSize: '0.875rem',
+            color: isDark ? 'gray.200' : 'gray.700',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+          })}
+        >
+          <span>{emoji}</span>
+          <span>{label}</span>
+        </span>
+        <span
+          className={css({
+            fontSize: '0.875rem',
+            fontWeight: 'semibold',
+            color: isDark ? 'gray.200' : 'gray.700',
+          })}
+        >
+          {percent}%
+          {detail && (
+            <span
+              className={css({
+                fontWeight: 'normal',
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginLeft: '0.25rem',
+              })}
+            >
+              ({detail})
+            </span>
+          )}
+        </span>
+      </div>
+      <div
+        className={css({
+          height: '8px',
+          backgroundColor: isDark ? 'gray.700' : 'gray.200',
+          borderRadius: 'full',
+          overflow: 'hidden',
+        })}
+      >
+        <div
+          className={css({
+            height: '100%',
+            backgroundColor: barColor,
+            borderRadius: 'full',
+            transition: 'width 0.3s ease',
+          })}
+          style={{ width: `${Math.min(100, percent)}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Skills Progress section showing individual student metrics
+ */
+export function SkillsProgressSection({
+  metrics,
+  isLoading,
+  isDark,
+}: {
+  metrics: StudentSkillMetrics | undefined
+  isLoading: boolean
+  isDark: boolean
+}) {
+  if (isLoading) {
+    return (
+      <div
+        className={css({
+          textAlign: 'center',
+          padding: '2rem',
+          color: isDark ? 'gray.400' : 'gray.500',
+        })}
+      >
+        Loading skill metrics...
+      </div>
+    )
+  }
+
+  if (!metrics || metrics.progress.totalProblems === 0) {
+    return (
+      <div
+        data-element="empty-state"
+        className={css({
+          textAlign: 'center',
+          padding: '2rem',
+          color: isDark ? 'gray.400' : 'gray.500',
+        })}
+      >
+        Complete some practice sessions to see your skill progress!
+      </div>
+    )
+  }
+
+  const timingTrend = getTrendDisplay(metrics.timing.trend, isDark)
+  const accuracyTrend = getTrendDisplay(metrics.accuracy.trend, isDark)
+
+  // Order categories by typical learning progression
+  const categoryOrder: SkillCategory[] = [
+    'basic',
+    'fiveComplements',
+    'tenComplements',
+    'fiveComplementsSub',
+    'tenComplementsSub',
+    'advanced',
+  ]
+
+  return (
+    <div
+      data-element="skills-progress"
+      className={css({ display: 'flex', flexDirection: 'column', gap: '1rem' })}
+    >
+      {/* Overall Mastery */}
+      <MasteryBar
+        value={metrics.overallMastery}
+        label="Overall Mastery"
+        emoji="🎯"
+        isDark={isDark}
+      />
+
+      {/* Category Breakdown */}
+      <div>
+        <h3
+          className={css({
+            fontSize: '0.875rem',
+            fontWeight: 'semibold',
+            color: isDark ? 'gray.300' : 'gray.600',
+            marginBottom: '0.5rem',
+          })}
+        >
+          Skills by Category
+        </h3>
+        {categoryOrder.map((category) => {
+          const categoryData = metrics.categoryMastery[category]
+          if (categoryData.skillCount === 0) return null
+
+          const info = SKILL_CATEGORY_INFO[category]
+          const detail =
+            categoryData.masteredCount > 0
+              ? `${categoryData.masteredCount}/${categoryData.skillCount} mastered`
+              : `${categoryData.practicedCount}/${categoryData.skillCount} practiced`
+
+          return (
+            <MasteryBar
+              key={category}
+              value={categoryData.pKnownAvg}
+              label={info.shortName}
+              detail={detail}
+              emoji={info.emoji}
+              isDark={isDark}
+            />
+          )
+        })}
+      </div>
+
+      {/* Stats Row */}
+      <div
+        className={css({
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '1rem',
+          marginTop: '0.5rem',
+        })}
+      >
+        {/* Speed */}
+        <div
+          className={css({
+            backgroundColor: isDark ? 'gray.700' : 'white',
+            padding: '0.75rem',
+            borderRadius: '8px',
+            textAlign: 'center',
+          })}
+        >
+          <div
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+              marginBottom: '0.25rem',
+            })}
+          >
+            Speed
+          </div>
+          <div
+            className={css({
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.100' : 'gray.900',
+            })}
+          >
+            {metrics.timing.avgSecondsPerTerm !== null
+              ? `${metrics.timing.avgSecondsPerTerm.toFixed(1)}s/term`
+              : '-'}
+            <span className={css({ marginLeft: '0.25rem', color: timingTrend.color })}>
+              {timingTrend.arrow}
+            </span>
+          </div>
+        </div>
+
+        {/* Accuracy */}
+        <div
+          className={css({
+            backgroundColor: isDark ? 'gray.700' : 'white',
+            padding: '0.75rem',
+            borderRadius: '8px',
+            textAlign: 'center',
+          })}
+        >
+          <div
+            className={css({
+              fontSize: '0.75rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+              marginBottom: '0.25rem',
+            })}
+          >
+            Accuracy
+          </div>
+          <div
+            className={css({
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.100' : 'gray.900',
+            })}
+          >
+            {Math.round(metrics.accuracy.recentPercent)}%
+            <span className={css({ marginLeft: '0.25rem', color: accuracyTrend.color })}>
+              {accuracyTrend.arrow}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Stats */}
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-around',
+          padding: '0.75rem',
+          backgroundColor: isDark ? 'gray.700' : 'white',
+          borderRadius: '8px',
+        })}
+      >
+        <div className={css({ textAlign: 'center' })}>
+          <div
+            className={css({
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.100' : 'gray.900',
+            })}
+          >
+            {metrics.progress.weeklyProblems}
+          </div>
+          <div className={css({ fontSize: '0.75rem', color: isDark ? 'gray.400' : 'gray.500' })}>
+            This Week
+          </div>
+        </div>
+        <div className={css({ textAlign: 'center' })}>
+          <div
+            className={css({
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.100' : 'gray.900',
+            })}
+          >
+            {metrics.progress.practiceStreak}
+          </div>
+          <div className={css({ fontSize: '0.75rem', color: isDark ? 'gray.400' : 'gray.500' })}>
+            Day Streak
+          </div>
+        </div>
+        <div className={css({ textAlign: 'center' })}>
+          <div
+            className={css({
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.100' : 'gray.900',
+            })}
+          >
+            {metrics.progress.totalProblems}
+          </div>
+          <div className={css({ fontSize: '0.75rem', color: isDark ? 'gray.400' : 'gray.500' })}>
+            Total
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Skills Leaderboard Components
+// ============================================================================
+
+/**
+ * Skills leaderboard section for classroom comparison
+ */
+export function SkillsLeaderboardSection({
+  leaderboard,
+  isLoading,
+  currentPlayerId,
+  isDark,
+}: {
+  leaderboard: ClassroomSkillsLeaderboard | undefined
+  isLoading: boolean
+  currentPlayerId: string
+  isDark: boolean
+}) {
+  if (isLoading) {
+    return (
+      <div
+        className={css({
+          textAlign: 'center',
+          padding: '2rem',
+          color: isDark ? 'gray.400' : 'gray.500',
+        })}
+      >
+        Loading skills leaderboard...
+      </div>
+    )
+  }
+
+  if (!leaderboard || leaderboard.playerCount === 0) {
+    return (
+      <div
+        data-element="empty-state"
+        className={css({
+          textAlign: 'center',
+          padding: '2rem',
+          color: isDark ? 'gray.400' : 'gray.500',
+        })}
+      >
+        No classmates have practiced yet. Be the first!
+      </div>
+    )
+  }
+
+  // Helper to render a ranking section
+  const renderRanking = (
+    title: string,
+    emoji: string,
+    rankings: ClassroomSkillsLeaderboard['byWeeklyProblems'],
+    formatValue: (v: number) => string
+  ) => {
+    if (rankings.length === 0) return null
+
+    const currentPlayerRank = rankings.find((r) => r.playerId === currentPlayerId)
+
+    return (
+      <div
+        className={css({
+          backgroundColor: isDark ? 'gray.700' : 'white',
+          borderRadius: '8px',
+          padding: '0.75rem',
+        })}
+      >
+        <h4
+          className={css({
+            fontSize: '0.875rem',
+            fontWeight: 'semibold',
+            color: isDark ? 'gray.200' : 'gray.700',
+            marginBottom: '0.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+          })}
+        >
+          <span>{emoji}</span>
+          <span>{title}</span>
+        </h4>
+        <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.25rem' })}>
+          {rankings.slice(0, 3).map((player) => {
+            const isCurrentPlayer = player.playerId === currentPlayerId
+            return (
+              <div
+                key={player.playerId}
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '4px',
+                  backgroundColor: isCurrentPlayer
+                    ? isDark
+                      ? 'blue.900/50'
+                      : 'blue.50'
+                    : 'transparent',
+                })}
+              >
+                <span
+                  className={css({
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.200' : 'gray.700',
+                    fontWeight: isCurrentPlayer ? 'bold' : 'normal',
+                  })}
+                >
+                  {player.rank}. {player.playerEmoji} {player.playerName}
+                </span>
+                <span
+                  className={css({
+                    fontSize: '0.875rem',
+                    fontWeight: 'semibold',
+                    color: isDark ? 'green.400' : 'green.600',
+                  })}
+                >
+                  {formatValue(player.value)}
+                </span>
+              </div>
+            )
+          })}
+          {currentPlayerRank && currentPlayerRank.rank > 3 && (
+            <div
+              className={css({
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '4px',
+                backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+                marginTop: '0.25rem',
+                borderTop: '1px dashed',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
+              })}
+            >
+              <span
+                className={css({
+                  fontSize: '0.875rem',
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  fontWeight: 'bold',
+                })}
+              >
+                {currentPlayerRank.rank}. {currentPlayerRank.playerEmoji} You
+              </span>
+              <span
+                className={css({
+                  fontSize: '0.875rem',
+                  fontWeight: 'semibold',
+                  color: isDark ? 'green.400' : 'green.600',
+                })}
+              >
+                {formatValue(currentPlayerRank.value)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      data-element="skills-leaderboard"
+      className={css({ display: 'flex', flexDirection: 'column', gap: '0.75rem' })}
+    >
+      {/* Effort-based rankings */}
+      <div
+        className={css({
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '0.75rem',
+        })}
+      >
+        {renderRanking(
+          'Practice Warriors',
+          '⚔️',
+          leaderboard.byWeeklyProblems,
+          (v) => `${v} this week`
+        )}
+        {renderRanking('Streak Masters', '🔥', leaderboard.byPracticeStreak, (v) => `${v} days`)}
+        {renderRanking(
+          'Rising Stars',
+          '⭐',
+          leaderboard.byImprovementRate,
+          (v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
+        )}
+      </div>
+
+      {/* Speed Champions */}
+      {leaderboard.speedChampions.length > 0 && (
+        <div>
+          <h4
+            className={css({
+              fontSize: '0.875rem',
+              fontWeight: 'semibold',
+              color: isDark ? 'gray.300' : 'gray.600',
+              marginBottom: '0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+            })}
+          >
+            <span>🏎️</span>
+            <span>Speed Champions</span>
+            <span
+              className={css({
+                fontWeight: 'normal',
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.500' : 'gray.400',
+              })}
+            >
+              (mastered skills only)
+            </span>
+          </h4>
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '0.75rem',
+            })}
+          >
+            {leaderboard.speedChampions.slice(0, 4).map((champion) => (
+              <div
+                key={champion.category}
+                className={css({
+                  backgroundColor: isDark ? 'gray.700' : 'white',
+                  borderRadius: '8px',
+                  padding: '0.75rem',
+                })}
+              >
+                <h5
+                  className={css({
+                    fontSize: '0.75rem',
+                    fontWeight: 'semibold',
+                    color: isDark ? 'gray.300' : 'gray.600',
+                    marginBottom: '0.5rem',
+                  })}
+                >
+                  {SKILL_CATEGORY_INFO[champion.category as SkillCategory]?.emoji ?? '📊'}{' '}
+                  {champion.categoryName}
+                </h5>
+                {champion.leaders.slice(0, 3).map((player) => {
+                  const isCurrentPlayer = player.playerId === currentPlayerId
+                  return (
+                    <div
+                      key={player.playerId}
+                      className={css({
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '0.875rem',
+                        padding: '0.125rem 0',
+                        fontWeight: isCurrentPlayer ? 'bold' : 'normal',
+                        color: isDark ? 'gray.200' : 'gray.700',
+                      })}
+                    >
+                      <span>
+                        {player.rank}. {player.playerEmoji} {player.playerName}
+                      </span>
+                      <span className={css({ color: isDark ? 'cyan.400' : 'cyan.600' })}>
+                        {player.value.toFixed(1)}s
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -440,13 +1068,20 @@ export function ScoreboardTab({ studentId, classroomId, isDark }: ScoreboardTabP
   // Fetch player's game history
   const { data: historyData, isLoading: historyLoading } = usePlayerGameHistory(studentId)
 
-  // Fetch classroom leaderboard
+  // Fetch classroom leaderboard (game-based)
   const {
     rankings,
     playerRanking,
     totalPlayers,
     isLoading: leaderboardLoading,
   } = usePlayerClassroomRank(classroomId ?? null, studentId)
+
+  // Fetch player's skill metrics
+  const { data: skillMetrics, isLoading: skillsLoading } = usePlayerSkillMetrics(studentId)
+
+  // Fetch classroom skills leaderboard
+  const { data: skillsLeaderboard, isLoading: skillsLeaderboardLoading } =
+    useClassroomSkillsLeaderboard(classroomId ?? null)
 
   return (
     <div
@@ -532,6 +1167,65 @@ export function ScoreboardTab({ studentId, classroomId, isDark }: ScoreboardTabP
           <RecentGamesTable games={historyData?.history?.slice(0, 10)} isDark={isDark} />
         )}
       </section>
+
+      {/* Skills Progress Section */}
+      <section
+        data-section="skills-progress"
+        className={css({
+          backgroundColor: isDark ? 'gray.800' : 'gray.50',
+          borderRadius: '16px',
+          padding: '1.25rem',
+        })}
+      >
+        <h2
+          className={css({
+            fontSize: '1.125rem',
+            fontWeight: 'bold',
+            color: isDark ? 'gray.100' : 'gray.900',
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          })}
+        >
+          <span>📈</span>
+          <span>Skills Progress</span>
+        </h2>
+        <SkillsProgressSection metrics={skillMetrics} isLoading={skillsLoading} isDark={isDark} />
+      </section>
+
+      {/* Skills Leaderboard Section */}
+      {classroomId && (
+        <section
+          data-section="skills-leaderboard"
+          className={css({
+            backgroundColor: isDark ? 'gray.800' : 'gray.50',
+            borderRadius: '16px',
+            padding: '1.25rem',
+          })}
+        >
+          <h2
+            className={css({
+              fontSize: '1.125rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.100' : 'gray.900',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            })}
+          >
+            <span>🏅</span>
+            <span>Classroom Achievements</span>
+          </h2>
+          <SkillsLeaderboardSection
+            leaderboard={skillsLeaderboard}
+            isLoading={skillsLeaderboardLoading}
+            currentPlayerId={studentId}
+            isDark={isDark}
+          />
+        </section>
+      )}
 
       {/* Classroom Leaderboard Section */}
       {classroomId && (

@@ -19,6 +19,7 @@ import {
   recordRedoResult,
   recordSlotResult,
   startSessionPlan,
+  updateSessionPlanRemoteCamera,
 } from '@/lib/curriculum'
 import { getDbUserId } from '@/lib/viewer'
 
@@ -80,7 +81,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json()
-    const { action, result, reason, redoContext } = body
+    const { action, result, reason, redoContext, remoteCameraSessionId } = body
 
     let plan
 
@@ -133,11 +134,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         await emitSessionEvents(playerId, planId, 'abandon')
         break
 
+      case 'set_remote_camera':
+        // remoteCameraSessionId can be string (to set) or null (to clear)
+        if (remoteCameraSessionId === undefined) {
+          return NextResponse.json(
+            { error: 'remoteCameraSessionId is required for set_remote_camera action' },
+            { status: 400 }
+          )
+        }
+        plan = await updateSessionPlanRemoteCamera(planId, remoteCameraSessionId)
+        break
+
       default:
         return NextResponse.json(
           {
             error:
-              'Invalid action. Must be: approve, start, record, record_redo, end_early, or abandon',
+              'Invalid action. Must be: approve, start, record, record_redo, end_early, abandon, or set_remote_camera',
           },
           { status: 400 }
         )

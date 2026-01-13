@@ -366,3 +366,47 @@ export function useRecordRedoResult() {
     },
   })
 }
+
+/**
+ * Update the remote camera session ID for a session plan
+ */
+async function setRemoteCameraSession({
+  playerId,
+  planId,
+  remoteCameraSessionId,
+}: {
+  playerId: string
+  planId: string
+  remoteCameraSessionId: string | null
+}): Promise<SessionPlan> {
+  const res = await api(`curriculum/${playerId}/sessions/plans/${planId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'set_remote_camera', remoteCameraSessionId }),
+  })
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}))
+    throw new Error(error.error || 'Failed to set remote camera session')
+  }
+  const data = await res.json()
+  return data.plan
+}
+
+/**
+ * Hook: Set the remote camera session ID for a session plan
+ * Used when setting up phone camera for vision-based practice
+ */
+export function useSetRemoteCameraSession() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: setRemoteCameraSession,
+    onSuccess: (plan, { playerId }) => {
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+    },
+    onError: (err) => {
+      console.error('Failed to set remote camera session:', err.message)
+    },
+  })
+}

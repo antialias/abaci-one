@@ -37,7 +37,7 @@ export function RemoteCameraQRCode({
     isCreating,
     error,
     createSession,
-    setExistingSession,
+    validateAndSetSession,
     clearSession,
     getPhoneUrl,
   } = useRemoteCameraSession()
@@ -49,12 +49,24 @@ export function RemoteCameraQRCode({
   // Track previous existingSessionId to detect when it changes TO null
   const prevExistingSessionIdRef = useRef<string | null | undefined>(existingSessionId)
 
-  // If we have an existing session ID, use it instead of creating a new one
+  // If we have an existing session ID, validate it before using
+  // If validation fails (expired/invalid), create a new session
   useEffect(() => {
-    if (existingSessionId && !session) {
-      setExistingSession(existingSessionId)
+    if (existingSessionId && !session && !creationInitiatedRef.current) {
+      creationInitiatedRef.current = true
+      validateAndSetSession(existingSessionId).then((isValid) => {
+        if (!isValid) {
+          // Session expired or invalid - create a new one
+          console.log('[RemoteCameraQRCode] Existing session invalid, creating new one')
+          createSession().then((newSession) => {
+            if (newSession && onSessionCreated) {
+              onSessionCreated(newSession.sessionId)
+            }
+          })
+        }
+      })
     }
-  }, [existingSessionId, session, setExistingSession])
+  }, [existingSessionId, session, validateAndSetSession, createSession, onSessionCreated])
 
   // Reset when existingSessionId CHANGES from truthy to null (user wants fresh session)
   // This prevents clearing sessions that we just created ourselves

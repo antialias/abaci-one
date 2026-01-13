@@ -63,6 +63,7 @@ export {
   recordRedoResult,
   recordSlotResult,
   startSessionPlan,
+  updateSessionPlanRemoteCamera,
   updateSessionPlanResults,
 } from './session-planner'
 

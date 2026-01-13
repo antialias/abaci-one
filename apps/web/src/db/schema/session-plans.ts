@@ -532,6 +532,11 @@ export const sessionPlans = sqliteTable(
       mode: 'json',
     }).$type<SessionRetryState>(),
 
+    // ---- Vision/Camera State ----
+
+    /** Remote camera session ID for phone camera streaming */
+    remoteCameraSessionId: text('remote_camera_session_id'),
+
     // ---- Pause State (for teacher observation control) ----
 
     /** Whether the session is currently paused by a teacher */

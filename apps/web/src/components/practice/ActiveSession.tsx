@@ -49,6 +49,7 @@ import { PracticeHelpOverlay } from './PracticeHelpOverlay'
 import { ProblemDebugPanel } from './ProblemDebugPanel'
 import { VerticalProblem } from './VerticalProblem'
 import type { ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
+import { useSetRemoteCameraSession } from '@/hooks/useSessionPlan'
 
 /**
  * Timing data for the current problem attempt
@@ -667,7 +668,54 @@ export function ActiveSession({
     setDockedValue,
     visionConfig,
     captureTrainingColumns,
+    setVisionRemoteSession,
   } = useMyAbacus()
+
+  // Mutation for saving remote camera session ID to the session plan
+  const setRemoteCameraSessionMutation = useSetRemoteCameraSession()
+
+  // Track whether we've synced from DB to avoid infinite loops
+  const hasInitializedRemoteSessionRef = useRef(false)
+  const lastSyncedRemoteSessionRef = useRef<string | null>(null)
+
+  // Sync remote camera session ID between session plan (DB) and vision config (context)
+  useEffect(() => {
+    // On mount: sync from DB to context if plan has a remote camera session
+    if (!hasInitializedRemoteSessionRef.current) {
+      hasInitializedRemoteSessionRef.current = true
+      if (plan.remoteCameraSessionId) {
+        console.log(
+          '[ActiveSession] Syncing remoteCameraSessionId from DB to context:',
+          plan.remoteCameraSessionId
+        )
+        setVisionRemoteSession(plan.remoteCameraSessionId)
+        lastSyncedRemoteSessionRef.current = plan.remoteCameraSessionId
+      }
+      return
+    }
+
+    // After initialization: sync from context to DB when it changes
+    const currentRemoteSession = visionConfig.remoteCameraSessionId
+    if (currentRemoteSession !== lastSyncedRemoteSessionRef.current) {
+      console.log(
+        '[ActiveSession] Syncing remoteCameraSessionId from context to DB:',
+        currentRemoteSession
+      )
+      lastSyncedRemoteSessionRef.current = currentRemoteSession
+      setRemoteCameraSessionMutation.mutate({
+        playerId: student.id,
+        planId: plan.id,
+        remoteCameraSessionId: currentRemoteSession,
+      })
+    }
+  }, [
+    plan.id,
+    plan.remoteCameraSessionId,
+    student.id,
+    visionConfig.remoteCameraSessionId,
+    setVisionRemoteSession,
+    setRemoteCameraSessionMutation,
+  ])
 
   // Get abacus display config (for physical abacus column count in vision mode)
   const { config: abacusDisplayConfig } = useAbacusDisplay()

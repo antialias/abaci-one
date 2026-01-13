@@ -67,6 +67,14 @@ export const gameResultsKeys = {
     [...gameResultsKeys.all, 'leaderboard', 'classroom', classroomId, gameName] as const,
 }
 
+// Skill metrics query keys (for scoreboard)
+export const skillMetricsKeys = {
+  all: ['skill-metrics'] as const,
+  player: (playerId: string) => [...skillMetricsKeys.all, 'player', playerId] as const,
+  classroomLeaderboard: (classroomId: string) =>
+    [...skillMetricsKeys.all, 'leaderboard', 'classroom', classroomId] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player

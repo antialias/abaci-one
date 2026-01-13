@@ -2902,7 +2902,11 @@ export function DashboardClient({
               )}
 
               {activeTab === 'scoreboard' && (
-                <ScoreboardTab studentId={studentId} classroomId={studentClassroomId} isDark={isDark} />
+                <ScoreboardTab
+                  studentId={studentId}
+                  classroomId={studentClassroomId}
+                  isDark={isDark}
+                />
               )}
 
               {activeTab === 'notes' && (

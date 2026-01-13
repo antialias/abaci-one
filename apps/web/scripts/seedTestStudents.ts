@@ -3523,10 +3523,7 @@ async function main() {
 
   if (!user) {
     // Create the user record if it doesn't exist
-    const [newUser] = await db
-      .insert(schema.users)
-      .values({ guestId: userId })
-      .returning()
+    const [newUser] = await db.insert(schema.users).values({ guestId: userId }).returning()
     user = newUser
     console.log(`   Created user record for ${userId}`)
   }

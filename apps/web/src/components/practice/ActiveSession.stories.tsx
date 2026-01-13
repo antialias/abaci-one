@@ -236,6 +236,7 @@ function createMockSessionPlanWithProblems(config: {
     pausedBy: null,
     pauseReason: null,
     retryState: null,
+    remoteCameraSessionId: null,
   }
 }
 

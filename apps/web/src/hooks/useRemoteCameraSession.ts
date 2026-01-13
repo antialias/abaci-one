@@ -11,14 +11,14 @@ interface RemoteCameraSession {
 interface UseRemoteCameraSessionReturn {
   /** Current session data */
   session: RemoteCameraSession | null
-  /** Whether a session is being created */
+  /** Whether a session is being created or validated */
   isCreating: boolean
   /** Error message if session creation failed */
   error: string | null
   /** Create a new remote camera session */
   createSession: () => Promise<RemoteCameraSession | null>
-  /** Set an existing session ID (for reconnection scenarios) */
-  setExistingSession: (sessionId: string) => void
+  /** Validate and set an existing session ID (returns true if valid, false if expired) */
+  validateAndSetSession: (sessionId: string) => Promise<boolean>
   /** Clear the current session */
   clearSession: () => void
   /** Get the URL for the phone to scan */
@@ -69,15 +69,36 @@ export function useRemoteCameraSession(): UseRemoteCameraSessionReturn {
     }
   }, [])
 
-  const setExistingSession = useCallback((sessionId: string) => {
-    // Use existing session ID without creating a new one on the server
-    // This is used for reconnection when the phone reloads
-    setSession({
-      sessionId,
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // Assume 10 min remaining
-      phoneConnected: false,
-    })
+  const validateAndSetSession = useCallback(async (sessionId: string): Promise<boolean> => {
+    // Validate the session exists on the server before using it
+    // This prevents using stale session IDs from localStorage after server restart or expiration
+    setIsCreating(true)
     setError(null)
+
+    try {
+      const response = await fetch(`/api/remote-camera?sessionId=${encodeURIComponent(sessionId)}`)
+
+      if (response.ok) {
+        const data = await response.json()
+        setSession({
+          sessionId: data.sessionId,
+          expiresAt: data.expiresAt,
+          phoneConnected: data.phoneConnected ?? false,
+        })
+        return true
+      } else {
+        // Session expired or invalid - caller should create a new one
+        console.log(
+          '[useRemoteCameraSession] Session validation failed, session expired or invalid'
+        )
+        return false
+      }
+    } catch (err) {
+      console.error('[useRemoteCameraSession] Failed to validate session:', err)
+      return false
+    } finally {
+      setIsCreating(false)
+    }
   }, [])
 
   const clearSession = useCallback(() => {
@@ -125,7 +146,7 @@ export function useRemoteCameraSession(): UseRemoteCameraSessionReturn {
     isCreating,
     error,
     createSession,
-    setExistingSession,
+    validateAndSetSession,
     clearSession,
     getPhoneUrl,
   }

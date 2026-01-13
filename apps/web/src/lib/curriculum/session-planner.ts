@@ -1143,6 +1143,27 @@ export async function updateSessionPlanResults(
   return updated
 }
 
+/**
+ * Update the remote camera session ID for a session plan.
+ * Used when setting up phone camera for vision-based practice.
+ */
+export async function updateSessionPlanRemoteCamera(
+  planId: string,
+  remoteCameraSessionId: string | null
+): Promise<SessionPlan> {
+  const [updated] = await db
+    .update(schema.sessionPlans)
+    .set({ remoteCameraSessionId })
+    .where(eq(schema.sessionPlans.id, planId))
+    .returning()
+
+  if (!updated) {
+    throw new Error(`Plan ${planId} not found`)
+  }
+
+  return updated
+}
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
