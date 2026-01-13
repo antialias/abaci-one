@@ -25,7 +25,23 @@ const manifest: GameManifest = {
   chips: ['👥 Multiplayer', '🧠 Memory', '🧮 Soroban'],
   ...getGameTheme('purple'),
   available: true,
-  practiceBreakReady: false,
+  practiceBreakReady: false, // Has practiceBreakConfig but UI integration not yet complete
+  practiceBreakConfig: {
+    suggestedConfig: {
+      selectedCount: 5,
+      displayTime: 2.0,
+      selectedDifficulty: 'easy',
+      playMode: 'cooperative', // Solo = cooperative with one player
+    },
+    lockedFields: ['playMode'], // Keep it solo for practice breaks
+    minDurationMinutes: 1,
+    maxDurationMinutes: 5,
+    difficultyPresets: {
+      easy: { selectedCount: 5, displayTime: 2.5, selectedDifficulty: 'beginner' },
+      medium: { selectedCount: 5, displayTime: 2.0, selectedDifficulty: 'easy' },
+      hard: { selectedCount: 8, displayTime: 1.5, selectedDifficulty: 'medium' },
+    },
+  },
 }
 
 const defaultConfig: MemoryQuizConfig = {

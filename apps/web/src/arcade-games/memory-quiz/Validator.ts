@@ -3,13 +3,42 @@
  * Validates all game moves and state transitions
  */
 
-import type { GameValidator, ValidationResult } from '@/lib/arcade/game-sdk'
+import type { GameValidator, PracticeBreakOptions, ValidationResult } from '@/lib/arcade/game-sdk'
 import type {
+  DifficultyLevel,
   MemoryQuizConfig,
   MemoryQuizState,
   MemoryQuizMove,
   MemoryQuizSetConfigMove,
 } from './types'
+import { DIFFICULTY_LEVELS } from './types'
+
+// Default config for practice breaks (quick games)
+const PRACTICE_BREAK_DEFAULTS: MemoryQuizConfig = {
+  selectedCount: 5,
+  displayTime: 2.0,
+  selectedDifficulty: 'easy',
+  playMode: 'cooperative',
+}
+
+/**
+ * Generate random numbers for the quiz based on difficulty
+ */
+function generateQuizNumbers(count: number, difficulty: DifficultyLevel): number[] {
+  const { min, max } = DIFFICULTY_LEVELS[difficulty].range
+  const numbers: number[] = []
+  const used = new Set<number>()
+
+  while (numbers.length < count) {
+    const num = Math.floor(Math.random() * (max - min + 1)) + min
+    if (!used.has(num)) {
+      used.add(num)
+      numbers.push(num)
+    }
+  }
+
+  return numbers
+}
 
 export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, MemoryQuizMove> {
   validateMove(
@@ -423,6 +452,80 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
       numberFoundBy: {},
       // UI state
       gamePhase: 'setup',
+      prefixAcceptanceTimeout: null,
+      finishButtonsBound: false,
+      wrongGuessAnimations: [],
+      hasPhysicalKeyboard: null,
+      testingMode: false,
+      showOnScreenKeyboard: false,
+    }
+  }
+
+  /**
+   * Get initial state for practice break mode.
+   * Skips setup phase and starts directly in 'display' phase with generated numbers.
+   *
+   * @param config Partial config to merge with practice break defaults
+   * @param options Practice break options including player info
+   * @returns Game state ready to display cards immediately
+   */
+  getInitialStateForPracticeBreak(
+    config: Partial<MemoryQuizConfig>,
+    options: PracticeBreakOptions
+  ): MemoryQuizState {
+    // Merge with practice break defaults
+    const fullConfig: MemoryQuizConfig = {
+      ...PRACTICE_BREAK_DEFAULTS,
+      ...config,
+    }
+
+    // Adjust card count based on break duration
+    if (options.maxDurationMinutes <= 2 && fullConfig.selectedCount > 5) {
+      fullConfig.selectedCount = 5
+    }
+
+    // Generate quiz numbers
+    const numbers = generateQuizNumbers(fullConfig.selectedCount, fullConfig.selectedDifficulty)
+
+    // Create quiz cards (minimal - no React components needed)
+    const quizCards = numbers.map((number) => ({
+      number,
+      svgComponent: null,
+      element: null,
+    }))
+
+    // Set up single player
+    const playerId = options.playerId
+    const playerMetadata = {
+      [playerId]: {
+        id: playerId,
+        name: options.playerName || 'Player',
+        emoji: '🎮',
+        userId: playerId,
+        color: '#8b5cf6',
+      },
+    }
+
+    return {
+      cards: quizCards,
+      quizCards,
+      correctAnswers: numbers,
+      currentCardIndex: 0,
+      displayTime: fullConfig.displayTime,
+      selectedCount: fullConfig.selectedCount,
+      selectedDifficulty: fullConfig.selectedDifficulty,
+      foundNumbers: [],
+      guessesRemaining: numbers.length + Math.floor(numbers.length / 2),
+      currentInput: '',
+      incorrectGuesses: 0,
+      // Single player setup
+      activePlayers: [playerId],
+      playerMetadata,
+      playerScores: { [playerId]: { correct: 0, incorrect: 0 } },
+      playMode: 'cooperative',
+      numberFoundBy: {},
+      // Start in display phase - skip setup!
+      gamePhase: 'display',
       prefixAcceptanceTimeout: null,
       finishButtonsBound: false,
       wrongGuessAnimations: [],

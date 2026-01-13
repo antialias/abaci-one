@@ -4,8 +4,11 @@
  */
 
 import type { ReactNode } from 'react'
-import type { GameManifest } from '../manifest-schema'
+import type { GameManifest, PracticeBreakConfig } from '../manifest-schema'
 import type { GameMove as BaseGameMove, GameValidator } from '../validation/types'
+
+// Re-export manifest types
+export type { GameManifest, PracticeBreakConfig } from '../manifest-schema'
 
 /**
  * Re-export base validation types from arcade system
@@ -13,6 +16,7 @@ import type { GameMove as BaseGameMove, GameValidator } from '../validation/type
 export type {
   GameMove,
   GameValidator,
+  PracticeBreakOptions,
   ValidationContext,
   ValidationResult,
 } from '../validation/types'

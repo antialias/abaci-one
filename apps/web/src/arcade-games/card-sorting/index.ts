@@ -26,7 +26,23 @@ const manifest: GameManifest = {
   chips: ['🧠 Pattern Recognition', '🎯 Solo Challenge', '📊 Smart Scoring'],
   ...getGameTheme('green'),
   available: true,
-  practiceBreakReady: false,
+  practiceBreakReady: false, // Has practiceBreakConfig but UI integration not yet complete
+  practiceBreakConfig: {
+    suggestedConfig: {
+      cardCount: 5,
+      showNumbers: false, // Practice reading the abacus!
+      timeLimit: null,
+      gameMode: 'solo',
+    },
+    lockedFields: ['gameMode'], // Keep it solo for practice breaks
+    minDurationMinutes: 2,
+    maxDurationMinutes: 6,
+    difficultyPresets: {
+      easy: { cardCount: 5, showNumbers: true },
+      medium: { cardCount: 8, showNumbers: false },
+      hard: { cardCount: 12, showNumbers: false },
+    },
+  },
 }
 
 const defaultConfig: CardSortingConfig = {

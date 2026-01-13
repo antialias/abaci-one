@@ -7,6 +7,11 @@ import { roomKeys, useCreateRoom, useLeaveRoom, useSetRoomGame, type RoomData } 
 export interface UseGameBreakRoomOptions {
   studentName: string
   enabled: boolean
+  /**
+   * Pre-configured game settings to apply when selecting a game.
+   * Nested by game name: { 'memory-quiz': { selectedCount: 5 } }
+   */
+  gameConfig?: Record<string, Record<string, unknown>>
   onRoomReady?: (room: RoomData) => void
   onError?: (error: Error) => void
 }
@@ -16,13 +21,19 @@ export interface UseGameBreakRoomResult {
   isCreating: boolean
   isSettingGame: boolean
   error: Error | null
-  selectGame: (gameName: string) => Promise<void>
+  /**
+   * Select a game for this room.
+   * If gameConfig was provided in options and contains settings for this game,
+   * those settings will be applied.
+   */
+  selectGame: (gameName: string, configOverride?: Record<string, unknown>) => Promise<void>
   cleanup: () => Promise<void>
 }
 
 export function useGameBreakRoom({
   studentName,
   enabled,
+  gameConfig,
   onRoomReady,
   onError,
 }: UseGameBreakRoomOptions): UseGameBreakRoomResult {
@@ -103,19 +114,33 @@ export function useGameBreakRoom({
   }, [enabled, studentName])
 
   const selectGame = useCallback(
-    async (gameName: string) => {
+    async (gameName: string, configOverride?: Record<string, unknown>) => {
       if (!room) {
         throw new Error('No room available')
       }
 
+      // Merge config sources: gameConfig[gameName] from options + configOverride
+      const baseConfig = gameConfig?.[gameName]
+      const mergedConfig =
+        baseConfig || configOverride ? { ...baseConfig, ...configOverride } : undefined
+
       await setRoomGame.mutateAsync({
         roomId: room.id,
         gameName,
+        gameConfig: mergedConfig ? { [gameName]: mergedConfig } : undefined,
       })
 
-      setRoom((prev) => (prev ? { ...prev, gameName } : null))
+      setRoom((prev) =>
+        prev
+          ? {
+              ...prev,
+              gameName,
+              gameConfig: mergedConfig ? { [gameName]: mergedConfig } : prev.gameConfig,
+            }
+          : null
+      )
     },
-    [room, setRoomGame]
+    [room, setRoomGame, gameConfig]
   )
 
   const cleanup = useCallback(async () => {

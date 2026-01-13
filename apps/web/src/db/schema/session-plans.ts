@@ -305,6 +305,13 @@ export type SessionStatus =
 export type GameBreakSelectionMode = 'auto-start' | 'kid-chooses'
 
 /**
+ * Type-safe partial configs for practice break games.
+ * Uses string index to avoid importing all game config types here.
+ * Runtime validation ensures type safety.
+ */
+export type PracticeBreakGameConfig = Record<string, Record<string, unknown>>
+
+/**
  * Settings for game breaks between practice session parts.
  *
  * When enabled, students get rewarded game time between parts
@@ -323,6 +330,28 @@ export interface GameBreakSettings {
    * - For kid-chooses: This game is highlighted as default (or null for no highlight)
    */
   selectedGame: string | 'random' | null
+
+  /**
+   * Pre-configured game settings, nested by game name.
+   * Allows teachers or the adaptive system to customize game difficulty.
+   * Example: { 'memory-quiz': { selectedCount: 5, displayTime: 2.0 } }
+   */
+  gameConfig?: PracticeBreakGameConfig
+
+  /**
+   * Skip the setup phase and go directly to playing.
+   * When true, games use getInitialStateForPracticeBreak() to create
+   * a playing-ready state instead of showing the setup screen.
+   * Default: true for practice breaks (faster start).
+   */
+  skipSetupPhase?: boolean
+
+  /**
+   * Use adaptive game selection based on student performance.
+   * When true, the practice system may override selectedGame and gameConfig
+   * based on the student's current mood and performance metrics.
+   */
+  useAdaptiveSelection?: boolean
 }
 
 /** Default game break settings */
@@ -331,6 +360,9 @@ export const DEFAULT_GAME_BREAK_SETTINGS: GameBreakSettings = {
   maxDurationMinutes: 5,
   selectionMode: 'kid-chooses',
   selectedGame: null,
+  gameConfig: undefined,
+  skipSetupPhase: true, // Default to skipping setup for faster game breaks
+  useAdaptiveSelection: false,
 }
 
 // ============================================================================

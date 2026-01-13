@@ -26,6 +26,7 @@ export type {
   GameConfig,
   GameState,
   GameMove,
+  PracticeBreakOptions,
   ValidationContext,
   ValidationResult,
   TeamMoveSentinel,
@@ -33,7 +34,7 @@ export type {
 
 export { TEAM_MOVE } from './types'
 
-export type { GameManifest } from '../manifest-schema'
+export type { GameManifest, PracticeBreakConfig } from '../manifest-schema'
 
 // ============================================================================
 // React Hooks (Controlled API)

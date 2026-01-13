@@ -1,11 +1,49 @@
 import type {
   GameValidator,
+  PracticeBreakOptions,
   ValidationContext,
   ValidationResult,
 } from '@/lib/arcade/validation/types'
-import type { CardSortingConfig, CardSortingMove, CardSortingState, CardPosition } from './types'
+import type {
+  CardSortingConfig,
+  CardSortingMove,
+  CardSortingState,
+  CardPosition,
+  SortingCard,
+} from './types'
 import { calculateScore } from './utils/scoringAlgorithm'
 import { placeCardAtPosition, insertCardAtPosition, removeCardAtPosition } from './utils/validation'
+
+// Default config for practice breaks (quick games)
+const PRACTICE_BREAK_DEFAULTS: CardSortingConfig = {
+  cardCount: 5,
+  showNumbers: false,
+  timeLimit: null,
+  gameMode: 'solo',
+}
+
+/**
+ * Generate random sorting cards for practice break mode.
+ * Creates minimal cards with placeholder SVG - client will render AbacusReact.
+ */
+function generatePracticeBreakCards(count: number): SortingCard[] {
+  // Generate unique random numbers
+  const numbers = new Set<number>()
+  while (numbers.size < count) {
+    const num = Math.floor(Math.random() * 100) // 0-99
+    numbers.add(num)
+  }
+
+  // Create card objects in random order
+  const shuffledNumbers = Array.from(numbers).sort(() => Math.random() - 0.5)
+
+  return shuffledNumbers.map((number, index) => ({
+    id: `practice-card-${index}-${number}`,
+    number,
+    // Placeholder SVG - client will render actual AbacusReact
+    svgContent: `<svg viewBox="0 0 100 100"><text x="50" y="50" text-anchor="middle">${number}</text></svg>`,
+  }))
+}
 
 export class CardSortingValidator implements GameValidator<CardSortingState, CardSortingMove> {
   validateMove(
@@ -471,6 +509,69 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
 
   isGameComplete(state: CardSortingState): boolean {
     return state.gamePhase === 'results'
+  }
+
+  /**
+   * Get initial state for practice break mode.
+   * Skips setup phase and starts directly in 'playing' phase with generated cards.
+   *
+   * @param config Partial config to merge with practice break defaults
+   * @param options Practice break options including player info
+   * @returns Game state ready to play immediately
+   */
+  getInitialStateForPracticeBreak(
+    config: Partial<CardSortingConfig>,
+    options: PracticeBreakOptions
+  ): CardSortingState {
+    // Merge with practice break defaults
+    const fullConfig: CardSortingConfig = {
+      ...PRACTICE_BREAK_DEFAULTS,
+      ...config,
+    }
+
+    // Adjust card count based on break duration
+    if (options.maxDurationMinutes <= 2 && fullConfig.cardCount > 5) {
+      fullConfig.cardCount = 5
+    } else if (options.maxDurationMinutes <= 4 && fullConfig.cardCount > 8) {
+      fullConfig.cardCount = 8
+    }
+
+    // Generate cards for the game
+    const selectedCards = generatePracticeBreakCards(fullConfig.cardCount)
+
+    // Create correct order (sorted by number)
+    const correctOrder = [...selectedCards].sort((a, b) => a.number - b.number)
+
+    // Set up single player
+    const playerId = options.playerId
+    const playerMetadata = {
+      id: playerId,
+      name: options.playerName || 'Player',
+      emoji: '🎮',
+      userId: playerId,
+    }
+
+    return {
+      cardCount: fullConfig.cardCount,
+      timeLimit: fullConfig.timeLimit,
+      gameMode: fullConfig.gameMode,
+      // Start in playing phase - skip setup!
+      gamePhase: 'playing',
+      playerId,
+      playerMetadata,
+      activePlayers: [playerId],
+      allPlayerMetadata: new Map([[playerId, playerMetadata]]),
+      gameStartTime: Date.now(),
+      gameEndTime: null,
+      selectedCards,
+      correctOrder,
+      availableCards: selectedCards, // Cards start in available pool
+      placedCards: new Array(fullConfig.cardCount).fill(null),
+      cardPositions: [],
+      cursorPositions: new Map(),
+      selectedCardId: null,
+      scoreBreakdown: null,
+    }
   }
 
   getInitialState(config: CardSortingConfig): CardSortingState {

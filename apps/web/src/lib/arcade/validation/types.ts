@@ -63,6 +63,18 @@ export interface ValidationContext {
 }
 
 /**
+ * Options for creating practice break initial state
+ */
+export interface PracticeBreakOptions {
+  /** Maximum duration in minutes for this game break */
+  maxDurationMinutes: number
+  /** Player ID who will be playing */
+  playerId: string
+  /** Player name for display */
+  playerName?: string
+}
+
+/**
  * Base validator interface that all games must implement
  */
 export interface GameValidator<TState = unknown, TMove extends GameMove = GameMove> {
@@ -85,7 +97,21 @@ export interface GameValidator<TState = unknown, TMove extends GameMove = GameMo
   isGameComplete(state: TState): boolean
 
   /**
-   * Get initial state for a new game
+   * Get initial state for a new game (starts in setup phase)
    */
   getInitialState(config: unknown): TState
+
+  /**
+   * Get initial state for a practice break game.
+   * Unlike getInitialState, this creates a state ready to play immediately
+   * (skipping the setup phase) with pre-configured settings.
+   *
+   * Optional: Games that don't implement this will use getInitialState
+   * with the provided config and immediately send a START_GAME move.
+   *
+   * @param config Partial game configuration (merged with practice break defaults)
+   * @param options Practice break specific options
+   * @returns Game state in 'playing' phase, ready for immediate gameplay
+   */
+  getInitialStateForPracticeBreak?(config: unknown, options: PracticeBreakOptions): TState
 }

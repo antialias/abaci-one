@@ -292,60 +292,60 @@ function MatchingGameStoryWrapper({
           <FullscreenProvider>
             <div
               data-theme={theme}
-            className={css({
-              minHeight: '100vh',
-              backgroundColor: isDark ? 'gray.900' : 'gray.50',
-            })}
-          >
-            {/* Main Navigation Bar */}
-            <AppNavBar navSlot={null} />
-
-            {/* Practice Sub-Navigation with Game Break HUD */}
-            <PracticeSubNav
-              student={mockStudent}
-              pageContext="session"
-              gameBreakHud={gameBreakHud}
-            />
-
-            {/* Main content area - positioned exactly like PracticeClient */}
-            <main
-              data-component="practice-page"
               className={css({
-                // Fixed positioning to precisely control bounds
-                position: 'fixed',
-                // Top: main nav (80px) + sub-nav height (~52px mobile, ~60px desktop)
-                top: { base: '132px', md: '140px' },
-                left: 0,
-                right: 0,
-                // Bottom: 0 for game break (no keypad needed)
-                bottom: 0,
-                overflow: 'hidden',
+                minHeight: '100vh',
+                backgroundColor: isDark ? 'gray.900' : 'gray.50',
               })}
             >
-              {/* Game Container - matches GameBreakScreen layout */}
-              <div
-                data-component="game-break-screen"
-                data-phase="playing"
-                data-element="game-container"
+              {/* Main Navigation Bar */}
+              <AppNavBar navSlot={null} />
+
+              {/* Practice Sub-Navigation with Game Break HUD */}
+              <PracticeSubNav
+                student={mockStudent}
+                pageContext="session"
+                gameBreakHud={gameBreakHud}
+              />
+
+              {/* Main content area - positioned exactly like PracticeClient */}
+              <main
+                data-component="practice-page"
                 className={css({
-                  width: '100%',
-                  height: '100%',
+                  // Fixed positioning to precisely control bounds
+                  position: 'fixed',
+                  // Top: main nav (80px) + sub-nav height (~52px mobile, ~60px desktop)
+                  top: { base: '132px', md: '140px' },
+                  left: 0,
+                  right: 0,
+                  // Bottom: 0 for game break (no keypad needed)
+                  bottom: 0,
                   overflow: 'hidden',
                 })}
               >
-                <GameLayoutProvider mode="container">
-                  <PreviewModeContext.Provider value={previewModeValue}>
-                    <ViewportProvider width={1440} height={900}>
-                      <GameModeProvider {...gameModeProps}>
-                        <MatchingProvider>
-                          <MemoryPairsGame />
-                        </MatchingProvider>
-                      </GameModeProvider>
-                    </ViewportProvider>
-                  </PreviewModeContext.Provider>
-                </GameLayoutProvider>
-              </div>
-            </main>
+                {/* Game Container - matches GameBreakScreen layout */}
+                <div
+                  data-component="game-break-screen"
+                  data-phase="playing"
+                  data-element="game-container"
+                  className={css({
+                    width: '100%',
+                    height: '100%',
+                    overflow: 'hidden',
+                  })}
+                >
+                  <GameLayoutProvider mode="container">
+                    <PreviewModeContext.Provider value={previewModeValue}>
+                      <ViewportProvider width={1440} height={900}>
+                        <GameModeProvider {...gameModeProps}>
+                          <MatchingProvider>
+                            <MemoryPairsGame />
+                          </MatchingProvider>
+                        </GameModeProvider>
+                      </ViewportProvider>
+                    </PreviewModeContext.Provider>
+                  </GameLayoutProvider>
+                </div>
+              </main>
             </div>
           </FullscreenProvider>
         </DeploymentInfoProvider>
@@ -485,7 +485,8 @@ function InteractiveMatchingGame({ theme = 'light' }: { theme?: 'light' | 'dark'
         {/* Timer simulation */}
         <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.25rem' })}>
           <span className={css({ fontSize: '0.625rem', color: 'gray.400' })}>
-            Timer: {Math.floor(elapsedSeconds / 60)}:{(elapsedSeconds % 60).toString().padStart(2, '0')} elapsed
+            Timer: {Math.floor(elapsedSeconds / 60)}:
+            {(elapsedSeconds % 60).toString().padStart(2, '0')} elapsed
           </span>
           <input
             type="range"
@@ -627,8 +628,8 @@ export const Documentation: Story = {
           <strong>AppNavBar</strong>: The main navigation bar (80px height)
         </li>
         <li>
-          <strong>PracticeSubNav</strong>: With game break HUD showing timer, game name, and &quot;Back
-          to Practice&quot; button
+          <strong>PracticeSubNav</strong>: With game break HUD showing timer, game name, and
+          &quot;Back to Practice&quot; button
         </li>
         <li>
           <strong>Main content area</strong>: Positioned exactly like the real practice page (fixed,
@@ -640,8 +641,8 @@ export const Documentation: Story = {
         Isolated Stories
       </h2>
       <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
-        The &quot;Isolated&quot; stories render ONLY the game without any navigation context. Compare these
-        with Full Context stories to debug layout issues caused by nav positioning.
+        The &quot;Isolated&quot; stories render ONLY the game without any navigation context.
+        Compare these with Full Context stories to debug layout issues caused by nav positioning.
       </p>
 
       <h2 className={css({ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>

@@ -6,6 +6,50 @@
 import { z } from 'zod'
 
 /**
+ * Schema for practice break configuration.
+ * Defines how a game should behave during practice session game breaks.
+ */
+export const PracticeBreakConfigSchema = z
+  .object({
+    /**
+     * Suggested default configuration for practice breaks.
+     * These settings are optimized for quick 2-10 minute games.
+     */
+    suggestedConfig: z.record(z.string(), z.unknown()).optional(),
+
+    /**
+     * Config fields that should be locked during practice breaks.
+     * Prevents kids from making games too long or complex.
+     */
+    lockedFields: z.array(z.string()).optional(),
+
+    /**
+     * Minimum duration in minutes this game reasonably supports.
+     * Games shorter than the break duration work best.
+     */
+    minDurationMinutes: z.number().min(1).optional(),
+
+    /**
+     * Maximum duration in minutes this game can reasonably take.
+     * Helps the system choose appropriate games for break length.
+     */
+    maxDurationMinutes: z.number().min(1).optional(),
+
+    /**
+     * Difficulty presets for quick teacher selection.
+     * Keys: 'easy', 'medium', 'hard' with partial config values.
+     */
+    difficultyPresets: z
+      .object({
+        easy: z.record(z.string(), z.unknown()).optional(),
+        medium: z.record(z.string(), z.unknown()).optional(),
+        hard: z.record(z.string(), z.unknown()).optional(),
+      })
+      .optional(),
+  })
+  .describe('Configuration for practice break behavior')
+
+/**
  * Schema for game manifest (game.yaml)
  */
 export const GameManifestSchema = z.object({
@@ -36,11 +80,16 @@ export const GameManifestSchema = z.object({
         'Games must be single-player capable, work in 2-10 minute sessions, ' +
         'and not require complex setup or multiplayer coordination.'
     ),
+  practiceBreakConfig: PracticeBreakConfigSchema.optional().describe(
+    'Configuration for practice break behavior including suggested defaults, ' +
+      'locked fields, duration constraints, and difficulty presets.'
+  ),
 })
 
 /**
- * Inferred TypeScript type from schema
+ * Inferred TypeScript types from schemas
  */
+export type PracticeBreakConfig = z.infer<typeof PracticeBreakConfigSchema>
 export type GameManifest = z.infer<typeof GameManifestSchema>
 
 /**

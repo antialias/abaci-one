@@ -27,6 +27,21 @@ const manifest: GameManifest = {
   ...getGameTheme('pink'),
   available: true,
   practiceBreakReady: true, // Works as single-player, quick 2-5 minute sessions
+  practiceBreakConfig: {
+    suggestedConfig: {
+      gameType: 'abacus-numeral',
+      difficulty: 6, // Quick games with fewer pairs
+      turnTimer: 30,
+    },
+    lockedFields: ['turnTimer'], // Don't let kids change timer during break
+    minDurationMinutes: 2,
+    maxDurationMinutes: 8,
+    difficultyPresets: {
+      easy: { difficulty: 6, gameType: 'abacus-numeral' },
+      medium: { difficulty: 8, gameType: 'abacus-numeral' },
+      hard: { difficulty: 12, gameType: 'complement-pairs' },
+    },
+  },
 }
 
 const defaultConfig: MatchingConfig = {

@@ -6,7 +6,18 @@
 import type { GameCard, MatchingConfig, MatchingMove, MatchingState, Player } from './types'
 import { generateGameCards } from './utils/cardGeneration'
 import { canFlipCard, validateMatch } from './utils/matchValidation'
-import type { GameValidator, ValidationResult } from '@/lib/arcade/validation/types'
+import type {
+  GameValidator,
+  PracticeBreakOptions,
+  ValidationResult,
+} from '@/lib/arcade/validation/types'
+
+// Default config for practice breaks (quick games)
+const PRACTICE_BREAK_DEFAULTS: MatchingConfig = {
+  gameType: 'abacus-numeral',
+  difficulty: 6, // Fewer pairs for quick games
+  turnTimer: 30,
+}
 
 export class MatchingGameValidator implements GameValidator<MatchingState, MatchingMove> {
   validateMove(
@@ -560,6 +571,79 @@ export class MatchingGameValidator implements GameValidator<MatchingState, Match
       pausedGamePhase: undefined,
       pausedGameState: undefined,
       // HOVER: Initialize hover state
+      playerHovers: {},
+    }
+  }
+
+  /**
+   * Get initial state for practice break mode.
+   * Skips setup phase and starts directly in 'playing' phase.
+   *
+   * @param config Partial config to merge with practice break defaults
+   * @param options Practice break options including player info
+   * @returns Game state ready to play immediately
+   */
+  getInitialStateForPracticeBreak(
+    config: Partial<MatchingConfig>,
+    options: PracticeBreakOptions
+  ): MatchingState {
+    // Merge with practice break defaults
+    const fullConfig: MatchingConfig = {
+      ...PRACTICE_BREAK_DEFAULTS,
+      ...config,
+    }
+
+    // Adjust difficulty based on break duration if needed
+    if (options.maxDurationMinutes <= 3 && fullConfig.difficulty > 6) {
+      fullConfig.difficulty = 6 // Use fewer pairs for very short breaks
+    }
+
+    // Generate cards immediately (no setup phase)
+    const gameCards = generateGameCards(fullConfig.gameType, fullConfig.difficulty)
+
+    // Set up single player for practice break
+    const playerId = options.playerId
+    const playerMetadata = {
+      [playerId]: {
+        id: playerId,
+        name: options.playerName || 'Player',
+        emoji: '🎮',
+        userId: playerId, // In practice break, player owns themselves
+      },
+    }
+
+    return {
+      cards: gameCards,
+      gameCards,
+      flippedCards: [],
+      gameType: fullConfig.gameType,
+      difficulty: fullConfig.difficulty,
+      turnTimer: fullConfig.turnTimer,
+      gamePhase: 'playing', // Skip setup - start playing immediately!
+      currentPlayer: playerId,
+      matchedPairs: 0,
+      totalPairs: fullConfig.difficulty,
+      moves: 0,
+      scores: { [playerId]: 0 },
+      activePlayers: [playerId],
+      playerMetadata,
+      consecutiveMatches: { [playerId]: 0 },
+      gameStartTime: Date.now(),
+      gameEndTime: null,
+      currentMoveStartTime: null,
+      timerInterval: null,
+      celebrationAnimations: [],
+      isProcessingMove: false,
+      showMismatchFeedback: false,
+      lastMatchedPair: null,
+      // Save original config for pause/resume
+      originalConfig: {
+        gameType: fullConfig.gameType,
+        difficulty: fullConfig.difficulty,
+        turnTimer: fullConfig.turnTimer,
+      },
+      pausedGamePhase: undefined,
+      pausedGameState: undefined,
       playerHovers: {},
     }
   }

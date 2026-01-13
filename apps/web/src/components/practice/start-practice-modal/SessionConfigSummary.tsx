@@ -14,6 +14,9 @@ export function SessionConfigSummary() {
     problemsPerType,
     isExpanded,
     setIsExpanded,
+    gameBreakEnabled,
+    gameBreakMinutes,
+    showGameBreakSettings,
   } = useStartPracticeModal()
 
   return (
@@ -185,6 +188,73 @@ export function SessionConfigSummary() {
             </div>
           ))}
         </div>
+
+        {/* Game break indicator (only when breaks are possible) */}
+        {showGameBreakSettings && (
+          <>
+            <div
+              className={css({
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.600' : 'gray.300',
+                '@media (max-width: 480px), (max-height: 700px)': {
+                  fontSize: '0.75rem',
+                },
+              })}
+            >
+              •
+            </div>
+            <div
+              data-element="game-break-summary"
+              data-enabled={gameBreakEnabled}
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0',
+              })}
+            >
+              <span
+                data-element="game-break-icon"
+                className={css({
+                  fontSize: '1.25rem',
+                  lineHeight: 1,
+                  '@media (max-width: 480px), (max-height: 700px)': {
+                    fontSize: '1rem',
+                  },
+                })}
+                style={{
+                  opacity: gameBreakEnabled ? 1 : 0.35,
+                  filter: gameBreakEnabled ? 'none' : 'grayscale(100%)',
+                }}
+              >
+                🎮
+              </span>
+              <span
+                data-element="game-break-status"
+                className={css({
+                  fontSize: '0.6875rem',
+                  fontWeight: '600',
+                  lineHeight: 1,
+                  marginTop: '0.125rem',
+                  '@media (max-width: 480px), (max-height: 700px)': {
+                    fontSize: '0.625rem',
+                  },
+                })}
+                style={{
+                  color: gameBreakEnabled
+                    ? isDark
+                      ? '#fbbf24'
+                      : '#d97706'
+                    : isDark
+                      ? '#6b7280'
+                      : '#9ca3af',
+                }}
+              >
+                {gameBreakEnabled ? `${gameBreakMinutes}m` : 'off'}
+              </span>
+            </div>
+          </>
+        )}
 
         {/* Expand indicator */}
         <div

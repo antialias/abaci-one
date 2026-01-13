@@ -4,6 +4,8 @@ import * as Select from '@radix-ui/react-select'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../../styled-system/css'
 import { useStartPracticeModal } from '../StartPracticeModalContext'
+import { GameBreakDifficultyPresets } from './GameBreakDifficultyPresets'
+import { GameBreakCustomConfig } from './GameBreakCustomConfig'
 
 export function GameBreakSettings() {
   const { resolvedTheme } = useTheme()
@@ -198,7 +200,8 @@ export function GameBreakSettings() {
                 const durations = [2, 3, 5]
                 const selectedIdx = durations.indexOf(gameBreakMinutes)
                 // Fill percentage: 0%, 50%, 100% for 3 items
-                const fillPercent = selectedIdx >= 0 ? (selectedIdx / (durations.length - 1)) * 100 : 0
+                const fillPercent =
+                  selectedIdx >= 0 ? (selectedIdx / (durations.length - 1)) * 100 : 0
                 // Typography progression - dramatic increase
                 const fontSizes = ['0.6875rem', '0.8125rem', '0.9375rem']
                 const fontWeights = [500, 600, 700]
@@ -215,9 +218,7 @@ export function GameBreakSettings() {
                       borderRadius: '8px',
                     })}
                     style={{
-                      background: isDark
-                        ? 'rgba(139, 92, 246, 0.08)'
-                        : 'rgba(139, 92, 246, 0.05)',
+                      background: isDark ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.05)',
                     }}
                   >
                     {/* Track background (unfilled portion) - positioned at bottom */}
@@ -290,9 +291,7 @@ export function GameBreakSettings() {
                               : isDark
                                 ? `rgba(196, 181, 253, ${0.55 + index * 0.2})`
                                 : `rgba(124, 58, 237, ${0.45 + index * 0.25})`,
-                            boxShadow: isSelected
-                              ? '0 0 12px rgba(139, 92, 246, 0.6)'
-                              : 'none',
+                            boxShadow: isSelected ? '0 0 12px rgba(139, 92, 246, 0.6)' : 'none',
                             transform: isSelected ? 'scale(1.1)' : 'scale(1)',
                           }}
                         >
@@ -305,6 +304,10 @@ export function GameBreakSettings() {
               })()}
             </div>
 
+            {/* Difficulty presets and customize (for single game) */}
+            <GameBreakDifficultyPresets />
+            <GameBreakCustomConfig />
+
             {/* Helper text + coming soon */}
             <div
               data-element="game-break-hint"
@@ -314,6 +317,7 @@ export function GameBreakSettings() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: '0.5rem',
+                marginTop: '0.25rem',
                 '@media (max-width: 480px), (max-height: 700px)': {
                   fontSize: '0.5625rem',
                 },
@@ -431,119 +435,114 @@ export function GameBreakSettings() {
       </button>
 
       {/* Duration options - time continuum slider */}
-      {gameBreakEnabled && (() => {
-        const durations = [2, 3, 5, 10]
-        const selectedIdx = durations.indexOf(gameBreakMinutes)
-        // Fill percentage based on position in array
-        const fillPercent = selectedIdx >= 0 ? (selectedIdx / (durations.length - 1)) * 100 : 0
-        // Typography progression - dramatic increase in size and weight
-        const fontSizes = ['0.6875rem', '0.75rem', '0.875rem', '1rem']
-        const fontWeights = [400, 500, 600, 700]
+      {gameBreakEnabled &&
+        (() => {
+          const durations = [2, 3, 5, 10]
+          const selectedIdx = durations.indexOf(gameBreakMinutes)
+          // Fill percentage based on position in array
+          const fillPercent = selectedIdx >= 0 ? (selectedIdx / (durations.length - 1)) * 100 : 0
+          // Typography progression - dramatic increase in size and weight
+          const fontSizes = ['0.6875rem', '0.75rem', '0.875rem', '1rem']
+          const fontWeights = [400, 500, 600, 700]
 
-        return (
-          <div
-            data-element="game-break-duration"
-            className={css({
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0.375rem 0.5rem',
-              borderRadius: '10px',
-              '@media (max-width: 480px), (max-height: 700px)': {
-                padding: '0.25rem 0.375rem',
-                borderRadius: '8px',
-              },
-            })}
-            style={{
-              background: isDark
-                ? 'rgba(139, 92, 246, 0.08)'
-                : 'rgba(139, 92, 246, 0.05)',
-            }}
-          >
-            {/* Track background (unfilled portion) - positioned at bottom */}
+          return (
             <div
+              data-element="game-break-duration"
               className={css({
-                position: 'absolute',
-                left: '1.25rem',
-                right: '1.25rem',
-                bottom: '0.375rem',
-                height: '4px',
-                borderRadius: '2px',
-                zIndex: 0,
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0.375rem 0.5rem',
+                borderRadius: '10px',
+                '@media (max-width: 480px), (max-height: 700px)': {
+                  padding: '0.25rem 0.375rem',
+                  borderRadius: '8px',
+                },
               })}
               style={{
-                background: isDark
-                  ? 'rgba(139, 92, 246, 0.25)'
-                  : 'rgba(139, 92, 246, 0.15)',
+                background: isDark ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.05)',
               }}
-            />
-            {/* Track fill (filled portion up to selection) */}
-            <div
-              className={css({
-                position: 'absolute',
-                left: '1.25rem',
-                bottom: '0.375rem',
-                height: '4px',
-                borderRadius: '2px',
-                zIndex: 0,
-                transition: 'width 0.25s ease',
+            >
+              {/* Track background (unfilled portion) - positioned at bottom */}
+              <div
+                className={css({
+                  position: 'absolute',
+                  left: '1.25rem',
+                  right: '1.25rem',
+                  bottom: '0.375rem',
+                  height: '4px',
+                  borderRadius: '2px',
+                  zIndex: 0,
+                })}
+                style={{
+                  background: isDark ? 'rgba(139, 92, 246, 0.25)' : 'rgba(139, 92, 246, 0.15)',
+                }}
+              />
+              {/* Track fill (filled portion up to selection) */}
+              <div
+                className={css({
+                  position: 'absolute',
+                  left: '1.25rem',
+                  bottom: '0.375rem',
+                  height: '4px',
+                  borderRadius: '2px',
+                  zIndex: 0,
+                  transition: 'width 0.25s ease',
+                })}
+                style={{
+                  width: `calc((100% - 2.5rem) * ${fillPercent / 100})`,
+                  background: isDark
+                    ? 'linear-gradient(90deg, #a78bfa 0%, #8b5cf6 100%)'
+                    : 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)',
+                }}
+              />
+              {durations.map((mins, index) => {
+                const isSelected = gameBreakMinutes === mins
+                return (
+                  <button
+                    key={mins}
+                    type="button"
+                    data-option={`game-break-${mins}`}
+                    data-selected={isSelected}
+                    onClick={() => setGameBreakMinutes(mins)}
+                    className={css({
+                      position: 'relative',
+                      zIndex: 1,
+                      flex: 1,
+                      padding: '0.25rem 0',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '@media (max-width: 480px), (max-height: 700px)': {
+                        padding: '0.1875rem 0',
+                        borderRadius: '4px',
+                      },
+                    })}
+                    style={{
+                      fontSize: fontSizes[index],
+                      fontWeight: fontWeights[index],
+                      backgroundColor: isSelected
+                        ? isDark
+                          ? '#8b5cf6'
+                          : '#7c3aed'
+                        : 'transparent',
+                      color: isSelected
+                        ? 'white'
+                        : isDark
+                          ? `rgba(196, 181, 253, ${0.5 + index * 0.15})`
+                          : `rgba(124, 58, 237, ${0.4 + index * 0.18})`,
+                      boxShadow: isSelected ? '0 0 14px rgba(139, 92, 246, 0.6)' : 'none',
+                      transform: isSelected ? 'scale(1.12)' : 'scale(1)',
+                    }}
+                  >
+                    {mins}m
+                  </button>
+                )
               })}
-              style={{
-                width: `calc((100% - 2.5rem) * ${fillPercent / 100})`,
-                background: isDark
-                  ? 'linear-gradient(90deg, #a78bfa 0%, #8b5cf6 100%)'
-                  : 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)',
-              }}
-            />
-            {durations.map((mins, index) => {
-              const isSelected = gameBreakMinutes === mins
-              return (
-                <button
-                  key={mins}
-                  type="button"
-                  data-option={`game-break-${mins}`}
-                  data-selected={isSelected}
-                  onClick={() => setGameBreakMinutes(mins)}
-                  className={css({
-                    position: 'relative',
-                    zIndex: 1,
-                    flex: 1,
-                    padding: '0.25rem 0',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    '@media (max-width: 480px), (max-height: 700px)': {
-                      padding: '0.1875rem 0',
-                      borderRadius: '4px',
-                    },
-                  })}
-                  style={{
-                    fontSize: fontSizes[index],
-                    fontWeight: fontWeights[index],
-                    backgroundColor: isSelected
-                      ? isDark
-                        ? '#8b5cf6'
-                        : '#7c3aed'
-                      : 'transparent',
-                    color: isSelected
-                      ? 'white'
-                      : isDark
-                        ? `rgba(196, 181, 253, ${0.5 + index * 0.15})`
-                        : `rgba(124, 58, 237, ${0.4 + index * 0.18})`,
-                    boxShadow: isSelected
-                      ? '0 0 14px rgba(139, 92, 246, 0.6)'
-                      : 'none',
-                    transform: isSelected ? 'scale(1.12)' : 'scale(1)',
-                  }}
-                >
-                  {mins}m
-                </button>
-              )
-            })}
-          </div>
-        )
-      })()}
+            </div>
+          )
+        })()}
 
       {/* Selection Mode Toggle */}
       {gameBreakEnabled && (
@@ -555,12 +554,12 @@ export function GameBreakSettings() {
             marginTop: '0.5rem',
           })}
         >
-            {[
-              { mode: 'auto-start' as const, emoji: '🚀', label: 'Auto-start' },
-              { mode: 'kid-chooses' as const, emoji: '🎯', label: 'Kid picks' },
-            ].map(({ mode, emoji, label }) => {
-              const isSelected = gameBreakSelectionMode === mode
-              return (
+          {[
+            { mode: 'auto-start' as const, emoji: '🚀', label: 'Auto-start' },
+            { mode: 'kid-chooses' as const, emoji: '🎯', label: 'Kid picks' },
+          ].map(({ mode, emoji, label }) => {
+            const isSelected = gameBreakSelectionMode === mode
+            return (
               <button
                 key={mode}
                 type="button"
@@ -797,6 +796,14 @@ export function GameBreakSettings() {
             </Select.Portal>
           </Select.Root>
         </div>
+      )}
+
+      {/* Difficulty presets and customize (for multi-game) */}
+      {gameBreakEnabled && (
+        <>
+          <GameBreakDifficultyPresets />
+          <GameBreakCustomConfig />
+        </>
       )}
 
       {/* Helper text */}

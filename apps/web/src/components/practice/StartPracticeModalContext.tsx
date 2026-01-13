@@ -11,9 +11,14 @@ import {
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import type { SessionPlan, GameBreakSelectionMode } from '@/db/schema/session-plans'
+import type {
+  SessionPlan,
+  GameBreakSelectionMode,
+  PracticeBreakGameConfig,
+} from '@/db/schema/session-plans'
 import { DEFAULT_PLAN_CONFIG, DEFAULT_GAME_BREAK_SETTINGS } from '@/db/schema/session-plans'
 import { getPracticeApprovedGames } from '@/lib/arcade/practice-approved-games'
+import type { PracticeBreakConfig } from '@/lib/arcade/manifest-schema'
 import {
   ActiveSessionExistsClientError,
   NoSkillsEnabledClientError,
@@ -48,15 +53,20 @@ export type EnabledParts = {
 
 export type PartType = 'abacus' | 'visualization' | 'linear'
 
-// Minimal game info interface for the context (used for both real games and mock overrides)
+// Game info interface for the context (used for both real games and mock overrides)
 export interface GameInfo {
   manifest: {
     name: string
     displayName: string
     shortName?: string
     icon: string
+    /** Practice break configuration (presets, locked fields, etc.) */
+    practiceBreakConfig?: PracticeBreakConfig
   }
 }
+
+/** Difficulty preset type for game break configuration */
+export type GameBreakDifficultyPreset = 'easy' | 'medium' | 'hard' | null
 
 interface StartPracticeModalContextValue {
   // Read-only props from parent
@@ -83,6 +93,17 @@ interface StartPracticeModalContextValue {
   setGameBreakSelectionMode: (mode: GameBreakSelectionMode) => void
   gameBreakSelectedGame: string | 'random' | null
   setGameBreakSelectedGame: (game: string | 'random' | null) => void
+  // Per-game config (state + setters)
+  gameBreakDifficultyPreset: GameBreakDifficultyPreset
+  setGameBreakDifficultyPreset: (preset: GameBreakDifficultyPreset) => void
+  gameBreakCustomConfig: Record<string, unknown>
+  setGameBreakCustomConfig: (config: Record<string, unknown>) => void
+  gameBreakShowCustomize: boolean
+  setGameBreakShowCustomize: (show: boolean) => void
+  /** The selected game's practice break config (null if random or no game selected) */
+  selectedGamePracticeConfig: PracticeBreakConfig | null
+  /** Resolved game config based on preset or custom settings */
+  resolvedGameConfig: Record<string, unknown>
 
   // Derived values
   secondsPerTerm: number
@@ -180,9 +201,14 @@ export function StartPracticeModalProvider({
   const [gameBreakSelectionMode, setGameBreakSelectionMode] = useState<GameBreakSelectionMode>(
     DEFAULT_GAME_BREAK_SETTINGS.selectionMode
   )
-  const [gameBreakSelectedGame, setGameBreakSelectedGame] = useState<string | 'random' | null>(
+  const [gameBreakSelectedGame, setGameBreakSelectedGameRaw] = useState<string | 'random' | null>(
     DEFAULT_GAME_BREAK_SETTINGS.selectedGame
   )
+  // Per-game config state
+  const [gameBreakDifficultyPreset, setGameBreakDifficultyPreset] =
+    useState<GameBreakDifficultyPreset>('medium')
+  const [gameBreakCustomConfig, setGameBreakCustomConfig] = useState<Record<string, unknown>>({})
+  const [gameBreakShowCustomize, setGameBreakShowCustomize] = useState(false)
 
   // Toggle part helper
   const togglePart = useCallback((partType: keyof EnabledParts) => {
@@ -212,10 +238,52 @@ export function StartPracticeModalProvider({
   const hasSingleGame = practiceApprovedGames.length === 1
   const singleGame = hasSingleGame ? practiceApprovedGames[0] : null
 
+  // Get the selected game's practice break config
+  const selectedGamePracticeConfig = useMemo<PracticeBreakConfig | null>(() => {
+    if (!gameBreakSelectedGame || gameBreakSelectedGame === 'random') return null
+    const game = practiceApprovedGames.find((g) => g.manifest.name === gameBreakSelectedGame)
+    return game?.manifest.practiceBreakConfig ?? null
+  }, [gameBreakSelectedGame, practiceApprovedGames])
+
+  // Resolve game config based on preset or custom settings
+  const resolvedGameConfig = useMemo<Record<string, unknown>>(() => {
+    if (!selectedGamePracticeConfig) return {}
+
+    // If showing customize view, use custom config
+    if (gameBreakShowCustomize) {
+      return {
+        ...selectedGamePracticeConfig.suggestedConfig,
+        ...gameBreakCustomConfig,
+      }
+    }
+
+    // Otherwise, use preset (defaults to medium if no preset selected)
+    const preset = gameBreakDifficultyPreset ?? 'medium'
+    const presetConfig = selectedGamePracticeConfig.difficultyPresets?.[preset]
+    return {
+      ...selectedGamePracticeConfig.suggestedConfig,
+      ...presetConfig,
+    }
+  }, [
+    selectedGamePracticeConfig,
+    gameBreakShowCustomize,
+    gameBreakCustomConfig,
+    gameBreakDifficultyPreset,
+  ])
+
+  // Wrapper for setGameBreakSelectedGame that resets config when game changes
+  const setGameBreakSelectedGame = useCallback((game: string | 'random' | null) => {
+    setGameBreakSelectedGameRaw(game)
+    // Reset config state when switching games
+    setGameBreakDifficultyPreset('medium')
+    setGameBreakCustomConfig({})
+    setGameBreakShowCustomize(false)
+  }, [])
+
   // Auto-select single game when only one is available
   useEffect(() => {
     if (hasSingleGame && singleGame) {
-      setGameBreakSelectedGame(singleGame.manifest.name)
+      setGameBreakSelectedGameRaw(singleGame.manifest.name)
       // Force auto-start mode when there's only one game
       setGameBreakSelectionMode('auto-start')
     }
@@ -327,6 +395,15 @@ export function StartPracticeModalProvider({
               maxDurationMinutes: gameBreakMinutes,
               selectionMode: gameBreakSelectionMode,
               selectedGame: gameBreakEnabled ? gameBreakSelectedGame : null,
+              // Include per-game config when a specific game is selected
+              gameConfig:
+                gameBreakEnabled &&
+                gameBreakSelectedGame &&
+                gameBreakSelectedGame !== 'random' &&
+                Object.keys(resolvedGameConfig).length > 0
+                  ? ({ [gameBreakSelectedGame]: resolvedGameConfig } as PracticeBreakGameConfig)
+                  : undefined,
+              skipSetupPhase: true,
             },
           })
         } catch (err) {
@@ -357,6 +434,7 @@ export function StartPracticeModalProvider({
     gameBreakMinutes,
     gameBreakSelectionMode,
     gameBreakSelectedGame,
+    resolvedGameConfig,
     generatePlan,
     approvePlan,
     startPlan,
@@ -391,6 +469,15 @@ export function StartPracticeModalProvider({
     setGameBreakSelectionMode,
     gameBreakSelectedGame,
     setGameBreakSelectedGame,
+    // Per-game config
+    gameBreakDifficultyPreset,
+    setGameBreakDifficultyPreset,
+    gameBreakCustomConfig,
+    setGameBreakCustomConfig,
+    gameBreakShowCustomize,
+    setGameBreakShowCustomize,
+    selectedGamePracticeConfig,
+    resolvedGameConfig,
 
     // Derived values
     secondsPerTerm,

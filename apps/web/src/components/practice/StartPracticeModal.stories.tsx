@@ -165,6 +165,104 @@ const mockSingleGame = [
   },
 ]
 
+// Mock games WITH practiceBreakConfig for testing difficulty presets and customize
+const mockGamesWithConfig = [
+  {
+    manifest: {
+      name: 'memory-quiz',
+      displayName: 'Memory Quiz',
+      shortName: 'Memory Quiz',
+      icon: '🧠',
+      practiceBreakConfig: {
+        suggestedConfig: {
+          selectedCount: 5,
+          displayTime: 2.0,
+          selectedDifficulty: 'easy',
+        },
+        lockedFields: [],
+        minDurationMinutes: 2,
+        maxDurationMinutes: 8,
+        difficultyPresets: {
+          easy: { selectedCount: 2, displayTime: 3.0, selectedDifficulty: 'beginner' },
+          medium: { selectedCount: 5, displayTime: 2.0, selectedDifficulty: 'easy' },
+          hard: { selectedCount: 8, displayTime: 1.5, selectedDifficulty: 'medium' },
+        },
+      },
+    },
+  },
+  {
+    manifest: {
+      name: 'card-sorting',
+      displayName: 'Card Sorting',
+      shortName: 'Card Sort',
+      icon: '🃏',
+      practiceBreakConfig: {
+        suggestedConfig: {
+          cardCount: 5,
+          showNumbers: false,
+        },
+        lockedFields: ['gameMode'],
+        minDurationMinutes: 2,
+        maxDurationMinutes: 6,
+        difficultyPresets: {
+          easy: { cardCount: 5, showNumbers: true },
+          medium: { cardCount: 8, showNumbers: false },
+          hard: { cardCount: 12, showNumbers: false },
+        },
+      },
+    },
+  },
+  {
+    manifest: {
+      name: 'matching',
+      displayName: 'Matching Pairs Battle',
+      shortName: 'Matching Pairs',
+      icon: '⚔️',
+      practiceBreakConfig: {
+        suggestedConfig: {
+          difficulty: 6,
+          gameType: 'abacus-numeral',
+        },
+        lockedFields: [],
+        minDurationMinutes: 2,
+        maxDurationMinutes: 10,
+        difficultyPresets: {
+          easy: { difficulty: 6, gameType: 'abacus-numeral' },
+          medium: { difficulty: 8, gameType: 'abacus-numeral' },
+          hard: { difficulty: 12, gameType: 'complement-pairs' },
+        },
+      },
+    },
+  },
+]
+
+// Single game with config for testing
+const mockSingleGameWithConfig = [
+  {
+    manifest: {
+      name: 'memory-quiz',
+      displayName: 'Memory Quiz',
+      shortName: 'Memory Quiz',
+      icon: '🧠',
+      practiceBreakConfig: {
+        suggestedConfig: {
+          selectedCount: 5,
+          displayTime: 2.0,
+          selectedDifficulty: 'easy',
+        },
+        lockedFields: [],
+        minDurationMinutes: 2,
+        maxDurationMinutes: 8,
+        difficultyPresets: {
+          easy: { selectedCount: 2, displayTime: 3.0, selectedDifficulty: 'beginner' },
+          medium: { selectedCount: 5, displayTime: 2.0, selectedDifficulty: 'easy' },
+          hard: { selectedCount: 8, displayTime: 1.5, selectedDifficulty: 'medium' },
+        },
+      },
+    },
+  },
+]
+
 // Default props
 const defaultProps = {
   studentId: 'test-student-1',
@@ -462,9 +560,220 @@ export const GameBreakDocumentation: Story = {
           })}
         >
           Use <code>practiceApprovedGamesOverride</code> prop to test different game counts. In
-          production, this is determined by which games have{' '}
-          <code>practiceBreakReady: true</code> in their manifests AND are in the whitelist.
+          production, this is determined by which games have <code>practiceBreakReady: true</code>{' '}
+          in their manifests AND are in the whitelist.
         </p>
+      </div>
+    </StoryWrapper>
+  ),
+}
+
+// ================================
+// GAME BREAK CONFIGURATION STORIES
+// ================================
+
+/**
+ * Multiple games with practiceBreakConfig - shows difficulty presets and customize option
+ *
+ * This demonstrates the full game break configuration UI:
+ * 1. Select a game from dropdown
+ * 2. See Easy/Medium/Hard difficulty presets
+ * 3. Click "Customize" to reveal game-specific settings
+ */
+export const GameBreakWithDifficultyPresets: Story = {
+  render: () => (
+    <StoryWrapper>
+      <StartPracticeModal
+        {...defaultProps}
+        practiceApprovedGamesOverride={mockGamesWithConfig}
+        initialExpanded={true}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Game break config in dark mode
+ */
+export const GameBreakWithDifficultyPresetsDark: Story = {
+  render: () => (
+    <StoryWrapper theme="dark">
+      <div data-theme="dark">
+        <StartPracticeModal
+          {...defaultProps}
+          practiceApprovedGamesOverride={mockGamesWithConfig}
+          initialExpanded={true}
+        />
+      </div>
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Single game with practiceBreakConfig
+ *
+ * Shows simplified single-game mode with difficulty presets.
+ * The game is auto-selected, and user can choose difficulty.
+ */
+export const SingleGameWithDifficultyPresets: Story = {
+  render: () => (
+    <StoryWrapper>
+      <StartPracticeModal
+        {...defaultProps}
+        practiceApprovedGamesOverride={mockSingleGameWithConfig}
+        initialExpanded={true}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Single game with config - dark mode
+ */
+export const SingleGameWithDifficultyPresetsDark: Story = {
+  render: () => (
+    <StoryWrapper theme="dark">
+      <div data-theme="dark">
+        <StartPracticeModal
+          {...defaultProps}
+          practiceApprovedGamesOverride={mockSingleGameWithConfig}
+          initialExpanded={true}
+        />
+      </div>
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Documentation for Game Break Configuration
+ */
+export const GameBreakConfigDocumentation: Story = {
+  render: () => (
+    <StoryWrapper>
+      <div
+        className={css({
+          padding: '2rem',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          maxWidth: '700px',
+          margin: '0 auto',
+        })}
+      >
+        <h2
+          className={css({
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            marginBottom: '1rem',
+          })}
+        >
+          Game Break Configuration UI
+        </h2>
+
+        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+          Overview
+        </h3>
+        <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
+          When a game has <code>practiceBreakConfig</code> in its manifest, additional configuration
+          options appear in the practice setup modal.
+        </p>
+
+        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+          Difficulty Presets
+        </h3>
+        <ul
+          className={css({
+            paddingLeft: '1.5rem',
+            marginBottom: '1rem',
+            lineHeight: 1.8,
+          })}
+        >
+          <li>
+            <strong>Easy / Medium / Hard</strong> buttons appear below game selection
+          </li>
+          <li>Selecting a preset applies predefined config values</li>
+          <li>Default selection is "Medium"</li>
+          <li>Presets are hidden when "Customize" is expanded</li>
+        </ul>
+
+        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+          Customize Form
+        </h3>
+        <ul
+          className={css({
+            paddingLeft: '1.5rem',
+            marginBottom: '1rem',
+            lineHeight: 1.8,
+          })}
+        >
+          <li>
+            Click <strong>"Customize"</strong> to reveal game-specific settings
+          </li>
+          <li>Form fields are generated from the game's config schema</li>
+          <li>
+            <strong>Number fields</strong>: +/- stepper buttons
+          </li>
+          <li>
+            <strong>Boolean fields</strong>: Yes/No toggle button
+          </li>
+          <li>
+            <strong>Select fields</strong>: Chip-style option buttons
+          </li>
+          <li>
+            <strong>Locked fields</strong>: Hidden from the form (not user-editable)
+          </li>
+        </ul>
+
+        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+          Config Resolution
+        </h3>
+        <ul
+          className={css({
+            paddingLeft: '1.5rem',
+            marginBottom: '1rem',
+            lineHeight: 1.8,
+          })}
+        >
+          <li>If customize is closed: Uses selected preset config</li>
+          <li>If customize is open: Uses custom form values</li>
+          <li>
+            Base config comes from game's <code>suggestedConfig</code>
+          </li>
+          <li>Preset or custom values override the base</li>
+        </ul>
+
+        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+          When Random Game Selected
+        </h3>
+        <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
+          No presets or customize options shown - the random game will use its own defaults.
+        </p>
+
+        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+          Data Structure
+        </h3>
+        <pre
+          className={css({
+            backgroundColor: 'gray.100',
+            padding: '1rem',
+            borderRadius: '8px',
+            fontSize: '0.75rem',
+            overflow: 'auto',
+          })}
+        >
+          {`practiceBreakConfig: {
+  suggestedConfig: {
+    cardCount: 5,
+    showNumbers: false,
+    // ... game-specific fields
+  },
+  lockedFields: ['gameMode'], // Fields user can't change
+  difficultyPresets: {
+    easy: { cardCount: 5, showNumbers: true },
+    medium: { cardCount: 8, showNumbers: false },
+    hard: { cardCount: 12, showNumbers: false },
+  },
+}`}
+        </pre>
       </div>
     </StoryWrapper>
   ),

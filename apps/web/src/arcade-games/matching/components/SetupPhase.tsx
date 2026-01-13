@@ -404,7 +404,11 @@ export function SetupPhase() {
                   })}
                 >
                   <span>🧮</span>
-                  <span className={css({ fontSize: isCompact ? '16px' : { base: '16px', md: '20px' } })}>↔️</span>
+                  <span
+                    className={css({ fontSize: isCompact ? '16px' : { base: '16px', md: '20px' } })}
+                  >
+                    ↔️
+                  </span>
                   <span>🔢</span>
                 </div>
                 <div
@@ -459,7 +463,11 @@ export function SetupPhase() {
                   })}
                 >
                   <span>🤝</span>
-                  <span className={css({ fontSize: isCompact ? '16px' : { base: '16px', md: '20px' } })}>➕</span>
+                  <span
+                    className={css({ fontSize: isCompact ? '16px' : { base: '16px', md: '20px' } })}
+                  >
+                    ➕
+                  </span>
                   <span>🔟</span>
                 </div>
                 <div
@@ -737,7 +745,9 @@ export function SetupPhase() {
               color: 'white',
               border: 'none',
               borderRadius: isCompact ? '16px' : { base: '16px', sm: '20px', md: '24px' },
-              padding: isCompact ? '12px 24px' : { base: '14px 28px', sm: '16px 32px', md: '18px 36px' },
+              padding: isCompact
+                ? '12px 24px'
+                : { base: '14px 28px', sm: '16px 32px', md: '18px 36px' },
               fontSize: isCompact ? '16px' : { base: '16px', sm: '18px', md: '20px' },
               fontWeight: 'black',
               cursor: 'pointer',
@@ -799,9 +809,7 @@ export function SetupPhase() {
               >
                 {canResumeGame ? '▶️' : '🚀'}
               </span>
-              <span data-element="button-text">
-                {canResumeGame ? 'RESUME GAME' : 'START GAME'}
-              </span>
+              <span data-element="button-text">{canResumeGame ? 'RESUME GAME' : 'START GAME'}</span>
               <span
                 data-element="button-icon-right"
                 className={css({
