@@ -109,15 +109,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         }
 
         // Remove the _originalSource field
-        delete (updatedResults[resultIndex] as typeof result & { _originalSource?: string })
-          ._originalSource
+        delete (
+          updatedResults[resultIndex] as typeof result & {
+            _originalSource?: string
+          }
+        )._originalSource
 
         break
       }
 
       default:
         return NextResponse.json(
-          { error: 'Invalid action. Must be: mark_correct, exclude, or include' },
+          {
+            error: 'Invalid action. Must be: mark_correct, exclude, or include',
+          },
           { status: 400 }
         )
     }

@@ -4,7 +4,11 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../../styled-system/css'
 import { useStartPracticeModal, type GameBreakDifficultyPreset } from '../StartPracticeModalContext'
 
-const PRESETS: { key: GameBreakDifficultyPreset; label: string; emoji: string }[] = [
+const PRESETS: {
+  key: GameBreakDifficultyPreset
+  label: string
+  emoji: string
+}[] = [
   { key: 'easy', label: 'Easy', emoji: '🌱' },
   { key: 'medium', label: 'Medium', emoji: '🌿' },
   { key: 'hard', label: 'Hard', emoji: '🌳' },

@@ -101,7 +101,11 @@ const defaultSessionMode: SessionMode = {
 
 const tutorialSessionMode: SessionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'skill-with-tutorial', displayName: 'Skill With Tutorial', pKnown: 0.8 },
+  nextSkill: {
+    skillId: 'skill-with-tutorial',
+    displayName: 'Skill With Tutorial',
+    pKnown: 0.8,
+  },
   tutorialRequired: true,
   phase: mockPhase,
   skipCount: 0,

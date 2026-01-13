@@ -462,7 +462,13 @@ function NumberField({
       >
         {label}
       </span>
-      <div className={css({ display: 'flex', alignItems: 'center', gap: '0.25rem' })}>
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+        })}
+      >
         <button
           type="button"
           onClick={() => onChange(Math.max(min, value - step))}

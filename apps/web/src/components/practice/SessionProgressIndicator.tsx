@@ -166,14 +166,23 @@ function GameBreakIcon({ state, progressPercent, isDark }: GameBreakIconProps) {
 }
 
 /**
- * Get result for a specific slot
+ * Get the most recent result for a specific slot.
+ * Returns the last matching result because results are appended chronologically,
+ * so the last match is the most recent (e.g., a redo after the original).
  */
 function getSlotResult(
   results: SlotResult[],
   partNumber: number,
   slotIndex: number
 ): SlotResult | undefined {
-  return results.find((r) => r.partNumber === partNumber && r.slotIndex === slotIndex)
+  // Iterate from end to find most recent result for this slot
+  for (let i = results.length - 1; i >= 0; i--) {
+    const r = results[i]
+    if (r.partNumber === partNumber && r.slotIndex === slotIndex) {
+      return r
+    }
+  }
+  return undefined
 }
 
 /**

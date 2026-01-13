@@ -753,14 +753,25 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
                       <span>🅰️</span>
                       <span>Auto</span>
                       {presetMode === 'auto' && (
-                        <span className={css({ ml: 'auto', fontSize: 'xs', color: 'blue.400' })}>
+                        <span
+                          className={css({
+                            ml: 'auto',
+                            fontSize: 'xs',
+                            color: 'blue.400',
+                          })}
+                        >
                           ✓
                         </span>
                       )}
                     </button>
 
                     {/* Divider */}
-                    <div className={css({ h: '1px', bg: 'rgba(255, 255, 255, 0.1)' })} />
+                    <div
+                      className={css({
+                        h: '1px',
+                        bg: 'rgba(255, 255, 255, 0.1)',
+                      })}
+                    />
 
                     {/* Preset options */}
                     {(Object.keys(LIGHTING_PRESETS) as Array<keyof typeof LIGHTING_PRESETS>).map(
@@ -790,14 +801,22 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
                           <span>{LIGHTING_PRESETS[key].label}</span>
                           {presetMode === key && (
                             <span
-                              className={css({ ml: 'auto', fontSize: 'xs', color: 'blue.400' })}
+                              className={css({
+                                ml: 'auto',
+                                fontSize: 'xs',
+                                color: 'blue.400',
+                              })}
                             >
                               ✓
                             </span>
                           )}
                           {presetMode === 'auto' && detectedPreset === key && (
                             <span
-                              className={css({ ml: 'auto', fontSize: '9px', color: 'gray.400' })}
+                              className={css({
+                                ml: 'auto',
+                                fontSize: '9px',
+                                color: 'gray.400',
+                              })}
                             >
                               detected
                             </span>
@@ -827,7 +846,9 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
                 justifyContent: 'center',
                 backdropFilter: 'blur(4px)',
                 transition: 'all 0.2s',
-                _hover: { bg: fingerOcclusionMode ? 'purple.500' : 'rgba(0, 0, 0, 0.7)' },
+                _hover: {
+                  bg: fingerOcclusionMode ? 'purple.500' : 'rgba(0, 0, 0, 0.7)',
+                },
               })}
               title={fingerOcclusionMode ? 'Finger mode ON' : 'Finger mode OFF (experimental)'}
             >

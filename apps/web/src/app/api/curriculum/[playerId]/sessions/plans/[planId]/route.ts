@@ -108,7 +108,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       case 'record_redo':
         if (!result || !redoContext) {
           return NextResponse.json(
-            { error: 'result and redoContext are required for record_redo action' },
+            {
+              error: 'result and redoContext are required for record_redo action',
+            },
             { status: 400 }
           )
         }

@@ -230,7 +230,13 @@ export function AttemptHistoryPanel({
       )}
 
       {/* Attempts list */}
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.5rem' })}>
+      <div
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem',
+        })}
+      >
         {sortedResults.map((item, idx) => {
           const { result, globalIndex } = item
           const isExcluded = result.source === 'teacher-excluded'
@@ -290,7 +296,13 @@ export function AttemptHistoryPanel({
                   gap: '0.5rem',
                 })}
               >
-                <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  })}
+                >
                   {/* Attempt label */}
                   <span
                     className={css({
@@ -383,7 +395,11 @@ export function AttemptHistoryPanel({
                 </span>
                 {!result.isCorrect && (
                   <>
-                    <span className={css({ color: isDark ? 'gray.500' : 'gray.400' })}>
+                    <span
+                      className={css({
+                        color: isDark ? 'gray.500' : 'gray.400',
+                      })}
+                    >
                       (correct: {correctAnswer})
                     </span>
                   </>

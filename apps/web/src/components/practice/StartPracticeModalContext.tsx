@@ -41,7 +41,12 @@ import {
 // Part types configuration
 export const PART_TYPES = [
   { type: 'abacus' as const, emoji: '🧮', label: 'Abacus', enabled: true },
-  { type: 'visualization' as const, emoji: '🧠', label: 'Visualize', enabled: true },
+  {
+    type: 'visualization' as const,
+    emoji: '🧠',
+    label: 'Visualize',
+    enabled: true,
+  },
   { type: 'linear' as const, emoji: '💭', label: 'Linear', enabled: false }, // Disabled for now
 ] as const
 
@@ -324,7 +329,10 @@ export function StartPracticeModalProvider({
     const availableParts = PART_TYPES.filter((p) => p.enabled)
     const enabled = availableParts.filter((p) => enabledParts[p.type])
     if (enabled.length === availableParts.length)
-      return { text: 'all modes', emojis: enabled.map((p) => p.emoji).join('') }
+      return {
+        text: 'all modes',
+        emojis: enabled.map((p) => p.emoji).join(''),
+      }
     if (enabled.length === 0) return { text: 'none', emojis: '—' }
     return {
       text: `${enabled.length} mode${enabled.length > 1 ? 's' : ''}`,
@@ -401,7 +409,9 @@ export function StartPracticeModalProvider({
                 gameBreakSelectedGame &&
                 gameBreakSelectedGame !== 'random' &&
                 Object.keys(resolvedGameConfig).length > 0
-                  ? ({ [gameBreakSelectedGame]: resolvedGameConfig } as PracticeBreakGameConfig)
+                  ? ({
+                      [gameBreakSelectedGame]: resolvedGameConfig,
+                    } as PracticeBreakGameConfig)
                   : undefined,
               skipSetupPhase: true,
             },

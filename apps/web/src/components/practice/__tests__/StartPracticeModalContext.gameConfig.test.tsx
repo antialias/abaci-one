@@ -70,9 +70,21 @@ vi.mock('@/lib/arcade/practice-approved-games', () => ({
           minDurationMinutes: 2,
           maxDurationMinutes: 8,
           difficultyPresets: {
-            easy: { selectedCount: 2, displayTime: 3.0, selectedDifficulty: 'beginner' },
-            medium: { selectedCount: 5, displayTime: 2.0, selectedDifficulty: 'easy' },
-            hard: { selectedCount: 8, displayTime: 1.5, selectedDifficulty: 'medium' },
+            easy: {
+              selectedCount: 2,
+              displayTime: 3.0,
+              selectedDifficulty: 'beginner',
+            },
+            medium: {
+              selectedCount: 5,
+              displayTime: 2.0,
+              selectedDifficulty: 'easy',
+            },
+            hard: {
+              selectedCount: 8,
+              displayTime: 1.5,
+              selectedDifficulty: 'medium',
+            },
           },
         },
       },
@@ -233,10 +245,16 @@ describe('StartPracticeModalContext - Game Break Configuration (Phase 3)', () =>
       })
 
       act(() => {
-        result.current.setGameBreakCustomConfig({ cardCount: 10, showNumbers: true })
+        result.current.setGameBreakCustomConfig({
+          cardCount: 10,
+          showNumbers: true,
+        })
       })
 
-      expect(result.current.gameBreakCustomConfig).toEqual({ cardCount: 10, showNumbers: true })
+      expect(result.current.gameBreakCustomConfig).toEqual({
+        cardCount: 10,
+        showNumbers: true,
+      })
     })
 
     it('should update gameBreakShowCustomize', () => {
@@ -363,7 +381,10 @@ describe('StartPracticeModalContext - Game Break Configuration (Phase 3)', () =>
       act(() => {
         result.current.setGameBreakSelectedGame('memory-quiz')
         result.current.setGameBreakShowCustomize(true)
-        result.current.setGameBreakCustomConfig({ selectedCount: 10, displayTime: 1.0 })
+        result.current.setGameBreakCustomConfig({
+          selectedCount: 10,
+          displayTime: 1.0,
+        })
       })
 
       // Should merge suggestedConfig with custom config
@@ -423,7 +444,9 @@ describe('StartPracticeModalContext - Game Break Configuration (Phase 3)', () =>
         result.current.setGameBreakCustomConfig({ selectedCount: 10 })
       })
 
-      expect(result.current.gameBreakCustomConfig).toEqual({ selectedCount: 10 })
+      expect(result.current.gameBreakCustomConfig).toEqual({
+        selectedCount: 10,
+      })
 
       act(() => {
         result.current.setGameBreakSelectedGame('matching')

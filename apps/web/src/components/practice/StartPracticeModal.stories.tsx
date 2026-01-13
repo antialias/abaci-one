@@ -183,9 +183,21 @@ const mockGamesWithConfig = [
         minDurationMinutes: 2,
         maxDurationMinutes: 8,
         difficultyPresets: {
-          easy: { selectedCount: 2, displayTime: 3.0, selectedDifficulty: 'beginner' },
-          medium: { selectedCount: 5, displayTime: 2.0, selectedDifficulty: 'easy' },
-          hard: { selectedCount: 8, displayTime: 1.5, selectedDifficulty: 'medium' },
+          easy: {
+            selectedCount: 2,
+            displayTime: 3.0,
+            selectedDifficulty: 'beginner',
+          },
+          medium: {
+            selectedCount: 5,
+            displayTime: 2.0,
+            selectedDifficulty: 'easy',
+          },
+          hard: {
+            selectedCount: 8,
+            displayTime: 1.5,
+            selectedDifficulty: 'medium',
+          },
         },
       },
     },
@@ -254,9 +266,21 @@ const mockSingleGameWithConfig = [
         minDurationMinutes: 2,
         maxDurationMinutes: 8,
         difficultyPresets: {
-          easy: { selectedCount: 2, displayTime: 3.0, selectedDifficulty: 'beginner' },
-          medium: { selectedCount: 5, displayTime: 2.0, selectedDifficulty: 'easy' },
-          hard: { selectedCount: 8, displayTime: 1.5, selectedDifficulty: 'medium' },
+          easy: {
+            selectedCount: 2,
+            displayTime: 3.0,
+            selectedDifficulty: 'beginner',
+          },
+          medium: {
+            selectedCount: 5,
+            displayTime: 2.0,
+            selectedDifficulty: 'easy',
+          },
+          hard: {
+            selectedCount: 8,
+            displayTime: 1.5,
+            selectedDifficulty: 'medium',
+          },
         },
       },
     },
@@ -519,7 +543,13 @@ export const GameBreakDocumentation: Story = {
           The Game Break settings adapt based on the number of practice-approved games:
         </p>
 
-        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+        <h3
+          className={css({
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+          })}
+        >
           Single Game Mode
         </h3>
         <ul
@@ -536,7 +566,13 @@ export const GameBreakDocumentation: Story = {
           <li>"More games coming soon!" teaser</li>
         </ul>
 
-        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+        <h3
+          className={css({
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+          })}
+        >
           Multiple Games Mode
         </h3>
         <ul
@@ -669,7 +705,13 @@ export const GameBreakConfigDocumentation: Story = {
           Game Break Configuration UI
         </h2>
 
-        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+        <h3
+          className={css({
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+          })}
+        >
           Overview
         </h3>
         <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
@@ -677,7 +719,13 @@ export const GameBreakConfigDocumentation: Story = {
           options appear in the practice setup modal.
         </p>
 
-        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+        <h3
+          className={css({
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+          })}
+        >
           Difficulty Presets
         </h3>
         <ul
@@ -695,7 +743,13 @@ export const GameBreakConfigDocumentation: Story = {
           <li>Presets are hidden when "Customize" is expanded</li>
         </ul>
 
-        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+        <h3
+          className={css({
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+          })}
+        >
           Customize Form
         </h3>
         <ul
@@ -723,7 +777,13 @@ export const GameBreakConfigDocumentation: Story = {
           </li>
         </ul>
 
-        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+        <h3
+          className={css({
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+          })}
+        >
           Config Resolution
         </h3>
         <ul
@@ -741,14 +801,26 @@ export const GameBreakConfigDocumentation: Story = {
           <li>Preset or custom values override the base</li>
         </ul>
 
-        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+        <h3
+          className={css({
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+          })}
+        >
           When Random Game Selected
         </h3>
         <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
           No presets or customize options shown - the random game will use its own defaults.
         </p>
 
-        <h3 className={css({ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+        <h3
+          className={css({
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+          })}
+        >
           Data Structure
         </h3>
         <pre
