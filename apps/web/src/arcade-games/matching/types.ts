@@ -30,6 +30,12 @@ export interface MatchingConfig extends GameConfig {
   gameType: GameType
   difficulty: Difficulty
   turnTimer: number
+  /**
+   * Skip the setup phase and start directly in playing phase.
+   * When true, getInitialState() will generate cards immediately
+   * and set gamePhase to 'playing' instead of 'setup'.
+   */
+  skipSetupPhase?: boolean
 }
 
 // ============================================================================

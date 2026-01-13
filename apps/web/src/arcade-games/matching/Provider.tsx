@@ -418,6 +418,15 @@ export function MatchingProvider({ children }: { children: ReactNode }) {
         return false
       }
 
+      // Can't flip if session state hasn't been received yet (currentPlayer not set)
+      // This prevents race condition where user clicks before server state arrives
+      if (!state.currentPlayer) {
+        console.log(
+          '[RoomProvider][canFlipCard] Blocked: waiting for session state (currentPlayer empty)'
+        )
+        return false
+      }
+
       const card = gameCards.find((c) => c.id === cardId)
       if (!card || card.matched) {
         console.log('[RoomProvider][canFlipCard] Blocked: card not found or already matched')

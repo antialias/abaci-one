@@ -483,7 +483,13 @@ function InteractiveMatchingGame({ theme = 'light' }: { theme?: 'light' | 'dark'
         </div>
 
         {/* Timer simulation */}
-        <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.25rem' })}>
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.25rem',
+          })}
+        >
           <span className={css({ fontSize: '0.625rem', color: 'gray.400' })}>
             Timer: {Math.floor(elapsedSeconds / 60)}:
             {(elapsedSeconds % 60).toString().padStart(2, '0')} elapsed
@@ -611,7 +617,13 @@ export const Documentation: Story = {
         layout issues.
       </p>
 
-      <h2 className={css({ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+      <h2
+        className={css({
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          marginBottom: '0.5rem',
+        })}
+      >
         Full Page Context Stories
       </h2>
       <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
@@ -637,7 +649,13 @@ export const Documentation: Story = {
         </li>
       </ul>
 
-      <h2 className={css({ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+      <h2
+        className={css({
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          marginBottom: '0.5rem',
+        })}
+      >
         Isolated Stories
       </h2>
       <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
@@ -645,7 +663,13 @@ export const Documentation: Story = {
         Compare these with Full Context stories to debug layout issues caused by nav positioning.
       </p>
 
-      <h2 className={css({ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+      <h2
+        className={css({
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          marginBottom: '0.5rem',
+        })}
+      >
         Timer States
       </h2>
       <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
@@ -672,7 +696,13 @@ export const Documentation: Story = {
         </li>
       </ul>
 
-      <h2 className={css({ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+      <h2
+        className={css({
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          marginBottom: '0.5rem',
+        })}
+      >
         Architecture
       </h2>
       <ul
@@ -700,7 +730,13 @@ export const Documentation: Story = {
         </li>
       </ul>
 
-      <h2 className={css({ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' })}>
+      <h2
+        className={css({
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          marginBottom: '0.5rem',
+        })}
+      >
         Game Phases
       </h2>
       <ul

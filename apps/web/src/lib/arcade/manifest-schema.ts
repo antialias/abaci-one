@@ -50,6 +50,49 @@ export const PracticeBreakConfigSchema = z
   .describe('Configuration for practice break behavior')
 
 /**
+ * Scoreboard category for cross-game comparison
+ */
+export const ScoreboardCategorySchema = z.enum([
+  'puzzle',
+  'memory',
+  'speed',
+  'strategy',
+  'geography',
+])
+
+/**
+ * Schema for game results configuration.
+ * Defines how a game reports results for display and scoreboard tracking.
+ */
+export const GameResultsConfigSchema = z
+  .object({
+    /**
+     * Whether this game supports results reporting.
+     * Games that support this should implement getResultsReport() in their validator.
+     */
+    supportsResults: z.boolean(),
+
+    /**
+     * How long to show results screen (ms).
+     * Default is 5000ms (5 seconds).
+     */
+    resultsDisplayDurationMs: z.number().min(1000).optional().default(5000),
+
+    /**
+     * Custom component name for results display.
+     * If not specified, the default GameBreakResultsScreen is used.
+     */
+    customResultsComponent: z.string().optional(),
+
+    /**
+     * Category for universal scoreboard.
+     * Used for grouping and comparing scores across games.
+     */
+    scoreboardCategory: ScoreboardCategorySchema.optional(),
+  })
+  .describe('Configuration for game results reporting')
+
+/**
  * Schema for game manifest (game.yaml)
  */
 export const GameManifestSchema = z.object({
@@ -84,12 +127,17 @@ export const GameManifestSchema = z.object({
     'Configuration for practice break behavior including suggested defaults, ' +
       'locked fields, duration constraints, and difficulty presets.'
   ),
+  resultsConfig: GameResultsConfigSchema.optional().describe(
+    'Configuration for game results reporting including display duration, ' +
+      'scoreboard category, and custom component options.'
+  ),
 })
 
 /**
  * Inferred TypeScript types from schemas
  */
 export type PracticeBreakConfig = z.infer<typeof PracticeBreakConfigSchema>
+export type GameResultsConfig = z.infer<typeof GameResultsConfigSchema>
 export type GameManifest = z.infer<typeof GameManifestSchema>
 
 /**

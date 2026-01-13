@@ -405,7 +405,9 @@ export function SetupPhase() {
                 >
                   <span>🧮</span>
                   <span
-                    className={css({ fontSize: isCompact ? '16px' : { base: '16px', md: '20px' } })}
+                    className={css({
+                      fontSize: isCompact ? '16px' : { base: '16px', md: '20px' },
+                    })}
                   >
                     ↔️
                   </span>
@@ -464,7 +466,9 @@ export function SetupPhase() {
                 >
                   <span>🤝</span>
                   <span
-                    className={css({ fontSize: isCompact ? '16px' : { base: '16px', md: '20px' } })}
+                    className={css({
+                      fontSize: isCompact ? '16px' : { base: '16px', md: '20px' },
+                    })}
                   >
                     ➕
                   </span>
@@ -599,7 +603,10 @@ export function SetupPhase() {
                       <>
                         <div
                           data-element="button-level"
-                          className={css({ fontSize: '14px', fontWeight: 'bold' })}
+                          className={css({
+                            fontSize: '14px',
+                            fontWeight: 'bold',
+                          })}
                         >
                           {difficultyInfo[difficulty].label}
                         </div>

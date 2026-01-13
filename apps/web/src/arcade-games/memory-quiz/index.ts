@@ -37,9 +37,21 @@ const manifest: GameManifest = {
     minDurationMinutes: 1,
     maxDurationMinutes: 5,
     difficultyPresets: {
-      easy: { selectedCount: 5, displayTime: 2.5, selectedDifficulty: 'beginner' },
-      medium: { selectedCount: 5, displayTime: 2.0, selectedDifficulty: 'easy' },
-      hard: { selectedCount: 8, displayTime: 1.5, selectedDifficulty: 'medium' },
+      easy: {
+        selectedCount: 5,
+        displayTime: 2.5,
+        selectedDifficulty: 'beginner',
+      },
+      medium: {
+        selectedCount: 5,
+        displayTime: 2.0,
+        selectedDifficulty: 'easy',
+      },
+      hard: {
+        selectedCount: 8,
+        displayTime: 1.5,
+        selectedDifficulty: 'medium',
+      },
     },
   },
 }
