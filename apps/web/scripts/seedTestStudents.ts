@@ -127,11 +127,9 @@ import {
 } from '../src/utils/problemGenerator'
 import { createEmptySkillSet, type SkillSet } from '../src/types/tutorial'
 import type { GameResultsReport } from '../src/lib/arcade/game-sdk/types'
-import {
-  createClassroom,
-  getTeacherClassroom,
-  directEnrollStudent,
-} from '../src/lib/classroom'
+// Import directly from specific manager files to avoid pulling in React components via barrel export
+import { createClassroom, getTeacherClassroom } from '../src/lib/classroom/classroom-manager'
+import { directEnrollStudent } from '../src/lib/classroom/enrollment-manager'
 
 // =============================================================================
 // BKT Simulation Utilities
