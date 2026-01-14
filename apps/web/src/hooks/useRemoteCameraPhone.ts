@@ -98,6 +98,7 @@ export function useRemoteCameraPhone(
   const targetHeight = Math.round(targetWidth * ABACUS_ASPECT_RATIO)
 
   const [isSocketConnected, setIsSocketConnected] = useState(false)
+  const isSocketConnectedRef = useRef(false)
   const [isConnected, setIsConnected] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -123,6 +124,10 @@ export function useRemoteCameraPhone(
   useEffect(() => {
     isConnectedRef.current = isConnected
   }, [isConnected])
+
+  useEffect(() => {
+    isSocketConnectedRef.current = isSocketConnected
+  }, [isSocketConnected])
 
   useEffect(() => {
     opencvReadyRef.current = opencvReady
@@ -405,35 +410,35 @@ export function useRemoteCameraPhone(
     animationFrameRef.current = requestAnimationFrame(captureFrame)
   }, [targetFps, cropToQuad, captureRawFrame, rawWidth])
 
-  const connect = useCallback(
-    (sessionId: string) => {
-      const socket = socketRef.current
-      console.log(
-        '[RemoteCameraPhone] Connecting to session:',
-        sessionId,
-        'socket:',
-        !!socket,
-        'connected:',
-        isSocketConnected
-      )
+  const connect = useCallback((sessionId: string) => {
+    const socket = socketRef.current
+    console.log(
+      '[RemoteCameraPhone] Connecting to session:',
+      sessionId,
+      'socket:',
+      !!socket,
+      'connected:',
+      isSocketConnectedRef.current
+    )
 
-      // Save session ID FIRST, so auto-connect handler can use it
-      // even if socket isn't connected yet
-      sessionIdRef.current = sessionId
-      setError(null)
+    // Save session ID FIRST, so auto-connect handler can use it
+    // even if socket isn't connected yet
+    sessionIdRef.current = sessionId
+    setError(null)
 
-      if (!socket || !isSocketConnected) {
-        console.log('[RemoteCameraPhone] Socket not connected yet, will join on connect')
-        return
-      }
+    // Use ref instead of state to avoid callback recreation on socket state changes.
+    // This prevents reconnection loops when connection is flaky.
+    // Auto-reconnect is handled by the socket's 'connect' event handler.
+    if (!socket || !isSocketConnectedRef.current) {
+      console.log('[RemoteCameraPhone] Socket not connected yet, will join on connect')
+      return
+    }
 
-      console.log('[RemoteCameraPhone] Emitting remote-camera:join')
-      socket.emit('remote-camera:join', { sessionId })
-      setIsConnected(true)
-      isConnectedRef.current = true
-    },
-    [isSocketConnected]
-  )
+    console.log('[RemoteCameraPhone] Emitting remote-camera:join')
+    socket.emit('remote-camera:join', { sessionId })
+    setIsConnected(true)
+    isConnectedRef.current = true
+  }, [])
 
   const disconnect = useCallback(() => {
     const socket = socketRef.current

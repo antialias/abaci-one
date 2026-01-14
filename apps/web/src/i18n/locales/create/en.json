@@ -34,6 +34,14 @@
         "feature2": "Regrouping practice control",
         "feature3": "Print-ready PDF generation",
         "button": "Create Worksheets"
+      },
+      "visionAbacus": {
+        "title": "Create Your Own Abacus",
+        "description": "Print custom markers to turn any surface into a camera-trackable abacus for computer vision practice.",
+        "feature1": "Printable fiducial markers",
+        "feature2": "Works with any camera",
+        "feature3": "Real-time value detection",
+        "button": "Create Markers"
       }
     },
     "abacus": {

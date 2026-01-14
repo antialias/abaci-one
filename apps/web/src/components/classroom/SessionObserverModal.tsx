@@ -3,7 +3,15 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { type ReactElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  type ReactElement,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useToast } from '@/components/common/ToastContext'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
@@ -23,6 +31,11 @@ import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
 import { VerticalProblem } from '../practice/VerticalProblem'
 import { ObserverVisionFeed } from '../vision/ObserverVisionFeed'
 import { ProblemVideoPlayer } from '../vision/ProblemVideoPlayer'
+import {
+  type VideoAttemptInfo,
+  getVideoAttemptsForProblem,
+  getAttemptLabel,
+} from '@/lib/utils/attempt-tracking'
 import { ObserverDebugPanel } from '../debug/ObserverDebugPanel'
 import { SessionShareButton } from './SessionShareButton'
 
@@ -192,6 +205,13 @@ export function SessionObserverView({
   // Track selected problem for viewing past recordings (null = live view)
   const [selectedProblemNumber, setSelectedProblemNumber] = useState<number | null>(null)
 
+  // Track available videos and selected attempt for recording playback
+  const [allVideos, setAllVideos] = useState<VideoAttemptInfo[]>([])
+  const [selectedAttempt, setSelectedAttempt] = useState<{
+    epochNumber: number
+    attemptNumber: number
+  } | null>(null)
+
   // Mutation to send entry prompt to parents (for authorization error case)
   const sendEntryPrompt = useMutation({
     mutationFn: async () => {
@@ -231,6 +251,55 @@ export function SessionObserverView({
 
   // Check if this is an authorization error that might be due to student not being present
   const isNotAuthorizedError = error === 'Not authorized to observe this session'
+
+  // Fetch videos when viewing a recording
+  useEffect(() => {
+    if (selectedProblemNumber === null) {
+      setAllVideos([])
+      setSelectedAttempt(null)
+      return
+    }
+
+    // Fetch all videos for this session
+    fetch(`/api/curriculum/${session.playerId}/sessions/${session.sessionId}/videos`)
+      .then((res) => (res.ok ? res.json() : { videos: [] }))
+      .then((data: { videos: VideoAttemptInfo[] }) => {
+        setAllVideos(data.videos)
+      })
+      .catch(() => setAllVideos([]))
+  }, [session.playerId, session.sessionId, selectedProblemNumber])
+
+  // Compute problem attempts for the selected problem (memoized to prevent effect re-runs)
+  const problemAttempts = useMemo(
+    () =>
+      selectedProblemNumber ? getVideoAttemptsForProblem(allVideos, selectedProblemNumber) : [],
+    [allVideos, selectedProblemNumber]
+  )
+  const hasMultipleAttempts = problemAttempts.length > 1
+
+  // Reset and auto-select when problem changes
+  useEffect(() => {
+    setSelectedAttempt(null)
+  }, [selectedProblemNumber])
+
+  // Auto-select latest attempt when attempts become available and none selected
+  useEffect(() => {
+    if (problemAttempts.length > 0 && selectedAttempt === null) {
+      const latest = problemAttempts[problemAttempts.length - 1]
+      setSelectedAttempt({
+        epochNumber: latest.epochNumber,
+        attemptNumber: latest.attemptNumber,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only auto-select when attempts load, not when selectedAttempt changes
+  }, [problemAttempts])
+
+  // Handle attempt selection change
+  const handleAttemptChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value
+    const [epoch, attempt] = value.split('-').map(Number)
+    setSelectedAttempt({ epochNumber: epoch, attemptNumber: attempt })
+  }, [])
 
   // Ref for measuring problem container height (same pattern as ActiveSession)
   const problemRef = useRef<HTMLDivElement>(null)
@@ -517,9 +586,124 @@ export function SessionObserverView({
               currentSlotIndex={state.currentSlotIndex}
               isBrowseMode={true}
               onNavigate={handleNavigateToProblem}
+              observerViewingIndex={
+                selectedProblemNumber !== null ? selectedProblemNumber - 1 : undefined
+              }
               isDark={isDark}
               compact
             />
+
+            {/* Status bar - shows viewing mode, attempt selector, and positions */}
+            {selectedProblemNumber !== null && (
+              <div
+                data-element="observer-status-bar"
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  marginTop: '8px',
+                  padding: '6px 12px',
+                  backgroundColor: isDark ? 'cyan.900/40' : 'cyan.50',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'cyan.700/50' : 'cyan.200',
+                  flexWrap: 'wrap',
+                })}
+              >
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '0.75rem',
+                    color: isDark ? 'cyan.300' : 'cyan.700',
+                    flexWrap: 'wrap',
+                  })}
+                >
+                  <span>📹</span>
+                  <span className={css({ fontWeight: '500' })}>
+                    Problem #{selectedProblemNumber}
+                  </span>
+
+                  {/* Attempt selector - only when multiple attempts exist */}
+                  {hasMultipleAttempts && selectedAttempt && (
+                    <select
+                      data-element="attempt-selector"
+                      value={`${selectedAttempt.epochNumber}-${selectedAttempt.attemptNumber}`}
+                      onChange={handleAttemptChange}
+                      className={css({
+                        padding: '2px 6px',
+                        fontSize: '0.6875rem',
+                        fontWeight: '500',
+                        backgroundColor: isDark ? 'gray.700' : 'white',
+                        color: isDark ? 'gray.200' : 'gray.700',
+                        border: '1px solid',
+                        borderColor: isDark ? 'gray.600' : 'gray.300',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                      })}
+                    >
+                      {problemAttempts.map((attempt, index) => {
+                        // Status indicator for the attempt
+                        let statusIndicator = ''
+                        if (attempt.status === 'failed') {
+                          statusIndicator = '⚠️'
+                        } else if (attempt.status === 'processing') {
+                          statusIndicator = '⏳'
+                        } else if (attempt.status === 'recording') {
+                          statusIndicator = '🔴'
+                        } else if (attempt.isCorrect === true) {
+                          statusIndicator = '✓'
+                        } else if (attempt.isCorrect === false) {
+                          statusIndicator = '✗'
+                        }
+
+                        return (
+                          <option
+                            key={index}
+                            value={`${attempt.epochNumber}-${attempt.attemptNumber}`}
+                          >
+                            {getAttemptLabel(attempt)} {statusIndicator}
+                          </option>
+                        )
+                      })}
+                    </select>
+                  )}
+
+                  <span
+                    className={css({
+                      display: { base: 'none', sm: 'inline' },
+                      color: isDark ? 'gray.400' : 'gray.500',
+                    })}
+                  >
+                    • Student is on #{state?.currentProblemNumber ?? '—'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  data-action="return-to-live"
+                  onClick={handleGoLive}
+                  className={css({
+                    padding: '4px 10px',
+                    fontSize: '0.6875rem',
+                    fontWeight: '600',
+                    backgroundColor: isDark ? 'cyan.600' : 'cyan.500',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.15s',
+                    whiteSpace: 'nowrap',
+                    _hover: {
+                      backgroundColor: isDark ? 'cyan.500' : 'cyan.600',
+                    },
+                  })}
+                >
+                  ← Back to Live
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -748,7 +932,8 @@ export function SessionObserverView({
             sessionId={session.sessionId}
             problemNumber={selectedProblemNumber}
             isDark={isDark}
-            onGoLive={handleGoLive}
+            availableVideos={allVideos}
+            selectedAttempt={selectedAttempt}
           />
         )}
 

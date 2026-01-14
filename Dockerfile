@@ -111,12 +111,14 @@ WORKDIR /app
 
 # Install ONLY runtime dependencies (no build tools)
 # python3-venv is needed for creating virtual environments for ML training
+# ffmpeg is needed for encoding vision recording frames to MP4
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
     qpdf \
     ca-certificates \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy typst binary from typst-builder stage

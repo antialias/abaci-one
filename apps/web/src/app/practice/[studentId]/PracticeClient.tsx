@@ -532,18 +532,12 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
 
     // Emit if this is a new problem OR the first problem (previousProblemNumber is null)
     if (currentProblemNumber !== previousProblemNumber) {
-      // When in redo mode, use the redo slot indices (not the plan's current position)
-      // The broadcastState always reflects plan.currentPartIndex/currentSlotIndex,
-      // but for redos we need the original slot being redone.
-      const partIndex = redoState?.isActive
-        ? redoState.originalPartIndex
-        : (broadcastState.currentPartIndex ?? currentPlan.currentPartIndex)
-      const slotIndex = redoState?.isActive
-        ? redoState.originalSlotIndex
-        : (broadcastState.currentSlotIndex ?? currentPlan.currentSlotIndex)
+      // broadcastState contains the correct slot indices (including for redos)
+      const partIndex = broadcastState.currentPartIndex ?? currentPlan.currentPartIndex
+      const slotIndex = broadcastState.currentSlotIndex ?? currentPlan.currentSlotIndex
       const retryContext = getRetryContext(partIndex, slotIndex)
       console.log(
-        `[PracticeClient] Problem shown: ${previousProblemNumber ?? 'none'} → ${currentProblemNumber}${redoState?.isActive ? ' (REDO)' : ''}, emitting problem-shown marker with attemptNumber=${retryContext.attemptNumber}`
+        `[PracticeClient] Problem shown: ${previousProblemNumber ?? 'none'} → ${currentProblemNumber}, attemptNumber=${retryContext.attemptNumber}`
       )
       sendProblemMarker(currentProblemNumber, partIndex, 'problem-shown', undefined, retryContext)
     }
@@ -558,10 +552,32 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     currentPlan.currentSlotIndex,
     sendProblemMarker,
     getRetryContext,
-    redoState?.isActive,
-    redoState?.originalPartIndex,
-    redoState?.originalSlotIndex,
   ])
+
+  // Emit 'problem-shown' marker when entering redo mode
+  // The regular problem-shown effect won't fire because currentProblemNumber doesn't change during a redo
+  const wasInRedoModeRef = useRef(false)
+  useEffect(() => {
+    const wasInRedoMode = wasInRedoModeRef.current
+    const isNowInRedoMode = redoState?.isActive ?? false
+    wasInRedoModeRef.current = isNowInRedoMode
+
+    // Detect entering redo mode
+    if (!wasInRedoMode && isNowInRedoMode && redoState) {
+      const retryContext = getRetryContext(redoState.originalPartIndex, redoState.originalSlotIndex)
+      const problemNumber = redoState.linearIndex + 1 // linearIndex is 0-based
+      console.log(
+        `[PracticeClient] Redo started for problem ${problemNumber}, attemptNumber=${retryContext.attemptNumber}`
+      )
+      sendProblemMarker(
+        problemNumber,
+        redoState.originalPartIndex,
+        'problem-shown',
+        undefined,
+        retryContext
+      )
+    }
+  }, [redoState, sendProblemMarker, getRetryContext])
 
   // Handle part transition complete - called when transition screen finishes
   // This is where we trigger game break (after "put away abacus" message is shown)
@@ -583,16 +599,9 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   useEffect(() => {
     console.log('[PracticeClient] Setting up vision frame callback')
     setVisionFrameCallback((frame) => {
-      console.log(
-        '[PracticeClient] Vision frame received, hasStartedRecording:',
-        hasStartedRecordingRef.current,
-        'isRecording:',
-        isRecording
-      )
-
       // Start recording on first vision frame (if not already recording)
       if (!hasStartedRecordingRef.current && !isRecording) {
-        console.log('[PracticeClient] First vision frame received, calling startVisionRecording()')
+        console.log('[PracticeClient] First vision frame received, starting recording')
         hasStartedRecordingRef.current = true
         startVisionRecording()
       }
@@ -642,7 +651,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
         isBrowseMode,
         onToggleBrowse: () => setIsBrowseMode((prev) => !prev),
         onBrowseNavigate: setBrowseIndex,
-        onRedoProblem: redoState ? undefined : handleRedoProblem, // Disable redo when already in redo mode
+        onRedoProblem: handleRedoProblem, // Allow navigating to other problems during redo
+        onCancelRedo: handleCancelRedo, // Return to current session position from redo
         redoLinearIndex: redoState?.linearIndex,
         plan: currentPlan,
       }

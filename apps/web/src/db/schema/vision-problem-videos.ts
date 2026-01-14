@@ -5,8 +5,13 @@ import { sessionPlans } from './session-plans'
 
 /**
  * Video status values
+ * - recording: Currently capturing frames
+ * - processing: Encoding frames to video
+ * - ready: Video encoded and available
+ * - failed: Encoding failed
+ * - no_video: Problem completed but no video frames were captured (camera not enabled)
  */
-export type VisionProblemVideoStatus = 'recording' | 'processing' | 'ready' | 'failed'
+export type VisionProblemVideoStatus = 'recording' | 'processing' | 'ready' | 'failed' | 'no_video'
 
 /**
  * Vision problem videos - per-problem video recordings of abacus camera during practice

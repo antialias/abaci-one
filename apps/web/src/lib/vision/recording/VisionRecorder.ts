@@ -283,12 +283,17 @@ export class VisionRecorder {
   /**
    * Update practice state for metadata capture.
    * Called when practice-state socket event is received.
+   *
+   * IMPORTANT: This captures metadata even when no video frames are being recorded.
+   * This ensures we have a record of student answers for all problems.
    */
   onPracticeState(sessionId: string, state: PracticeStateInput): void {
     const session = this.activeSessions.get(sessionId)
     if (!session) {
       return
     }
+
+    const prevState = session.latestPracticeState
 
     // Update latest practice state snapshot
     session.latestPracticeState = {
@@ -301,6 +306,34 @@ export class VisionRecorder {
     // If we have a current problem recording and no problem details yet, capture them
     if (session.currentProblem && !session.currentProblem.problem && state.currentProblem) {
       session.currentProblem.problem = state.currentProblem
+    }
+
+    // Add metadata entry when state changes (even without video frames)
+    // This ensures we capture student input regardless of camera status
+    const problem = session.currentProblem
+    if (problem) {
+      const stateChanged =
+        prevState.studentAnswer !== state.studentAnswer ||
+        prevState.phase !== (state.phase === 'tutorial' ? 'problem' : state.phase) ||
+        prevState.isCorrect !== state.isCorrect
+
+      if (stateChanged) {
+        const now = Date.now()
+        const tFromProblemStart = now - problem.startedAt.getTime()
+        const phase = state.phase === 'tutorial' ? 'problem' : state.phase
+
+        const metadataEntry: ProblemMetadataEntry = {
+          t: tFromProblemStart,
+          detectedValue: null, // No frame data
+          confidence: 0,
+          studentAnswer: state.studentAnswer,
+          phase,
+          ...(phase === 'feedback' && state.isCorrect !== null
+            ? { isCorrect: state.isCorrect }
+            : {}),
+        }
+        problem.metadata.push(metadataEntry)
+      }
     }
   }
 
@@ -434,6 +467,9 @@ export class VisionRecorder {
 
   /**
    * Finalize the current problem and trigger encoding
+   *
+   * IMPORTANT: Metadata is always written, even if there are no video frames.
+   * This ensures we have a record of student answers for all problems.
    */
   private async finalizeProblem(session: RecordingSession): Promise<void> {
     const problem = session.currentProblem
@@ -442,12 +478,16 @@ export class VisionRecorder {
     const endedAt = new Date()
     const durationMs = endedAt.getTime() - problem.startedAt.getTime()
     const avgFps = problem.frameCount > 0 ? (problem.frameCount / durationMs) * 1000 : 0
+    const hasVideo = problem.frameCount > 0
+
+    // Determine initial status based on whether we have video frames
+    const initialStatus: VisionProblemVideoStatus = hasVideo ? 'processing' : 'no_video'
 
     // Update database record
     await db
       .update(visionProblemVideos)
       .set({
-        status: 'processing',
+        status: initialStatus,
         endedAt,
         durationMs,
         frameCount: problem.frameCount,
@@ -456,10 +496,11 @@ export class VisionRecorder {
       })
       .where(eq(visionProblemVideos.id, problem.videoId))
 
-    // Write metadata JSON
-    if (problem.problem) {
+    // Write metadata JSON - ALWAYS, even without video frames
+    // This ensures we capture student answers for playback/review
+    if (problem.problem || problem.metadata.length > 0) {
       const metadata: ProblemMetadata = {
-        problem: problem.problem,
+        problem: problem.problem ?? { terms: [], answer: 0 }, // Fallback if problem details weren't captured
         entries: problem.metadata,
         durationMs,
         frameCount: problem.frameCount,
@@ -476,9 +517,13 @@ export class VisionRecorder {
       )
 
       try {
+        // Ensure directory exists (may not exist if no frames were captured)
+        const dir = path.dirname(metadataPath)
+        await mkdir(dir, { recursive: true })
+
         await writeFile(metadataPath, JSON.stringify(metadata, null, 2))
         console.log(
-          `[VisionRecorder] Wrote metadata for problem ${problem.problemNumber}: ${problem.metadata.length} entries`
+          `[VisionRecorder] Wrote metadata for problem ${problem.problemNumber}: ${problem.metadata.length} entries (${hasVideo ? 'with video' : 'no video'})`
         )
       } catch (error) {
         console.error(
@@ -495,15 +540,24 @@ export class VisionRecorder {
     // Clear current problem
     session.currentProblem = null
 
-    // Trigger encoding (async - don't await)
-    this.encodeProblemVideo(problem.videoId, session.sessionId, problem.problemNumber).catch(
-      (error) => {
-        console.error(
-          `[VisionRecorder] Encoding failed for problem ${problem.problemNumber}:`,
-          error
-        )
+    // Only trigger encoding if we have frames
+    if (hasVideo) {
+      this.encodeProblemVideo(problem.videoId, session.sessionId, problem.problemNumber).catch(
+        (error) => {
+          console.error(
+            `[VisionRecorder] Encoding failed for problem ${problem.problemNumber}:`,
+            error
+          )
+        }
+      )
+    } else {
+      // Clean up the empty frames directory if it exists
+      try {
+        await rm(problem.framesDir, { recursive: true, force: true })
+      } catch {
+        // Ignore if directory doesn't exist
       }
-    )
+    }
   }
 
   /**
@@ -660,12 +714,24 @@ export class VisionRecorder {
       // Check if ffmpeg is available
       const ffmpegAvailable = await VideoEncoder.isAvailable()
       if (!ffmpegAvailable) {
-        console.warn('[VisionRecorder] ffmpeg not available, keeping frames for later encoding')
-        // Mark as ready without encoding - frames are preserved for manual encoding
+        console.error('[VisionRecorder] ffmpeg not available, cannot encode video')
+        // Mark as failed - ffmpeg is required for video encoding
         await db
           .update(visionProblemVideos)
-          .set({ status: 'ready' })
+          .set({
+            status: 'failed',
+            processingError: 'ffmpeg not available on server',
+          })
           .where(eq(visionProblemVideos.id, videoId))
+
+        // Notify observers of failure
+        if (this.onVideoFailed) {
+          this.onVideoFailed({
+            sessionId,
+            problemNumber,
+            error: 'ffmpeg not available on server',
+          })
+        }
         return
       }
 

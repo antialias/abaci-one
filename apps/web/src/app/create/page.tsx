@@ -25,6 +25,12 @@ const cardThemes = {
     checkBg: 'yellow.100',
     checkColor: 'yellow.600',
   },
+  visionAbacus: {
+    gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+    shadowColor: 'rgba(6, 182, 212, 0.4)',
+    checkBg: 'cyan.100',
+    checkColor: 'cyan.600',
+  },
 } as const
 
 type CardType = keyof typeof cardThemes
@@ -326,6 +332,20 @@ export default function CreateHubPage() {
               description={t('calendar.description')}
               features={[t('calendar.feature1'), t('calendar.feature2'), t('calendar.feature3')]}
               buttonText={t('calendar.button')}
+            />
+
+            <CreatorCard
+              type="visionAbacus"
+              href="/create/vision-markers"
+              emoji="📷"
+              title={t('visionAbacus.title')}
+              description={t('visionAbacus.description')}
+              features={[
+                t('visionAbacus.feature1'),
+                t('visionAbacus.feature2'),
+                t('visionAbacus.feature3'),
+              ]}
+              buttonText={t('visionAbacus.button')}
             />
           </div>
         </div>

@@ -17,7 +17,6 @@ import type { ProblemMetadata, ProblemMetadataEntry } from '@/lib/vision/recordi
 import {
   type VideoAttemptInfo,
   getVideoAttemptsForProblem,
-  getAttemptLabel,
   buildVideoUrl,
   buildMetadataUrl,
 } from '@/lib/utils/attempt-tracking'
@@ -33,10 +32,10 @@ interface ProblemVideoPlayerProps {
   problemNumber: number
   /** Dark mode */
   isDark: boolean
-  /** Callback when user wants to return to live view */
-  onGoLive: () => void
-  /** All available video attempts for this session (used for attempt selection) */
+  /** All available video attempts for this session */
   availableVideos?: VideoAttemptInfo[]
+  /** Selected attempt to play (controlled by parent) */
+  selectedAttempt?: { epochNumber: number; attemptNumber: number } | null
 }
 
 /**
@@ -108,11 +107,13 @@ export function ProblemVideoPlayer({
   sessionId,
   problemNumber,
   isDark,
-  onGoLive,
   availableVideos,
+  selectedAttempt: selectedAttemptProp,
 }: ProblemVideoPlayerProps) {
+  // Use provided videos or fetch them
   const [allVideos, setAllVideos] = useState<VideoAttemptInfo[]>(availableVideos ?? [])
-  const [selectedAttempt, setSelectedAttempt] = useState<{
+  // Internal selected attempt state (only used if not controlled by parent)
+  const [internalSelectedAttempt, setInternalSelectedAttempt] = useState<{
     epochNumber: number
     attemptNumber: number
   } | null>(null)
@@ -122,55 +123,158 @@ export function ProblemVideoPlayer({
   const [currentEntry, setCurrentEntry] = useState<ProblemMetadataEntry | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
 
+  // No-video playback state
+  const [noVideoPlaybackIndex, setNoVideoPlaybackIndex] = useState(0)
+  const [isNoVideoPlaying, setIsNoVideoPlaying] = useState(false)
+  const noVideoIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Use parent's selectedAttempt if provided, otherwise use internal state
+  const isControlled = selectedAttemptProp !== undefined
+  const selectedAttempt = isControlled ? selectedAttemptProp : internalSelectedAttempt
+
   // Get attempts for this specific problem - memoized to prevent render loops
   const problemAttempts = useMemo(
     () => getVideoAttemptsForProblem(allVideos, problemNumber),
     [allVideos, problemNumber]
   )
-  const hasMultipleAttempts = problemAttempts.length > 1
   const currentVideo = problemAttempts.find(
     (v) =>
       v.epochNumber === selectedAttempt?.epochNumber &&
       v.attemptNumber === selectedAttempt?.attemptNumber
   )
 
-  // Reset selected attempt when problem number changes
-  useEffect(() => {
-    setSelectedAttempt(null)
-    setMetadata(null)
-    setError(null)
-    setCurrentEntry(null)
-  }, [problemNumber])
+  // Extract unique answer states for no-video playback
+  // Each entry represents a distinct answer state (when studentAnswer changes)
+  const answerProgression = useMemo(() => {
+    if (!metadata || metadata.entries.length === 0) return []
 
-  // Fetch all videos if not provided
+    const progression: Array<{
+      answer: string
+      phase: 'problem' | 'feedback'
+      isCorrect?: boolean
+      originalTimestamp: number // Keep original timing for reference
+    }> = []
+
+    let lastAnswer = ''
+    for (const entry of metadata.entries) {
+      // Add entry if answer changed or phase changed to feedback
+      if (entry.studentAnswer !== lastAnswer || entry.phase === 'feedback') {
+        progression.push({
+          answer: entry.studentAnswer,
+          phase: entry.phase,
+          isCorrect: entry.isCorrect,
+          originalTimestamp: entry.t,
+        })
+        lastAnswer = entry.studentAnswer
+      }
+    }
+
+    return progression
+  }, [metadata])
+
+  // No-video playback controls
+  const startNoVideoPlayback = useCallback(() => {
+    if (answerProgression.length === 0) return
+    setIsNoVideoPlaying(true)
+  }, [answerProgression.length])
+
+  const pauseNoVideoPlayback = useCallback(() => {
+    setIsNoVideoPlaying(false)
+  }, [])
+
+  const restartNoVideoPlayback = useCallback(() => {
+    setNoVideoPlaybackIndex(0)
+    setIsNoVideoPlaying(true)
+  }, [])
+
+  // No-video playback interval effect
   useEffect(() => {
-    if (availableVideos && availableVideos.length > 0) {
-      setAllVideos(availableVideos)
+    if (!isNoVideoPlaying || answerProgression.length === 0) {
+      if (noVideoIntervalRef.current) {
+        clearInterval(noVideoIntervalRef.current)
+        noVideoIntervalRef.current = null
+      }
       return
     }
 
-    // Fetch videos if not provided
-    fetchAllVideos(playerId, sessionId).then((videos) => {
-      setAllVideos(videos)
-    })
-  }, [playerId, sessionId, availableVideos])
+    noVideoIntervalRef.current = setInterval(() => {
+      setNoVideoPlaybackIndex((prev) => {
+        const next = prev + 1
+        if (next >= answerProgression.length) {
+          setIsNoVideoPlaying(false)
+          return prev // Stay on last entry
+        }
+        return next
+      })
+    }, 500) // 500ms between entries
 
-  // Set initial selected attempt when problem attempts are available and no attempt selected
+    return () => {
+      if (noVideoIntervalRef.current) {
+        clearInterval(noVideoIntervalRef.current)
+        noVideoIntervalRef.current = null
+      }
+    }
+  }, [isNoVideoPlaying, answerProgression.length])
+
+  // Reset no-video playback when metadata changes
   useEffect(() => {
-    if (problemAttempts.length > 0 && selectedAttempt === null) {
-      // Default to the latest attempt (last in sorted list)
+    setNoVideoPlaybackIndex(0)
+    setIsNoVideoPlaying(false)
+  }, [metadata])
+
+  // Get current state for no-video playback
+  const currentNoVideoState = answerProgression[noVideoPlaybackIndex] ?? null
+  const isNoVideoComplete = noVideoPlaybackIndex >= answerProgression.length - 1
+
+  // Reset internal state when problem number changes (only if uncontrolled)
+  useEffect(() => {
+    if (!isControlled) {
+      setInternalSelectedAttempt(null)
+    }
+    setMetadata(null)
+    setError(null)
+    setCurrentEntry(null)
+  }, [problemNumber, isControlled])
+
+  // Auto-select latest attempt (only if uncontrolled)
+  useEffect(() => {
+    if (isControlled) return
+    if (problemAttempts.length > 0 && internalSelectedAttempt === null) {
       const latest = problemAttempts[problemAttempts.length - 1]
-      setSelectedAttempt({
+      setInternalSelectedAttempt({
         epochNumber: latest.epochNumber,
         attemptNumber: latest.attemptNumber,
       })
     }
-  }, [problemAttempts, selectedAttempt])
+  }, [problemAttempts, internalSelectedAttempt, isControlled])
+
+  // Track whether we've finished loading available videos
+  const [videosLoaded, setVideosLoaded] = useState(false)
+
+  // Fetch all videos if not provided
+  useEffect(() => {
+    if (availableVideos && availableVideos.length >= 0) {
+      setAllVideos(availableVideos)
+      setVideosLoaded(true)
+      return
+    }
+
+    // Fetch videos if not provided
+    setVideosLoaded(false)
+    fetchAllVideos(playerId, sessionId).then((videos) => {
+      setAllVideos(videos)
+      setVideosLoaded(true)
+    })
+  }, [playerId, sessionId, availableVideos])
+
+  // Determine if no recording exists for this problem
+  const noRecordingExists = videosLoaded && problemAttempts.length === 0
 
   // Fetch metadata when selected attempt changes
   useEffect(() => {
     if (!selectedAttempt) {
-      setIsLoading(true)
+      // Only show loading if we haven't determined there are no recordings
+      setIsLoading(!noRecordingExists)
       return
     }
 
@@ -204,6 +308,9 @@ export function ProblemVideoPlayer({
           setError(video.processingError || 'Video encoding failed')
         } else if (video.status === 'recording') {
           setError('Video is still recording')
+        } else if (video.status === 'no_video') {
+          // No error - we have metadata but no video, which is valid
+          // The UI will show the metadata-only view
         }
       })
       .catch(() => {
@@ -211,12 +318,6 @@ export function ProblemVideoPlayer({
         setError('Failed to load video info')
       })
   }, [playerId, sessionId, problemNumber, selectedAttempt, allVideos])
-
-  // Handle attempt selection change
-  const handleAttemptChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
-    const [epoch, attempt] = event.target.value.split('-').map(Number)
-    setSelectedAttempt({ epochNumber: epoch, attemptNumber: attempt })
-  }, [])
 
   // Sync metadata to video time
   const handleTimeUpdate = useCallback(() => {
@@ -260,89 +361,6 @@ export function ProblemVideoPlayer({
         maxWidth: '600px',
       })}
     >
-      {/* Header with back button and attempt selector */}
-      <div
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          padding: '8px 12px',
-          backgroundColor: isDark ? 'gray.800' : 'gray.100',
-          borderRadius: '8px',
-          gap: '12px',
-        })}
-      >
-        <div
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            flex: 1,
-          })}
-        >
-          <span
-            className={css({
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              color: isDark ? 'gray.200' : 'gray.700',
-            })}
-          >
-            Problem {problemNumber} Recording
-          </span>
-
-          {/* Attempt selector dropdown - only shows when multiple attempts exist */}
-          {hasMultipleAttempts && selectedAttempt && (
-            <select
-              data-element="attempt-selector"
-              value={`${selectedAttempt.epochNumber}-${selectedAttempt.attemptNumber}`}
-              onChange={handleAttemptChange}
-              className={css({
-                padding: '4px 8px',
-                fontSize: '0.8125rem',
-                fontWeight: '500',
-                backgroundColor: isDark ? 'gray.700' : 'white',
-                color: isDark ? 'gray.200' : 'gray.700',
-                border: '1px solid',
-                borderColor: isDark ? 'gray.600' : 'gray.300',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                minWidth: '120px',
-              })}
-            >
-              {problemAttempts.map((attempt) => (
-                <option
-                  key={`${attempt.epochNumber}-${attempt.attemptNumber}`}
-                  value={`${attempt.epochNumber}-${attempt.attemptNumber}`}
-                >
-                  {getAttemptLabel(attempt)}{' '}
-                  {attempt.isCorrect === true ? '✓' : attempt.isCorrect === false ? '✗' : ''}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        <button
-          type="button"
-          onClick={onGoLive}
-          className={css({
-            padding: '6px 12px',
-            fontSize: '0.8125rem',
-            fontWeight: '500',
-            backgroundColor: isDark ? 'blue.700' : 'blue.100',
-            color: isDark ? 'blue.200' : 'blue.700',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            _hover: { backgroundColor: isDark ? 'blue.600' : 'blue.200' },
-            flexShrink: 0,
-          })}
-        >
-          ← Back to Live
-        </button>
-      </div>
-
       {/* Main content area - problem and video side by side on larger screens */}
       {!isLoading && !error && currentVideo?.status === 'ready' && videoUrl && (
         <div
@@ -404,6 +422,7 @@ export function ProblemVideoPlayer({
                   })}
                 >
                   <span
+                    data-element="feedback-message"
                     className={css({
                       fontSize: '0.875rem',
                       fontWeight: '600',
@@ -434,6 +453,7 @@ export function ProblemVideoPlayer({
             })}
           >
             <div
+              data-element="video-wrapper"
               className={css({
                 position: 'relative',
                 width: '100%',
@@ -444,6 +464,7 @@ export function ProblemVideoPlayer({
               })}
             >
               <video
+                data-element="video"
                 ref={videoRef}
                 src={videoUrl}
                 controls
@@ -475,6 +496,7 @@ export function ProblemVideoPlayer({
                   })}
                 >
                   <div
+                    data-element="detection-content"
                     className={css({
                       display: 'flex',
                       alignItems: 'center',
@@ -482,6 +504,7 @@ export function ProblemVideoPlayer({
                     })}
                   >
                     <span
+                      data-element="detection-label"
                       className={css({
                         fontSize: '0.75rem',
                         color: 'gray.400',
@@ -490,6 +513,7 @@ export function ProblemVideoPlayer({
                       Detected:
                     </span>
                     <span
+                      data-element="detection-value"
                       className={css({
                         fontSize: '1.25rem',
                         fontWeight: 'bold',
@@ -500,6 +524,7 @@ export function ProblemVideoPlayer({
                       {currentEntry.detectedValue}
                     </span>
                     <span
+                      data-element="detection-confidence"
                       className={css({
                         fontSize: '0.75rem',
                         color: 'gray.500',
@@ -548,11 +573,16 @@ export function ProblemVideoPlayer({
                 })}
               >
                 {metadata.durationMs > 0 && (
-                  <span>Duration: {(metadata.durationMs / 1000).toFixed(1)}s</span>
+                  <span data-element="metadata-duration">
+                    Duration: {(metadata.durationMs / 1000).toFixed(1)}s
+                  </span>
                 )}
-                {metadata.frameCount > 0 && <span>{metadata.frameCount} frames</span>}
+                {metadata.frameCount > 0 && (
+                  <span data-element="metadata-frames">{metadata.frameCount} frames</span>
+                )}
                 {metadata.isCorrect !== null && (
                   <span
+                    data-element="metadata-result"
                     className={css({
                       color: metadata.isCorrect
                         ? isDark
@@ -572,9 +602,348 @@ export function ProblemVideoPlayer({
         </div>
       )}
 
-      {/* Loading state */}
-      {isLoading && (
+      {/* No video state - shows metadata with animated answer playback */}
+      {!isLoading && !error && currentVideo?.status === 'no_video' && metadata && (
         <div
+          data-element="no-video-content"
+          className={css({
+            display: 'flex',
+            flexDirection: { base: 'column', md: 'row' },
+            gap: '16px',
+            width: '100%',
+            alignItems: 'flex-start',
+          })}
+        >
+          {/* Problem display with animated answer */}
+          {hasProblemData && (
+            <div
+              data-element="problem-display"
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '12px',
+                minWidth: '200px',
+                padding: '16px',
+                backgroundColor: isDark ? 'gray.800' : 'gray.50',
+                borderRadius: '12px',
+              })}
+            >
+              <VerticalProblem
+                terms={metadata.problem.terms}
+                userAnswer={currentNoVideoState?.answer ?? ''}
+                isCompleted={currentNoVideoState?.phase === 'feedback'}
+                correctAnswer={
+                  currentNoVideoState?.phase === 'feedback' ? metadata.problem.answer : undefined
+                }
+                size="normal"
+              />
+
+              {/* Result indicator - only show when playback reaches feedback phase */}
+              {currentNoVideoState?.phase === 'feedback' &&
+                currentNoVideoState?.isCorrect !== undefined && (
+                  <div
+                    data-element="result-display"
+                    className={css({
+                      marginTop: '12px',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: currentNoVideoState.isCorrect
+                        ? isDark
+                          ? 'green.900'
+                          : 'green.50'
+                        : isDark
+                          ? 'red.900'
+                          : 'red.50',
+                      border: '2px solid',
+                      borderColor: currentNoVideoState.isCorrect
+                        ? isDark
+                          ? 'green.700'
+                          : 'green.300'
+                        : isDark
+                          ? 'red.700'
+                          : 'red.300',
+                    })}
+                  >
+                    <span
+                      data-element="result-message"
+                      className={css({
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: currentNoVideoState.isCorrect
+                          ? isDark
+                            ? 'green.300'
+                            : 'green.700'
+                          : isDark
+                            ? 'red.300'
+                            : 'red.700',
+                      })}
+                    >
+                      {currentNoVideoState.isCorrect ? '✓ Correct!' : '✗ Incorrect'}
+                    </span>
+                  </div>
+                )}
+            </div>
+          )}
+
+          {/* Playback panel (replaces video) */}
+          <div
+            data-element="no-video-playback-panel"
+            className={css({
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            })}
+          >
+            {/* Playback area */}
+            <div
+              data-element="no-video-placeholder"
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '16px',
+                aspectRatio: '4/3',
+                backgroundColor: isDark ? 'gray.800' : 'gray.100',
+                borderRadius: '8px',
+                border: '2px dashed',
+                borderColor: isDark ? 'gray.700' : 'gray.300',
+                padding: '24px',
+                textAlign: 'center',
+              })}
+            >
+              <span
+                data-element="no-video-icon"
+                className={css({
+                  fontSize: '2.5rem',
+                  opacity: 0.6,
+                })}
+              >
+                📷
+              </span>
+              <div
+                data-element="no-video-message"
+                className={css({
+                  color: isDark ? 'gray.400' : 'gray.500',
+                })}
+              >
+                <p
+                  className={css({
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                    marginBottom: '4px',
+                  })}
+                >
+                  No video recording
+                </p>
+                <p
+                  className={css({
+                    fontSize: '0.75rem',
+                    color: isDark ? 'gray.500' : 'gray.400',
+                  })}
+                >
+                  Camera was not enabled
+                </p>
+              </div>
+
+              {/* Playback controls */}
+              {answerProgression.length > 0 && (
+                <div
+                  data-element="playback-controls"
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginTop: '8px',
+                  })}
+                >
+                  {/* Restart button */}
+                  <button
+                    type="button"
+                    data-action="restart-playback"
+                    onClick={restartNoVideoPlayback}
+                    className={css({
+                      padding: '8px',
+                      backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '1rem',
+                      transition: 'background-color 0.15s',
+                      _hover: {
+                        backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                      },
+                    })}
+                    title="Restart"
+                  >
+                    ⏮
+                  </button>
+
+                  {/* Play/Pause button */}
+                  <button
+                    type="button"
+                    data-action={isNoVideoPlaying ? 'pause-playback' : 'play-playback'}
+                    onClick={isNoVideoPlaying ? pauseNoVideoPlayback : startNoVideoPlayback}
+                    disabled={isNoVideoComplete && !isNoVideoPlaying}
+                    className={css({
+                      padding: '8px 16px',
+                      backgroundColor: isNoVideoPlaying
+                        ? isDark
+                          ? 'orange.600'
+                          : 'orange.500'
+                        : isDark
+                          ? 'blue.600'
+                          : 'blue.500',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      transition: 'background-color 0.15s',
+                      _hover: {
+                        backgroundColor: isNoVideoPlaying
+                          ? isDark
+                            ? 'orange.500'
+                            : 'orange.600'
+                          : isDark
+                            ? 'blue.500'
+                            : 'blue.600',
+                      },
+                      _disabled: {
+                        opacity: 0.5,
+                        cursor: 'default',
+                      },
+                    })}
+                  >
+                    {isNoVideoPlaying ? '⏸ Pause' : isNoVideoComplete ? '✓ Done' : '▶ Play'}
+                  </button>
+                </div>
+              )}
+
+              {/* Progress indicator */}
+              {answerProgression.length > 0 && (
+                <div
+                  data-element="playback-progress"
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '0.75rem',
+                    color: isDark ? 'gray.500' : 'gray.400',
+                  })}
+                >
+                  <span>
+                    Step {noVideoPlaybackIndex + 1} of {answerProgression.length}
+                  </span>
+                  {currentNoVideoState?.originalTimestamp !== undefined && (
+                    <span className={css({ color: isDark ? 'gray.600' : 'gray.300' })}>
+                      (actual: {(currentNoVideoState.originalTimestamp / 1000).toFixed(1)}s)
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Metadata info below playback area */}
+            <div
+              data-element="no-video-metadata"
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '16px',
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+              })}
+            >
+              {metadata.durationMs > 0 && (
+                <span data-element="metadata-duration">
+                  Actual duration: {(metadata.durationMs / 1000).toFixed(1)}s
+                </span>
+              )}
+              {answerProgression.length > 0 && (
+                <span data-element="metadata-entries">{answerProgression.length} input events</span>
+              )}
+              {metadata.isCorrect !== null && (
+                <span
+                  data-element="metadata-result"
+                  className={css({
+                    color: metadata.isCorrect
+                      ? isDark
+                        ? 'green.400'
+                        : 'green.600'
+                      : isDark
+                        ? 'red.400'
+                        : 'red.600',
+                  })}
+                >
+                  {metadata.isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No recording exists state - problem was never recorded */}
+      {!isLoading && noRecordingExists && (
+        <div
+          data-element="no-recording-state"
+          className={css({
+            width: '100%',
+            aspectRatio: '4/3',
+            backgroundColor: isDark ? 'gray.800' : 'gray.100',
+            borderRadius: '8px',
+            border: '2px dashed',
+            borderColor: isDark ? 'gray.700' : 'gray.300',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            padding: '24px',
+            textAlign: 'center',
+          })}
+        >
+          <span
+            data-element="no-recording-icon"
+            className={css({
+              fontSize: '2.5rem',
+              opacity: 0.5,
+            })}
+          >
+            📭
+          </span>
+          <div data-element="no-recording-message">
+            <p
+              className={css({
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginBottom: '4px',
+              })}
+            >
+              No recording exists
+            </p>
+            <p
+              className={css({
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.500' : 'gray.400',
+              })}
+            >
+              This problem was not recorded
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {isLoading && !noRecordingExists && (
+        <div
+          data-element="loading-state"
           className={css({
             width: '100%',
             aspectRatio: '4/3',
@@ -586,6 +955,7 @@ export function ProblemVideoPlayer({
           })}
         >
           <div
+            data-element="loading-text"
             className={css({
               color: isDark ? 'gray.400' : 'gray.500',
               fontSize: '0.875rem',
@@ -596,44 +966,120 @@ export function ProblemVideoPlayer({
         </div>
       )}
 
-      {/* Error state */}
+      {/* Error/status state */}
       {!isLoading && error && (
         <div
+          data-element="error-state"
           className={css({
             width: '100%',
             aspectRatio: '4/3',
-            backgroundColor: isDark ? 'gray.900' : 'gray.200',
+            backgroundColor:
+              currentVideo?.status === 'failed'
+                ? isDark
+                  ? 'red.900/30'
+                  : 'red.50'
+                : currentVideo?.status === 'processing'
+                  ? isDark
+                    ? 'cyan.900/30'
+                    : 'cyan.50'
+                  : currentVideo?.status === 'recording'
+                    ? isDark
+                      ? 'yellow.900/30'
+                      : 'yellow.50'
+                    : isDark
+                      ? 'gray.900'
+                      : 'gray.200',
             borderRadius: '8px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            border: '1px solid',
+            borderColor:
+              currentVideo?.status === 'failed'
+                ? isDark
+                  ? 'red.700/50'
+                  : 'red.200'
+                : currentVideo?.status === 'processing'
+                  ? isDark
+                    ? 'cyan.700/50'
+                    : 'cyan.200'
+                  : currentVideo?.status === 'recording'
+                    ? isDark
+                      ? 'yellow.700/50'
+                      : 'yellow.200'
+                    : 'transparent',
           })}
         >
           <div
+            data-element="error-content"
             className={css({
               textAlign: 'center',
               padding: '20px',
             })}
           >
-            <p
+            {/* Status icon */}
+            <div
+              data-element="status-icon"
               className={css({
-                color: isDark ? 'gray.400' : 'gray.500',
+                fontSize: '2rem',
+                marginBottom: '12px',
+              })}
+            >
+              {currentVideo?.status === 'failed'
+                ? '⚠️'
+                : currentVideo?.status === 'processing'
+                  ? '⏳'
+                  : currentVideo?.status === 'recording'
+                    ? '🔴'
+                    : '📹'}
+            </div>
+            <p
+              data-element="error-message"
+              className={css({
+                color:
+                  currentVideo?.status === 'failed'
+                    ? isDark
+                      ? 'red.300'
+                      : 'red.700'
+                    : currentVideo?.status === 'processing'
+                      ? isDark
+                        ? 'cyan.300'
+                        : 'cyan.700'
+                      : currentVideo?.status === 'recording'
+                        ? isDark
+                          ? 'yellow.300'
+                          : 'yellow.700'
+                        : isDark
+                          ? 'gray.400'
+                          : 'gray.500',
                 fontSize: '0.875rem',
+                fontWeight: '500',
                 marginBottom: '8px',
               })}
             >
-              {error}
+              {currentVideo?.status === 'failed'
+                ? 'Recording Failed'
+                : currentVideo?.status === 'processing'
+                  ? 'Encoding Video...'
+                  : currentVideo?.status === 'recording'
+                    ? 'Recording in Progress'
+                    : error}
             </p>
-            {currentVideo?.status === 'processing' && (
-              <p
-                className={css({
-                  color: isDark ? 'gray.500' : 'gray.400',
-                  fontSize: '0.75rem',
-                })}
-              >
-                Check back in a few moments
-              </p>
-            )}
+            <p
+              data-element="error-hint"
+              className={css({
+                color: isDark ? 'gray.500' : 'gray.400',
+                fontSize: '0.75rem',
+              })}
+            >
+              {currentVideo?.status === 'failed'
+                ? currentVideo.processingError || 'The video could not be encoded'
+                : currentVideo?.status === 'processing'
+                  ? 'Video will be ready in a few moments'
+                  : currentVideo?.status === 'recording'
+                    ? 'Wait for the student to finish this problem'
+                    : 'No video available for this attempt'}
+            </p>
           </div>
         </div>
       )}
@@ -641,6 +1087,7 @@ export function ProblemVideoPlayer({
       {/* Video info (legacy fallback when no metadata available) */}
       {currentVideo && currentVideo.status === 'ready' && !metadata && (
         <div
+          data-element="legacy-video-info"
           className={css({
             display: 'flex',
             alignItems: 'center',
@@ -650,10 +1097,13 @@ export function ProblemVideoPlayer({
           })}
         >
           {currentVideo.durationMs && (
-            <span>Duration: {(currentVideo.durationMs / 1000).toFixed(1)}s</span>
+            <span data-element="legacy-duration">
+              Duration: {(currentVideo.durationMs / 1000).toFixed(1)}s
+            </span>
           )}
           {currentVideo.isCorrect !== null && (
             <span
+              data-element="legacy-result"
               className={css({
                 color: currentVideo.isCorrect
                   ? isDark

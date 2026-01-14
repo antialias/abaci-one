@@ -49,7 +49,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    // Get all problem videos for this session
+    // Get all problem videos for this session (including failed/processing)
+    // We'll dedupe and show the best status for each problem/epoch/attempt combo
     const videos = await db.query.visionProblemVideos.findMany({
       where: eq(visionProblemVideos.sessionId, sessionId),
       orderBy: [
@@ -59,8 +60,42 @@ export async function GET(_request: Request, { params }: RouteParams) {
       ],
     })
 
+    // Deduplicate by problem/epoch/attempt, keeping the "best" status
+    // Priority: ready > processing > recording > failed
+    const statusPriority: Record<string, number> = {
+      ready: 0,
+      processing: 1,
+      recording: 2,
+      failed: 3,
+    }
+
+    const videoMap = new Map<string, (typeof videos)[0]>()
+
+    for (const video of videos) {
+      const key = `${video.problemNumber}-${video.epochNumber}-${video.attemptNumber}`
+      const existing = videoMap.get(key)
+
+      if (!existing) {
+        videoMap.set(key, video)
+      } else {
+        // Keep the one with better status (lower priority number)
+        const existingPriority = statusPriority[existing.status] ?? 999
+        const currentPriority = statusPriority[video.status] ?? 999
+        if (currentPriority < existingPriority) {
+          videoMap.set(key, video)
+        }
+      }
+    }
+
+    // Convert map to sorted array
+    const dedupedVideos = Array.from(videoMap.values()).sort((a, b) => {
+      if (a.problemNumber !== b.problemNumber) return a.problemNumber - b.problemNumber
+      if (a.epochNumber !== b.epochNumber) return a.epochNumber - b.epochNumber
+      return a.attemptNumber - b.attemptNumber
+    })
+
     // Transform to response format with epoch/attempt info
-    const videoList = videos.map((video) => ({
+    const videoList = dedupedVideos.map((video) => ({
       problemNumber: video.problemNumber,
       partIndex: video.partIndex,
       epochNumber: video.epochNumber,
