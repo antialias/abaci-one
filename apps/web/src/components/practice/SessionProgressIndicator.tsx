@@ -17,8 +17,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
-import { getSlotRetryStatus } from '@/db/schema/session-plans'
+import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 
 export interface SessionProgressIndicatorProps {
@@ -36,14 +35,16 @@ export interface SessionProgressIndicatorProps {
   onNavigate?: (linearIndex: number) => void
   /** Callback when clicking a completed problem to redo it */
   onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  /** Callback when clicking the current position during redo to return to it */
+  onCancelRedo?: () => void
   /** Linear index of the problem currently being redone (shows pulsing highlight) */
   redoLinearIndex?: number
+  /** Linear index of the problem observer is watching (shows cyan ring, undefined = live view) */
+  observerViewingIndex?: number
   /** Dark mode */
   isDark: boolean
   /** Compact mode for smaller screens */
   compact?: boolean
-  /** Optional session plan for retry status display */
-  plan?: SessionPlan
   /** Whether game breaks are enabled (shows game break icons between parts) */
   gameBreakEnabled?: boolean
 }
@@ -186,6 +187,22 @@ function getSlotResult(
 }
 
 /**
+ * Count total attempts for a specific slot from results.
+ * Both student and observer views have parts + results, so this is the single
+ * source of truth for attempt counts.
+ */
+function getAttemptCount(
+  results: SlotResult[],
+  partNumber: number,
+  slotIndex: number
+): number {
+  // Count all results for this slot (including retries and manual redos)
+  return results.filter(
+    (r) => r.partNumber === partNumber && (r.originalSlotIndex ?? r.slotIndex) === slotIndex
+  ).length
+}
+
+/**
  * Collapsed section summary - shows section as compact badge
  * For completed sections: shows ✓count (green if all correct)
  * For future sections: shows just the count (gray)
@@ -199,9 +216,10 @@ function CollapsedSection({
   isBrowseMode,
   onNavigate,
   onRedoProblem,
+  onCancelRedo,
   redoLinearIndex,
+  observerViewingIndex,
   isCompleted,
-  plan,
 }: {
   part: SessionPart
   partIndex: number
@@ -211,9 +229,10 @@ function CollapsedSection({
   isBrowseMode: boolean
   onNavigate?: (linearIndex: number) => void
   onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  onCancelRedo?: () => void
   redoLinearIndex?: number
+  observerViewingIndex?: number
   isCompleted: boolean
-  plan?: SessionPlan
 }) {
   const completedCount = part.slots.filter((_, i) =>
     getSlotResult(results, part.partNumber, i)
@@ -238,8 +257,9 @@ function CollapsedSection({
         isBrowseMode={true}
         onNavigate={onNavigate}
         onRedoProblem={onRedoProblem}
+        onCancelRedo={onCancelRedo}
         redoLinearIndex={redoLinearIndex}
-        plan={plan}
+        observerViewingIndex={observerViewingIndex}
       />
     )
   }
@@ -307,8 +327,9 @@ function ExpandedSection({
   isBrowseMode,
   onNavigate,
   onRedoProblem,
+  onCancelRedo,
   redoLinearIndex,
-  plan,
+  observerViewingIndex,
 }: {
   part: SessionPart
   partIndex: number
@@ -319,8 +340,9 @@ function ExpandedSection({
   isBrowseMode: boolean
   onNavigate?: (linearIndex: number) => void
   onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  onCancelRedo?: () => void
   redoLinearIndex?: number
-  plan?: SessionPlan
+  observerViewingIndex?: number
 }) {
   return (
     <div
@@ -354,26 +376,30 @@ function ExpandedSection({
         const result = getSlotResult(results, part.partNumber, slotIndex)
         const isCurrent = linearIndex === currentLinearIndex
         const isRedo = linearIndex === redoLinearIndex
+        const isObserverViewing = linearIndex === observerViewingIndex
         const isCompleted = result !== undefined
         const isCorrect = result?.isCorrect
 
-        // Get retry status if plan is available
-        const retryStatus = plan ? getSlotRetryStatus(plan, partIndex, slotIndex) : null
-        const attemptCount = retryStatus?.attemptCount ?? (isCompleted ? 1 : 0)
+        // Count attempts from results - both student and observer views have this data
+        const attemptCount = getAttemptCount(results, part.partNumber, slotIndex)
         const hasRetried = attemptCount > 1
 
         // Clickable in browse mode for navigation, or on completed problems for redo
-        // But not clickable if already in redo mode (can't start a new redo from another redo)
+        // During redo mode, clicking another completed problem switches to redoing that one
+        // During redo mode, clicking the current position returns to it (cancels redo)
         const isInRedoMode = redoLinearIndex !== undefined
         const isClickableForBrowse = isBrowseMode && onNavigate
         const isClickableForRedo =
-          !isBrowseMode && !isInRedoMode && isCompleted && !isCurrent && onRedoProblem && result
-        const isClickable = isClickableForBrowse || isClickableForRedo
+          !isBrowseMode && isCompleted && !isRedo && onRedoProblem && result
+        const isClickableToReturn = !isBrowseMode && isInRedoMode && isCurrent && onCancelRedo
+        const isClickable = isClickableForBrowse || isClickableForRedo || isClickableToReturn
 
-        // Handle click - browse navigation or redo
+        // Handle click - browse navigation, redo, or return from redo
         const handleClick = () => {
           if (isClickableForBrowse) {
             onNavigate!(linearIndex)
+          } else if (isClickableToReturn) {
+            onCancelRedo!()
           } else if (isClickableForRedo && result) {
             onRedoProblem!(linearIndex, result)
           }
@@ -394,6 +420,7 @@ function ExpandedSection({
               data-attempt-count={attemptCount}
               data-clickable-for-redo={isClickableForRedo || undefined}
               data-redo={isRedo || undefined}
+              data-observer-viewing={isObserverViewing || undefined}
               data-status={
                 isRedo
                   ? 'redo'
@@ -466,6 +493,12 @@ function ExpandedSection({
                       : '0 2px 4px rgba(0,0,0,0.2)',
                   },
                 }),
+                // Observer viewing indicator (cyan ring) - shows which problem observer is watching
+                ...(isObserverViewing && {
+                  outline: '2px solid',
+                  outlineColor: isDark ? 'cyan.400' : 'cyan.500',
+                  outlineOffset: '2px',
+                }),
               })}
               title={
                 isBrowseMode
@@ -534,10 +567,11 @@ export function SessionProgressIndicator({
   isBrowseMode,
   onNavigate,
   onRedoProblem,
+  onCancelRedo,
   redoLinearIndex,
+  observerViewingIndex,
   isDark,
   compact = false,
-  plan,
   gameBreakEnabled = false,
 }: SessionProgressIndicatorProps) {
   // Calculate linear index for current position
@@ -663,9 +697,10 @@ export function SessionProgressIndicator({
                   isBrowseMode={isBrowseMode}
                   onNavigate={onNavigate}
                   onRedoProblem={onRedoProblem}
+                  onCancelRedo={onCancelRedo}
                   redoLinearIndex={redoLinearIndex}
+                  observerViewingIndex={observerViewingIndex}
                   isCompleted={isCompletedPart}
-                  plan={plan}
                 />
               ) : (
                 <ExpandedSection
@@ -678,8 +713,9 @@ export function SessionProgressIndicator({
                   isBrowseMode={isBrowseMode}
                   onNavigate={onNavigate}
                   onRedoProblem={onRedoProblem}
+                  onCancelRedo={onCancelRedo}
                   redoLinearIndex={redoLinearIndex}
-                  plan={plan}
+                  observerViewingIndex={observerViewingIndex}
                 />
               )}
             </div>

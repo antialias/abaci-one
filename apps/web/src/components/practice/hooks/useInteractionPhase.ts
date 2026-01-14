@@ -8,6 +8,20 @@ import type { GeneratedProblem } from '@/db/schema/session-plans'
 // =============================================================================
 
 /**
+ * Problem context passed as a prop - the single source of truth for what problem
+ * is currently being worked on. This is computed by the parent component from
+ * redoState + session plan, eliminating dual sources of truth.
+ */
+export interface ProblemContext {
+  /** The problem being solved */
+  problem: GeneratedProblem
+  /** Index in the current part (original slot index for redos) */
+  slotIndex: number
+  /** Part index in the session */
+  partIndex: number
+}
+
+/**
  * Input-level state for a problem attempt.
  * This is what the student is actively working on - their answer input.
  */
@@ -326,9 +340,28 @@ export interface InitialProblemData {
   partIndex: number
 }
 
+/**
+ * Active problem context with a stable key for change detection.
+ * The key allows the hook to detect when the problem truly changes,
+ * not just when references change.
+ */
+export interface ActiveProblem {
+  problem: GeneratedProblem
+  slotIndex: number
+  partIndex: number
+  /** Stable identifier for this problem instance - changes when the problem changes */
+  key: string
+}
+
 export interface UseInteractionPhaseOptions {
   /** Initial problem to hydrate with (for SSR) */
   initialProblem?: InitialProblemData
+  /**
+   * Active problem context - derived from redoState + session plan.
+   * When the key changes, the hook automatically loads the new problem.
+   * This is the single source of truth for which problem is being worked on.
+   */
+  activeProblem?: ActiveProblem | null
   /** Called when auto-submit threshold is exceeded */
   onManualSubmitRequired?: () => void
 }
@@ -419,7 +452,7 @@ export interface UseInteractionPhaseReturn {
 export function useInteractionPhase(
   options: UseInteractionPhaseOptions = {}
 ): UseInteractionPhaseReturn {
-  const { initialProblem, onManualSubmitRequired } = options
+  const { initialProblem, activeProblem, onManualSubmitRequired } = options
 
   // Initialize state with problem if provided (for SSR hydration)
   const [phase, setPhase] = useState<InteractionPhase>(() => {
@@ -625,6 +658,50 @@ export function useInteractionPhase(
     },
     []
   )
+
+  // ==========================================================================
+  // React to activeProblem changes (single source of truth)
+  // ==========================================================================
+  // This effect watches for activeProblem.key changes and loads the new problem.
+  // This eliminates the need for synchronization effects in the parent component.
+  const prevActiveProblemKeyRef = useRef<string | null>(null)
+  const hasMountedRef = useRef(false)
+
+  useEffect(() => {
+    // Skip on initial mount - let initialProblem handle hydration
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true
+      // Initialize the ref with current key
+      prevActiveProblemKeyRef.current = activeProblem?.key ?? null
+      return
+    }
+
+    // If no active problem, nothing to do
+    if (!activeProblem) {
+      prevActiveProblemKeyRef.current = null
+      return
+    }
+
+    const prevKey = prevActiveProblemKeyRef.current
+    const currentKey = activeProblem.key
+
+    // Key hasn't changed - no action needed
+    if (prevKey === currentKey) {
+      return
+    }
+
+    // Key changed - load the new problem immediately
+    // Note: We don't check phase here because this is for redo mode / direct navigation
+    // which should immediately switch problems (no animation)
+    const newAttempt = createAttemptInput(
+      activeProblem.problem,
+      activeProblem.slotIndex,
+      activeProblem.partIndex
+    )
+    setPhase({ phase: 'inputting', attempt: newAttempt })
+
+    prevActiveProblemKeyRef.current = currentKey
+  }, [activeProblem])
 
   const handleDigit = useCallback(
     (digit: string) => {

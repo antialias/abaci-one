@@ -793,6 +793,40 @@ export function ActiveSession({
     return undefined
   }, [currentProblemInfo, plan.currentPartIndex])
 
+  // ============================================================================
+  // SINGLE SOURCE OF TRUTH: Which problem should be displayed right now
+  // ============================================================================
+  // This computed value derives the active problem from redoState + plan.
+  // The hook reacts to changes in activeProblem.key to load new problems, eliminating
+  // the need for synchronization effects between redoState and phase.attempt.problem.
+  const activeProblem = useMemo(() => {
+    // Redo mode takes priority - user clicked on a problem to redo
+    if (redoState?.isActive) {
+      const redoPart = plan.parts[redoState.originalPartIndex]
+      const redoProblem = (redoPart?.slots[redoState.originalSlotIndex] as ProblemSlot)?.problem
+      if (redoProblem) {
+        return {
+          problem: redoProblem,
+          slotIndex: redoState.originalSlotIndex,
+          partIndex: redoState.originalPartIndex,
+          key: `redo-${redoState.linearIndex}`,
+        }
+      }
+    }
+
+    // Normal mode: use currentProblemInfo (handles epochs/retries correctly)
+    if (currentProblemInfo?.problem) {
+      return {
+        problem: currentProblemInfo.problem,
+        slotIndex: currentProblemInfo.originalSlotIndex,
+        partIndex: plan.currentPartIndex,
+        key: `normal-${plan.currentPartIndex}-${currentProblemInfo.originalSlotIndex}-${currentProblemInfo.epochNumber ?? 0}`,
+      }
+    }
+
+    return null
+  }, [redoState, plan.parts, plan.currentPartIndex, currentProblemInfo])
+
   // Interaction state machine - single source of truth for UI state
   const {
     phase,
@@ -813,7 +847,6 @@ export function ActiveSession({
     canSubmit,
     shouldAutoSubmit,
     ambiguousHelpTermIndex,
-    loadProblem,
     handleDigit,
     handleBackspace,
     enterHelpMode,
@@ -829,6 +862,7 @@ export function ActiveSession({
     resume,
   } = useInteractionPhase({
     initialProblem,
+    activeProblem,
     onManualSubmitRequired: () => playSound('womp_womp'),
   })
 
@@ -911,8 +945,9 @@ export function ActiveSession({
         totalProblems,
         // Session structure for progress indicator
         sessionParts: plan.parts,
-        currentPartIndex: plan.currentPartIndex,
-        currentSlotIndex: plan.currentSlotIndex,
+        // Use redo indices when in redo mode so observer sees correct active problem
+        currentPartIndex: redoState?.isActive ? redoState.originalPartIndex : plan.currentPartIndex,
+        currentSlotIndex: redoState?.isActive ? redoState.originalSlotIndex : plan.currentSlotIndex,
         slotResults: plan.results,
       })
       return
@@ -955,8 +990,9 @@ export function ActiveSession({
       totalProblems,
       // Session structure for progress indicator
       sessionParts: plan.parts,
-      currentPartIndex: plan.currentPartIndex,
-      currentSlotIndex: plan.currentSlotIndex,
+      // Use redo indices when in redo mode so observer sees correct active problem
+      currentPartIndex: redoState?.isActive ? redoState.originalPartIndex : plan.currentPartIndex,
+      currentSlotIndex: redoState?.isActive ? redoState.originalSlotIndex : plan.currentSlotIndex,
       slotResults: plan.results,
     })
   }, [
@@ -973,6 +1009,9 @@ export function ActiveSession({
     plan.results,
     completedProblems,
     totalProblems,
+    redoState?.isActive,
+    redoState?.originalPartIndex,
+    redoState?.originalSlotIndex,
   ])
 
   // Handle teacher abacus control events
@@ -1303,22 +1342,9 @@ export function ActiveSession({
   // Whether the original redo problem was correct (for display and recording logic)
   const redoOriginalWasCorrect = redoState?.originalResult?.isCorrect ?? false
 
-  // Track previous redo state to detect when redo mode is entered
-  const prevRedoStateRef = useRef<typeof redoState>(null)
-
-  // When entering redo mode, load the redo problem and clear the answer
-  useEffect(() => {
-    const wasInRedoMode = prevRedoStateRef.current?.isActive
-    const isNowInRedoMode = redoState?.isActive
-
-    // Entering redo mode
-    if (!wasInRedoMode && isNowInRedoMode && redoSlot?.problem) {
-      // Load the redo problem
-      loadProblem(redoSlot.problem, redoState!.originalSlotIndex, redoState!.originalPartIndex)
-    }
-
-    prevRedoStateRef.current = redoState
-  }, [redoState, redoSlot, loadProblem])
+  // NOTE: Redo mode problem switching is now handled by the useInteractionPhase hook
+  // via the activeProblem prop. The hook reacts to activeProblem.key changes and
+  // loads the new problem automatically, eliminating synchronization bugs.
 
   // Retry epoch tracking
   const inRetryEpoch = currentProblemInfo?.isRetry ?? false
@@ -1394,17 +1420,10 @@ export function ActiveSession({
     setRetryTransitionData(null)
   }, [])
 
-  // Initialize problem when slot changes and in loading phase
-  // Uses currentProblemInfo to handle both original slots and retry epochs
-  useEffect(() => {
-    if (currentPart && currentProblemInfo && phase.phase === 'loading') {
-      loadProblem(
-        currentProblemInfo.problem,
-        currentProblemInfo.originalSlotIndex,
-        currentPartIndex
-      )
-    }
-  }, [currentPart, currentProblemInfo, currentPartIndex, phase.phase, loadProblem])
+  // NOTE: Problem initialization is now handled by the useInteractionPhase hook
+  // via the activeProblem prop. Initial load uses initialProblem for SSR hydration,
+  // and subsequent changes (including redo mode and retry epochs) are detected via
+  // activeProblem.key changes.
 
   // Auto-trigger help when an unambiguous prefix sum is detected
   // The awaitingDisambiguation phase handles the timer and auto-transitions to helpMode when it expires
@@ -1919,7 +1938,7 @@ export function ActiveSession({
                   },
                 })}
               >
-                Cancel
+                ← Back to #{completedProblems + 1}
               </button>
             </div>
           )}

@@ -82,6 +82,8 @@ export interface SessionHudData {
   onBrowseNavigate?: (linearIndex: number) => void
   /** Redo a previously completed problem (tap on completed dot) */
   onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  /** Cancel redo and return to current session position */
+  onCancelRedo?: () => void
   /** Linear index of the problem currently being redone (undefined = not in redo mode) */
   redoLinearIndex?: number
   /** Whether the end session request is in flight */
@@ -1290,10 +1292,10 @@ export function PracticeSubNav({
               isBrowseMode={sessionHud.isBrowseMode}
               onNavigate={sessionHud.onBrowseNavigate}
               onRedoProblem={sessionHud.onRedoProblem}
+              onCancelRedo={sessionHud.onCancelRedo}
               redoLinearIndex={sessionHud.redoLinearIndex}
               isDark={isDark}
               compact={true}
-              plan={sessionHud.plan}
               gameBreakEnabled={gameBreakInfo?.enabled ?? false}
             />
           </div>
