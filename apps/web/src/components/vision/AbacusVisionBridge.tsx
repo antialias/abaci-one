@@ -1453,48 +1453,73 @@ export function AbacusVisionBridge({
             borderColor: 'gray.700',
           })}
         >
-          {isVisionSetupComplete && (
-            <>
-              <button
-                type="button"
-                onClick={onToggleVision}
-                className={css({
-                  px: 4,
-                  py: 3,
-                  bg: isVisionEnabled ? 'red.600' : 'green.600',
-                  color: 'white',
-                  borderRadius: 'lg',
-                  fontWeight: 'semibold',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  _hover: {
+          {/* Always show button, but disabled with explanation if setup not complete */}
+          <button
+            type="button"
+            onClick={isVisionSetupComplete ? onToggleVision : undefined}
+            disabled={!isVisionSetupComplete}
+            className={css({
+              px: 4,
+              py: 3,
+              bg: !isVisionSetupComplete
+                ? 'gray.600'
+                : isVisionEnabled
+                  ? 'red.600'
+                  : 'green.600',
+              color: 'white',
+              borderRadius: 'lg',
+              fontWeight: 'semibold',
+              border: 'none',
+              cursor: isVisionSetupComplete ? 'pointer' : 'not-allowed',
+              transition: 'all 0.2s',
+              opacity: isVisionSetupComplete ? 1 : 0.7,
+              _hover: isVisionSetupComplete
+                ? {
                     bg: isVisionEnabled ? 'red.700' : 'green.700',
                     transform: 'scale(1.02)',
-                  },
-                })}
-              >
-                {isVisionEnabled ? 'Disable Vision' : 'Enable Vision'}
-              </button>
+                  }
+                : {},
+            })}
+          >
+            {isVisionEnabled ? 'Disable Vision' : 'Enable Vision'}
+          </button>
 
-              {/* Training data collection disclaimer */}
-              <div
-                data-element="training-data-disclaimer"
-                className={css({
-                  mt: 2,
-                  p: 2,
-                  bg: 'blue.900/50',
-                  borderRadius: 'md',
-                  fontSize: 'xs',
-                  color: 'blue.200',
-                  lineHeight: 1.4,
-                })}
-              >
-                <strong>Training Data:</strong> When vision is enabled and you answer correctly,
-                abacus column images may be saved to help improve the bead detection model. No
-                personally identifiable information is collected with these images.
-              </div>
-            </>
+          {/* Explanation when setup is not complete */}
+          {!isVisionSetupComplete && (
+            <p
+              data-element="setup-required-message"
+              className={css({
+                fontSize: 'sm',
+                color: 'gray.400',
+                textAlign: 'center',
+              })}
+            >
+              {cameraSource === 'local'
+                ? 'Waiting for camera access...'
+                : !remoteIsPhoneConnected
+                  ? 'Connect your phone to enable vision'
+                  : 'Setting up camera...'}
+            </p>
+          )}
+
+          {/* Training data collection disclaimer - only show when setup complete */}
+          {isVisionSetupComplete && (
+            <div
+              data-element="training-data-disclaimer"
+              className={css({
+                mt: 2,
+                p: 2,
+                bg: 'blue.900/50',
+                borderRadius: 'md',
+                fontSize: 'xs',
+                color: 'blue.200',
+                lineHeight: 1.4,
+              })}
+            >
+              <strong>Training Data:</strong> When vision is enabled and you answer correctly,
+              abacus column images may be saved to help improve the bead detection model. No
+              personally identifiable information is collected with these images.
+            </div>
           )}
         </div>
       )}
