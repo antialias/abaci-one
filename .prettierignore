@@ -1,0 +1,15 @@
+# Generated files - do not format
+**/styled-system/**
+**/.next/**
+**/dist/**
+**/coverage/**
+**/node_modules/**
+**/storybook-static/**
+
+# Build outputs
+*.min.js
+*.min.css
+
+# Package manager
+pnpm-lock.yaml
+package-lock.json

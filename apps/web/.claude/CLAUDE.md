@@ -605,6 +605,28 @@ css({
 className = "bg-blue-200 border-gray-300 text-brand-600";
 ```
 
+### Fixing Corrupted styled-system (Panda CSS)
+
+**If the CSS appears broken or styles aren't applying correctly**, the `styled-system/` directory may be corrupted. This can happen if prettier or other formatters modify the generated files.
+
+**Fix:**
+
+```bash
+# 1. Delete the corrupted styled-system
+rm -rf apps/web/styled-system
+
+# 2. Regenerate it
+cd apps/web && pnpm panda codegen
+
+# 3. Clear Next.js cache (if build errors persist)
+rm -rf apps/web/.next
+
+# 4. Rebuild
+pnpm build
+```
+
+**Prevention:** The repo has a `.prettierignore` at the root that excludes `**/styled-system/**`. If this file is missing or incomplete, prettier will corrupt the generated files when running `pnpm format`.
+
 See `.claude/GAME_THEMES.md` for standardized color theme usage in arcade games.
 
 ## Data Attributes for All Elements
