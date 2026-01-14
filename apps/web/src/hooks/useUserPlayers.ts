@@ -176,7 +176,8 @@ export function useCreatePlayer() {
     },
     onSettled: () => {
       // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: playerKeys.lists() })
+      // Invalidate ALL player queries (including listWithSkillData used by practice page)
+      queryClient.invalidateQueries({ queryKey: playerKeys.all })
     },
   })
 }
@@ -276,7 +277,8 @@ export function useDeletePlayer() {
     },
     onSettled: () => {
       // Refetch after error or success
-      queryClient.invalidateQueries({ queryKey: playerKeys.lists() })
+      // Invalidate ALL player queries (including listWithSkillData used by practice page)
+      queryClient.invalidateQueries({ queryKey: playerKeys.all })
     },
   })
 }
