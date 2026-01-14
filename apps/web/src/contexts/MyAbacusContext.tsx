@@ -56,9 +56,20 @@ function loadVisionConfig(): VisionConfig {
     const stored = localStorage.getItem(VISION_CONFIG_STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
+      // Infer activeCameraSource if not set but we have camera config
+      // This handles configs saved before activeCameraSource was added
+      let activeCameraSource = parsed.activeCameraSource ?? null
+      if (activeCameraSource === null) {
+        if (parsed.remoteCameraSessionId) {
+          activeCameraSource = 'phone'
+        } else if (parsed.cameraDeviceId) {
+          activeCameraSource = 'local'
+        }
+      }
       return {
         ...DEFAULT_VISION_CONFIG,
         ...parsed,
+        activeCameraSource,
         // Always start with vision disabled - user must re-enable
         enabled: false,
       }
