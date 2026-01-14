@@ -70,7 +70,8 @@
       "Bash(dig:*)",
       "Bash(pnpm why:*)",
       "Bash(npm view:*)",
-      "Bash(pnpm install:*)"
+      "Bash(pnpm install:*)",
+      "Bash(git ls-files:*)"
     ],
     "deny": [],
     "ask": []

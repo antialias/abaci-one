@@ -657,7 +657,12 @@
       "Bash(npx tsc-alias:*)",
       "Bash(tsc-alias:*)",
       "Bash(npm run:*)",
-      "Bash(npx panda:*)"
+      "Bash(npx panda:*)",
+      "Bash(prettier:*)",
+      "Bash(./generate-compose.sh)",
+      "WebFetch(domain:docs.docker.com)",
+      "Bash(./deploy.sh:*)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards status apps/web/src/app/api/health/)"
     ],
     "deny": [],
     "ask": []
