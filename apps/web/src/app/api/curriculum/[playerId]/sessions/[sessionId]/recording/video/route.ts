@@ -1,9 +1,9 @@
 /**
- * API route for streaming per-problem vision recording video
+ * API route for streaming vision recording video
  *
- * GET /api/curriculum/[playerId]/sessions/[sessionId]/problems/[problemNumber]/video
+ * GET /api/curriculum/[playerId]/sessions/[sessionId]/recording/video
  *
- * Streams the MP4 video file for a specific problem with Range header support for seeking.
+ * Streams the MP4 video file with Range header support for seeking.
  */
 
 export const dynamic = 'force-dynamic'
@@ -13,45 +13,24 @@ import path from 'path'
 import { NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { sessionPlans, visionProblemVideos } from '@/db/schema'
+import { sessionPlans, visionRecordings } from '@/db/schema'
 import { getPlayerAccess, generateAuthorizationError } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
-  params: Promise<{
-    playerId: string
-    sessionId: string
-    problemNumber: string
-  }>
+  params: Promise<{ playerId: string; sessionId: string }>
 }
 
 /**
- * GET - Stream problem video with Range support
- *
- * Query params:
- * - epoch: Epoch number (0 = initial pass, 1-2 = retry epochs). Defaults to 0.
- * - attempt: Attempt number within the epoch (1-indexed). Defaults to 1.
+ * GET - Stream recording video with Range support
  */
 export async function GET(request: Request, { params }: RouteParams) {
   try {
-    const { playerId, sessionId, problemNumber: problemNumberStr } = await params
-    const { searchParams } = new URL(request.url)
+    const { playerId, sessionId } = await params
 
-    if (!playerId || !sessionId || !problemNumberStr) {
-      return NextResponse.json(
-        { error: 'Player ID, Session ID, and Problem Number required' },
-        { status: 400 }
-      )
+    if (!playerId || !sessionId) {
+      return NextResponse.json({ error: 'Player ID and Session ID required' }, { status: 400 })
     }
-
-    const problemNumber = parseInt(problemNumberStr, 10)
-    if (isNaN(problemNumber) || problemNumber < 1) {
-      return NextResponse.json({ error: 'Invalid problem number' }, { status: 400 })
-    }
-
-    // Parse epoch and attempt from query params
-    const epochNumber = parseInt(searchParams.get('epoch') ?? '0', 10)
-    const attemptNumber = parseInt(searchParams.get('attempt') ?? '1', 10)
 
     // Authorization check
     const userId = await getDbUserId()
@@ -72,23 +51,18 @@ export async function GET(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    // Get problem video with epoch/attempt filtering
-    const video = await db.query.visionProblemVideos.findFirst({
-      where: and(
-        eq(visionProblemVideos.sessionId, sessionId),
-        eq(visionProblemVideos.problemNumber, problemNumber),
-        eq(visionProblemVideos.epochNumber, epochNumber),
-        eq(visionProblemVideos.attemptNumber, attemptNumber)
-      ),
+    // Get recording
+    const recording = await db.query.visionRecordings.findFirst({
+      where: eq(visionRecordings.sessionId, sessionId),
     })
 
-    if (!video) {
-      return NextResponse.json({ error: 'Problem video not found' }, { status: 404 })
+    if (!recording) {
+      return NextResponse.json({ error: 'Recording not found' }, { status: 404 })
     }
 
-    if (video.status !== 'ready') {
+    if (recording.status !== 'ready') {
       return NextResponse.json(
-        { error: `Video not ready (status: ${video.status})` },
+        { error: `Recording not ready (status: ${recording.status})` },
         { status: 400 }
       )
     }
@@ -100,13 +74,13 @@ export async function GET(request: Request, { params }: RouteParams) {
       'uploads',
       'vision-recordings',
       playerId,
-      sessionId,
-      video.filename
+      recording.id,
+      recording.filename
     )
 
     // Check if video file exists
     if (!existsSync(videoPath)) {
-      console.error(`[problem-video] Video file not found: ${videoPath}`)
+      console.error(`[recording/video] Video file not found: ${videoPath}`)
       return NextResponse.json({ error: 'Video file not found' }, { status: 404 })
     }
 
@@ -187,7 +161,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       },
     })
   } catch (error) {
-    console.error('Error streaming problem video:', error)
+    console.error('Error streaming recording video:', error)
     return NextResponse.json({ error: 'Failed to stream video' }, { status: 500 })
   }
 }

@@ -814,6 +814,7 @@ import { AbacusReact } from '@soroban/abacus-react'
 **CRITICAL: Before creating or modifying any component that uses abacus vision/camera, READ:**
 
 - **`src/components/vision/VISION_COMPONENTS.md`** - Required wiring for marker detection and rectified view
+- **`src/lib/vision/recording/README.md`** - Per-problem video recording system (markers, VisionRecorder, metadata)
 
 **Quick checklist for CameraCapture usage:**
 

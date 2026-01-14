@@ -80,7 +80,14 @@ export interface UseSessionBroadcastResult {
     problemNumber: number,
     partIndex: number,
     eventType: 'problem-shown' | 'answer-submitted' | 'feedback-shown',
-    isCorrect?: boolean
+    isCorrect?: boolean,
+    /** Retry context for multi-attempt support */
+    retryContext?: {
+      epochNumber: number
+      attemptNumber: number
+      isRetry: boolean
+      isManualRedo: boolean
+    }
   ) => void
 }
 
@@ -377,7 +384,13 @@ export function useSessionBroadcast(
       problemNumber: number,
       partIndex: number,
       eventType: 'problem-shown' | 'answer-submitted' | 'feedback-shown',
-      isCorrect?: boolean
+      isCorrect?: boolean,
+      retryContext?: {
+        epochNumber: number
+        attemptNumber: number
+        isRetry: boolean
+        isManualRedo: boolean
+      }
     ) => {
       if (!socketRef.current || !isConnectedRef.current || !sessionId) {
         return
@@ -394,12 +407,17 @@ export function useSessionBroadcast(
         partIndex,
         eventType,
         isCorrect,
+        epochNumber: retryContext?.epochNumber ?? 0,
+        attemptNumber: retryContext?.attemptNumber ?? 1,
+        isRetry: retryContext?.isRetry ?? false,
+        isManualRedo: retryContext?.isManualRedo ?? false,
       })
       console.log('[SessionBroadcast] Sent problem marker:', {
         problemNumber,
         partIndex,
         eventType,
         isCorrect,
+        retryContext,
       })
     },
     [sessionId]

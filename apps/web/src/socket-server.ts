@@ -24,7 +24,7 @@ import {
   markPhoneConnected,
   markPhoneDisconnected,
 } from './lib/remote-camera/session-manager'
-import { VisionRecorder, type VisionFrame } from './lib/vision/recording'
+import { VisionRecorder, type VisionFrame, type PracticeStateInput } from './lib/vision/recording'
 
 // Throttle map for DVR buffer info emissions (sessionId -> last emit timestamp)
 const lastDvrBufferInfoEmit = new Map<string, number>()
@@ -961,12 +961,30 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       'practice-state',
       (data: {
         sessionId: string
-        currentProblem: unknown
+        currentProblem: { terms: number[]; answer: number } | unknown
         phase: 'problem' | 'feedback' | 'tutorial'
-        studentAnswer: number | null
+        studentAnswer: string
         isCorrect: boolean | null
+        currentProblemNumber: number
         timing: { startedAt: number; elapsed: number }
       }) => {
+        // Forward practice state to VisionRecorder for metadata capture
+        // Only processes if there's an active recording for this session
+        const recorder = VisionRecorder.getInstance()
+        const currentProblem = data.currentProblem as
+          | { terms: number[]; answer: number }
+          | undefined
+        if (currentProblem && 'terms' in currentProblem && 'answer' in currentProblem) {
+          const practiceState: PracticeStateInput = {
+            currentProblem,
+            phase: data.phase,
+            studentAnswer: data.studentAnswer,
+            isCorrect: data.isCorrect,
+            currentProblemNumber: data.currentProblemNumber,
+          }
+          recorder.onPracticeState(data.sessionId, practiceState)
+        }
+
         // Broadcast to all observers in the session channel
         socket.to(`session:${data.sessionId}`).emit('practice-state', data)
       }
@@ -1164,12 +1182,20 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         partIndex,
         eventType,
         isCorrect,
+        epochNumber,
+        attemptNumber,
+        isRetry,
+        isManualRedo,
       }: {
         sessionId: string
         problemNumber: number
         partIndex: number
         eventType: 'problem-shown' | 'answer-submitted' | 'feedback-shown'
         isCorrect?: boolean
+        epochNumber?: number
+        attemptNumber?: number
+        isRetry?: boolean
+        isManualRedo?: boolean
       }) => {
         const recorder = VisionRecorder.getInstance()
         if (recorder.isRecording(sessionId)) {
@@ -1179,6 +1205,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             partIndex,
             eventType,
             isCorrect,
+            epochNumber: epochNumber ?? 0,
+            attemptNumber: attemptNumber ?? 1,
+            isRetry: isRetry ?? false,
+            isManualRedo: isManualRedo ?? false,
           })
         }
       }

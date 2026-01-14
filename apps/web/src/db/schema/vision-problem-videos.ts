@@ -40,6 +40,12 @@ export const visionProblemVideos = sqliteTable(
     problemNumber: integer('problem_number').notNull(), // 1-indexed
     partIndex: integer('part_index').notNull(), // 0, 1, or 2 (abacus, visualization, linear)
 
+    // Attempt tracking (for epoch retries and manual redos)
+    epochNumber: integer('epoch_number').notNull().default(0), // 0 = initial pass, 1-2 = retry epochs
+    attemptNumber: integer('attempt_number').notNull().default(1), // 1-indexed within epoch
+    isRetry: integer('is_retry', { mode: 'boolean' }).notNull().default(false),
+    isManualRedo: integer('is_manual_redo', { mode: 'boolean' }).notNull().default(false),
+
     // File info
     filename: text('filename').notNull(), // problem_001.mp4 stored on disk
     fileSize: integer('file_size'), // bytes (null while recording/processing)
@@ -69,8 +75,13 @@ export const visionProblemVideos = sqliteTable(
   (table) => [
     // Find videos for a session (for observer to list available replays)
     index('vision_problem_videos_session_id_idx').on(table.sessionId),
-    // Find specific problem video
-    index('vision_problem_videos_session_problem_idx').on(table.sessionId, table.problemNumber),
+    // Find specific problem video (with epoch/attempt for multi-attempt support)
+    index('vision_problem_videos_session_problem_idx').on(
+      table.sessionId,
+      table.problemNumber,
+      table.epochNumber,
+      table.attemptNumber
+    ),
     // Find videos for a player (for history view)
     index('vision_problem_videos_player_id_idx').on(table.playerId),
     // Find expired videos for cleanup

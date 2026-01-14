@@ -18,6 +18,9 @@ export {
   type VisionFrame,
   type VisionRecorderConfig,
   type ProblemMarkerInput,
+  type PracticeStateInput,
+  type ProblemMetadata,
+  type ProblemMetadataEntry,
   type VideoReadyCallback,
   type VideoFailedCallback,
 } from './VisionRecorder'

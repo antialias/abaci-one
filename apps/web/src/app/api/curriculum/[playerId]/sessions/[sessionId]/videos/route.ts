@@ -52,13 +52,21 @@ export async function GET(_request: Request, { params }: RouteParams) {
     // Get all problem videos for this session
     const videos = await db.query.visionProblemVideos.findMany({
       where: eq(visionProblemVideos.sessionId, sessionId),
-      orderBy: [asc(visionProblemVideos.problemNumber)],
+      orderBy: [
+        asc(visionProblemVideos.problemNumber),
+        asc(visionProblemVideos.epochNumber),
+        asc(visionProblemVideos.attemptNumber),
+      ],
     })
 
-    // Transform to response format
+    // Transform to response format with epoch/attempt info
     const videoList = videos.map((video) => ({
       problemNumber: video.problemNumber,
       partIndex: video.partIndex,
+      epochNumber: video.epochNumber,
+      attemptNumber: video.attemptNumber,
+      isRetry: video.isRetry,
+      isManualRedo: video.isManualRedo,
       status: video.status,
       durationMs: video.durationMs,
       fileSize: video.fileSize,

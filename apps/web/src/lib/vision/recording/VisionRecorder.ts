@@ -29,6 +29,69 @@ export interface ProblemMarkerInput {
   partIndex: number
   eventType: 'problem-shown' | 'answer-submitted' | 'feedback-shown'
   isCorrect?: boolean
+  /** Epoch number: 0 = initial pass, 1-2 = retry epochs */
+  epochNumber: number
+  /** Attempt number within the epoch (1-indexed) */
+  attemptNumber: number
+  /** Whether this is a retry (epoch > 0) */
+  isRetry: boolean
+  /** Whether this is a manual redo (student clicked on completed problem) */
+  isManualRedo: boolean
+}
+
+/**
+ * Practice state data for metadata capture
+ */
+export interface PracticeStateInput {
+  currentProblem: { terms: number[]; answer: number }
+  phase: 'problem' | 'feedback' | 'tutorial'
+  studentAnswer: string
+  isCorrect: boolean | null
+  currentProblemNumber: number
+}
+
+/**
+ * Snapshot of practice state for metadata capture
+ */
+interface PracticeStateSnapshot {
+  problem: { terms: number[]; answer: number } | null
+  studentAnswer: string
+  phase: 'problem' | 'feedback'
+  isCorrect: boolean | null
+}
+
+/**
+ * Metadata entry for a single frame
+ */
+export interface ProblemMetadataEntry {
+  /** Timestamp in ms from video start */
+  t: number
+  /** Detected abacus value from vision */
+  detectedValue: number | null
+  /** Detection confidence 0-1 */
+  confidence: number
+  /** Student's typed answer */
+  studentAnswer: string
+  /** Current phase */
+  phase: 'problem' | 'feedback'
+  /** Whether answer is correct (only in feedback phase) */
+  isCorrect?: boolean
+}
+
+/**
+ * Full metadata for a problem video
+ */
+export interface ProblemMetadata {
+  /** Problem details */
+  problem: { terms: number[]; answer: number }
+  /** Time-coded entries */
+  entries: ProblemMetadataEntry[]
+  /** Duration in ms */
+  durationMs: number
+  /** Total frames */
+  frameCount: number
+  /** Final result */
+  isCorrect: boolean | null
 }
 
 /**
@@ -38,11 +101,23 @@ interface ProblemRecording {
   videoId: string
   problemNumber: number
   partIndex: number
+  /** Epoch number: 0 = initial pass, 1-2 = retry epochs */
+  epochNumber: number
+  /** Attempt number within the epoch (1-indexed) */
+  attemptNumber: number
+  /** Whether this is a retry (epoch > 0) */
+  isRetry: boolean
+  /** Whether this is a manual redo (student clicked on completed problem) */
+  isManualRedo: boolean
   framesDir: string
   frameCount: number
   startedAt: Date
   lastFrameAt: Date
   isCorrect?: boolean
+  /** Problem details captured from practice state */
+  problem: { terms: number[]; answer: number } | null
+  /** Metadata entries for this problem */
+  metadata: ProblemMetadataEntry[]
 }
 
 /**
@@ -53,6 +128,8 @@ interface RecordingSession {
   playerId: string
   sessionStartedAt: Date
   currentProblem: ProblemRecording | null
+  /** Latest practice state for metadata capture */
+  latestPracticeState: PracticeStateSnapshot
 }
 
 /**
@@ -188,6 +265,12 @@ export class VisionRecorder {
       playerId,
       sessionStartedAt: now,
       currentProblem: null,
+      latestPracticeState: {
+        problem: null,
+        studentAnswer: '',
+        phase: 'problem',
+        isCorrect: null,
+      },
     }
 
     this.activeSessions.set(sessionId, session)
@@ -195,6 +278,30 @@ export class VisionRecorder {
     this.dvrBuffers.set(sessionId, [])
 
     console.log(`[VisionRecorder] Started session for ${sessionId}`)
+  }
+
+  /**
+   * Update practice state for metadata capture.
+   * Called when practice-state socket event is received.
+   */
+  onPracticeState(sessionId: string, state: PracticeStateInput): void {
+    const session = this.activeSessions.get(sessionId)
+    if (!session) {
+      return
+    }
+
+    // Update latest practice state snapshot
+    session.latestPracticeState = {
+      problem: state.currentProblem,
+      studentAnswer: state.studentAnswer,
+      phase: state.phase === 'tutorial' ? 'problem' : state.phase,
+      isCorrect: state.isCorrect,
+    }
+
+    // If we have a current problem recording and no problem details yet, capture them
+    if (session.currentProblem && !session.currentProblem.problem && state.currentProblem) {
+      session.currentProblem.problem = state.currentProblem
+    }
   }
 
   /**
@@ -232,7 +339,15 @@ export class VisionRecorder {
       }
 
       // Start recording for the new problem
-      await this.startProblemRecording(session, marker.problemNumber, marker.partIndex)
+      await this.startProblemRecording(
+        session,
+        marker.problemNumber,
+        marker.partIndex,
+        marker.epochNumber,
+        marker.attemptNumber,
+        marker.isRetry,
+        marker.isManualRedo
+      )
 
       console.log(
         `[VisionRecorder] Problem ${marker.problemNumber} started at offset ${offsetMs}ms for session ${sessionId}`
@@ -254,15 +369,21 @@ export class VisionRecorder {
   private async startProblemRecording(
     session: RecordingSession,
     problemNumber: number,
-    partIndex: number
+    partIndex: number,
+    epochNumber: number,
+    attemptNumber: number,
+    isRetry: boolean,
+    isManualRedo: boolean
   ): Promise<void> {
     const videoId = createId()
-    const filename = `problem_${problemNumber.toString().padStart(3, '0')}.mp4`
+    // New filename pattern: problem_NNN_eX_aY.mp4
+    const baseName = `problem_${problemNumber.toString().padStart(3, '0')}_e${epochNumber}_a${attemptNumber}`
+    const filename = `${baseName}.mp4`
     const framesDir = path.join(
       this.config.uploadDir,
       session.playerId,
       session.sessionId,
-      `problem_${problemNumber.toString().padStart(3, '0')}.frames`
+      `${baseName}.frames`
     )
     const now = new Date()
     const expiresAt = new Date(now.getTime() + this.config.retentionDays * 24 * 60 * 60 * 1000)
@@ -277,6 +398,10 @@ export class VisionRecorder {
       playerId: session.playerId,
       problemNumber,
       partIndex,
+      epochNumber,
+      attemptNumber,
+      isRetry,
+      isManualRedo,
       filename,
       startedAt: now,
       expiresAt,
@@ -290,14 +415,20 @@ export class VisionRecorder {
       videoId,
       problemNumber,
       partIndex,
+      epochNumber,
+      attemptNumber,
+      isRetry,
+      isManualRedo,
       framesDir,
       frameCount: 0,
       startedAt: now,
       lastFrameAt: now,
+      problem: session.latestPracticeState.problem, // Capture problem details
+      metadata: [],
     }
 
     console.log(
-      `[VisionRecorder] Started problem ${problemNumber} recording: ${videoId} -> ${framesDir}`
+      `[VisionRecorder] Started problem ${problemNumber} (e${epochNumber}/a${attemptNumber}) recording: ${videoId} -> ${framesDir}`
     )
   }
 
@@ -324,6 +455,38 @@ export class VisionRecorder {
         isCorrect: problem.isCorrect,
       })
       .where(eq(visionProblemVideos.id, problem.videoId))
+
+    // Write metadata JSON
+    if (problem.problem) {
+      const metadata: ProblemMetadata = {
+        problem: problem.problem,
+        entries: problem.metadata,
+        durationMs,
+        frameCount: problem.frameCount,
+        isCorrect: problem.isCorrect ?? null,
+      }
+
+      // Match the new filename pattern: problem_NNN_eX_aY.meta.json
+      const baseName = `problem_${problem.problemNumber.toString().padStart(3, '0')}_e${problem.epochNumber}_a${problem.attemptNumber}`
+      const metadataPath = path.join(
+        this.config.uploadDir,
+        session.playerId,
+        session.sessionId,
+        `${baseName}.meta.json`
+      )
+
+      try {
+        await writeFile(metadataPath, JSON.stringify(metadata, null, 2))
+        console.log(
+          `[VisionRecorder] Wrote metadata for problem ${problem.problemNumber}: ${problem.metadata.length} entries`
+        )
+      } catch (error) {
+        console.error(
+          `[VisionRecorder] Failed to write metadata for problem ${problem.problemNumber}:`,
+          error
+        )
+      }
+    }
 
     console.log(
       `[VisionRecorder] Finalized problem ${problem.problemNumber}: ${problem.frameCount} frames, ${(durationMs / 1000).toFixed(1)}s, ${avgFps.toFixed(1)} fps`
@@ -401,6 +564,23 @@ export class VisionRecorder {
       const buffer = Buffer.from(base64Data, 'base64')
       await writeFile(framePath, buffer)
 
+      // Calculate timestamp relative to problem start (for metadata)
+      const tFromProblemStart = frame.timestamp - problem.startedAt.getTime()
+
+      // Create metadata entry combining frame data with latest practice state
+      const metadataEntry: ProblemMetadataEntry = {
+        t: tFromProblemStart,
+        detectedValue: frame.detectedValue,
+        confidence: frame.confidence,
+        studentAnswer: session.latestPracticeState.studentAnswer,
+        phase: session.latestPracticeState.phase,
+        ...(session.latestPracticeState.phase === 'feedback' &&
+        session.latestPracticeState.isCorrect !== null
+          ? { isCorrect: session.latestPracticeState.isCorrect }
+          : {}),
+      }
+      problem.metadata.push(metadataEntry)
+
       problem.frameCount++
       problem.lastFrameAt = new Date(frame.timestamp)
 
@@ -461,11 +641,13 @@ export class VisionRecorder {
       return
     }
 
+    // Derive framesDir from filename (e.g., problem_001_e0_a1.mp4 -> problem_001_e0_a1.frames)
+    const baseName = video.filename.replace('.mp4', '')
     const framesDir = path.join(
       this.config.uploadDir,
       video.playerId,
       video.sessionId,
-      `problem_${video.problemNumber.toString().padStart(3, '0')}.frames`
+      `${baseName}.frames`
     )
     const outputPath = path.join(
       this.config.uploadDir,
@@ -659,22 +841,31 @@ export class VisionRecorder {
     for (const [, videos] of sessionGroups) {
       for (const video of videos) {
         try {
-          // Delete video file and frames directory
+          // Delete video file, frames directory, and metadata file
           const videoPath = path.join(
             this.config.uploadDir,
             video.playerId,
             video.sessionId,
             video.filename
           )
+          // Derive framesDir and metadataPath from filename
+          const baseName = video.filename.replace('.mp4', '')
           const framesDir = path.join(
             this.config.uploadDir,
             video.playerId,
             video.sessionId,
-            `problem_${video.problemNumber.toString().padStart(3, '0')}.frames`
+            `${baseName}.frames`
+          )
+          const metadataPath = path.join(
+            this.config.uploadDir,
+            video.playerId,
+            video.sessionId,
+            `${baseName}.meta.json`
           )
 
           await rm(videoPath, { force: true })
           await rm(framesDir, { recursive: true, force: true })
+          await rm(metadataPath, { force: true })
 
           // Delete database record
           await db.delete(visionProblemVideos).where(eq(visionProblemVideos.id, video.id))

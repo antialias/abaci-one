@@ -543,8 +543,12 @@ export function LiveResultsPanel({
               {showAllProblems ? 'No problems completed yet' : 'No incorrect problems yet'}
             </div>
           ) : (
-            (showAllProblems ? results : incorrectResults).map((result) => (
-              <ObservedResultItem key={result.problemNumber} result={result} isDark={isDark} />
+            (showAllProblems ? results : incorrectResults).map((result, index) => (
+              <ObservedResultItem
+                key={`${result.partNumber}-${result.slotIndex}-${result.epochNumber ?? 0}-${index}`}
+                result={result}
+                isDark={isDark}
+              />
             ))
           )}
         </div>
