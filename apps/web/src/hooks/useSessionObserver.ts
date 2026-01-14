@@ -246,7 +246,8 @@ export function useSessionObserver(
     })
     socketRef.current = socket
 
-    socket.on('connect', () => {
+    // Handler for when socket connects
+    const handleConnect = () => {
       console.log('[SessionObserver] Connected, joining session:', sessionId)
       setIsConnected(true)
       setError(null)
@@ -258,7 +259,16 @@ export function useSessionObserver(
         socket.emit('observe-session', { sessionId, observerId, playerId })
       }
       setIsObserving(true)
-    })
+    }
+
+    socket.on('connect', handleConnect)
+
+    // IMPORTANT: If socket is already connected (shared Manager), the 'connect' event
+    // won't fire. We need to manually trigger the connect logic in this case.
+    if (socket.connected) {
+      console.log('[SessionObserver] Socket already connected, triggering connect logic')
+      handleConnect()
+    }
 
     socket.on('disconnect', () => {
       console.log('[SessionObserver] Disconnected')

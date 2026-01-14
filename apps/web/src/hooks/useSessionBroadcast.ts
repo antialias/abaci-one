@@ -171,14 +171,24 @@ export function useSessionBroadcast(
     })
     socketRef.current = socket
 
-    socket.on('connect', () => {
+    // Handler for when socket connects
+    const handleConnect = () => {
       console.log('[SessionBroadcast] Connected, joining session channel:', sessionId)
       isConnectedRef.current = true
       // Join the session channel so we can receive 'observer-joined' events
       socket.emit('join-session', { sessionId })
       // Broadcast current state immediately so any waiting observers get it
       broadcastState()
-    })
+    }
+
+    socket.on('connect', handleConnect)
+
+    // IMPORTANT: If socket is already connected (shared Manager), the 'connect' event
+    // won't fire. We need to manually trigger the connect logic in this case.
+    if (socket.connected) {
+      console.log('[SessionBroadcast] Socket already connected, triggering connect logic')
+      handleConnect()
+    }
 
     socket.on('disconnect', () => {
       console.log('[SessionBroadcast] Disconnected')
