@@ -23,6 +23,7 @@ import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
 import { VerticalProblem } from '../practice/VerticalProblem'
 import { ObserverVisionFeed } from '../vision/ObserverVisionFeed'
 import { ProblemVideoPlayer } from '../vision/ProblemVideoPlayer'
+import { ObserverDebugPanel } from '../debug/ObserverDebugPanel'
 import { SessionShareButton } from './SessionShareButton'
 
 interface SessionObserverModalProps {
@@ -1016,6 +1017,20 @@ export function SessionObserverView({
           </div>
         )}
       </div>
+
+      {/* Debug panel for socket observer state - only visible when visual debug is enabled */}
+      <ObserverDebugPanel
+        isConnected={isConnected}
+        isObserving={isObserving}
+        isLive={isLive}
+        sessionId={session.sessionId}
+        observerId={observerId}
+        error={error}
+        state={state}
+        visionFrame={visionFrame}
+        dvrBufferInfo={dvrBufferInfo}
+        resultsCount={results.length}
+      />
     </div>
   )
 }

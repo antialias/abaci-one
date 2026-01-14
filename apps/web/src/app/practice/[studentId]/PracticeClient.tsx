@@ -62,6 +62,7 @@ import {
 } from '@/hooks/useSessionPlan'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSaveGameResult } from '@/hooks/useGameResults'
+import { BroadcastDebugPanel } from '@/components/debug/BroadcastDebugPanel'
 import { css } from '../../../../styled-system/css'
 
 interface PracticeClientProps {
@@ -470,10 +471,13 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   // onAbacusControl receives control events from observing teacher
   // onTeacherPause/onTeacherResume receive pause/resume commands from teacher
   const {
+    isConnected: broadcastConnected,
+    isBroadcasting,
     sendPartTransition,
     sendPartTransitionComplete,
     sendVisionFrame,
     isRecording,
+    recordingId,
     startVisionRecording,
     stopVisionRecording,
     sendProblemMarker,
@@ -759,6 +763,17 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
           )}
         </PracticeErrorBoundary>
       </main>
+
+      {/* Debug panel for socket broadcast state - only visible when visual debug is enabled */}
+      <BroadcastDebugPanel
+        isConnected={broadcastConnected}
+        isBroadcasting={isBroadcasting}
+        isRecording={isRecording}
+        sessionId={currentPlan.id}
+        playerId={studentId}
+        recordingId={recordingId}
+        broadcastState={broadcastState}
+      />
     </PageWithNav>
   )
 }
