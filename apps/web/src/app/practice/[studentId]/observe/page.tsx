@@ -48,7 +48,13 @@ export default async function PracticeObservationPage({ params }: ObservationPag
     notFound()
   }
 
-  if (!activeSession || !activeSession.startedAt || activeSession.completedAt) {
+  // If session is completed, redirect to the session report
+  if (activeSession?.completedAt) {
+    redirect(`/practice/${studentId}/session/${activeSession.id}`)
+  }
+
+  // If no active session or session hasn't started, go to dashboard
+  if (!activeSession || !activeSession.startedAt) {
     redirect(`/practice/${studentId}/dashboard`)
   }
 
