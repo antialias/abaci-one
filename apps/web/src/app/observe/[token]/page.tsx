@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { players, sessionPlans } from '@/db/schema'
@@ -41,17 +41,18 @@ export default async function PublicObservationPage({ params }: PublicObservatio
   // Check if session is still active
   if (session.completedAt || !session.startedAt) {
     // Session has ended or hasn't started - check if user can view the report
+    let sessionReportUrl: string | undefined
     try {
       const userId = await getDbUserId()
       if (userId) {
         const canView = await canPerformAction(userId, share.playerId, 'view')
         if (canView) {
-          // User has access to view the student - redirect to the session report
-          redirect(`/practice/${share.playerId}/session/${session.id}`)
+          // User has access to view the student - provide link to the session report
+          sessionReportUrl = `/practice/${share.playerId}/session/${session.id}`
         }
       }
     } catch {
-      // Not logged in or error - fall through to show session ended page
+      // Not logged in or error - no report link
     }
 
     // Get player info for the session ended page
@@ -62,12 +63,13 @@ export default async function PublicObservationPage({ params }: PublicObservatio
       .limit(1)
     const player = playerResults[0]
 
-    // Show a friendly "session ended" page instead of 404
+    // Show a friendly "session ended" page with optional link to report
     return (
       <SessionEndedClient
         studentName={player?.name ?? 'Student'}
         studentEmoji={player?.emoji ?? '👤'}
         sessionCompleted={!!session.completedAt}
+        sessionReportUrl={sessionReportUrl}
       />
     )
   }

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { SessionObserverView } from '@/components/classroom/SessionObserverModal'
@@ -18,6 +19,10 @@ interface ObservationClientProps {
   studentId: string
   /** Whether the observer is a parent of the student (can share session) */
   isParent?: boolean
+  /** URL to the session report (shown in banner when session has ended) */
+  sessionReportUrl?: string
+  /** Whether the session has ended */
+  sessionEnded?: boolean
 }
 
 export function ObservationClient({
@@ -26,6 +31,8 @@ export function ObservationClient({
   student,
   studentId,
   isParent = false,
+  sessionReportUrl,
+  sessionEnded = false,
 }: ObservationClientProps) {
   const router = useRouter()
   const [navHeight, setNavHeight] = useState(80) // Default fallback
@@ -75,6 +82,49 @@ export function ObservationClient({
           paddingTop: `${navHeight}px`,
         }}
       >
+        {sessionEnded && sessionReportUrl && (
+          <div
+            data-element="session-ended-banner"
+            className={css({
+              bg: 'green.500',
+              color: 'white',
+              py: 3,
+              px: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 3,
+              flexWrap: 'wrap',
+              textAlign: 'center',
+            })}
+          >
+            <span className={css({ fontWeight: 'medium' })}>
+              This practice session has ended.
+            </span>
+            <Link
+              href={sessionReportUrl}
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 1,
+                bg: 'white',
+                color: 'green.700',
+                px: 4,
+                py: 1.5,
+                borderRadius: 'md',
+                fontWeight: 'semibold',
+                fontSize: 'sm',
+                transition: 'all 0.2s',
+                _hover: {
+                  bg: 'green.50',
+                },
+              })}
+            >
+              View Session Report
+              <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        )}
         <div
           className={css({
             flex: 1,

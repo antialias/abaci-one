@@ -48,9 +48,32 @@ export default async function PracticeObservationPage({ params }: ObservationPag
     notFound()
   }
 
-  // If session is completed, redirect to the session report
+  // If session is completed, show the observation page with a banner linking to the report
   if (activeSession?.completedAt) {
-    redirect(`/practice/${studentId}/session/${activeSession.id}`)
+    return (
+      <ObservationClient
+        session={{
+          sessionId: activeSession.id,
+          playerId: activeSession.playerId,
+          startedAt: activeSession.startedAt as string,
+          currentPartIndex: activeSession.currentPartIndex,
+          currentSlotIndex: activeSession.currentSlotIndex,
+          totalParts: activeSession.parts.length,
+          totalProblems: activeSession.parts.reduce((sum, part) => sum + part.slots.length, 0),
+          completedProblems: activeSession.parts.reduce((sum, part) => sum + part.slots.length, 0),
+        }}
+        observerId={observerId}
+        student={{
+          name: player.name,
+          emoji: player.emoji,
+          color: player.color,
+        }}
+        studentId={studentId}
+        isParent={isParent}
+        sessionReportUrl={`/practice/${studentId}/session/${activeSession.id}`}
+        sessionEnded
+      />
+    )
   }
 
   // If no active session or session hasn't started, go to dashboard
