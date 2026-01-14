@@ -191,11 +191,7 @@ function getSlotResult(
  * Both student and observer views have parts + results, so this is the single
  * source of truth for attempt counts.
  */
-function getAttemptCount(
-  results: SlotResult[],
-  partNumber: number,
-  slotIndex: number
-): number {
+function getAttemptCount(results: SlotResult[], partNumber: number, slotIndex: number): number {
   // Count all results for this slot (including retries and manual redos)
   return results.filter(
     (r) => r.partNumber === partNumber && (r.originalSlotIndex ?? r.slotIndex) === slotIndex

@@ -23,11 +23,7 @@ import { VideoEncoder } from '@/lib/vision/recording/VideoEncoder'
  * Encode video lazily in the background.
  * Updates database status on success/failure.
  */
-async function encodeLazily(
-  videoId: string,
-  framesDir: string,
-  outputPath: string
-): Promise<void> {
+async function encodeLazily(videoId: string, framesDir: string, outputPath: string): Promise<void> {
   try {
     const result = await VideoEncoder.encode({
       framesDir,
@@ -151,10 +147,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     if (video.status === 'recording') {
-      return NextResponse.json(
-        { error: 'Video is still being recorded' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Video is still being recorded' }, { status: 400 })
     }
 
     if (video.status === 'no_video') {

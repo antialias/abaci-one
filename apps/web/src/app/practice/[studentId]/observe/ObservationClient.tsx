@@ -98,9 +98,7 @@ export function ObservationClient({
               textAlign: 'center',
             })}
           >
-            <span className={css({ fontWeight: 'medium' })}>
-              This practice session has ended.
-            </span>
+            <span className={css({ fontWeight: 'medium' })}>This practice session has ended.</span>
             <Link
               href={sessionReportUrl}
               className={css({

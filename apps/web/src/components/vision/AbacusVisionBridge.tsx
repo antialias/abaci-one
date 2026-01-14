@@ -1461,11 +1461,7 @@ export function AbacusVisionBridge({
             className={css({
               px: 4,
               py: 3,
-              bg: !isVisionSetupComplete
-                ? 'gray.600'
-                : isVisionEnabled
-                  ? 'red.600'
-                  : 'green.600',
+              bg: !isVisionSetupComplete ? 'gray.600' : isVisionEnabled ? 'red.600' : 'green.600',
               color: 'white',
               borderRadius: 'lg',
               fontWeight: 'semibold',
