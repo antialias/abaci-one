@@ -25,7 +25,6 @@ import {
   markPhoneDisconnected,
 } from './lib/remote-camera/session-manager'
 import { VisionRecorder, type VisionFrame } from './lib/vision/recording'
-import type { ProblemMarker } from './db/schema/vision-recordings'
 
 // Throttle map for DVR buffer info emissions (sessionId -> last emit timestamp)
 const lastDvrBufferInfoEmit = new Map<string, number>()
@@ -1096,7 +1095,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
-    // Vision Recording: Start recording for a practice session
+    // Vision Recording: Start recording session (per-problem recording)
     socket.on(
       'start-vision-recording',
       async ({ sessionId, playerId }: { sessionId: string; playerId: string }) => {
@@ -1105,16 +1104,29 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         )
         try {
           const recorder = VisionRecorder.getInstance()
-          const recordingId = await recorder.startRecording(sessionId, playerId)
-          console.log(
-            `📹 Started vision recording for session ${sessionId}, recordingId: ${recordingId}`
-          )
+
+          // Set up callbacks for notifying observers when problem videos are ready
+          recorder.setVideoReadyCallback((data) => {
+            console.log(
+              `📹 Problem ${data.problemNumber} video ready for session ${data.sessionId}`
+            )
+            io?.to(`session:${data.sessionId}`).emit('vision-problem-video-ready', data)
+          })
+
+          recorder.setVideoFailedCallback((data) => {
+            console.log(
+              `📹 Problem ${data.problemNumber} video failed for session ${data.sessionId}: ${data.error}`
+            )
+            io?.to(`session:${data.sessionId}`).emit('vision-problem-video-failed', data)
+          })
+
+          // Start the session (no directories created yet - those are per-problem)
+          recorder.startSession(sessionId, playerId)
+          console.log(`📹 Started vision recording session for ${sessionId}`)
 
           // Notify the session that recording started
-          socket.emit('vision-recording-started', { sessionId, recordingId })
-          socket
-            .to(`session:${sessionId}`)
-            .emit('vision-recording-started', { sessionId, recordingId })
+          socket.emit('vision-recording-started', { sessionId })
+          socket.to(`session:${sessionId}`).emit('vision-recording-started', { sessionId })
         } catch (error) {
           console.error('Error starting vision recording:', error)
           socket.emit('vision-recording-error', {
@@ -1125,31 +1137,28 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
-    // Vision Recording: Stop recording for a practice session
+    // Vision Recording: Stop recording session (finalizes last problem)
     socket.on('stop-vision-recording', async ({ sessionId }: { sessionId: string }) => {
       try {
         const recorder = VisionRecorder.getInstance()
-        const recordingId = recorder.getRecordingId(sessionId)
-        await recorder.stopRecording(sessionId)
-        console.log(`📹 Stopped vision recording for session ${sessionId}`)
+        await recorder.stopSession(sessionId)
+        console.log(`📹 Stopped vision recording session for ${sessionId}`)
 
         // Clean up throttle map
         lastDvrBufferInfoEmit.delete(sessionId)
 
         // Notify the session that recording stopped
-        socket.emit('vision-recording-stopped', { sessionId, recordingId })
-        socket
-          .to(`session:${sessionId}`)
-          .emit('vision-recording-stopped', { sessionId, recordingId })
+        socket.emit('vision-recording-stopped', { sessionId })
+        socket.to(`session:${sessionId}`).emit('vision-recording-stopped', { sessionId })
       } catch (error) {
         console.error('Error stopping vision recording:', error)
       }
     })
 
-    // Vision Recording: Add problem marker for timeline synchronization
+    // Vision Recording: Handle problem marker (triggers encoding on problem transitions)
     socket.on(
       'vision-problem-marker',
-      ({
+      async ({
         sessionId,
         problemNumber,
         partIndex,
@@ -1164,7 +1173,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }) => {
         const recorder = VisionRecorder.getInstance()
         if (recorder.isRecording(sessionId)) {
-          recorder.addProblemMarker(sessionId, {
+          // This triggers encoding when 'problem-shown' arrives for the next problem
+          await recorder.onProblemMarker(sessionId, {
             problemNumber,
             partIndex,
             eventType,

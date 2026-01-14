@@ -22,6 +22,7 @@ import { PurposeBadge } from '../practice/PurposeBadge'
 import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
 import { VerticalProblem } from '../practice/VerticalProblem'
 import { ObserverVisionFeed } from '../vision/ObserverVisionFeed'
+import { ProblemVideoPlayer } from '../vision/ProblemVideoPlayer'
 import { SessionShareButton } from './SessionShareButton'
 
 interface SessionObserverModalProps {
@@ -187,6 +188,9 @@ export function SessionObserverView({
   // Track if entry prompt was sent (for authorization error case)
   const [promptSent, setPromptSent] = useState(false)
 
+  // Track selected problem for viewing past recordings (null = live view)
+  const [selectedProblemNumber, setSelectedProblemNumber] = useState<number | null>(null)
+
   // Mutation to send entry prompt to parents (for authorization error case)
   const sendEntryPrompt = useMutation({
     mutationFn: async () => {
@@ -279,6 +283,38 @@ export function SessionObserverView({
     sendResume()
     setHasPausedSession(false)
   }, [sendResume])
+
+  // Handle navigation to a specific problem from progress indicator
+  // linearIndex is 0-indexed across all parts, problemNumber is 1-indexed
+  const handleNavigateToProblem = useCallback(
+    (linearIndex: number) => {
+      // If this is the current problem, return to live view
+      const currentProblemLinearIndex =
+        state?.currentPartIndex !== undefined &&
+        state?.currentSlotIndex !== undefined &&
+        state?.sessionParts
+          ? state.sessionParts
+              .slice(0, state.currentPartIndex)
+              .reduce((acc, part) => acc + part.slots.length, 0) + state.currentSlotIndex
+          : -1
+
+      if (linearIndex === currentProblemLinearIndex) {
+        setSelectedProblemNumber(null)
+        return
+      }
+
+      // Convert linearIndex to problem number (1-indexed)
+      // Problem number is simply linearIndex + 1
+      const problemNumber = linearIndex + 1
+      setSelectedProblemNumber(problemNumber)
+    },
+    [state?.currentPartIndex, state?.currentSlotIndex, state?.sessionParts]
+  )
+
+  // Return to live view
+  const handleGoLive = useCallback(() => {
+    setSelectedProblemNumber(null)
+  }, [])
 
   // Two-way sync: When student's abacus changes, sync teacher's docked abacus
   useEffect(() => {
@@ -478,7 +514,8 @@ export function SessionObserverView({
               results={state.slotResults ?? []}
               currentPartIndex={state.currentPartIndex}
               currentSlotIndex={state.currentSlotIndex}
-              isBrowseMode={false}
+              isBrowseMode={true}
+              onNavigate={handleNavigateToProblem}
               isDark={isDark}
               compact
             />
@@ -703,8 +740,19 @@ export function SessionObserverView({
           />
         )}
 
+        {/* Past problem video playback - shown when clicking a completed problem in progress indicator */}
+        {state && selectedProblemNumber !== null && !transitionState && (
+          <ProblemVideoPlayer
+            playerId={session.playerId}
+            sessionId={session.sessionId}
+            problemNumber={selectedProblemNumber}
+            isDark={isDark}
+            onGoLive={handleGoLive}
+          />
+        )}
+
         {/* Main content - either problem view or full report view */}
-        {state && !showFullReport && !transitionState && (
+        {state && !showFullReport && !transitionState && selectedProblemNumber === null && (
           <div
             data-element="observer-main-content"
             className={css({
