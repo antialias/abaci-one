@@ -1,46 +1,162 @@
 #!/bin/bash
+#
+# Migration/Manual Deployment Script for Soroban Abacus Flashcards
+#
+# This script handles:
+# 1. Migration from single-container to blue-green setup
+# 2. Manual deployments when you don't want to wait for compose-updater
+#
+# Usage:
+#   ./deploy.sh              # Deploy/migrate to blue-green setup
+#
 
-# Soroban Abacus Flashcards - NAS Deployment Script
-# This script deploys the monorepo's apps/web to abaci.one
+set -euo pipefail
 
-set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NAS_HOST="${NAS_HOST:-nas.home.network}"
+NAS_PATH="${NAS_PATH:-/volume1/homes/antialias/projects/abaci.one}"
+IMAGE="ghcr.io/antialias/soroban-abacus-flashcards"
 
-NAS_HOST="nas.home.network"
-NAS_PATH="/volume1/homes/antialias/projects/abaci.one"
-LOCAL_DIR="$(dirname "$0")"
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
 
-echo "🚀 Deploying Soroban Abacus Flashcards to NAS..."
+log() {
+    echo -e "${GREEN}[deploy]${NC} $1"
+}
 
-# Stop existing services
-echo "📦 Stopping existing services..."
-ssh "$NAS_HOST" "cd '$NAS_PATH' && docker-compose down || true"
+warn() {
+    echo -e "${YELLOW}[deploy]${NC} $1"
+}
 
-# Copy deployment files
-echo "📁 Copying deployment files..."
-scp "$LOCAL_DIR/docker-compose.yaml" "$NAS_HOST:$NAS_PATH/"
-scp "$LOCAL_DIR/.env" "$NAS_HOST:$NAS_PATH/" 2>/dev/null || echo "⚠️  No .env file found locally - using existing on NAS"
+error() {
+    echo -e "${RED}[deploy]${NC} $1" >&2
+}
 
-# Ensure DDNS config is in place (only if it doesn't exist)
-ssh "$NAS_HOST" "mkdir -p '$NAS_PATH/ddns-data'"
-scp "$LOCAL_DIR/ddns-data/ddns-config.json" "$NAS_HOST:$NAS_PATH/ddns-data/" 2>/dev/null || echo "ℹ️  Using existing DDNS config"
+# Run a command on the NAS via SSH
+# Synology NAS needs /usr/local/bin in PATH for docker commands
+nas_exec() {
+    ssh "$NAS_HOST" "export PATH=/usr/local/bin:\$PATH && cd '$NAS_PATH' && $1"
+}
 
-# Create required directories
-echo "📂 Creating required directories..."
-ssh "$NAS_HOST" "cd '$NAS_PATH' && mkdir -p public data uploads"
+# Check if old single-container setup exists
+check_needs_migration() {
+    if nas_exec "docker ps -a --format '{{.Names}}' | grep -q '^soroban-abacus-flashcards$'"; then
+        echo "yes"
+    else
+        echo "no"
+    fi
+}
 
-# Pull latest image and start services
-echo "🐳 Starting services..."
-ssh "$NAS_HOST" "cd '$NAS_PATH' && docker-compose pull && docker-compose up -d"
+# Migrate from single-container to blue-green setup
+migrate_to_blue_green() {
+    log "Migrating from single-container to blue-green setup..."
 
-# Show status
-echo "✅ Deployment complete!"
-echo ""
-echo "🌐 Services:"
-echo "  - Soroban Flashcards: https://abaci.one"
-echo "  - DDNS Web UI: http://$(ssh "$NAS_HOST" "hostname -I | awk '{print \$1}'"):8000"
-echo ""
-echo "📊 Check status:"
-echo "  ssh $NAS_HOST 'cd $NAS_PATH && docker-compose ps'"
-echo ""
-echo "📝 View logs:"
-echo "  ssh $NAS_HOST 'cd $NAS_PATH && docker-compose logs -f soroban-abacus-flashcards'"
+    # Stop old container
+    warn "Stopping old container..."
+    nas_exec "docker stop soroban-abacus-flashcards 2>/dev/null || true"
+    nas_exec "docker rm soroban-abacus-flashcards 2>/dev/null || true"
+
+    log "Migration complete."
+}
+
+# Sync deployment files to NAS
+sync_files() {
+    log "Syncing deployment files to NAS..."
+
+    # Check if blue/green files exist (need to be generated)
+    if [[ ! -f "$SCRIPT_DIR/docker-compose.blue.yaml" ]] || [[ ! -f "$SCRIPT_DIR/docker-compose.green.yaml" ]]; then
+        warn "Blue/green compose files not found. Generating..."
+        if [[ -x "$SCRIPT_DIR/generate-compose.sh" ]]; then
+            "$SCRIPT_DIR/generate-compose.sh"
+        else
+            error "generate-compose.sh not found or not executable"
+            error "Run: ./generate-compose.sh (requires yq)"
+            exit 1
+        fi
+    fi
+
+    # Copy all compose files (use -O for legacy SCP protocol - required by Synology NAS)
+    scp -O "$SCRIPT_DIR/docker-compose.yaml" "$NAS_HOST:$NAS_PATH/"
+    scp -O "$SCRIPT_DIR/docker-compose.blue.yaml" "$NAS_HOST:$NAS_PATH/"
+    scp -O "$SCRIPT_DIR/docker-compose.green.yaml" "$NAS_HOST:$NAS_PATH/"
+
+    # NEVER overwrite production .env automatically - it contains secrets
+    # Use --sync-env flag to explicitly copy .env (dangerous!)
+    if [[ "${SYNC_ENV:-}" == "true" ]]; then
+        if [[ -f "$SCRIPT_DIR/.env" ]]; then
+            warn "SYNC_ENV=true - copying local .env to NAS (overwrites production secrets!)"
+            scp -O "$SCRIPT_DIR/.env" "$NAS_HOST:$NAS_PATH/"
+        fi
+    else
+        log "Keeping existing .env on NAS (use SYNC_ENV=true to overwrite)"
+    fi
+
+    # Ensure directories exist
+    nas_exec "mkdir -p public data uploads ddns-data"
+}
+
+# Main deployment logic
+main() {
+    log "=========================================="
+    log "Deploying abaci.one (Blue-Green)"
+    log "=========================================="
+    log "NAS host: $NAS_HOST"
+    echo ""
+
+    # Sync deployment files
+    sync_files
+    echo ""
+
+    # Check if we need to migrate from old setup
+    local needs_migration
+    needs_migration=$(check_needs_migration)
+    if [[ "$needs_migration" == "yes" ]]; then
+        warn "Detected old single-container setup"
+        migrate_to_blue_green
+        echo ""
+    fi
+
+    # Pull latest image and start containers
+    log "Pulling latest image..."
+    nas_exec "docker-compose pull"
+    echo ""
+
+    log "Starting containers..."
+    nas_exec "docker-compose up -d"
+    echo ""
+
+    # Wait a moment for containers to start
+    log "Waiting for containers to start..."
+    sleep 5
+
+    # Check status
+    log "Container status:"
+    nas_exec "docker ps --format 'table {{.Names}}\t{{.Status}}' | grep -E '(NAMES|abaci)'"
+    echo ""
+
+    # Test health endpoint
+    log "Testing health endpoint..."
+    local health_blue health_green
+    health_blue=$(nas_exec "docker exec abaci-blue curl -sf http://localhost:3000/api/health 2>/dev/null && echo 'OK' || echo 'FAIL'")
+    health_green=$(nas_exec "docker exec abaci-green curl -sf http://localhost:3000/api/health 2>/dev/null && echo 'OK' || echo 'FAIL'")
+
+    log "  abaci-blue:  $health_blue"
+    log "  abaci-green: $health_green"
+    echo ""
+
+    log "=========================================="
+    log "Deployment complete!"
+    log "=========================================="
+    log "Site: https://abaci.one"
+    log "Health: https://abaci.one/api/health"
+    log ""
+    log "Both containers are running. Traefik will load balance"
+    log "between them based on health checks."
+    log "=========================================="
+}
+
+# Run main
+main "$@"

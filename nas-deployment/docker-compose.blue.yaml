@@ -1,0 +1,45 @@
+version: "3.8"
+services:
+  blue:
+    image: ghcr.io/antialias/soroban-abacus-flashcards:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./public:/app/public
+      - ./data:/app/apps/web/data
+      - ./uploads:/app/uploads
+    networks:
+      - webgateway
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    container_name: abaci-blue
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.abaci.rule: "Host(`abaci.one`)"
+      traefik.http.routers.abaci.entrypoints: websecure
+      traefik.http.routers.abaci.tls: "true"
+      traefik.http.routers.abaci.tls.certresolver: myresolver
+      traefik.http.routers.abaci.middlewares: hsts@docker
+      traefik.http.routers.abaci.service: abaci
+      traefik.http.routers.abaci-http.rule: "Host(`abaci.one`)"
+      traefik.http.routers.abaci-http.entrypoints: web
+      traefik.http.routers.abaci-http.middlewares: redirect-https@docker
+      traefik.http.services.abaci.loadbalancer.server.port: "3000"
+      traefik.http.services.abaci.loadbalancer.healthcheck.path: /
+      traefik.http.services.abaci.loadbalancer.healthcheck.interval: 10s
+      traefik.http.middlewares.redirect-https.redirectscheme.scheme: https
+      traefik.http.middlewares.redirect-https.redirectscheme.permanent: "true"
+      traefik.http.middlewares.hsts.headers.stsSeconds: "63072000"
+      traefik.http.middlewares.hsts.headers.stsIncludeSubdomains: "true"
+      traefik.http.middlewares.hsts.headers.stsPreload: "true"
+      docker-compose-watcher.watch: "1"
+      docker-compose-watcher.dir: /volume1/homes/antialias/projects/abaci.one
+      docker-compose-watcher.file: docker-compose.blue.yaml
+networks:
+  webgateway:
+    external: true

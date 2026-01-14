@@ -12,23 +12,14 @@ This document describes the production deployment infrastructure and procedures 
   - Server is not accessible from external networks
 - **Project Directory**: `/volume1/homes/antialias/projects/abaci.one`
 
-### Docker Configuration
+### Deployment Strategy: Blue-Green with Load Balancing
 
-This deployment uses **two separate Docker Compose projects**:
+Two containers (`abaci-blue` and `abaci-green`) run simultaneously:
 
-1. **soroban-app** (`docker-compose.yaml`)
-   - Main web application
-   - Container: `soroban-abacus-flashcards`
-   - Image: `ghcr.io/antialias/soroban-abacus-flashcards:main`
-   - Port: 3000 (internal to Docker network)
-
-2. **soroban-updater** (`docker-compose.updater.yaml`)
-   - Automatic update service
-   - Container: `compose-updater`
-   - Image: `virtualzone/compose-updater:latest`
-   - Checks for new images every 5 minutes
-
-**Why separate projects?** If compose-updater was in the same project as the app, running `docker-compose down` would kill itself mid-update. Separate projects prevent this.
+- **Shared resources**: Both containers mount the same data volumes
+- **Health checks**: Traefik only routes to healthy containers
+- **Zero downtime**: When one container restarts, the other serves traffic
+- **Automatic updates**: compose-updater pulls new images and restarts containers
 
 ### Auto-Deployment with compose-updater
 
@@ -36,20 +27,32 @@ This deployment uses **two separate Docker Compose projects**:
 - **Update frequency**: Every **5 minutes** (configurable via `INTERVAL=5`)
 - Works WITH docker-compose files (respects configuration, volumes, environment variables)
 - Automatically cleans up old images (`CLEANUP=1`)
-- No manual intervention required for deployments after pushing to main
 
-**Key advantages over Watchtower:**
+## Health Check Endpoint
 
-- Respects docker-compose.yaml configuration
-- Re-reads `.env` file on every update
-- Can manage multiple docker-compose projects
-- Container labels control which containers to watch:
-  ```yaml
-  labels:
-    - "docker-compose-watcher.watch=1"
-    - "docker-compose-watcher.dir=/volume1/homes/antialias/projects/abaci.one"
-    - "com.centurylinklabs.watchtower.enable=false" # Disables Watchtower for this container
-  ```
+The `/api/health` endpoint verifies container readiness:
+
+```bash
+curl https://abaci.one/api/health
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-14T12:00:00.000Z",
+  "checks": {
+    "database": {
+      "status": "ok",
+      "latencyMs": 2
+    }
+  }
+}
+```
+
+- Returns `200 OK` when healthy
+- Returns `503 Service Unavailable` when unhealthy
+- Traefik uses this to determine if a container should receive traffic
 
 ## Database Management
 
@@ -67,7 +70,7 @@ This deployment uses **two separate Docker Compose projects**:
   2. Logs: `🔄 Running database migrations...`
   3. Drizzle migrator runs all pending migrations
   4. Logs: `✅ Migrations complete` (on success)
-  5. Logs: `❌ Migration failed: [error]` (on failure, process exits)
+  5. Health check passes only after migrations complete
 
 ### Nuke and Rebuild Database
 
@@ -80,17 +83,17 @@ ssh nas.home.network
 # Navigate to project directory
 cd /volume1/homes/antialias/projects/abaci.one
 
-# Stop the container
-/usr/local/bin/docker-compose down
+# Stop both containers
+docker stop abaci-blue abaci-green
 
 # Remove database files
 rm -f data/sqlite.db data/sqlite.db-shm data/sqlite.db-wal
 
-# Restart container (migrations will rebuild DB)
-/usr/local/bin/docker-compose up -d
+# Restart containers (migrations will rebuild DB)
+docker start abaci-blue abaci-green
 
 # Check logs to verify migration success
-/usr/local/bin/docker logs soroban-abacus-flashcards | grep -E '(Migration|Starting)'
+docker logs abaci-blue | grep -E '(Migration|Starting)'
 ```
 
 ## CI/CD Pipeline
@@ -99,29 +102,20 @@ rm -f data/sqlite.db data/sqlite.db-shm data/sqlite.db-wal
 
 When code is pushed to `main` branch:
 
-1. **Workflows triggered**:
-   - `Build and Deploy` - Builds Docker image and pushes to GHCR
-   - `Release` - Manages semantic versioning and releases
-   - `Verify Examples` - Runs example tests
-   - `Deploy Storybooks to GitHub Pages` - Publishes Storybook
+1. **Build and Push job**:
+   - Builds Docker image
+   - Tags as `main` and `latest`
+   - Pushes to GitHub Container Registry (ghcr.io)
 
-2. **Image build**:
-   - Built image is tagged as `main` (also `latest` for compatibility)
-   - Pushed to GitHub Container Registry (ghcr.io)
-   - Typically completes within 1-2 minutes
-
-3. **Deployment**:
-   - compose-updater detects new image (within 5 minutes)
+2. **Deploy** (compose-updater on NAS):
+   - Detects new image within 5 minutes
    - Pulls new image
-   - Runs `docker-compose down && docker-compose up -d`
-   - Cleans up old images
-   - Total deployment time: ~5-7 minutes from push to production (15-30 seconds downtime during restart)
+   - Restarts containers
+   - Traefik routes traffic to healthy containers
 
 ## Manual Deployment Procedures
 
 ### Force Pull Latest Image
-
-If you need to immediately deploy without waiting for compose-updater's next check cycle:
 
 ```bash
 # Option 1: Restart compose-updater (triggers immediate check)
@@ -134,64 +128,83 @@ ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-c
 ### Check Container Status
 
 ```bash
-# Check both app and compose-updater
-ssh nas.home.network "docker ps | grep -E '(soroban|compose)'"
+# Check both containers
+ssh nas.home.network "docker ps | grep abaci"
 
-# Check just the app
-ssh nas.home.network "docker ps | grep soroban-abacus-flashcards"
+# Check health
+curl https://abaci.one/api/health
 ```
 
 ### View Logs
 
 ```bash
-# Application logs - recent
-ssh nas.home.network "docker logs --tail 100 soroban-abacus-flashcards"
+# Blue container logs
+ssh nas.home.network "docker logs --tail 100 abaci-blue"
 
-# Application logs - follow in real-time
-ssh nas.home.network "docker logs -f soroban-abacus-flashcards"
+# Green container logs
+ssh nas.home.network "docker logs --tail 100 abaci-green"
 
-# compose-updater logs - see update activity
+# Follow in real-time
+ssh nas.home.network "docker logs -f abaci-blue"
+
+# compose-updater logs
 ssh nas.home.network "docker logs --tail 50 compose-updater"
-
-# compose-updater logs - follow to watch for updates
-ssh nas.home.network "docker logs -f compose-updater"
-
-# Search for specific patterns
-ssh nas.home.network "docker logs soroban-abacus-flashcards" | grep -i "error"
 ```
 
-### Restart Container
+### Restart Containers
 
 ```bash
-# Restart just the app (quick, minimal downtime)
+# Restart both (they restart one at a time, maintaining availability)
 ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose restart"
-
-# Full restart (down then up, recreates container)
-ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose down && docker-compose up -d"
-
-# Restart compose-updater (triggers immediate update check)
-ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
 ```
 
 ## Checking Deployed Version
 
-Always verify what's actually running in production:
-
 ```bash
-# Get commit SHA of running container
-ssh nas.home.network 'docker inspect soroban-abacus-flashcards --format="{{index .Config.Labels \"org.opencontainers.image.revision\"}}"'
+# Get commit SHA of running containers
+ssh nas.home.network 'docker inspect abaci-blue --format="{{index .Config.Labels \"org.opencontainers.image.revision\"}}"'
+ssh nas.home.network 'docker inspect abaci-green --format="{{index .Config.Labels \"org.opencontainers.image.revision\"}}"'
 
 # Compare with current HEAD
 git rev-parse HEAD
-
-# Or check via the deployment info modal in the app UI
 ```
 
 ## Troubleshooting
 
-### Common Issues
+### Health Check Failing
 
-#### 1. Migration Failures
+1. Check container logs:
+   ```bash
+   ssh nas.home.network "docker logs abaci-blue"
+   ```
+
+2. Test health endpoint manually:
+   ```bash
+   ssh nas.home.network "docker exec abaci-blue curl -sf http://localhost:3000/api/health"
+   ```
+
+3. Check database connectivity
+
+### Container Not Updating
+
+1. Verify GitHub Actions completed successfully
+2. Check compose-updater is running:
+   ```bash
+   ssh nas.home.network "docker ps | grep compose-updater"
+   ```
+3. Check compose-updater logs for errors:
+   ```bash
+   ssh nas.home.network "docker logs --tail 50 compose-updater"
+   ```
+
+### Both Containers Unhealthy
+
+```bash
+# Force restart both
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose restart"
+```
+
+### Migration Failures
 
 **Symptom**: Container keeps restarting, logs show migration errors
 
@@ -201,89 +214,9 @@ git rev-parse HEAD
 2. Verify `drizzle/meta/_journal.json` is up to date
 3. If migrations are corrupted, may need to nuke database (see above)
 
-#### 2. Container Not Updating
-
-**Symptom**: Changes pushed but production still shows old code
-
-**Possible causes**:
-
-- GitHub Actions build failed - check workflow status with `gh run list`
-- compose-updater not running - check with `docker ps | grep compose-updater`
-- compose-updater labels incorrect - check container labels
-- Image not pulled - manually pull with `docker-compose pull`
-- **compose-updater detection issue** - May not detect updates reliably (investigation ongoing - 2025-11-13)
-
-**Debugging**:
-
-```bash
-# Check compose-updater is running
-ssh nas.home.network "docker ps | grep compose-updater"
-
-# Check compose-updater logs for errors and pull activity
-ssh nas.home.network "docker logs --tail 50 compose-updater"
-# Look for: "Processing service" followed by pull activity
-# If it says "No need to restart" WITHOUT pulling, detection may be broken
-
-# Check container labels are correct
-ssh nas.home.network "docker inspect soroban-abacus-flashcards" | grep -A3 "docker-compose-watcher"
-# Should show:
-#   "docker-compose-watcher.watch": "1"
-#   "docker-compose-watcher.dir": "/volume1/homes/antialias/projects/abaci.one"
-```
-
-**Known Issue (2025-11-13)**:
-
-compose-updater sometimes fails to detect updates even when new images are available. Logs show:
-
-```
-Processing service soroban-abacus-flashcards (requires build: false, watched: true)...
-No need to restart services in /volume1/homes/antialias/projects/abaci.one/docker-compose.yaml
-```
-
-Without any `docker pull` activity shown, even with `LOG_LEVEL=debug`. This suggests it's determining "no update needed" without actually checking the remote registry. Root cause under investigation.
-
-**Solution**:
-
-```bash
-# Option 1: Manual pull and restart (most reliable)
-ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose pull && docker-compose up -d"
-
-# Option 2: Restart compose-updater to force immediate check (may not always work)
-ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
-```
-
-#### 3. Missing Database Columns
-
-**Symptom**: Errors like `SqliteError: no such column: "column_name"`
-
-**Cause**: Migration not registered or not run
-
-**Solution**:
-
-1. Verify migration exists in `drizzle/` directory
-2. Check migration is registered in `drizzle/meta/_journal.json`
-3. If migration is new, restart container to run migrations
-4. If migration is malformed, fix it and nuke database
-
-#### 4. API Returns Unexpected Response
-
-**Symptom**: Client shows errors but API appears to work
-
-**Debugging**:
-
-1. Test API directly with curl: `curl -X POST 'https://abaci.one/api/arcade/rooms' -H 'Content-Type: application/json' -d '...'`
-2. Check production logs for errors
-3. Verify container is running latest image:
-   ```bash
-   ssh nas.home.network "/usr/local/bin/docker inspect soroban-abacus-flashcards --format '{{.Created}}'"
-   ```
-4. Compare with commit timestamp: `git log --format="%ci" -1`
-
 ## Environment Variables
 
 Production environment variables are stored in `.env` file on the server and loaded via `env_file:` in docker-compose.yaml.
-
-**Critical advantage**: compose-updater re-reads the `.env` file on every update, so environment variable changes are automatically picked up without manual intervention.
 
 Common variables:
 
@@ -298,8 +231,8 @@ To update environment variables:
 # Edit .env file on NAS
 ssh nas.home.network "vi /volume1/homes/antialias/projects/abaci.one/.env"
 
-# Restart compose-updater (will pick up new .env on next cycle)
-ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
+# Restart containers to pick up changes
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose restart"
 ```
 
 ## Network Configuration
@@ -308,6 +241,7 @@ ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-c
 - **HTTPS**: Automatic via Traefik with Let's Encrypt
 - **Domain**: abaci.one
 - **Exposed Port**: 3000 (internal to Docker network)
+- **Load Balancing**: Traefik routes to both containers, health checks determine eligibility
 
 ## Security Notes
 
@@ -315,3 +249,4 @@ ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-c
 - SSH access is restricted to local network only
 - Docker container runs with appropriate user permissions
 - Secrets are managed via environment variables, not committed to repo
+- Health check endpoint doesn't expose sensitive data

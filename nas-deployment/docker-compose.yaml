@@ -1,49 +1,70 @@
 version: "3.8"
 
+# Main docker-compose file - source of truth
+#
+# Run `./generate-compose.sh` to generate docker-compose.blue.yaml and
+# docker-compose.green.yaml for compose-updater (requires yq).
+#
+# compose-updater needs separate files so it restarts containers independently,
+# giving us zero-downtime deployments.
+
+x-app: &app
+  image: ghcr.io/antialias/soroban-abacus-flashcards:latest
+  restart: unless-stopped
+  env_file:
+    - .env
+  volumes:
+    - ./public:/app/public
+    - ./data:/app/apps/web/data
+    - ./uploads:/app/uploads
+  networks:
+    - webgateway
+  healthcheck:
+    test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 30s
+
+x-traefik-labels: &traefik-labels
+  traefik.enable: "true"
+  traefik.http.routers.abaci.rule: "Host(`abaci.one`)"
+  traefik.http.routers.abaci.entrypoints: websecure
+  traefik.http.routers.abaci.tls: "true"
+  traefik.http.routers.abaci.tls.certresolver: myresolver
+  traefik.http.routers.abaci.middlewares: hsts@docker
+  traefik.http.routers.abaci.service: abaci
+  traefik.http.routers.abaci-http.rule: "Host(`abaci.one`)"
+  traefik.http.routers.abaci-http.entrypoints: web
+  traefik.http.routers.abaci-http.middlewares: redirect-https@docker
+  traefik.http.services.abaci.loadbalancer.server.port: "3000"
+  traefik.http.services.abaci.loadbalancer.healthcheck.path: /
+  traefik.http.services.abaci.loadbalancer.healthcheck.interval: 10s
+  traefik.http.middlewares.redirect-https.redirectscheme.scheme: https
+  traefik.http.middlewares.redirect-https.redirectscheme.permanent: "true"
+  traefik.http.middlewares.hsts.headers.stsSeconds: "63072000"
+  traefik.http.middlewares.hsts.headers.stsIncludeSubdomains: "true"
+  traefik.http.middlewares.hsts.headers.stsPreload: "true"
+
 services:
-  # ────────────────────────────────────
-  #  Soroban Abacus Flashcards Web App (apps/web)
-  # ────────────────────────────────────
-  soroban-abacus-flashcards:
-    image: ghcr.io/antialias/soroban-abacus-flashcards:latest
-    container_name: soroban-abacus-flashcards
-    restart: unless-stopped
-    env_file:
-      - .env
-    volumes:
-      - ./public:/app/public
-      - ./data:/app/apps/web/data
-      - ./uploads:/app/uploads
+  blue:
+    <<: *app
+    container_name: abaci-blue
     labels:
-      # ── Traefik Routers ───────────────────────────────────
-      # HTTPS router
-      - "traefik.enable=true"
-      - "traefik.http.routers.abaci.rule=Host(`abaci.one`)"
-      - "traefik.http.routers.abaci.entrypoints=websecure"
-      - "traefik.http.routers.abaci.tls=true"
-      - "traefik.http.routers.abaci.tls.certresolver=myresolver"
-      - "traefik.http.routers.abaci.middlewares=hsts@docker"
+      <<: *traefik-labels
+      docker-compose-watcher.watch: "1"
+      docker-compose-watcher.dir: /volume1/homes/antialias/projects/abaci.one
+      docker-compose-watcher.file: docker-compose.blue.yaml
 
-      # HTTP → HTTPS redirect router
-      - "traefik.http.routers.abaci-http.rule=Host(`abaci.one`)"
-      - "traefik.http.routers.abaci-http.entrypoints=web"
-      - "traefik.http.routers.abaci-http.middlewares=redirect-https@docker"
+  green:
+    <<: *app
+    container_name: abaci-green
+    labels:
+      <<: *traefik-labels
+      docker-compose-watcher.watch: "1"
+      docker-compose-watcher.dir: /volume1/homes/antialias/projects/abaci.one
+      docker-compose-watcher.file: docker-compose.green.yaml
 
-      # ── Abaci service definition
-      - "traefik.http.services.abaci.loadbalancer.server.port=3000"
-
-      # ── Shared middlewares
-      - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.redirect-https.redirectscheme.permanent=true"
-      - "traefik.http.middlewares.hsts.headers.stsSeconds=63072000"
-      - "traefik.http.middlewares.hsts.headers.stsIncludeSubdomains=true"
-      - "traefik.http.middlewares.hsts.headers.stsPreload=true"
-    networks:
-      - webgateway
-
-  # ────────────────────────────────────
-  #  DDNS Updater (Porkbun for abaci.one)
-  # ────────────────────────────────────
   ddns-updater:
     image: qmcgaw/ddns-updater:latest
     container_name: ddns-updater
@@ -52,30 +73,11 @@ services:
     environment:
       - TZ=America/Chicago
     ports:
-      - "8000:8000" # optional web UI
+      - "8000:8000"
     restart: unless-stopped
     networks:
       - webgateway
 
-  # ────────────────────────────────────
-  #  Watchtower (auto-update)
-  # ────────────────────────────────────
-  watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 300 soroban-abacus-flashcards ddns-updater
-    environment:
-      - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_ROLLING_RESTART=true
-    networks:
-      - webgateway
-
-# ──────────────────────────────────────
-#  Networks & Volumes
-# ──────────────────────────────────────
 networks:
   webgateway:
-    external: true # same network Traefik lives on
+    external: true

@@ -2,166 +2,218 @@
 
 ## Overview
 
-The Soroban Abacus Flashcards application is deployed to production at `https://abaci.one` using a fully automated CI/CD pipeline. The system follows the established NAS deployment pattern with Docker containerization, GitHub Actions for CI/CD, Traefik reverse proxy, Watchtower for auto-updates, and Porkbun DDNS integration.
+The Soroban Abacus Flashcards application is deployed to production at `https://abaci.one` using a blue-green deployment strategy with zero-downtime updates.
 
 ## Architecture
 
 ```
-User Request → Cloudflare → abaci.one (DDNS) → Synology NAS → Traefik → Docker Container
+User Request → Cloudflare → abaci.one (DDNS) → Synology NAS → Traefik → Docker (Blue + Green)
 ```
 
 ### Components
 
 1. **Source**: Monorepo with pnpm workspaces and Turborepo
-2. **CI/CD**: GitHub Actions with automated Docker builds
+2. **CI/CD**: GitHub Actions builds and pushes Docker images
 3. **Registry**: GitHub Container Registry (ghcr.io)
-4. **Deployment**: Synology NAS with Docker Compose
-5. **Reverse Proxy**: Traefik with Let's Encrypt SSL
-6. **Auto-Updates**: Watchtower (5-minute polling)
+4. **Auto-Deploy**: compose-updater detects new images
+5. **Load Balancing**: Traefik routes to healthy containers
+6. **Reverse Proxy**: Traefik with Let's Encrypt SSL
 7. **DNS**: Porkbun DDNS for dynamic IP updates
+
+## Blue-Green Deployment
+
+Two containers (`abaci-blue` and `abaci-green`) run simultaneously:
+
+- **Shared resources**: Both containers mount the same data volumes
+- **Health checks**: Traefik only routes to healthy containers
+- **Zero downtime**: When one container restarts, the other serves traffic
+- **Automatic updates**: compose-updater pulls new images and restarts containers
+
+### How It Works
+
+```
+1. Push to main branch
+   ↓
+2. GitHub Actions builds and pushes Docker image to ghcr.io
+   ↓
+3. compose-updater detects new image (checks every 5 minutes)
+   ↓
+4. compose-updater restarts containers one at a time
+   ↓
+5. Traefik health checks ensure traffic only goes to ready containers
+```
+
+### Health Check Endpoint
+
+The `/api/health` endpoint verifies container readiness:
+
+```bash
+curl https://abaci.one/api/health
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-14T12:00:00.000Z",
+  "checks": {
+    "database": {
+      "status": "ok",
+      "latencyMs": 2
+    }
+  }
+}
+```
+
+- Returns `200 OK` when healthy
+- Returns `503 Service Unavailable` when unhealthy
+- Traefik uses this to determine if a container should receive traffic
 
 ## Deployment Process
 
-### 1. Code Push Triggers Build
+### Automatic Deployment
 
 When code is pushed to the `main` branch:
 
-1. GitHub Actions workflow (`.github/workflows/deploy.yml`) triggers
-2. Multi-stage Docker build runs:
-   - Install dependencies with pnpm
-   - Generate Panda CSS styled-system
-   - Build Next.js app with Turborepo
-   - Create optimized production image
-3. Image pushed to `ghcr.io/antialias/soroban-abacus-flashcards`
+1. **Build Phase** (GitHub Actions):
+   - Multi-stage Docker build
+   - Image pushed to `ghcr.io/antialias/soroban-abacus-flashcards`
 
-### 2. Automatic Deployment
+2. **Deploy Phase** (compose-updater on NAS):
+   - Detects new image within 5 minutes
+   - Pulls new image
+   - Restarts containers (one at a time)
+   - Traefik routes traffic to healthy containers
 
-1. **Global Watchtower** (located at `/volume1/homes/antialias/projects/global-services/`) polls GitHub Container Registry every 5 minutes
-2. Detects new image version and pulls it
-3. Gracefully stops old container and starts new one
-4. Traefik automatically routes traffic to new container
+### Manual Deployment
 
-**Note**: We use a centralized global Watchtower service that monitors ALL containers across the NAS, rather than project-specific Watchtower instances.
+```bash
+# From local machine (with SSH access to NAS)
+./nas-deployment/deploy.sh
+```
 
-### 3. DNS and SSL
-
-1. Porkbun DDNS keeps `abaci.one` pointing to current NAS IP
-2. Traefik handles SSL certificate provisioning via Let's Encrypt
-3. Automatic HTTPS redirect and certificate renewal
+This script handles migration from the old single-container setup to blue-green.
 
 ## File Structure
 
 ```
 /
 ├── Dockerfile                           # Multi-stage build configuration
-├── .github/workflows/deploy.yml         # CI/CD pipeline
-├── apps/web/next.config.js             # Next.js standalone output config
+├── .github/workflows/deploy.yml         # CI/CD pipeline (build + push)
+├── apps/web/
+│   └── src/app/api/health/route.ts     # Health check endpoint
 ├── nas-deployment/
-│   ├── docker-compose.yaml             # Production container orchestration
+│   ├── docker-compose.yaml             # Blue-green container config
+│   ├── deploy.sh                       # Manual deployment/migration script
 │   └── .env                            # Environment variables (not committed)
 └── DEPLOYMENT.md                       # This documentation
 ```
 
-## Key Configuration Files
+## Docker Compose Configuration
 
-### Dockerfile
+Both containers share the same volumes and Traefik service:
 
-- Multi-stage build optimized for monorepo
-- pnpm workspace dependency management
-- Panda CSS generation step
-- Next.js standalone output for optimal Docker deployment
-- Proper static file serving configuration
+```yaml
+services:
+  blue:
+    image: ghcr.io/antialias/soroban-abacus-flashcards:latest
+    container_name: abaci-blue
+    volumes:
+      - ./data:/app/apps/web/data      # Shared database
+      - ./uploads:/app/uploads          # Shared uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+    labels:
+      - "traefik.http.services.abaci.loadbalancer.server.port=3000"
+      - "traefik.http.services.abaci.loadbalancer.healthcheck.path=/api/health"
 
-### GitHub Actions Workflow
-
-- Triggers on push to main branch
-- Builds and pushes Docker images to ghcr.io
-- Uses GitHub Container Registry for hosting
-- Simplified build process (no type checking in CI)
-
-### Docker Compose
-
-- Single service deployment
-- Traefik labels for reverse proxy routing
-- Watchtower compatibility for auto-updates
-- Environment variable configuration
-
-### Next.js Configuration
-
-- Standalone output mode for Docker optimization
-- Build optimization settings
-- Static file serving configuration
-
-## Environment Variables
-
-Required in `nas-deployment/.env`:
-
-```bash
-# GitHub Container Registry
-GITHUB_TOKEN=<personal_access_token>
-GITHUB_USERNAME=<username>
-
-# Application
-NODE_ENV=production
+  green:
+    # Same configuration as blue, shares volumes
 ```
 
-## NAS Deployment Directory
-
-```
-/volume1/homes/antialias/projects/abaci.one/
-├── docker-compose.yaml
-├── .env
-└── logs/
-```
+Traefik automatically load balances between both containers, routing only to healthy ones.
 
 ## Monitoring and Maintenance
 
-### Checking Deployment Status
+### Check Deployment Status
 
 ```bash
-# On NAS
-docker-compose ps
-docker-compose logs -f app
+# Check running containers
+ssh nas.home.network "docker ps | grep abaci"
 
-# GitHub Actions status
-gh run list --repo antialias/soroban-abacus-flashcards
+# Check health of both containers
+curl https://abaci.one/api/health
+
+# Check compose-updater logs
+ssh nas.home.network "docker logs --tail 50 compose-updater"
 ```
 
-### Manual Updates
+### View Logs
 
 ```bash
-# Force update (if needed)
-docker-compose pull
-docker-compose up -d
+# Blue container logs
+ssh nas.home.network "docker logs -f abaci-blue"
+
+# Green container logs
+ssh nas.home.network "docker logs -f abaci-green"
 ```
 
-### DNS Status
+### Force Immediate Update
 
 ```bash
-# Check DNS resolution
-nslookup abaci.one
+# Restart compose-updater to trigger immediate check
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
+
+# Or manually pull and restart
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose pull && docker-compose up -d"
 ```
 
 ## Troubleshooting
 
-### Common Issues
+### Health Check Failing
 
-1. **CSS not loading**: Check static file paths in Dockerfile
-2. **DNS not updating**: Verify DDNS configuration in existing updater
-3. **Container not starting**: Check environment variables and logs
-4. **SSL certificate issues**: Traefik will auto-renew, check Traefik logs
+1. Check container logs:
+   ```bash
+   ssh nas.home.network "docker logs abaci-blue"
+   ```
 
-### Build Failures
+2. Test health endpoint manually:
+   ```bash
+   ssh nas.home.network "docker exec abaci-blue curl -sf http://localhost:3000/api/health"
+   ```
 
-1. **TypeScript errors**: Review apps/web/src files for type issues
-2. **Dependency issues**: Verify workspace dependencies are correctly referenced
-3. **Docker build timeout**: Check .dockerignore and build optimization
+3. Check database connectivity
 
-### Production Issues
+### Container Not Updating
 
-1. **Site not accessible**: Check Traefik configuration and DNS
-2. **Auto-updates not working**: Verify Watchtower is running
-3. **Performance issues**: Monitor container resources
+1. Verify GitHub Actions completed successfully
+2. Check compose-updater is running:
+   ```bash
+   ssh nas.home.network "docker ps | grep compose-updater"
+   ```
+3. Check compose-updater logs for errors
+
+### Both Containers Unhealthy
+
+```bash
+# Force restart both
+ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose restart"
+```
+
+## Migration from Single Container
+
+If upgrading from the old single-container setup:
+
+```bash
+./nas-deployment/deploy.sh
+```
+
+This script will:
+1. Stop the old `soroban-abacus-flashcards` container
+2. Stop compose-updater temporarily
+3. Deploy the new docker-compose.yaml
+4. Start both blue and green containers
+5. Restart compose-updater
 
 ## Security
 
@@ -169,61 +221,15 @@ nslookup abaci.one
 - Minimal Alpine Linux base image
 - GitHub Container Registry with token authentication
 - Traefik handles SSL termination
-- No sensitive data in committed files
+- Health check doesn't expose sensitive data
 
-## Dependencies
+## Performance
 
-### External Services
-
-- GitHub (source code and CI/CD)
-- GitHub Container Registry (image hosting)
-- Porkbun (DNS management)
-- Let's Encrypt (SSL certificates)
-
-### Infrastructure
-
-- Synology NAS (hosting)
-- Docker and Docker Compose
-- Traefik reverse proxy
-- **Global Watchtower** (centralized auto-updater for all containers)
-
-## Backup and Recovery
-
-### Container Recovery
-
-```bash
-# Stop and remove container
-docker-compose down
-
-# Pull latest image
-docker-compose pull
-
-# Start fresh container
-docker-compose up -d
-```
-
-### Configuration Backup
-
-- `docker-compose.yaml` and `.env` files are backed up via NAS snapshots
-- Source code is version controlled in GitHub
-- Container images stored in GitHub Container Registry
-
-## Performance Optimization
-
-- Next.js standalone output reduces image size
-- Multi-stage Docker build minimizes production image
-- Panda CSS pre-compilation
-- Traefik connection pooling and compression
-- Docker layer caching in CI/CD
-
-## Future Improvements
-
-- Health checks in Docker configuration
-- Container resource limits
-- Monitoring and alerting integration
-- Staging environment setup
-- Database integration (if needed)
+- Zero-downtime deployments via load balancing
+- Health checks prevent routing to unhealthy containers
+- Both containers share data - no sync needed
+- SQLite WAL mode handles concurrent access
 
 ---
 
-_This deployment system provides a production-ready, automated, and maintainable infrastructure for the Soroban Abacus Flashcards application._
+_Last updated: January 2025_
