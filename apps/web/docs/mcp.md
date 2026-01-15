@@ -397,6 +397,182 @@ Returns:
 
 ---
 
+## Worksheet Generation Tools
+
+These tools allow you to create and manage math worksheets with configurable difficulty and scaffolding.
+
+### `generate_worksheet`
+Create a math worksheet with configurable difficulty, scaffolding, and layout.
+
+```json
+{
+  "name": "generate_worksheet",
+  "arguments": {
+    "operator": "addition",
+    "digit_range": { "min": 2, "max": 3 },
+    "problems_per_page": 20,
+    "pages": 2,
+    "difficulty_profile": "earlyLearner",
+    "include_answer_key": true,
+    "title": "Morning Practice",
+    "orientation": "landscape",
+    "cols": 5
+  }
+}
+```
+
+**Parameters:**
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `operator` | No | `addition` | `"addition"`, `"subtraction"`, or `"mixed"` |
+| `digit_range` | No | `{min: 2, max: 2}` | Min/max digits per number (1-5) |
+| `problems_per_page` | No | `20` | Problems per page (1-40) |
+| `pages` | No | `1` | Number of pages (1-20) |
+| `difficulty_profile` | No | `earlyLearner` | Preset difficulty (see `list_difficulty_profiles`) |
+| `include_answer_key` | No | `false` | Add answer key pages at end |
+| `title` | No | - | Optional worksheet title |
+| `orientation` | No | `landscape` | `"portrait"` or `"landscape"` |
+| `cols` | No | `5` | Number of columns (1-6) |
+
+Returns:
+```json
+{
+  "shareId": "aBc123X",
+  "shareUrl": "https://abaci.one/worksheets/shared/aBc123X",
+  "downloadUrl": "https://abaci.one/api/worksheets/download/aBc123X",
+  "summary": {
+    "shareId": "aBc123X",
+    "operator": "addition",
+    "digitRange": { "min": 2, "max": 3 },
+    "totalProblems": 40,
+    "pages": 2,
+    "problemsPerPage": 20,
+    "cols": 5,
+    "orientation": "landscape",
+    "difficultyProfile": "earlyLearner",
+    "difficultyLabel": "Early Learner",
+    "regroupingPercent": 25,
+    "includeAnswerKey": true,
+    "scaffolding": {
+      "carryBoxes": "whenRegrouping",
+      "answerBoxes": "always",
+      "placeValueColors": "always",
+      "tenFrames": "whenRegrouping"
+    }
+  }
+}
+```
+
+### `get_worksheet_info`
+Get information about an existing shared worksheet.
+
+```json
+{
+  "name": "get_worksheet_info",
+  "arguments": {
+    "share_id": "aBc123X"
+  }
+}
+```
+
+Returns:
+```json
+{
+  "shareId": "aBc123X",
+  "shareUrl": "https://abaci.one/worksheets/shared/aBc123X",
+  "downloadUrl": "https://abaci.one/api/worksheets/download/aBc123X",
+  "title": "Morning Practice",
+  "worksheetType": "addition",
+  "createdAt": "2026-01-15T10:30:00Z",
+  "views": 5,
+  "config": {
+    "operator": "addition",
+    "digitRange": { "min": 2, "max": 3 },
+    "totalProblems": 40,
+    "pages": 2,
+    "problemsPerPage": 20,
+    "cols": 5,
+    "orientation": "landscape",
+    "difficultyProfile": "earlyLearner",
+    "difficultyLabel": "Early Learner",
+    "regroupingPercent": 25,
+    "includeAnswerKey": true
+  }
+}
+```
+
+### `list_difficulty_profiles`
+List all available difficulty profiles with their settings.
+
+```json
+{
+  "name": "list_difficulty_profiles",
+  "arguments": {}
+}
+```
+
+Returns:
+```json
+{
+  "profiles": [
+    {
+      "name": "beginner",
+      "label": "Beginner",
+      "description": "Full scaffolding with no regrouping. Focus on learning the structure of addition.",
+      "regrouping": {
+        "pAnyStart": 0,
+        "pAllStart": 0,
+        "percent": 0
+      },
+      "scaffolding": {
+        "carryBoxes": "always",
+        "answerBoxes": "always",
+        "placeValueColors": "always",
+        "tenFrames": "always",
+        "borrowNotation": "always",
+        "borrowingHints": "always"
+      }
+    },
+    {
+      "name": "earlyLearner",
+      "label": "Early Learner",
+      "description": "Scaffolds appear when needed. Introduces occasional regrouping.",
+      "regrouping": {
+        "pAnyStart": 0.25,
+        "pAllStart": 0,
+        "percent": 25
+      },
+      "scaffolding": {
+        "carryBoxes": "whenRegrouping",
+        "answerBoxes": "always",
+        "placeValueColors": "always",
+        "tenFrames": "whenRegrouping",
+        "borrowNotation": "whenRegrouping",
+        "borrowingHints": "always"
+      }
+    }
+  ],
+  "progression": ["beginner", "earlyLearner", "practice", "intermediate", "advanced", "expert"]
+}
+```
+
+**Difficulty Profile Progression:**
+1. `beginner` - Full scaffolding, no regrouping
+2. `earlyLearner` - Conditional scaffolding, 25% regrouping
+3. `practice` - High scaffolding, 75% regrouping (master WITH support)
+4. `intermediate` - Reduced scaffolding, 75% regrouping
+5. `advanced` - Minimal scaffolding, 90% regrouping
+6. `expert` - No scaffolding, 90% regrouping
+
+**Scaffolding Values:**
+- `always` - Always show this scaffolding element
+- `never` - Never show this scaffolding element
+- `whenRegrouping` - Show only when problem requires regrouping
+- `whenMultipleRegroups` - Show only when problem has multiple regroups
+- `when3PlusDigits` - Show only when problem has 3+ digits
+
+---
+
 ## API Key Management
 
 ### List Keys
@@ -450,3 +626,104 @@ Supported methods:
 - `initialize` - Capability negotiation
 - `tools/list` - List available tools
 - `tools/call` - Execute a tool
+- `resources/list` - List available documentation resources
+- `resources/read` - Read a specific resource
+
+---
+
+## Resources (Documentation)
+
+MCP Resources provide read-only documentation accessible to language models. Use these to understand worksheet configuration options.
+
+### List Resources
+
+```bash
+curl -X POST http://localhost:3000/api/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "resources/list",
+    "params": {}
+  }'
+```
+
+Returns:
+```json
+{
+  "resources": [
+    {
+      "uri": "docs://worksheet/regrouping",
+      "name": "Regrouping (Carrying/Borrowing)",
+      "description": "What regrouping means pedagogically, and how pAnyStart/pAllStart control problem difficulty",
+      "mimeType": "text/markdown"
+    },
+    {
+      "uri": "docs://worksheet/scaffolding",
+      "name": "Scaffolding Options",
+      "description": "Visual aids on worksheets: carryBoxes, answerBoxes, placeValueColors, tenFrames, and display rule values",
+      "mimeType": "text/markdown"
+    },
+    {
+      "uri": "docs://worksheet/difficulty-profiles",
+      "name": "Difficulty Profiles",
+      "description": "The six preset profiles (beginner → expert), when to use each, and progression philosophy",
+      "mimeType": "text/markdown"
+    },
+    {
+      "uri": "docs://worksheet/digit-range",
+      "name": "Digit Range",
+      "description": "How digitRange.min and digitRange.max affect problem complexity",
+      "mimeType": "text/markdown"
+    },
+    {
+      "uri": "docs://worksheet/operators",
+      "name": "Operators (Addition/Subtraction/Mixed)",
+      "description": "Difference between operators, pedagogical sequence, and scaffolding differences",
+      "mimeType": "text/markdown"
+    }
+  ]
+}
+```
+
+### Read Resource
+
+```bash
+curl -X POST http://localhost:3000/api/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "resources/read",
+    "params": {
+      "uri": "docs://worksheet/scaffolding"
+    }
+  }'
+```
+
+Returns:
+```json
+{
+  "contents": [
+    {
+      "uri": "docs://worksheet/scaffolding",
+      "mimeType": "text/markdown",
+      "text": "# Scaffolding Options\n\nScaffolding elements are visual aids..."
+    }
+  ]
+}
+```
+
+### Available Resources
+
+| URI | Purpose |
+|-----|---------|
+| `docs://worksheet/regrouping` | Explains carrying/borrowing and how `pAnyStart`/`pAllStart` control regrouping frequency |
+| `docs://worksheet/scaffolding` | Describes visual aids: carryBoxes, answerBoxes, placeValueColors, tenFrames |
+| `docs://worksheet/difficulty-profiles` | The 6 preset profiles and when to use each |
+| `docs://worksheet/digit-range` | How min/max digits affect problem complexity |
+| `docs://worksheet/operators` | Addition vs subtraction vs mixed, with scaffolding differences |
+
+**Tip:** Read the `difficulty-profiles` resource before generating worksheets to understand how the profiles map to regrouping and scaffolding settings

@@ -8,10 +8,13 @@
  * - initialize: Capability negotiation
  * - tools/list: List available tools
  * - tools/call: Execute a tool
+ * - resources/list: List available resources
+ * - resources/read: Read a specific resource
  */
 
 import { NextResponse } from 'next/server'
 import { validateMcpApiKey } from '@/lib/mcp/auth'
+import { listResources, readResource } from '@/lib/mcp/resources'
 import {
   MCP_TOOLS,
   listStudents,
@@ -26,6 +29,9 @@ import {
   controlSession,
   createObservationLink,
   listObservationLinks,
+  generateWorksheet,
+  getWorksheetInfo,
+  listDifficultyProfiles,
 } from '@/lib/mcp/tools'
 import type { ShareDuration } from '@/lib/session-share'
 
@@ -123,6 +129,7 @@ export async function POST(request: Request) {
             protocolVersion: MCP_PROTOCOL_VERSION,
             capabilities: {
               tools: {},
+              resources: {},
             },
             serverInfo: {
               name: 'abaci-one',
@@ -163,6 +170,25 @@ export async function POST(request: Request) {
         )
       }
 
+      case 'resources/list': {
+        const result = listResources()
+        return NextResponse.json(jsonRpcSuccess(id, result))
+      }
+
+      case 'resources/read': {
+        const uri = params.uri as string
+        if (!uri) {
+          return NextResponse.json(jsonRpcError(id, -32602, 'Missing resource URI'))
+        }
+
+        const result = readResource(uri)
+        if ('error' in result) {
+          return NextResponse.json(jsonRpcError(id, -32002, result.error))
+        }
+
+        return NextResponse.json(jsonRpcSuccess(id, result))
+      }
+
       default: {
         return NextResponse.json(jsonRpcError(id, -32601, `Method not found: ${method}`))
       }
@@ -192,6 +218,12 @@ async function executeTool(
   toolName: string,
   args: Record<string, unknown>
 ): Promise<unknown> {
+  // Worksheet tools don't require player access
+  const worksheetToolNames = ['generate_worksheet', 'get_worksheet_info', 'list_difficulty_profiles']
+  if (worksheetToolNames.includes(toolName)) {
+    return executeWorksheetTool(toolName, args)
+  }
+
   // Tools that don't require a player_id
   if (toolName === 'list_students') {
     return listStudents(userId)
@@ -275,6 +307,38 @@ async function executeTool(
 
     default:
       throw new Error(`Unknown tool: ${toolName}`)
+  }
+}
+
+/**
+ * Execute worksheet tools that don't require player access
+ */
+async function executeWorksheetTool(
+  toolName: string,
+  args: Record<string, unknown>
+): Promise<unknown> {
+  switch (toolName) {
+    case 'generate_worksheet':
+      return generateWorksheet({
+        operator: args.operator as 'addition' | 'subtraction' | 'mixed' | undefined,
+        digitRange: args.digit_range as { min: number; max: number } | undefined,
+        problemsPerPage: args.problems_per_page as number | undefined,
+        pages: args.pages as number | undefined,
+        difficultyProfile: args.difficulty_profile as string | undefined,
+        includeAnswerKey: args.include_answer_key as boolean | undefined,
+        title: args.title as string | undefined,
+        orientation: args.orientation as 'portrait' | 'landscape' | undefined,
+        cols: args.cols as number | undefined,
+      })
+
+    case 'get_worksheet_info':
+      return getWorksheetInfo(args.share_id as string)
+
+    case 'list_difficulty_profiles':
+      return listDifficultyProfiles()
+
+    default:
+      return null // Not a worksheet tool
   }
 }
 

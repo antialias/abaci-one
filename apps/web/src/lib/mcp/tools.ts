@@ -4,7 +4,7 @@
 
 import { eq, or, inArray, desc, and, gte } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { parentChild } from '@/db/schema'
+import { parentChild, worksheetShares } from '@/db/schema'
 import type { GameBreakSettings } from '@/db/schema/session-plans'
 import { getAllSkillMastery, getRecentSessions } from '@/lib/curriculum/progress-manager'
 import {
@@ -23,6 +23,18 @@ import {
   type ShareDuration,
 } from '@/lib/session-share'
 import { getShareUrl } from '@/lib/share/urls'
+import { generateShareId, isValidShareId } from '@/lib/generateShareId'
+import {
+  DIFFICULTY_PROFILES,
+  DIFFICULTY_PROGRESSION,
+  type DifficultyProfile,
+} from '@/app/create/worksheets/difficultyProfiles'
+import {
+  serializeAdditionConfig,
+  parseAdditionConfig,
+  defaultAdditionConfig,
+  type AdditionConfigV4Custom,
+} from '@/app/create/worksheets/config-schemas'
 
 // Tool definitions for MCP tools/list response
 export const MCP_TOOLS = [
@@ -286,6 +298,91 @@ export const MCP_TOOLS = [
         },
       },
       required: ['player_id', 'session_id'],
+    },
+  },
+  // Worksheet generation tools
+  {
+    name: 'generate_worksheet',
+    description:
+      'Generate a math worksheet with configurable difficulty, scaffolding, and layout. Returns share and download URLs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        operator: {
+          type: 'string',
+          enum: ['addition', 'subtraction', 'mixed'],
+          description: 'Type of math operation (default: addition)',
+        },
+        digit_range: {
+          type: 'object',
+          description: 'Range of digits per number (default: { min: 2, max: 2 })',
+          properties: {
+            min: {
+              type: 'number',
+              description: 'Minimum digits (1-5)',
+            },
+            max: {
+              type: 'number',
+              description: 'Maximum digits (1-5)',
+            },
+          },
+        },
+        problems_per_page: {
+          type: 'number',
+          description: 'Number of problems per page (default: 20)',
+        },
+        pages: {
+          type: 'number',
+          description: 'Number of pages (default: 1)',
+        },
+        difficulty_profile: {
+          type: 'string',
+          enum: ['beginner', 'earlyLearner', 'practice', 'intermediate', 'advanced', 'expert'],
+          description: 'Preset difficulty profile that controls regrouping and scaffolding',
+        },
+        include_answer_key: {
+          type: 'boolean',
+          description: 'Include answer key pages at end (default: false)',
+        },
+        title: {
+          type: 'string',
+          description: 'Optional title for the worksheet',
+        },
+        orientation: {
+          type: 'string',
+          enum: ['portrait', 'landscape'],
+          description: 'Page orientation (default: landscape)',
+        },
+        cols: {
+          type: 'number',
+          description: 'Number of columns (1-6, default: 5)',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_worksheet_info',
+    description: 'Get information about an existing shared worksheet by its share ID.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        share_id: {
+          type: 'string',
+          description: 'The worksheet share ID',
+        },
+      },
+      required: ['share_id'],
+    },
+  },
+  {
+    name: 'list_difficulty_profiles',
+    description:
+      'List all available difficulty profiles with their regrouping and scaffolding settings.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
     },
   },
 ]
@@ -761,5 +858,229 @@ export async function listObservationLinks(playerId: string, sessionId: string) 
       viewCount: share.viewCount,
       createdAt: share.createdAt.getTime(),
     })),
+  }
+}
+
+// ============================================================================
+// Worksheet Generation Tools
+// ============================================================================
+
+/**
+ * Generate a worksheet with the given configuration
+ * Returns share and download URLs
+ */
+export async function generateWorksheet(options: {
+  operator?: 'addition' | 'subtraction' | 'mixed'
+  digitRange?: { min: number; max: number }
+  problemsPerPage?: number
+  pages?: number
+  difficultyProfile?: string
+  includeAnswerKey?: boolean
+  title?: string
+  orientation?: 'portrait' | 'landscape'
+  cols?: number
+}) {
+  const baseUrl = getBaseUrl()
+
+  // Build config from options, using defaults
+  const {
+    operator = 'addition',
+    digitRange = { min: 2, max: 2 },
+    problemsPerPage = 20,
+    pages = 1,
+    difficultyProfile = 'earlyLearner',
+    includeAnswerKey = false,
+    title = '',
+    orientation = 'landscape',
+    cols = 5,
+  } = options
+
+  // Validate digit range
+  const validDigitRange = {
+    min: Math.max(1, Math.min(5, digitRange.min || 2)),
+    max: Math.max(1, Math.min(5, digitRange.max || 2)),
+  }
+  if (validDigitRange.min > validDigitRange.max) {
+    validDigitRange.max = validDigitRange.min
+  }
+
+  // Get difficulty profile settings
+  const profile = DIFFICULTY_PROFILES[difficultyProfile] || DIFFICULTY_PROFILES.earlyLearner
+
+  // Build worksheet config
+  const config: AdditionConfigV4Custom = {
+    version: 4,
+    mode: 'custom',
+    operator,
+    digitRange: validDigitRange,
+    problemsPerPage: Math.max(1, Math.min(40, problemsPerPage)),
+    pages: Math.max(1, Math.min(20, pages)),
+    cols: Math.max(1, Math.min(6, cols)),
+    orientation,
+    name: title,
+    fontSize: 16,
+    pAnyStart: profile.regrouping.pAnyStart,
+    pAllStart: profile.regrouping.pAllStart,
+    interpolate: true,
+    displayRules: profile.displayRules,
+    difficultyProfile: profile.name,
+    includeAnswerKey,
+    includeQRCode: true, // Always include QR code for MCP-generated worksheets
+    seed: Math.floor(Math.random() * 1000000), // Random seed for unique problems
+  }
+
+  // Generate unique share ID
+  let shareId = generateShareId()
+  let attempts = 0
+  const MAX_ATTEMPTS = 5
+  let isUnique = false
+
+  while (!isUnique && attempts < MAX_ATTEMPTS) {
+    shareId = generateShareId()
+    const existing = await db.query.worksheetShares.findFirst({
+      where: eq(worksheetShares.id, shareId),
+    })
+
+    if (!existing) {
+      isUnique = true
+    } else {
+      attempts++
+    }
+  }
+
+  if (!isUnique) {
+    throw new Error('Failed to generate unique share ID')
+  }
+
+  // Serialize config
+  const configJson = serializeAdditionConfig(config)
+
+  // Create share record
+  await db.insert(worksheetShares).values({
+    id: shareId,
+    worksheetType: 'addition',
+    config: configJson,
+    createdAt: new Date(),
+    views: 0,
+    creatorIp: 'mcp', // Mark as MCP-generated
+    title: title || null,
+  })
+
+  // Build URLs
+  const shareUrl = `${baseUrl}/worksheets/shared/${shareId}`
+  const downloadUrl = `${baseUrl}/api/worksheets/download/${shareId}`
+
+  // Build summary
+  const totalProblems = config.problemsPerPage * config.pages
+  const summary = {
+    shareId,
+    operator: config.operator,
+    digitRange: config.digitRange,
+    totalProblems,
+    pages: config.pages,
+    problemsPerPage: config.problemsPerPage,
+    cols: config.cols,
+    orientation: config.orientation,
+    difficultyProfile: profile.name,
+    difficultyLabel: profile.label,
+    regroupingPercent: Math.round(profile.regrouping.pAnyStart * 100),
+    includeAnswerKey: config.includeAnswerKey,
+    scaffolding: {
+      carryBoxes: profile.displayRules.carryBoxes,
+      answerBoxes: profile.displayRules.answerBoxes,
+      placeValueColors: profile.displayRules.placeValueColors,
+      tenFrames: profile.displayRules.tenFrames,
+    },
+  }
+
+  return {
+    shareId,
+    shareUrl,
+    downloadUrl,
+    summary,
+  }
+}
+
+/**
+ * Get information about an existing shared worksheet
+ */
+export async function getWorksheetInfo(shareId: string) {
+  // Validate ID format
+  if (!isValidShareId(shareId)) {
+    throw new Error('Invalid share ID format')
+  }
+
+  // Fetch share record
+  const share = await db.query.worksheetShares.findFirst({
+    where: eq(worksheetShares.id, shareId),
+  })
+
+  if (!share) {
+    throw new Error('Worksheet not found')
+  }
+
+  // Parse config
+  const config = parseAdditionConfig(share.config)
+  const baseUrl = getBaseUrl()
+
+  // Find matching difficulty profile
+  let matchedProfile: DifficultyProfile | undefined
+  if (config.mode === 'custom' && config.difficultyProfile) {
+    matchedProfile = DIFFICULTY_PROFILES[config.difficultyProfile]
+  }
+
+  const totalProblems = config.problemsPerPage * config.pages
+
+  return {
+    shareId: share.id,
+    shareUrl: `${baseUrl}/worksheets/shared/${share.id}`,
+    downloadUrl: `${baseUrl}/api/worksheets/download/${share.id}`,
+    title: share.title,
+    worksheetType: share.worksheetType,
+    createdAt: share.createdAt.toISOString(),
+    views: share.views,
+    config: {
+      operator: config.operator,
+      digitRange: config.digitRange,
+      totalProblems,
+      pages: config.pages,
+      problemsPerPage: config.problemsPerPage,
+      cols: config.cols,
+      orientation: config.orientation,
+      difficultyProfile: matchedProfile?.name || 'custom',
+      difficultyLabel: matchedProfile?.label || 'Custom',
+      regroupingPercent: Math.round(config.pAnyStart * 100),
+      includeAnswerKey: config.includeAnswerKey || false,
+    },
+  }
+}
+
+/**
+ * List all available difficulty profiles
+ */
+export function listDifficultyProfiles() {
+  return {
+    profiles: DIFFICULTY_PROGRESSION.map((name) => {
+      const profile = DIFFICULTY_PROFILES[name]
+      return {
+        name: profile.name,
+        label: profile.label,
+        description: profile.description,
+        regrouping: {
+          pAnyStart: profile.regrouping.pAnyStart,
+          pAllStart: profile.regrouping.pAllStart,
+          percent: Math.round(profile.regrouping.pAnyStart * 100),
+        },
+        scaffolding: {
+          carryBoxes: profile.displayRules.carryBoxes,
+          answerBoxes: profile.displayRules.answerBoxes,
+          placeValueColors: profile.displayRules.placeValueColors,
+          tenFrames: profile.displayRules.tenFrames,
+          borrowNotation: profile.displayRules.borrowNotation,
+          borrowingHints: profile.displayRules.borrowingHints,
+        },
+      }
+    }),
+    progression: DIFFICULTY_PROGRESSION,
   }
 }
