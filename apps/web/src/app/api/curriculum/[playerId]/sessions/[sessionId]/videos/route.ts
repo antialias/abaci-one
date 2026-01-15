@@ -8,11 +8,11 @@
 
 export const dynamic = 'force-dynamic'
 
+import { and, asc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { and, eq, asc } from 'drizzle-orm'
 import { db } from '@/db'
 import { sessionPlans, visionProblemVideos } from '@/db/schema'
-import { getPlayerAccess, generateAuthorizationError } from '@/lib/classroom'
+import { generateAuthorizationError, getPlayerAccess } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
@@ -51,7 +51,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
     // Get all problem videos for this session (including failed/processing)
     // We'll dedupe and show the best status for each problem/epoch/attempt combo
-    const videos = await db.query.visionProblemVideos.findMany({
+    const rawVideos = await db.query.visionProblemVideos.findMany({
       where: eq(visionProblemVideos.sessionId, sessionId),
       orderBy: [
         asc(visionProblemVideos.problemNumber),
@@ -60,13 +60,26 @@ export async function GET(_request: Request, { params }: RouteParams) {
       ],
     })
 
+    // Detect orphaned recordings: any 'recording' status video that has a newer
+    // video in the same session is orphaned (we've moved on to another problem).
+    // The only legitimate 'recording' is the one with the latest startedAt.
+    const maxStartedAt = Math.max(...rawVideos.map((v) => v.startedAt.getTime()))
+    const videos = rawVideos.map((video) => {
+      if (video.status === 'recording' && video.startedAt.getTime() < maxStartedAt) {
+        // This recording was abandoned - treat as no_video
+        return { ...video, status: 'no_video' as const }
+      }
+      return video
+    })
+
     // Deduplicate by problem/epoch/attempt, keeping the "best" status
-    // Priority: ready > processing > recording > failed
+    // Priority: ready > processing > recording > no_video > failed
     const statusPriority: Record<string, number> = {
       ready: 0,
       processing: 1,
       recording: 2,
-      failed: 3,
+      no_video: 3,
+      failed: 4,
     }
 
     const videoMap = new Map<string, (typeof videos)[0]>()
