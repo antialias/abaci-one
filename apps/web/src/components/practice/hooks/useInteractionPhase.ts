@@ -662,8 +662,9 @@ export function useInteractionPhase(
   // ==========================================================================
   // React to activeProblem changes (single source of truth)
   // ==========================================================================
-  // This effect watches for activeProblem.key changes and loads the new problem.
-  // This eliminates the need for synchronization effects in the parent component.
+  // This effect handles two cases:
+  // 1. activeProblem.key changes (redo mode, direct navigation, session plan advances)
+  // 2. Phase becomes 'loading' (need to reload current problem after incorrect answer or part transition)
   const prevActiveProblemKeyRef = useRef<string | null>(null)
   const hasMountedRef = useRef(false)
 
@@ -673,35 +674,78 @@ export function useInteractionPhase(
       hasMountedRef.current = true
       // Initialize the ref with current key
       prevActiveProblemKeyRef.current = activeProblem?.key ?? null
+      console.log('[useInteractionPhase] Initial mount, key:', activeProblem?.key)
       return
     }
 
     // If no active problem, nothing to do
     if (!activeProblem) {
+      console.log('[useInteractionPhase] No active problem - cannot load. Current phase:', phase.phase)
       prevActiveProblemKeyRef.current = null
       return
     }
 
     const prevKey = prevActiveProblemKeyRef.current
     const currentKey = activeProblem.key
+    const keyChanged = prevKey !== currentKey
 
-    // Key hasn't changed - no action needed
-    if (prevKey === currentKey) {
+    console.log('[useInteractionPhase] Effect running:', {
+      prevKey,
+      currentKey,
+      keyChanged,
+      currentPhase: phase.phase,
+    })
+
+    // Case 1: Phase is 'loading' - need to load the problem
+    // This happens after incorrect answers or when returning from part transitions
+    if (phase.phase === 'loading') {
+      console.log('[useInteractionPhase] Phase is loading - loading problem:', {
+        problemAnswer: activeProblem.problem.answer,
+        slotIndex: activeProblem.slotIndex,
+        partIndex: activeProblem.partIndex,
+        key: activeProblem.key,
+      })
+      const newAttempt = createAttemptInput(
+        activeProblem.problem,
+        activeProblem.slotIndex,
+        activeProblem.partIndex
+      )
+      setPhase({ phase: 'inputting', attempt: newAttempt })
+      prevActiveProblemKeyRef.current = currentKey
+      console.log('[useInteractionPhase] Successfully loaded problem, phase now inputting')
       return
     }
 
-    // Key changed - load the new problem immediately
-    // Note: We don't check phase here because this is for redo mode / direct navigation
-    // which should immediately switch problems (no animation)
-    const newAttempt = createAttemptInput(
-      activeProblem.problem,
-      activeProblem.slotIndex,
-      activeProblem.partIndex
-    )
-    setPhase({ phase: 'inputting', attempt: newAttempt })
+    // Case 2: Key changed - handle redo mode or session advancement
+    if (keyChanged) {
+      console.log('[useInteractionPhase] Key changed:', { prevKey, currentKey })
 
-    prevActiveProblemKeyRef.current = currentKey
-  }, [activeProblem])
+      // CRITICAL: Don't interrupt normal progression flow
+      // If we're in showingFeedback, submitting, or transitioning, the normal flow
+      // (startTransition → completeTransition) handles advancing to the next problem.
+      const isInProgressionFlow =
+        phase.phase === 'showingFeedback' ||
+        phase.phase === 'submitting' ||
+        phase.phase === 'transitioning'
+
+      if (isInProgressionFlow) {
+        console.log('[useInteractionPhase] Key changed but in progression flow, deferring')
+        // Still update the ref so we track the change
+        prevActiveProblemKeyRef.current = currentKey
+        return
+      }
+
+      // Key changed and we're not in progression flow - load the new problem immediately
+      console.log('[useInteractionPhase] Loading new problem from key change')
+      const newAttempt = createAttemptInput(
+        activeProblem.problem,
+        activeProblem.slotIndex,
+        activeProblem.partIndex
+      )
+      setPhase({ phase: 'inputting', attempt: newAttempt })
+      prevActiveProblemKeyRef.current = currentKey
+    }
+  }, [activeProblem, phase.phase])
 
   const handleDigit = useCallback(
     (digit: string) => {

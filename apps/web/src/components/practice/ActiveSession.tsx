@@ -1361,10 +1361,22 @@ export function ActiveSession({
   useEffect(() => {
     const prevIndex = prevPartIndexRef.current
 
+    console.log('[ActiveSession] Part transition effect:', {
+      prevIndex,
+      currentPartIndex,
+      partsLength: parts.length,
+      willTriggerTransition: currentPartIndex !== prevIndex && currentPartIndex < parts.length,
+    })
+
     // If part index changed and we have a valid next part
     if (currentPartIndex !== prevIndex && currentPartIndex < parts.length) {
       const prevPart = prevIndex < parts.length ? parts[prevIndex] : null
       const nextPart = parts[currentPartIndex]
+
+      console.log('[ActiveSession] Triggering part transition screen:', {
+        previousPartType: prevPart?.type ?? null,
+        nextPartType: nextPart.type,
+      })
 
       // Trigger transition screen
       const startTime = Date.now()
@@ -1385,6 +1397,7 @@ export function ActiveSession({
 
   // Handle transition screen completion (countdown finished or user skipped)
   const handleTransitionComplete = useCallback(() => {
+    console.log('[ActiveSession] Part transition complete, calling onPartTransitionComplete')
     setIsInPartTransition(false)
     setTransitionData(null)
     // Broadcast transition complete to observers
@@ -1591,6 +1604,15 @@ export function ActiveSession({
         const nextSlotIndex = currentSlotIndex + 1
         const nextSlot = currentPart?.slots[nextSlotIndex]
 
+        console.log('[ActiveSession] Post-feedback timeout fired:', {
+          isCorrect,
+          currentSlotIndex,
+          nextSlotIndex,
+          hasNextSlot: !!nextSlot,
+          hasCurrentPart: !!currentPart,
+          willTransition: !!(nextSlot && currentPart && isCorrect),
+        })
+
         if (nextSlot && currentPart && isCorrect) {
           // Has next problem - animate transition
           if (!nextSlot.problem) {
@@ -1602,9 +1624,11 @@ export function ActiveSession({
           // Mark that we need to apply centering offset in useLayoutEffect
           needsCenteringOffsetRef.current = true
 
+          console.log('[ActiveSession] Starting transition to next problem')
           startTransition(nextSlot.problem, nextSlotIndex)
         } else {
           // End of part or incorrect - clear to loading
+          console.log('[ActiveSession] Calling clearToLoading (end of part or incorrect)')
           clearToLoading()
         }
       },
