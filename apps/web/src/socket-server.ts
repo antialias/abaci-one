@@ -1,7 +1,6 @@
-import type { Server as HTTPServer, IncomingMessage } from 'http'
+import type { Server as HTTPServer } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
 import type { Server as SocketIOServerType } from 'socket.io'
-import { WebSocketServer, type WebSocket } from 'ws'
 import {
   applyGameMove,
   createArcadeSession,
@@ -1174,6 +1173,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
 
     // Vision Recording: Handle problem marker (triggers encoding on problem transitions)
+    // NOTE: Markers are always processed - if no recording session exists, one is auto-started
+    // for metadata-only capture (student answers without video)
     socket.on(
       'vision-problem-marker',
       async ({
@@ -1186,6 +1187,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         attemptNumber,
         isRetry,
         isManualRedo,
+        playerId,
       }: {
         sessionId: string
         problemNumber: number
@@ -1196,8 +1198,19 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         attemptNumber?: number
         isRetry?: boolean
         isManualRedo?: boolean
+        playerId?: string
       }) => {
         const recorder = VisionRecorder.getInstance()
+
+        // Auto-start a metadata-only session if one doesn't exist
+        // This allows capturing student answers even when camera isn't enabled
+        if (!recorder.isRecording(sessionId) && playerId) {
+          console.log(
+            `📝 Auto-starting metadata-only recording session for ${sessionId} (no camera)`
+          )
+          recorder.startSession(sessionId, playerId)
+        }
+
         if (recorder.isRecording(sessionId)) {
           // This triggers encoding when 'problem-shown' arrives for the next problem
           await recorder.onProblemMarker(sessionId, {

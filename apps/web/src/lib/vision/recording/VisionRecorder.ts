@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { createId } from '@paralleldrive/cuid2'
 import { mkdir, writeFile, rm } from 'fs/promises'
 import path from 'path'

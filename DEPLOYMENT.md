@@ -52,6 +52,7 @@ curl https://abaci.one/api/health
 ```
 
 Response:
+
 ```json
 {
   "status": "healthy",
@@ -119,8 +120,8 @@ services:
     image: ghcr.io/antialias/soroban-abacus-flashcards:latest
     container_name: abaci-blue
     volumes:
-      - ./data:/app/apps/web/data      # Shared database
-      - ./uploads:/app/uploads          # Shared uploads
+      - ./data:/app/apps/web/data # Shared database
+      - ./uploads:/app/uploads # Shared uploads
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
     labels:
@@ -173,11 +174,13 @@ ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-c
 ### Health Check Failing
 
 1. Check container logs:
+
    ```bash
    ssh nas.home.network "docker logs abaci-blue"
    ```
 
 2. Test health endpoint manually:
+
    ```bash
    ssh nas.home.network "docker exec abaci-blue curl -sf http://localhost:3000/api/health"
    ```
@@ -209,6 +212,7 @@ If upgrading from the old single-container setup:
 ```
 
 This script will:
+
 1. Stop the old `soroban-abacus-flashcards` container
 2. Stop compose-updater temporarily
 3. Deploy the new docker-compose.yaml

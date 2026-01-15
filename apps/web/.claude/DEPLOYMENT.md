@@ -37,6 +37,7 @@ curl https://abaci.one/api/health
 ```
 
 Response:
+
 ```json
 {
   "status": "healthy",
@@ -174,11 +175,13 @@ git rev-parse HEAD
 ### Health Check Failing
 
 1. Check container logs:
+
    ```bash
    ssh nas.home.network "docker logs abaci-blue"
    ```
 
 2. Test health endpoint manually:
+
    ```bash
    ssh nas.home.network "docker exec abaci-blue curl -sf http://localhost:3000/api/health"
    ```

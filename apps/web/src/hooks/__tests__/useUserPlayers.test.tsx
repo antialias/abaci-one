@@ -325,7 +325,9 @@ describe('useUserPlayers hooks', () => {
         })
 
         // Should have invalidated with playerKeys.all
-        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: playerKeys.all })
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: playerKeys.all,
+        })
       })
 
       test('invalidates all player queries even on error', async () => {
@@ -349,7 +351,9 @@ describe('useUserPlayers hooks', () => {
         })
 
         // onSettled runs on both success and error
-        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: playerKeys.all })
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: playerKeys.all,
+        })
       })
     })
 
@@ -422,7 +426,10 @@ describe('useUserPlayers hooks', () => {
       const { result } = renderHook(() => useUpdatePlayer(), { wrapper })
 
       act(() => {
-        result.current.mutate({ id: 'player-1', updates: { name: 'Updated Name' } })
+        result.current.mutate({
+          id: 'player-1',
+          updates: { name: 'Updated Name' },
+        })
       })
 
       // Wait for optimistic update
@@ -461,7 +468,10 @@ describe('useUserPlayers hooks', () => {
       const { result } = renderHook(() => useUpdatePlayer(), { wrapper })
 
       act(() => {
-        result.current.mutate({ id: 'player-1', updates: { name: 'Updated Name' } })
+        result.current.mutate({
+          id: 'player-1',
+          updates: { name: 'Updated Name' },
+        })
       })
 
       await waitFor(() => {

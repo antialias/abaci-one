@@ -152,7 +152,9 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     if (video.status === 'no_video') {
       return NextResponse.json(
-        { error: 'No video was recorded for this problem (camera may have been off)' },
+        {
+          error: 'No video was recorded for this problem (camera may have been off)',
+        },
         { status: 404 }
       )
     }

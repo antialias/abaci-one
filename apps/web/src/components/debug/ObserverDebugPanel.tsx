@@ -283,7 +283,13 @@ export function ObserverDebugPanel({
                 border: '1px solid rgba(244, 114, 182, 0.3)',
               })}
             >
-              <div className={css({ color: '#f472b6', fontWeight: 'bold', marginBottom: '6px' })}>
+              <div
+                className={css({
+                  color: '#f472b6',
+                  fontWeight: 'bold',
+                  marginBottom: '6px',
+                })}
+              >
                 Observed State
               </div>
               <div className={css({ color: '#d1d5db', fontSize: '10px' })}>
@@ -325,7 +331,13 @@ export function ObserverDebugPanel({
                 border: '1px solid rgba(96, 165, 250, 0.3)',
               })}
             >
-              <div className={css({ color: '#60a5fa', fontWeight: 'bold', marginBottom: '6px' })}>
+              <div
+                className={css({
+                  color: '#60a5fa',
+                  fontWeight: 'bold',
+                  marginBottom: '6px',
+                })}
+              >
                 Vision Frame
               </div>
               <div className={css({ color: '#d1d5db', fontSize: '10px' })}>
@@ -349,7 +361,13 @@ export function ObserverDebugPanel({
                 border: '1px solid rgba(168, 85, 247, 0.3)',
               })}
             >
-              <div className={css({ color: '#a855f7', fontWeight: 'bold', marginBottom: '6px' })}>
+              <div
+                className={css({
+                  color: '#a855f7',
+                  fontWeight: 'bold',
+                  marginBottom: '6px',
+                })}
+              >
                 DVR Buffer
               </div>
               <div className={css({ color: '#d1d5db', fontSize: '10px' })}>

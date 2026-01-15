@@ -582,7 +582,10 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
   // Handle part transition complete - called when transition screen finishes
   // This is where we trigger game break (after "put away abacus" message is shown)
   const handlePartTransitionComplete = useCallback(() => {
-    console.log('[PracticeClient] handlePartTransitionComplete called, pendingGameBreak:', pendingGameBreak)
+    console.log(
+      '[PracticeClient] handlePartTransitionComplete called, pendingGameBreak:',
+      pendingGameBreak
+    )
     // First, broadcast to observers
     sendPartTransitionComplete()
 

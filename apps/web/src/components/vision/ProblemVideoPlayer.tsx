@@ -469,6 +469,7 @@ export function ProblemVideoPlayer({
                 src={videoUrl}
                 controls
                 playsInline
+                muted
                 onCanPlay={handleCanPlay}
                 onTimeUpdate={handleTimeUpdate}
                 className={css({
@@ -839,8 +840,13 @@ export function ProblemVideoPlayer({
                     Step {noVideoPlaybackIndex + 1} of {answerProgression.length}
                   </span>
                   {currentNoVideoState?.originalTimestamp !== undefined && (
-                    <span className={css({ color: isDark ? 'gray.600' : 'gray.300' })}>
-                      (actual: {(currentNoVideoState.originalTimestamp / 1000).toFixed(1)}s)
+                    <span
+                      className={css({
+                        color: isDark ? 'gray.600' : 'gray.300',
+                      })}
+                    >
+                      (actual: {(currentNoVideoState.originalTimestamp / 1000).toFixed(1)}
+                      s)
                     </span>
                   )}
                 </div>

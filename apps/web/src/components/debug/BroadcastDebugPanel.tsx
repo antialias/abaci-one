@@ -247,7 +247,13 @@ export function BroadcastDebugPanel({
                 border: '1px solid rgba(96, 165, 250, 0.3)',
               })}
             >
-              <div className={css({ color: '#60a5fa', fontWeight: 'bold', marginBottom: '6px' })}>
+              <div
+                className={css({
+                  color: '#60a5fa',
+                  fontWeight: 'bold',
+                  marginBottom: '6px',
+                })}
+              >
                 Current State
               </div>
               <div className={css({ color: '#d1d5db', fontSize: '10px' })}>
@@ -275,7 +281,13 @@ export function BroadcastDebugPanel({
           )}
 
           {lastBroadcastTime && (
-            <div className={css({ color: '#6b7280', fontSize: '10px', marginBottom: '8px' })}>
+            <div
+              className={css({
+                color: '#6b7280',
+                fontSize: '10px',
+                marginBottom: '8px',
+              })}
+            >
               Last broadcast: {new Date(lastBroadcastTime).toLocaleTimeString()}
             </div>
           )}

@@ -406,13 +406,12 @@ export function useSessionBroadcast(
         return
       }
 
-      // Only send markers if recording is active
-      if (!isRecordingRef.current) {
-        return
-      }
+      // Always send markers - server will capture metadata even without video frames
+      // This enables playback of student answers even when camera wasn't enabled
 
       socketRef.current.emit('vision-problem-marker', {
         sessionId,
+        playerId, // Include playerId for auto-starting metadata-only sessions
         problemNumber,
         partIndex,
         eventType,
@@ -430,7 +429,7 @@ export function useSessionBroadcast(
         retryContext,
       })
     },
-    [sessionId]
+    [sessionId, playerId]
   )
 
   return {

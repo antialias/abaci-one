@@ -680,7 +680,10 @@ export function useInteractionPhase(
 
     // If no active problem, nothing to do
     if (!activeProblem) {
-      console.log('[useInteractionPhase] No active problem - cannot load. Current phase:', phase.phase)
+      console.log(
+        '[useInteractionPhase] No active problem - cannot load. Current phase:',
+        phase.phase
+      )
       prevActiveProblemKeyRef.current = null
       return
     }
@@ -718,7 +721,10 @@ export function useInteractionPhase(
 
     // Case 2: Key changed - handle redo mode or session advancement
     if (keyChanged) {
-      console.log('[useInteractionPhase] Key changed:', { prevKey, currentKey })
+      console.log('[useInteractionPhase] Key changed:', {
+        prevKey,
+        currentKey,
+      })
 
       // CRITICAL: Don't interrupt normal progression flow
       // If we're in showingFeedback, submitting, or transitioning, the normal flow
