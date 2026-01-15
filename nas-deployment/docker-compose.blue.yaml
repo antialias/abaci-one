@@ -44,6 +44,13 @@ services:
       traefik.http.middlewares.hsts.headers.stsSeconds: "63072000"
       traefik.http.middlewares.hsts.headers.stsIncludeSubdomains: "true"
       traefik.http.middlewares.hsts.headers.stsPreload: "true"
+      # Instance-specific subdomain route (blue.abaci.one)
+      traefik.http.routers.abaci-blue-instance.rule: "Host(`blue.abaci.one`)"
+      traefik.http.routers.abaci-blue-instance.entrypoints: websecure
+      traefik.http.routers.abaci-blue-instance.tls: "true"
+      traefik.http.routers.abaci-blue-instance.tls.certresolver: myresolver
+      traefik.http.routers.abaci-blue-instance.service: abaci-blue-instance
+      traefik.http.services.abaci-blue-instance.loadbalancer.server.port: "3000"
       docker-compose-watcher.watch: "1"
       docker-compose-watcher.dir: /volume1/homes/antialias/projects/abaci.one
       docker-compose-watcher.file: docker-compose.blue.yaml

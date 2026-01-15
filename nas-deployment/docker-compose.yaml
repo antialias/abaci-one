@@ -67,6 +67,13 @@ services:
     container_name: abaci-blue
     labels:
       <<: *traefik-labels
+      # Instance-specific subdomain route (blue.abaci.one)
+      traefik.http.routers.abaci-blue-instance.rule: "Host(`blue.abaci.one`)"
+      traefik.http.routers.abaci-blue-instance.entrypoints: websecure
+      traefik.http.routers.abaci-blue-instance.tls: "true"
+      traefik.http.routers.abaci-blue-instance.tls.certresolver: myresolver
+      traefik.http.routers.abaci-blue-instance.service: abaci-blue-instance
+      traefik.http.services.abaci-blue-instance.loadbalancer.server.port: "3000"
       docker-compose-watcher.watch: "1"
       docker-compose-watcher.dir: /volume1/homes/antialias/projects/abaci.one
       docker-compose-watcher.file: docker-compose.blue.yaml
@@ -76,6 +83,13 @@ services:
     container_name: abaci-green
     labels:
       <<: *traefik-labels
+      # Instance-specific subdomain route (green.abaci.one)
+      traefik.http.routers.abaci-green-instance.rule: "Host(`green.abaci.one`)"
+      traefik.http.routers.abaci-green-instance.entrypoints: websecure
+      traefik.http.routers.abaci-green-instance.tls: "true"
+      traefik.http.routers.abaci-green-instance.tls.certresolver: myresolver
+      traefik.http.routers.abaci-green-instance.service: abaci-green-instance
+      traefik.http.services.abaci-green-instance.loadbalancer.server.port: "3000"
       docker-compose-watcher.watch: "1"
       docker-compose-watcher.dir: /volume1/homes/antialias/projects/abaci.one
       docker-compose-watcher.file: docker-compose.green.yaml
