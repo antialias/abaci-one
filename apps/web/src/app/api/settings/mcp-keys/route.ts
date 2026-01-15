@@ -48,6 +48,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const userId = await getDbUserId()
+    console.log('[MCP-KEYS] Got userId:', userId)
+
     const body = await request.json()
 
     const name = body.name?.trim()
@@ -57,6 +59,8 @@ export async function POST(request: NextRequest) {
 
     // Generate a random API key
     const key = generateApiKey()
+
+    console.log('[MCP-KEYS] Inserting key for user:', userId, 'name:', name)
 
     // Insert the new key
     const [newKey] = await db
@@ -68,6 +72,8 @@ export async function POST(request: NextRequest) {
       })
       .returning()
 
+    console.log('[MCP-KEYS] Key created successfully:', newKey.id)
+
     return NextResponse.json({
       id: newKey.id,
       name: newKey.name,
@@ -76,7 +82,9 @@ export async function POST(request: NextRequest) {
       message: 'Save this key securely - it will not be shown again!',
     })
   } catch (error) {
-    console.error('Error creating MCP API key:', error)
-    return NextResponse.json({ error: 'Failed to create API key' }, { status: 500 })
+    console.error('[MCP-KEYS] Error creating MCP API key:', error)
+    // Return more specific error for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: 'Failed to create API key', details: errorMessage }, { status: 500 })
   }
 }
