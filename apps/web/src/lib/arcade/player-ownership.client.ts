@@ -5,25 +5,25 @@
  * from client components without pulling in database code.
  */
 
-import type { RoomData } from "@/hooks/useRoomData";
+import type { RoomData } from '@/hooks/useRoomData'
 
 /**
  * Map of player IDs to user IDs
  * Key: playerId (database player.id)
  * Value: userId (database user.id)
  */
-export type PlayerOwnershipMap = Record<string, string>;
+export type PlayerOwnershipMap = Record<string, string>
 
 /**
  * Player metadata for display purposes
  * Combines ownership info with display properties
  */
 export interface PlayerMetadata {
-  id: string;
-  name: string;
-  emoji: string;
-  color: string;
-  userId: string;
+  id: string
+  name: string
+  emoji: string
+  color: string
+  userId: string
 }
 
 // ============================================================================
@@ -46,22 +46,22 @@ export interface PlayerMetadata {
  * ```
  */
 export function buildPlayerOwnershipFromRoomData(
-  roomData: RoomData | null | undefined,
+  roomData: RoomData | null | undefined
 ): PlayerOwnershipMap {
   if (!roomData?.memberPlayers) {
-    return {};
+    return {}
   }
 
-  const ownership: PlayerOwnershipMap = {};
+  const ownership: PlayerOwnershipMap = {}
 
   // Iterate over each user's players
   for (const [userId, userPlayers] of Object.entries(roomData.memberPlayers)) {
     for (const player of userPlayers) {
-      ownership[player.id] = userId;
+      ownership[player.id] = userId
     }
   }
 
-  return ownership;
+  return ownership
 }
 
 // ============================================================================
@@ -84,9 +84,9 @@ export function buildPlayerOwnershipFromRoomData(
 export function isPlayerOwnedByUser(
   playerId: string,
   userId: string,
-  ownershipMap: PlayerOwnershipMap,
+  ownershipMap: PlayerOwnershipMap
 ): boolean {
-  return ownershipMap[playerId] === userId;
+  return ownershipMap[playerId] === userId
 }
 
 /**
@@ -106,9 +106,9 @@ export function isPlayerOwnedByUser(
  */
 export function getPlayerOwner(
   playerId: string,
-  ownershipMap: PlayerOwnershipMap,
+  ownershipMap: PlayerOwnershipMap
 ): string | undefined {
-  return ownershipMap[playerId];
+  return ownershipMap[playerId]
 }
 
 /**
@@ -135,15 +135,15 @@ export function buildPlayerMetadata(
   playerIds: string[],
   ownershipMap: PlayerOwnershipMap,
   playersMap: Map<string, { name: string; emoji: string; color: string }>,
-  fallbackUserId?: string,
+  fallbackUserId?: string
 ): Record<string, PlayerMetadata> {
-  const metadata: Record<string, PlayerMetadata> = {};
+  const metadata: Record<string, PlayerMetadata> = {}
 
   for (const playerId of playerIds) {
-    const playerData = playersMap.get(playerId);
+    const playerData = playersMap.get(playerId)
     if (playerData) {
       // Get the actual owner userId from ownership map, or use fallback
-      const ownerUserId = ownershipMap[playerId] || fallbackUserId || "";
+      const ownerUserId = ownershipMap[playerId] || fallbackUserId || ''
 
       metadata[playerId] = {
         id: playerId,
@@ -151,11 +151,11 @@ export function buildPlayerMetadata(
         emoji: playerData.emoji,
         color: playerData.color,
         userId: ownerUserId, // Correct: Use actual owner's userId
-      };
+      }
     }
   }
 
-  return metadata;
+  return metadata
 }
 
 /**
@@ -174,9 +174,9 @@ export function buildPlayerMetadata(
 export function filterPlayersByOwner(
   playerIds: string[],
   userId: string,
-  ownershipMap: PlayerOwnershipMap,
+  ownershipMap: PlayerOwnershipMap
 ): string[] {
-  return playerIds.filter((playerId) => ownershipMap[playerId] === userId);
+  return playerIds.filter((playerId) => ownershipMap[playerId] === userId)
 }
 
 /**
@@ -192,7 +192,7 @@ export function filterPlayersByOwner(
  * ```
  */
 export function getUniqueOwners(ownershipMap: PlayerOwnershipMap): string[] {
-  return Array.from(new Set(Object.values(ownershipMap)));
+  return Array.from(new Set(Object.values(ownershipMap)))
 }
 
 /**
@@ -212,18 +212,18 @@ export function getUniqueOwners(ownershipMap: PlayerOwnershipMap): string[] {
  */
 export function groupPlayersByOwner(
   playerIds: string[],
-  ownershipMap: PlayerOwnershipMap,
+  ownershipMap: PlayerOwnershipMap
 ): Map<string, string[]> {
-  const groups = new Map<string, string[]>();
+  const groups = new Map<string, string[]>()
 
   for (const playerId of playerIds) {
-    const ownerId = ownershipMap[playerId];
+    const ownerId = ownershipMap[playerId]
     if (ownerId) {
-      const existing = groups.get(ownerId) || [];
-      existing.push(playerId);
-      groups.set(ownerId, existing);
+      const existing = groups.get(ownerId) || []
+      existing.push(playerId)
+      groups.set(ownerId, existing)
     }
   }
 
-  return groups;
+  return groups
 }

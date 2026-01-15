@@ -1,27 +1,23 @@
-import { eq } from "drizzle-orm";
-import { type NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { appSettings } from "@/db/schema";
+import { eq } from 'drizzle-orm'
+import { type NextRequest, NextResponse } from 'next/server'
+import { db } from '@/db'
+import { appSettings } from '@/db/schema'
 
 /** Default BKT confidence threshold */
-const DEFAULT_THRESHOLD = 0.3;
+const DEFAULT_THRESHOLD = 0.3
 
 /**
  * Ensure the default settings row exists.
  * Creates it if missing (handles fresh databases).
  */
 async function ensureDefaultSettings() {
-  const existing = await db
-    .select()
-    .from(appSettings)
-    .where(eq(appSettings.id, "default"))
-    .limit(1);
+  const existing = await db.select().from(appSettings).where(eq(appSettings.id, 'default')).limit(1)
 
   if (existing.length === 0) {
     await db.insert(appSettings).values({
-      id: "default",
+      id: 'default',
       bktConfidenceThreshold: DEFAULT_THRESHOLD,
-    });
+    })
   }
 }
 
@@ -33,24 +29,20 @@ async function ensureDefaultSettings() {
  */
 export async function GET() {
   try {
-    await ensureDefaultSettings();
+    await ensureDefaultSettings()
 
     const [settings] = await db
       .select()
       .from(appSettings)
-      .where(eq(appSettings.id, "default"))
-      .limit(1);
+      .where(eq(appSettings.id, 'default'))
+      .limit(1)
 
     return NextResponse.json({
-      bktConfidenceThreshold:
-        settings?.bktConfidenceThreshold ?? DEFAULT_THRESHOLD,
-    });
+      bktConfidenceThreshold: settings?.bktConfidenceThreshold ?? DEFAULT_THRESHOLD,
+    })
   } catch (error) {
-    console.error("Error fetching BKT settings:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch settings" },
-      { status: 500 },
-    );
+    console.error('Error fetching BKT settings:', error)
+    return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
   }
 }
 
@@ -64,38 +56,35 @@ export async function GET() {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { bktConfidenceThreshold } = body;
+    const body = await request.json()
+    const { bktConfidenceThreshold } = body
 
     // Validate the threshold
-    if (typeof bktConfidenceThreshold !== "number") {
+    if (typeof bktConfidenceThreshold !== 'number') {
       return NextResponse.json(
-        { error: "bktConfidenceThreshold must be a number" },
-        { status: 400 },
-      );
+        { error: 'bktConfidenceThreshold must be a number' },
+        { status: 400 }
+      )
     }
 
     if (bktConfidenceThreshold < 0.1 || bktConfidenceThreshold > 0.9) {
       return NextResponse.json(
-        { error: "bktConfidenceThreshold must be between 0.1 and 0.9" },
-        { status: 400 },
-      );
+        { error: 'bktConfidenceThreshold must be between 0.1 and 0.9' },
+        { status: 400 }
+      )
     }
 
-    await ensureDefaultSettings();
+    await ensureDefaultSettings()
 
     // Update the setting
     await db
       .update(appSettings)
       .set({ bktConfidenceThreshold })
-      .where(eq(appSettings.id, "default"));
+      .where(eq(appSettings.id, 'default'))
 
-    return NextResponse.json({ bktConfidenceThreshold });
+    return NextResponse.json({ bktConfidenceThreshold })
   } catch (error) {
-    console.error("Error updating BKT settings:", error);
-    return NextResponse.json(
-      { error: "Failed to update settings" },
-      { status: 500 },
-    );
+    console.error('Error updating BKT settings:', error)
+    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
   }
 }

@@ -20,9 +20,9 @@
  *   - Help provides additive bonus to probability
  */
 
-import type { GeneratedProblem } from "@/db/schema/session-plans";
-import type { SeededRandom } from "./SeededRandom";
-import type { SimulatedAnswer, StudentProfile } from "./types";
+import type { GeneratedProblem } from '@/db/schema/session-plans'
+import type { SeededRandom } from './SeededRandom'
+import type { SimulatedAnswer, StudentProfile } from './types'
 
 /**
  * Skill difficulty multipliers for K (halfMaxExposure).
@@ -36,50 +36,50 @@ import type { SimulatedAnswer, StudentProfile } from "./types";
  */
 const SKILL_DIFFICULTY_MULTIPLIER: Record<string, number> = {
   // Basic skills - easier, foundational
-  "basic.directAddition": 0.8,
-  "basic.directSubtraction": 0.8,
-  "basic.heavenBead": 0.9,
-  "basic.heavenBeadSubtraction": 0.9,
-  "basic.simpleCombinations": 1.0,
-  "basic.simpleCombinationsSub": 1.0,
+  'basic.directAddition': 0.8,
+  'basic.directSubtraction': 0.8,
+  'basic.heavenBead': 0.9,
+  'basic.heavenBeadSubtraction': 0.9,
+  'basic.simpleCombinations': 1.0,
+  'basic.simpleCombinationsSub': 1.0,
 
   // Five-complements - moderate difficulty (single column, but requires decomposition)
-  "fiveComplements.4=5-1": 1.2,
-  "fiveComplements.3=5-2": 1.2,
-  "fiveComplements.2=5-3": 1.2,
-  "fiveComplements.1=5-4": 1.2,
-  "fiveComplementsSub.-4=-5+1": 1.3,
-  "fiveComplementsSub.-3=-5+2": 1.3,
-  "fiveComplementsSub.-2=-5+3": 1.3,
-  "fiveComplementsSub.-1=-5+4": 1.3,
+  'fiveComplements.4=5-1': 1.2,
+  'fiveComplements.3=5-2': 1.2,
+  'fiveComplements.2=5-3': 1.2,
+  'fiveComplements.1=5-4': 1.2,
+  'fiveComplementsSub.-4=-5+1': 1.3,
+  'fiveComplementsSub.-3=-5+2': 1.3,
+  'fiveComplementsSub.-2=-5+3': 1.3,
+  'fiveComplementsSub.-1=-5+4': 1.3,
 
   // Ten-complements - hardest (cross-column, carrying/borrowing)
-  "tenComplements.9=10-1": 1.6,
-  "tenComplements.8=10-2": 1.7,
-  "tenComplements.7=10-3": 1.7,
-  "tenComplements.6=10-4": 1.8,
-  "tenComplements.5=10-5": 1.8,
-  "tenComplements.4=10-6": 1.8,
-  "tenComplements.3=10-7": 1.9,
-  "tenComplements.2=10-8": 1.9,
-  "tenComplements.1=10-9": 2.0, // Hardest - biggest adjustment
-  "tenComplementsSub.-9=+1-10": 1.7,
-  "tenComplementsSub.-8=+2-10": 1.8,
-  "tenComplementsSub.-7=+3-10": 1.8,
-  "tenComplementsSub.-6=+4-10": 1.9,
-  "tenComplementsSub.-5=+5-10": 1.9,
-  "tenComplementsSub.-4=+6-10": 1.9,
-  "tenComplementsSub.-3=+7-10": 2.0,
-  "tenComplementsSub.-2=+8-10": 2.0,
-  "tenComplementsSub.-1=+9-10": 2.1, // Hardest subtraction
-};
+  'tenComplements.9=10-1': 1.6,
+  'tenComplements.8=10-2': 1.7,
+  'tenComplements.7=10-3': 1.7,
+  'tenComplements.6=10-4': 1.8,
+  'tenComplements.5=10-5': 1.8,
+  'tenComplements.4=10-6': 1.8,
+  'tenComplements.3=10-7': 1.9,
+  'tenComplements.2=10-8': 1.9,
+  'tenComplements.1=10-9': 2.0, // Hardest - biggest adjustment
+  'tenComplementsSub.-9=+1-10': 1.7,
+  'tenComplementsSub.-8=+2-10': 1.8,
+  'tenComplementsSub.-7=+3-10': 1.8,
+  'tenComplementsSub.-6=+4-10': 1.9,
+  'tenComplementsSub.-5=+5-10': 1.9,
+  'tenComplementsSub.-4=+6-10': 1.9,
+  'tenComplementsSub.-3=+7-10': 2.0,
+  'tenComplementsSub.-2=+8-10': 2.0,
+  'tenComplementsSub.-1=+9-10': 2.1, // Hardest subtraction
+}
 
 /**
  * Get the difficulty multiplier for a skill.
  * Returns 1.0 for unknown skills (baseline difficulty).
  */
 function getSkillDifficultyMultiplier(skillId: string): number {
-  return SKILL_DIFFICULTY_MULTIPLIER[skillId] ?? 1.0;
+  return SKILL_DIFFICULTY_MULTIPLIER[skillId] ?? 1.0
 }
 
 /**
@@ -92,31 +92,29 @@ function getSkillDifficultyMultiplier(skillId: string): number {
  * used to measure fatigue independently of what budgeting system was used.
  */
 export function getTrueMultiplier(trueP: number): number {
-  if (trueP >= 0.9) return 1.0; // Automated
-  if (trueP >= 0.7) return 1.5; // Nearly automated
-  if (trueP >= 0.5) return 2.0; // Halfway
-  if (trueP >= 0.3) return 3.0; // Struggling
-  return 4.0; // Very weak
+  if (trueP >= 0.9) return 1.0 // Automated
+  if (trueP >= 0.7) return 1.5 // Nearly automated
+  if (trueP >= 0.5) return 2.0 // Halfway
+  if (trueP >= 0.3) return 3.0 // Struggling
+  return 4.0 // Very weak
 }
 
 /**
  * Simulates a learning student using exposure-based Hill function model.
  */
 export class SimulatedStudent {
-  private skillExposures: Map<string, number>;
-  private profile: StudentProfile;
-  private rng: SeededRandom;
+  private skillExposures: Map<string, number>
+  private profile: StudentProfile
+  private rng: SeededRandom
 
   constructor(profile: StudentProfile, rng: SeededRandom) {
-    this.profile = profile;
-    this.rng = rng;
-    this.skillExposures = new Map();
+    this.profile = profile
+    this.rng = rng
+    this.skillExposures = new Map()
 
     // Initialize exposures from profile (pre-seeded learning)
-    for (const [skillId, exposure] of Object.entries(
-      profile.initialExposures,
-    )) {
-      this.skillExposures.set(skillId, exposure);
+    for (const [skillId, exposure] of Object.entries(profile.initialExposures)) {
+      this.skillExposures.set(skillId, exposure)
     }
   }
 
@@ -138,12 +136,12 @@ export class SimulatedStudent {
    * @returns Probability of correct answer [0, 1]
    */
   hillFunction(exposure: number, K: number, n: number): number {
-    if (exposure <= 0) return 0;
-    if (K <= 0) return 1; // Edge case: instant mastery
+    if (exposure <= 0) return 0
+    if (K <= 0) return 1 // Edge case: instant mastery
 
-    const expN = exposure ** n;
-    const kN = K ** n;
-    return expN / (kN + expN);
+    const expN = exposure ** n
+    const kN = K ** n
+    return expN / (kN + expN)
   }
 
   /**
@@ -159,40 +157,33 @@ export class SimulatedStudent {
    * they first see it.
    */
   answerProblem(problem: GeneratedProblem): SimulatedAnswer {
-    const skillsChallenged = problem.skillsRequired ?? [];
+    const skillsChallenged = problem.skillsRequired ?? []
 
     // Calculate fatigue BEFORE incrementing exposure
     // This represents cognitive load at the moment of problem presentation
-    let fatigue = 0;
+    let fatigue = 0
     for (const skillId of skillsChallenged) {
-      const trueP = this.getTrueProbability(skillId);
-      fatigue += getTrueMultiplier(trueP);
+      const trueP = this.getTrueProbability(skillId)
+      fatigue += getTrueMultiplier(trueP)
     }
 
     // Increment exposure for all skills BEFORE calculating probability
     // (Learning happens from the attempt, not from success)
     for (const skillId of skillsChallenged) {
-      const current = this.skillExposures.get(skillId) ?? 0;
-      this.skillExposures.set(skillId, current + 1);
+      const current = this.skillExposures.get(skillId) ?? 0
+      this.skillExposures.set(skillId, current + 1)
     }
 
     // Determine if student uses help (binary)
-    const hadHelp = this.selectHelpUsage();
+    const hadHelp = this.selectHelpUsage()
 
     // Calculate answer probability using Hill function + conjunctive model
-    const answerProbability = this.calculateAnswerProbability(
-      skillsChallenged,
-      hadHelp,
-    );
+    const answerProbability = this.calculateAnswerProbability(skillsChallenged, hadHelp)
 
-    const isCorrect = this.rng.chance(answerProbability);
+    const isCorrect = this.rng.chance(answerProbability)
 
     // Calculate response time
-    const responseTimeMs = this.calculateResponseTime(
-      skillsChallenged,
-      hadHelp,
-      isCorrect,
-    );
+    const responseTimeMs = this.calculateResponseTime(skillsChallenged, hadHelp, isCorrect)
 
     return {
       isCorrect,
@@ -200,7 +191,7 @@ export class SimulatedStudent {
       hadHelp,
       skillsChallenged,
       fatigue,
-    };
+    }
   }
 
   /**
@@ -211,39 +202,31 @@ export class SimulatedStudent {
    *
    * Help bonus is additive (applied after the product).
    */
-  private calculateAnswerProbability(
-    skillIds: string[],
-    hadHelp: boolean,
-  ): number {
+  private calculateAnswerProbability(skillIds: string[], hadHelp: boolean): number {
     if (skillIds.length === 0) {
       // Basic problems (no special skills) almost always correct
-      return 0.95;
+      return 0.95
     }
 
     // Conjunctive model: product of individual skill probabilities
-    let probability = 1.0;
+    let probability = 1.0
     for (const skillId of skillIds) {
-      const exposure = this.skillExposures.get(skillId) ?? 0;
+      const exposure = this.skillExposures.get(skillId) ?? 0
       // Apply skill-specific difficulty multiplier to K
       // Higher multiplier = harder skill = needs more exposures
-      const effectiveK =
-        this.profile.halfMaxExposure * getSkillDifficultyMultiplier(skillId);
-      const skillProb = this.hillFunction(
-        exposure,
-        effectiveK,
-        this.profile.hillCoefficient,
-      );
-      probability *= skillProb;
+      const effectiveK = this.profile.halfMaxExposure * getSkillDifficultyMultiplier(skillId)
+      const skillProb = this.hillFunction(exposure, effectiveK, this.profile.hillCoefficient)
+      probability *= skillProb
     }
 
     // Add help bonus (additive, not multiplicative)
     // helpBonuses[0] = no help, helpBonuses[1] = with help
-    const helpBonus = this.profile.helpBonuses[hadHelp ? 1 : 0];
-    probability += helpBonus;
+    const helpBonus = this.profile.helpBonuses[hadHelp ? 1 : 0]
+    probability += helpBonus
 
     // Clamp to valid probability range
     // Never 0% (lucky guess) or 100% (always room for error)
-    return Math.max(0.02, Math.min(0.98, probability));
+    return Math.max(0.02, Math.min(0.98, probability))
   }
 
   /**
@@ -251,64 +234,50 @@ export class SimulatedStudent {
    * Based on profile's helpUsageProbabilities [P(no help), P(help)].
    */
   private selectHelpUsage(): boolean {
-    const [pNoHelp] = this.profile.helpUsageProbabilities;
-    return this.rng.next() >= pNoHelp;
+    const [pNoHelp] = this.profile.helpUsageProbabilities
+    return this.rng.next() >= pNoHelp
   }
 
   /**
    * Calculate response time based on skill exposure and other factors.
    */
-  private calculateResponseTime(
-    skillIds: string[],
-    hadHelp: boolean,
-    isCorrect: boolean,
-  ): number {
-    const base = this.profile.baseResponseTimeMs;
-    const variance = this.profile.responseTimeVariance;
+  private calculateResponseTime(skillIds: string[], hadHelp: boolean, isCorrect: boolean): number {
+    const base = this.profile.baseResponseTimeMs
+    const variance = this.profile.responseTimeVariance
 
     // Higher exposure = faster response (more automatic)
-    let avgExposure = 0;
+    let avgExposure = 0
     if (skillIds.length > 0) {
       avgExposure =
-        skillIds.reduce(
-          (sum, id) => sum + (this.skillExposures.get(id) ?? 0),
-          0,
-        ) / skillIds.length;
+        skillIds.reduce((sum, id) => sum + (this.skillExposures.get(id) ?? 0), 0) / skillIds.length
     }
     // Normalize exposure effect: 0 exposures → 2x time, many exposures → 1x time
-    const exposureFactor =
-      2.0 - Math.min(1.0, avgExposure / (this.profile.halfMaxExposure * 2));
+    const exposureFactor = 2.0 - Math.min(1.0, avgExposure / (this.profile.halfMaxExposure * 2))
 
     // Help usage adds time (reading hints, etc.)
-    const helpFactor = hadHelp ? 1.25 : 1.0;
+    const helpFactor = hadHelp ? 1.25 : 1.0
 
     // Incorrect answers: sometimes faster (gave up), sometimes slower (struggled)
-    const correctnessFactor = isCorrect
-      ? 1.0
-      : this.rng.chance(0.5)
-        ? 0.7
-        : 1.4;
+    const correctnessFactor = isCorrect ? 1.0 : this.rng.chance(0.5) ? 0.7 : 1.4
 
     // Add randomness
-    const randomFactor = 1.0 + (this.rng.next() - 0.5) * variance;
+    const randomFactor = 1.0 + (this.rng.next() - 0.5) * variance
 
-    return Math.round(
-      base * exposureFactor * helpFactor * correctnessFactor * randomFactor,
-    );
+    return Math.round(base * exposureFactor * helpFactor * correctnessFactor * randomFactor)
   }
 
   /**
    * Get the current exposure count for a skill.
    */
   getExposure(skillId: string): number {
-    return this.skillExposures.get(skillId) ?? 0;
+    return this.skillExposures.get(skillId) ?? 0
   }
 
   /**
    * Get all exposure counts.
    */
   getAllExposures(): Map<string, number> {
-    return new Map(this.skillExposures);
+    return new Map(this.skillExposures)
   }
 
   /**
@@ -321,33 +290,28 @@ export class SimulatedStudent {
    * - Basic skills (multiplier ~0.8-0.9) need fewer exposures
    */
   getTrueProbability(skillId: string): number {
-    const exposure = this.skillExposures.get(skillId) ?? 0;
+    const exposure = this.skillExposures.get(skillId) ?? 0
     // Apply skill-specific difficulty multiplier to K
-    const effectiveK =
-      this.profile.halfMaxExposure * getSkillDifficultyMultiplier(skillId);
-    return this.hillFunction(
-      exposure,
-      effectiveK,
-      this.profile.hillCoefficient,
-    );
+    const effectiveK = this.profile.halfMaxExposure * getSkillDifficultyMultiplier(skillId)
+    return this.hillFunction(exposure, effectiveK, this.profile.hillCoefficient)
   }
 
   /**
    * Get all true probabilities for skills with any exposure.
    */
   getAllTrueProbabilities(): Map<string, number> {
-    const result = new Map<string, number>();
+    const result = new Map<string, number>()
     for (const [skillId] of this.skillExposures) {
-      result.set(skillId, this.getTrueProbability(skillId));
+      result.set(skillId, this.getTrueProbability(skillId))
     }
-    return result;
+    return result
   }
 
   /**
    * Get the student's profile.
    */
   getProfile(): StudentProfile {
-    return this.profile;
+    return this.profile
   }
 
   /**
@@ -356,7 +320,7 @@ export class SimulatedStudent {
    */
   ensureSkillTracked(skillId: string): void {
     if (!this.skillExposures.has(skillId)) {
-      this.skillExposures.set(skillId, 0);
+      this.skillExposures.set(skillId, 0)
     }
   }
 
@@ -365,7 +329,7 @@ export class SimulatedStudent {
    */
   ensureSkillsTracked(skillIds: string[]): void {
     for (const skillId of skillIds) {
-      this.ensureSkillTracked(skillId);
+      this.ensureSkillTracked(skillId)
     }
   }
 
@@ -380,14 +344,14 @@ export class SimulatedStudent {
    * @returns Assessment result with accuracy and probability
    */
   assessSkill(skillId: string, trials: number = 20): SkillAssessment {
-    const trueProbability = this.getTrueProbability(skillId);
-    const exposure = this.getExposure(skillId);
+    const trueProbability = this.getTrueProbability(skillId)
+    const exposure = this.getExposure(skillId)
 
     // Run trials WITHOUT incrementing exposure
-    let correct = 0;
+    let correct = 0
     for (let i = 0; i < trials; i++) {
       if (this.rng.chance(trueProbability)) {
-        correct++;
+        correct++
       }
     }
 
@@ -398,7 +362,7 @@ export class SimulatedStudent {
       assessedAccuracy: correct / trials,
       trials,
       correct,
-    };
+    }
   }
 
   /**
@@ -408,15 +372,12 @@ export class SimulatedStudent {
    * @param trialsPerSkill - Number of trials per skill (default 20)
    * @returns Map of skill ID to assessment result
    */
-  assessSkills(
-    skillIds: string[],
-    trialsPerSkill: number = 20,
-  ): Map<string, SkillAssessment> {
-    const results = new Map<string, SkillAssessment>();
+  assessSkills(skillIds: string[], trialsPerSkill: number = 20): Map<string, SkillAssessment> {
+    const results = new Map<string, SkillAssessment>()
     for (const skillId of skillIds) {
-      results.set(skillId, this.assessSkill(skillId, trialsPerSkill));
+      results.set(skillId, this.assessSkill(skillId, trialsPerSkill))
     }
-    return results;
+    return results
   }
 }
 
@@ -424,15 +385,15 @@ export class SimulatedStudent {
  * Result of assessing a single skill.
  */
 export interface SkillAssessment {
-  skillId: string;
+  skillId: string
   /** Number of exposures during practice */
-  exposure: number;
+  exposure: number
   /** True P(correct) from Hill function */
-  trueProbability: number;
+  trueProbability: number
   /** Measured accuracy from assessment trials */
-  assessedAccuracy: number;
+  assessedAccuracy: number
   /** Number of assessment trials */
-  trials: number;
+  trials: number
   /** Number correct in assessment */
-  correct: number;
+  correct: number
 }

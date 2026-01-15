@@ -8,9 +8,9 @@
  * Per-region state (isHovered, isCelebrating, etc.) should still be props.
  */
 
-"use client";
+'use client'
 
-import { createContext, type ReactNode, useContext } from "react";
+import { createContext, type ReactNode, useContext } from 'react'
 
 // ============================================================================
 // Types
@@ -21,43 +21,43 @@ export interface RegionRenderState {
   // Theme
   // -------------------------------------------------------------------------
   /** Whether dark mode is active */
-  isDark: boolean;
+  isDark: boolean
 
   // -------------------------------------------------------------------------
   // Device Capabilities
   // -------------------------------------------------------------------------
   /** Whether pointer lock is active (disables native hover) */
-  pointerLocked: boolean;
+  pointerLocked: boolean
   /** Whether device has fine pointer (hides native cursor) */
-  hasAnyFinePointer: boolean;
+  hasAnyFinePointer: boolean
 
   // -------------------------------------------------------------------------
   // Animation Progress (0-1)
   // -------------------------------------------------------------------------
   /** Give-up reveal flash progress */
-  giveUpFlashProgress: number;
+  giveUpFlashProgress: number
   /** Hint animation flash progress */
-  hintFlashProgress: number;
+  hintFlashProgress: number
   /** Celebration flash progress */
-  celebrationFlashProgress: number;
+  celebrationFlashProgress: number
   /** Whether give-up animation is currently running (dims other regions) */
-  isGiveUpAnimating: boolean;
+  isGiveUpAnimating: boolean
   /** Whether celebration is in progress (disables clicks) */
-  celebrationActive: boolean;
+  celebrationActive: boolean
 }
 
 // ============================================================================
 // Context
 // ============================================================================
 
-const RegionRenderContext = createContext<RegionRenderState | null>(null);
+const RegionRenderContext = createContext<RegionRenderState | null>(null)
 
 // ============================================================================
 // Provider
 // ============================================================================
 
 interface RegionRenderProviderProps extends RegionRenderState {
-  children: ReactNode;
+  children: ReactNode
 }
 
 /**
@@ -102,13 +102,9 @@ export function RegionRenderProvider({
     celebrationFlashProgress,
     isGiveUpAnimating,
     celebrationActive,
-  };
+  }
 
-  return (
-    <RegionRenderContext.Provider value={value}>
-      {children}
-    </RegionRenderContext.Provider>
-  );
+  return <RegionRenderContext.Provider value={value}>{children}</RegionRenderContext.Provider>
 }
 
 // ============================================================================
@@ -123,11 +119,9 @@ export function RegionRenderProvider({
  * @throws Error if used outside of provider
  */
 export function useRegionRenderState(): RegionRenderState {
-  const context = useContext(RegionRenderContext);
+  const context = useContext(RegionRenderContext)
   if (!context) {
-    throw new Error(
-      "useRegionRenderState must be used within a RegionRenderProvider",
-    );
+    throw new Error('useRegionRenderState must be used within a RegionRenderProvider')
   }
-  return context;
+  return context
 }

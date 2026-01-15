@@ -1,30 +1,27 @@
-"use client";
+'use client'
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { css } from "../../../../../styled-system/css";
-import {
-  CameraCapture,
-  type CameraSource,
-} from "@/components/vision/CameraCapture";
-import type { CalibrationGrid } from "@/types/vision";
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { css } from '../../../../../styled-system/css'
+import { CameraCapture, type CameraSource } from '@/components/vision/CameraCapture'
+import type { CalibrationGrid } from '@/types/vision'
 
 interface CapturedColumn {
-  id: string;
-  imageUrl: string;
-  timestamp: number;
+  id: string
+  imageUrl: string
+  timestamp: number
 }
 
 interface DigitCapturePanelProps {
   /** The digit to capture */
-  digit: number;
+  digit: number
   /** Called when capture is successful with count of new images */
-  onCaptureSuccess: (capturedCount: number) => void;
+  onCaptureSuccess: (capturedCount: number) => void
   /** Number of physical abacus columns (default 4) */
-  columnCount?: number;
+  columnCount?: number
 }
 
 /** Minimum time between auto-captures in ms */
-const AUTO_CAPTURE_INTERVAL = 600;
+const AUTO_CAPTURE_INTERVAL = 600
 
 /**
  * Capture panel for a specific digit.
@@ -38,40 +35,40 @@ export function DigitCapturePanel({
   columnCount = 4,
 }: DigitCapturePanelProps) {
   // Camera state
-  const [isPhoneConnected, setIsPhoneConnected] = useState(false);
-  const [cameraSource, setCameraSource] = useState<CameraSource>("local");
-  const [calibration, setCalibration] = useState<CalibrationGrid | null>(null);
-  const [markersVisible, setMarkersVisible] = useState(false);
+  const [isPhoneConnected, setIsPhoneConnected] = useState(false)
+  const [cameraSource, setCameraSource] = useState<CameraSource>('local')
+  const [calibration, setCalibration] = useState<CalibrationGrid | null>(null)
+  const [markersVisible, setMarkersVisible] = useState(false)
 
   // Capture state
-  const [isCapturing, setIsCapturing] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false)
   const [captureStatus, setCaptureStatus] = useState<{
-    success: boolean;
-    message: string;
-  } | null>(null);
+    success: boolean
+    message: string
+  } | null>(null)
 
   // Recently captured columns (for live preview)
-  const [recentCaptures, setRecentCaptures] = useState<CapturedColumn[]>([]);
-  const [sessionCaptureCount, setSessionCaptureCount] = useState(0);
+  const [recentCaptures, setRecentCaptures] = useState<CapturedColumn[]>([])
+  const [sessionCaptureCount, setSessionCaptureCount] = useState(0)
 
   // Auto-capture state
-  const [autoCapture, setAutoCapture] = useState(false);
-  const [autoCaptureCount, setAutoCaptureCount] = useState(0);
-  const lastAutoCaptureTimeRef = useRef<number>(0);
-  const isAutoCapturingRef = useRef(false);
-  const markersVisibleRef = useRef(false);
-  const captureTrainingDataRef = useRef<(() => Promise<void>) | null>(null);
+  const [autoCapture, setAutoCapture] = useState(false)
+  const [autoCaptureCount, setAutoCaptureCount] = useState(0)
+  const lastAutoCaptureTimeRef = useRef<number>(0)
+  const isAutoCapturingRef = useRef(false)
+  const markersVisibleRef = useRef(false)
+  const captureTrainingDataRef = useRef<(() => Promise<void>) | null>(null)
 
-  const captureElementRef = useRef<
-    HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | null
-  >(null);
+  const captureElementRef = useRef<HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | null>(
+    null
+  )
 
   // Handle capture element from camera (may be video, image, or rectified canvas)
   const handleCapture = useCallback(
     (element: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement) => {
-      const prevElement = captureElementRef.current;
-      const prevType = prevElement?.constructor?.name ?? "null";
-      const newType = element?.constructor?.name ?? "null";
+      const prevElement = captureElementRef.current
+      const prevType = prevElement?.constructor?.name ?? 'null'
+      const newType = element?.constructor?.name ?? 'null'
       const dimensions =
         element instanceof HTMLCanvasElement
           ? `${element.width}x${element.height}`
@@ -79,150 +76,138 @@ export function DigitCapturePanel({
             ? `${element.videoWidth}x${element.videoHeight}`
             : element instanceof HTMLImageElement
               ? `${element.naturalWidth}x${element.naturalHeight}`
-              : "";
+              : ''
 
       console.log(
         `[DigitCapturePanel] handleCapture: ${prevType} → ${newType}`,
         dimensions,
-        element === prevElement ? "(same element)" : "(NEW element)",
-      );
-      captureElementRef.current = element;
+        element === prevElement ? '(same element)' : '(NEW element)'
+      )
+      captureElementRef.current = element
     },
-    [],
-  );
+    []
+  )
 
   // Perform capture
   const captureTrainingData = useCallback(async () => {
-    const element = captureElementRef.current;
+    const element = captureElementRef.current
     console.log(
-      "[DigitCapturePanel] captureTrainingData - element:",
+      '[DigitCapturePanel] captureTrainingData - element:',
       element?.constructor?.name,
-      element instanceof HTMLCanvasElement
-        ? `${element.width}x${element.height}`
-        : "",
-    );
+      element instanceof HTMLCanvasElement ? `${element.width}x${element.height}` : ''
+    )
 
     if (!element) {
-      console.log("[DigitCapturePanel] captureTrainingData - NO ELEMENT!");
+      console.log('[DigitCapturePanel] captureTrainingData - NO ELEMENT!')
       setCaptureStatus({
         success: false,
-        message: "No camera frame available",
-      });
-      return;
+        message: 'No camera frame available',
+      })
+      return
     }
 
     // Check if this is a rectified canvas (already perspective-corrected)
-    const isRectifiedCanvas = element instanceof HTMLCanvasElement;
-    console.log("[DigitCapturePanel] isRectifiedCanvas:", isRectifiedCanvas);
+    const isRectifiedCanvas = element instanceof HTMLCanvasElement
+    console.log('[DigitCapturePanel] isRectifiedCanvas:', isRectifiedCanvas)
 
     // Validate element readiness
     if (element instanceof HTMLVideoElement && element.readyState < 2) {
-      setCaptureStatus({ success: false, message: "Camera not ready" });
-      return;
+      setCaptureStatus({ success: false, message: 'Camera not ready' })
+      return
     }
-    if (
-      element instanceof HTMLImageElement &&
-      (!element.complete || element.naturalWidth === 0)
-    ) {
-      setCaptureStatus({ success: false, message: "Camera frame not ready" });
-      return;
+    if (element instanceof HTMLImageElement && (!element.complete || element.naturalWidth === 0)) {
+      setCaptureStatus({ success: false, message: 'Camera frame not ready' })
+      return
     }
     if (isRectifiedCanvas && (element.width === 0 || element.height === 0)) {
-      setCaptureStatus({ success: false, message: "Canvas not ready" });
-      return;
+      setCaptureStatus({ success: false, message: 'Canvas not ready' })
+      return
     }
 
-    setIsCapturing(true);
-    setCaptureStatus(null);
+    setIsCapturing(true)
+    setCaptureStatus(null)
 
     try {
       // Import frame processor dynamically
-      const { processImageFrame } = await import("@/lib/vision/frameProcessor");
-      const { imageDataToBase64Png } = await import(
-        "@/lib/vision/trainingData"
-      );
+      const { processImageFrame } = await import('@/lib/vision/frameProcessor')
+      const { imageDataToBase64Png } = await import('@/lib/vision/trainingData')
 
       // Convert element to image for processing
-      let imageElement: HTMLImageElement;
+      let imageElement: HTMLImageElement
 
       if (isRectifiedCanvas) {
         // Canvas is already rectified - convert to image
-        imageElement = new Image();
-        imageElement.src = element.toDataURL("image/jpeg");
+        imageElement = new Image()
+        imageElement.src = element.toDataURL('image/jpeg')
         await new Promise((resolve, reject) => {
-          imageElement.onload = resolve;
-          imageElement.onerror = reject;
-        });
+          imageElement.onload = resolve
+          imageElement.onerror = reject
+        })
       } else if (element instanceof HTMLVideoElement) {
         // Raw video - capture to canvas first
-        const canvas = document.createElement("canvas");
-        canvas.width = element.videoWidth;
-        canvas.height = element.videoHeight;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Failed to create canvas context");
-        ctx.drawImage(element, 0, 0);
+        const canvas = document.createElement('canvas')
+        canvas.width = element.videoWidth
+        canvas.height = element.videoHeight
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('Failed to create canvas context')
+        ctx.drawImage(element, 0, 0)
 
-        imageElement = new Image();
-        imageElement.src = canvas.toDataURL("image/jpeg");
+        imageElement = new Image()
+        imageElement.src = canvas.toDataURL('image/jpeg')
         await new Promise((resolve, reject) => {
-          imageElement.onload = resolve;
-          imageElement.onerror = reject;
-        });
+          imageElement.onload = resolve
+          imageElement.onerror = reject
+        })
       } else {
-        imageElement = element;
+        imageElement = element
       }
 
       // Slice image into columns
       // When it's a rectified canvas, pass null for calibration - image is already corrected,
       // just slice into equal columns. When it's raw video/image, use calibration for perspective.
       console.log(
-        "[DigitCapturePanel] Calling processImageFrame, imageElement size:",
+        '[DigitCapturePanel] Calling processImageFrame, imageElement size:',
         imageElement.width || imageElement.naturalWidth,
-        "x",
-        imageElement.height || imageElement.naturalHeight,
-      );
+        'x',
+        imageElement.height || imageElement.naturalHeight
+      )
       const columnImages = processImageFrame(
         imageElement,
         isRectifiedCanvas ? null : calibration,
-        columnCount,
-      );
-      console.log(
-        "[DigitCapturePanel] processImageFrame returned",
-        columnImages.length,
-        "columns",
-      );
+        columnCount
+      )
+      console.log('[DigitCapturePanel] processImageFrame returned', columnImages.length, 'columns')
       if (columnImages.length === 0) {
-        throw new Error("Failed to slice image into columns");
+        throw new Error('Failed to slice image into columns')
       }
 
       // Convert to base64
       const columns = columnImages.map((imgData: ImageData, index: number) => ({
         columnIndex: index,
         imageData: imageDataToBase64Png(imgData),
-      }));
+      }))
 
       // Send to collect API - we send the digit for each column
-      const response = await fetch("/api/vision-training/collect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/vision-training/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           columns,
-          correctAnswer:
-            parseInt(String(digit).repeat(columnCount), 10) || digit,
-          playerId: "training-wizard",
+          correctAnswer: parseInt(String(digit).repeat(columnCount), 10) || digit,
+          playerId: 'training-wizard',
           sessionId: `digit-capture-${digit}`,
         }),
-      });
+      })
 
-      const result = await response.json();
+      const result = await response.json()
 
       if (result.success) {
-        const savedCount = result.savedCount || columnCount;
-        setSessionCaptureCount((c) => c + savedCount);
+        const savedCount = result.savedCount || columnCount
+        setSessionCaptureCount((c) => c + savedCount)
         setCaptureStatus({
           success: true,
           message: `+${savedCount} saved`,
-        });
+        })
 
         // Add to recent captures preview
         const newCaptures: CapturedColumn[] = columns.map(
@@ -230,47 +215,46 @@ export function DigitCapturePanel({
             id: `${Date.now()}-${idx}`,
             imageUrl: `data:image/png;base64,${col.imageData}`,
             timestamp: Date.now(),
-          }),
-        );
-        setRecentCaptures((prev) => [...newCaptures, ...prev].slice(0, 8));
+          })
+        )
+        setRecentCaptures((prev) => [...newCaptures, ...prev].slice(0, 8))
 
-        onCaptureSuccess(savedCount);
+        onCaptureSuccess(savedCount)
       } else {
-        throw new Error(result.error || "Failed to save");
+        throw new Error(result.error || 'Failed to save')
       }
     } catch (error) {
-      console.error("[DigitCapturePanel] Error:", error);
+      console.error('[DigitCapturePanel] Error:', error)
       setCaptureStatus({
         success: false,
-        message: error instanceof Error ? error.message : "Failed to capture",
-      });
+        message: error instanceof Error ? error.message : 'Failed to capture',
+      })
     } finally {
-      setIsCapturing(false);
+      setIsCapturing(false)
     }
-  }, [digit, columnCount, calibration, onCaptureSuccess]);
+  }, [digit, columnCount, calibration, onCaptureSuccess])
 
   // Keep refs in sync for auto-capture (avoids interval restarts)
   useEffect(() => {
-    console.log("[DigitCapturePanel] markersVisible changed:", markersVisible, {
-      captureElementType:
-        captureElementRef.current?.constructor?.name ?? "null",
-    });
-    markersVisibleRef.current = markersVisible;
-  }, [markersVisible]);
+    console.log('[DigitCapturePanel] markersVisible changed:', markersVisible, {
+      captureElementType: captureElementRef.current?.constructor?.name ?? 'null',
+    })
+    markersVisibleRef.current = markersVisible
+  }, [markersVisible])
 
   useEffect(() => {
-    captureTrainingDataRef.current = captureTrainingData;
-  }, [captureTrainingData]);
+    captureTrainingDataRef.current = captureTrainingData
+  }, [captureTrainingData])
 
   // Auto-capture effect - only restarts when autoCapture toggles
   useEffect(() => {
     if (!autoCapture) {
-      console.log("[AutoCapture] Disabled");
-      isAutoCapturingRef.current = false;
-      return;
+      console.log('[AutoCapture] Disabled')
+      isAutoCapturingRef.current = false
+      return
     }
 
-    console.log("[AutoCapture] Enabled, starting polling loop");
+    console.log('[AutoCapture] Enabled, starting polling loop')
 
     // Set up polling interval
     const intervalId = setInterval(async () => {
@@ -278,113 +262,109 @@ export function DigitCapturePanel({
       if (!markersVisibleRef.current) {
         // Only log occasionally to avoid spam
         if (Date.now() % 2000 < 100) {
-          console.log(
-            "[AutoCapture] Waiting for markers (currently not visible)...",
-          );
+          console.log('[AutoCapture] Waiting for markers (currently not visible)...')
         }
-        return;
+        return
       }
 
       // Skip if already capturing
       if (isAutoCapturingRef.current) {
-        return; // Skip silently - we're already in progress
+        return // Skip silently - we're already in progress
       }
 
       // Validate capture element exists and has dimensions
-      const element = captureElementRef.current;
+      const element = captureElementRef.current
       if (!element) {
-        console.log(
-          "[AutoCapture] No capture element available yet (ref is null)",
-        );
-        return;
+        console.log('[AutoCapture] No capture element available yet (ref is null)')
+        return
       }
 
       // Check element has valid dimensions
       if (element instanceof HTMLCanvasElement) {
         if (element.width === 0 || element.height === 0) {
-          console.log("[AutoCapture] Canvas has zero dimensions, skipping");
-          return;
+          console.log('[AutoCapture] Canvas has zero dimensions, skipping')
+          return
         }
       } else if (element instanceof HTMLVideoElement) {
         if (element.videoWidth === 0 || element.videoHeight === 0) {
-          console.log("[AutoCapture] Video has zero dimensions, skipping");
-          return;
+          console.log('[AutoCapture] Video has zero dimensions, skipping')
+          return
         }
       }
 
       // Throttle captures
-      const now = Date.now();
-      const timeSinceLastCapture = now - lastAutoCaptureTimeRef.current;
+      const now = Date.now()
+      const timeSinceLastCapture = now - lastAutoCaptureTimeRef.current
       if (timeSinceLastCapture < AUTO_CAPTURE_INTERVAL) {
-        return; // Don't log this - too spammy
+        return // Don't log this - too spammy
       }
 
       // Perform capture using ref
-      const captureFn = captureTrainingDataRef.current;
+      const captureFn = captureTrainingDataRef.current
       if (!captureFn) {
-        console.log("[AutoCapture] No capture function available");
-        return;
+        console.log('[AutoCapture] No capture function available')
+        return
       }
 
-      console.log("[AutoCapture] Starting capture...", {
+      console.log('[AutoCapture] Starting capture...', {
         elementType: element.constructor.name,
         dimensions:
           element instanceof HTMLCanvasElement
             ? `${element.width}x${element.height}`
             : element instanceof HTMLVideoElement
               ? `${element.videoWidth}x${element.videoHeight}`
-              : "unknown",
-      });
-      isAutoCapturingRef.current = true;
-      lastAutoCaptureTimeRef.current = now;
+              : 'unknown',
+      })
+      isAutoCapturingRef.current = true
+      lastAutoCaptureTimeRef.current = now
 
       try {
-        await captureFn();
+        await captureFn()
         setAutoCaptureCount((c) => {
-          console.log("[AutoCapture] Capture complete, count:", c + 1);
-          return c + 1;
-        });
+          console.log('[AutoCapture] Capture complete, count:', c + 1)
+          return c + 1
+        })
       } catch (err) {
-        console.error("[AutoCapture] Capture failed:", err);
+        console.error('[AutoCapture] Capture failed:', err)
       } finally {
-        isAutoCapturingRef.current = false;
+        isAutoCapturingRef.current = false
       }
-    }, 100); // Poll frequently, but actual captures are throttled
+    }, 100) // Poll frequently, but actual captures are throttled
 
     return () => {
-      console.log("[AutoCapture] Cleanup - clearing interval");
-      clearInterval(intervalId);
-      isAutoCapturingRef.current = false;
-    };
-  }, [autoCapture]); // Only restart when autoCapture toggles
+      console.log('[AutoCapture] Cleanup - clearing interval')
+      clearInterval(intervalId)
+      isAutoCapturingRef.current = false
+    }
+  }, [autoCapture]) // Only restart when autoCapture toggles
 
   // Reset auto-capture count when digit changes
   useEffect(() => {
-    setAutoCaptureCount(0);
-  }, [digit]);
+    setAutoCaptureCount(0)
+  }, [digit])
 
   // Toggle auto-capture mode
   const toggleAutoCapture = useCallback(() => {
-    setAutoCapture((prev) => !prev);
+    setAutoCapture((prev) => !prev)
     if (!autoCapture) {
       // Starting auto-capture - reset count
-      setAutoCaptureCount(0);
+      setAutoCaptureCount(0)
     }
-  }, [autoCapture]);
+  }, [autoCapture])
 
   // Handle keyboard shortcut
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if ((e.key === " " || e.key === "Enter") && !isCapturing) {
-        e.preventDefault();
-        captureTrainingData();
+      if ((e.key === ' ' || e.key === 'Enter') && !isCapturing) {
+        e.preventDefault()
+        captureTrainingData()
       }
     },
-    [captureTrainingData, isCapturing],
-  );
+    [captureTrainingData, isCapturing]
+  )
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const canCapture = cameraSource === "local" || isPhoneConnected;
+  const containerRef = useRef<HTMLDivElement>(null)
+  const canCapture = cameraSource === 'local' || isPhoneConnected
 
   return (
     <div
@@ -392,10 +372,10 @@ export function DigitCapturePanel({
       data-component="digit-capture-panel"
       data-digit={digit}
       className={css({
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflow: "hidden", // No scrolling in capture panel
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        overflow: 'hidden', // No scrolling in capture panel
       })}
       tabIndex={0}
       onKeyDown={(e) => handleKeyDown(e.nativeEvent)}
@@ -407,20 +387,20 @@ export function DigitCapturePanel({
         data-element="capture-instruction-header"
         className={css({
           flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           gap: 3,
           py: 2,
           px: 3,
-          bg: "blue.900/30",
-          borderBottom: "1px solid",
-          borderColor: "blue.800/50",
+          bg: 'blue.900/30',
+          borderBottom: '1px solid',
+          borderColor: 'blue.800/50',
         })}
       >
         <span
           data-element="instruction-text"
-          className={css({ fontSize: "sm", color: "gray.400" })}
+          className={css({ fontSize: 'sm', color: 'gray.400' })}
         >
           Set abacus to all
         </span>
@@ -428,16 +408,16 @@ export function DigitCapturePanel({
           data-element="target-digit-badge"
           data-digit={digit}
           className={css({
-            fontSize: "2xl",
-            fontWeight: "bold",
-            fontFamily: "mono",
-            color: "blue.300",
+            fontSize: '2xl',
+            fontWeight: 'bold',
+            fontFamily: 'mono',
+            color: 'blue.300',
             px: 3,
             py: 1,
-            bg: "blue.900/50",
-            borderRadius: "lg",
-            border: "2px solid",
-            borderColor: "blue.600",
+            bg: 'blue.900/50',
+            borderRadius: 'lg',
+            border: '2px solid',
+            borderColor: 'blue.600',
           })}
         >
           {digit}
@@ -445,7 +425,7 @@ export function DigitCapturePanel({
         {sessionCaptureCount > 0 && (
           <span
             data-element="session-capture-count"
-            className={css({ fontSize: "sm", color: "green.400" })}
+            className={css({ fontSize: 'sm', color: 'green.400' })}
           >
             +{sessionCaptureCount}
           </span>
@@ -453,7 +433,7 @@ export function DigitCapturePanel({
         {calibration && (
           <span
             data-element="calibration-indicator"
-            className={css({ fontSize: "xs", color: "green.500" })}
+            className={css({ fontSize: 'xs', color: 'green.500' })}
             title="Markers detected"
           >
             ✓
@@ -467,11 +447,11 @@ export function DigitCapturePanel({
       <div
         data-element="camera-feed-container"
         className={css({
-          position: "relative",
+          position: 'relative',
           flex: 1,
           minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
+          display: 'flex',
+          flexDirection: 'column',
         })}
       >
         <CameraCapture
@@ -492,15 +472,15 @@ export function DigitCapturePanel({
           <div
             data-element="capture-footer"
             className={css({
-              position: "absolute",
+              position: 'absolute',
               bottom: 0,
               left: 0,
               right: 0,
               zIndex: 10,
-              borderTop: "1px solid",
-              borderColor: "gray.800",
-              bg: "gray.900/95",
-              backdropFilter: "blur(4px)",
+              borderTop: '1px solid',
+              borderColor: 'gray.800',
+              bg: 'gray.900/95',
+              backdropFilter: 'blur(4px)',
             })}
           >
             {/* Recent captures strip */}
@@ -508,20 +488,20 @@ export function DigitCapturePanel({
               <div
                 data-element="recent-captures-strip"
                 className={css({
-                  display: "flex",
-                  alignItems: "center",
+                  display: 'flex',
+                  alignItems: 'center',
                   gap: 2,
                   px: 3,
                   py: 2,
-                  borderBottom: "1px solid",
-                  borderColor: "gray.800",
+                  borderBottom: '1px solid',
+                  borderColor: 'gray.800',
                 })}
               >
                 <span
                   data-element="recent-captures-label"
                   className={css({
-                    fontSize: "xs",
-                    color: "gray.500",
+                    fontSize: 'xs',
+                    color: 'gray.500',
                     flexShrink: 0,
                   })}
                 >
@@ -530,9 +510,9 @@ export function DigitCapturePanel({
                 <div
                   data-element="recent-captures-thumbnails"
                   className={css({
-                    display: "flex",
+                    display: 'flex',
                     gap: 1,
-                    overflow: "hidden",
+                    overflow: 'hidden',
                   })}
                 >
                   {recentCaptures.map((capture) => (
@@ -542,21 +522,21 @@ export function DigitCapturePanel({
                       data-capture-id={capture.id}
                       className={css({
                         flexShrink: 0,
-                        width: "32px",
-                        height: "32px",
-                        borderRadius: "sm",
-                        overflow: "hidden",
-                        border: "1px solid",
-                        borderColor: "green.600",
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: 'sm',
+                        overflow: 'hidden',
+                        border: '1px solid',
+                        borderColor: 'green.600',
                       })}
                     >
                       <img
                         src={capture.imageUrl}
                         alt={`Captured ${digit}`}
                         className={css({
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
                         })}
                       />
                     </div>
@@ -570,9 +550,9 @@ export function DigitCapturePanel({
               data-element="capture-button-row"
               className={css({
                 p: 3,
-                display: "flex",
+                display: 'flex',
                 gap: 2,
-                alignItems: "center",
+                alignItems: 'center',
               })}
             >
               {/* Manual capture button */}
@@ -585,25 +565,20 @@ export function DigitCapturePanel({
                 className={css({
                   flex: 1,
                   py: 3,
-                  bg: autoCapture
-                    ? "gray.700"
-                    : isCapturing
-                      ? "gray.700"
-                      : "green.600",
-                  color: autoCapture ? "gray.500" : "white",
-                  borderRadius: "lg",
+                  bg: autoCapture ? 'gray.700' : isCapturing ? 'gray.700' : 'green.600',
+                  color: autoCapture ? 'gray.500' : 'white',
+                  borderRadius: 'lg',
                   borderTopRightRadius: 0,
                   borderBottomRightRadius: 0,
-                  border: "none",
-                  cursor:
-                    isCapturing || autoCapture ? "not-allowed" : "pointer",
-                  fontWeight: "bold",
-                  fontSize: "md",
-                  transition: "all 0.15s ease",
-                  _hover: isCapturing || autoCapture ? {} : { bg: "green.500" },
+                  border: 'none',
+                  cursor: isCapturing || autoCapture ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: 'md',
+                  transition: 'all 0.15s ease',
+                  _hover: isCapturing || autoCapture ? {} : { bg: 'green.500' },
                 })}
               >
-                {isCapturing ? "⏳..." : `📸 Capture`}
+                {isCapturing ? '⏳...' : `📸 Capture`}
               </button>
 
               {/* Auto-capture toggle button */}
@@ -616,43 +591,33 @@ export function DigitCapturePanel({
                 className={css({
                   py: 3,
                   px: 4,
-                  bg: autoCapture
-                    ? markersVisible
-                      ? "blue.600"
-                      : "yellow.700"
-                    : "gray.700",
-                  color: "white",
-                  borderRadius: "lg",
+                  bg: autoCapture ? (markersVisible ? 'blue.600' : 'yellow.700') : 'gray.700',
+                  color: 'white',
+                  borderRadius: 'lg',
                   borderTopLeftRadius: 0,
                   borderBottomLeftRadius: 0,
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  fontSize: "md",
-                  transition: "all 0.15s ease",
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: 'md',
+                  transition: 'all 0.15s ease',
                   animation:
-                    autoCapture && markersVisible
-                      ? "pulse 1.5s ease-in-out infinite"
-                      : "none",
+                    autoCapture && markersVisible ? 'pulse 1.5s ease-in-out infinite' : 'none',
                   _hover: {
-                    bg: autoCapture
-                      ? markersVisible
-                        ? "blue.500"
-                        : "yellow.600"
-                      : "gray.600",
+                    bg: autoCapture ? (markersVisible ? 'blue.500' : 'yellow.600') : 'gray.600',
                   },
                 })}
                 title={
                   autoCapture
                     ? markersVisible
-                      ? "Click to stop auto-capture"
-                      : "Waiting for markers..."
-                    : "Enable auto-capture"
+                      ? 'Click to stop auto-capture'
+                      : 'Waiting for markers...'
+                    : 'Enable auto-capture'
                 }
               >
                 {autoCapture ? (
                   markersVisible ? (
-                    <>🔄 {autoCaptureCount > 0 ? autoCaptureCount : "Auto"}</>
+                    <>🔄 {autoCaptureCount > 0 ? autoCaptureCount : 'Auto'}</>
                   ) : (
                     <>⏸️ No markers</>
                   )
@@ -669,9 +634,9 @@ export function DigitCapturePanel({
                 className={css({
                   px: 3,
                   pb: 2,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   gap: 2,
                 })}
               >
@@ -679,8 +644,8 @@ export function DigitCapturePanel({
                   <span
                     data-element="auto-capture-indicator"
                     className={css({
-                      fontSize: "sm",
-                      color: "blue.400",
+                      fontSize: 'sm',
+                      color: 'blue.400',
                     })}
                   >
                     Auto-capturing every {AUTO_CAPTURE_INTERVAL}ms
@@ -691,11 +656,11 @@ export function DigitCapturePanel({
                     data-element="capture-status"
                     data-success={captureStatus.success}
                     className={css({
-                      fontSize: "sm",
-                      color: captureStatus.success ? "green.400" : "red.400",
+                      fontSize: 'sm',
+                      color: captureStatus.success ? 'green.400' : 'red.400',
                     })}
                   >
-                    {captureStatus.success ? "✓" : "✗"} {captureStatus.message}
+                    {captureStatus.success ? '✓' : '✗'} {captureStatus.message}
                   </span>
                 )}
               </div>
@@ -704,7 +669,7 @@ export function DigitCapturePanel({
         )}
       </div>
     </div>
-  );
+  )
 }
 
-export default DigitCapturePanel;
+export default DigitCapturePanel

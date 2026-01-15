@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation'
 
 interface SkillsPageProps {
-  params: Promise<{ studentId: string }>;
+  params: Promise<{ studentId: string }>
 }
 
 /**
@@ -13,6 +13,6 @@ interface SkillsPageProps {
  * URL: /practice/[studentId]/skills -> /practice/[studentId]/dashboard?tab=skills
  */
 export default async function SkillsPage({ params }: SkillsPageProps) {
-  const { studentId } = await params;
-  redirect(`/practice/${studentId}/dashboard?tab=skills`);
+  const { studentId } = await params
+  redirect(`/practice/${studentId}/dashboard?tab=skills`)
 }

@@ -1,21 +1,21 @@
-"use client";
+'use client'
 
-import { css } from "../../../../../../styled-system/css";
-import type { BoundaryDataItem } from "./types";
+import { css } from '../../../../../../styled-system/css'
+import type { BoundaryDataItem } from './types'
 
 export interface BoundaryGridItemProps {
   /** The boundary frame data */
-  item: BoundaryDataItem;
+  item: BoundaryDataItem
   /** Whether this item is selected (for multi-select) */
-  isSelected: boolean;
+  isSelected: boolean
   /** Whether this item is focused (showing in detail panel) */
-  isFocused: boolean;
+  isFocused: boolean
   /** Handler for selection toggle (receives shiftKey for range selection) */
-  onSelect: (shiftKey: boolean) => void;
+  onSelect: (shiftKey: boolean) => void
   /** Handler for viewing item details (double-click or button) */
-  onViewDetails: () => void;
+  onViewDetails: () => void
   /** Handler for deleting this item */
-  onDelete: () => void;
+  onDelete: () => void
 }
 
 /**
@@ -38,25 +38,17 @@ export function BoundaryGridItem({
       data-selected={isSelected}
       data-focused={isFocused}
       className={css({
-        position: "relative",
-        aspectRatio: "4/3",
-        bg: "gray.900",
-        border: "2px solid",
-        borderColor: isFocused
-          ? "blue.500"
-          : isSelected
-            ? "purple.500"
-            : "gray.700",
-        borderRadius: "lg",
+        position: 'relative',
+        aspectRatio: '4/3',
+        bg: 'gray.900',
+        border: '2px solid',
+        borderColor: isFocused ? 'blue.500' : isSelected ? 'purple.500' : 'gray.700',
+        borderRadius: 'lg',
         // Note: NO overflow:hidden here - allows dropdown to escape
-        cursor: "pointer",
-        transition: "all 0.15s ease",
+        cursor: 'pointer',
+        transition: 'all 0.15s ease',
         _hover: {
-          borderColor: isFocused
-            ? "blue.400"
-            : isSelected
-              ? "purple.400"
-              : "gray.600",
+          borderColor: isFocused ? 'blue.400' : isSelected ? 'purple.400' : 'gray.600',
           '& [data-element="hover-actions"]': {
             opacity: 1,
           },
@@ -69,10 +61,10 @@ export function BoundaryGridItem({
       <div
         data-element="image-wrapper"
         className={css({
-          position: "absolute",
+          position: 'absolute',
           inset: 0,
-          borderRadius: "md",
-          overflow: "hidden",
+          borderRadius: 'md',
+          overflow: 'hidden',
         })}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -80,9 +72,9 @@ export function BoundaryGridItem({
           src={item.imagePath}
           alt={`Frame ${item.id}`}
           className={css({
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
           })}
         />
       </div>
@@ -92,19 +84,19 @@ export function BoundaryGridItem({
         <div
           data-element="selection-indicator"
           className={css({
-            position: "absolute",
+            position: 'absolute',
             top: 1,
             left: 1,
-            width: "20px",
-            height: "20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            bg: "purple.500",
-            color: "white",
-            borderRadius: "sm",
-            fontSize: "xs",
-            fontWeight: "bold",
+            width: '20px',
+            height: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bg: 'purple.500',
+            color: 'white',
+            borderRadius: 'sm',
+            fontSize: 'xs',
+            fontWeight: 'bold',
           })}
         >
           ✓
@@ -114,16 +106,16 @@ export function BoundaryGridItem({
       {/* Corner indicator badge */}
       <div
         className={css({
-          position: "absolute",
+          position: 'absolute',
           bottom: 1,
           right: 1,
           px: 1.5,
           py: 0.5,
-          bg: "purple.600/80",
-          color: "white",
-          fontSize: "xs",
-          fontWeight: "bold",
-          borderRadius: "sm",
+          bg: 'purple.600/80',
+          color: 'white',
+          fontSize: 'xs',
+          fontWeight: 'bold',
+          borderRadius: 'sm',
         })}
       >
         4pt
@@ -133,16 +125,16 @@ export function BoundaryGridItem({
       <div
         data-element="hover-actions"
         className={css({
-          position: "absolute",
+          position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
-          display: "flex",
+          display: 'flex',
           gap: 1,
           p: 1,
-          bg: "linear-gradient(transparent, rgba(0,0,0,0.8))",
+          bg: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
           opacity: 0,
-          transition: "opacity 0.15s ease",
+          transition: 'opacity 0.15s ease',
         })}
         onClick={(e) => e.stopPropagation()}
       >
@@ -154,13 +146,13 @@ export function BoundaryGridItem({
           className={css({
             flex: 1,
             py: 1,
-            fontSize: "2xs",
-            color: "purple.400",
-            bg: "gray.900/80",
-            border: "none",
-            borderRadius: "sm",
-            cursor: "pointer",
-            _hover: { bg: "purple.900/80" },
+            fontSize: '2xs',
+            color: 'purple.400',
+            bg: 'gray.900/80',
+            border: 'none',
+            borderRadius: 'sm',
+            cursor: 'pointer',
+            _hover: { bg: 'purple.900/80' },
           })}
         >
           👁
@@ -174,18 +166,18 @@ export function BoundaryGridItem({
           className={css({
             flex: 1,
             py: 1,
-            fontSize: "2xs",
-            color: "red.400",
-            bg: "gray.900/80",
-            border: "none",
-            borderRadius: "sm",
-            cursor: "pointer",
-            _hover: { bg: "red.900/80" },
+            fontSize: '2xs',
+            color: 'red.400',
+            bg: 'gray.900/80',
+            border: 'none',
+            borderRadius: 'sm',
+            cursor: 'pointer',
+            _hover: { bg: 'red.900/80' },
           })}
         >
           🗑️
         </button>
       </div>
     </div>
-  );
+  )
 }

@@ -3,7 +3,7 @@
  * Validates game.yaml files using Zod
  */
 
-import { z } from "zod";
+import { z } from 'zod'
 
 /**
  * Schema for practice break configuration.
@@ -47,18 +47,18 @@ export const PracticeBreakConfigSchema = z
       })
       .optional(),
   })
-  .describe("Configuration for practice break behavior");
+  .describe('Configuration for practice break behavior')
 
 /**
  * Scoreboard category for cross-game comparison
  */
 export const ScoreboardCategorySchema = z.enum([
-  "puzzle",
-  "memory",
-  "speed",
-  "strategy",
-  "geography",
-]);
+  'puzzle',
+  'memory',
+  'speed',
+  'strategy',
+  'geography',
+])
 
 /**
  * Schema for game results configuration.
@@ -90,67 +90,59 @@ export const GameResultsConfigSchema = z
      */
     scoreboardCategory: ScoreboardCategorySchema.optional(),
   })
-  .describe("Configuration for game results reporting");
+  .describe('Configuration for game results reporting')
 
 /**
  * Schema for game manifest (game.yaml)
  */
 export const GameManifestSchema = z.object({
-  name: z
-    .string()
-    .min(1)
-    .describe('Internal game identifier (e.g., "matching")'),
-  displayName: z.string().min(1).describe("Display name shown to users"),
+  name: z.string().min(1).describe('Internal game identifier (e.g., "matching")'),
+  displayName: z.string().min(1).describe('Display name shown to users'),
   shortName: z
     .string()
     .optional()
-    .describe("Short name for compact UI spaces (defaults to displayName)"),
-  icon: z.string().min(1).describe("Emoji icon for the game"),
-  description: z.string().min(1).describe("Short description"),
-  longDescription: z.string().min(1).describe("Detailed description"),
-  maxPlayers: z
-    .number()
-    .int()
-    .min(1)
-    .max(10)
-    .describe("Maximum number of players"),
+    .describe('Short name for compact UI spaces (defaults to displayName)'),
+  icon: z.string().min(1).describe('Emoji icon for the game'),
+  description: z.string().min(1).describe('Short description'),
+  longDescription: z.string().min(1).describe('Detailed description'),
+  maxPlayers: z.number().int().min(1).max(10).describe('Maximum number of players'),
   difficulty: z
-    .enum(["Beginner", "Intermediate", "Advanced", "Expert"])
-    .describe("Difficulty level"),
-  chips: z.array(z.string()).describe("Feature chips displayed on game card"),
+    .enum(['Beginner', 'Intermediate', 'Advanced', 'Expert'])
+    .describe('Difficulty level'),
+  chips: z.array(z.string()).describe('Feature chips displayed on game card'),
   color: z.string().min(1).describe('Color theme (e.g., "purple")'),
-  gradient: z.string().min(1).describe("CSS gradient for card background"),
+  gradient: z.string().min(1).describe('CSS gradient for card background'),
   borderColor: z.string().min(1).describe('Border color (e.g., "purple.200")'),
-  available: z.boolean().describe("Whether game is available to play"),
+  available: z.boolean().describe('Whether game is available to play'),
   practiceBreakReady: z
     .boolean()
     .optional()
     .default(false)
     .describe(
-      "Whether game is ready for practice session game breaks. " +
-        "Games must be single-player capable, work in 2-10 minute sessions, " +
-        "and not require complex setup or multiplayer coordination.",
+      'Whether game is ready for practice session game breaks. ' +
+        'Games must be single-player capable, work in 2-10 minute sessions, ' +
+        'and not require complex setup or multiplayer coordination.'
     ),
   practiceBreakConfig: PracticeBreakConfigSchema.optional().describe(
-    "Configuration for practice break behavior including suggested defaults, " +
-      "locked fields, duration constraints, and difficulty presets.",
+    'Configuration for practice break behavior including suggested defaults, ' +
+      'locked fields, duration constraints, and difficulty presets.'
   ),
   resultsConfig: GameResultsConfigSchema.optional().describe(
-    "Configuration for game results reporting including display duration, " +
-      "scoreboard category, and custom component options.",
+    'Configuration for game results reporting including display duration, ' +
+      'scoreboard category, and custom component options.'
   ),
-});
+})
 
 /**
  * Inferred TypeScript types from schemas
  */
-export type PracticeBreakConfig = z.infer<typeof PracticeBreakConfigSchema>;
-export type GameResultsConfig = z.infer<typeof GameResultsConfigSchema>;
-export type GameManifest = z.infer<typeof GameManifestSchema>;
+export type PracticeBreakConfig = z.infer<typeof PracticeBreakConfigSchema>
+export type GameResultsConfig = z.infer<typeof GameResultsConfigSchema>
+export type GameManifest = z.infer<typeof GameManifestSchema>
 
 /**
  * Validate a parsed manifest object
  */
 export function validateManifest(data: unknown): GameManifest {
-  return GameManifestSchema.parse(data);
+  return GameManifestSchema.parse(data)
 }

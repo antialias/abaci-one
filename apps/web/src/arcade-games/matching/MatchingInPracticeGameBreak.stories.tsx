@@ -1,28 +1,25 @@
-"use client";
+'use client'
 
-import type { Meta, StoryObj } from "@storybook/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import { ViewportProvider } from "@/contexts/ViewportContext";
-import { FullscreenProvider } from "@/contexts/FullscreenContext";
-import { DeploymentInfoProvider } from "@/contexts/DeploymentInfoContext";
-import { GameLayoutProvider } from "@/contexts/GameLayoutContext";
-import { PreviewModeContext } from "@/contexts/PreviewModeContext";
-import {
-  GameModeProvider,
-  type RoomData as GameModeRoomData,
-} from "@/contexts/GameModeContext";
-import type { Player as DBPlayer } from "@/db/schema/players";
-import { viewerKeys } from "@/hooks/useViewerId";
-import { roomKeys, type RoomData } from "@/hooks/useRoomData";
-import { AppNavBar } from "@/components/AppNavBar";
-import { PracticeSubNav, type GameBreakHudData } from "@/components/practice";
-import { MatchingProvider } from "./Provider";
-import { MemoryPairsGame } from "./components/MemoryPairsGame";
-import { generateGameCards } from "./utils/cardGeneration";
-import type { MatchingState, PlayerMetadata } from "./types";
-import { css } from "../../../styled-system/css";
+import type { Meta, StoryObj } from '@storybook/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import { ThemeProvider } from '@/contexts/ThemeContext'
+import { ViewportProvider } from '@/contexts/ViewportContext'
+import { FullscreenProvider } from '@/contexts/FullscreenContext'
+import { DeploymentInfoProvider } from '@/contexts/DeploymentInfoContext'
+import { GameLayoutProvider } from '@/contexts/GameLayoutContext'
+import { PreviewModeContext } from '@/contexts/PreviewModeContext'
+import { GameModeProvider, type RoomData as GameModeRoomData } from '@/contexts/GameModeContext'
+import type { Player as DBPlayer } from '@/db/schema/players'
+import { viewerKeys } from '@/hooks/useViewerId'
+import { roomKeys, type RoomData } from '@/hooks/useRoomData'
+import { AppNavBar } from '@/components/AppNavBar'
+import { PracticeSubNav, type GameBreakHudData } from '@/components/practice'
+import { MatchingProvider } from './Provider'
+import { MemoryPairsGame } from './components/MemoryPairsGame'
+import { generateGameCards } from './utils/cardGeneration'
+import type { MatchingState, PlayerMetadata } from './types'
+import { css } from '../../../styled-system/css'
 
 /**
  * Stories for the Matching Tiles game rendered in game-break practice session context.
@@ -43,41 +40,41 @@ import { css } from "../../../styled-system/css";
 
 // Mock router for Next.js navigation
 const mockRouter = {
-  push: (url: string) => console.log("Router push:", url),
-  replace: (url: string) => console.log("Router replace:", url),
-  back: () => console.log("Router back"),
-  forward: () => console.log("Router forward"),
-  refresh: () => console.log("Router refresh"),
-  prefetch: (url: string) => console.log("Router prefetch:", url),
-};
+  push: (url: string) => console.log('Router push:', url),
+  replace: (url: string) => console.log('Router replace:', url),
+  back: () => console.log('Router back'),
+  forward: () => console.log('Router forward'),
+  refresh: () => console.log('Router refresh'),
+  prefetch: (url: string) => console.log('Router prefetch:', url),
+}
 
 const meta: Meta = {
-  title: "Practice/MatchingInGameBreak",
+  title: 'Practice/MatchingInGameBreak',
   parameters: {
-    layout: "fullscreen",
+    layout: 'fullscreen',
     nextjs: {
       appDirectory: true,
       navigation: mockRouter,
     },
   },
-  tags: ["autodocs"],
-};
+  tags: ['autodocs'],
+}
 
-export default meta;
-type Story = StoryObj;
+export default meta
+type Story = StoryObj
 
 // =============================================================================
 // Mock Data
 // =============================================================================
 
-const mockViewerId = "mock-viewer-id-123";
+const mockViewerId = 'mock-viewer-id-123'
 
 const mockStudent = {
-  id: "student-sonia-id",
-  name: "Sonia",
-  emoji: "🌟",
-  color: "#a855f7",
-};
+  id: 'student-sonia-id',
+  name: 'Sonia',
+  emoji: '🌟',
+  color: '#a855f7',
+}
 
 // Mock player as DBPlayer type
 const mockDBPlayer: DBPlayer = {
@@ -92,24 +89,24 @@ const mockDBPlayer: DBPlayer = {
   notes: null,
   isArchived: false,
   familyCode: null,
-};
+}
 
 const mockRoomData: RoomData = {
-  id: "mock-room-123",
-  name: "Practice Game Break Room",
-  code: "PRAC",
-  gameName: "matching",
+  id: 'mock-room-123',
+  name: 'Practice Game Break Room',
+  code: 'PRAC',
+  gameName: 'matching',
   gameConfig: {
     matching: {
-      gameType: "abacus-numeral",
+      gameType: 'abacus-numeral',
       difficulty: 6,
       turnTimer: 30,
     },
   },
-  accessMode: "open",
+  accessMode: 'open',
   members: [
     {
-      id: "member-1",
+      id: 'member-1',
       userId: mockViewerId,
       displayName: mockStudent.name,
       isOnline: true,
@@ -126,7 +123,7 @@ const mockRoomData: RoomData = {
       },
     ],
   },
-};
+}
 
 const mockPlayerMetadata: Record<string, PlayerMetadata> = {
   [mockStudent.id]: {
@@ -136,19 +133,17 @@ const mockPlayerMetadata: Record<string, PlayerMetadata> = {
     userId: mockViewerId,
     color: mockStudent.color,
   },
-};
+}
 
 // Create game cards for different phases
-function createMockMatchingState(
-  phase: "setup" | "playing" | "results",
-): MatchingState {
-  const cards = generateGameCards("abacus-numeral", 6);
+function createMockMatchingState(phase: 'setup' | 'playing' | 'results'): MatchingState {
+  const cards = generateGameCards('abacus-numeral', 6)
 
   const baseState: MatchingState = {
     cards,
     gameCards: cards,
     flippedCards: [],
-    gameType: "abacus-numeral",
+    gameType: 'abacus-numeral',
     difficulty: 6,
     turnTimer: 30,
     gamePhase: phase,
@@ -160,7 +155,7 @@ function createMockMatchingState(
     activePlayers: [mockStudent.id],
     playerMetadata: mockPlayerMetadata,
     consecutiveMatches: { [mockStudent.id]: 0 },
-    gameStartTime: phase === "setup" ? null : Date.now(),
+    gameStartTime: phase === 'setup' ? null : Date.now(),
     gameEndTime: null,
     currentMoveStartTime: null,
     timerInterval: null,
@@ -169,37 +164,37 @@ function createMockMatchingState(
     showMismatchFeedback: false,
     lastMatchedPair: null,
     playerHovers: {},
-  };
-
-  if (phase === "playing") {
-    return {
-      ...baseState,
-      gamePhase: "playing",
-      gameStartTime: Date.now() - 30000, // 30 seconds ago
-    };
   }
 
-  if (phase === "results") {
+  if (phase === 'playing') {
+    return {
+      ...baseState,
+      gamePhase: 'playing',
+      gameStartTime: Date.now() - 30000, // 30 seconds ago
+    }
+  }
+
+  if (phase === 'results') {
     // Mark all cards as matched for results phase
     const matchedCards = cards.map((card) => ({
       ...card,
       matched: true,
       matchedBy: mockStudent.id,
-    }));
+    }))
     return {
       ...baseState,
       cards: matchedCards,
       gameCards: matchedCards,
-      gamePhase: "results",
+      gamePhase: 'results',
       matchedPairs: 6,
       scores: { [mockStudent.id]: 6 },
       moves: 12,
       gameStartTime: Date.now() - 120000, // 2 minutes ago
       gameEndTime: Date.now(),
-    };
+    }
   }
 
-  return baseState;
+  return baseState
 }
 
 // =============================================================================
@@ -207,12 +202,12 @@ function createMockMatchingState(
 // =============================================================================
 
 interface MatchingGameStoryWrapperProps {
-  phase: "setup" | "playing" | "results";
-  theme?: "light" | "dark";
+  phase: 'setup' | 'playing' | 'results'
+  theme?: 'light' | 'dark'
   /** Duration of game break in minutes (for timer display) */
-  gameBreakDurationMinutes?: number;
+  gameBreakDurationMinutes?: number
   /** How much time has already elapsed in the game break (for testing different timer states) */
-  elapsedSeconds?: number;
+  elapsedSeconds?: number
 }
 
 /**
@@ -223,7 +218,7 @@ interface MatchingGameStoryWrapperProps {
  */
 function MatchingGameStoryWrapper({
   phase,
-  theme = "light",
+  theme = 'light',
   gameBreakDurationMinutes = 5,
   elapsedSeconds = 0,
 }: MatchingGameStoryWrapperProps) {
@@ -236,19 +231,19 @@ function MatchingGameStoryWrapper({
           staleTime: Infinity,
         },
       },
-    });
+    })
 
     // Pre-populate viewer ID
-    client.setQueryData(viewerKeys.id(), mockViewerId);
+    client.setQueryData(viewerKeys.id(), mockViewerId)
 
     // Pre-populate room data
-    client.setQueryData(roomKeys.current(), mockRoomData);
+    client.setQueryData(roomKeys.current(), mockRoomData)
 
-    return client;
-  }, []);
+    return client
+  }, [])
 
   // Create mock matching state for preview mode
-  const mockState = useMemo(() => createMockMatchingState(phase), [phase]);
+  const mockState = useMemo(() => createMockMatchingState(phase), [phase])
 
   // Preview mode context value - this makes useArcadeSession return mock data
   // NOTE: We DON'T wrap the entire page in PreviewModeContext since PageWithNav
@@ -258,8 +253,8 @@ function MatchingGameStoryWrapper({
       isPreview: true,
       mockState,
     }),
-    [mockState],
-  );
+    [mockState]
+  )
 
   // GameModeProvider props (no-op mutations for Storybook)
   const gameModeProps = useMemo(
@@ -273,22 +268,22 @@ function MatchingGameStoryWrapper({
       notifyRoomOfPlayerUpdate: () => {},
       viewerId: mockViewerId,
     }),
-    [],
-  );
+    []
+  )
 
   // Game break HUD data - shows timer and "Back to Practice" button
   const gameBreakHud: GameBreakHudData = useMemo(
     () => ({
       startTime: Date.now() - elapsedSeconds * 1000,
       maxDurationMs: gameBreakDurationMinutes * 60 * 1000,
-      onSkip: () => console.log("Skip game break clicked"),
-      gameIcon: "⚔️",
-      gameName: "Matching Pairs",
+      onSkip: () => console.log('Skip game break clicked'),
+      gameIcon: '⚔️',
+      gameName: 'Matching Pairs',
     }),
-    [gameBreakDurationMinutes, elapsedSeconds],
-  );
+    [gameBreakDurationMinutes, elapsedSeconds]
+  )
 
-  const isDark = theme === "dark";
+  const isDark = theme === 'dark'
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -298,8 +293,8 @@ function MatchingGameStoryWrapper({
             <div
               data-theme={theme}
               className={css({
-                minHeight: "100vh",
-                backgroundColor: isDark ? "gray.900" : "gray.50",
+                minHeight: '100vh',
+                backgroundColor: isDark ? 'gray.900' : 'gray.50',
               })}
             >
               {/* Main Navigation Bar */}
@@ -317,14 +312,14 @@ function MatchingGameStoryWrapper({
                 data-component="practice-page"
                 className={css({
                   // Fixed positioning to precisely control bounds
-                  position: "fixed",
+                  position: 'fixed',
                   // Top: main nav (80px) + sub-nav height (~52px mobile, ~60px desktop)
-                  top: { base: "132px", md: "140px" },
+                  top: { base: '132px', md: '140px' },
                   left: 0,
                   right: 0,
                   // Bottom: 0 for game break (no keypad needed)
                   bottom: 0,
-                  overflow: "hidden",
+                  overflow: 'hidden',
                 })}
               >
                 {/* Game Container - matches GameBreakScreen layout */}
@@ -333,9 +328,9 @@ function MatchingGameStoryWrapper({
                   data-phase="playing"
                   data-element="game-container"
                   className={css({
-                    width: "100%",
-                    height: "100%",
-                    overflow: "hidden",
+                    width: '100%',
+                    height: '100%',
+                    overflow: 'hidden',
                   })}
                 >
                   <GameLayoutProvider mode="container">
@@ -356,7 +351,7 @@ function MatchingGameStoryWrapper({
         </DeploymentInfoProvider>
       </ThemeProvider>
     </QueryClientProvider>
-  );
+  )
 }
 
 // =============================================================================
@@ -364,32 +359,26 @@ function MatchingGameStoryWrapper({
 // =============================================================================
 
 interface IsolatedGameWrapperProps {
-  phase: "setup" | "playing" | "results";
-  theme?: "light" | "dark";
+  phase: 'setup' | 'playing' | 'results'
+  theme?: 'light' | 'dark'
 }
 
 /**
  * Wrapper that renders ONLY the game without page navigation context.
  * Useful for comparing layout behavior with/without navs.
  */
-function IsolatedGameWrapper({
-  phase,
-  theme = "light",
-}: IsolatedGameWrapperProps) {
+function IsolatedGameWrapper({ phase, theme = 'light' }: IsolatedGameWrapperProps) {
   const queryClient = useMemo(() => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false, staleTime: Infinity } },
-    });
-    client.setQueryData(viewerKeys.id(), mockViewerId);
-    client.setQueryData(roomKeys.current(), mockRoomData);
-    return client;
-  }, []);
+    })
+    client.setQueryData(viewerKeys.id(), mockViewerId)
+    client.setQueryData(roomKeys.current(), mockRoomData)
+    return client
+  }, [])
 
-  const mockState = useMemo(() => createMockMatchingState(phase), [phase]);
-  const previewModeValue = useMemo(
-    () => ({ isPreview: true, mockState }),
-    [mockState],
-  );
+  const mockState = useMemo(() => createMockMatchingState(phase), [phase])
+  const previewModeValue = useMemo(() => ({ isPreview: true, mockState }), [mockState])
 
   const gameModeProps = useMemo(
     () => ({
@@ -402,8 +391,8 @@ function IsolatedGameWrapper({
       notifyRoomOfPlayerUpdate: () => {},
       viewerId: mockViewerId,
     }),
-    [],
-  );
+    []
+  )
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -416,9 +405,9 @@ function IsolatedGameWrapper({
                   <div
                     data-component="matching-game-isolated"
                     className={css({
-                      width: "100vw",
-                      height: "100vh",
-                      overflow: "hidden",
+                      width: '100vw',
+                      height: '100vh',
+                      overflow: 'hidden',
                     })}
                   >
                     <MatchingProvider>
@@ -432,68 +421,60 @@ function IsolatedGameWrapper({
         </div>
       </ThemeProvider>
     </QueryClientProvider>
-  );
+  )
 }
 
 // =============================================================================
 // Interactive Story Component (with phase and timer switching)
 // =============================================================================
 
-function InteractiveMatchingGame({
-  theme = "light",
-}: {
-  theme?: "light" | "dark";
-}) {
-  const [phase, setPhase] = useState<"setup" | "playing" | "results">(
-    "playing",
-  );
-  const [elapsedSeconds, setElapsedSeconds] = useState(60);
+function InteractiveMatchingGame({ theme = 'light' }: { theme?: 'light' | 'dark' }) {
+  const [phase, setPhase] = useState<'setup' | 'playing' | 'results'>('playing')
+  const [elapsedSeconds, setElapsedSeconds] = useState(60)
 
   return (
-    <div
-      className={css({ position: "relative", width: "100vw", height: "100vh" })}
-    >
+    <div className={css({ position: 'relative', width: '100vw', height: '100vh' })}>
       {/* Controls overlay */}
       <div
         data-element="story-controls"
         className={css({
-          position: "fixed",
-          top: "10px",
-          right: "10px",
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
           zIndex: 9999,
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.5rem",
-          padding: "0.75rem",
-          backgroundColor: "rgba(0, 0, 0, 0.9)",
-          borderRadius: "8px",
-          minWidth: "180px",
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem',
+          padding: '0.75rem',
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          borderRadius: '8px',
+          minWidth: '180px',
         })}
       >
         {/* Phase controls */}
-        <div className={css({ display: "flex", gap: "0.25rem" })}>
-          {(["setup", "playing", "results"] as const).map((p) => (
+        <div className={css({ display: 'flex', gap: '0.25rem' })}>
+          {(['setup', 'playing', 'results'] as const).map((p) => (
             <button
               key={p}
               type="button"
               onClick={() => setPhase(p)}
               className={css({
-                padding: "0.25rem 0.5rem",
-                fontSize: "0.625rem",
-                fontWeight: "600",
-                color: phase === p ? "white" : "gray.400",
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.625rem',
+                fontWeight: '600',
+                color: phase === p ? 'white' : 'gray.400',
                 backgroundColor:
                   phase === p
-                    ? p === "setup"
-                      ? "blue.600"
-                      : p === "playing"
-                        ? "green.600"
-                        : "purple.600"
-                    : "gray.700",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                textTransform: "capitalize",
+                    ? p === 'setup'
+                      ? 'blue.600'
+                      : p === 'playing'
+                        ? 'green.600'
+                        : 'purple.600'
+                    : 'gray.700',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                textTransform: 'capitalize',
               })}
             >
               {p}
@@ -504,14 +485,14 @@ function InteractiveMatchingGame({
         {/* Timer simulation */}
         <div
           className={css({
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.25rem",
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.25rem',
           })}
         >
-          <span className={css({ fontSize: "0.625rem", color: "gray.400" })}>
+          <span className={css({ fontSize: '0.625rem', color: 'gray.400' })}>
             Timer: {Math.floor(elapsedSeconds / 60)}:
-            {(elapsedSeconds % 60).toString().padStart(2, "0")} elapsed
+            {(elapsedSeconds % 60).toString().padStart(2, '0')} elapsed
           </span>
           <input
             type="range"
@@ -519,18 +500,14 @@ function InteractiveMatchingGame({
             max={300}
             value={elapsedSeconds}
             onChange={(e) => setElapsedSeconds(Number(e.target.value))}
-            className={css({ width: "100%" })}
+            className={css({ width: '100%' })}
           />
         </div>
       </div>
 
-      <MatchingGameStoryWrapper
-        phase={phase}
-        theme={theme}
-        elapsedSeconds={elapsedSeconds}
-      />
+      <MatchingGameStoryWrapper phase={phase} theme={theme} elapsedSeconds={elapsedSeconds} />
     </div>
-  );
+  )
 }
 
 // =============================================================================
@@ -538,130 +515,124 @@ function InteractiveMatchingGame({
 // =============================================================================
 
 export const FullContextPlaying: Story = {
-  name: "Full Context: Playing",
+  name: 'Full Context: Playing',
   render: () => <MatchingGameStoryWrapper phase="playing" />,
-};
+}
 
 export const FullContextPlayingDark: Story = {
-  name: "Full Context: Playing (Dark)",
+  name: 'Full Context: Playing (Dark)',
   render: () => <MatchingGameStoryWrapper phase="playing" theme="dark" />,
-};
+}
 
 export const FullContextSetup: Story = {
-  name: "Full Context: Setup",
+  name: 'Full Context: Setup',
   render: () => <MatchingGameStoryWrapper phase="setup" />,
-};
+}
 
 export const FullContextResults: Story = {
-  name: "Full Context: Results",
+  name: 'Full Context: Results',
   render: () => <MatchingGameStoryWrapper phase="results" />,
-};
+}
 
 // =============================================================================
 // Stories - Timer States
 // =============================================================================
 
 export const TimerFull: Story = {
-  name: "Timer: Full (5:00 remaining)",
+  name: 'Timer: Full (5:00 remaining)',
   render: () => <MatchingGameStoryWrapper phase="playing" elapsedSeconds={0} />,
-};
+}
 
 export const TimerHalfway: Story = {
-  name: "Timer: Halfway (2:30 remaining)",
-  render: () => (
-    <MatchingGameStoryWrapper phase="playing" elapsedSeconds={150} />
-  ),
-};
+  name: 'Timer: Halfway (2:30 remaining)',
+  render: () => <MatchingGameStoryWrapper phase="playing" elapsedSeconds={150} />,
+}
 
 export const TimerLow: Story = {
-  name: "Timer: Low (1:00 remaining)",
-  render: () => (
-    <MatchingGameStoryWrapper phase="playing" elapsedSeconds={240} />
-  ),
-};
+  name: 'Timer: Low (1:00 remaining)',
+  render: () => <MatchingGameStoryWrapper phase="playing" elapsedSeconds={240} />,
+}
 
 export const TimerCritical: Story = {
-  name: "Timer: Critical (0:30 remaining)",
-  render: () => (
-    <MatchingGameStoryWrapper phase="playing" elapsedSeconds={270} />
-  ),
-};
+  name: 'Timer: Critical (0:30 remaining)',
+  render: () => <MatchingGameStoryWrapper phase="playing" elapsedSeconds={270} />,
+}
 
 // =============================================================================
 // Stories - Isolated Game (without navs, for comparison)
 // =============================================================================
 
 export const IsolatedPlaying: Story = {
-  name: "Isolated: Playing (No Navs)",
+  name: 'Isolated: Playing (No Navs)',
   render: () => <IsolatedGameWrapper phase="playing" />,
-};
+}
 
 export const IsolatedPlayingDark: Story = {
-  name: "Isolated: Playing Dark (No Navs)",
+  name: 'Isolated: Playing Dark (No Navs)',
   render: () => <IsolatedGameWrapper phase="playing" theme="dark" />,
-};
+}
 
 // =============================================================================
 // Stories - Interactive (can switch phases and timer)
 // =============================================================================
 
 export const Interactive: Story = {
-  name: "Interactive (Switch Phases & Timer)",
+  name: 'Interactive (Switch Phases & Timer)',
   render: () => <InteractiveMatchingGame />,
-};
+}
 
 export const InteractiveDark: Story = {
-  name: "Interactive (Dark Mode)",
+  name: 'Interactive (Dark Mode)',
   render: () => <InteractiveMatchingGame theme="dark" />,
-};
+}
 
 // =============================================================================
 // Documentation Story
 // =============================================================================
 
 export const Documentation: Story = {
-  name: "Documentation",
+  name: 'Documentation',
   render: () => (
     <div
       className={css({
-        padding: "2rem",
-        backgroundColor: "white",
-        maxWidth: "800px",
-        margin: "0 auto",
+        padding: '2rem',
+        backgroundColor: 'white',
+        maxWidth: '800px',
+        margin: '0 auto',
       })}
     >
       <h1
         className={css({
-          fontSize: "1.5rem",
-          fontWeight: "bold",
-          marginBottom: "1rem",
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          marginBottom: '1rem',
         })}
       >
         Matching Game in Practice Game Break Context
       </h1>
 
-      <p className={css({ marginBottom: "1rem", lineHeight: 1.6 })}>
-        These stories render the <strong>REAL</strong> matching game components
-        (not mocks) in a simulated game-break practice session context. This is
-        useful for debugging full-screen layout issues.
+      <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
+        These stories render the <strong>REAL</strong> matching game components (not mocks) in a
+        simulated game-break practice session context. This is useful for debugging full-screen
+        layout issues.
       </p>
 
       <h2
         className={css({
-          fontSize: "1.25rem",
-          fontWeight: "bold",
-          marginBottom: "0.5rem",
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          marginBottom: '0.5rem',
         })}
       >
         Full Page Context Stories
       </h2>
-      <p className={css({ marginBottom: "1rem", lineHeight: 1.6 })}>
+      <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
         The &quot;Full Context&quot; stories include:
       </p>
       <ul
         className={css({
-          paddingLeft: "1.5rem",
-          marginBottom: "1rem",
+          paddingLeft: '1.5rem',
+          marginBottom: '1rem',
           lineHeight: 1.8,
         })}
       >
@@ -669,46 +640,45 @@ export const Documentation: Story = {
           <strong>AppNavBar</strong>: The main navigation bar (80px height)
         </li>
         <li>
-          <strong>PracticeSubNav</strong>: With game break HUD showing timer,
-          game name, and &quot;Back to Practice&quot; button
+          <strong>PracticeSubNav</strong>: With game break HUD showing timer, game name, and
+          &quot;Back to Practice&quot; button
         </li>
         <li>
-          <strong>Main content area</strong>: Positioned exactly like the real
-          practice page (fixed, below both navs)
+          <strong>Main content area</strong>: Positioned exactly like the real practice page (fixed,
+          below both navs)
         </li>
       </ul>
 
       <h2
         className={css({
-          fontSize: "1.25rem",
-          fontWeight: "bold",
-          marginBottom: "0.5rem",
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          marginBottom: '0.5rem',
         })}
       >
         Isolated Stories
       </h2>
-      <p className={css({ marginBottom: "1rem", lineHeight: 1.6 })}>
-        The &quot;Isolated&quot; stories render ONLY the game without any
-        navigation context. Compare these with Full Context stories to debug
-        layout issues caused by nav positioning.
+      <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
+        The &quot;Isolated&quot; stories render ONLY the game without any navigation context.
+        Compare these with Full Context stories to debug layout issues caused by nav positioning.
       </p>
 
       <h2
         className={css({
-          fontSize: "1.25rem",
-          fontWeight: "bold",
-          marginBottom: "0.5rem",
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          marginBottom: '0.5rem',
         })}
       >
         Timer States
       </h2>
-      <p className={css({ marginBottom: "1rem", lineHeight: 1.6 })}>
+      <p className={css({ marginBottom: '1rem', lineHeight: 1.6 })}>
         The game break HUD shows a countdown timer. Test different timer states:
       </p>
       <ul
         className={css({
-          paddingLeft: "1.5rem",
-          marginBottom: "1rem",
+          paddingLeft: '1.5rem',
+          marginBottom: '1rem',
           lineHeight: 1.8,
         })}
       >
@@ -728,31 +698,29 @@ export const Documentation: Story = {
 
       <h2
         className={css({
-          fontSize: "1.25rem",
-          fontWeight: "bold",
-          marginBottom: "0.5rem",
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          marginBottom: '0.5rem',
         })}
       >
         Architecture
       </h2>
       <ul
         className={css({
-          paddingLeft: "1.5rem",
-          marginBottom: "1rem",
+          paddingLeft: '1.5rem',
+          marginBottom: '1rem',
           lineHeight: 1.8,
         })}
       >
         <li>
-          <strong>QueryClientProvider</strong>: Pre-populated with viewer ID and
-          room data
+          <strong>QueryClientProvider</strong>: Pre-populated with viewer ID and room data
         </li>
         <li>
-          <strong>PreviewModeContext</strong>: Makes useArcadeSession return
-          mock state (only wraps game, NOT nav)
+          <strong>PreviewModeContext</strong>: Makes useArcadeSession return mock state (only wraps
+          game, NOT nav)
         </li>
         <li>
-          <strong>GameModeProvider</strong>: Provides player management with
-          mock player data
+          <strong>GameModeProvider</strong>: Provides player management with mock player data
         </li>
         <li>
           <strong>FullscreenProvider</strong>: For fullscreen functionality
@@ -764,23 +732,22 @@ export const Documentation: Story = {
 
       <h2
         className={css({
-          fontSize: "1.25rem",
-          fontWeight: "bold",
-          marginBottom: "0.5rem",
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          marginBottom: '0.5rem',
         })}
       >
         Game Phases
       </h2>
       <ul
         className={css({
-          paddingLeft: "1.5rem",
-          marginBottom: "1rem",
+          paddingLeft: '1.5rem',
+          marginBottom: '1rem',
           lineHeight: 1.8,
         })}
       >
         <li>
-          <strong>Setup</strong>: Game configuration screen (game type,
-          difficulty, players)
+          <strong>Setup</strong>: Game configuration screen (game type, difficulty, players)
         </li>
         <li>
           <strong>Playing</strong>: Active gameplay with card grid
@@ -792,14 +759,14 @@ export const Documentation: Story = {
 
       <p
         className={css({
-          fontSize: "0.875rem",
-          color: "gray.600",
-          fontStyle: "italic",
+          fontSize: '0.875rem',
+          color: 'gray.600',
+          fontStyle: 'italic',
         })}
       >
-        Use the &quot;Interactive&quot; story to switch between phases and
-        adjust the timer without reloading.
+        Use the &quot;Interactive&quot; story to switch between phases and adjust the timer without
+        reloading.
       </p>
     </div>
   ),
-};
+}

@@ -11,13 +11,13 @@
 
 export interface ContinentalPreset {
   /** Unique identifier */
-  id: string;
+  id: string
   /** Display name */
-  name: string;
+  name: string
   /** Strudel pattern for this continent */
-  pattern: string;
+  pattern: string
   /** Base gain level (0-1) */
-  gain: number;
+  gain: number
 }
 
 /**
@@ -31,8 +31,8 @@ export interface ContinentalPreset {
  */
 export const continentalPresets: Record<string, ContinentalPreset> = {
   europe: {
-    id: "europe",
-    name: "Europe",
+    id: 'europe',
+    name: 'Europe',
     // Euro adventure - Euclidean drums, sweeping filters, stereo width
     pattern: `stack(
       s("bd(3,8), hh(5,8), cp(2,8,3)").gain(0.4),
@@ -63,8 +63,8 @@ export const continentalPresets: Record<string, ContinentalPreset> = {
   },
 
   africa: {
-    id: "africa",
-    name: "Africa",
+    id: 'africa',
+    name: 'Africa',
     // Afrobeat - polyrhythmic Euclidean, kalimba-style FM
     pattern: `stack(
       s("bd(5,8), hh(7,8), cp(3,8,2)").gain(0.4),
@@ -95,8 +95,8 @@ export const continentalPresets: Record<string, ContinentalPreset> = {
   },
 
   asia: {
-    id: "asia",
-    name: "Asia",
+    id: 'asia',
+    name: 'Asia',
     // Eastern mystery - sparse Euclidean, pentatonic with vibrato
     pattern: `stack(
       s("bd(3,8), hh(4,8,1), cp(2,8,4)").gain(0.35),
@@ -129,8 +129,8 @@ export const continentalPresets: Record<string, ContinentalPreset> = {
   },
 
   middleEast: {
-    id: "middleEast",
-    name: "Middle East",
+    id: 'middleEast',
+    name: 'Middle East',
     // Exotic phrygian - complex Euclidean, quarter-tone feel
     pattern: `stack(
       s("bd(4,8,1), hh(6,8), cp(2,8,5)").gain(0.38),
@@ -161,8 +161,8 @@ export const continentalPresets: Record<string, ContinentalPreset> = {
   },
 
   northAmerica: {
-    id: "northAmerica",
-    name: "North America",
+    id: 'northAmerica',
+    name: 'North America',
     // Rock energy - driving Euclidean, power chord feel
     pattern: `stack(
       s("bd(4,8), hh(8,8), sd(2,8,4)").gain(0.42).ply("<1 1 1 2>"),
@@ -193,8 +193,8 @@ export const continentalPresets: Record<string, ContinentalPreset> = {
   },
 
   southAmerica: {
-    id: "southAmerica",
-    name: "South America",
+    id: 'southAmerica',
+    name: 'South America',
     // Latin groove - syncopated Euclidean, minor key passion
     pattern: `stack(
       s("bd(3,8), hh(7,8), cp(3,8,3)").gain(0.4),
@@ -225,8 +225,8 @@ export const continentalPresets: Record<string, ContinentalPreset> = {
   },
 
   oceania: {
-    id: "oceania",
-    name: "Oceania",
+    id: 'oceania',
+    name: 'Oceania',
     // Island vibes - relaxed Euclidean, bright major
     pattern: `stack(
       s("bd(3,8), hh(5,8,2), sd(2,8,4)").gain(0.38),
@@ -257,8 +257,8 @@ export const continentalPresets: Record<string, ContinentalPreset> = {
   },
 
   default: {
-    id: "default",
-    name: "Default",
+    id: 'default',
+    name: 'Default',
     // Adventure theme - balanced Euclidean, uplifting major
     pattern: `stack(
       s("bd(3,8), hh(5,8), cp(2,8,3)").gain(0.4),
@@ -287,14 +287,14 @@ export const continentalPresets: Record<string, ContinentalPreset> = {
     ).fast(1.2)`,
     gain: 0.5,
   },
-};
+}
 
 /** Get a preset by ID, falling back to default */
 export function getPreset(id: string): ContinentalPreset {
-  return continentalPresets[id] || continentalPresets.default;
+  return continentalPresets[id] || continentalPresets.default
 }
 
 /** Get all available preset IDs */
 export function getPresetIds(): string[] {
-  return Object.keys(continentalPresets);
+  return Object.keys(continentalPresets)
 }

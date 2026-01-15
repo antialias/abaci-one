@@ -1,15 +1,8 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import { css } from "../../../styled-system/css";
+import Link from 'next/link'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { css } from '../../../styled-system/css'
 
 /**
  * Reusable digit dialpad component with keyboard support
@@ -19,66 +12,63 @@ function DigitDialpad({
   onSelect,
   onClose,
 }: {
-  currentDigit?: number; // undefined means no current selection (for bulk)
-  onSelect: (digit: number) => void;
-  onClose: () => void;
+  currentDigit?: number // undefined means no current selection (for bulk)
+  onSelect: (digit: number) => void
+  onClose: () => void
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Handle keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check if it's a digit key
-      if (e.key >= "0" && e.key <= "9") {
-        const digit = parseInt(e.key, 10);
+      if (e.key >= '0' && e.key <= '9') {
+        const digit = parseInt(e.key, 10)
         if (currentDigit === undefined || digit !== currentDigit) {
-          onSelect(digit);
+          onSelect(digit)
         }
-      } else if (e.key === "Escape") {
-        onClose();
+      } else if (e.key === 'Escape') {
+        onClose()
       }
-    };
+    }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentDigit, onSelect, onClose]);
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [currentDigit, onSelect, onClose])
 
   // Close on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        onClose();
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onClose()
       }
-    };
+    }
 
     // Delay adding listener to avoid immediate close
     const timer = setTimeout(() => {
-      window.addEventListener("click", handleClickOutside);
-    }, 0);
+      window.addEventListener('click', handleClickOutside)
+    }, 0)
 
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener("click", handleClickOutside);
-    };
-  }, [onClose]);
+      clearTimeout(timer)
+      window.removeEventListener('click', handleClickOutside)
+    }
+  }, [onClose])
 
   return (
     <div
       ref={containerRef}
       className={css({
-        position: "absolute",
-        top: "100%",
-        left: "50%",
-        transform: "translateX(-50%)",
+        position: 'absolute',
+        top: '100%',
+        left: '50%',
+        transform: 'translateX(-50%)',
         mt: 1,
-        bg: "gray.800",
-        borderRadius: "lg",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-        border: "1px solid",
-        borderColor: "gray.600",
+        bg: 'gray.800',
+        borderRadius: 'lg',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+        border: '1px solid',
+        borderColor: 'gray.600',
         p: 3,
         zIndex: 1000,
       })}
@@ -86,119 +76,111 @@ function DigitDialpad({
     >
       <div
         className={css({
-          fontSize: "xs",
-          color: "gray.400",
+          fontSize: 'xs',
+          color: 'gray.400',
           mb: 2,
-          textAlign: "center",
+          textAlign: 'center',
         })}
       >
         Press 0-9 or click:
       </div>
       <div
         className={css({
-          display: "grid",
-          gridTemplateColumns: "repeat(5, 1fr)",
+          display: 'grid',
+          gridTemplateColumns: 'repeat(5, 1fr)',
           gap: 1,
         })}
       >
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((d) => {
-          const isCurrent = currentDigit !== undefined && d === currentDigit;
+          const isCurrent = currentDigit !== undefined && d === currentDigit
           return (
             <button
               key={d}
               type="button"
               onClick={(e) => {
-                e.stopPropagation();
+                e.stopPropagation()
                 if (!isCurrent) {
-                  onSelect(d);
+                  onSelect(d)
                 }
               }}
               disabled={isCurrent}
               className={css({
-                width: "36px",
-                height: "36px",
-                borderRadius: "md",
-                border: "2px solid",
-                borderColor: isCurrent ? "green.500" : "transparent",
-                bg: isCurrent ? "green.900" : "gray.700",
-                color: isCurrent ? "green.300" : "white",
-                fontWeight: "bold",
-                fontSize: "md",
-                cursor: isCurrent ? "default" : "pointer",
-                transition: "all 0.1s",
-                _hover: isCurrent
-                  ? {}
-                  : { bg: "blue.600", transform: "scale(1.1)" },
+                width: '36px',
+                height: '36px',
+                borderRadius: 'md',
+                border: '2px solid',
+                borderColor: isCurrent ? 'green.500' : 'transparent',
+                bg: isCurrent ? 'green.900' : 'gray.700',
+                color: isCurrent ? 'green.300' : 'white',
+                fontWeight: 'bold',
+                fontSize: 'md',
+                cursor: isCurrent ? 'default' : 'pointer',
+                transition: 'all 0.1s',
+                _hover: isCurrent ? {} : { bg: 'blue.600', transform: 'scale(1.1)' },
               })}
             >
               {d}
             </button>
-          );
+          )
         })}
       </div>
     </div>
-  );
+  )
 }
 
 export interface TrainingImageMeta {
-  filename: string;
-  digit: number;
-  timestamp: number;
-  playerId: string;
-  sessionId: string;
-  columnIndex: number;
-  imageUrl: string;
+  filename: string
+  digit: number
+  timestamp: number
+  playerId: string
+  sessionId: string
+  columnIndex: number
+  imageUrl: string
 }
 
-export type GroupBy = "digit" | "player" | "session" | "none";
+export type GroupBy = 'digit' | 'player' | 'session' | 'none'
 
 export interface TrainingImageViewerProps {
   /** Images to display */
-  images: TrainingImageMeta[];
+  images: TrainingImageMeta[]
   /** Loading state */
-  loading?: boolean;
+  loading?: boolean
   /** Error message if any */
-  error?: string | null;
+  error?: string | null
   /** Current filter for digit */
-  filterDigit?: string;
+  filterDigit?: string
   /** Current filter for player */
-  filterPlayer?: string;
+  filterPlayer?: string
   /** Current filter for session */
-  filterSession?: string;
+  filterSession?: string
   /** How to group images */
-  groupBy?: GroupBy;
+  groupBy?: GroupBy
   /** Callback when digit filter changes */
-  onFilterDigitChange?: (value: string) => void;
+  onFilterDigitChange?: (value: string) => void
   /** Callback when player filter changes */
-  onFilterPlayerChange?: (value: string) => void;
+  onFilterPlayerChange?: (value: string) => void
   /** Callback when session filter changes */
-  onFilterSessionChange?: (value: string) => void;
+  onFilterSessionChange?: (value: string) => void
   /** Callback when group by changes */
-  onGroupByChange?: (value: GroupBy) => void;
+  onGroupByChange?: (value: GroupBy) => void
   /** Callback when refresh is clicked */
-  onRefresh?: () => void;
+  onRefresh?: () => void
   /** Custom renderer for each image (for stories with AbacusStatic) */
-  renderImage?: (image: TrainingImageMeta) => ReactNode;
+  renderImage?: (image: TrainingImageMeta) => ReactNode
   /** Callback when a single image is deleted */
-  onDeleteImage?: (image: TrainingImageMeta) => Promise<void>;
+  onDeleteImage?: (image: TrainingImageMeta) => Promise<void>
   /** Callback for bulk delete */
-  onBulkDelete?: (images: TrainingImageMeta[]) => Promise<void>;
+  onBulkDelete?: (images: TrainingImageMeta[]) => Promise<void>
   /** Callback to open bulk delete modal */
-  onOpenBulkDeleteModal?: () => void;
+  onOpenBulkDeleteModal?: () => void
   /** Whether delete is in progress */
-  deleting?: boolean;
+  deleting?: boolean
   /** Callback when a single image is reclassified */
-  onReclassifyImage?: (
-    image: TrainingImageMeta,
-    newDigit: number,
-  ) => Promise<void>;
+  onReclassifyImage?: (image: TrainingImageMeta, newDigit: number) => Promise<void>
   /** Callback for bulk reclassify */
-  onBulkReclassify?: (
-    images: TrainingImageMeta[],
-    newDigit: number,
-  ) => Promise<void>;
+  onBulkReclassify?: (images: TrainingImageMeta[], newDigit: number) => Promise<void>
   /** Whether reclassify is in progress */
-  reclassifying?: boolean;
+  reclassifying?: boolean
 }
 
 /**
@@ -211,10 +193,10 @@ export function TrainingImageViewer({
   images,
   loading = false,
   error = null,
-  filterDigit = "",
-  filterPlayer = "",
-  filterSession = "",
-  groupBy = "digit",
+  filterDigit = '',
+  filterPlayer = '',
+  filterSession = '',
+  groupBy = 'digit',
   onFilterDigitChange,
   onFilterPlayerChange,
   onFilterSessionChange,
@@ -230,163 +212,158 @@ export function TrainingImageViewer({
   reclassifying = false,
 }: TrainingImageViewerProps) {
   // Selection state for bulk operations
-  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
-  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set())
+  const [selectionMode, setSelectionMode] = useState(false)
   // Inline reclassify state (which image is showing reclassify dropdown)
-  const [reclassifyingImage, setReclassifyingImage] = useState<string | null>(
-    null,
-  );
+  const [reclassifyingImage, setReclassifyingImage] = useState<string | null>(null)
   // Bulk reclassify dropdown state
-  const [showBulkReclassify, setShowBulkReclassify] = useState(false);
+  const [showBulkReclassify, setShowBulkReclassify] = useState(false)
 
   // Get unique values for filter dropdowns
-  const uniquePlayers = useMemo(
-    () => [...new Set(images.map((i) => i.playerId))].sort(),
-    [images],
-  );
+  const uniquePlayers = useMemo(() => [...new Set(images.map((i) => i.playerId))].sort(), [images])
   const uniqueSessions = useMemo(
     () => [...new Set(images.map((i) => i.sessionId))].sort(),
-    [images],
-  );
+    [images]
+  )
 
   // Toggle selection of an image
   const toggleSelection = useCallback((filename: string) => {
     setSelectedImages((prev) => {
-      const next = new Set(prev);
+      const next = new Set(prev)
       if (next.has(filename)) {
-        next.delete(filename);
+        next.delete(filename)
       } else {
-        next.add(filename);
+        next.add(filename)
       }
-      return next;
-    });
-  }, []);
+      return next
+    })
+  }, [])
 
   // Select all visible images
   const selectAll = useCallback(() => {
-    setSelectedImages(new Set(images.map((img) => img.filename)));
-  }, [images]);
+    setSelectedImages(new Set(images.map((img) => img.filename)))
+  }, [images])
 
   // Clear selection
   const clearSelection = useCallback(() => {
-    setSelectedImages(new Set());
-  }, []);
+    setSelectedImages(new Set())
+  }, [])
 
   // Get selected image objects
   const selectedImageObjects = useMemo(
     () => images.filter((img) => selectedImages.has(img.filename)),
-    [images, selectedImages],
-  );
+    [images, selectedImages]
+  )
 
   // Handle bulk delete of selected
   const handleBulkDeleteSelected = useCallback(async () => {
-    if (selectedImageObjects.length === 0 || !onBulkDelete) return;
-    await onBulkDelete(selectedImageObjects);
-    clearSelection();
-    setSelectionMode(false);
-  }, [selectedImageObjects, onBulkDelete, clearSelection]);
+    if (selectedImageObjects.length === 0 || !onBulkDelete) return
+    await onBulkDelete(selectedImageObjects)
+    clearSelection()
+    setSelectionMode(false)
+  }, [selectedImageObjects, onBulkDelete, clearSelection])
 
   // Handle inline reclassify of single image
   const handleInlineReclassify = useCallback(
     async (image: TrainingImageMeta, newDigit: number) => {
-      if (!onReclassifyImage) return;
-      setReclassifyingImage(null);
-      await onReclassifyImage(image, newDigit);
+      if (!onReclassifyImage) return
+      setReclassifyingImage(null)
+      await onReclassifyImage(image, newDigit)
     },
-    [onReclassifyImage],
-  );
+    [onReclassifyImage]
+  )
 
   // Handle bulk reclassify of selected images
   const handleBulkReclassifySelected = useCallback(
     async (newDigit: number) => {
-      if (selectedImageObjects.length === 0 || !onBulkReclassify) return;
-      setShowBulkReclassify(false);
-      await onBulkReclassify(selectedImageObjects, newDigit);
-      clearSelection();
-      setSelectionMode(false);
+      if (selectedImageObjects.length === 0 || !onBulkReclassify) return
+      setShowBulkReclassify(false)
+      await onBulkReclassify(selectedImageObjects, newDigit)
+      clearSelection()
+      setSelectionMode(false)
     },
-    [selectedImageObjects, onBulkReclassify, clearSelection],
-  );
+    [selectedImageObjects, onBulkReclassify, clearSelection]
+  )
 
   // Exit selection mode
   const exitSelectionMode = useCallback(() => {
-    setSelectionMode(false);
-    clearSelection();
-  }, [clearSelection]);
+    setSelectionMode(false)
+    clearSelection()
+  }, [clearSelection])
 
   // Group images
   const groupedImages = useMemo(() => {
-    if (groupBy === "none") {
-      return { "All Images": images };
+    if (groupBy === 'none') {
+      return { 'All Images': images }
     }
 
-    const groups: Record<string, TrainingImageMeta[]> = {};
+    const groups: Record<string, TrainingImageMeta[]> = {}
 
     for (const img of images) {
-      let key: string;
+      let key: string
       switch (groupBy) {
-        case "digit":
-          key = `Digit ${img.digit}`;
-          break;
-        case "player":
-          key = `Player ${img.playerId}`;
-          break;
-        case "session":
-          key = `Session ${img.sessionId}`;
-          break;
+        case 'digit':
+          key = `Digit ${img.digit}`
+          break
+        case 'player':
+          key = `Player ${img.playerId}`
+          break
+        case 'session':
+          key = `Session ${img.sessionId}`
+          break
         default:
-          key = "All";
+          key = 'All'
       }
 
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(img);
+      if (!groups[key]) groups[key] = []
+      groups[key].push(img)
     }
 
-    return groups;
-  }, [images, groupBy]);
+    return groups
+  }, [images, groupBy])
 
   // Stats
   const stats = useMemo(() => {
-    const digitCounts: Record<number, number> = {};
+    const digitCounts: Record<number, number> = {}
     for (const img of images) {
-      digitCounts[img.digit] = (digitCounts[img.digit] || 0) + 1;
+      digitCounts[img.digit] = (digitCounts[img.digit] || 0) + 1
     }
     return {
       total: images.length,
       players: uniquePlayers.length,
       sessions: uniqueSessions.length,
       digitCounts,
-    };
-  }, [images, uniquePlayers, uniqueSessions]);
+    }
+  }, [images, uniquePlayers, uniqueSessions])
 
   return (
     <div
       data-component="training-image-viewer"
       className={css({
-        minHeight: "100vh",
-        bg: "gray.900",
-        color: "gray.100",
+        minHeight: '100vh',
+        bg: 'gray.900',
+        color: 'gray.100',
         p: 4,
       })}
     >
       <header className={css({ mb: 6 })}>
         <div
           className={css({
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
             mb: 2,
           })}
         >
           <div>
-            <h1 className={css({ fontSize: "2xl", fontWeight: "bold", mb: 2 })}>
+            <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 2 })}>
               Vision Training Data
             </h1>
-            <p className={css({ color: "gray.400", fontSize: "sm" })}>
+            <p className={css({ color: 'gray.400', fontSize: 'sm' })}>
               Collected abacus column images for training the classifier model
             </p>
           </div>
-          <div className={css({ display: "flex", gap: 2 })}>
+          <div className={css({ display: 'flex', gap: 2 })}>
             {(onBulkDelete || onOpenBulkDeleteModal) && (
               <>
                 {!selectionMode ? (
@@ -398,14 +375,14 @@ export function TrainingImageViewer({
                       className={css({
                         px: 4,
                         py: 2,
-                        bg: "gray.700",
-                        color: "white",
-                        fontWeight: "medium",
-                        borderRadius: "md",
-                        border: "none",
-                        cursor: "pointer",
+                        bg: 'gray.700',
+                        color: 'white',
+                        fontWeight: 'medium',
+                        borderRadius: 'md',
+                        border: 'none',
+                        cursor: 'pointer',
                         opacity: images.length === 0 ? 0.5 : 1,
-                        _hover: { bg: "gray.600" },
+                        _hover: { bg: 'gray.600' },
                       })}
                     >
                       Select
@@ -418,14 +395,14 @@ export function TrainingImageViewer({
                         className={css({
                           px: 4,
                           py: 2,
-                          bg: "red.700",
-                          color: "white",
-                          fontWeight: "medium",
-                          borderRadius: "md",
-                          border: "none",
-                          cursor: "pointer",
+                          bg: 'red.700',
+                          color: 'white',
+                          fontWeight: 'medium',
+                          borderRadius: 'md',
+                          border: 'none',
+                          cursor: 'pointer',
                           opacity: images.length === 0 ? 0.5 : 1,
-                          _hover: { bg: "red.600" },
+                          _hover: { bg: 'red.600' },
                         })}
                       >
                         Bulk Delete...
@@ -440,12 +417,12 @@ export function TrainingImageViewer({
                       className={css({
                         px: 3,
                         py: 2,
-                        bg: "gray.700",
-                        color: "white",
-                        borderRadius: "md",
-                        border: "none",
-                        cursor: "pointer",
-                        _hover: { bg: "gray.600" },
+                        bg: 'gray.700',
+                        color: 'white',
+                        borderRadius: 'md',
+                        border: 'none',
+                        cursor: 'pointer',
+                        _hover: { bg: 'gray.600' },
                       })}
                     >
                       Select All ({images.length})
@@ -457,42 +434,37 @@ export function TrainingImageViewer({
                       className={css({
                         px: 3,
                         py: 2,
-                        bg: "gray.700",
-                        color: "white",
-                        borderRadius: "md",
-                        border: "none",
-                        cursor: "pointer",
+                        bg: 'gray.700',
+                        color: 'white',
+                        borderRadius: 'md',
+                        border: 'none',
+                        cursor: 'pointer',
                         opacity: selectedImages.size === 0 ? 0.5 : 1,
-                        _hover: { bg: "gray.600" },
+                        _hover: { bg: 'gray.600' },
                       })}
                     >
                       Clear
                     </button>
                     {onBulkReclassify && (
-                      <div className={css({ position: "relative" })}>
+                      <div className={css({ position: 'relative' })}>
                         <button
                           type="button"
-                          onClick={() =>
-                            setShowBulkReclassify(!showBulkReclassify)
-                          }
+                          onClick={() => setShowBulkReclassify(!showBulkReclassify)}
                           disabled={selectedImages.size === 0 || reclassifying}
                           className={css({
                             px: 3,
                             py: 2,
-                            bg: "blue.600",
-                            color: "white",
-                            borderRadius: "md",
-                            border: "none",
-                            cursor: "pointer",
-                            opacity:
-                              selectedImages.size === 0 || reclassifying
-                                ? 0.5
-                                : 1,
-                            _hover: { bg: "blue.500" },
+                            bg: 'blue.600',
+                            color: 'white',
+                            borderRadius: 'md',
+                            border: 'none',
+                            cursor: 'pointer',
+                            opacity: selectedImages.size === 0 || reclassifying ? 0.5 : 1,
+                            _hover: { bg: 'blue.500' },
                           })}
                         >
                           {reclassifying
-                            ? "Reclassifying..."
+                            ? 'Reclassifying...'
                             : `Reclassify (${selectedImages.size})`}
                         </button>
                         {showBulkReclassify && (
@@ -510,19 +482,16 @@ export function TrainingImageViewer({
                       className={css({
                         px: 3,
                         py: 2,
-                        bg: "red.600",
-                        color: "white",
-                        borderRadius: "md",
-                        border: "none",
-                        cursor: "pointer",
-                        opacity:
-                          selectedImages.size === 0 || deleting ? 0.5 : 1,
-                        _hover: { bg: "red.500" },
+                        bg: 'red.600',
+                        color: 'white',
+                        borderRadius: 'md',
+                        border: 'none',
+                        cursor: 'pointer',
+                        opacity: selectedImages.size === 0 || deleting ? 0.5 : 1,
+                        _hover: { bg: 'red.500' },
                       })}
                     >
-                      {deleting
-                        ? "Deleting..."
-                        : `Delete (${selectedImages.size})`}
+                      {deleting ? 'Deleting...' : `Delete (${selectedImages.size})`}
                     </button>
                     <button
                       type="button"
@@ -530,12 +499,12 @@ export function TrainingImageViewer({
                       className={css({
                         px: 3,
                         py: 2,
-                        bg: "gray.600",
-                        color: "white",
-                        borderRadius: "md",
-                        border: "none",
-                        cursor: "pointer",
-                        _hover: { bg: "gray.500" },
+                        bg: 'gray.600',
+                        color: 'white',
+                        borderRadius: 'md',
+                        border: 'none',
+                        cursor: 'pointer',
+                        _hover: { bg: 'gray.500' },
                       })}
                     >
                       Cancel
@@ -549,12 +518,12 @@ export function TrainingImageViewer({
               className={css({
                 px: 4,
                 py: 2,
-                bg: "gray.700",
-                color: "white",
-                fontWeight: "semibold",
-                borderRadius: "md",
-                textDecoration: "none",
-                _hover: { bg: "gray.600" },
+                bg: 'gray.700',
+                color: 'white',
+                fontWeight: 'semibold',
+                borderRadius: 'md',
+                textDecoration: 'none',
+                _hover: { bg: 'gray.600' },
               })}
             >
               Sessions
@@ -564,12 +533,12 @@ export function TrainingImageViewer({
               className={css({
                 px: 4,
                 py: 2,
-                bg: "green.600",
-                color: "white",
-                fontWeight: "semibold",
-                borderRadius: "md",
-                textDecoration: "none",
-                _hover: { bg: "green.700" },
+                bg: 'green.600',
+                color: 'white',
+                fontWeight: 'semibold',
+                borderRadius: 'md',
+                textDecoration: 'none',
+                _hover: { bg: 'green.700' },
               })}
             >
               Train Model
@@ -582,79 +551,73 @@ export function TrainingImageViewer({
       <div
         data-element="stats"
         className={css({
-          display: "flex",
-          flexWrap: "wrap",
+          display: 'flex',
+          flexWrap: 'wrap',
           gap: 4,
           mb: 6,
           p: 4,
-          bg: "gray.800",
-          borderRadius: "lg",
+          bg: 'gray.800',
+          borderRadius: 'lg',
         })}
       >
         <div>
           <div
             className={css({
-              fontSize: "xs",
-              color: "gray.500",
-              textTransform: "uppercase",
+              fontSize: 'xs',
+              color: 'gray.500',
+              textTransform: 'uppercase',
             })}
           >
             Total Images
           </div>
-          <div className={css({ fontSize: "2xl", fontWeight: "bold" })}>
-            {stats.total}
-          </div>
+          <div className={css({ fontSize: '2xl', fontWeight: 'bold' })}>{stats.total}</div>
         </div>
         <div>
           <div
             className={css({
-              fontSize: "xs",
-              color: "gray.500",
-              textTransform: "uppercase",
+              fontSize: 'xs',
+              color: 'gray.500',
+              textTransform: 'uppercase',
             })}
           >
             Players
           </div>
-          <div className={css({ fontSize: "2xl", fontWeight: "bold" })}>
-            {stats.players}
-          </div>
+          <div className={css({ fontSize: '2xl', fontWeight: 'bold' })}>{stats.players}</div>
         </div>
         <div>
           <div
             className={css({
-              fontSize: "xs",
-              color: "gray.500",
-              textTransform: "uppercase",
+              fontSize: 'xs',
+              color: 'gray.500',
+              textTransform: 'uppercase',
             })}
           >
             Sessions
           </div>
-          <div className={css({ fontSize: "2xl", fontWeight: "bold" })}>
-            {stats.sessions}
-          </div>
+          <div className={css({ fontSize: '2xl', fontWeight: 'bold' })}>{stats.sessions}</div>
         </div>
-        <div className={css({ flex: 1, minWidth: "200px" })}>
+        <div className={css({ flex: 1, minWidth: '200px' })}>
           <div
             className={css({
-              fontSize: "xs",
-              color: "gray.500",
-              textTransform: "uppercase",
+              fontSize: 'xs',
+              color: 'gray.500',
+              textTransform: 'uppercase',
               mb: 1,
             })}
           >
             By Digit
           </div>
-          <div className={css({ display: "flex", gap: 2, flexWrap: "wrap" })}>
+          <div className={css({ display: 'flex', gap: 2, flexWrap: 'wrap' })}>
             {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
               <div
                 key={d}
                 className={css({
                   px: 2,
                   py: 1,
-                  bg: "gray.700",
-                  borderRadius: "md",
-                  fontSize: "sm",
-                  fontFamily: "mono",
+                  bg: 'gray.700',
+                  borderRadius: 'md',
+                  fontSize: 'sm',
+                  fontFamily: 'mono',
                 })}
               >
                 {d}: {stats.digitCounts[d] || 0}
@@ -668,21 +631,21 @@ export function TrainingImageViewer({
       <div
         data-element="filters"
         className={css({
-          display: "flex",
-          flexWrap: "wrap",
+          display: 'flex',
+          flexWrap: 'wrap',
           gap: 4,
           mb: 6,
           p: 4,
-          bg: "gray.800",
-          borderRadius: "lg",
+          bg: 'gray.800',
+          borderRadius: 'lg',
         })}
       >
         <div>
           <label
             className={css({
-              display: "block",
-              fontSize: "xs",
-              color: "gray.500",
+              display: 'block',
+              fontSize: 'xs',
+              color: 'gray.500',
               mb: 1,
             })}
           >
@@ -694,12 +657,12 @@ export function TrainingImageViewer({
             className={css({
               px: 3,
               py: 2,
-              bg: "gray.700",
-              border: "1px solid",
-              borderColor: "gray.600",
-              borderRadius: "md",
-              color: "gray.100",
-              minWidth: "120px",
+              bg: 'gray.700',
+              border: '1px solid',
+              borderColor: 'gray.600',
+              borderRadius: 'md',
+              color: 'gray.100',
+              minWidth: '120px',
             })}
           >
             <option value="">All digits</option>
@@ -714,9 +677,9 @@ export function TrainingImageViewer({
         <div>
           <label
             className={css({
-              display: "block",
-              fontSize: "xs",
-              color: "gray.500",
+              display: 'block',
+              fontSize: 'xs',
+              color: 'gray.500',
               mb: 1,
             })}
           >
@@ -728,12 +691,12 @@ export function TrainingImageViewer({
             className={css({
               px: 3,
               py: 2,
-              bg: "gray.700",
-              border: "1px solid",
-              borderColor: "gray.600",
-              borderRadius: "md",
-              color: "gray.100",
-              minWidth: "120px",
+              bg: 'gray.700',
+              border: '1px solid',
+              borderColor: 'gray.600',
+              borderRadius: 'md',
+              color: 'gray.100',
+              minWidth: '120px',
             })}
           >
             <option value="">All players</option>
@@ -748,9 +711,9 @@ export function TrainingImageViewer({
         <div>
           <label
             className={css({
-              display: "block",
-              fontSize: "xs",
-              color: "gray.500",
+              display: 'block',
+              fontSize: 'xs',
+              color: 'gray.500',
               mb: 1,
             })}
           >
@@ -762,12 +725,12 @@ export function TrainingImageViewer({
             className={css({
               px: 3,
               py: 2,
-              bg: "gray.700",
-              border: "1px solid",
-              borderColor: "gray.600",
-              borderRadius: "md",
-              color: "gray.100",
-              minWidth: "120px",
+              bg: 'gray.700',
+              border: '1px solid',
+              borderColor: 'gray.600',
+              borderRadius: 'md',
+              color: 'gray.100',
+              minWidth: '120px',
             })}
           >
             <option value="">All sessions</option>
@@ -782,9 +745,9 @@ export function TrainingImageViewer({
         <div>
           <label
             className={css({
-              display: "block",
-              fontSize: "xs",
-              color: "gray.500",
+              display: 'block',
+              fontSize: 'xs',
+              color: 'gray.500',
               mb: 1,
             })}
           >
@@ -796,12 +759,12 @@ export function TrainingImageViewer({
             className={css({
               px: 3,
               py: 2,
-              bg: "gray.700",
-              border: "1px solid",
-              borderColor: "gray.600",
-              borderRadius: "md",
-              color: "gray.100",
-              minWidth: "120px",
+              bg: 'gray.700',
+              border: '1px solid',
+              borderColor: 'gray.600',
+              borderRadius: 'md',
+              color: 'gray.100',
+              minWidth: '120px',
             })}
           >
             <option value="digit">Digit</option>
@@ -812,19 +775,19 @@ export function TrainingImageViewer({
         </div>
 
         {onRefresh && (
-          <div className={css({ display: "flex", alignItems: "flex-end" })}>
+          <div className={css({ display: 'flex', alignItems: 'flex-end' })}>
             <button
               type="button"
               onClick={onRefresh}
               className={css({
                 px: 4,
                 py: 2,
-                bg: "blue.600",
-                color: "white",
-                borderRadius: "md",
-                border: "none",
-                cursor: "pointer",
-                _hover: { bg: "blue.700" },
+                bg: 'blue.600',
+                color: 'white',
+                borderRadius: 'md',
+                border: 'none',
+                cursor: 'pointer',
+                _hover: { bg: 'blue.700' },
               })}
             >
               Refresh
@@ -835,20 +798,18 @@ export function TrainingImageViewer({
 
       {/* Loading / Error states */}
       {loading && (
-        <div className={css({ textAlign: "center", py: 8, color: "gray.500" })}>
-          Loading...
-        </div>
+        <div className={css({ textAlign: 'center', py: 8, color: 'gray.500' })}>Loading...</div>
       )}
 
       {error && (
         <div
           className={css({
             p: 4,
-            bg: "red.900/50",
-            border: "1px solid",
-            borderColor: "red.700",
-            borderRadius: "lg",
-            color: "red.200",
+            bg: 'red.900/50',
+            border: '1px solid',
+            borderColor: 'red.700',
+            borderRadius: 'lg',
+            color: 'red.200',
             mb: 4,
           })}
         >
@@ -860,65 +821,59 @@ export function TrainingImageViewer({
       {!loading && !error && (
         <div
           data-element="image-groups"
-          className={css({ display: "flex", flexDirection: "column", gap: 6 })}
+          className={css({ display: 'flex', flexDirection: 'column', gap: 6 })}
         >
           {Object.entries(groupedImages).map(([groupName, groupImages]) => (
             <div key={groupName} data-group={groupName}>
               <h2
                 className={css({
-                  fontSize: "lg",
-                  fontWeight: "semibold",
+                  fontSize: 'lg',
+                  fontWeight: 'semibold',
                   mb: 3,
                   pb: 2,
-                  borderBottom: "1px solid",
-                  borderColor: "gray.700",
+                  borderBottom: '1px solid',
+                  borderColor: 'gray.700',
                 })}
               >
-                {groupName}{" "}
-                <span
-                  className={css({ color: "gray.500", fontWeight: "normal" })}
-                >
+                {groupName}{' '}
+                <span className={css({ color: 'gray.500', fontWeight: 'normal' })}>
                   ({groupImages.length})
                 </span>
               </h2>
 
               <div
                 className={css({
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))",
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
                   gap: 3,
                 })}
               >
                 {groupImages.map((img) => {
-                  const isSelected = selectedImages.has(img.filename);
-                  const hasOpenDialpad = reclassifyingImage === img.filename;
+                  const isSelected = selectedImages.has(img.filename)
+                  const hasOpenDialpad = reclassifyingImage === img.filename
                   return (
                     <div
                       key={img.filename}
                       data-image={img.filename}
                       data-selected={isSelected}
-                      onClick={
-                        selectionMode
-                          ? () => toggleSelection(img.filename)
-                          : undefined
-                      }
+                      onClick={selectionMode ? () => toggleSelection(img.filename) : undefined}
                       className={css({
-                        position: "relative",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
                         p: 2,
-                        bg: isSelected ? "blue.900" : "gray.800",
-                        borderRadius: "lg",
-                        transition: "all 0.15s",
-                        cursor: selectionMode ? "pointer" : "default",
-                        border: "2px solid",
-                        borderColor: isSelected ? "blue.500" : "transparent",
+                        bg: isSelected ? 'blue.900' : 'gray.800',
+                        borderRadius: 'lg',
+                        transition: 'all 0.15s',
+                        cursor: selectionMode ? 'pointer' : 'default',
+                        border: '2px solid',
+                        borderColor: isSelected ? 'blue.500' : 'transparent',
                         // Ensure tile with open dialpad stays on top
-                        zIndex: hasOpenDialpad ? 100 : "auto",
+                        zIndex: hasOpenDialpad ? 100 : 'auto',
                         _hover: {
-                          bg: isSelected ? "blue.800" : "gray.700",
-                          transform: selectionMode ? "none" : "scale(1.05)",
+                          bg: isSelected ? 'blue.800' : 'gray.700',
+                          transform: selectionMode ? 'none' : 'scale(1.05)',
                         },
                       })}
                     >
@@ -926,23 +881,23 @@ export function TrainingImageViewer({
                       {selectionMode && (
                         <div
                           className={css({
-                            position: "absolute",
+                            position: 'absolute',
                             top: 1,
                             left: 1,
-                            width: "20px",
-                            height: "20px",
-                            borderRadius: "sm",
-                            border: "2px solid",
-                            borderColor: isSelected ? "blue.400" : "gray.500",
-                            bg: isSelected ? "blue.500" : "transparent",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "xs",
-                            color: "white",
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: 'sm',
+                            border: '2px solid',
+                            borderColor: isSelected ? 'blue.400' : 'gray.500',
+                            bg: isSelected ? 'blue.500' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 'xs',
+                            color: 'white',
                           })}
                         >
-                          {isSelected && "✓"}
+                          {isSelected && '✓'}
                         </div>
                       )}
                       {/* Delete button (visible on hover when not in selection mode) */}
@@ -950,26 +905,26 @@ export function TrainingImageViewer({
                         <button
                           type="button"
                           onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteImage(img);
+                            e.stopPropagation()
+                            onDeleteImage(img)
                           }}
                           data-action="delete-image"
                           className={css({
-                            position: "absolute",
+                            position: 'absolute',
                             top: 1,
                             right: 1,
-                            width: "24px",
-                            height: "24px",
-                            borderRadius: "full",
-                            border: "none",
-                            bg: "red.600",
-                            color: "white",
-                            fontSize: "sm",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            _hover: { bg: "red.500", transform: "scale(1.1)" },
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: 'full',
+                            border: 'none',
+                            bg: 'red.600',
+                            color: 'white',
+                            fontSize: 'sm',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            _hover: { bg: 'red.500', transform: 'scale(1.1)' },
                           })}
                         >
                           ✕
@@ -983,11 +938,11 @@ export function TrainingImageViewer({
                           src={img.imageUrl}
                           alt={`Digit ${img.digit}`}
                           className={css({
-                            width: "64px",
-                            height: "128px",
-                            objectFit: "contain",
-                            bg: "black",
-                            borderRadius: "md",
+                            width: '64px',
+                            height: '128px',
+                            objectFit: 'contain',
+                            bg: 'black',
+                            borderRadius: 'md',
                             mb: 1,
                           })}
                         />
@@ -995,46 +950,44 @@ export function TrainingImageViewer({
                       {/* Image metadata - context-aware based on grouping */}
                       <div
                         className={css({
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
                           gap: 0.5,
-                          width: "100%",
+                          width: '100%',
                         })}
                       >
                         {/* Digit - only show prominently when NOT grouped by digit */}
-                        {groupBy !== "digit" && (
+                        {groupBy !== 'digit' && (
                           <>
                             {!selectionMode && onReclassifyImage ? (
-                              <div className={css({ position: "relative" })}>
+                              <div className={css({ position: 'relative' })}>
                                 <button
                                   type="button"
                                   onClick={(e) => {
-                                    e.stopPropagation();
+                                    e.stopPropagation()
                                     setReclassifyingImage(
-                                      reclassifyingImage === img.filename
-                                        ? null
-                                        : img.filename,
-                                    );
+                                      reclassifyingImage === img.filename ? null : img.filename
+                                    )
                                   }}
                                   className={css({
-                                    fontSize: "xl",
-                                    fontWeight: "bold",
-                                    fontFamily: "mono",
-                                    bg: "transparent",
-                                    border: "1px dashed",
+                                    fontSize: 'xl',
+                                    fontWeight: 'bold',
+                                    fontFamily: 'mono',
+                                    bg: 'transparent',
+                                    border: '1px dashed',
                                     borderColor:
                                       reclassifyingImage === img.filename
-                                        ? "blue.400"
-                                        : "transparent",
-                                    borderRadius: "md",
+                                        ? 'blue.400'
+                                        : 'transparent',
+                                    borderRadius: 'md',
                                     px: 2,
                                     py: 0.5,
-                                    cursor: "pointer",
-                                    color: "inherit",
+                                    cursor: 'pointer',
+                                    color: 'inherit',
                                     _hover: {
-                                      borderColor: "blue.400",
-                                      bg: "gray.700",
+                                      borderColor: 'blue.400',
+                                      bg: 'gray.700',
                                     },
                                   })}
                                   title="Click to reclassify"
@@ -1044,9 +997,7 @@ export function TrainingImageViewer({
                                 {reclassifyingImage === img.filename && (
                                   <DigitDialpad
                                     currentDigit={img.digit}
-                                    onSelect={(d) =>
-                                      handleInlineReclassify(img, d)
-                                    }
+                                    onSelect={(d) => handleInlineReclassify(img, d)}
                                     onClose={() => setReclassifyingImage(null)}
                                   />
                                 )}
@@ -1054,9 +1005,9 @@ export function TrainingImageViewer({
                             ) : (
                               <div
                                 className={css({
-                                  fontSize: "xl",
-                                  fontWeight: "bold",
-                                  fontFamily: "mono",
+                                  fontSize: 'xl',
+                                  fontWeight: 'bold',
+                                  fontFamily: 'mono',
                                 })}
                               >
                                 {img.digit}
@@ -1066,30 +1017,28 @@ export function TrainingImageViewer({
                         )}
 
                         {/* When grouped by digit: show reclassify button (small) and session info */}
-                        {groupBy === "digit" && (
+                        {groupBy === 'digit' && (
                           <>
                             {!selectionMode && onReclassifyImage && (
-                              <div className={css({ position: "relative" })}>
+                              <div className={css({ position: 'relative' })}>
                                 <button
                                   type="button"
                                   onClick={(e) => {
-                                    e.stopPropagation();
+                                    e.stopPropagation()
                                     setReclassifyingImage(
-                                      reclassifyingImage === img.filename
-                                        ? null
-                                        : img.filename,
-                                    );
+                                      reclassifyingImage === img.filename ? null : img.filename
+                                    )
                                   }}
                                   className={css({
-                                    fontSize: "xs",
-                                    bg: "gray.700",
-                                    border: "none",
-                                    borderRadius: "sm",
+                                    fontSize: 'xs',
+                                    bg: 'gray.700',
+                                    border: 'none',
+                                    borderRadius: 'sm',
                                     px: 1.5,
                                     py: 0.5,
-                                    cursor: "pointer",
-                                    color: "gray.400",
-                                    _hover: { bg: "blue.600", color: "white" },
+                                    cursor: 'pointer',
+                                    color: 'gray.400',
+                                    _hover: { bg: 'blue.600', color: 'white' },
                                   })}
                                   title="Reclassify this image"
                                 >
@@ -1098,9 +1047,7 @@ export function TrainingImageViewer({
                                 {reclassifyingImage === img.filename && (
                                   <DigitDialpad
                                     currentDigit={img.digit}
-                                    onSelect={(d) =>
-                                      handleInlineReclassify(img, d)
-                                    }
+                                    onSelect={(d) => handleInlineReclassify(img, d)}
                                     onClose={() => setReclassifyingImage(null)}
                                   />
                                 )}
@@ -1109,10 +1056,10 @@ export function TrainingImageViewer({
                             {/* Show session ID snippet when grouped by digit */}
                             <div
                               className={css({
-                                fontSize: "xs",
-                                color: "gray.500",
-                                textAlign: "center",
-                                fontFamily: "mono",
+                                fontSize: 'xs',
+                                color: 'gray.500',
+                                textAlign: 'center',
+                                fontFamily: 'mono',
                               })}
                               title={`Session: ${img.sessionId}`}
                             >
@@ -1122,13 +1069,13 @@ export function TrainingImageViewer({
                         )}
 
                         {/* Show player when grouped by session */}
-                        {groupBy === "session" && (
+                        {groupBy === 'session' && (
                           <div
                             className={css({
-                              fontSize: "xs",
-                              color: "gray.500",
-                              textAlign: "center",
-                              fontFamily: "mono",
+                              fontSize: 'xs',
+                              color: 'gray.500',
+                              textAlign: 'center',
+                              fontFamily: 'mono',
                             })}
                             title={`Player: ${img.playerId}`}
                           >
@@ -1137,12 +1084,12 @@ export function TrainingImageViewer({
                         )}
 
                         {/* Show column index when useful (not when it's redundant) */}
-                        {groupBy !== "digit" && (
+                        {groupBy !== 'digit' && (
                           <div
                             className={css({
-                              fontSize: "xs",
-                              color: "gray.500",
-                              textAlign: "center",
+                              fontSize: 'xs',
+                              color: 'gray.500',
+                              textAlign: 'center',
                             })}
                           >
                             col {img.columnIndex}
@@ -1150,24 +1097,21 @@ export function TrainingImageViewer({
                         )}
                       </div>
                     </div>
-                  );
+                  )
                 })}
               </div>
             </div>
           ))}
 
           {Object.keys(groupedImages).length === 0 && (
-            <div
-              className={css({ textAlign: "center", py: 8, color: "gray.500" })}
-            >
-              No images collected yet. Enable vision mode and answer some
-              problems correctly!
+            <div className={css({ textAlign: 'center', py: 8, color: 'gray.500' })}>
+              No images collected yet. Enable vision mode and answer some problems correctly!
             </div>
           )}
         </div>
       )}
     </div>
-  );
+  )
 }
 
-export default TrainingImageViewer;
+export default TrainingImageViewer

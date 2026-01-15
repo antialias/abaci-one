@@ -1,14 +1,14 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from 'react'
 
 export interface PulsingAnimationOptions {
   /** Duration of the animation in milliseconds */
-  duration: number;
+  duration: number
   /** Number of pulses during the animation */
-  pulses: number;
+  pulses: number
   /** Called on each animation frame with the pulse progress (0-1) */
-  onProgress: (pulseProgress: number) => void;
+  onProgress: (pulseProgress: number) => void
   /** Called when the animation completes naturally (not cancelled) */
-  onComplete?: () => void;
+  onComplete?: () => void
 }
 
 /**
@@ -36,53 +36,52 @@ export interface PulsingAnimationOptions {
  * ```
  */
 export function usePulsingAnimation() {
-  const animationFrameId = useRef<number | null>(null);
-  const isCancelled = useRef(false);
+  const animationFrameId = useRef<number | null>(null)
+  const isCancelled = useRef(false)
 
   const cancel = useCallback(() => {
-    isCancelled.current = true;
+    isCancelled.current = true
     if (animationFrameId.current !== null) {
-      cancelAnimationFrame(animationFrameId.current);
-      animationFrameId.current = null;
+      cancelAnimationFrame(animationFrameId.current)
+      animationFrameId.current = null
     }
-  }, []);
+  }, [])
 
   const start = useCallback(
     (options: PulsingAnimationOptions) => {
-      const { duration, pulses, onProgress, onComplete } = options;
+      const { duration, pulses, onProgress, onComplete } = options
 
       // Cancel any existing animation
-      cancel();
+      cancel()
 
       // Reset cancellation flag for new animation
-      isCancelled.current = false;
+      isCancelled.current = false
 
-      const startTime = Date.now();
+      const startTime = Date.now()
 
       const animate = () => {
-        if (isCancelled.current) return;
+        if (isCancelled.current) return
 
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / duration, 1)
 
         // Create pulsing effect: sin wave for smooth on/off
-        const pulseProgress =
-          Math.sin(progress * Math.PI * pulses * 2) * 0.5 + 0.5;
-        onProgress(pulseProgress);
+        const pulseProgress = Math.sin(progress * Math.PI * pulses * 2) * 0.5 + 0.5
+        onProgress(pulseProgress)
 
         if (progress < 1) {
-          animationFrameId.current = requestAnimationFrame(animate);
+          animationFrameId.current = requestAnimationFrame(animate)
         } else {
-          animationFrameId.current = null;
-          onComplete?.();
+          animationFrameId.current = null
+          onComplete?.()
         }
-      };
+      }
 
-      animationFrameId.current = requestAnimationFrame(animate);
+      animationFrameId.current = requestAnimationFrame(animate)
     },
-    [cancel],
-  );
+    [cancel]
+  )
 
   // Memoize the returned object to prevent re-renders when used as a dependency
-  return useMemo(() => ({ start, cancel }), [start, cancel]);
+  return useMemo(() => ({ start, cancel }), [start, cancel])
 }

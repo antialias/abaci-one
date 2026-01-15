@@ -1,20 +1,16 @@
-"use client";
+'use client'
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AbacusReact } from "@soroban/abacus-react";
-import { useMyAbacus } from "@/contexts/MyAbacusContext";
-import { useFrameStability } from "@/hooks/useFrameStability";
-import { useMarkerDetection } from "@/hooks/useMarkerDetection";
-import { useRemoteCameraDesktop } from "@/hooks/useRemoteCameraDesktop";
-import { useColumnClassifier } from "@/hooks/useColumnClassifier";
-import { usePassiveBoundaryCapture } from "@/hooks/usePassiveBoundaryCapture";
-import {
-  processVideoFrame,
-  processImageFrame,
-  digitsToNumber,
-} from "@/lib/vision/frameProcessor";
-import { VisionCameraFeed } from "./VisionCameraFeed";
-import { css } from "../../../styled-system/css";
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { AbacusReact } from '@soroban/abacus-react'
+import { useMyAbacus } from '@/contexts/MyAbacusContext'
+import { useFrameStability } from '@/hooks/useFrameStability'
+import { useMarkerDetection } from '@/hooks/useMarkerDetection'
+import { useRemoteCameraDesktop } from '@/hooks/useRemoteCameraDesktop'
+import { useColumnClassifier } from '@/hooks/useColumnClassifier'
+import { usePassiveBoundaryCapture } from '@/hooks/usePassiveBoundaryCapture'
+import { processVideoFrame, processImageFrame, digitsToNumber } from '@/lib/vision/frameProcessor'
+import { VisionCameraFeed } from './VisionCameraFeed'
+import { css } from '../../../styled-system/css'
 
 /**
  * Feature flag: Enable automatic abacus value detection from video feed.
@@ -29,19 +25,19 @@ import { css } from "../../../styled-system/css";
  * - Hides the detection overlay
  * - Does not interfere with student's manual input
  */
-const ENABLE_AUTO_DETECTION = true;
+const ENABLE_AUTO_DETECTION = true
 
 interface DockedVisionFeedProps {
   /** Called when a stable value is detected */
-  onValueDetected?: (value: number) => void;
+  onValueDetected?: (value: number) => void
   /** Number of columns to detect */
-  columnCount?: number;
+  columnCount?: number
   /** Called when user wants to undock the abacus */
-  onUndock?: () => void;
+  onUndock?: () => void
   /** Current practice session ID (for passive training data capture) */
-  practiceSessionId?: string;
+  practiceSessionId?: string
   /** Current player/student ID (for passive training data capture) */
-  playerId?: string;
+  playerId?: string
 }
 
 /**
@@ -69,52 +65,50 @@ export function DockedVisionFeed({
     openVisionSetup,
     emitVisionFrame,
     visionSourceRef,
-  } = useMyAbacus();
+  } = useMyAbacus()
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const remoteImageRef = useRef<HTMLImageElement>(null);
-  const rectifiedCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastInferenceTimeRef = useRef<number>(0);
-  const lastBroadcastTimeRef = useRef<number>(0);
-  const isInferringRef = useRef(false); // Prevent concurrent inference
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const remoteImageRef = useRef<HTMLImageElement>(null)
+  const rectifiedCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+  const lastInferenceTimeRef = useRef<number>(0)
+  const lastBroadcastTimeRef = useRef<number>(0)
+  const isInferringRef = useRef(false) // Prevent concurrent inference
 
-  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [connectionTimedOut, setConnectionTimedOut] = useState(false);
-  const [detectedValue, setDetectedValue] = useState<number | null>(null);
-  const [confidence, setConfidence] = useState(0);
-  const [columnDigits, setColumnDigits] = useState<number[]>([]);
+  const [videoStream, setVideoStream] = useState<MediaStream | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [connectionTimedOut, setConnectionTimedOut] = useState(false)
+  const [detectedValue, setDetectedValue] = useState<number | null>(null)
+  const [confidence, setConfidence] = useState(0)
+  const [columnDigits, setColumnDigits] = useState<number[]>([])
   // Use persisted mirror mode from context (survives component remounts)
-  const showAbacusMirror = visionConfig.showMirrorMode ?? false;
-  const setShowAbacusMirror = setVisionMirrorMode;
+  const showAbacusMirror = visionConfig.showMirrorMode ?? false
+  const setShowAbacusMirror = setVisionMirrorMode
   // Show a subtle recommendation to try mirror mode when detection is working well
-  const [showMirrorHint, setShowMirrorHint] = useState(false);
+  const [showMirrorHint, setShowMirrorHint] = useState(false)
   // Track if user has dismissed the hint or engaged with mirror mode
-  const hintDismissedRef = useRef(false);
+  const hintDismissedRef = useRef(false)
 
   // Track video element in state for marker detection hook
-  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(
-    null,
-  );
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
 
   // ML column classifier hook
-  const classifier = useColumnClassifier();
+  const classifier = useColumnClassifier()
 
   // Preload the ML model when component mounts
   useEffect(() => {
     if (ENABLE_AUTO_DETECTION) {
-      classifier.preload();
+      classifier.preload()
     }
-  }, [classifier]);
+  }, [classifier])
 
   // Stability tracking for detected values (hook must be called unconditionally)
-  const stability = useFrameStability();
+  const stability = useFrameStability()
 
   // Determine camera source from explicit activeCameraSource field
-  const isLocalCamera = visionConfig.activeCameraSource === "local";
-  const isRemoteCamera = visionConfig.activeCameraSource === "phone";
+  const isLocalCamera = visionConfig.activeCameraSource === 'local'
+  const isRemoteCamera = visionConfig.activeCameraSource === 'phone'
 
   // ArUco marker detection using shared hook
   const { markersFound } = useMarkerDetection({
@@ -122,7 +116,7 @@ export function DockedVisionFeed({
     videoElement,
     columnCount,
     onCalibrationChange: setVisionCalibration,
-  });
+  })
 
   // Passive boundary capture for training data collection
   // Captures raw frames with detected corners during practice
@@ -130,10 +124,10 @@ export function DockedVisionFeed({
   const { maybeCapture: maybeCaptureForTraining } = usePassiveBoundaryCapture({
     enabled: visionConfig.enabled && isRemoteCamera,
     captureIntervalMs: 200, // Match phone rate - 5fps when markers visible
-    deviceId: "passive-practice-remote",
+    deviceId: 'passive-practice-remote',
     sessionId: practiceSessionId,
     playerId,
-  });
+  })
 
   // Remote camera hook
   const {
@@ -141,23 +135,19 @@ export function DockedVisionFeed({
     latestFrame: remoteLatestFrame,
     subscribe: remoteSubscribe,
     unsubscribe: remoteUnsubscribe,
-  } = useRemoteCameraDesktop();
+  } = useRemoteCameraDesktop()
 
-  const INFERENCE_INTERVAL_MS = 100; // 10fps
+  const INFERENCE_INTERVAL_MS = 100 // 10fps
 
   // Start local camera when component mounts (only for local camera)
   useEffect(() => {
-    if (
-      !visionConfig.enabled ||
-      !isLocalCamera ||
-      !visionConfig.cameraDeviceId
-    ) {
-      return;
+    if (!visionConfig.enabled || !isLocalCamera || !visionConfig.cameraDeviceId) {
+      return
     }
 
-    let cancelled = false;
-    setIsLoading(true);
-    setError(null);
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
 
     const startCamera = async () => {
       try {
@@ -167,52 +157,52 @@ export function DockedVisionFeed({
             width: { ideal: 1280 },
             height: { ideal: 720 },
           },
-        });
+        })
 
         if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
+          stream.getTracks().forEach((track) => track.stop())
+          return
         }
 
-        setVideoStream(stream);
-        setIsLoading(false);
+        setVideoStream(stream)
+        setIsLoading(false)
       } catch (err) {
-        if (cancelled) return;
-        console.error("[DockedVisionFeed] Failed to start camera:", err);
-        setError("Failed to access camera");
-        setIsLoading(false);
+        if (cancelled) return
+        console.error('[DockedVisionFeed] Failed to start camera:', err)
+        setError('Failed to access camera')
+        setIsLoading(false)
       }
-    };
+    }
 
-    startCamera();
+    startCamera()
 
     return () => {
-      cancelled = true;
-    };
-  }, [visionConfig.enabled, isLocalCamera, visionConfig.cameraDeviceId]);
+      cancelled = true
+    }
+  }, [visionConfig.enabled, isLocalCamera, visionConfig.cameraDeviceId])
 
   // Stop camera when stream changes or component unmounts
   useEffect(() => {
     return () => {
       if (videoStream) {
-        videoStream.getTracks().forEach((track) => track.stop());
+        videoStream.getTracks().forEach((track) => track.stop())
       }
-    };
-  }, [videoStream]);
+    }
+  }, [videoStream])
 
   // Attach stream to video element
   useEffect(() => {
     if (videoRef.current && videoStream) {
-      videoRef.current.srcObject = videoStream;
+      videoRef.current.srcObject = videoStream
     }
-  }, [videoStream]);
+  }, [videoStream])
 
   // Register vision source for training data capture
   // Note: We depend on remoteLatestFrame because the <img> element only renders when we have a frame,
   // so remoteImageRef.current is null until the first frame arrives
   useEffect(() => {
     if (isLocalCamera && videoRef.current && videoStream) {
-      visionSourceRef.current = { type: "video", element: videoRef.current };
+      visionSourceRef.current = { type: 'video', element: videoRef.current }
     } else if (
       isRemoteCamera &&
       remoteImageRef.current &&
@@ -220,15 +210,15 @@ export function DockedVisionFeed({
       remoteLatestFrame
     ) {
       visionSourceRef.current = {
-        type: "image",
+        type: 'image',
         element: remoteImageRef.current,
-      };
+      }
     }
 
     return () => {
       // Clear the source ref when this component unmounts
-      visionSourceRef.current = null;
-    };
+      visionSourceRef.current = null
+    }
   }, [
     isLocalCamera,
     isRemoteCamera,
@@ -236,148 +226,144 @@ export function DockedVisionFeed({
     remoteIsPhoneConnected,
     remoteLatestFrame,
     visionSourceRef,
-  ]);
+  ])
 
   // Subscribe to remote camera session
   useEffect(() => {
-    if (
-      !visionConfig.enabled ||
-      !isRemoteCamera ||
-      !visionConfig.remoteCameraSessionId
-    ) {
-      return;
+    if (!visionConfig.enabled || !isRemoteCamera || !visionConfig.remoteCameraSessionId) {
+      return
     }
 
-    setIsLoading(true);
-    remoteSubscribe(visionConfig.remoteCameraSessionId);
+    setIsLoading(true)
+    remoteSubscribe(visionConfig.remoteCameraSessionId)
 
     return () => {
-      remoteUnsubscribe();
-    };
+      remoteUnsubscribe()
+    }
   }, [
     visionConfig.enabled,
     isRemoteCamera,
     visionConfig.remoteCameraSessionId,
     remoteSubscribe,
     remoteUnsubscribe,
-  ]);
+  ])
 
   // Update loading state when remote camera connects
   useEffect(() => {
     if (isRemoteCamera && remoteIsPhoneConnected) {
-      setIsLoading(false);
-      setConnectionTimedOut(false);
+      setIsLoading(false)
+      setConnectionTimedOut(false)
     }
-  }, [isRemoteCamera, remoteIsPhoneConnected]);
+  }, [isRemoteCamera, remoteIsPhoneConnected])
 
   // Connection timeout for remote camera - show remediation options after 15 seconds
   useEffect(() => {
     if (!isRemoteCamera || !isLoading || remoteIsPhoneConnected) {
-      return;
+      return
     }
 
     const timeoutId = setTimeout(() => {
-      setConnectionTimedOut(true);
-    }, 15000); // 15 seconds
+      setConnectionTimedOut(true)
+    }, 15000) // 15 seconds
 
-    return () => clearTimeout(timeoutId);
-  }, [isRemoteCamera, isLoading, remoteIsPhoneConnected]);
+    return () => clearTimeout(timeoutId)
+  }, [isRemoteCamera, isLoading, remoteIsPhoneConnected])
 
   // Process local camera frames for detection (only when enabled)
   const processLocalFrame = useCallback(async () => {
     // Skip detection when feature is disabled or model not ready
-    if (!ENABLE_AUTO_DETECTION) return;
-    if (!classifier.isModelLoaded) return;
-    if (isInferringRef.current) return; // Skip if already inferring
+    if (!ENABLE_AUTO_DETECTION) return
+    if (!classifier.isModelLoaded) return
+    if (isInferringRef.current) return // Skip if already inferring
 
-    const now = performance.now();
+    const now = performance.now()
     if (now - lastInferenceTimeRef.current < INFERENCE_INTERVAL_MS) {
-      return;
+      return
     }
-    lastInferenceTimeRef.current = now;
+    lastInferenceTimeRef.current = now
 
-    const video = videoRef.current;
-    if (!video || video.readyState < 2) return;
-    if (!visionConfig.calibration) return;
+    const video = videoRef.current
+    if (!video || video.readyState < 2) return
+    if (!visionConfig.calibration) return
 
-    isInferringRef.current = true;
+    isInferringRef.current = true
 
     try {
       // Process video frame into column strips
-      const columnImages = processVideoFrame(video, visionConfig.calibration);
-      if (columnImages.length === 0) return;
+      const columnImages = processVideoFrame(video, visionConfig.calibration)
+      if (columnImages.length === 0) return
 
       // Use ML-based digit classification
-      const results = await classifier.classifyColumns(columnImages);
-      if (!results || results.digits.length === 0) return;
+      const results = await classifier.classifyColumns(columnImages)
+      if (!results || results.digits.length === 0) return
 
       // Extract digits and minimum confidence
-      const { digits, confidences } = results;
-      const minConfidence = Math.min(...confidences);
+      const { digits, confidences } = results
+      const minConfidence = Math.min(...confidences)
 
       // Store column digits for AbacusMirror display
-      setColumnDigits(digits);
+      setColumnDigits(digits)
 
       // Convert to number
-      const value = digitsToNumber(digits);
+      const value = digitsToNumber(digits)
 
       // Push to stability buffer
-      stability.pushFrame(value, minConfidence);
+      stability.pushFrame(value, minConfidence)
     } finally {
-      isInferringRef.current = false;
+      isInferringRef.current = false
     }
-  }, [visionConfig.calibration, stability, classifier]);
+  }, [visionConfig.calibration, stability, classifier])
 
   // Process remote camera frames for detection (only when enabled)
   useEffect(() => {
     // Skip detection when feature is disabled or model not ready
-    if (!ENABLE_AUTO_DETECTION) return;
-    if (!classifier.isModelLoaded) return;
+    if (!ENABLE_AUTO_DETECTION) return
+    if (!classifier.isModelLoaded) return
 
     if (!isRemoteCamera || !remoteIsPhoneConnected || !remoteLatestFrame) {
-      return;
+      return
     }
 
-    const now = performance.now();
+    const now = performance.now()
     if (now - lastInferenceTimeRef.current < INFERENCE_INTERVAL_MS) {
-      return;
+      return
     }
 
-    const image = remoteImageRef.current;
+    const image = remoteImageRef.current
     if (!image || !image.complete || image.naturalWidth === 0) {
-      return;
+      return
     }
 
     // Prevent concurrent inference
-    if (isInferringRef.current) return;
-    isInferringRef.current = true;
-    lastInferenceTimeRef.current = now;
+    if (isInferringRef.current) return
+    isInferringRef.current = true
+    lastInferenceTimeRef.current = now
 
     // Phone sends pre-cropped frames in auto mode, so no calibration needed
-    const columnImages = processImageFrame(image, null, columnCount);
+    const columnImages = processImageFrame(image, null, columnCount)
     if (columnImages.length === 0) {
-      isInferringRef.current = false;
-      return;
+      isInferringRef.current = false
+      return
     }
 
     // Use ML-based digit classification (async)
     classifier.classifyColumns(columnImages).then((results) => {
-      isInferringRef.current = false;
-      if (!results || results.digits.length === 0) return;
+      isInferringRef.current = false
+      if (!results || results.digits.length === 0) return
 
       // Extract digits and minimum confidence
-      const { digits, confidences } = results;
-      const minConfidence = Math.min(...confidences);
+      const { digits, confidences } = results
+      const minConfidence = Math.min(...confidences)
 
       // Store column digits for AbacusMirror display
-      setColumnDigits(digits);
+      setColumnDigits(digits)
 
       // Convert to number
-      const value = digitsToNumber(digits);
+      const value = digitsToNumber(digits)
 
       // Push to stability buffer
-      stability.pushFrame(value, minConfidence);
-    });
+      stability.pushFrame(value, minConfidence)
+    })
   }, [
     isRemoteCamera,
     remoteIsPhoneConnected,
@@ -385,25 +371,25 @@ export function DockedVisionFeed({
     columnCount,
     stability,
     classifier,
-  ]);
+  ])
 
   // Passive boundary capture: save raw frames with detected corners for training
   // This runs when the phone is in raw mode and sending marker detection data
   useEffect(() => {
     if (!isRemoteCamera || !remoteIsPhoneConnected || !remoteLatestFrame) {
-      return;
+      return
     }
 
     // Only capture raw mode frames with detected corners
-    if (remoteLatestFrame.mode !== "raw") {
-      return;
+    if (remoteLatestFrame.mode !== 'raw') {
+      return
     }
 
-    const corners = remoteLatestFrame.detectedCorners;
-    const dimensions = remoteLatestFrame.videoDimensions;
+    const corners = remoteLatestFrame.detectedCorners
+    const dimensions = remoteLatestFrame.videoDimensions
 
     if (!corners || !dimensions) {
-      return;
+      return
     }
 
     // Attempt to capture this frame for boundary detector training
@@ -412,49 +398,39 @@ export function DockedVisionFeed({
       remoteLatestFrame.imageData,
       corners,
       dimensions.width,
-      dimensions.height,
-    );
-  }, [
-    isRemoteCamera,
-    remoteIsPhoneConnected,
-    remoteLatestFrame,
-    maybeCaptureForTraining,
-  ]);
+      dimensions.height
+    )
+  }, [isRemoteCamera, remoteIsPhoneConnected, remoteLatestFrame, maybeCaptureForTraining])
 
   // Local camera detection loop (only when enabled)
   useEffect(() => {
     // Skip detection loop when feature is disabled or model not loaded
-    if (!ENABLE_AUTO_DETECTION) return;
-    if (!classifier.isModelLoaded) return;
+    if (!ENABLE_AUTO_DETECTION) return
+    if (!classifier.isModelLoaded) return
 
-    if (
-      !visionConfig.enabled ||
-      !isLocalCamera ||
-      !videoStream ||
-      !visionConfig.calibration
-    ) {
-      return;
+    if (!visionConfig.enabled || !isLocalCamera || !videoStream || !visionConfig.calibration) {
+      return
     }
 
-    let running = true;
+    let running = true
 
     const loop = () => {
-      if (!running) return;
+      if (!running) return
 
       // processLocalFrame is async but we don't await - it handles concurrency internally
-      processLocalFrame();
-      animationFrameRef.current = requestAnimationFrame(loop);
-    };
+      processLocalFrame()
+      animationFrameRef.current = requestAnimationFrame(loop)
+    }
 
-    loop();
+    loop()
 
     return () => {
-      running = false;
+      running = false
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
       }
-    };
+    }
   }, [
     visionConfig.enabled,
     isLocalCamera,
@@ -462,21 +438,18 @@ export function DockedVisionFeed({
     visionConfig.calibration,
     processLocalFrame,
     classifier.isModelLoaded,
-  ]);
+  ])
 
   // Handle stable value changes (only when auto-detection is enabled)
   useEffect(() => {
     // Skip value updates when feature is disabled
-    if (!ENABLE_AUTO_DETECTION) return;
+    if (!ENABLE_AUTO_DETECTION) return
 
-    if (
-      stability.stableValue !== null &&
-      stability.stableValue !== detectedValue
-    ) {
-      setDetectedValue(stability.stableValue);
-      setConfidence(stability.currentConfidence);
-      setDockedValue(stability.stableValue);
-      onValueDetected?.(stability.stableValue);
+    if (stability.stableValue !== null && stability.stableValue !== detectedValue) {
+      setDetectedValue(stability.stableValue)
+      setConfidence(stability.currentConfidence)
+      setDockedValue(stability.stableValue)
+      onValueDetected?.(stability.stableValue)
     }
   }, [
     stability.stableValue,
@@ -484,22 +457,22 @@ export function DockedVisionFeed({
     detectedValue,
     setDockedValue,
     onValueDetected,
-  ]);
+  ])
 
   // Show a subtle hint to try mirror mode when detection has been stable
   // Once shown, keep it visible until dismissed or mirror mode enabled
   // This prevents flashing when stability temporarily drops
   useEffect(() => {
-    if (!ENABLE_AUTO_DETECTION) return;
-    if (!classifier.isModelLoaded) return;
-    if (hintDismissedRef.current) return; // Don't show again if dismissed this session
-    if (showAbacusMirror) return; // Already in mirror mode, no need to suggest it
-    if (showMirrorHint) return; // Already showing, don't re-evaluate
+    if (!ENABLE_AUTO_DETECTION) return
+    if (!classifier.isModelLoaded) return
+    if (hintDismissedRef.current) return // Don't show again if dismissed this session
+    if (showAbacusMirror) return // Already in mirror mode, no need to suggest it
+    if (showMirrorHint) return // Already showing, don't re-evaluate
 
     // Only SET to true when stable, never set back to false (sticky once shown)
-    const isStable = stability.consecutiveFrames >= 3;
+    const isStable = stability.consecutiveFrames >= 3
     if (isStable && columnDigits.length > 0) {
-      setShowMirrorHint(true);
+      setShowMirrorHint(true)
     }
   }, [
     stability.consecutiveFrames,
@@ -507,36 +480,34 @@ export function DockedVisionFeed({
     showAbacusMirror,
     columnDigits.length,
     showMirrorHint,
-  ]);
+  ])
 
   // Broadcast vision frames to observers (5fps to save bandwidth)
-  const BROADCAST_INTERVAL_MS = 200;
+  const BROADCAST_INTERVAL_MS = 200
   useEffect(() => {
-    if (!visionConfig.enabled) return;
+    if (!visionConfig.enabled) return
 
-    let running = true;
+    let running = true
 
     const broadcastLoop = () => {
-      if (!running) return;
+      if (!running) return
 
-      const now = performance.now();
+      const now = performance.now()
       if (now - lastBroadcastTimeRef.current >= BROADCAST_INTERVAL_MS) {
-        lastBroadcastTimeRef.current = now;
+        lastBroadcastTimeRef.current = now
 
         // Capture from rectified canvas (local camera) or remote image
-        let imageData: string | null = null;
+        let imageData: string | null = null
 
         if (isLocalCamera && rectifiedCanvasRef.current) {
-          const canvas = rectifiedCanvasRef.current;
+          const canvas = rectifiedCanvasRef.current
           if (canvas.width > 0 && canvas.height > 0) {
             // Convert canvas to JPEG (quality 0.7 for bandwidth)
-            imageData = canvas
-              .toDataURL("image/jpeg", 0.7)
-              .replace("data:image/jpeg;base64,", "");
+            imageData = canvas.toDataURL('image/jpeg', 0.7).replace('data:image/jpeg;base64,', '')
           }
         } else if (isRemoteCamera && remoteLatestFrame) {
           // Remote camera already sends base64 JPEG
-          imageData = remoteLatestFrame.imageData;
+          imageData = remoteLatestFrame.imageData
         }
 
         if (imageData) {
@@ -544,18 +515,18 @@ export function DockedVisionFeed({
             imageData,
             detectedValue,
             confidence,
-          });
+          })
         }
       }
 
-      requestAnimationFrame(broadcastLoop);
-    };
+      requestAnimationFrame(broadcastLoop)
+    }
 
-    broadcastLoop();
+    broadcastLoop()
 
     return () => {
-      running = false;
-    };
+      running = false
+    }
   }, [
     visionConfig.enabled,
     isLocalCamera,
@@ -564,15 +535,15 @@ export function DockedVisionFeed({
     detectedValue,
     confidence,
     emitVisionFrame,
-  ]);
+  ])
 
   const handleDisableVision = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setVisionEnabled(false);
+    e.stopPropagation()
+    setVisionEnabled(false)
     if (videoStream) {
-      videoStream.getTracks().forEach((track) => track.stop());
+      videoStream.getTracks().forEach((track) => track.stop())
     }
-  };
+  }
 
   if (error) {
     return (
@@ -580,20 +551,20 @@ export function DockedVisionFeed({
         data-component="docked-vision-feed"
         data-status="error"
         className={css({
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
           gap: 2,
           p: 4,
-          bg: "red.900/30",
-          borderRadius: "lg",
-          color: "red.400",
-          textAlign: "center",
+          bg: 'red.900/30',
+          borderRadius: 'lg',
+          color: 'red.400',
+          textAlign: 'center',
         })}
       >
-        <span className={css({ fontSize: "xl" })}>⚠️</span>
-        <span className={css({ fontSize: "sm" })}>{error}</span>
+        <span className={css({ fontSize: 'xl' })}>⚠️</span>
+        <span className={css({ fontSize: 'sm' })}>{error}</span>
         <button
           type="button"
           onClick={handleDisableVision}
@@ -601,18 +572,18 @@ export function DockedVisionFeed({
             mt: 2,
             px: 3,
             py: 1,
-            bg: "gray.700",
-            color: "white",
-            borderRadius: "md",
-            fontSize: "xs",
-            border: "none",
-            cursor: "pointer",
+            bg: 'gray.700',
+            color: 'white',
+            borderRadius: 'md',
+            fontSize: 'xs',
+            border: 'none',
+            cursor: 'pointer',
           })}
         >
           Disable Vision
         </button>
       </div>
-    );
+    )
   }
 
   if (isLoading) {
@@ -620,26 +591,26 @@ export function DockedVisionFeed({
       <div
         data-component="docked-vision-feed"
         data-status="loading"
-        data-timed-out={connectionTimedOut ? "true" : undefined}
+        data-timed-out={connectionTimedOut ? 'true' : undefined}
         className={css({
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
           gap: 2,
           p: 3,
-          bg: "gray.800/50",
-          borderRadius: "lg",
-          color: "gray.400",
+          bg: 'gray.800/50',
+          borderRadius: 'lg',
+          color: 'gray.400',
         })}
       >
-        <span className={css({ fontSize: "xl" })}>📷</span>
-        <span className={css({ fontSize: "sm", textAlign: "center" })}>
+        <span className={css({ fontSize: 'xl' })}>📷</span>
+        <span className={css({ fontSize: 'sm', textAlign: 'center' })}>
           {isRemoteCamera
             ? connectionTimedOut
-              ? "Phone not connecting"
-              : "Connecting to phone..."
-            : "Starting camera..."}
+              ? 'Phone not connecting'
+              : 'Connecting to phone...'
+            : 'Starting camera...'}
         </span>
 
         {/* Remote camera: Always show session info and controls */}
@@ -647,22 +618,22 @@ export function DockedVisionFeed({
           <div
             data-element="connection-info"
             className={css({
-              display: "flex",
-              flexDirection: "column",
+              display: 'flex',
+              flexDirection: 'column',
               gap: 2,
               mt: 1,
-              width: "100%",
+              width: '100%',
             })}
           >
             {/* Show session ID so user can verify phone is scanning the right code */}
             {visionConfig.remoteCameraSessionId && (
               <div
                 className={css({
-                  fontSize: "10px",
-                  color: "gray.500",
-                  textAlign: "center",
-                  fontFamily: "mono",
-                  wordBreak: "break-all",
+                  fontSize: '10px',
+                  color: 'gray.500',
+                  textAlign: 'center',
+                  fontFamily: 'mono',
+                  wordBreak: 'break-all',
                 })}
               >
                 Session: {visionConfig.remoteCameraSessionId.substring(0, 8)}...
@@ -673,10 +644,10 @@ export function DockedVisionFeed({
             {!connectionTimedOut && (
               <div
                 className={css({
-                  fontSize: "10px",
-                  color: "gray.500",
-                  textAlign: "center",
-                  lineHeight: "1.4",
+                  fontSize: '10px',
+                  color: 'gray.500',
+                  textAlign: 'center',
+                  lineHeight: '1.4',
                 })}
               >
                 Scan the QR code on your phone
@@ -687,10 +658,10 @@ export function DockedVisionFeed({
             {connectionTimedOut && (
               <div
                 className={css({
-                  fontSize: "10px",
-                  color: "orange.400",
-                  textAlign: "center",
-                  lineHeight: "1.4",
+                  fontSize: '10px',
+                  color: 'orange.400',
+                  textAlign: 'center',
+                  lineHeight: '1.4',
                   mb: 1,
                 })}
               >
@@ -702,52 +673,52 @@ export function DockedVisionFeed({
             <div
               data-element="connection-actions"
               className={css({
-                display: "flex",
-                flexDirection: "column",
+                display: 'flex',
+                flexDirection: 'column',
                 gap: 1.5,
-                width: "100%",
+                width: '100%',
               })}
             >
               <button
                 type="button"
                 onClick={() => {
-                  setConnectionTimedOut(false);
-                  remoteUnsubscribe();
+                  setConnectionTimedOut(false)
+                  remoteUnsubscribe()
                   if (visionConfig.remoteCameraSessionId) {
-                    remoteSubscribe(visionConfig.remoteCameraSessionId);
+                    remoteSubscribe(visionConfig.remoteCameraSessionId)
                   }
                 }}
                 className={css({
                   px: 3,
                   py: 1.5,
-                  bg: connectionTimedOut ? "blue.600" : "gray.700",
-                  color: "white",
-                  borderRadius: "md",
-                  fontSize: "xs",
-                  fontWeight: "medium",
-                  border: "none",
-                  cursor: "pointer",
-                  _hover: { bg: connectionTimedOut ? "blue.500" : "gray.600" },
+                  bg: connectionTimedOut ? 'blue.600' : 'gray.700',
+                  color: 'white',
+                  borderRadius: 'md',
+                  fontSize: 'xs',
+                  fontWeight: 'medium',
+                  border: 'none',
+                  cursor: 'pointer',
+                  _hover: { bg: connectionTimedOut ? 'blue.500' : 'gray.600' },
                 })}
               >
-                {connectionTimedOut ? "Retry Connection" : "Refresh"}
+                {connectionTimedOut ? 'Retry Connection' : 'Refresh'}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  openVisionSetup();
+                  openVisionSetup()
                 }}
                 className={css({
                   px: 3,
                   py: 1.5,
-                  bg: "gray.700",
-                  color: "white",
-                  borderRadius: "md",
-                  fontSize: "xs",
-                  fontWeight: "medium",
-                  border: "none",
-                  cursor: "pointer",
-                  _hover: { bg: "gray.600" },
+                  bg: 'gray.700',
+                  color: 'white',
+                  borderRadius: 'md',
+                  fontSize: 'xs',
+                  fontWeight: 'medium',
+                  border: 'none',
+                  cursor: 'pointer',
+                  _hover: { bg: 'gray.600' },
                 })}
               >
                 New Session
@@ -758,13 +729,13 @@ export function DockedVisionFeed({
                 className={css({
                   px: 3,
                   py: 1,
-                  bg: "transparent",
-                  color: "gray.500",
-                  borderRadius: "md",
-                  fontSize: "10px",
-                  border: "none",
-                  cursor: "pointer",
-                  _hover: { color: "gray.300" },
+                  bg: 'transparent',
+                  color: 'gray.500',
+                  borderRadius: 'md',
+                  fontSize: '10px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  _hover: { color: 'gray.300' },
                 })}
               >
                 Cancel
@@ -773,21 +744,21 @@ export function DockedVisionFeed({
           </div>
         )}
       </div>
-    );
+    )
   }
 
   return (
     <div
       data-component="docked-vision-feed"
       data-status="active"
-      data-source={isRemoteCamera ? "remote" : "local"}
+      data-source={isRemoteCamera ? 'remote' : 'local'}
       className={css({
-        display: "flex",
-        flexDirection: "column",
-        borderRadius: "lg",
-        bg: "black",
-        width: "100%",
-        height: "100%",
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: 'lg',
+        bg: 'black',
+        width: '100%',
+        height: '100%',
         minHeight: 0, // Allow flex shrinking
       })}
     >
@@ -795,13 +766,13 @@ export function DockedVisionFeed({
       <div
         data-element="vision-content"
         className={css({
-          flex: "1 1 auto",
+          flex: '1 1 auto',
           minHeight: 0, // Allow shrinking
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          position: "relative",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          position: 'relative',
         })}
       >
         {/* AbacusReact mirror mode - shows detected values */}
@@ -809,27 +780,27 @@ export function DockedVisionFeed({
           <div
             data-element="abacus-mirror"
             className={css({
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              bg: "gray.900",
-              p: "8px",
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              bg: 'gray.900',
+              p: '8px',
             })}
           >
             {/* Main AbacusReact display - takes available space */}
             <div
               data-element="abacus-main"
               className={css({
-                flex: "1 1 auto",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                flex: '1 1 auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 minWidth: 0,
-                height: "100%",
+                height: '100%',
               })}
             >
               <AbacusReact
@@ -846,14 +817,14 @@ export function DockedVisionFeed({
             <div
               data-element="video-preview"
               className={css({
-                flex: "0 0 auto",
-                width: "60px",
-                height: "80px",
-                borderRadius: "md",
-                overflow: "hidden",
-                border: "2px solid rgba(255,255,255,0.6)",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-                bg: "black",
+                flex: '0 0 auto',
+                width: '60px',
+                height: '80px',
+                borderRadius: 'md',
+                overflow: 'hidden',
+                border: '2px solid rgba(255,255,255,0.6)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                bg: 'black',
               })}
             >
               {isLocalCamera && (
@@ -862,11 +833,11 @@ export function DockedVisionFeed({
                   calibration={visionConfig.calibration}
                   showRectifiedView={true}
                   videoRef={(el) => {
-                    videoRef.current = el;
-                    setVideoElement(el);
+                    videoRef.current = el
+                    setVideoElement(el)
                   }}
                   rectifiedCanvasRef={(el) => {
-                    rectifiedCanvasRef.current = el;
+                    rectifiedCanvasRef.current = el
                   }}
                 />
               )}
@@ -876,9 +847,9 @@ export function DockedVisionFeed({
                   src={`data:image/jpeg;base64,${remoteLatestFrame.imageData}`}
                   alt="Phone camera view"
                   className={css({
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
                   })}
                 />
               )}
@@ -893,11 +864,11 @@ export function DockedVisionFeed({
                 calibration={visionConfig.calibration}
                 showRectifiedView={true}
                 videoRef={(el) => {
-                  videoRef.current = el;
-                  setVideoElement(el); // Update state so marker detection hook can react
+                  videoRef.current = el
+                  setVideoElement(el) // Update state so marker detection hook can react
                 }}
                 rectifiedCanvasRef={(el) => {
-                  rectifiedCanvasRef.current = el;
+                  rectifiedCanvasRef.current = el
                 }}
               />
             )}
@@ -909,9 +880,9 @@ export function DockedVisionFeed({
                 src={`data:image/jpeg;base64,${remoteLatestFrame.imageData}`}
                 alt="Phone camera view"
                 className={css({
-                  width: "100%",
-                  height: "auto",
-                  objectFit: "contain",
+                  width: '100%',
+                  height: 'auto',
+                  objectFit: 'contain',
                 })}
               />
             )}
@@ -920,13 +891,13 @@ export function DockedVisionFeed({
             {isRemoteCamera && !remoteLatestFrame && remoteIsPhoneConnected && (
               <div
                 className={css({
-                  width: "100%",
-                  aspectRatio: "2/1",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "gray.400",
-                  fontSize: "sm",
+                  width: '100%',
+                  aspectRatio: '2/1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'gray.400',
+                  fontSize: 'sm',
                 })}
               >
                 Waiting for frames...
@@ -941,53 +912,49 @@ export function DockedVisionFeed({
         <div
           data-element="vision-status-bar"
           className={css({
-            flex: "0 0 auto", // Don't grow, don't shrink
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            flex: '0 0 auto', // Don't grow, don't shrink
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             px: 2,
             py: 1.5,
-            bg: "rgba(0, 0, 0, 0.85)",
-            borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+            bg: 'rgba(0, 0, 0, 0.85)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
           })}
         >
           {/* Left side: Status (detected value or loading message) */}
           <div
             className={css({
-              display: "flex",
-              alignItems: "center",
+              display: 'flex',
+              alignItems: 'center',
               gap: 2,
               minWidth: 0,
             })}
           >
             {classifier.isLoading ? (
-              <span className={css({ fontSize: "xs", color: "yellow.400" })}>
-                Loading...
-              </span>
+              <span className={css({ fontSize: 'xs', color: 'yellow.400' })}>Loading...</span>
             ) : !classifier.isModelLoaded ? (
-              <span className={css({ fontSize: "xs", color: "gray.500" })}>
-                No model
-              </span>
+              <span className={css({ fontSize: 'xs', color: 'gray.500' })}>No model</span>
             ) : (
               <>
                 {/* Detected value */}
                 <span
                   className={css({
-                    fontSize: "md",
-                    fontWeight: "bold",
-                    color: "white",
-                    fontFamily: "mono",
+                    fontSize: 'md',
+                    fontWeight: 'bold',
+                    color: 'white',
+                    fontFamily: 'mono',
                   })}
                 >
-                  {detectedValue !== null ? detectedValue : "---"}
+                  {detectedValue !== null ? detectedValue : '---'}
                 </span>
                 {/* Stability dots - show detection stability */}
                 {stability.consecutiveFrames > 0 && (
                   <div
                     className={css({
-                      display: "flex",
-                      gap: "2px",
-                      alignItems: "center",
+                      display: 'flex',
+                      gap: '2px',
+                      alignItems: 'center',
                     })}
                     title={`Stability: ${stability.consecutiveFrames}/3`}
                   >
@@ -995,13 +962,10 @@ export function DockedVisionFeed({
                       <div
                         key={i}
                         className={css({
-                          w: "5px",
-                          h: "5px",
-                          borderRadius: "full",
-                          bg:
-                            i < stability.consecutiveFrames
-                              ? "green.400"
-                              : "gray.600",
+                          w: '5px',
+                          h: '5px',
+                          borderRadius: 'full',
+                          bg: i < stability.consecutiveFrames ? 'green.400' : 'gray.600',
                         })}
                       />
                     ))}
@@ -1014,10 +978,10 @@ export function DockedVisionFeed({
           {/* Center: Mode toggle with text labels */}
           <div
             className={css({
-              display: "flex",
-              alignItems: "center",
+              display: 'flex',
+              alignItems: 'center',
               gap: 1,
-              position: "relative",
+              position: 'relative',
             })}
           >
             {columnDigits.length > 0 && (
@@ -1025,10 +989,10 @@ export function DockedVisionFeed({
                 <div
                   data-element="mode-toggle"
                   className={css({
-                    display: "flex",
-                    bg: "rgba(255, 255, 255, 0.1)",
-                    borderRadius: "md",
-                    p: "2px",
+                    display: 'flex',
+                    bg: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: 'md',
+                    p: '2px',
                   })}
                 >
                   <button
@@ -1039,16 +1003,16 @@ export function DockedVisionFeed({
                     className={css({
                       px: 2,
                       py: 0.5,
-                      borderRadius: "sm",
-                      border: "none",
-                      fontSize: "xs",
-                      fontWeight: "medium",
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                      bg: !showAbacusMirror ? "blue.500" : "transparent",
-                      color: !showAbacusMirror ? "white" : "gray.400",
+                      borderRadius: 'sm',
+                      border: 'none',
+                      fontSize: 'xs',
+                      fontWeight: 'medium',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      bg: !showAbacusMirror ? 'blue.500' : 'transparent',
+                      color: !showAbacusMirror ? 'white' : 'gray.400',
                       _hover: {
-                        color: "white",
+                        color: 'white',
                       },
                     })}
                   >
@@ -1058,24 +1022,24 @@ export function DockedVisionFeed({
                     type="button"
                     data-action="show-mirror"
                     onClick={() => {
-                      hintDismissedRef.current = true;
-                      setShowMirrorHint(false);
-                      setShowAbacusMirror(true);
+                      hintDismissedRef.current = true
+                      setShowMirrorHint(false)
+                      setShowAbacusMirror(true)
                     }}
                     title="Show digital abacus mirror"
                     className={css({
                       px: 2,
                       py: 0.5,
-                      borderRadius: "sm",
-                      border: "none",
-                      fontSize: "xs",
-                      fontWeight: "medium",
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                      bg: showAbacusMirror ? "blue.500" : "transparent",
-                      color: showAbacusMirror ? "white" : "gray.400",
+                      borderRadius: 'sm',
+                      border: 'none',
+                      fontSize: 'xs',
+                      fontWeight: 'medium',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      bg: showAbacusMirror ? 'blue.500' : 'transparent',
+                      color: showAbacusMirror ? 'white' : 'gray.400',
                       _hover: {
-                        color: "white",
+                        color: 'white',
                       },
                     })}
                   >
@@ -1088,40 +1052,40 @@ export function DockedVisionFeed({
                   <div
                     data-element="mirror-hint"
                     className={css({
-                      position: "absolute",
-                      top: "-22px",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "2px",
-                      bg: "green.600",
-                      borderRadius: "full",
-                      whiteSpace: "nowrap",
-                      animation: "pulse 2s ease-in-out infinite",
+                      position: 'absolute',
+                      top: '-22px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '2px',
+                      bg: 'green.600',
+                      borderRadius: 'full',
+                      whiteSpace: 'nowrap',
+                      animation: 'pulse 2s ease-in-out infinite',
                     })}
                   >
                     {/* Main clickable area - enables mirror mode */}
                     <button
                       type="button"
                       onClick={() => {
-                        hintDismissedRef.current = true;
-                        setShowMirrorHint(false);
-                        setShowAbacusMirror(true);
+                        hintDismissedRef.current = true
+                        setShowMirrorHint(false)
+                        setShowAbacusMirror(true)
                       }}
                       className={css({
                         px: 2,
                         py: 0.5,
-                        bg: "transparent",
-                        border: "none",
-                        color: "white",
-                        fontSize: "10px",
-                        fontWeight: "medium",
-                        cursor: "pointer",
+                        bg: 'transparent',
+                        border: 'none',
+                        color: 'white',
+                        fontSize: '10px',
+                        fontWeight: 'medium',
+                        cursor: 'pointer',
                         _hover: {
-                          bg: "green.500",
+                          bg: 'green.500',
                         },
-                        borderRadius: "full",
+                        borderRadius: 'full',
                         borderTopRightRadius: 0,
                         borderBottomRightRadius: 0,
                       })}
@@ -1133,27 +1097,27 @@ export function DockedVisionFeed({
                       type="button"
                       data-action="dismiss-mirror-hint"
                       onClick={(e) => {
-                        e.stopPropagation();
-                        hintDismissedRef.current = true;
-                        setShowMirrorHint(false);
+                        e.stopPropagation()
+                        hintDismissedRef.current = true
+                        setShowMirrorHint(false)
                       }}
                       title="Dismiss"
                       className={css({
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        w: "16px",
-                        h: "16px",
-                        mr: "2px",
-                        bg: "transparent",
-                        border: "none",
-                        color: "green.200",
-                        fontSize: "10px",
-                        cursor: "pointer",
-                        borderRadius: "full",
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        w: '16px',
+                        h: '16px',
+                        mr: '2px',
+                        bg: 'transparent',
+                        border: 'none',
+                        color: 'green.200',
+                        fontSize: '10px',
+                        cursor: 'pointer',
+                        borderRadius: 'full',
                         _hover: {
-                          bg: "green.700",
-                          color: "white",
+                          bg: 'green.700',
+                          color: 'white',
                         },
                       })}
                     >
@@ -1166,35 +1130,33 @@ export function DockedVisionFeed({
           </div>
 
           {/* Right side: Undock + Close buttons */}
-          <div
-            className={css({ display: "flex", alignItems: "center", gap: 1 })}
-          >
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 1 })}>
             {onUndock && (
               <button
                 type="button"
                 data-action="undock-abacus"
                 onClick={(e) => {
-                  e.stopPropagation();
-                  onUndock();
+                  e.stopPropagation()
+                  onUndock()
                 }}
                 title="Undock abacus"
                 className={css({
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  w: "24px",
-                  h: "24px",
-                  bg: "transparent",
-                  border: "1px solid rgba(255, 255, 255, 0.3)",
-                  borderRadius: "md",
-                  color: "gray.400",
-                  fontSize: "xs",
-                  cursor: "pointer",
-                  transition: "all 0.15s",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  w: '24px',
+                  h: '24px',
+                  bg: 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: 'md',
+                  color: 'gray.400',
+                  fontSize: 'xs',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
                   _hover: {
-                    bg: "blue.600",
-                    borderColor: "blue.600",
-                    color: "white",
+                    bg: 'blue.600',
+                    borderColor: 'blue.600',
+                    color: 'white',
                   },
                 })}
               >
@@ -1207,22 +1169,22 @@ export function DockedVisionFeed({
               onClick={handleDisableVision}
               title="Turn off camera"
               className={css({
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                w: "24px",
-                h: "24px",
-                bg: "transparent",
-                border: "1px solid rgba(255, 255, 255, 0.3)",
-                borderRadius: "md",
-                color: "gray.400",
-                fontSize: "xs",
-                cursor: "pointer",
-                transition: "all 0.15s",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                w: '24px',
+                h: '24px',
+                bg: 'transparent',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: 'md',
+                color: 'gray.400',
+                fontSize: 'xs',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
                 _hover: {
-                  bg: "red.600",
-                  borderColor: "red.600",
-                  color: "white",
+                  bg: 'red.600',
+                  borderColor: 'red.600',
+                  color: 'white',
                 },
               })}
             >
@@ -1232,5 +1194,5 @@ export function DockedVisionFeed({
         </div>
       )}
     </div>
-  );
+  )
 }

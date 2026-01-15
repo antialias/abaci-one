@@ -5,257 +5,252 @@
  * that prevents stale session IDs from being reused.
  */
 
-import { act, renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useRemoteCameraSession } from "../useRemoteCameraSession";
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useRemoteCameraSession } from '../useRemoteCameraSession'
 
 // Mock fetch
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+const mockFetch = vi.fn()
+global.fetch = mockFetch
 
-describe("useRemoteCameraSession", () => {
+describe('useRemoteCameraSession', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-  });
+    vi.clearAllMocks()
+  })
 
   afterEach(() => {
-    vi.restoreAllMocks();
-  });
+    vi.restoreAllMocks()
+  })
 
-  describe("createSession", () => {
-    it("should create a new session via API", async () => {
+  describe('createSession', () => {
+    it('should create a new session via API', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          sessionId: "new-session-123",
+          sessionId: 'new-session-123',
           expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         }),
-      });
+      })
 
-      const { result } = renderHook(() => useRemoteCameraSession());
+      const { result } = renderHook(() => useRemoteCameraSession())
 
       await act(async () => {
-        const session = await result.current.createSession();
-        expect(session).not.toBeNull();
-        expect(session?.sessionId).toBe("new-session-123");
-      });
+        const session = await result.current.createSession()
+        expect(session).not.toBeNull()
+        expect(session?.sessionId).toBe('new-session-123')
+      })
 
-      expect(mockFetch).toHaveBeenCalledWith("/api/remote-camera", {
-        method: "POST",
-      });
-    });
+      expect(mockFetch).toHaveBeenCalledWith('/api/remote-camera', {
+        method: 'POST',
+      })
+    })
 
-    it("should set isCreating while creating session", async () => {
-      let resolvePromise: (value: unknown) => void;
+    it('should set isCreating while creating session', async () => {
+      let resolvePromise: (value: unknown) => void
       const promise = new Promise((resolve) => {
-        resolvePromise = resolve;
-      });
+        resolvePromise = resolve
+      })
 
-      mockFetch.mockReturnValueOnce(promise);
+      mockFetch.mockReturnValueOnce(promise)
 
-      const { result } = renderHook(() => useRemoteCameraSession());
+      const { result } = renderHook(() => useRemoteCameraSession())
 
-      let createPromise: Promise<unknown>;
+      let createPromise: Promise<unknown>
       act(() => {
-        createPromise = result.current.createSession();
-      });
+        createPromise = result.current.createSession()
+      })
 
-      expect(result.current.isCreating).toBe(true);
+      expect(result.current.isCreating).toBe(true)
 
       await act(async () => {
         resolvePromise!({
           ok: true,
           json: async () => ({
-            sessionId: "session-123",
+            sessionId: 'session-123',
             expiresAt: new Date().toISOString(),
           }),
-        });
-        await createPromise;
-      });
+        })
+        await createPromise
+      })
 
-      expect(result.current.isCreating).toBe(false);
-    });
+      expect(result.current.isCreating).toBe(false)
+    })
 
-    it("should set error on API failure", async () => {
+    it('should set error on API failure', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        json: async () => ({ error: "Server error" }),
-      });
+        json: async () => ({ error: 'Server error' }),
+      })
 
-      const { result } = renderHook(() => useRemoteCameraSession());
+      const { result } = renderHook(() => useRemoteCameraSession())
 
       await act(async () => {
-        const session = await result.current.createSession();
-        expect(session).toBeNull();
-      });
+        const session = await result.current.createSession()
+        expect(session).toBeNull()
+      })
 
-      expect(result.current.error).toBe("Server error");
-    });
-  });
+      expect(result.current.error).toBe('Server error')
+    })
+  })
 
-  describe("validateAndSetSession", () => {
-    it("should validate existing session against server and use it if valid", async () => {
+  describe('validateAndSetSession', () => {
+    it('should validate existing session against server and use it if valid', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          sessionId: "existing-session-456",
+          sessionId: 'existing-session-456',
           expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
           phoneConnected: true,
         }),
-      });
+      })
 
-      const { result } = renderHook(() => useRemoteCameraSession());
+      const { result } = renderHook(() => useRemoteCameraSession())
 
-      let isValid: boolean;
+      let isValid: boolean
       await act(async () => {
-        isValid = await result.current.validateAndSetSession(
-          "existing-session-456",
-        );
-      });
+        isValid = await result.current.validateAndSetSession('existing-session-456')
+      })
 
-      expect(isValid!).toBe(true);
-      expect(result.current.session).not.toBeNull();
-      expect(result.current.session?.sessionId).toBe("existing-session-456");
-      expect(result.current.session?.phoneConnected).toBe(true);
+      expect(isValid!).toBe(true)
+      expect(result.current.session).not.toBeNull()
+      expect(result.current.session?.sessionId).toBe('existing-session-456')
+      expect(result.current.session?.phoneConnected).toBe(true)
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/remote-camera?sessionId=existing-session-456",
-      );
-    });
+      expect(mockFetch).toHaveBeenCalledWith('/api/remote-camera?sessionId=existing-session-456')
+    })
 
-    it("should return false for expired/invalid session", async () => {
+    it('should return false for expired/invalid session', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
-        json: async () => ({ error: "Session not found or expired" }),
-      });
+        json: async () => ({ error: 'Session not found or expired' }),
+      })
 
-      const { result } = renderHook(() => useRemoteCameraSession());
+      const { result } = renderHook(() => useRemoteCameraSession())
 
-      let isValid: boolean;
+      let isValid: boolean
       await act(async () => {
-        isValid =
-          await result.current.validateAndSetSession("stale-session-789");
-      });
+        isValid = await result.current.validateAndSetSession('stale-session-789')
+      })
 
-      expect(isValid!).toBe(false);
-      expect(result.current.session).toBeNull();
-    });
+      expect(isValid!).toBe(false)
+      expect(result.current.session).toBeNull()
+    })
 
-    it("should return false on network error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+    it('should return false on network error', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'))
 
-      const { result } = renderHook(() => useRemoteCameraSession());
+      const { result } = renderHook(() => useRemoteCameraSession())
 
-      let isValid: boolean;
+      let isValid: boolean
       await act(async () => {
-        isValid = await result.current.validateAndSetSession("session-xyz");
-      });
+        isValid = await result.current.validateAndSetSession('session-xyz')
+      })
 
-      expect(isValid!).toBe(false);
-      expect(result.current.session).toBeNull();
-    });
+      expect(isValid!).toBe(false)
+      expect(result.current.session).toBeNull()
+    })
 
-    it("should show loading state during validation", async () => {
-      let resolvePromise: (value: unknown) => void;
+    it('should show loading state during validation', async () => {
+      let resolvePromise: (value: unknown) => void
       const promise = new Promise((resolve) => {
-        resolvePromise = resolve;
-      });
+        resolvePromise = resolve
+      })
 
-      mockFetch.mockReturnValueOnce(promise);
+      mockFetch.mockReturnValueOnce(promise)
 
-      const { result } = renderHook(() => useRemoteCameraSession());
+      const { result } = renderHook(() => useRemoteCameraSession())
 
-      let validatePromise: Promise<boolean>;
+      let validatePromise: Promise<boolean>
       act(() => {
-        validatePromise = result.current.validateAndSetSession("session-abc");
-      });
+        validatePromise = result.current.validateAndSetSession('session-abc')
+      })
 
-      expect(result.current.isCreating).toBe(true);
+      expect(result.current.isCreating).toBe(true)
 
       await act(async () => {
         resolvePromise!({
           ok: true,
           json: async () => ({
-            sessionId: "session-abc",
+            sessionId: 'session-abc',
             expiresAt: new Date().toISOString(),
           }),
-        });
-        await validatePromise;
-      });
+        })
+        await validatePromise
+      })
 
-      expect(result.current.isCreating).toBe(false);
-    });
+      expect(result.current.isCreating).toBe(false)
+    })
 
-    it("should URL-encode session ID in request", async () => {
+    it('should URL-encode session ID in request', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
-      });
+      })
 
-      const { result } = renderHook(() => useRemoteCameraSession());
+      const { result } = renderHook(() => useRemoteCameraSession())
 
       await act(async () => {
-        await result.current.validateAndSetSession("session/with/slashes");
-      });
+        await result.current.validateAndSetSession('session/with/slashes')
+      })
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "/api/remote-camera?sessionId=session%2Fwith%2Fslashes",
-      );
-    });
-  });
+        '/api/remote-camera?sessionId=session%2Fwith%2Fslashes'
+      )
+    })
+  })
 
-  describe("clearSession", () => {
-    it("should clear the current session", async () => {
+  describe('clearSession', () => {
+    it('should clear the current session', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          sessionId: "session-to-clear",
+          sessionId: 'session-to-clear',
           expiresAt: new Date().toISOString(),
         }),
-      });
+      })
 
-      const { result } = renderHook(() => useRemoteCameraSession());
+      const { result } = renderHook(() => useRemoteCameraSession())
 
       await act(async () => {
-        await result.current.createSession();
-      });
+        await result.current.createSession()
+      })
 
-      expect(result.current.session).not.toBeNull();
+      expect(result.current.session).not.toBeNull()
 
       act(() => {
-        result.current.clearSession();
-      });
+        result.current.clearSession()
+      })
 
-      expect(result.current.session).toBeNull();
-      expect(result.current.error).toBeNull();
-    });
-  });
+      expect(result.current.session).toBeNull()
+      expect(result.current.error).toBeNull()
+    })
+  })
 
-  describe("getPhoneUrl", () => {
-    it("should return null when no session exists", () => {
-      const { result } = renderHook(() => useRemoteCameraSession());
+  describe('getPhoneUrl', () => {
+    it('should return null when no session exists', () => {
+      const { result } = renderHook(() => useRemoteCameraSession())
 
-      expect(result.current.getPhoneUrl()).toBeNull();
-    });
+      expect(result.current.getPhoneUrl()).toBeNull()
+    })
 
-    it("should return URL with session ID when session exists", async () => {
+    it('should return URL with session ID when session exists', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          sessionId: "url-test-session",
+          sessionId: 'url-test-session',
           expiresAt: new Date().toISOString(),
         }),
-      });
+      })
 
-      const { result } = renderHook(() => useRemoteCameraSession());
+      const { result } = renderHook(() => useRemoteCameraSession())
 
       await act(async () => {
-        await result.current.createSession();
-      });
+        await result.current.createSession()
+      })
 
-      const url = result.current.getPhoneUrl();
-      expect(url).toContain("/remote-camera/url-test-session");
-    });
-  });
-});
+      const url = result.current.getPhoneUrl()
+      expect(url).toContain('/remote-camera/url-test-session')
+    })
+  })
+})

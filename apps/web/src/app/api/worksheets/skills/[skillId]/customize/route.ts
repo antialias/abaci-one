@@ -1,8 +1,8 @@
-import { eq, and } from "drizzle-orm";
-import { type NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { skillCustomizations } from "@/db/schema";
-import { getViewerId } from "@/lib/viewer";
+import { eq, and } from 'drizzle-orm'
+import { type NextRequest, NextResponse } from 'next/server'
+import { db } from '@/db'
+import { skillCustomizations } from '@/db/schema'
+import { getViewerId } from '@/lib/viewer'
 
 /**
  * POST /api/worksheets/skills/[skillId]/customize
@@ -11,38 +11,35 @@ import { getViewerId } from "@/lib/viewer";
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ skillId: string }> },
+  { params }: { params: Promise<{ skillId: string }> }
 ) {
   try {
-    const viewerId = await getViewerId();
-    const { skillId } = await params;
-    const body = await request.json();
+    const viewerId = await getViewerId()
+    const { skillId } = await params
+    const body = await request.json()
 
-    const { operator, digitRange, regroupingConfig, displayRules } = body;
+    const { operator, digitRange, regroupingConfig, displayRules } = body
 
     // Validate required fields
     if (!operator || !digitRange || !regroupingConfig || !displayRules) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     // Validate operator
-    if (operator !== "addition" && operator !== "subtraction") {
-      return NextResponse.json({ error: "Invalid operator" }, { status: 400 });
+    if (operator !== 'addition' && operator !== 'subtraction') {
+      return NextResponse.json({ error: 'Invalid operator' }, { status: 400 })
     }
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
 
     // Check if customization already exists
     const existing = await db.query.skillCustomizations.findFirst({
       where: and(
         eq(skillCustomizations.userId, viewerId),
         eq(skillCustomizations.skillId, skillId),
-        eq(skillCustomizations.operator, operator),
+        eq(skillCustomizations.operator, operator)
       ),
-    });
+    })
 
     if (existing) {
       // Update existing customization
@@ -58,9 +55,9 @@ export async function POST(
           and(
             eq(skillCustomizations.userId, viewerId),
             eq(skillCustomizations.skillId, skillId),
-            eq(skillCustomizations.operator, operator),
-          ),
-        );
+            eq(skillCustomizations.operator, operator)
+          )
+        )
     } else {
       // Insert new customization
       await db.insert(skillCustomizations).values({
@@ -71,7 +68,7 @@ export async function POST(
         regroupingConfig: JSON.stringify(regroupingConfig),
         displayRules: JSON.stringify(displayRules),
         updatedAt: now,
-      });
+      })
     }
 
     // Fetch the updated/created customization
@@ -79,15 +76,12 @@ export async function POST(
       where: and(
         eq(skillCustomizations.userId, viewerId),
         eq(skillCustomizations.skillId, skillId),
-        eq(skillCustomizations.operator, operator),
+        eq(skillCustomizations.operator, operator)
       ),
-    });
+    })
 
     if (!customization) {
-      return NextResponse.json(
-        { error: "Failed to fetch customization" },
-        { status: 500 },
-      );
+      return NextResponse.json({ error: 'Failed to fetch customization' }, { status: 500 })
     }
 
     // Return parsed customization
@@ -98,13 +92,10 @@ export async function POST(
         regroupingConfig: JSON.parse(customization.regroupingConfig),
         displayRules: JSON.parse(customization.displayRules),
       },
-    });
+    })
   } catch (error) {
-    console.error("Failed to save skill customization:", error);
-    return NextResponse.json(
-      { error: "Failed to save skill customization" },
-      { status: 500 },
-    );
+    console.error('Failed to save skill customization:', error)
+    return NextResponse.json({ error: 'Failed to save skill customization' }, { status: 500 })
   }
 }
 
@@ -115,26 +106,20 @@ export async function POST(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ skillId: string }> },
+  { params }: { params: Promise<{ skillId: string }> }
 ) {
   try {
-    const viewerId = await getViewerId();
-    const { skillId } = await params;
-    const { searchParams } = new URL(request.url);
-    const operator = searchParams.get("operator") as
-      | "addition"
-      | "subtraction"
-      | null;
+    const viewerId = await getViewerId()
+    const { skillId } = await params
+    const { searchParams } = new URL(request.url)
+    const operator = searchParams.get('operator') as 'addition' | 'subtraction' | null
 
     if (!operator) {
-      return NextResponse.json(
-        { error: "Operator is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Operator is required' }, { status: 400 })
     }
 
-    if (operator !== "addition" && operator !== "subtraction") {
-      return NextResponse.json({ error: "Invalid operator" }, { status: 400 });
+    if (operator !== 'addition' && operator !== 'subtraction') {
+      return NextResponse.json({ error: 'Invalid operator' }, { status: 400 })
     }
 
     // Check if customization exists
@@ -142,15 +127,12 @@ export async function DELETE(
       where: and(
         eq(skillCustomizations.userId, viewerId),
         eq(skillCustomizations.skillId, skillId),
-        eq(skillCustomizations.operator, operator),
+        eq(skillCustomizations.operator, operator)
       ),
-    });
+    })
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Skill customization not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Skill customization not found' }, { status: 404 })
     }
 
     // Delete the customization
@@ -160,16 +142,13 @@ export async function DELETE(
         and(
           eq(skillCustomizations.userId, viewerId),
           eq(skillCustomizations.skillId, skillId),
-          eq(skillCustomizations.operator, operator),
-        ),
-      );
+          eq(skillCustomizations.operator, operator)
+        )
+      )
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Failed to delete skill customization:", error);
-    return NextResponse.json(
-      { error: "Failed to delete skill customization" },
-      { status: 500 },
-    );
+    console.error('Failed to delete skill customization:', error)
+    return NextResponse.json({ error: 'Failed to delete skill customization' }, { status: 500 })
   }
 }

@@ -1,30 +1,30 @@
-"use client";
+'use client'
 
-import { useCallback, useRef } from "react";
-import type { QuadCorners } from "@/types/vision";
-import { saveBoundarySample } from "@/lib/vision/saveBoundarySample";
+import { useCallback, useRef } from 'react'
+import type { QuadCorners } from '@/types/vision'
+import { saveBoundarySample } from '@/lib/vision/saveBoundarySample'
 
 /** Default capture interval: 200ms (5fps) to match phone sending rate */
-const DEFAULT_CAPTURE_INTERVAL_MS = 200;
+const DEFAULT_CAPTURE_INTERVAL_MS = 200
 
 /** Minimum capture interval: 200ms (5fps) - we need massive training data */
-const MIN_CAPTURE_INTERVAL_MS = 200;
+const MIN_CAPTURE_INTERVAL_MS = 200
 
 interface PassiveBoundaryCaptureConfig {
   /** Whether passive capture is enabled (default: true) */
-  enabled?: boolean;
+  enabled?: boolean
   /** Minimum interval between captures in ms (default: 200) */
-  captureIntervalMs?: number;
+  captureIntervalMs?: number
   /** Device ID for organizing captures (default: "passive-remote") */
-  deviceId?: string;
+  deviceId?: string
   /** Session ID for tracking which practice session captured the frame */
-  sessionId?: string;
+  sessionId?: string
   /** Player ID for tracking which student was practicing */
-  playerId?: string;
+  playerId?: string
   /** Callback when capture succeeds */
-  onCaptureSuccess?: () => void;
+  onCaptureSuccess?: () => void
   /** Callback when capture fails */
-  onCaptureError?: (error: string) => void;
+  onCaptureError?: (error: string) => void
 }
 
 interface UsePassiveBoundaryCaptureReturn {
@@ -43,14 +43,14 @@ interface UsePassiveBoundaryCaptureReturn {
     imageData: string,
     corners: QuadCorners,
     frameWidth: number,
-    frameHeight: number,
-  ) => boolean;
+    frameHeight: number
+  ) => boolean
   /** Number of successful captures this session */
-  captureCount: number;
+  captureCount: number
   /** Timestamp of last capture (0 if none) */
-  lastCaptureTime: number;
+  lastCaptureTime: number
   /** Whether a capture is currently in progress */
-  isCapturing: boolean;
+  isCapturing: boolean
 }
 
 /**
@@ -73,50 +73,42 @@ interface UsePassiveBoundaryCaptureReturn {
  * ```
  */
 export function usePassiveBoundaryCapture(
-  config: PassiveBoundaryCaptureConfig = {},
+  config: PassiveBoundaryCaptureConfig = {}
 ): UsePassiveBoundaryCaptureReturn {
   const {
     enabled = true,
     captureIntervalMs = DEFAULT_CAPTURE_INTERVAL_MS,
-    deviceId = "passive-remote",
+    deviceId = 'passive-remote',
     sessionId,
     playerId,
     onCaptureSuccess,
     onCaptureError,
-  } = config;
+  } = config
 
   // Use refs to avoid re-renders and stale closures
-  const lastCaptureTimeRef = useRef(0);
-  const captureCountRef = useRef(0);
-  const isCapturingRef = useRef(false);
+  const lastCaptureTimeRef = useRef(0)
+  const captureCountRef = useRef(0)
+  const isCapturingRef = useRef(false)
 
   const maybeCapture = useCallback(
-    (
-      imageData: string,
-      corners: QuadCorners,
-      frameWidth: number,
-      frameHeight: number,
-    ): boolean => {
+    (imageData: string, corners: QuadCorners, frameWidth: number, frameHeight: number): boolean => {
       // Skip if disabled
       if (!enabled) {
-        return false;
+        return false
       }
 
       // Skip if currently capturing
       if (isCapturingRef.current) {
-        return false;
+        return false
       }
 
       // Rate limit: check if enough time has passed since last capture
-      const now = Date.now();
-      const effectiveInterval = Math.max(
-        captureIntervalMs,
-        MIN_CAPTURE_INTERVAL_MS,
-      );
-      const timeSinceLastCapture = now - lastCaptureTimeRef.current;
+      const now = Date.now()
+      const effectiveInterval = Math.max(captureIntervalMs, MIN_CAPTURE_INTERVAL_MS)
+      const timeSinceLastCapture = now - lastCaptureTimeRef.current
 
       if (timeSinceLastCapture < effectiveInterval) {
-        return false;
+        return false
       }
 
       // Validate corners exist
@@ -126,12 +118,12 @@ export function usePassiveBoundaryCapture(
         !corners?.bottomLeft ||
         !corners?.bottomRight
       ) {
-        return false;
+        return false
       }
 
       // Mark as capturing and update timestamp optimistically
-      isCapturingRef.current = true;
-      lastCaptureTimeRef.current = now;
+      isCapturingRef.current = true
+      lastCaptureTimeRef.current = now
 
       // Use shared saveBoundarySample utility (fire and forget, but track success/failure)
       saveBoundarySample({
@@ -145,50 +137,39 @@ export function usePassiveBoundaryCapture(
       })
         .then((result) => {
           if (result.success) {
-            captureCountRef.current++;
+            captureCountRef.current++
             console.log(
-              `[PassiveBoundaryCapture] Captured frame #${captureCountRef.current} for training`,
-            );
-            onCaptureSuccess?.();
+              `[PassiveBoundaryCapture] Captured frame #${captureCountRef.current} for training`
+            )
+            onCaptureSuccess?.()
           } else {
-            console.warn(
-              "[PassiveBoundaryCapture] Capture failed:",
-              result.error,
-            );
-            onCaptureError?.(result.error || "Unknown error");
+            console.warn('[PassiveBoundaryCapture] Capture failed:', result.error)
+            onCaptureError?.(result.error || 'Unknown error')
           }
         })
         .catch((error) => {
-          console.error("[PassiveBoundaryCapture] Unexpected error:", error);
-          onCaptureError?.(error.message || "Unexpected error");
+          console.error('[PassiveBoundaryCapture] Unexpected error:', error)
+          onCaptureError?.(error.message || 'Unexpected error')
         })
         .finally(() => {
-          isCapturingRef.current = false;
-        });
+          isCapturingRef.current = false
+        })
 
-      return true;
+      return true
     },
-    [
-      enabled,
-      captureIntervalMs,
-      deviceId,
-      sessionId,
-      playerId,
-      onCaptureSuccess,
-      onCaptureError,
-    ],
-  );
+    [enabled, captureIntervalMs, deviceId, sessionId, playerId, onCaptureSuccess, onCaptureError]
+  )
 
   return {
     maybeCapture,
     get captureCount() {
-      return captureCountRef.current;
+      return captureCountRef.current
     },
     get lastCaptureTime() {
-      return lastCaptureTimeRef.current;
+      return lastCaptureTimeRef.current
     },
     get isCapturing() {
-      return isCapturingRef.current;
+      return isCapturingRef.current
     },
-  };
+  }
 }

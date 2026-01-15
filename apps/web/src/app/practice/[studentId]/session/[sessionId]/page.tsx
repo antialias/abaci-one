@@ -1,18 +1,14 @@
-import { notFound } from "next/navigation";
-import { canPerformAction } from "@/lib/classroom/access-control";
-import {
-  getPlayer,
-  getRecentSessionResults,
-  getSessionPlan,
-} from "@/lib/curriculum/server";
-import { getDbUserId } from "@/lib/viewer";
-import { SummaryClient } from "../../summary/SummaryClient";
+import { notFound } from 'next/navigation'
+import { canPerformAction } from '@/lib/classroom/access-control'
+import { getPlayer, getRecentSessionResults, getSessionPlan } from '@/lib/curriculum/server'
+import { getDbUserId } from '@/lib/viewer'
+import { SummaryClient } from '../../summary/SummaryClient'
 
 // Disable caching for this page - session data should be fresh
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic'
 
 interface SessionPageProps {
-  params: Promise<{ studentId: string; sessionId: string }>;
+  params: Promise<{ studentId: string; sessionId: string }>
 }
 
 /**
@@ -24,34 +20,34 @@ interface SessionPageProps {
  * Used when viewing session history from the dashboard.
  */
 export default async function SessionPage({ params }: SessionPageProps) {
-  const { studentId, sessionId } = await params;
+  const { studentId, sessionId } = await params
 
   // Fetch player, session, and problem history in parallel
   const [player, session, problemHistory] = await Promise.all([
     getPlayer(studentId),
     getSessionPlan(sessionId),
     getRecentSessionResults(studentId, 100),
-  ]);
+  ])
 
   // 404 if player doesn't exist
   if (!player) {
-    notFound();
+    notFound()
   }
 
   // Check authorization - user must have view access to this player
-  const viewerId = await getDbUserId();
-  const hasAccess = await canPerformAction(viewerId, studentId, "view");
+  const viewerId = await getDbUserId()
+  const hasAccess = await canPerformAction(viewerId, studentId, 'view')
   if (!hasAccess) {
-    notFound(); // Return 404 to avoid leaking existence of player
+    notFound() // Return 404 to avoid leaking existence of player
   }
 
   // 404 if session doesn't exist or belongs to different player
   if (!session || session.playerId !== studentId) {
-    notFound();
+    notFound()
   }
 
   // Calculate average seconds per problem from the session
-  const avgSecondsPerProblem = session.avgTimePerProblemSeconds ?? 40;
+  const avgSecondsPerProblem = session.avgTimePerProblemSeconds ?? 40
 
   return (
     <SummaryClient
@@ -61,5 +57,5 @@ export default async function SessionPage({ params }: SessionPageProps) {
       avgSecondsPerProblem={avgSecondsPerProblem}
       problemHistory={problemHistory}
     />
-  );
+  )
 }

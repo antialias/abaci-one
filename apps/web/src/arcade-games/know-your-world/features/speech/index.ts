@@ -7,5 +7,5 @@
 export type {
   UseSpeechAnnouncementsOptions,
   UseSpeechAnnouncementsReturn,
-} from "./useSpeechAnnouncements";
-export { useSpeechAnnouncements } from "./useSpeechAnnouncements";
+} from './useSpeechAnnouncements'
+export { useSpeechAnnouncements } from './useSpeechAnnouncements'

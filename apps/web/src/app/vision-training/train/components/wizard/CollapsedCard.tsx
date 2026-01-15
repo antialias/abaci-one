@@ -1,22 +1,22 @@
-"use client";
+'use client'
 
-import { css } from "../../../../../../styled-system/css";
+import { css } from '../../../../../../styled-system/css'
 
 interface CollapsedCardProps {
-  icon: string;
-  title: string;
-  summary?: string;
+  icon: string
+  title: string
+  summary?: string
   // For upcoming cards - can be a simple string or rich preview with multiple lines
   preview?:
     | {
-        primary: string;
-        secondary?: string;
-        tertiary?: string;
+        primary: string
+        secondary?: string
+        tertiary?: string
       }
-    | string;
-  status: "done" | "upcoming";
+    | string
+  status: 'done' | 'upcoming'
   // Optional click handler for done cards (to allow rewinding)
-  onClick?: () => void;
+  onClick?: () => void
 }
 
 export function CollapsedCard({
@@ -27,16 +27,14 @@ export function CollapsedCard({
   status,
   onClick,
 }: CollapsedCardProps) {
-  const isDone = status === "done";
-  const isClickable = isDone && !!onClick;
+  const isDone = status === 'done'
+  const isClickable = isDone && !!onClick
 
   // Parse preview into lines
-  const previewObj =
-    typeof preview === "string" ? { primary: preview } : preview;
+  const previewObj = typeof preview === 'string' ? { primary: preview } : preview
 
   // Rich preview means we need a larger card
-  const hasRichPreview =
-    !isDone && previewObj && (previewObj.secondary || previewObj.tertiary);
+  const hasRichPreview = !isDone && previewObj && (previewObj.secondary || previewObj.tertiary)
 
   return (
     <div
@@ -47,76 +45,76 @@ export function CollapsedCard({
       onKeyDown={
         isClickable
           ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                onClick();
+              if (e.key === 'Enter' || e.key === ' ') {
+                onClick()
               }
             }
           : undefined
       }
-      role={isClickable ? "button" : undefined}
+      role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}
       className={css({
-        width: hasRichPreview ? "90px" : "70px",
-        minHeight: hasRichPreview ? "85px" : "70px",
+        width: hasRichPreview ? '90px' : '70px',
+        minHeight: hasRichPreview ? '85px' : '70px',
         py: hasRichPreview ? 2 : 0,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
         gap: hasRichPreview ? 1 : 0.5,
-        bg: "gray.800",
-        borderRadius: "lg",
-        border: "2px solid",
-        borderColor: isDone ? "green.700" : "gray.700",
+        bg: 'gray.800',
+        borderRadius: 'lg',
+        border: '2px solid',
+        borderColor: isDone ? 'green.700' : 'gray.700',
         opacity: isDone ? 1 : 0.7,
-        transition: "all 0.15s ease",
-        cursor: isClickable ? "pointer" : "default",
+        transition: 'all 0.15s ease',
+        cursor: isClickable ? 'pointer' : 'default',
         _hover: isClickable
           ? {
-              bg: "gray.700",
-              borderColor: "green.600",
-              transform: "scale(1.05)",
+              bg: 'gray.700',
+              borderColor: 'green.600',
+              transform: 'scale(1.05)',
             }
           : {},
       })}
     >
       {/* Icon */}
-      <span className={css({ fontSize: "lg" })}>{icon}</span>
+      <span className={css({ fontSize: 'lg' })}>{icon}</span>
 
       {isDone ? (
         /* Done state - simple summary */
         <span
           className={css({
-            fontSize: "xs",
-            color: "green.400",
-            fontWeight: "medium",
-            textAlign: "center",
+            fontSize: 'xs',
+            color: 'green.400',
+            fontWeight: 'medium',
+            textAlign: 'center',
             px: 1,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            maxWidth: "100%",
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: '100%',
           })}
         >
-          {summary || "✓"}
+          {summary || '✓'}
         </span>
       ) : previewObj ? (
         /* Upcoming state with preview */
         <div
           className={css({
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
             gap: 0,
           })}
         >
           <span
             className={css({
-              fontSize: "xs",
-              color: "gray.300",
-              fontWeight: "medium",
-              textAlign: "center",
-              whiteSpace: "nowrap",
+              fontSize: 'xs',
+              color: 'gray.300',
+              fontWeight: 'medium',
+              textAlign: 'center',
+              whiteSpace: 'nowrap',
             })}
           >
             {previewObj.primary}
@@ -124,10 +122,10 @@ export function CollapsedCard({
           {previewObj.secondary && (
             <span
               className={css({
-                fontSize: "10px",
-                color: "gray.500",
-                textAlign: "center",
-                whiteSpace: "nowrap",
+                fontSize: '10px',
+                color: 'gray.500',
+                textAlign: 'center',
+                whiteSpace: 'nowrap',
               })}
             >
               {previewObj.secondary}
@@ -136,10 +134,10 @@ export function CollapsedCard({
           {previewObj.tertiary && (
             <span
               className={css({
-                fontSize: "10px",
-                color: "gray.500",
-                textAlign: "center",
-                whiteSpace: "nowrap",
+                fontSize: '10px',
+                color: 'gray.500',
+                textAlign: 'center',
+                whiteSpace: 'nowrap',
               })}
             >
               {previewObj.tertiary}
@@ -150,15 +148,15 @@ export function CollapsedCard({
         /* Fallback to title */
         <span
           className={css({
-            fontSize: "xs",
-            color: "gray.400",
-            fontWeight: "medium",
-            textAlign: "center",
+            fontSize: 'xs',
+            color: 'gray.400',
+            fontWeight: 'medium',
+            textAlign: 'center',
           })}
         >
           {title}
         </span>
       )}
     </div>
-  );
+  )
 }

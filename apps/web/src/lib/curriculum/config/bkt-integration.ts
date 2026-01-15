@@ -25,7 +25,7 @@
  * - 'adaptive': BKT skill targeting, discrete cost multipliers
  * - 'adaptive-bkt': BKT skill targeting, BKT-based continuous cost multipliers (default)
  */
-export type ProblemGenerationMode = "classic" | "adaptive" | "adaptive-bkt";
+export type ProblemGenerationMode = 'classic' | 'adaptive' | 'adaptive-bkt'
 
 /**
  * Default problem generation mode for new sessions
@@ -33,8 +33,7 @@ export type ProblemGenerationMode = "classic" | "adaptive" | "adaptive-bkt";
  * 'adaptive-bkt' uses BKT for both skill targeting AND cost multipliers.
  * This is the most data-driven approach, using full learning history.
  */
-export const DEFAULT_PROBLEM_GENERATION_MODE: ProblemGenerationMode =
-  "adaptive-bkt";
+export const DEFAULT_PROBLEM_GENERATION_MODE: ProblemGenerationMode = 'adaptive-bkt'
 
 // =============================================================================
 // Unified BKT Classification Thresholds
@@ -79,9 +78,9 @@ export const BKT_THRESHOLDS = {
    * - ~50 problems → 0.92 confidence
    */
   confidence: 0.3,
-} as const;
+} as const
 
-export type BktThresholds = typeof BKT_THRESHOLDS;
+export type BktThresholds = typeof BKT_THRESHOLDS
 
 /**
  * Skill classification based on BKT P(known) estimate.
@@ -89,7 +88,7 @@ export type BktThresholds = typeof BKT_THRESHOLDS;
  * - 'developing': 0.5 <= P(known) < 0.8 - student is learning, making progress
  * - 'weak': P(known) < 0.5 - student needs more practice on this skill
  */
-export type SkillClassification = "strong" | "developing" | "weak";
+export type SkillClassification = 'strong' | 'developing' | 'weak'
 
 /**
  * Classify a skill based on P(known) using unified thresholds.
@@ -98,21 +97,18 @@ export type SkillClassification = "strong" | "developing" | "weak";
  * @param confidence - BKT confidence in the estimate [0, 1]
  * @returns Classification or null if confidence is insufficient
  */
-export function classifySkill(
-  pKnown: number,
-  confidence: number,
-): SkillClassification | null {
+export function classifySkill(pKnown: number, confidence: number): SkillClassification | null {
   // Insufficient confidence - can't reliably classify
   if (confidence < BKT_THRESHOLDS.confidence) {
-    return null;
+    return null
   }
 
   if (pKnown >= BKT_THRESHOLDS.strong) {
-    return "strong";
+    return 'strong'
   } else if (pKnown < BKT_THRESHOLDS.weak) {
-    return "weak";
+    return 'weak'
   } else {
-    return "developing";
+    return 'developing'
   }
 }
 
@@ -125,9 +121,7 @@ export function classifySkill(
  * @returns true if skill should be targeted for practice
  */
 export function shouldTargetSkill(pKnown: number, confidence: number): boolean {
-  return (
-    confidence >= BKT_THRESHOLDS.confidence && pKnown < BKT_THRESHOLDS.weak
-  );
+  return confidence >= BKT_THRESHOLDS.confidence && pKnown < BKT_THRESHOLDS.weak
 }
 
 // =============================================================================
@@ -164,7 +158,7 @@ export const BKT_INTEGRATION_CONFIG = {
    * More sessions = more accurate but slower.
    */
   sessionHistoryDepth: 50,
-} as const;
+} as const
 
 // =============================================================================
 // Multiplier Calculation
@@ -197,28 +191,27 @@ export const BKT_INTEGRATION_CONFIG = {
  * @returns Complexity multiplier [minMultiplier, maxMultiplier]
  */
 export function calculateBktMultiplier(pKnown: number): number {
-  const { minMultiplier, maxMultiplier } = BKT_INTEGRATION_CONFIG;
+  const { minMultiplier, maxMultiplier } = BKT_INTEGRATION_CONFIG
 
   // Guard against NaN/invalid pKnown - this is a "consumer" of BKT data, not a producer
   // We log the warning (surfacing the issue) and return maxMultiplier (conservative fallback)
   // This allows problem generation to continue while indicating an unknown mastery level
   if (!Number.isFinite(pKnown)) {
     console.warn(
-      "[BKT] calculateBktMultiplier: Invalid pKnown:",
+      '[BKT] calculateBktMultiplier: Invalid pKnown:',
       pKnown,
-      "- using maxMultiplier as fallback",
-    );
-    return maxMultiplier; // Conservative: harder problems, allows system to continue
+      '- using maxMultiplier as fallback'
+    )
+    return maxMultiplier // Conservative: harder problems, allows system to continue
   }
 
   // Non-linear (square) interpolation: pKnown²=0 → max, pKnown²=1 → min
   // This spreads out the high P(known) range for better differentiation
-  const effectivePKnown = pKnown * pKnown;
-  const multiplier =
-    maxMultiplier - effectivePKnown * (maxMultiplier - minMultiplier);
+  const effectivePKnown = pKnown * pKnown
+  const multiplier = maxMultiplier - effectivePKnown * (maxMultiplier - minMultiplier)
 
   // Clamp to valid range (shouldn't be needed but defensive)
-  return Math.max(minMultiplier, Math.min(maxMultiplier, multiplier));
+  return Math.max(minMultiplier, Math.min(maxMultiplier, multiplier))
 }
 
 /**
@@ -228,7 +221,7 @@ export function calculateBktMultiplier(pKnown: number): number {
  * @returns true if confidence meets threshold for BKT-based scaling
  */
 export function isBktConfident(confidence: number): boolean {
-  return confidence >= BKT_INTEGRATION_CONFIG.confidenceThreshold;
+  return confidence >= BKT_INTEGRATION_CONFIG.confidenceThreshold
 }
 
 // =============================================================================
@@ -253,12 +246,12 @@ export const WEAK_SKILL_THRESHOLDS = {
    * @deprecated Use BKT_THRESHOLDS.confidence instead
    */
   confidenceThreshold: BKT_THRESHOLDS.confidence,
-} as const;
+} as const
 
-export type WeakSkillThresholds = typeof WEAK_SKILL_THRESHOLDS;
+export type WeakSkillThresholds = typeof WEAK_SKILL_THRESHOLDS
 
 // =============================================================================
 // Type Exports
 // =============================================================================
 
-export type BktIntegrationConfig = typeof BKT_INTEGRATION_CONFIG;
+export type BktIntegrationConfig = typeof BKT_INTEGRATION_CONFIG

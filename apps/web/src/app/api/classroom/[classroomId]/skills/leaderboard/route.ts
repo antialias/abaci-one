@@ -10,13 +10,13 @@
  * - Speed champions: fastest in each category (only mastered students compete)
  */
 
-import { NextResponse } from "next/server";
-import { and, desc, eq, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import * as schema from "@/db/schema";
-import { getDbUserId } from "@/lib/viewer";
-import { computeBktFromHistory } from "@/lib/curriculum/bkt/compute-bkt";
-import { BKT_THRESHOLDS } from "@/lib/curriculum/config/bkt-integration";
+import { NextResponse } from 'next/server'
+import { and, desc, eq, inArray } from 'drizzle-orm'
+import { db } from '@/db'
+import * as schema from '@/db/schema'
+import { getDbUserId } from '@/lib/viewer'
+import { computeBktFromHistory } from '@/lib/curriculum/bkt/compute-bkt'
+import { BKT_THRESHOLDS } from '@/lib/curriculum/config/bkt-integration'
 import {
   calculateCategorySpeed,
   computeClassroomLeaderboard,
@@ -24,11 +24,11 @@ import {
   getSkillCategory,
   type PlayerLeaderboardData,
   type SkillCategory,
-} from "@/lib/curriculum/skill-metrics";
-import { getRecentSessionResults } from "@/lib/curriculum/session-planner";
+} from '@/lib/curriculum/skill-metrics'
+import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
 
 interface RouteParams {
-  params: Promise<{ classroomId: string }>;
+  params: Promise<{ classroomId: string }>
 }
 
 /**
@@ -37,19 +37,16 @@ interface RouteParams {
  */
 export async function GET(_request: Request, { params }: RouteParams) {
   try {
-    const { classroomId } = await params;
+    const { classroomId } = await params
 
     if (!classroomId) {
-      return NextResponse.json(
-        { error: "Classroom ID required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Classroom ID required' }, { status: 400 })
     }
 
     // Authentication check (must be logged in)
-    const userId = await getDbUserId();
+    const userId = await getDbUserId()
     if (!userId) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     // Get all players in this classroom with their info
@@ -60,11 +57,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
         playerEmoji: schema.players.emoji,
       })
       .from(schema.classroomEnrollments)
-      .innerJoin(
-        schema.players,
-        eq(schema.classroomEnrollments.playerId, schema.players.id),
-      )
-      .where(eq(schema.classroomEnrollments.classroomId, classroomId));
+      .innerJoin(schema.players, eq(schema.classroomEnrollments.playerId, schema.players.id))
+      .where(eq(schema.classroomEnrollments.classroomId, classroomId))
 
     if (classmates.length === 0) {
       return NextResponse.json({
@@ -77,11 +71,11 @@ export async function GET(_request: Request, { params }: RouteParams) {
           byImprovementRate: [],
           speedChampions: [],
         },
-      });
+      })
     }
 
     // Compute metrics for each player
-    const playersData: PlayerLeaderboardData[] = [];
+    const playersData: PlayerLeaderboardData[] = []
 
     for (const player of classmates) {
       // Get problem results and sessions for this player
@@ -90,52 +84,46 @@ export async function GET(_request: Request, { params }: RouteParams) {
         db.query.sessionPlans.findMany({
           where: and(
             eq(schema.sessionPlans.playerId, player.playerId),
-            inArray(schema.sessionPlans.status, ["completed", "abandoned"]),
+            inArray(schema.sessionPlans.status, ['completed', 'abandoned'])
           ),
           orderBy: [desc(schema.sessionPlans.completedAt)],
           limit: 100,
         }),
-      ]);
+      ])
 
       // Skip players with no practice data
-      if (results.length === 0) continue;
+      if (results.length === 0) continue
 
       // Compute metrics
-      const metrics = computeStudentSkillMetrics(results, sessions);
+      const metrics = computeStudentSkillMetrics(results, sessions)
 
       // Compute BKT to find mastered skills for speed champions
-      const bktResult = computeBktFromHistory(results);
+      const bktResult = computeBktFromHistory(results)
       const masteredSkillIds = new Set(
-        bktResult.skills
-          .filter((s) => s.pKnown >= BKT_THRESHOLDS.strong)
-          .map((s) => s.skillId),
-      );
+        bktResult.skills.filter((s) => s.pKnown >= BKT_THRESHOLDS.strong).map((s) => s.skillId)
+      )
 
       // Calculate speed for each category where student has mastered skills
-      const categorySpeedByMastered = new Map<SkillCategory, number>();
+      const categorySpeedByMastered = new Map<SkillCategory, number>()
       const categories: SkillCategory[] = [
-        "basic",
-        "fiveComplements",
-        "fiveComplementsSub",
-        "tenComplements",
-        "tenComplementsSub",
-        "advanced",
-      ];
+        'basic',
+        'fiveComplements',
+        'fiveComplementsSub',
+        'tenComplements',
+        'tenComplementsSub',
+        'advanced',
+      ]
 
       for (const category of categories) {
         // Check if player has any mastered skills in this category
         const hasMasteredInCategory = Array.from(masteredSkillIds).some(
-          (skillId) => getSkillCategory(skillId) === category,
-        );
+          (skillId) => getSkillCategory(skillId) === category
+        )
 
         if (hasMasteredInCategory) {
-          const speed = calculateCategorySpeed(
-            results,
-            category,
-            masteredSkillIds,
-          );
+          const speed = calculateCategorySpeed(results, category, masteredSkillIds)
           if (speed !== null) {
-            categorySpeedByMastered.set(category, speed);
+            categorySpeedByMastered.set(category, speed)
           }
         }
       }
@@ -146,18 +134,15 @@ export async function GET(_request: Request, { params }: RouteParams) {
         playerEmoji: player.playerEmoji,
         metrics,
         categorySpeedByMastered,
-      });
+      })
     }
 
     // Compute the leaderboard
-    const leaderboard = computeClassroomLeaderboard(playersData);
+    const leaderboard = computeClassroomLeaderboard(playersData)
 
-    return NextResponse.json({ leaderboard });
+    return NextResponse.json({ leaderboard })
   } catch (error) {
-    console.error("Error fetching classroom skills leaderboard:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch skills leaderboard" },
-      { status: 500 },
-    );
+    console.error('Error fetching classroom skills leaderboard:', error)
+    return NextResponse.json({ error: 'Failed to fetch skills leaderboard' }, { status: 500 })
   }
 }

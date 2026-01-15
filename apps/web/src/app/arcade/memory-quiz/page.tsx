@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 /**
  * Memory Quiz redirect page
@@ -15,50 +15,50 @@ import { useRouter } from "next/navigation";
  * 3. Play in multiplayer or solo (single-player room)
  */
 export default function MemoryQuizRedirectPage() {
-  const router = useRouter();
+  const router = useRouter()
 
   useEffect(() => {
     // Redirect to arcade
-    router.replace("/arcade");
-  }, [router]);
+    router.replace('/arcade')
+  }, [router])
 
   return (
     <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        padding: "20px",
-        background: "linear-gradient(135deg, #f8fafc, #e2e8f0)",
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
       }}
     >
       <div
         style={{
-          fontSize: "48px",
-          marginBottom: "20px",
+          fontSize: '48px',
+          marginBottom: '20px',
         }}
       >
         🧠
       </div>
       <h1
         style={{
-          fontSize: "24px",
-          fontWeight: "bold",
-          marginBottom: "12px",
-          color: "#1f2937",
-          textAlign: "center",
+          fontSize: '24px',
+          fontWeight: 'bold',
+          marginBottom: '12px',
+          color: '#1f2937',
+          textAlign: 'center',
         }}
       >
         Redirecting to Champion Arena...
       </h1>
       <p
         style={{
-          fontSize: "16px",
-          color: "#6b7280",
-          textAlign: "center",
-          maxWidth: "500px",
+          fontSize: '16px',
+          color: '#6b7280',
+          textAlign: 'center',
+          maxWidth: '500px',
         }}
       >
         Memory Lightning is now part of the Champion Arena.
@@ -66,5 +66,5 @@ export default function MemoryQuizRedirectPage() {
         You'll be able to play solo or with friends in multiplayer mode!
       </p>
     </div>
-  );
+  )
 }

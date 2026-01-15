@@ -10,43 +10,43 @@
  */
 export interface BktParams {
   /** P(L0) - Prior probability of knowing before any practice */
-  pInit: number;
+  pInit: number
   /** P(T) - Probability of learning on each opportunity */
-  pLearn: number;
+  pLearn: number
   /** P(S) - Probability of slip (error despite knowing) */
-  pSlip: number;
+  pSlip: number
   /** P(G) - Probability of guess (correct despite not knowing) */
-  pGuess: number;
+  pGuess: number
 }
 
 /**
  * Internal state tracked for each skill during BKT computation.
  */
 export interface BktSkillState {
-  pKnown: number;
-  opportunities: number;
-  successCount: number;
-  lastPracticedAt: Date | null;
-  params: BktParams;
+  pKnown: number
+  opportunities: number
+  successCount: number
+  lastPracticedAt: Date | null
+  params: BktParams
 }
 
 /**
  * Record passed to conjunctive BKT update functions.
  */
 export interface SkillBktRecord {
-  skillId: string;
-  pKnown: number;
-  params: BktParams;
+  skillId: string
+  pKnown: number
+  params: BktParams
 }
 
 /**
  * Result of blame distribution for incorrect answers.
  */
 export interface BlameDistribution {
-  skillId: string;
+  skillId: string
   /** Higher = more likely this skill caused the error */
-  blameWeight: number;
-  updatedPKnown: number;
+  blameWeight: number
+  updatedPKnown: number
 }
 
 /**
@@ -54,13 +54,13 @@ export interface BlameDistribution {
  */
 export interface BktComputeOptions {
   /** Confidence threshold for mastery classification (default: 0.5) */
-  confidenceThreshold: number;
+  confidenceThreshold: number
   /** Use cross-student priors (default: false) */
-  useCrossStudentPriors: boolean;
+  useCrossStudentPriors: boolean
   /** Apply time-based decay to P(known) (default: false) */
-  applyDecay: boolean;
+  applyDecay: boolean
   /** Decay half-life in days - after this many days, P(known) decays by 50% toward prior (default: 30) */
-  decayHalfLifeDays: number;
+  decayHalfLifeDays: number
 }
 
 /**
@@ -73,27 +73,27 @@ export interface BktComputeOptions {
  * Note: When confidence is insufficient, classification may be returned as
  * 'developing' (safest default) or the classifier may return null.
  */
-export type MasteryClassification = "strong" | "developing" | "weak";
+export type MasteryClassification = 'strong' | 'developing' | 'weak'
 
 /**
  * Result for a single skill after BKT computation.
  */
 export interface SkillBktResult {
-  skillId: string;
+  skillId: string
   /** P(known) - Current probability estimate that student has mastered this skill [0, 1] */
-  pKnown: number;
+  pKnown: number
   /** Confidence in the pKnown estimate [0, 1] */
-  confidence: number;
+  confidence: number
   /** Uncertainty range around pKnown */
-  uncertaintyRange: { low: number; high: number };
+  uncertaintyRange: { low: number; high: number }
   /** Total problems involving this skill */
-  opportunities: number;
+  opportunities: number
   /** Problems answered correctly */
-  successCount: number;
+  successCount: number
   /** When this skill was last practiced */
-  lastPracticedAt: Date | null;
+  lastPracticedAt: Date | null
   /** Classification based on pKnown and confidence */
-  masteryClassification: MasteryClassification;
+  masteryClassification: MasteryClassification
 }
 
 /**
@@ -101,9 +101,9 @@ export interface SkillBktResult {
  */
 export interface BktComputeResult {
   /** All skills with their BKT results, sorted by pKnown ascending */
-  skills: SkillBktResult[];
+  skills: SkillBktResult[]
   /** Skills that need intervention (struggling with confidence) */
-  interventionNeeded: SkillBktResult[];
+  interventionNeeded: SkillBktResult[]
   /** Skills that appear mastered (high pKnown with confidence) */
-  strengths: SkillBktResult[];
+  strengths: SkillBktResult[]
 }

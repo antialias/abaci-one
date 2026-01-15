@@ -5,19 +5,14 @@
  * Games are explicitly registered here after being defined.
  */
 
-import type {
-  GameConfig,
-  GameDefinition,
-  GameMove,
-  GameState,
-} from "./game-sdk/types";
+import type { GameConfig, GameDefinition, GameMove, GameState } from './game-sdk/types'
 
 /**
  * Global game registry
  * Maps game name to game definition
  * Using `any` for generics to allow different game types
  */
-const registry = new Map<string, GameDefinition<any, any, any>>();
+const registry = new Map<string, GameDefinition<any, any, any>>()
 
 /**
  * Register a game in the registry
@@ -30,27 +25,27 @@ export function registerGame<
   TState extends GameState,
   TMove extends GameMove,
 >(game: GameDefinition<TConfig, TState, TMove>): void {
-  const { name } = game.manifest;
+  const { name } = game.manifest
 
   if (registry.has(name)) {
-    throw new Error(`Game "${name}" is already registered`);
+    throw new Error(`Game "${name}" is already registered`)
   }
 
   // Verify validator is also registered server-side
   try {
-    const { hasValidator, getValidator } = require("./validators");
+    const { hasValidator, getValidator } = require('./validators')
     if (!hasValidator(name)) {
       console.error(
         `⚠️  Game "${name}" registered but validator not found in server registry!` +
-          `\n   Add to src/lib/arcade/validators.ts to enable multiplayer.`,
-      );
+          `\n   Add to src/lib/arcade/validators.ts to enable multiplayer.`
+      )
     } else {
-      const serverValidator = getValidator(name);
+      const serverValidator = getValidator(name)
       if (serverValidator !== game.validator) {
         console.warn(
           `⚠️  Game "${name}" has different validator instances (client vs server).` +
-            `\n   This may cause issues. Ensure both use the same import.`,
-        );
+            `\n   This may cause issues. Ensure both use the same import.`
+        )
       }
     }
   } catch (error) {
@@ -58,8 +53,8 @@ export function registerGame<
     // This is expected - validator registry is isomorphic but check only runs server-side
   }
 
-  registry.set(name, game);
-  console.log(`✅ Registered game: ${name}`);
+  registry.set(name, game)
+  console.log(`✅ Registered game: ${name}`)
 }
 
 /**
@@ -68,10 +63,8 @@ export function registerGame<
  * @param gameName - Internal game identifier
  * @returns Game definition or undefined if not found
  */
-export function getGame(
-  gameName: string,
-): GameDefinition<any, any, any> | undefined {
-  return registry.get(gameName);
+export function getGame(gameName: string): GameDefinition<any, any, any> | undefined {
+  return registry.get(gameName)
 }
 
 /**
@@ -80,7 +73,7 @@ export function getGame(
  * @returns Array of all game definitions
  */
 export function getAllGames(): GameDefinition<any, any, any>[] {
-  return Array.from(registry.values());
+  return Array.from(registry.values())
 }
 
 /**
@@ -89,7 +82,7 @@ export function getAllGames(): GameDefinition<any, any, any>[] {
  * @returns Array of available game definitions
  */
 export function getAvailableGames(): GameDefinition<any, any, any>[] {
-  return getAllGames().filter((game) => game.manifest.available);
+  return getAllGames().filter((game) => game.manifest.available)
 }
 
 /**
@@ -99,32 +92,32 @@ export function getAvailableGames(): GameDefinition<any, any, any>[] {
  * @returns true if game is registered
  */
 export function hasGame(gameName: string): boolean {
-  return registry.has(gameName);
+  return registry.has(gameName)
 }
 
 /**
  * Clear all games from registry (used for testing)
  */
 export function clearRegistry(): void {
-  registry.clear();
+  registry.clear()
 }
 
 // ============================================================================
 // Game Registrations
 // ============================================================================
 
-import { memoryQuizGame } from "@/arcade-games/memory-quiz";
-import { matchingGame } from "@/arcade-games/matching";
-import { complementRaceGame } from "@/arcade-games/complement-race/index";
-import { cardSortingGame } from "@/arcade-games/card-sorting";
-import { yjsDemoGame } from "@/arcade-games/yjs-demo";
-import { rithmomachiaGame } from "@/arcade-games/rithmomachia";
-import { knowYourWorldGame } from "@/arcade-games/know-your-world";
+import { memoryQuizGame } from '@/arcade-games/memory-quiz'
+import { matchingGame } from '@/arcade-games/matching'
+import { complementRaceGame } from '@/arcade-games/complement-race/index'
+import { cardSortingGame } from '@/arcade-games/card-sorting'
+import { yjsDemoGame } from '@/arcade-games/yjs-demo'
+import { rithmomachiaGame } from '@/arcade-games/rithmomachia'
+import { knowYourWorldGame } from '@/arcade-games/know-your-world'
 
-registerGame(memoryQuizGame);
-registerGame(matchingGame);
-registerGame(complementRaceGame);
-registerGame(cardSortingGame);
-registerGame(yjsDemoGame);
-registerGame(rithmomachiaGame);
-registerGame(knowYourWorldGame);
+registerGame(memoryQuizGame)
+registerGame(matchingGame)
+registerGame(complementRaceGame)
+registerGame(cardSortingGame)
+registerGame(yjsDemoGame)
+registerGame(rithmomachiaGame)
+registerGame(knowYourWorldGame)

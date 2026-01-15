@@ -1,21 +1,15 @@
-"use client";
+'use client'
 
-import { useCallback } from "react";
-import { css } from "../../../styled-system/css";
-import type {
-  QuadDetectorConfig,
-  PreprocessingStrategy,
-} from "@/lib/vision/quadDetector";
+import { useCallback } from 'react'
+import { css } from '../../../styled-system/css'
+import type { QuadDetectorConfig, PreprocessingStrategy } from '@/lib/vision/quadDetector'
 
 // Presets for common scanning scenarios
-const PRESETS: Record<
-  string,
-  { config: Partial<QuadDetectorConfig>; label: string }
-> = {
+const PRESETS: Record<string, { config: Partial<QuadDetectorConfig>; label: string }> = {
   normal: {
-    label: "Normal",
+    label: 'Normal',
     config: {
-      preprocessing: "multi",
+      preprocessing: 'multi',
       enableHistogramEqualization: true,
       enableAdaptiveThreshold: true,
       enableMorphGradient: true,
@@ -26,9 +20,9 @@ const PRESETS: Record<
     },
   },
   lowLight: {
-    label: "Low Light",
+    label: 'Low Light',
     config: {
-      preprocessing: "multi",
+      preprocessing: 'multi',
       enableHistogramEqualization: true,
       enableAdaptiveThreshold: true,
       enableMorphGradient: true,
@@ -39,9 +33,9 @@ const PRESETS: Record<
     },
   },
   fingers: {
-    label: "Fingers",
+    label: 'Fingers',
     config: {
-      preprocessing: "multi",
+      preprocessing: 'multi',
       enableHistogramEqualization: true,
       enableAdaptiveThreshold: true,
       enableMorphGradient: true,
@@ -52,9 +46,9 @@ const PRESETS: Record<
     },
   },
   bright: {
-    label: "Bright",
+    label: 'Bright',
     config: {
-      preprocessing: "enhanced",
+      preprocessing: 'enhanced',
       enableHistogramEqualization: true,
       enableAdaptiveThreshold: false,
       enableMorphGradient: false,
@@ -64,14 +58,14 @@ const PRESETS: Record<
       enableHoughLines: false,
     },
   },
-};
+}
 
 interface ScannerControlsDrawerProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onOpen: () => void;
-  config: Partial<QuadDetectorConfig>;
-  onConfigChange: (config: Partial<QuadDetectorConfig>) => void;
+  isOpen: boolean
+  onClose: () => void
+  onOpen: () => void
+  config: Partial<QuadDetectorConfig>
+  onConfigChange: (config: Partial<QuadDetectorConfig>) => void
 }
 
 export function ScannerControlsDrawer({
@@ -83,32 +77,27 @@ export function ScannerControlsDrawer({
 }: ScannerControlsDrawerProps) {
   const handlePreset = useCallback(
     (presetName: keyof typeof PRESETS) => {
-      onConfigChange(PRESETS[presetName].config);
+      onConfigChange(PRESETS[presetName].config)
     },
-    [onConfigChange],
-  );
+    [onConfigChange]
+  )
 
   const updateField = useCallback(
-    <K extends keyof QuadDetectorConfig>(
-      field: K,
-      value: QuadDetectorConfig[K],
-    ) => {
-      onConfigChange({ [field]: value });
+    <K extends keyof QuadDetectorConfig>(field: K, value: QuadDetectorConfig[K]) => {
+      onConfigChange({ [field]: value })
     },
-    [onConfigChange],
-  );
+    [onConfigChange]
+  )
 
   // Get current values with defaults
-  const preprocessing = (config.preprocessing ??
-    "multi") as PreprocessingStrategy;
-  const enableHistogramEqualization =
-    config.enableHistogramEqualization ?? true;
-  const enableAdaptiveThreshold = config.enableAdaptiveThreshold ?? true;
-  const enableMorphGradient = config.enableMorphGradient ?? true;
-  const enableHoughLines = config.enableHoughLines ?? true;
-  const cannyThresholds = config.cannyThresholds ?? [50, 150];
-  const adaptiveBlockSize = config.adaptiveBlockSize ?? 11;
-  const adaptiveC = config.adaptiveC ?? 2;
+  const preprocessing = (config.preprocessing ?? 'multi') as PreprocessingStrategy
+  const enableHistogramEqualization = config.enableHistogramEqualization ?? true
+  const enableAdaptiveThreshold = config.enableAdaptiveThreshold ?? true
+  const enableMorphGradient = config.enableMorphGradient ?? true
+  const enableHoughLines = config.enableHoughLines ?? true
+  const cannyThresholds = config.cannyThresholds ?? [50, 150]
+  const adaptiveBlockSize = config.adaptiveBlockSize ?? 11
+  const adaptiveC = config.adaptiveC ?? 2
 
   return (
     <>
@@ -117,12 +106,12 @@ export function ScannerControlsDrawer({
         data-element="drawer-backdrop"
         onClick={onClose}
         className={css({
-          position: "absolute",
+          position: 'absolute',
           inset: 0,
-          bg: "rgba(0, 0, 0, 0.3)",
+          bg: 'rgba(0, 0, 0, 0.3)',
           opacity: isOpen ? 1 : 0,
-          pointerEvents: isOpen ? "auto" : "none",
-          transition: "opacity 0.3s ease",
+          pointerEvents: isOpen ? 'auto' : 'none',
+          transition: 'opacity 0.3s ease',
           zIndex: 50,
         })}
       />
@@ -131,24 +120,24 @@ export function ScannerControlsDrawer({
       <div
         data-component="scanner-controls-drawer"
         className={css({
-          position: "absolute",
+          position: 'absolute',
           top: 0,
           left: 0,
           bottom: 0,
-          width: "min(180px, 55vw)",
-          bg: "rgba(0, 0, 0, 0.75)",
-          backdropFilter: "blur(16px)",
-          transform: isOpen ? "translateX(0)" : "translateX(-100%)",
-          transition: "transform 0.3s ease",
+          width: 'min(180px, 55vw)',
+          bg: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(16px)',
+          transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.3s ease',
           zIndex: 51,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          borderRight: "1px solid",
-          borderColor: "rgba(255, 255, 255, 0.1)",
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          borderRight: '1px solid',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
           // Wider on tablets and up
-          "@media (min-width: 480px)": {
-            width: "min(240px, 60vw)",
+          '@media (min-width: 480px)': {
+            width: 'min(240px, 60vw)',
           },
         })}
       >
@@ -157,13 +146,13 @@ export function ScannerControlsDrawer({
           className={css({
             px: 2,
             py: 1.5,
-            borderBottom: "1px solid",
-            borderColor: "rgba(255, 255, 255, 0.1)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            borderBottom: '1px solid',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             flexShrink: 0,
-            "@media (min-width: 480px)": {
+            '@media (min-width: 480px)': {
               px: 3,
               py: 2,
             },
@@ -171,11 +160,11 @@ export function ScannerControlsDrawer({
         >
           <span
             className={css({
-              color: "white",
-              fontWeight: "bold",
-              fontSize: "xs",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: 'xs',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
             })}
           >
             Scanner
@@ -184,12 +173,12 @@ export function ScannerControlsDrawer({
             type="button"
             onClick={onClose}
             className={css({
-              color: "gray.400",
-              fontSize: "lg",
+              color: 'gray.400',
+              fontSize: 'lg',
               lineHeight: 1,
-              cursor: "pointer",
+              cursor: 'pointer',
               p: 1,
-              _hover: { color: "white" },
+              _hover: { color: 'white' },
             })}
           >
             ×
@@ -200,13 +189,13 @@ export function ScannerControlsDrawer({
         <div
           className={css({
             flex: 1,
-            overflowY: "auto",
+            overflowY: 'auto',
             px: 2,
             py: 1.5,
-            display: "flex",
-            flexDirection: "column",
+            display: 'flex',
+            flexDirection: 'column',
             gap: 2,
-            "@media (min-width: 480px)": {
+            '@media (min-width: 480px)': {
               px: 3,
               py: 2,
               gap: 3,
@@ -217,10 +206,10 @@ export function ScannerControlsDrawer({
           <Section title="Presets">
             <div
               className={css({
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
                 gap: 1,
-                "@media (min-width: 480px)": { gap: 1.5 },
+                '@media (min-width: 480px)': { gap: 1.5 },
               })}
             >
               {Object.entries(PRESETS).map(([key, preset]) => (
@@ -238,23 +227,20 @@ export function ScannerControlsDrawer({
             <select
               value={preprocessing}
               onChange={(e) =>
-                updateField(
-                  "preprocessing",
-                  e.target.value as PreprocessingStrategy,
-                )
+                updateField('preprocessing', e.target.value as PreprocessingStrategy)
               }
               className={css({
-                width: "100%",
-                bg: "rgba(255, 255, 255, 0.1)",
-                color: "white",
-                border: "1px solid",
-                borderColor: "rgba(255, 255, 255, 0.2)",
-                borderRadius: "sm",
+                width: '100%',
+                bg: 'rgba(255, 255, 255, 0.1)',
+                color: 'white',
+                border: '1px solid',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: 'sm',
                 px: 2,
                 py: 1.5,
-                fontSize: "xs",
-                cursor: "pointer",
-                _focus: { outline: "none", borderColor: "blue.400" },
+                fontSize: 'xs',
+                cursor: 'pointer',
+                _focus: { outline: 'none', borderColor: 'blue.400' },
               })}
             >
               <option value="standard">Standard</option>
@@ -268,35 +254,35 @@ export function ScannerControlsDrawer({
           <Section title="Processing">
             <div
               className={css({
-                display: "flex",
-                flexDirection: "column",
+                display: 'flex',
+                flexDirection: 'column',
                 gap: 1.5,
-                "@media (min-width: 480px)": { gap: 2 },
+                '@media (min-width: 480px)': { gap: 2 },
               })}
             >
               <Toggle
                 label="Histogram EQ"
                 sublabel="Stretches contrast for low-light/washed-out images"
                 checked={enableHistogramEqualization}
-                onChange={(v) => updateField("enableHistogramEqualization", v)}
+                onChange={(v) => updateField('enableHistogramEqualization', v)}
               />
               <Toggle
                 label="Adaptive Threshold"
                 sublabel="Local thresholding for uneven lighting & shadows"
                 checked={enableAdaptiveThreshold}
-                onChange={(v) => updateField("enableAdaptiveThreshold", v)}
+                onChange={(v) => updateField('enableAdaptiveThreshold', v)}
               />
               <Toggle
                 label="Morph Gradient"
                 sublabel="Dilation minus erosion to find thick edges"
                 checked={enableMorphGradient}
-                onChange={(v) => updateField("enableMorphGradient", v)}
+                onChange={(v) => updateField('enableMorphGradient', v)}
               />
               <Toggle
                 label="Hough Lines"
                 sublabel="Finds lines even when edges are broken by fingers"
                 checked={enableHoughLines}
-                onChange={(v) => updateField("enableHoughLines", v)}
+                onChange={(v) => updateField('enableHoughLines', v)}
               />
             </div>
           </Section>
@@ -305,10 +291,10 @@ export function ScannerControlsDrawer({
           <Section title="Canny Edge Detection">
             <div
               className={css({
-                display: "flex",
-                flexDirection: "column",
+                display: 'flex',
+                flexDirection: 'column',
                 gap: 2,
-                "@media (min-width: 480px)": { gap: 3 },
+                '@media (min-width: 480px)': { gap: 3 },
               })}
             >
               <Slider
@@ -318,9 +304,7 @@ export function ScannerControlsDrawer({
                 min={10}
                 max={150}
                 step={5}
-                onChange={(v) =>
-                  updateField("cannyThresholds", [v, cannyThresholds[1]])
-                }
+                onChange={(v) => updateField('cannyThresholds', [v, cannyThresholds[1]])}
               />
               <Slider
                 label="High Threshold"
@@ -329,9 +313,7 @@ export function ScannerControlsDrawer({
                 min={50}
                 max={300}
                 step={10}
-                onChange={(v) =>
-                  updateField("cannyThresholds", [cannyThresholds[0], v])
-                }
+                onChange={(v) => updateField('cannyThresholds', [cannyThresholds[0], v])}
               />
             </div>
           </Section>
@@ -340,10 +322,10 @@ export function ScannerControlsDrawer({
           <Section title="Adaptive Threshold">
             <div
               className={css({
-                display: "flex",
-                flexDirection: "column",
+                display: 'flex',
+                flexDirection: 'column',
                 gap: 2,
-                "@media (min-width: 480px)": { gap: 3 },
+                '@media (min-width: 480px)': { gap: 3 },
               })}
             >
               <Slider
@@ -353,7 +335,7 @@ export function ScannerControlsDrawer({
                 min={3}
                 max={31}
                 step={2}
-                onChange={(v) => updateField("adaptiveBlockSize", v)}
+                onChange={(v) => updateField('adaptiveBlockSize', v)}
               />
               <Slider
                 label="Constant C"
@@ -362,7 +344,7 @@ export function ScannerControlsDrawer({
                 min={-10}
                 max={20}
                 step={1}
-                onChange={(v) => updateField("adaptiveC", v)}
+                onChange={(v) => updateField('adaptiveC', v)}
               />
             </div>
           </Section>
@@ -375,50 +357,44 @@ export function ScannerControlsDrawer({
           data-element="drawer-hint"
           onClick={onOpen}
           className={css({
-            position: "absolute",
-            top: "50%",
+            position: 'absolute',
+            top: '50%',
             left: 0,
-            transform: "translateY(-50%)",
-            width: "4px",
-            height: "48px",
-            bg: "rgba(255, 255, 255, 0.25)",
-            borderRadius: "0 4px 4px 0",
-            cursor: "pointer",
-            transition: "all 0.2s",
+            transform: 'translateY(-50%)',
+            width: '4px',
+            height: '48px',
+            bg: 'rgba(255, 255, 255, 0.25)',
+            borderRadius: '0 4px 4px 0',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
             zIndex: 20,
             _hover: {
-              width: "6px",
-              height: "64px",
-              bg: "rgba(255, 255, 255, 0.4)",
+              width: '6px',
+              height: '64px',
+              bg: 'rgba(255, 255, 255, 0.4)',
             },
           })}
         />
       )}
     </>
-  );
+  )
 }
 
 // Helper components - ultra compact
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
       <div
         className={css({
-          color: "gray.500",
-          fontSize: "9px",
-          fontWeight: "medium",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
+          color: 'gray.500',
+          fontSize: '9px',
+          fontWeight: 'medium',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
           mb: 1,
-          "@media (min-width: 480px)": {
-            fontSize: "10px",
+          '@media (min-width: 480px)': {
+            fontSize: '10px',
             mb: 1.5,
           },
         })}
@@ -427,16 +403,10 @@ function Section({
       </div>
       {children}
     </div>
-  );
+  )
 }
 
-function PresetButton({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) {
+function PresetButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -444,32 +414,32 @@ function PresetButton({
       className={css({
         px: 1.5,
         py: 1,
-        fontSize: "10px",
-        fontWeight: "medium",
-        borderRadius: "sm",
-        border: "1px solid",
-        cursor: "pointer",
-        transition: "all 0.15s",
-        bg: "rgba(255, 255, 255, 0.08)",
-        borderColor: "rgba(255, 255, 255, 0.15)",
-        color: "gray.300",
-        "@media (min-width: 480px)": {
+        fontSize: '10px',
+        fontWeight: 'medium',
+        borderRadius: 'sm',
+        border: '1px solid',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+        bg: 'rgba(255, 255, 255, 0.08)',
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        color: 'gray.300',
+        '@media (min-width: 480px)': {
           px: 2,
           py: 1.5,
-          fontSize: "11px",
+          fontSize: '11px',
         },
         _hover: {
-          bg: "rgba(255, 255, 255, 0.12)",
-          borderColor: "rgba(255, 255, 255, 0.25)",
+          bg: 'rgba(255, 255, 255, 0.12)',
+          borderColor: 'rgba(255, 255, 255, 0.25)',
         },
         _active: {
-          bg: "rgba(255, 255, 255, 0.15)",
+          bg: 'rgba(255, 255, 255, 0.15)',
         },
       })}
     >
       {label}
     </button>
-  );
+  )
 }
 
 function Toggle({
@@ -478,54 +448,54 @@ function Toggle({
   checked,
   onChange,
 }: {
-  label: string;
-  sublabel?: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
+  label: string
+  sublabel?: string
+  checked: boolean
+  onChange: (checked: boolean) => void
 }) {
   return (
     <div
       onClick={() => onChange(!checked)}
       className={css({
-        display: "flex",
-        alignItems: "center",
+        display: 'flex',
+        alignItems: 'center',
         gap: 1.5,
-        cursor: "pointer",
-        "@media (min-width: 480px)": {
+        cursor: 'pointer',
+        '@media (min-width: 480px)': {
           gap: 2,
         },
       })}
     >
       <div
         className={css({
-          position: "relative",
-          width: "28px",
-          height: "16px",
+          position: 'relative',
+          width: '28px',
+          height: '16px',
           flexShrink: 0,
-          bg: checked ? "green.600" : "rgba(255, 255, 255, 0.15)",
-          borderRadius: "full",
-          transition: "background-color 0.2s",
-          "@media (min-width: 480px)": {
-            width: "32px",
-            height: "18px",
+          bg: checked ? 'green.600' : 'rgba(255, 255, 255, 0.15)',
+          borderRadius: 'full',
+          transition: 'background-color 0.2s',
+          '@media (min-width: 480px)': {
+            width: '32px',
+            height: '18px',
           },
         })}
       >
         <div
           className={css({
-            position: "absolute",
-            top: "2px",
-            left: checked ? "14px" : "2px",
-            width: "12px",
-            height: "12px",
-            bg: "white",
-            borderRadius: "full",
-            transition: "left 0.2s",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.3)",
-            "@media (min-width: 480px)": {
-              left: checked ? "16px" : "2px",
-              width: "14px",
-              height: "14px",
+            position: 'absolute',
+            top: '2px',
+            left: checked ? '14px' : '2px',
+            width: '12px',
+            height: '12px',
+            bg: 'white',
+            borderRadius: 'full',
+            transition: 'left 0.2s',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+            '@media (min-width: 480px)': {
+              left: checked ? '16px' : '2px',
+              width: '14px',
+              height: '14px',
             },
           })}
         />
@@ -533,10 +503,10 @@ function Toggle({
       <div className={css({ flex: 1, minWidth: 0 })}>
         <div
           className={css({
-            color: "white",
-            fontSize: "10px",
-            "@media (min-width: 480px)": {
-              fontSize: "11px",
+            color: 'white',
+            fontSize: '10px',
+            '@media (min-width: 480px)': {
+              fontSize: '11px',
             },
           })}
         >
@@ -545,15 +515,15 @@ function Toggle({
         {sublabel && (
           <div
             className={css({
-              color: "gray.500",
-              fontSize: "9px",
-              lineHeight: "1.3",
-              mt: "1px",
+              color: 'gray.500',
+              fontSize: '9px',
+              lineHeight: '1.3',
+              mt: '1px',
               // Hide on very small screens, show on tablets+
-              display: "none",
-              "@media (min-width: 480px)": {
-                display: "block",
-                fontSize: "10px",
+              display: 'none',
+              '@media (min-width: 480px)': {
+                display: 'block',
+                fontSize: '10px',
               },
             })}
           >
@@ -562,7 +532,7 @@ function Toggle({
         )}
       </div>
     </div>
-  );
+  )
 }
 
 function Slider({
@@ -574,42 +544,42 @@ function Slider({
   step,
   onChange,
 }: {
-  label: string;
-  sublabel?: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (value: number) => void;
+  label: string
+  sublabel?: string
+  value: number
+  min: number
+  max: number
+  step: number
+  onChange: (value: number) => void
 }) {
   return (
     <div>
       <div
         className={css({
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           mb: 0.5,
-          "@media (min-width: 480px)": {
+          '@media (min-width: 480px)': {
             mb: sublabel ? 0.5 : 1,
           },
         })}
       >
         <span
           className={css({
-            color: "gray.300",
-            fontSize: "10px",
-            "@media (min-width: 480px)": { fontSize: "11px" },
+            color: 'gray.300',
+            fontSize: '10px',
+            '@media (min-width: 480px)': { fontSize: '11px' },
           })}
         >
           {label}
         </span>
         <span
           className={css({
-            color: "white",
-            fontSize: "10px",
-            fontFamily: "mono",
-            "@media (min-width: 480px)": { fontSize: "11px" },
+            color: 'white',
+            fontSize: '10px',
+            fontFamily: 'mono',
+            '@media (min-width: 480px)': { fontSize: '11px' },
           })}
         >
           {value}
@@ -618,15 +588,15 @@ function Slider({
       {sublabel && (
         <div
           className={css({
-            color: "gray.500",
-            fontSize: "9px",
+            color: 'gray.500',
+            fontSize: '9px',
             mb: 1,
-            lineHeight: "1.3",
+            lineHeight: '1.3',
             // Hide on small screens
-            display: "none",
-            "@media (min-width: 480px)": {
-              display: "block",
-              fontSize: "10px",
+            display: 'none',
+            '@media (min-width: 480px)': {
+              display: 'block',
+              fontSize: '10px',
             },
           })}
         >
@@ -641,34 +611,34 @@ function Slider({
         step={step}
         onChange={(e) => onChange(Number(e.target.value))}
         className={css({
-          width: "100%",
-          height: "4px",
-          bg: "rgba(255, 255, 255, 0.15)",
-          borderRadius: "full",
-          appearance: "none",
-          cursor: "pointer",
-          "&::-webkit-slider-thumb": {
-            appearance: "none",
-            width: "14px",
-            height: "14px",
-            bg: "white",
-            borderRadius: "full",
-            cursor: "pointer",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.3)",
+          width: '100%',
+          height: '4px',
+          bg: 'rgba(255, 255, 255, 0.15)',
+          borderRadius: 'full',
+          appearance: 'none',
+          cursor: 'pointer',
+          '&::-webkit-slider-thumb': {
+            appearance: 'none',
+            width: '14px',
+            height: '14px',
+            bg: 'white',
+            borderRadius: 'full',
+            cursor: 'pointer',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
           },
-          "&::-moz-range-thumb": {
-            width: "14px",
-            height: "14px",
-            bg: "white",
-            borderRadius: "full",
-            cursor: "pointer",
-            border: "none",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.3)",
+          '&::-moz-range-thumb': {
+            width: '14px',
+            height: '14px',
+            bg: 'white',
+            borderRadius: 'full',
+            cursor: 'pointer',
+            border: 'none',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
           },
         })}
       />
     </div>
-  );
+  )
 }
 
-export default ScannerControlsDrawer;
+export default ScannerControlsDrawer

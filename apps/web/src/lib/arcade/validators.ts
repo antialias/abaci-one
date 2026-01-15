@@ -13,83 +13,76 @@
  * 3. GameName type will auto-update
  */
 
-import type { GameValidator } from "./validation/types";
+import type { GameValidator } from './validation/types'
 
 /**
  * Lazy validator loaders - import validators only when needed
  */
 const validatorLoaders = {
-  matching: async () =>
-    (await import("@/arcade-games/matching/Validator")).matchingGameValidator,
-  "memory-quiz": async () =>
-    (await import("@/arcade-games/memory-quiz/Validator"))
-      .memoryQuizGameValidator,
-  "complement-race": async () =>
-    (await import("@/arcade-games/complement-race/Validator"))
-      .complementRaceValidator,
-  "card-sorting": async () =>
-    (await import("@/arcade-games/card-sorting/Validator"))
-      .cardSortingValidator,
-  "yjs-demo": async () =>
-    (await import("@/arcade-games/yjs-demo/Validator")).yjsDemoValidator,
+  matching: async () => (await import('@/arcade-games/matching/Validator')).matchingGameValidator,
+  'memory-quiz': async () =>
+    (await import('@/arcade-games/memory-quiz/Validator')).memoryQuizGameValidator,
+  'complement-race': async () =>
+    (await import('@/arcade-games/complement-race/Validator')).complementRaceValidator,
+  'card-sorting': async () =>
+    (await import('@/arcade-games/card-sorting/Validator')).cardSortingValidator,
+  'yjs-demo': async () => (await import('@/arcade-games/yjs-demo/Validator')).yjsDemoValidator,
   rithmomachia: async () =>
-    (await import("@/arcade-games/rithmomachia/Validator"))
-      .rithmomachiaValidator,
-  "know-your-world": async () =>
-    (await import("@/arcade-games/know-your-world/Validator"))
-      .knowYourWorldValidator,
+    (await import('@/arcade-games/rithmomachia/Validator')).rithmomachiaValidator,
+  'know-your-world': async () =>
+    (await import('@/arcade-games/know-your-world/Validator')).knowYourWorldValidator,
   // Add new games here - GameName type will auto-update
-} as const;
+} as const
 
 /**
  * Cache for loaded validators
  */
-const validatorCache = new Map<GameName, GameValidator>();
+const validatorCache = new Map<GameName, GameValidator>()
 
 /**
  * Auto-derived game name type from registry
  * No need to manually update this!
  */
-export type GameName = keyof typeof validatorLoaders;
+export type GameName = keyof typeof validatorLoaders
 
 /**
  * Get validator for a game (async - lazy loads validator)
  * @throws Error if game not found (fail fast)
  */
 export async function getValidator(gameName: string): Promise<GameValidator> {
-  const gameNameTyped = gameName as GameName;
+  const gameNameTyped = gameName as GameName
 
   // Check cache first
   if (validatorCache.has(gameNameTyped)) {
-    return validatorCache.get(gameNameTyped)!;
+    return validatorCache.get(gameNameTyped)!
   }
 
-  const loader = validatorLoaders[gameNameTyped];
+  const loader = validatorLoaders[gameNameTyped]
   if (!loader) {
     throw new Error(
       `No validator found for game: ${gameName}. ` +
-        `Available games: ${Object.keys(validatorLoaders).join(", ")}`,
-    );
+        `Available games: ${Object.keys(validatorLoaders).join(', ')}`
+    )
   }
 
   // Load and cache
-  const validator = await loader();
-  validatorCache.set(gameNameTyped, validator);
-  return validator;
+  const validator = await loader()
+  validatorCache.set(gameNameTyped, validator)
+  return validator
 }
 
 /**
  * Check if a game has a registered validator
  */
 export function hasValidator(gameName: string): gameName is GameName {
-  return gameName in validatorLoaders;
+  return gameName in validatorLoaders
 }
 
 /**
  * Get all registered game names
  */
 export function getRegisteredGameNames(): GameName[] {
-  return Object.keys(validatorLoaders) as GameName[];
+  return Object.keys(validatorLoaders) as GameName[]
 }
 
 /**
@@ -100,7 +93,7 @@ export function getRegisteredGameNames(): GameName[] {
  * @returns true if game has a registered validator
  */
 export function isValidGameName(gameName: unknown): gameName is GameName {
-  return typeof gameName === "string" && hasValidator(gameName);
+  return typeof gameName === 'string' && hasValidator(gameName)
 }
 
 /**
@@ -109,12 +102,10 @@ export function isValidGameName(gameName: unknown): gameName is GameName {
  * @param gameName - Game name to validate
  * @throws Error if game name is invalid
  */
-export function assertValidGameName(
-  gameName: unknown,
-): asserts gameName is GameName {
+export function assertValidGameName(gameName: unknown): asserts gameName is GameName {
   if (!isValidGameName(gameName)) {
     throw new Error(
-      `Invalid game name: ${gameName}. Must be one of: ${getRegisteredGameNames().join(", ")}`,
-    );
+      `Invalid game name: ${gameName}. Must be one of: ${getRegisteredGameNames().join(', ')}`
+    )
   }
 }

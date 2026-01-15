@@ -5,16 +5,16 @@
  * Handles smart tooltip positioning to avoid covering active beads.
  */
 
-import type { StepBeadHighlight } from "@soroban/abacus-react";
+import type { StepBeadHighlight } from '@soroban/abacus-react'
 
 /**
  * Target specification for tooltip overlay
  */
 export interface TooltipTarget {
-  type: "bead";
-  columnIndex: number;
-  beadType: "heaven" | "earth";
-  beadPosition: number | undefined;
+  type: 'bead'
+  columnIndex: number
+  beadType: 'heaven' | 'earth'
+  beadPosition: number | undefined
 }
 
 /**
@@ -22,13 +22,13 @@ export interface TooltipTarget {
  */
 export interface TooltipPositioning {
   /** Which side to show tooltip on */
-  side: "top" | "left";
+  side: 'top' | 'left'
   /** Target bead for the tooltip */
-  target: TooltipTarget;
+  target: TooltipTarget
   /** The topmost bead that was selected */
-  topmostBead: StepBeadHighlight;
+  topmostBead: StepBeadHighlight
   /** Column index of the target */
-  targetColumnIndex: number;
+  targetColumnIndex: number
 }
 
 /**
@@ -43,40 +43,40 @@ export interface TooltipPositioning {
  * @returns The topmost bead, or null if none have arrows
  */
 export function findTopmostBeadWithArrows(
-  stepBeadHighlights: StepBeadHighlight[] | undefined,
+  stepBeadHighlights: StepBeadHighlight[] | undefined
 ): StepBeadHighlight | null {
-  if (!stepBeadHighlights || stepBeadHighlights.length === 0) return null;
+  if (!stepBeadHighlights || stepBeadHighlights.length === 0) return null
 
   // Filter only beads that have direction arrows
   const beadsWithArrows = stepBeadHighlights.filter(
-    (bead) => bead.direction && bead.direction !== "none",
-  );
+    (bead) => bead.direction && bead.direction !== 'none'
+  )
 
   if (beadsWithArrows.length === 0) {
-    return null;
+    return null
   }
 
   // Sort by priority
   const sortedBeads = [...beadsWithArrows].sort((a, b) => {
     // First sort by place value (higher place value = more significant = topmost priority)
     if (a.placeValue !== b.placeValue) {
-      return b.placeValue - a.placeValue;
+      return b.placeValue - a.placeValue
     }
 
     // If same place value, heaven beads come before earth beads
     if (a.beadType !== b.beadType) {
-      return a.beadType === "heaven" ? -1 : 1;
+      return a.beadType === 'heaven' ? -1 : 1
     }
 
     // If both earth beads in same column, lower position number = higher on abacus
-    if (a.beadType === "earth" && b.beadType === "earth") {
-      return (a.position || 0) - (b.position || 0);
+    if (a.beadType === 'earth' && b.beadType === 'earth') {
+      return (a.position || 0) - (b.position || 0)
     }
 
-    return 0;
-  });
+    return 0
+  })
 
-  return sortedBeads[0] || null;
+  return sortedBeads[0] || null
 }
 
 /**
@@ -96,43 +96,37 @@ export function hasActiveBeadsToLeft(
   currentValue: number,
   stepBeadHighlights: StepBeadHighlight[] | undefined,
   abacusColumns: number,
-  targetColumnIndex: number,
+  targetColumnIndex: number
 ): boolean {
   // Get current abacus state - check which beads are against the reckoning bar
-  const abacusDigits = currentValue
-    .toString()
-    .padStart(abacusColumns, "0")
-    .split("")
-    .map(Number);
+  const abacusDigits = currentValue.toString().padStart(abacusColumns, '0').split('').map(Number)
 
   for (let col = 0; col < targetColumnIndex; col++) {
-    const digitValue = abacusDigits[col];
+    const digitValue = abacusDigits[col]
 
     // Check if any beads are active (against reckoning bar) in this column
     if (digitValue >= 5) {
       // Heaven bead is active
-      return true;
+      return true
     }
     if (digitValue % 5 > 0) {
       // Earth beads are active
-      return true;
+      return true
     }
 
     // Also check if this column has beads with direction arrows
     const hasArrowsInColumn =
       stepBeadHighlights?.some((bead) => {
-        const beadColumnIndex = abacusColumns - 1 - bead.placeValue;
-        return (
-          beadColumnIndex === col && bead.direction && bead.direction !== "none"
-        );
-      }) ?? false;
+        const beadColumnIndex = abacusColumns - 1 - bead.placeValue
+        return beadColumnIndex === col && bead.direction && bead.direction !== 'none'
+      }) ?? false
 
     if (hasArrowsInColumn) {
-      return true;
+      return true
     }
   }
 
-  return false;
+  return false
 }
 
 /**
@@ -149,46 +143,46 @@ export function hasActiveBeadsToLeft(
 export function calculateTooltipPositioning(
   currentValue: number,
   stepBeadHighlights: StepBeadHighlight[] | undefined,
-  abacusColumns: number,
+  abacusColumns: number
 ): TooltipPositioning | null {
-  const topmostBead = findTopmostBeadWithArrows(stepBeadHighlights);
-  if (!topmostBead) return null;
+  const topmostBead = findTopmostBeadWithArrows(stepBeadHighlights)
+  if (!topmostBead) return null
 
   // Convert placeValue to columnIndex
-  const targetColumnIndex = abacusColumns - 1 - topmostBead.placeValue;
+  const targetColumnIndex = abacusColumns - 1 - topmostBead.placeValue
 
   // Check if there are active beads to the left
   const activeToLeft = hasActiveBeadsToLeft(
     currentValue,
     stepBeadHighlights,
     abacusColumns,
-    targetColumnIndex,
-  );
+    targetColumnIndex
+  )
 
   // Determine tooltip position and target
-  const shouldPositionAbove = activeToLeft;
-  const side = shouldPositionAbove ? "top" : "left";
+  const shouldPositionAbove = activeToLeft
+  const side = shouldPositionAbove ? 'top' : 'left'
 
   const target: TooltipTarget = shouldPositionAbove
     ? {
         // Target the heaven bead position for the column
-        type: "bead",
+        type: 'bead',
         columnIndex: targetColumnIndex,
-        beadType: "heaven",
+        beadType: 'heaven',
         beadPosition: 0, // Heaven beads are always at position 0
       }
     : {
         // Target the actual bead
-        type: "bead",
+        type: 'bead',
         columnIndex: targetColumnIndex,
         beadType: topmostBead.beadType,
         beadPosition: topmostBead.position,
-      };
+      }
 
   return {
     side,
     target,
     topmostBead,
     targetColumnIndex,
-  };
+  }
 }

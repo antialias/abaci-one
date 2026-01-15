@@ -7,10 +7,10 @@
  * - Normalizing accented characters for comparison
  */
 
-import type { LetterInfo, LetterStatus } from "./types";
+import type { LetterInfo, LetterStatus } from './types'
 
 // Re-export getNthNonSpaceLetter from Validator for backward compatibility
-export { getNthNonSpaceLetter } from "../../Validator";
+export { getNthNonSpaceLetter } from '../../Validator'
 
 /**
  * Normalize accented characters to their base ASCII letters.
@@ -33,9 +33,9 @@ export { getNthNonSpaceLetter } from "../../Validator";
  */
 export function normalizeToBaseLetter(char: string): string {
   return char
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
 }
 
 /**
@@ -45,7 +45,7 @@ export function normalizeToBaseLetter(char: string): string {
  * @returns Number of non-space characters
  */
 export function countNonSpaceLetters(name: string): number {
-  return name.split("").filter((char) => char !== " ").length;
+  return name.split('').filter((char) => char !== ' ').length
 }
 
 /**
@@ -61,25 +61,25 @@ export function getLetterStatus(
   nonSpaceIndex: number,
   confirmedCount: number,
   requiredLetters: number,
-  isComplete: boolean,
+  isComplete: boolean
 ): LetterStatus {
   // Letters beyond the required count are always fully visible
   if (nonSpaceIndex >= requiredLetters) {
-    return "beyond-required";
+    return 'beyond-required'
   }
 
   // Letters that have been confirmed
   if (nonSpaceIndex < confirmedCount) {
-    return "confirmed";
+    return 'confirmed'
   }
 
   // The next letter to confirm (show underline)
   if (nonSpaceIndex === confirmedCount && !isComplete) {
-    return "next";
+    return 'next'
   }
 
   // Letters waiting to be confirmed
-  return "pending";
+  return 'pending'
 }
 
 /**
@@ -89,36 +89,33 @@ export function getLetterStatus(
  * @param isDark - Whether dark mode is active
  * @returns CSS properties for the letter
  */
-export function getLetterStyles(
-  status: LetterStatus,
-  isDark: boolean,
-): React.CSSProperties {
+export function getLetterStyles(status: LetterStatus, isDark: boolean): React.CSSProperties {
   const baseStyles: React.CSSProperties = {
-    transition: "all 0.15s ease-out",
-  };
+    transition: 'all 0.15s ease-out',
+  }
 
   switch (status) {
-    case "confirmed":
-    case "beyond-required":
+    case 'confirmed':
+    case 'beyond-required':
       return {
         ...baseStyles,
         opacity: 1,
-      };
+      }
 
-    case "next":
+    case 'next':
       return {
         ...baseStyles,
         opacity: 1,
-        textDecoration: "underline",
-        textDecorationColor: isDark ? "#60a5fa" : "#3b82f6",
-        textUnderlineOffset: "4px",
-      };
+        textDecoration: 'underline',
+        textDecorationColor: isDark ? '#60a5fa' : '#3b82f6',
+        textUnderlineOffset: '4px',
+      }
 
-    case "pending":
+    case 'pending':
       return {
         ...baseStyles,
         opacity: 0.4,
-      };
+      }
   }
 }
 
@@ -129,10 +126,7 @@ export function getLetterStyles(
  * @param requiredLetters - Number of letters required
  * @returns Progress value (0 = none, 1 = complete)
  */
-export function calculateProgress(
-  confirmedCount: number,
-  requiredLetters: number,
-): number {
-  if (requiredLetters === 0) return 1;
-  return Math.min(1, confirmedCount / requiredLetters);
+export function calculateProgress(confirmedCount: number, requiredLetters: number): number {
+  if (requiredLetters === 0) return 1
+  return Math.min(1, confirmedCount / requiredLetters)
 }

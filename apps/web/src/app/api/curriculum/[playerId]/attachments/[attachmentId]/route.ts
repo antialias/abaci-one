@@ -10,18 +10,18 @@
  * Authorization is checked to ensure only parents and teachers can modify.
  */
 
-import { randomUUID } from "crypto";
-import { mkdir, unlink, writeFile } from "fs/promises";
-import { NextResponse } from "next/server";
-import { join } from "path";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { practiceAttachments } from "@/db/schema";
-import { canPerformAction } from "@/lib/classroom";
-import { getDbUserId } from "@/lib/viewer";
+import { randomUUID } from 'crypto'
+import { mkdir, unlink, writeFile } from 'fs/promises'
+import { NextResponse } from 'next/server'
+import { join } from 'path'
+import { eq } from 'drizzle-orm'
+import { db } from '@/db'
+import { practiceAttachments } from '@/db/schema'
+import { canPerformAction } from '@/lib/classroom'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
-  params: Promise<{ playerId: string; attachmentId: string }>;
+  params: Promise<{ playerId: string; attachmentId: string }>
 }
 
 /**
@@ -32,20 +32,17 @@ interface RouteParams {
  */
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
-    const { playerId, attachmentId } = await params;
+    const { playerId, attachmentId } = await params
 
     if (!playerId || !attachmentId) {
-      return NextResponse.json(
-        { error: "Player ID and Attachment ID required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
     }
 
     // Authorization check - require 'start-session' permission (parent or present teacher)
-    const userId = await getDbUserId();
-    const canEdit = await canPerformAction(userId, playerId, "start-session");
+    const userId = await getDbUserId()
+    const canEdit = await canPerformAction(userId, playerId, 'start-session')
     if (!canEdit) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     // Get existing attachment record
@@ -53,94 +50,76 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       .select()
       .from(practiceAttachments)
       .where(eq(practiceAttachments.id, attachmentId))
-      .get();
+      .get()
 
     if (!attachment) {
-      return NextResponse.json(
-        { error: "Attachment not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
     }
 
     // Verify the attachment belongs to the specified player
     if (attachment.playerId !== playerId) {
-      return NextResponse.json(
-        { error: "Attachment not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
     }
 
     // Parse form data - expect a single 'file' (the new cropped version)
     // and optionally 'corners' (JSON string of crop coordinates) and 'rotation'
-    const formData = await request.formData();
-    const file = formData.get("file");
-    const cornersStr = formData.get("corners");
-    const rotationStr = formData.get("rotation");
+    const formData = await request.formData()
+    const file = formData.get('file')
+    const cornersStr = formData.get('corners')
+    const rotationStr = formData.get('rotation')
 
     if (!(file instanceof File) || file.size === 0) {
-      return NextResponse.json({ error: "File is required" }, { status: 400 });
+      return NextResponse.json({ error: 'File is required' }, { status: 400 })
     }
 
     // Parse corners if provided
-    let corners: Array<{ x: number; y: number }> | null = null;
-    if (cornersStr && typeof cornersStr === "string") {
+    let corners: Array<{ x: number; y: number }> | null = null
+    if (cornersStr && typeof cornersStr === 'string') {
       try {
-        corners = JSON.parse(cornersStr) as Array<{ x: number; y: number }>;
+        corners = JSON.parse(cornersStr) as Array<{ x: number; y: number }>
       } catch {
         // Invalid JSON, ignore corners
       }
     }
 
     // Parse rotation if provided
-    let rotation: 0 | 90 | 180 | 270 = 0;
-    if (rotationStr && typeof rotationStr === "string") {
-      const parsed = parseInt(rotationStr, 10);
+    let rotation: 0 | 90 | 180 | 270 = 0
+    if (rotationStr && typeof rotationStr === 'string') {
+      const parsed = parseInt(rotationStr, 10)
       if (parsed === 0 || parsed === 90 || parsed === 180 || parsed === 270) {
-        rotation = parsed;
+        rotation = parsed
       }
     }
 
     // Validate file type
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json(
-        { error: "File must be an image" },
-        { status: 400 },
-      );
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: "File exceeds 10MB limit" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'File exceeds 10MB limit' }, { status: 400 })
     }
 
     // Ensure upload directory exists
-    const uploadDir = join(
-      process.cwd(),
-      "data",
-      "uploads",
-      "players",
-      playerId,
-    );
-    await mkdir(uploadDir, { recursive: true });
+    const uploadDir = join(process.cwd(), 'data', 'uploads', 'players', playerId)
+    await mkdir(uploadDir, { recursive: true })
 
     // Delete old cropped file (but NOT the original)
-    const oldFilepath = join(uploadDir, attachment.filename);
+    const oldFilepath = join(uploadDir, attachment.filename)
     try {
-      await unlink(oldFilepath);
+      await unlink(oldFilepath)
     } catch {
       // Ignore - file may already be gone
     }
 
     // Save new cropped file with new UUID
-    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const newFilename = `${randomUUID()}.${extension}`;
-    const newFilepath = join(uploadDir, newFilename);
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const newFilename = `${randomUUID()}.${extension}`
+    const newFilepath = join(uploadDir, newFilename)
 
-    const bytes = await file.arrayBuffer();
-    await writeFile(newFilepath, Buffer.from(bytes));
+    const bytes = await file.arrayBuffer()
+    await writeFile(newFilepath, Buffer.from(bytes))
 
     // Update database record with new filename, size, corners, and rotation
     await db
@@ -152,7 +131,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         corners,
         rotation,
       })
-      .where(eq(practiceAttachments.id, attachmentId));
+      .where(eq(practiceAttachments.id, attachmentId))
 
     return NextResponse.json({
       success: true,
@@ -161,13 +140,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       fileSize: file.size,
       rotation,
       url: `/api/curriculum/${playerId}/attachments/${attachmentId}/file?v=${encodeURIComponent(newFilename)}`,
-    });
+    })
   } catch (error) {
-    console.error("Error replacing attachment:", error);
-    return NextResponse.json(
-      { error: "Failed to replace attachment" },
-      { status: 500 },
-    );
+    console.error('Error replacing attachment:', error)
+    return NextResponse.json({ error: 'Failed to replace attachment' }, { status: 500 })
   }
 }
 
@@ -176,20 +152,17 @@ export async function PATCH(request: Request, { params }: RouteParams) {
  */
 export async function DELETE(_request: Request, { params }: RouteParams) {
   try {
-    const { playerId, attachmentId } = await params;
+    const { playerId, attachmentId } = await params
 
     if (!playerId || !attachmentId) {
-      return NextResponse.json(
-        { error: "Player ID and Attachment ID required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
     }
 
     // Authorization check - require 'start-session' permission (parent or present teacher)
-    const userId = await getDbUserId();
-    const canDelete = await canPerformAction(userId, playerId, "start-session");
+    const userId = await getDbUserId()
+    const canDelete = await canPerformAction(userId, playerId, 'start-session')
     if (!canDelete) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     // Get attachment record
@@ -197,65 +170,45 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
       .select()
       .from(practiceAttachments)
       .where(eq(practiceAttachments.id, attachmentId))
-      .get();
+      .get()
 
     if (!attachment) {
-      return NextResponse.json(
-        { error: "Attachment not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
     }
 
     // Verify the attachment belongs to the specified player
     if (attachment.playerId !== playerId) {
-      return NextResponse.json(
-        { error: "Attachment not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
     }
 
     // Build file paths
-    const uploadDir = join(
-      process.cwd(),
-      "data",
-      "uploads",
-      "players",
-      playerId,
-    );
-    const croppedFilepath = join(uploadDir, attachment.filename);
+    const uploadDir = join(process.cwd(), 'data', 'uploads', 'players', playerId)
+    const croppedFilepath = join(uploadDir, attachment.filename)
 
     // Delete cropped file from disk (ignore error if file doesn't exist)
     try {
-      await unlink(croppedFilepath);
+      await unlink(croppedFilepath)
     } catch (err) {
       // Log but don't fail if file is already gone
-      console.warn(`Could not delete cropped file: ${croppedFilepath}`, err);
+      console.warn(`Could not delete cropped file: ${croppedFilepath}`, err)
     }
 
     // Also delete original file if it exists
     if (attachment.originalFilename) {
-      const originalFilepath = join(uploadDir, attachment.originalFilename);
+      const originalFilepath = join(uploadDir, attachment.originalFilename)
       try {
-        await unlink(originalFilepath);
+        await unlink(originalFilepath)
       } catch (err) {
-        console.warn(
-          `Could not delete original file: ${originalFilepath}`,
-          err,
-        );
+        console.warn(`Could not delete original file: ${originalFilepath}`, err)
       }
     }
 
     // Delete database record
-    await db
-      .delete(practiceAttachments)
-      .where(eq(practiceAttachments.id, attachmentId));
+    await db.delete(practiceAttachments).where(eq(practiceAttachments.id, attachmentId))
 
-    return NextResponse.json({ success: true, deleted: attachmentId });
+    return NextResponse.json({ success: true, deleted: attachmentId })
   } catch (error) {
-    console.error("Error deleting attachment:", error);
-    return NextResponse.json(
-      { error: "Failed to delete attachment" },
-      { status: 500 },
-    );
+    console.error('Error deleting attachment:', error)
+    return NextResponse.json({ error: 'Failed to delete attachment' }, { status: 500 })
   }
 }

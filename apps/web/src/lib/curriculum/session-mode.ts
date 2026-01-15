@@ -14,23 +14,17 @@
  * - Session planner problem generation
  */
 
-import {
-  computeBktFromHistory,
-  DEFAULT_BKT_OPTIONS,
-} from "@/lib/curriculum/bkt";
-import { BKT_THRESHOLDS } from "@/lib/curriculum/config/bkt-integration";
-import { WEAK_SKILL_THRESHOLDS } from "@/lib/curriculum/config";
-import { ALL_PHASES, type CurriculumPhase } from "@/lib/curriculum/definitions";
+import { computeBktFromHistory, DEFAULT_BKT_OPTIONS } from '@/lib/curriculum/bkt'
+import { BKT_THRESHOLDS } from '@/lib/curriculum/config/bkt-integration'
+import { WEAK_SKILL_THRESHOLDS } from '@/lib/curriculum/config'
+import { ALL_PHASES, type CurriculumPhase } from '@/lib/curriculum/definitions'
 import {
   getPracticingSkills,
   getSkillTutorialProgress,
   isSkillTutorialSatisfied,
-} from "@/lib/curriculum/progress-manager";
-import { getRecentSessionResults } from "@/lib/curriculum/session-planner";
-import {
-  SKILL_TUTORIAL_CONFIGS,
-  getSkillDisplayName,
-} from "./skill-tutorial-config";
+} from '@/lib/curriculum/progress-manager'
+import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
+import { SKILL_TUTORIAL_CONFIGS, getSkillDisplayName } from './skill-tutorial-config'
 
 // ============================================================================
 // Types
@@ -40,10 +34,10 @@ import {
  * Information about a skill for display purposes
  */
 export interface SkillInfo {
-  skillId: string;
-  displayName: string;
+  skillId: string
+  displayName: string
   /** P(known) from BKT, 0-1 */
-  pKnown: number;
+  pKnown: number
 }
 
 /**
@@ -51,60 +45,60 @@ export interface SkillInfo {
  */
 export interface BlockedPromotion {
   /** The skill the student would learn if not blocked */
-  nextSkill: SkillInfo;
+  nextSkill: SkillInfo
   /** Human-readable reason for the block */
-  reason: string;
+  reason: string
   /** The curriculum phase of the blocked skill */
-  phase: CurriculumPhase;
+  phase: CurriculumPhase
   /** Whether the tutorial is already satisfied */
-  tutorialReady: boolean;
+  tutorialReady: boolean
 }
 
 /**
  * Remediation mode - student has weak skills that need work
  */
 export interface RemediationMode {
-  type: "remediation";
+  type: 'remediation'
   /** Skills that need strengthening (sorted by pKnown ascending) */
-  weakSkills: SkillInfo[];
+  weakSkills: SkillInfo[]
   /** Description for the session header */
-  focusDescription: string;
+  focusDescription: string
   /** What promotion is being blocked, if any */
-  blockedPromotion?: BlockedPromotion;
+  blockedPromotion?: BlockedPromotion
 }
 
 /**
  * Progression mode - student is ready to learn a new skill
  */
 export interface ProgressionMode {
-  type: "progression";
+  type: 'progression'
   /** The skill to learn next */
-  nextSkill: SkillInfo;
+  nextSkill: SkillInfo
   /** The curriculum phase */
-  phase: CurriculumPhase;
+  phase: CurriculumPhase
   /** Whether a tutorial is required before practicing */
-  tutorialRequired: boolean;
+  tutorialRequired: boolean
   /** Number of times the student has skipped this tutorial */
-  skipCount: number;
+  skipCount: number
   /** Description for the session header */
-  focusDescription: string;
+  focusDescription: string
 }
 
 /**
  * Maintenance mode - all skills are strong, mixed practice
  */
 export interface MaintenanceMode {
-  type: "maintenance";
+  type: 'maintenance'
   /** Description for the session header */
-  focusDescription: string;
+  focusDescription: string
   /** Number of skills being maintained */
-  skillCount: number;
+  skillCount: number
 }
 
 /**
  * The unified session mode
  */
-export type SessionMode = RemediationMode | ProgressionMode | MaintenanceMode;
+export type SessionMode = RemediationMode | ProgressionMode | MaintenanceMode
 
 // ============================================================================
 // Session Mode Computation
@@ -128,117 +122,113 @@ export type SessionMode = RemediationMode | ProgressionMode | MaintenanceMode;
  */
 export async function getSessionMode(playerId: string): Promise<SessionMode> {
   // 1. Get BKT results for all practiced skills
-  const history = await getRecentSessionResults(playerId, 100);
+  const history = await getRecentSessionResults(playerId, 100)
   const bktResults = computeBktFromHistory(history, {
     ...DEFAULT_BKT_OPTIONS,
     confidenceThreshold: BKT_THRESHOLDS.confidence,
-  });
+  })
 
   // 2. Identify weak skills (confident that P(known) is low)
-  const { confidenceThreshold, pKnownThreshold } = WEAK_SKILL_THRESHOLDS;
+  const { confidenceThreshold, pKnownThreshold } = WEAK_SKILL_THRESHOLDS
   const weakSkills: SkillInfo[] = bktResults.skills
-    .filter(
-      (s) => s.confidence >= confidenceThreshold && s.pKnown < pKnownThreshold,
-    )
+    .filter((s) => s.confidence >= confidenceThreshold && s.pKnown < pKnownThreshold)
     .sort((a, b) => a.pKnown - b.pKnown) // Weakest first
     .map((s) => ({
       skillId: s.skillId,
       displayName: getSkillDisplayName(s.skillId),
       pKnown: s.pKnown,
-    }));
+    }))
 
   // 3. Find strong skills for maintenance mode counting
   const strongSkillIds = new Set(
-    bktResults.skills
-      .filter((s) => s.masteryClassification === "strong")
-      .map((s) => s.skillId),
-  );
+    bktResults.skills.filter((s) => s.masteryClassification === 'strong').map((s) => s.skillId)
+  )
 
   // 4. Get currently practicing skills
-  const practicing = await getPracticingSkills(playerId);
-  const practicingIds = new Set(practicing.map((s) => s.skillId));
+  const practicing = await getPracticingSkills(playerId)
+  const practicingIds = new Set(practicing.map((s) => s.skillId))
 
   // 5. Find the next skill in curriculum (if any)
   let nextSkillInfo: {
-    skillId: string;
-    phase: CurriculumPhase;
-    tutorialReady: boolean;
-    skipCount: number;
-  } | null = null;
+    skillId: string
+    phase: CurriculumPhase
+    tutorialReady: boolean
+    skipCount: number
+  } | null = null
 
   for (const phase of ALL_PHASES) {
-    const skillId = phase.primarySkillId;
+    const skillId = phase.primarySkillId
 
     // Skip if no tutorial config (not a learnable skill)
     if (!SKILL_TUTORIAL_CONFIGS[skillId]) {
-      continue;
+      continue
     }
 
     // Strong? Skip - they know it
     if (strongSkillIds.has(skillId)) {
-      continue;
+      continue
     }
 
     // Currently practicing? They're working on it
     if (practicingIds.has(skillId)) {
-      break; // Stop looking, they're actively working on something
+      break // Stop looking, they're actively working on something
     }
 
     // Found first non-strong, unpracticed skill!
-    const tutorialProgress = await getSkillTutorialProgress(playerId, skillId);
-    const tutorialReady = await isSkillTutorialSatisfied(playerId, skillId);
+    const tutorialProgress = await getSkillTutorialProgress(playerId, skillId)
+    const tutorialReady = await isSkillTutorialSatisfied(playerId, skillId)
 
     nextSkillInfo = {
       skillId,
       phase,
       tutorialReady,
       skipCount: tutorialProgress?.skipCount ?? 0,
-    };
-    break;
+    }
+    break
   }
 
   // 6. Determine mode based on weak skills and next skill
   if (weakSkills.length > 0) {
     // REMEDIATION MODE
-    const weakSkillNames = weakSkills.slice(0, 3).map((s) => s.displayName);
-    const moreCount = weakSkills.length - 3;
+    const weakSkillNames = weakSkills.slice(0, 3).map((s) => s.displayName)
+    const moreCount = weakSkills.length - 3
     const skillList =
       moreCount > 0
-        ? `${weakSkillNames.join(", ")} +${moreCount} more`
-        : weakSkillNames.join(weakSkills.length === 2 ? " and " : ", ");
+        ? `${weakSkillNames.join(', ')} +${moreCount} more`
+        : weakSkillNames.join(weakSkills.length === 2 ? ' and ' : ', ')
 
-    const focusDescription = `Strengthening: ${skillList}`;
+    const focusDescription = `Strengthening: ${skillList}`
 
     // Check if there's a promotion being blocked
-    let blockedPromotion: BlockedPromotion | undefined;
+    let blockedPromotion: BlockedPromotion | undefined
     if (nextSkillInfo) {
-      const nextSkillDisplay = getSkillDisplayName(nextSkillInfo.skillId);
+      const nextSkillDisplay = getSkillDisplayName(nextSkillInfo.skillId)
       blockedPromotion = {
         nextSkill: {
           skillId: nextSkillInfo.skillId,
           displayName: nextSkillDisplay,
           pKnown: 0, // Not yet practiced
         },
-        reason: `Strengthen ${weakSkillNames.slice(0, 2).join(" and ")} first`,
+        reason: `Strengthen ${weakSkillNames.slice(0, 2).join(' and ')} first`,
         phase: nextSkillInfo.phase,
         tutorialReady: nextSkillInfo.tutorialReady,
-      };
+      }
     }
 
     return {
-      type: "remediation",
+      type: 'remediation',
       weakSkills,
       focusDescription,
       blockedPromotion,
-    };
+    }
   }
 
   if (nextSkillInfo) {
     // PROGRESSION MODE
-    const nextSkillDisplay = getSkillDisplayName(nextSkillInfo.skillId);
+    const nextSkillDisplay = getSkillDisplayName(nextSkillInfo.skillId)
 
     return {
-      type: "progression",
+      type: 'progression',
       nextSkill: {
         skillId: nextSkillInfo.skillId,
         displayName: nextSkillDisplay,
@@ -248,15 +238,15 @@ export async function getSessionMode(playerId: string): Promise<SessionMode> {
       tutorialRequired: !nextSkillInfo.tutorialReady,
       skipCount: nextSkillInfo.skipCount,
       focusDescription: `Learning: ${nextSkillDisplay}`,
-    };
+    }
   }
 
   // MAINTENANCE MODE
   return {
-    type: "maintenance",
-    focusDescription: "Mixed practice",
+    type: 'maintenance',
+    focusDescription: 'Mixed practice',
     skillCount: practicingIds.size,
-  };
+  }
 }
 
 // ============================================================================
@@ -267,29 +257,29 @@ export async function getSessionMode(playerId: string): Promise<SessionMode> {
  * Check if session mode indicates remediation is needed
  */
 export function isRemediationMode(mode: SessionMode): mode is RemediationMode {
-  return mode.type === "remediation";
+  return mode.type === 'remediation'
 }
 
 /**
  * Check if session mode indicates progression is available
  */
 export function isProgressionMode(mode: SessionMode): mode is ProgressionMode {
-  return mode.type === "progression";
+  return mode.type === 'progression'
 }
 
 /**
  * Check if session mode indicates maintenance
  */
 export function isMaintenanceMode(mode: SessionMode): mode is MaintenanceMode {
-  return mode.type === "maintenance";
+  return mode.type === 'maintenance'
 }
 
 /**
  * Get the weak skill IDs from a session mode (for session planner)
  */
 export function getWeakSkillIds(mode: SessionMode): string[] {
-  if (mode.type === "remediation") {
-    return mode.weakSkills.map((s) => s.skillId);
+  if (mode.type === 'remediation') {
+    return mode.weakSkills.map((s) => s.skillId)
   }
-  return [];
+  return []
 }

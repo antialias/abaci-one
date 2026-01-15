@@ -6,22 +6,22 @@
  * - CompactLinearProblem: Horizontal equation format
  */
 
-import { css } from "../../../styled-system/css";
+import { css } from '../../../styled-system/css'
 
 /**
  * Props for compact problem components
  */
 export interface CompactProblemProps {
   /** Problem terms (positive for add, negative for subtract) */
-  terms: number[];
+  terms: number[]
   /** Correct answer */
-  answer: number;
+  answer: number
   /** Student's submitted answer (if available) */
-  studentAnswer?: number;
+  studentAnswer?: number
   /** Whether the student got it correct (if available) */
-  isCorrect?: boolean;
+  isCorrect?: boolean
   /** Whether dark mode is active */
-  isDark: boolean;
+  isDark: boolean
 }
 
 /**
@@ -38,84 +38,80 @@ export function CompactVerticalProblem({
   // Calculate max digits for alignment
   const maxDigits = Math.max(
     ...terms.map((t) => Math.abs(t).toString().length),
-    answer.toString().length,
-  );
+    answer.toString().length
+  )
 
   return (
     <div
       data-element="compact-vertical-problem"
       className={css({
-        display: "inline-flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-        fontFamily: "monospace",
-        fontSize: "0.75rem",
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        fontFamily: 'monospace',
+        fontSize: '0.75rem',
         lineHeight: 1.2,
       })}
     >
       {terms.map((term, i) => {
-        const isNegative = term < 0;
-        const absValue = Math.abs(term);
-        const digits = absValue.toString();
-        const padding = maxDigits - digits.length;
+        const isNegative = term < 0
+        const absValue = Math.abs(term)
+        const digits = absValue.toString()
+        const padding = maxDigits - digits.length
 
         return (
           <div
             key={i}
             className={css({
-              display: "flex",
-              alignItems: "center",
+              display: 'flex',
+              alignItems: 'center',
             })}
           >
             {/* Sign: show − for negative terms, + for additions after first (but usually omit +) */}
             <span
               className={css({
-                width: "0.75em",
-                textAlign: "center",
-                color: isDark ? "gray.500" : "gray.400",
+                width: '0.75em',
+                textAlign: 'center',
+                color: isDark ? 'gray.500' : 'gray.400',
               })}
             >
-              {i === 0 ? "" : isNegative ? "−" : ""}
+              {i === 0 ? '' : isNegative ? '−' : ''}
             </span>
             {/* Padding for alignment */}
             {padding > 0 && (
-              <span className={css({ visibility: "hidden" })}>
-                {" ".repeat(padding)}
-              </span>
+              <span className={css({ visibility: 'hidden' })}>{' '.repeat(padding)}</span>
             )}
-            <span className={css({ color: isDark ? "gray.300" : "gray.700" })}>
-              {digits}
-            </span>
+            <span className={css({ color: isDark ? 'gray.300' : 'gray.700' })}>{digits}</span>
           </div>
-        );
+        )
       })}
       {/* Answer line */}
       <div
         className={css({
-          display: "flex",
-          alignItems: "center",
-          borderTop: "1px solid",
-          borderColor: isDark ? "gray.600" : "gray.300",
-          paddingTop: "0.125rem",
-          marginTop: "0.125rem",
+          display: 'flex',
+          alignItems: 'center',
+          borderTop: '1px solid',
+          borderColor: isDark ? 'gray.600' : 'gray.300',
+          paddingTop: '0.125rem',
+          marginTop: '0.125rem',
         })}
       >
-        <span className={css({ width: "0.75em" })} />
+        <span className={css({ width: '0.75em' })} />
         <span
           className={css({
             color:
               isCorrect === undefined
                 ? isDark
-                  ? "gray.400"
-                  : "gray.600"
+                  ? 'gray.400'
+                  : 'gray.600'
                 : isCorrect
                   ? isDark
-                    ? "green.400"
-                    : "green.600"
+                    ? 'green.400'
+                    : 'green.600'
                   : isDark
-                    ? "red.400"
-                    : "red.600",
-            fontWeight: "bold",
+                    ? 'red.400'
+                    : 'red.600',
+            fontWeight: 'bold',
           })}
         >
           {answer}
@@ -124,12 +120,12 @@ export function CompactVerticalProblem({
         {isCorrect === false && studentAnswer !== undefined && (
           <span
             className={css({
-              marginLeft: "0.375rem",
-              padding: "0 0.25rem",
-              borderRadius: "2px",
-              fontSize: "0.625rem",
-              backgroundColor: isDark ? "red.900/60" : "red.100",
-              color: isDark ? "red.300" : "red.700",
+              marginLeft: '0.375rem',
+              padding: '0 0.25rem',
+              borderRadius: '2px',
+              fontSize: '0.625rem',
+              backgroundColor: isDark ? 'red.900/60' : 'red.100',
+              color: isDark ? 'red.300' : 'red.700',
             })}
           >
             said {studentAnswer}
@@ -137,7 +133,7 @@ export function CompactVerticalProblem({
         )}
       </div>
     </div>
-  );
+  )
 }
 
 /**
@@ -153,37 +149,35 @@ export function CompactLinearProblem({
 }: CompactProblemProps) {
   const equation = terms
     .map((term, i) => {
-      if (i === 0) return String(term);
-      return term < 0 ? ` − ${Math.abs(term)}` : ` + ${term}`;
+      if (i === 0) return String(term)
+      return term < 0 ? ` − ${Math.abs(term)}` : ` + ${term}`
     })
-    .join("");
+    .join('')
 
   return (
     <span
       data-element="compact-linear-problem"
       className={css({
-        fontFamily: "monospace",
-        fontSize: "0.8125rem",
+        fontFamily: 'monospace',
+        fontSize: '0.8125rem',
       })}
     >
-      <span className={css({ color: isDark ? "gray.300" : "gray.700" })}>
-        {equation} ={" "}
-      </span>
+      <span className={css({ color: isDark ? 'gray.300' : 'gray.700' })}>{equation} = </span>
       <span
         className={css({
           color:
             isCorrect === undefined
               ? isDark
-                ? "gray.400"
-                : "gray.600"
+                ? 'gray.400'
+                : 'gray.600'
               : isCorrect
                 ? isDark
-                  ? "green.400"
-                  : "green.600"
+                  ? 'green.400'
+                  : 'green.600'
                 : isDark
-                  ? "red.400"
-                  : "red.600",
-          fontWeight: "bold",
+                  ? 'red.400'
+                  : 'red.600',
+          fontWeight: 'bold',
         })}
       >
         {answer}
@@ -192,17 +186,17 @@ export function CompactLinearProblem({
       {isCorrect === false && studentAnswer !== undefined && (
         <span
           className={css({
-            marginLeft: "0.375rem",
-            padding: "0.0625rem 0.375rem",
-            borderRadius: "3px",
-            fontSize: "0.75rem",
-            backgroundColor: isDark ? "red.900/60" : "red.100",
-            color: isDark ? "red.300" : "red.700",
+            marginLeft: '0.375rem',
+            padding: '0.0625rem 0.375rem',
+            borderRadius: '3px',
+            fontSize: '0.75rem',
+            backgroundColor: isDark ? 'red.900/60' : 'red.100',
+            color: isDark ? 'red.300' : 'red.700',
           })}
         >
           said {studentAnswer}
         </span>
       )}
     </span>
-  );
+  )
 }

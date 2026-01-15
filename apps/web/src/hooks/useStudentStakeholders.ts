@@ -1,38 +1,33 @@
-"use client";
+'use client'
 
-import { useQuery } from "@tanstack/react-query";
-import type {
-  StudentStakeholders,
-  ViewerRelationshipSummary,
-} from "@/types/student";
+import { useQuery } from '@tanstack/react-query'
+import type { StudentStakeholders, ViewerRelationshipSummary } from '@/types/student'
 
 /**
  * Response from the stakeholders API
  */
 interface StakeholdersResponse {
-  stakeholders: StudentStakeholders;
-  viewerRelationship: ViewerRelationshipSummary;
+  stakeholders: StudentStakeholders
+  viewerRelationship: ViewerRelationshipSummary
 }
 
 /**
  * Query key factory for stakeholders queries
  */
 export const stakeholdersKeys = {
-  all: ["stakeholders"] as const,
+  all: ['stakeholders'] as const,
   player: (playerId: string) => [...stakeholdersKeys.all, playerId] as const,
-};
+}
 
 /**
  * Fetch stakeholders data for a player
  */
-async function fetchStakeholders(
-  playerId: string,
-): Promise<StakeholdersResponse> {
-  const response = await fetch(`/api/players/${playerId}/stakeholders`);
+async function fetchStakeholders(playerId: string): Promise<StakeholdersResponse> {
+  const response = await fetch(`/api/players/${playerId}/stakeholders`)
   if (!response.ok) {
-    throw new Error("Failed to fetch stakeholders");
+    throw new Error('Failed to fetch stakeholders')
   }
-  return response.json();
+  return response.json()
 }
 
 /**
@@ -48,18 +43,18 @@ async function fetchStakeholders(
 export function useStudentStakeholders(
   playerId: string | null | undefined,
   options?: {
-    enabled?: boolean;
-    staleTime?: number;
-    refetchInterval?: number | false;
-  },
+    enabled?: boolean
+    staleTime?: number
+    refetchInterval?: number | false
+  }
 ) {
   return useQuery({
-    queryKey: stakeholdersKeys.player(playerId ?? ""),
+    queryKey: stakeholdersKeys.player(playerId ?? ''),
     queryFn: () => fetchStakeholders(playerId!),
     enabled: !!playerId && options?.enabled !== false,
     staleTime: options?.staleTime ?? 30_000, // 30 seconds
     refetchInterval: options?.refetchInterval,
-  });
+  })
 }
 
 /**
@@ -67,9 +62,9 @@ export function useStudentStakeholders(
  * Useful for components that only need the data when available
  */
 export function useStakeholdersData(playerId: string | null | undefined) {
-  const { data } = useStudentStakeholders(playerId);
+  const { data } = useStudentStakeholders(playerId)
   return {
     stakeholders: data?.stakeholders ?? null,
     viewerRelationship: data?.viewerRelationship ?? null,
-  };
+  }
 }

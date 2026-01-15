@@ -1,41 +1,41 @@
-import ffmpeg from "fluent-ffmpeg";
-import path from "path";
-import { readdir, stat, unlink, rmdir } from "fs/promises";
+import ffmpeg from 'fluent-ffmpeg'
+import path from 'path'
+import { readdir, stat, unlink, rmdir } from 'fs/promises'
 
 /**
  * Options for video encoding
  */
 export interface VideoEncoderOptions {
   /** Input frames directory */
-  framesDir: string;
+  framesDir: string
   /** Output MP4 file path */
-  outputPath: string;
+  outputPath: string
   /** Frame rate for output video (default: 10) */
-  fps?: number;
+  fps?: number
   /** Video quality (CRF value, lower = better quality, default: 23) */
-  quality?: number;
+  quality?: number
   /** Preset for encoding speed (default: 'medium') */
   preset?:
-    | "ultrafast"
-    | "superfast"
-    | "veryfast"
-    | "faster"
-    | "fast"
-    | "medium"
-    | "slow"
-    | "slower"
-    | "veryslow";
+    | 'ultrafast'
+    | 'superfast'
+    | 'veryfast'
+    | 'faster'
+    | 'fast'
+    | 'medium'
+    | 'slow'
+    | 'slower'
+    | 'veryslow'
 }
 
 /**
  * Result of video encoding
  */
 export interface EncodingResult {
-  success: boolean;
-  outputPath?: string;
-  fileSize?: number;
-  durationMs?: number;
-  error?: string;
+  success: boolean
+  outputPath?: string
+  fileSize?: number
+  durationMs?: number
+  error?: string
 }
 
 /**
@@ -53,34 +53,24 @@ export class VideoEncoder {
    * Encode frames to MP4 video
    */
   static async encode(options: VideoEncoderOptions): Promise<EncodingResult> {
-    const {
-      framesDir,
-      outputPath,
-      fps = 10,
-      quality = 23,
-      preset = "medium",
-    } = options;
+    const { framesDir, outputPath, fps = 10, quality = 23, preset = 'medium' } = options
 
     try {
       // Verify frames exist
-      const files = await readdir(framesDir);
-      const frameFiles = files
-        .filter((f) => f.startsWith("frame_") && f.endsWith(".jpg"))
-        .sort();
+      const files = await readdir(framesDir)
+      const frameFiles = files.filter((f) => f.startsWith('frame_') && f.endsWith('.jpg')).sort()
 
       if (frameFiles.length === 0) {
         return {
           success: false,
-          error: "No frame files found",
-        };
+          error: 'No frame files found',
+        }
       }
 
-      console.log(
-        `[VideoEncoder] Encoding ${frameFiles.length} frames to ${outputPath}`,
-      );
+      console.log(`[VideoEncoder] Encoding ${frameFiles.length} frames to ${outputPath}`)
 
       // Build input pattern
-      const inputPattern = path.join(framesDir, "frame_%06d.jpg");
+      const inputPattern = path.join(framesDir, 'frame_%06d.jpg')
 
       // Encode using ffmpeg
       await new Promise<void>((resolve, reject) => {
@@ -88,50 +78,47 @@ export class VideoEncoder {
           .input(inputPattern)
           .inputFPS(fps)
           .outputOptions([
-            "-c:v libx264", // H.264 codec
+            '-c:v libx264', // H.264 codec
             `-crf ${quality}`, // Quality (0-51, lower is better)
             `-preset ${preset}`, // Encoding speed preset
-            "-pix_fmt yuv420p", // Pixel format for browser compatibility
-            "-movflags +faststart", // Enable fast start for streaming
+            '-pix_fmt yuv420p', // Pixel format for browser compatibility
+            '-movflags +faststart', // Enable fast start for streaming
           ])
           .output(outputPath)
-          .on("start", (cmd) => {
-            console.log(`[VideoEncoder] Running: ${cmd}`);
+          .on('start', (cmd) => {
+            console.log(`[VideoEncoder] Running: ${cmd}`)
           })
-          .on("progress", (progress) => {
+          .on('progress', (progress) => {
             if (progress.percent) {
-              console.log(
-                `[VideoEncoder] Progress: ${progress.percent.toFixed(1)}%`,
-              );
+              console.log(`[VideoEncoder] Progress: ${progress.percent.toFixed(1)}%`)
             }
           })
-          .on("end", () => {
-            console.log(`[VideoEncoder] Encoding complete: ${outputPath}`);
-            resolve();
+          .on('end', () => {
+            console.log(`[VideoEncoder] Encoding complete: ${outputPath}`)
+            resolve()
           })
-          .on("error", (err) => {
-            console.error(`[VideoEncoder] Encoding failed:`, err.message);
-            reject(err);
+          .on('error', (err) => {
+            console.error(`[VideoEncoder] Encoding failed:`, err.message)
+            reject(err)
           })
-          .run();
-      });
+          .run()
+      })
 
       // Get output file info
-      const stats = await stat(outputPath);
-      const durationMs = (frameFiles.length / fps) * 1000;
+      const stats = await stat(outputPath)
+      const durationMs = (frameFiles.length / fps) * 1000
 
       return {
         success: true,
         outputPath,
         fileSize: stats.size,
         durationMs,
-      };
+      }
     } catch (error) {
       return {
         success: false,
-        error:
-          error instanceof Error ? error.message : "Unknown encoding error",
-      };
+        error: error instanceof Error ? error.message : 'Unknown encoding error',
+      }
     }
   }
 
@@ -140,16 +127,16 @@ export class VideoEncoder {
    */
   static async cleanupFrames(framesDir: string): Promise<void> {
     try {
-      const files = await readdir(framesDir);
+      const files = await readdir(framesDir)
 
       for (const file of files) {
-        await unlink(path.join(framesDir, file));
+        await unlink(path.join(framesDir, file))
       }
 
-      await rmdir(framesDir);
-      console.log(`[VideoEncoder] Cleaned up frames directory: ${framesDir}`);
+      await rmdir(framesDir)
+      console.log(`[VideoEncoder] Cleaned up frames directory: ${framesDir}`)
     } catch (error) {
-      console.error(`[VideoEncoder] Failed to cleanup frames:`, error);
+      console.error(`[VideoEncoder] Failed to cleanup frames:`, error)
     }
   }
 
@@ -160,13 +147,13 @@ export class VideoEncoder {
     return new Promise((resolve) => {
       ffmpeg.getAvailableFormats((err, formats) => {
         if (err) {
-          console.error("[VideoEncoder] ffmpeg not available:", err.message);
-          resolve(false);
+          console.error('[VideoEncoder] ffmpeg not available:', err.message)
+          resolve(false)
         } else {
-          resolve(true);
+          resolve(true)
         }
-      });
-    });
+      })
+    })
   }
 
   /**
@@ -176,24 +163,24 @@ export class VideoEncoder {
     return new Promise((resolve) => {
       ffmpeg.getAvailableFormats((err, formats) => {
         if (err) {
-          resolve(null);
-          return;
+          resolve(null)
+          return
         }
 
         // Get version via ffmpeg command
         ffmpeg()
-          .outputOptions(["-version"])
-          .output("/dev/null")
-          .on("stderr", (line: string) => {
-            if (line.startsWith("ffmpeg version")) {
-              resolve(line);
+          .outputOptions(['-version'])
+          .output('/dev/null')
+          .on('stderr', (line: string) => {
+            if (line.startsWith('ffmpeg version')) {
+              resolve(line)
             }
           })
-          .on("error", () => {
-            resolve("ffmpeg available (version unknown)");
+          .on('error', () => {
+            resolve('ffmpeg available (version unknown)')
           })
-          .run();
-      });
-    });
+          .run()
+      })
+    })
   }
 }

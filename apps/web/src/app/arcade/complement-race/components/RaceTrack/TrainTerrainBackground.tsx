@@ -1,15 +1,15 @@
-"use client";
+'use client'
 
-import { memo } from "react";
+import { memo } from 'react'
 
 interface TrainTerrainBackgroundProps {
-  ballastPath: string;
+  ballastPath: string
   groundTextureCircles: Array<{
-    key: string;
-    cx: number;
-    cy: number;
-    r: number;
-  }>;
+    key: string
+    cx: number
+    cy: number
+    r: number
+  }>
 }
 
 export const TrainTerrainBackground = memo(
@@ -18,55 +18,19 @@ export const TrainTerrainBackground = memo(
       <>
         {/* Gradient definitions for mountain shading and ground */}
         <defs>
-          <linearGradient
-            id="mountainGradientLeft"
-            x1="0%"
-            y1="0%"
-            x2="100%"
-            y2="100%"
-          >
-            <stop
-              offset="0%"
-              style={{ stopColor: "#a0a0a0", stopOpacity: 0.8 }}
-            />
-            <stop
-              offset="50%"
-              style={{ stopColor: "#7a7a7a", stopOpacity: 0.6 }}
-            />
-            <stop
-              offset="100%"
-              style={{ stopColor: "#5a5a5a", stopOpacity: 0.4 }}
-            />
+          <linearGradient id="mountainGradientLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: '#a0a0a0', stopOpacity: 0.8 }} />
+            <stop offset="50%" style={{ stopColor: '#7a7a7a', stopOpacity: 0.6 }} />
+            <stop offset="100%" style={{ stopColor: '#5a5a5a', stopOpacity: 0.4 }} />
           </linearGradient>
-          <linearGradient
-            id="mountainGradientRight"
-            x1="0%"
-            y1="0%"
-            x2="100%"
-            y2="100%"
-          >
-            <stop
-              offset="0%"
-              style={{ stopColor: "#5a5a5a", stopOpacity: 0.4 }}
-            />
-            <stop
-              offset="50%"
-              style={{ stopColor: "#7a7a7a", stopOpacity: 0.6 }}
-            />
-            <stop
-              offset="100%"
-              style={{ stopColor: "#a0a0a0", stopOpacity: 0.8 }}
-            />
+          <linearGradient id="mountainGradientRight" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: '#5a5a5a', stopOpacity: 0.4 }} />
+            <stop offset="50%" style={{ stopColor: '#7a7a7a', stopOpacity: 0.6 }} />
+            <stop offset="100%" style={{ stopColor: '#a0a0a0', stopOpacity: 0.8 }} />
           </linearGradient>
           <linearGradient id="groundGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop
-              offset="0%"
-              style={{ stopColor: "#6a8759", stopOpacity: 0.3 }}
-            />
-            <stop
-              offset="100%"
-              style={{ stopColor: "#8B7355", stopOpacity: 0 }}
-            />
+            <stop offset="0%" style={{ stopColor: '#6a8759', stopOpacity: 0.3 }} />
+            <stop offset="100%" style={{ stopColor: '#8B7355', stopOpacity: 0 }} />
           </linearGradient>
         </defs>
 
@@ -74,13 +38,7 @@ export const TrainTerrainBackground = memo(
         <rect x="-50" y="120" width="900" height="530" fill="#8B7355" />
 
         {/* Ground surface gradient for depth */}
-        <rect
-          x="-50"
-          y="120"
-          width="900"
-          height="60"
-          fill="url(#groundGradient)"
-        />
+        <rect x="-50" y="120" width="900" height="60" fill="url(#groundGradient)" />
 
         {/* Ground texture - scattered rocks/pebbles */}
         {groundTextureCircles.map((circle) => (
@@ -95,13 +53,7 @@ export const TrainTerrainBackground = memo(
         ))}
 
         {/* Railroad ballast (gravel bed) */}
-        <path
-          d={ballastPath}
-          fill="none"
-          stroke="#8B7355"
-          strokeWidth="40"
-          strokeLinecap="round"
-        />
+        <path d={ballastPath} fill="none" stroke="#8B7355" strokeWidth="40" strokeLinecap="round" />
 
         {/* Left mountain and tunnel */}
         <g data-element="left-tunnel">
@@ -112,10 +64,7 @@ export const TrainTerrainBackground = memo(
           <path d="M -50 200 L 70 200 L 20 -50 L -50 100 Z" fill="#8b8b8b" />
 
           {/* Mountain ridge shading */}
-          <path
-            d="M -50 200 L 70 200 L 20 -50 Z"
-            fill="url(#mountainGradientLeft)"
-          />
+          <path d="M -50 200 L 70 200 L 20 -50 Z" fill="url(#mountainGradientLeft)" />
 
           {/* Tunnel depth/interior (dark entrance) */}
           <ellipse cx="20" cy="300" rx="50" ry="55" fill="#0a0a0a" />
@@ -156,10 +105,7 @@ export const TrainTerrainBackground = memo(
           <path d="M 730 200 L 850 200 L 850 100 L 780 -50 Z" fill="#8b8b8b" />
 
           {/* Mountain ridge shading */}
-          <path
-            d="M 730 200 L 850 150 L 780 -50 Z"
-            fill="url(#mountainGradientRight)"
-          />
+          <path d="M 730 200 L 850 150 L 780 -50 Z" fill="url(#mountainGradientRight)" />
 
           {/* Tunnel depth/interior (dark entrance) */}
           <ellipse cx="780" cy="300" rx="50" ry="55" fill="#0a0a0a" />
@@ -191,8 +137,8 @@ export const TrainTerrainBackground = memo(
           />
         </g>
       </>
-    );
-  },
-);
+    )
+  }
+)
 
-TrainTerrainBackground.displayName = "TrainTerrainBackground";
+TrainTerrainBackground.displayName = 'TrainTerrainBackground'

@@ -9,10 +9,7 @@
  * getCategoryDisplayName("fiveComplements") // "Five Complements (Addition)"
  */
 
-import {
-  SKILL_CATEGORIES,
-  type SkillCategoryKey,
-} from "@/constants/skillCategories";
+import { SKILL_CATEGORIES, type SkillCategoryKey } from '@/constants/skillCategories'
 
 /**
  * Get human-readable display name for a full skill ID
@@ -27,17 +24,17 @@ import {
  * getSkillDisplayName("unknown.skill")         // "skill" (graceful fallback)
  */
 export function getSkillDisplayName(fullSkillId: string): string {
-  const dotIndex = fullSkillId.indexOf(".");
-  if (dotIndex === -1) return fullSkillId;
+  const dotIndex = fullSkillId.indexOf('.')
+  if (dotIndex === -1) return fullSkillId
 
-  const category = fullSkillId.slice(0, dotIndex);
-  const shortKey = fullSkillId.slice(dotIndex + 1);
+  const category = fullSkillId.slice(0, dotIndex)
+  const shortKey = fullSkillId.slice(dotIndex + 1)
 
-  const categoryData = SKILL_CATEGORIES[category as SkillCategoryKey];
-  if (!categoryData) return shortKey || fullSkillId;
+  const categoryData = SKILL_CATEGORIES[category as SkillCategoryKey]
+  if (!categoryData) return shortKey || fullSkillId
 
-  const skills = categoryData.skills as Record<string, string>;
-  return skills[shortKey] || shortKey || fullSkillId;
+  const skills = categoryData.skills as Record<string, string>
+  return skills[shortKey] || shortKey || fullSkillId
 }
 
 /**
@@ -53,8 +50,8 @@ export function getSkillDisplayName(fullSkillId: string): string {
  * getCategoryDisplayName("unknown")            // "unknown" (graceful fallback)
  */
 export function getCategoryDisplayName(categoryId: string): string {
-  const categoryData = SKILL_CATEGORIES[categoryId as SkillCategoryKey];
-  return categoryData?.name || categoryId;
+  const categoryData = SKILL_CATEGORIES[categoryId as SkillCategoryKey]
+  return categoryData?.name || categoryId
 }
 
 /**
@@ -68,26 +65,24 @@ export function getCategoryDisplayName(categoryId: string): string {
  * parseSkillId("noCategory")             // { category: "", shortKey: "noCategory" }
  */
 export function parseSkillId(fullSkillId: string): {
-  category: string;
-  shortKey: string;
+  category: string
+  shortKey: string
 } {
-  const dotIndex = fullSkillId.indexOf(".");
+  const dotIndex = fullSkillId.indexOf('.')
   if (dotIndex === -1) {
-    return { category: "", shortKey: fullSkillId };
+    return { category: '', shortKey: fullSkillId }
   }
   return {
     category: fullSkillId.slice(0, dotIndex),
     shortKey: fullSkillId.slice(dotIndex + 1),
-  };
+  }
 }
 
 /**
  * Check if a category ID is valid
  */
-export function isValidCategory(
-  categoryId: string,
-): categoryId is SkillCategoryKey {
-  return categoryId in SKILL_CATEGORIES;
+export function isValidCategory(categoryId: string): categoryId is SkillCategoryKey {
+  return categoryId in SKILL_CATEGORIES
 }
 
 /**
@@ -97,14 +92,14 @@ export function isValidCategory(
  * @returns Array of { id, displayName } objects, or empty array if invalid category
  */
 export function getSkillsInCategory(
-  categoryId: string,
+  categoryId: string
 ): Array<{ id: string; displayName: string }> {
-  const categoryData = SKILL_CATEGORIES[categoryId as SkillCategoryKey];
-  if (!categoryData) return [];
+  const categoryData = SKILL_CATEGORIES[categoryId as SkillCategoryKey]
+  if (!categoryData) return []
 
-  const skills = categoryData.skills as Record<string, string>;
+  const skills = categoryData.skills as Record<string, string>
   return Object.entries(skills).map(([shortKey, displayName]) => ({
     id: `${categoryId}.${shortKey}`,
     displayName,
-  }));
+  }))
 }

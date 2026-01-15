@@ -1,12 +1,8 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
-import { type NextRequest, NextResponse } from "next/server";
-import { db, schema } from "@/db";
-import {
-  getClassroomPresence,
-  getEnrolledStudents,
-  getTeacherClassroom,
-} from "@/lib/classroom";
-import { getViewerId } from "@/lib/viewer";
+import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { type NextRequest, NextResponse } from 'next/server'
+import { db, schema } from '@/db'
+import { getClassroomPresence, getEnrolledStudents, getTeacherClassroom } from '@/lib/classroom'
+import { getViewerId } from '@/lib/viewer'
 
 /**
  * Get or create user record for a viewerId (guestId)
@@ -14,21 +10,18 @@ import { getViewerId } from "@/lib/viewer";
 async function getOrCreateUser(viewerId: string) {
   let user = await db.query.users.findFirst({
     where: eq(schema.users.guestId, viewerId),
-  });
+  })
 
   if (!user) {
-    const [newUser] = await db
-      .insert(schema.users)
-      .values({ guestId: viewerId })
-      .returning();
-    user = newUser;
+    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
+    user = newUser
   }
 
-  return user;
+  return user
 }
 
 interface RouteParams {
-  params: Promise<{ classroomId: string }>;
+  params: Promise<{ classroomId: string }>
 }
 
 /**
@@ -36,23 +29,23 @@ interface RouteParams {
  */
 interface ActiveSessionInfo {
   /** Session plan ID (for observation) */
-  sessionId: string;
+  sessionId: string
   /** Player ID */
-  playerId: string;
+  playerId: string
   /** When the session started */
-  startedAt: Date;
+  startedAt: Date
   /** Current part index */
-  currentPartIndex: number;
+  currentPartIndex: number
   /** Current slot index within the part */
-  currentSlotIndex: number;
+  currentSlotIndex: number
   /** Total parts in session */
-  totalParts: number;
+  totalParts: number
   /** Total problems in session (sum of all slots) */
-  totalProblems: number;
+  totalProblems: number
   /** Number of completed problems */
-  completedProblems: number;
+  completedProblems: number
   /** Whether the student is currently present in the classroom */
-  isPresent: boolean;
+  isPresent: boolean
 }
 
 /**
@@ -67,55 +60,52 @@ interface ActiveSessionInfo {
  */
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    const { classroomId } = await params;
-    const viewerId = await getViewerId();
-    const user = await getOrCreateUser(viewerId);
+    const { classroomId } = await params
+    const viewerId = await getViewerId()
+    const user = await getOrCreateUser(viewerId)
 
     // Verify user is the teacher of this classroom
-    const classroom = await getTeacherClassroom(user.id);
+    const classroom = await getTeacherClassroom(user.id)
     if (!classroom || classroom.id !== classroomId) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     // Get all enrolled students in the classroom
-    const enrolledStudents = await getEnrolledStudents(classroomId);
-    const enrolledPlayerIds = enrolledStudents.map((s) => s.id);
+    const enrolledStudents = await getEnrolledStudents(classroomId)
+    const enrolledPlayerIds = enrolledStudents.map((s) => s.id)
 
     if (enrolledPlayerIds.length === 0) {
-      return NextResponse.json({ sessions: [] });
+      return NextResponse.json({ sessions: [] })
     }
 
     // Get presence info to know which students are present
-    const presences = await getClassroomPresence(classroomId);
+    const presences = await getClassroomPresence(classroomId)
     const presentPlayerIds = new Set(
-      presences.filter((p) => p.player !== undefined).map((p) => p.player!.id),
-    );
+      presences.filter((p) => p.player !== undefined).map((p) => p.player!.id)
+    )
 
     // Find active sessions for enrolled students
     // Active = status is 'in_progress', startedAt is set, completedAt is null
     const activeSessions = await db.query.sessionPlans.findMany({
       where: and(
         inArray(schema.sessionPlans.playerId, enrolledPlayerIds),
-        eq(schema.sessionPlans.status, "in_progress"),
-        isNull(schema.sessionPlans.completedAt),
+        eq(schema.sessionPlans.status, 'in_progress'),
+        isNull(schema.sessionPlans.completedAt)
       ),
-    });
+    })
 
     // Map to ActiveSessionInfo
     const sessions: ActiveSessionInfo[] = activeSessions
       .filter((session) => session.startedAt)
       .map((session) => {
         // Calculate total and completed problems
-        const parts = session.parts;
-        const totalProblems = parts.reduce(
-          (sum, part) => sum + part.slots.length,
-          0,
-        );
-        let completedProblems = 0;
+        const parts = session.parts
+        const totalProblems = parts.reduce((sum, part) => sum + part.slots.length, 0)
+        let completedProblems = 0
         for (let i = 0; i < session.currentPartIndex; i++) {
-          completedProblems += parts[i].slots.length;
+          completedProblems += parts[i].slots.length
         }
-        completedProblems += session.currentSlotIndex;
+        completedProblems += session.currentSlotIndex
 
         return {
           sessionId: session.id,
@@ -127,15 +117,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
           totalProblems,
           completedProblems,
           isPresent: presentPlayerIds.has(session.playerId),
-        };
-      });
+        }
+      })
 
-    return NextResponse.json({ sessions });
+    return NextResponse.json({ sessions })
   } catch (error) {
-    console.error("Failed to fetch active sessions:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch active sessions" },
-      { status: 500 },
-    );
+    console.error('Failed to fetch active sessions:', error)
+    return NextResponse.json({ error: 'Failed to fetch active sessions' }, { status: 500 })
   }
 }

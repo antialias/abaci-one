@@ -1,6 +1,6 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react'
 
 /**
  * Hook to detect media query matches
@@ -9,48 +9,48 @@ import { useEffect, useState } from "react";
  */
 export function useMediaQuery(query: string): boolean {
   // Initialize with false to avoid hydration mismatch
-  const [matches, setMatches] = useState(false);
-  const [isClient, setIsClient] = useState(false);
+  const [matches, setMatches] = useState(false)
+  const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    setIsClient(true)
+  }, [])
 
   useEffect(() => {
-    if (!isClient) return;
+    if (!isClient) return
 
-    const mediaQuery = window.matchMedia(query);
+    const mediaQuery = window.matchMedia(query)
 
     // Set initial value
-    setMatches(mediaQuery.matches);
+    setMatches(mediaQuery.matches)
 
     // Create event listener
     const handler = (event: MediaQueryListEvent) => {
-      setMatches(event.matches);
-    };
+      setMatches(event.matches)
+    }
 
     // Modern browsers
-    mediaQuery.addEventListener("change", handler);
+    mediaQuery.addEventListener('change', handler)
 
     return () => {
-      mediaQuery.removeEventListener("change", handler);
-    };
-  }, [query, isClient]);
+      mediaQuery.removeEventListener('change', handler)
+    }
+  }, [query, isClient])
 
-  return matches;
+  return matches
 }
 
 /**
  * Common breakpoint hooks
  */
 export function useIsMobile(): boolean {
-  return useMediaQuery("(max-width: 767px)");
+  return useMediaQuery('(max-width: 767px)')
 }
 
 export function useIsTablet(): boolean {
-  return useMediaQuery("(min-width: 768px) and (max-width: 1023px)");
+  return useMediaQuery('(min-width: 768px) and (max-width: 1023px)')
 }
 
 export function useIsDesktop(): boolean {
-  return useMediaQuery("(min-width: 1024px)");
+  return useMediaQuery('(min-width: 1024px)')
 }

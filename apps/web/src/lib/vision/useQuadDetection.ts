@@ -1,4 +1,4 @@
-"use client";
+'use client'
 
 /**
  * useQuadDetection Hook
@@ -36,72 +36,68 @@
  * ```
  */
 
-import { useCallback, useMemo, useRef } from "react";
-import { useOpenCv } from "opencv-react";
+import { useCallback, useMemo, useRef } from 'react'
+import { useOpenCv } from 'opencv-react'
 import {
   createQuadDetector,
   type DetectedQuad,
   type DebugPolygon,
   type QuadDetectorConfig,
-} from "./quadDetector";
-import {
-  createQuadTracker,
-  type TrackedQuad,
-  type QuadTrackerConfig,
-} from "./quadTracker";
-import type { CV } from "./opencv/types";
+} from './quadDetector'
+import { createQuadTracker, type TrackedQuad, type QuadTrackerConfig } from './quadTracker'
+import type { CV } from './opencv/types'
 
 // Re-export types for convenience
-export type { DetectedQuad, Point, DebugPolygon } from "./quadDetector";
-export type { TrackedQuad } from "./quadTracker";
-export type { QuadDetectorConfig } from "./quadDetector";
-export type { QuadTrackerConfig } from "./quadTracker";
+export type { DetectedQuad, Point, DebugPolygon } from './quadDetector'
+export type { TrackedQuad } from './quadTracker'
+export type { QuadDetectorConfig } from './quadDetector'
+export type { QuadTrackerConfig } from './quadTracker'
 
 /** Configuration for useQuadDetection */
 export interface UseQuadDetectionConfig {
   /** Quad detector configuration */
-  detector?: Partial<QuadDetectorConfig>;
+  detector?: Partial<QuadDetectorConfig>
   /** Quad tracker configuration */
-  tracker?: Partial<QuadTrackerConfig>;
+  tracker?: Partial<QuadTrackerConfig>
 }
 
 /** Stats returned by the hook */
 export interface QuadDetectionStats {
   /** Number of quads currently being tracked */
-  trackedCount: number;
+  trackedCount: number
   /** Total frames processed */
-  frameCount: number;
+  frameCount: number
   /** Stability score of the best quad (0-1) */
-  bestStability: number;
+  bestStability: number
   /** Frame count of the best quad */
-  bestFrameCount: number;
+  bestFrameCount: number
 }
 
 /** Result from processing a single frame */
 export interface FrameProcessingResult {
   /** Best tracked quad, or null if none */
-  trackedQuad: TrackedQuad | null;
+  trackedQuad: TrackedQuad | null
   /** All quads detected in this frame (before tracking) */
-  detectedQuads: DetectedQuad[];
+  detectedQuads: DetectedQuad[]
   /** Current tracking statistics */
-  stats: QuadDetectionStats;
+  stats: QuadDetectionStats
 }
 
 /** Return type of useQuadDetection */
 export interface UseQuadDetectionReturn {
   /** Whether OpenCV is loaded and detector is ready */
-  isReady: boolean;
+  isReady: boolean
   /** Whether OpenCV is currently loading */
-  isLoading: boolean;
+  isLoading: boolean
   /** Error message if loading failed */
-  error: string | null;
+  error: string | null
 
   /**
    * Detect quads in a static image (one-shot, no tracking)
    * @param source - Canvas to detect in
    * @returns Array of detected quads, sorted by area (largest first)
    */
-  detectInImage: (source: HTMLCanvasElement) => DetectedQuad[];
+  detectInImage: (source: HTMLCanvasElement) => DetectedQuad[]
 
   /**
    * Detect quads with debug info about all candidate polygons.
@@ -110,9 +106,9 @@ export interface UseQuadDetectionReturn {
    * @returns Quads and debug info about all candidates
    */
   detectWithDebug: (source: HTMLCanvasElement) => {
-    quads: DetectedQuad[];
-    debugPolygons: DebugPolygon[];
-  };
+    quads: DetectedQuad[]
+    debugPolygons: DebugPolygon[]
+  }
 
   /**
    * Process a video frame with tracking
@@ -123,20 +119,20 @@ export interface UseQuadDetectionReturn {
    */
   processFrame: (
     source: HTMLCanvasElement,
-    frameSize?: { width: number; height: number },
-  ) => FrameProcessingResult;
+    frameSize?: { width: number; height: number }
+  ) => FrameProcessingResult
 
   /** The current best tracked quad */
-  trackedQuad: TrackedQuad | null;
+  trackedQuad: TrackedQuad | null
 
   /** All currently tracked quads */
-  allTrackedQuads: TrackedQuad[];
+  allTrackedQuads: TrackedQuad[]
 
   /** Current tracking statistics */
-  stats: QuadDetectionStats;
+  stats: QuadDetectionStats
 
   /** Reset all tracking state (call when switching cameras, etc.) */
-  resetTracking: () => void;
+  resetTracking: () => void
 }
 
 /**
@@ -146,122 +142,111 @@ export interface UseQuadDetectionReturn {
  *
  * @param config - Optional configuration for detector and tracker
  */
-export function useQuadDetection(
-  config?: UseQuadDetectionConfig,
-): UseQuadDetectionReturn {
-  const { loaded: opencvLoaded, cv } = useOpenCv();
+export function useQuadDetection(config?: UseQuadDetectionConfig): UseQuadDetectionReturn {
+  const { loaded: opencvLoaded, cv } = useOpenCv()
 
   // Track the current best quad in a ref for synchronous access
-  const trackedQuadRef = useRef<TrackedQuad | null>(null);
-  const allTrackedRef = useRef<TrackedQuad[]>([]);
+  const trackedQuadRef = useRef<TrackedQuad | null>(null)
+  const allTrackedRef = useRef<TrackedQuad[]>([])
   const statsRef = useRef<QuadDetectionStats>({
     trackedCount: 0,
     frameCount: 0,
     bestStability: 0,
     bestFrameCount: 0,
-  });
+  })
 
   // Create detector when cv is available
   const detector = useMemo(() => {
-    if (!opencvLoaded || !cv) return null;
+    if (!opencvLoaded || !cv) return null
     try {
-      return createQuadDetector(cv as CV, config?.detector);
+      return createQuadDetector(cv as CV, config?.detector)
     } catch (err) {
-      console.error("[useQuadDetection] Failed to create detector:", err);
-      return null;
+      console.error('[useQuadDetection] Failed to create detector:', err)
+      return null
     }
-  }, [opencvLoaded, cv, config?.detector]);
+  }, [opencvLoaded, cv, config?.detector])
 
   // Create tracker (doesn't need cv)
-  const tracker = useMemo(
-    () => createQuadTracker(config?.tracker),
-    [config?.tracker],
-  );
+  const tracker = useMemo(() => createQuadTracker(config?.tracker), [config?.tracker])
 
   // Detect in static image (no tracking)
   const detectInImage = useCallback(
     (source: HTMLCanvasElement): DetectedQuad[] => {
       if (!detector) {
-        console.warn(
-          "[useQuadDetection] detectInImage called before detector ready",
-        );
-        return [];
+        console.warn('[useQuadDetection] detectInImage called before detector ready')
+        return []
       }
-      return detector.detect(source);
+      return detector.detect(source)
     },
-    [detector],
-  );
+    [detector]
+  )
 
   // Detect with debug info (for debugging detection issues)
   const detectWithDebug = useCallback(
-    (
-      source: HTMLCanvasElement,
-    ): { quads: DetectedQuad[]; debugPolygons: DebugPolygon[] } => {
+    (source: HTMLCanvasElement): { quads: DetectedQuad[]; debugPolygons: DebugPolygon[] } => {
       if (!detector) {
-        console.warn(
-          "[useQuadDetection] detectWithDebug called before detector ready",
-        );
-        return { quads: [], debugPolygons: [] };
+        console.warn('[useQuadDetection] detectWithDebug called before detector ready')
+        return { quads: [], debugPolygons: [] }
       }
-      return detector.detectWithDebug(source);
+      return detector.detectWithDebug(source)
     },
-    [detector],
-  );
+    [detector]
+  )
 
   // Process video frame with tracking
   const processFrame = useCallback(
     (
       source: HTMLCanvasElement,
-      frameSize?: { width: number; height: number },
+      frameSize?: { width: number; height: number }
     ): FrameProcessingResult => {
       if (!detector) {
         return {
           trackedQuad: null,
           detectedQuads: [],
           stats: statsRef.current,
-        };
+        }
       }
 
       // Detect quads in frame
-      const quads = detector.detect(source);
+      const quads = detector.detect(source)
 
       // Determine frame size
       const size = frameSize ?? {
         width: source.width,
         height: source.height,
-      };
+      }
 
       // Update tracker
-      const bestQuad = tracker.update(quads, size);
-      const currentStats = tracker.getStats();
-      const allTracked = tracker.getAllTracked();
+      const bestQuad = tracker.update(quads, size)
+      const currentStats = tracker.getStats()
+      const allTracked = tracker.getAllTracked()
 
       // Update refs
-      trackedQuadRef.current = bestQuad;
-      allTrackedRef.current = allTracked;
-      statsRef.current = currentStats;
+      trackedQuadRef.current = bestQuad
+      allTrackedRef.current = allTracked
+      statsRef.current = currentStats
 
       return {
         trackedQuad: bestQuad,
         detectedQuads: quads,
         stats: currentStats,
-      };
+      }
     },
-    [detector, tracker],
-  );
+    [detector, tracker]
+  )
 
   // Reset tracking
   const resetTracking = useCallback(() => {
-    tracker.reset();
-    trackedQuadRef.current = null;
-    allTrackedRef.current = [];
+    tracker.reset()
+    trackedQuadRef.current = null
+    allTrackedRef.current = []
     statsRef.current = {
       trackedCount: 0,
       frameCount: 0,
       bestStability: 0,
       bestFrameCount: 0,
-    };
-  }, [tracker]);
+    }
+  }, [tracker])
 
   return {
     isReady: !!detector,
@@ -277,5 +262,5 @@ export function useQuadDetection(
     stats: statsRef.current,
 
     resetTracking,
-  };
+  }
 }

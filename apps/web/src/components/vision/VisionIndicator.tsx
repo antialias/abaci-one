@@ -1,18 +1,13 @@
-"use client";
+'use client'
 
-import { useMyAbacus } from "@/contexts/MyAbacusContext";
-import { css } from "../../../styled-system/css";
+import { useMyAbacus } from '@/contexts/MyAbacusContext'
+import { css } from '../../../styled-system/css'
 
 interface VisionIndicatorProps {
   /** Size variant */
-  size?: "small" | "medium";
+  size?: 'small' | 'medium'
   /** Position for absolute placement, or 'inline' for flex container usage */
-  position?:
-    | "top-left"
-    | "top-right"
-    | "bottom-left"
-    | "bottom-right"
-    | "inline";
+  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'inline'
 }
 
 /**
@@ -28,66 +23,61 @@ interface VisionIndicatorProps {
  * - If configured: toggles vision on/off
  */
 export function VisionIndicator({
-  size = "medium",
-  position = "bottom-right",
+  size = 'medium',
+  position = 'bottom-right',
 }: VisionIndicatorProps) {
-  const { visionConfig, isVisionSetupComplete, openVisionSetup } =
-    useMyAbacus();
+  const { visionConfig, isVisionSetupComplete, openVisionSetup } = useMyAbacus()
 
   const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+    e.stopPropagation()
     // Always open setup modal on click for now
     // This gives users easy access to vision settings
-    openVisionSetup();
-  };
+    openVisionSetup()
+  }
 
   const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault()
+    e.stopPropagation()
     // Right-click always opens setup
-    openVisionSetup();
-  };
+    openVisionSetup()
+  }
 
   // Determine status indicator color
   const statusColor = !isVisionSetupComplete
-    ? "red.500" // Not configured
+    ? 'red.500' // Not configured
     : visionConfig.enabled
-      ? "green.500" // Enabled
-      : "gray.400"; // Configured but disabled
+      ? 'green.500' // Enabled
+      : 'gray.400' // Configured but disabled
 
   const statusLabel = !isVisionSetupComplete
-    ? "Vision not configured"
+    ? 'Vision not configured'
     : visionConfig.enabled
-      ? "Vision enabled"
-      : "Vision disabled";
+      ? 'Vision enabled'
+      : 'Vision disabled'
 
   const sizeStyles =
-    size === "small"
-      ? { w: "20px", h: "20px", fontSize: "10px" }
-      : { w: "28px", h: "28px", fontSize: "14px" };
+    size === 'small'
+      ? { w: '20px', h: '20px', fontSize: '10px' }
+      : { w: '28px', h: '28px', fontSize: '14px' }
 
   const positionStyles =
-    position === "inline"
+    position === 'inline'
       ? {} // No absolute positioning for inline usage
       : {
-          position: "absolute" as const,
+          position: 'absolute' as const,
           ...{
-            "top-left": { top: 0, left: 0, margin: "4px" },
-            "top-right": { top: 0, right: 0, margin: "4px" },
-            "bottom-left": { bottom: 0, left: 0, margin: "4px" },
-            "bottom-right": { bottom: 0, right: 0, margin: "4px" },
+            'top-left': { top: 0, left: 0, margin: '4px' },
+            'top-right': { top: 0, right: 0, margin: '4px' },
+            'bottom-left': { bottom: 0, left: 0, margin: '4px' },
+            'bottom-right': { bottom: 0, right: 0, margin: '4px' },
           }[position],
-        };
+        }
 
   return (
     <button
       type="button"
       data-vision-status={
-        !isVisionSetupComplete
-          ? "not-configured"
-          : visionConfig.enabled
-            ? "enabled"
-            : "disabled"
+        !isVisionSetupComplete ? 'not-configured' : visionConfig.enabled ? 'enabled' : 'disabled'
       }
       onClick={handleClick}
       onContextMenu={handleContextMenu}
@@ -95,43 +85,43 @@ export function VisionIndicator({
       style={positionStyles}
       className={css({
         ...sizeStyles,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        bg: "rgba(0, 0, 0, 0.5)",
-        backdropFilter: "blur(4px)",
-        border: "1px solid rgba(255, 255, 255, 0.3)",
-        borderRadius: "md",
-        color: "white",
-        cursor: "pointer",
-        transition: "all 0.2s",
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        bg: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(4px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        borderRadius: 'md',
+        color: 'white',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
         zIndex: 10,
         opacity: 0.8,
         _hover: {
-          bg: "rgba(0, 0, 0, 0.7)",
+          bg: 'rgba(0, 0, 0, 0.7)',
           opacity: 1,
-          transform: "scale(1.1)",
+          transform: 'scale(1.1)',
         },
       })}
     >
       {/* Camera icon */}
-      <span style={{ position: "relative" }}>
+      <span style={{ position: 'relative' }}>
         📷{/* Status dot */}
         <span
           data-element="vision-status-dot"
           className={css({
-            position: "absolute",
-            top: "-2px",
-            right: "-4px",
-            w: "8px",
-            h: "8px",
-            borderRadius: "full",
+            position: 'absolute',
+            top: '-2px',
+            right: '-4px',
+            w: '8px',
+            h: '8px',
+            borderRadius: 'full',
             bg: statusColor,
-            border: "1px solid white",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.3)",
+            border: '1px solid white',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
           })}
         />
       </span>
     </button>
-  );
+  )
 }

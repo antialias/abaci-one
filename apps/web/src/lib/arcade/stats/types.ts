@@ -7,7 +7,7 @@
  * See: .claude/GAME_STATS_COMPARISON.md for detailed cross-game analysis
  */
 
-import type { GameStatsBreakdown } from "@/db/schema/player-stats";
+import type { GameStatsBreakdown } from '@/db/schema/player-stats'
 
 /**
  * Standard game result that all arcade games must provide
@@ -21,133 +21,133 @@ import type { GameStatsBreakdown } from "@/db/schema/player-stats";
  */
 export interface GameResult {
   // Game identification
-  gameType: string; // e.g., "matching", "complement-race", "memory-quiz"
+  gameType: string // e.g., "matching", "complement-race", "memory-quiz"
 
   // Player results (supports 1-N players)
-  playerResults: PlayerGameResult[];
+  playerResults: PlayerGameResult[]
 
   // Timing
-  completedAt: number; // timestamp
-  duration: number; // milliseconds
+  completedAt: number // timestamp
+  duration: number // milliseconds
 
   // Optional game-specific data
   metadata?: {
     // For cooperative games (Memory Quiz, Card Sorting collaborative)
     // When true: all players share win/loss outcome
-    isTeamVictory?: boolean;
+    isTeamVictory?: boolean
 
     // For specific win conditions (Rithmomachia)
-    winCondition?: string; // e.g., "HARMONY", "POINTS", "TIMEOUT"
+    winCondition?: string // e.g., "HARMONY", "POINTS", "TIMEOUT"
 
     // For game modes
-    gameMode?: string; // e.g., "solo", "competitive", "cooperative"
+    gameMode?: string // e.g., "solo", "competitive", "cooperative"
 
     // Extensible for other game-specific info
-    [key: string]: unknown;
-  };
+    [key: string]: unknown
+  }
 }
 
 /**
  * Individual player result within a game
  */
 export interface PlayerGameResult {
-  playerId: string;
+  playerId: string
 
   // Outcome
-  won: boolean; // For cooperative games: all players have same value
-  placement?: number; // 1st, 2nd, 3rd place (for tournaments with 3+ players)
+  won: boolean // For cooperative games: all players have same value
+  placement?: number // 1st, 2nd, 3rd place (for tournaments with 3+ players)
 
   // Performance
-  score?: number;
-  accuracy?: number; // 0.0 - 1.0
-  completionTime?: number; // milliseconds (player-specific)
+  score?: number
+  accuracy?: number // 0.0 - 1.0
+  completionTime?: number // milliseconds (player-specific)
 
   // Game-specific metrics (stored as JSON in DB)
   metrics?: {
     // Matching
-    moves?: number;
-    matchedPairs?: number;
-    difficulty?: number;
+    moves?: number
+    matchedPairs?: number
+    difficulty?: number
 
     // Complement Race
-    streak?: number;
-    correctAnswers?: number;
-    totalQuestions?: number;
+    streak?: number
+    correctAnswers?: number
+    totalQuestions?: number
 
     // Memory Quiz
-    correct?: number;
-    incorrect?: number;
+    correct?: number
+    incorrect?: number
 
     // Card Sorting
-    exactMatches?: number;
-    inversions?: number;
-    lcsLength?: number;
+    exactMatches?: number
+    inversions?: number
+    lcsLength?: number
 
     // Rithmomachia
-    capturedPieces?: number;
-    points?: number;
+    capturedPieces?: number
+    points?: number
 
     // Extensible for future games
-    [key: string]: unknown;
-  };
+    [key: string]: unknown
+  }
 }
 
 /**
  * Stats update returned from API after recording a game
  */
 export interface StatsUpdate {
-  playerId: string;
-  previousStats: PlayerStatsData;
-  newStats: PlayerStatsData;
+  playerId: string
+  previousStats: PlayerStatsData
+  newStats: PlayerStatsData
   changes: {
-    gamesPlayed: number;
-    wins: number;
-    losses: number;
-  };
+    gamesPlayed: number
+    wins: number
+    losses: number
+  }
 }
 
 /**
  * Complete player stats data (from DB)
  */
 export interface PlayerStatsData {
-  playerId: string;
-  gamesPlayed: number;
-  totalWins: number;
-  totalLosses: number;
-  bestTime: number | null;
-  highestAccuracy: number;
-  favoriteGameType: string | null;
-  gameStats: Record<string, GameStatsBreakdown>;
-  lastPlayedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  playerId: string
+  gamesPlayed: number
+  totalWins: number
+  totalLosses: number
+  bestTime: number | null
+  highestAccuracy: number
+  favoriteGameType: string | null
+  gameStats: Record<string, GameStatsBreakdown>
+  lastPlayedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
 }
 
 /**
  * Request body for recording a game result
  */
 export interface RecordGameRequest {
-  gameResult: GameResult;
+  gameResult: GameResult
 }
 
 /**
  * Response from recording a game result
  */
 export interface RecordGameResponse {
-  success: boolean;
-  updates: StatsUpdate[];
+  success: boolean
+  updates: StatsUpdate[]
 }
 
 /**
  * Response from fetching player stats
  */
 export interface GetPlayerStatsResponse {
-  stats: PlayerStatsData;
+  stats: PlayerStatsData
 }
 
 /**
  * Response from fetching all user's player stats
  */
 export interface GetAllPlayerStatsResponse {
-  playerStats: PlayerStatsData[];
+  playerStats: PlayerStatsData[]
 }

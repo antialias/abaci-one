@@ -30,7 +30,7 @@ export {
   computeBktFromHistory,
   DEFAULT_BKT_OPTIONS,
   recomputeWithOptions,
-} from "./compute-bkt";
+} from './compute-bkt'
 
 // Types
 export type {
@@ -42,7 +42,7 @@ export type {
   MasteryClassification,
   SkillBktRecord,
   SkillBktResult,
-} from "./types";
+} from './types'
 
 // Confidence utilities
 export {
@@ -50,24 +50,24 @@ export {
   getConfidenceLabel,
   getStalenessWarning,
   getUncertaintyRange,
-} from "./confidence";
+} from './confidence'
 
 // Skill priors
-export { getDefaultParams, getSkillCategory } from "./skill-priors";
+export { getDefaultParams, getSkillCategory } from './skill-priors'
 
 // Evidence quality (for advanced use cases)
 export {
   combinedEvidenceWeight,
   helpWeight,
   responseTimeWeight,
-} from "./evidence-quality";
+} from './evidence-quality'
 
 // Core BKT (for testing/advanced use)
-export { applyLearning, bktUpdate } from "./bkt-core";
+export { applyLearning, bktUpdate } from './bkt-core'
 export {
   bayesianUpdateOnIncorrect,
   updateOnCorrect,
   updateOnIncorrect,
   updateOnIncorrectWithMethod,
   type BlameMethod,
-} from "./conjunctive-bkt";
+} from './conjunctive-bkt'

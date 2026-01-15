@@ -1,8 +1,8 @@
-"use client";
+'use client'
 
-import type { Meta, StoryObj } from "@storybook/react";
-import { GameBreakResultsScreen } from "./GameBreakResultsScreen";
-import type { GameResultsReport } from "@/lib/arcade/game-sdk/types";
+import type { Meta, StoryObj } from '@storybook/react'
+import { GameBreakResultsScreen } from './GameBreakResultsScreen'
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 
 /**
  * Stories for GameBreakResultsScreen - the interstitial shown after a game break
@@ -16,51 +16,49 @@ import type { GameResultsReport } from "@/lib/arcade/game-sdk/types";
  */
 
 const meta: Meta<typeof GameBreakResultsScreen> = {
-  title: "Practice/GameBreakResultsScreen",
+  title: 'Practice/GameBreakResultsScreen',
   component: GameBreakResultsScreen,
   parameters: {
-    layout: "fullscreen",
+    layout: 'fullscreen',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     countdownMs: {
-      control: { type: "number", min: 1000, max: 30000, step: 1000 },
-      description: "Countdown duration in milliseconds",
+      control: { type: 'number', min: 1000, max: 30000, step: 1000 },
+      description: 'Countdown duration in milliseconds',
     },
   },
-};
+}
 
-export default meta;
+export default meta
 
-type Story = StoryObj<typeof GameBreakResultsScreen>;
+type Story = StoryObj<typeof GameBreakResultsScreen>
 
 // ============================================================================
 // Mock Data
 // ============================================================================
 
 const mockStudent = {
-  name: "Sonia",
-  emoji: "🌟",
-};
+  name: 'Sonia',
+  emoji: '🌟',
+}
 
-const createMatchingResults = (
-  overrides: Partial<GameResultsReport> = {},
-): GameResultsReport => ({
-  gameName: "matching",
-  gameDisplayName: "Matching Pairs Battle",
-  gameIcon: "⚔️",
+const createMatchingResults = (overrides: Partial<GameResultsReport> = {}): GameResultsReport => ({
+  gameName: 'matching',
+  gameDisplayName: 'Matching Pairs Battle',
+  gameIcon: '⚔️',
   durationMs: 45000,
   completedNormally: true,
   startedAt: Date.now() - 45000,
   endedAt: Date.now(),
-  gameMode: "single-player",
+  gameMode: 'single-player',
   playerCount: 1,
   playerResults: [
     {
-      playerId: "player-1",
-      playerName: "Sonia",
-      playerEmoji: "🌟",
-      userId: "user-1",
+      playerId: 'player-1',
+      playerName: 'Sonia',
+      playerEmoji: '🌟',
+      userId: 'user-1',
       score: 8,
       rank: 1,
       correctCount: 8,
@@ -73,35 +71,35 @@ const createMatchingResults = (
   itemsTotal: 8,
   completionPercent: 100,
   customStats: [
-    { label: "Pairs Found", value: "8/8", icon: "🎯", highlight: true },
-    { label: "Total Moves", value: 16, icon: "👆" },
-    { label: "Time", value: "0:45", icon: "⏱️" },
-    { label: "Accuracy", value: "100%", icon: "📊", highlight: true },
+    { label: 'Pairs Found', value: '8/8', icon: '🎯', highlight: true },
+    { label: 'Total Moves', value: 16, icon: '👆' },
+    { label: 'Time', value: '0:45', icon: '⏱️' },
+    { label: 'Accuracy', value: '100%', icon: '📊', highlight: true },
   ],
-  headline: "Perfect Memory!",
-  resultTheme: "success",
-  celebrationType: "confetti",
+  headline: 'Perfect Memory!',
+  resultTheme: 'success',
+  celebrationType: 'confetti',
   ...overrides,
-});
+})
 
 const createCardSortingResults = (
-  overrides: Partial<GameResultsReport> = {},
+  overrides: Partial<GameResultsReport> = {}
 ): GameResultsReport => ({
-  gameName: "card-sorting",
-  gameDisplayName: "Card Sorting Challenge",
-  gameIcon: "🔢",
+  gameName: 'card-sorting',
+  gameDisplayName: 'Card Sorting Challenge',
+  gameIcon: '🔢',
   durationMs: 62000,
   completedNormally: true,
   startedAt: Date.now() - 62000,
   endedAt: Date.now(),
-  gameMode: "single-player",
+  gameMode: 'single-player',
   playerCount: 1,
   playerResults: [
     {
-      playerId: "player-1",
-      playerName: "Sonia",
-      playerEmoji: "🌟",
-      userId: "user-1",
+      playerId: 'player-1',
+      playerName: 'Sonia',
+      playerEmoji: '🌟',
+      userId: 'user-1',
       score: 85,
       rank: 1,
       correctCount: 6,
@@ -111,53 +109,53 @@ const createCardSortingResults = (
   ],
   scoreBreakdown: [
     {
-      component: "Exact Position",
+      component: 'Exact Position',
       points: 30,
       maxPoints: 100,
-      description: "Cards in perfect position",
+      description: 'Cards in perfect position',
     },
     {
-      component: "Relative Order",
+      component: 'Relative Order',
       points: 35,
       maxPoints: 100,
-      description: "Longest correct sequence",
+      description: 'Longest correct sequence',
     },
     {
-      component: "Inversions",
+      component: 'Inversions',
       points: 20,
       maxPoints: 100,
-      description: "Fewer out-of-order pairs",
+      description: 'Fewer out-of-order pairs',
     },
   ],
   customStats: [
-    { label: "Final Score", value: "85/100", icon: "🏆", highlight: true },
-    { label: "Exact Matches", value: "6/8", icon: "✓" },
-    { label: "Time", value: "1:02", icon: "⏱️" },
+    { label: 'Final Score', value: '85/100', icon: '🏆', highlight: true },
+    { label: 'Exact Matches', value: '6/8', icon: '✓' },
+    { label: 'Time', value: '1:02', icon: '⏱️' },
   ],
-  headline: "Great Sorting!",
-  resultTheme: "good",
-  celebrationType: "stars",
+  headline: 'Great Sorting!',
+  resultTheme: 'good',
+  celebrationType: 'stars',
   ...overrides,
-});
+})
 
 const createMemoryQuizResults = (
-  overrides: Partial<GameResultsReport> = {},
+  overrides: Partial<GameResultsReport> = {}
 ): GameResultsReport => ({
-  gameName: "memory-quiz",
-  gameDisplayName: "Memory Quiz",
-  gameIcon: "🧠",
+  gameName: 'memory-quiz',
+  gameDisplayName: 'Memory Quiz',
+  gameIcon: '🧠',
   durationMs: 90000,
   completedNormally: true,
   startedAt: Date.now() - 90000,
   endedAt: Date.now(),
-  gameMode: "cooperative",
+  gameMode: 'cooperative',
   playerCount: 2,
   playerResults: [
     {
-      playerId: "player-1",
-      playerName: "Sonia",
-      playerEmoji: "🌟",
-      userId: "user-1",
+      playerId: 'player-1',
+      playerName: 'Sonia',
+      playerEmoji: '🌟',
+      userId: 'user-1',
       score: 5,
       rank: 1,
       correctCount: 5,
@@ -165,10 +163,10 @@ const createMemoryQuizResults = (
       accuracy: 71,
     },
     {
-      playerId: "player-2",
-      playerName: "Alex",
-      playerEmoji: "🚀",
-      userId: "user-2",
+      playerId: 'player-2',
+      playerName: 'Alex',
+      playerEmoji: '🚀',
+      userId: 'user-2',
       score: 4,
       rank: 2,
       correctCount: 4,
@@ -182,15 +180,15 @@ const createMemoryQuizResults = (
   itemsTotal: 12,
   completionPercent: 75,
   customStats: [
-    { label: "Numbers Found", value: "9/12", icon: "🎯", highlight: true },
-    { label: "Wrong Guesses", value: 5, icon: "❌" },
-    { label: "Time", value: "1:30", icon: "⏱️" },
+    { label: 'Numbers Found', value: '9/12', icon: '🎯', highlight: true },
+    { label: 'Wrong Guesses', value: 5, icon: '❌' },
+    { label: 'Time', value: '1:30', icon: '⏱️' },
   ],
-  headline: "Good Effort!",
-  resultTheme: "neutral",
-  celebrationType: "none",
+  headline: 'Good Effort!',
+  resultTheme: 'neutral',
+  celebrationType: 'none',
   ...overrides,
-});
+})
 
 // ============================================================================
 // Stories
@@ -205,9 +203,9 @@ export const PerfectGame: Story = {
     results: createMatchingResults(),
     student: mockStudent,
     countdownMs: 5000,
-    onComplete: () => console.log("Results complete"),
+    onComplete: () => console.log('Results complete'),
   },
-};
+}
 
 /**
  * Good performance - Blue theme with stars
@@ -218,9 +216,9 @@ export const GoodPerformance: Story = {
     results: createCardSortingResults(),
     student: mockStudent,
     countdownMs: 5000,
-    onComplete: () => console.log("Results complete"),
+    onComplete: () => console.log('Results complete'),
   },
-};
+}
 
 /**
  * Needs practice - Yellow theme, no celebration
@@ -229,17 +227,17 @@ export const NeedsPractice: Story = {
   args: {
     isVisible: true,
     results: createMatchingResults({
-      headline: "Keep Practicing!",
-      resultTheme: "needs-practice",
-      celebrationType: "none",
+      headline: 'Keep Practicing!',
+      resultTheme: 'needs-practice',
+      celebrationType: 'none',
       completionPercent: 50,
       itemsCompleted: 4,
       playerResults: [
         {
-          playerId: "player-1",
-          playerName: "Sonia",
-          playerEmoji: "🌟",
-          userId: "user-1",
+          playerId: 'player-1',
+          playerName: 'Sonia',
+          playerEmoji: '🌟',
+          userId: 'user-1',
           score: 4,
           rank: 1,
           correctCount: 4,
@@ -249,17 +247,17 @@ export const NeedsPractice: Story = {
         },
       ],
       customStats: [
-        { label: "Pairs Found", value: "4/8", icon: "🎯", highlight: true },
-        { label: "Total Moves", value: 20, icon: "👆" },
-        { label: "Time", value: "2:30", icon: "⏱️" },
-        { label: "Accuracy", value: "40%", icon: "📊" },
+        { label: 'Pairs Found', value: '4/8', icon: '🎯', highlight: true },
+        { label: 'Total Moves', value: 20, icon: '👆' },
+        { label: 'Time', value: '2:30', icon: '⏱️' },
+        { label: 'Accuracy', value: '40%', icon: '📊' },
       ],
     }),
     student: mockStudent,
     countdownMs: 5000,
-    onComplete: () => console.log("Results complete"),
+    onComplete: () => console.log('Results complete'),
   },
-};
+}
 
 /**
  * Neutral result - Gray theme
@@ -270,9 +268,9 @@ export const NeutralResult: Story = {
     results: createMemoryQuizResults(),
     student: mockStudent,
     countdownMs: 5000,
-    onComplete: () => console.log("Results complete"),
+    onComplete: () => console.log('Results complete'),
   },
-};
+}
 
 /**
  * Card Sorting with score breakdown
@@ -283,9 +281,9 @@ export const WithScoreBreakdown: Story = {
     results: createCardSortingResults(),
     student: mockStudent,
     countdownMs: 5000,
-    onComplete: () => console.log("Results complete"),
+    onComplete: () => console.log('Results complete'),
   },
-};
+}
 
 /**
  * Cooperative game with team results
@@ -294,14 +292,14 @@ export const CooperativeGame: Story = {
   args: {
     isVisible: true,
     results: createMemoryQuizResults({
-      headline: "Great Teamwork!",
-      resultTheme: "good",
+      headline: 'Great Teamwork!',
+      resultTheme: 'good',
     }),
     student: mockStudent,
     countdownMs: 5000,
-    onComplete: () => console.log("Results complete"),
+    onComplete: () => console.log('Results complete'),
   },
-};
+}
 
 /**
  * Quick countdown (2 seconds) for testing
@@ -312,9 +310,9 @@ export const QuickCountdown: Story = {
     results: createMatchingResults(),
     student: mockStudent,
     countdownMs: 2000,
-    onComplete: () => console.log("Results complete"),
+    onComplete: () => console.log('Results complete'),
   },
-};
+}
 
 /**
  * Long countdown (10 seconds)
@@ -325,9 +323,9 @@ export const LongCountdown: Story = {
     results: createMatchingResults(),
     student: mockStudent,
     countdownMs: 10000,
-    onComplete: () => console.log("Results complete"),
+    onComplete: () => console.log('Results complete'),
   },
-};
+}
 
 /**
  * Minimal stats - just the essentials
@@ -336,16 +334,16 @@ export const MinimalStats: Story = {
   args: {
     isVisible: true,
     results: createMatchingResults({
-      customStats: [{ label: "Score", value: 8, icon: "🏆", highlight: true }],
-      headline: "Game Complete!",
+      customStats: [{ label: 'Score', value: 8, icon: '🏆', highlight: true }],
+      headline: 'Game Complete!',
       subheadline: undefined,
-      resultTheme: "neutral",
+      resultTheme: 'neutral',
     }),
     student: mockStudent,
     countdownMs: 5000,
-    onComplete: () => console.log("Results complete"),
+    onComplete: () => console.log('Results complete'),
   },
-};
+}
 
 /**
  * With subheadline
@@ -354,14 +352,14 @@ export const WithSubheadline: Story = {
   args: {
     isVisible: true,
     results: createMatchingResults({
-      headline: "Perfect Memory!",
-      subheadline: "You matched all pairs without any mistakes!",
+      headline: 'Perfect Memory!',
+      subheadline: 'You matched all pairs without any mistakes!',
     }),
     student: mockStudent,
     countdownMs: 5000,
-    onComplete: () => console.log("Results complete"),
+    onComplete: () => console.log('Results complete'),
   },
-};
+}
 
 /**
  * Different game - Complement Race
@@ -370,21 +368,21 @@ export const ComplementRaceResults: Story = {
   args: {
     isVisible: true,
     results: {
-      gameName: "complement-race",
-      gameDisplayName: "Complement Race",
-      gameIcon: "🏁",
+      gameName: 'complement-race',
+      gameDisplayName: 'Complement Race',
+      gameIcon: '🏁',
       durationMs: 120000,
       completedNormally: true,
       startedAt: Date.now() - 120000,
       endedAt: Date.now(),
-      gameMode: "competitive",
+      gameMode: 'competitive',
       playerCount: 1,
       playerResults: [
         {
-          playerId: "player-1",
-          playerName: "Sonia",
-          playerEmoji: "🌟",
-          userId: "user-1",
+          playerId: 'player-1',
+          playerName: 'Sonia',
+          playerEmoji: '🌟',
+          userId: 'user-1',
           score: 15,
           rank: 1,
           isWinner: true,
@@ -394,20 +392,20 @@ export const ComplementRaceResults: Story = {
           bestStreak: 7,
         },
       ],
-      winnerId: "player-1",
-      winCondition: "completion",
+      winnerId: 'player-1',
+      winCondition: 'completion',
       customStats: [
-        { label: "Questions", value: "15/18", icon: "🎯", highlight: true },
-        { label: "Best Streak", value: 7, icon: "🔥" },
-        { label: "Race Time", value: "2:00", icon: "⏱️" },
-        { label: "Accuracy", value: "83%", icon: "📊" },
+        { label: 'Questions', value: '15/18', icon: '🎯', highlight: true },
+        { label: 'Best Streak', value: 7, icon: '🔥' },
+        { label: 'Race Time', value: '2:00', icon: '⏱️' },
+        { label: 'Accuracy', value: '83%', icon: '📊' },
       ],
-      headline: "Race Complete!",
-      resultTheme: "success",
-      celebrationType: "fireworks",
+      headline: 'Race Complete!',
+      resultTheme: 'success',
+      celebrationType: 'fireworks',
     },
     student: mockStudent,
     countdownMs: 5000,
-    onComplete: () => console.log("Results complete"),
+    onComplete: () => console.log('Results complete'),
   },
-};
+}

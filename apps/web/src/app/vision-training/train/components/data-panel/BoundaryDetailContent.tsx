@@ -1,231 +1,209 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import { css } from "../../../../../../styled-system/css";
-import type { BoundaryDataItem } from "./types";
-import { MiniBoundaryTester } from "./MiniBoundaryTester";
+import { useEffect, useState } from 'react'
+import { css } from '../../../../../../styled-system/css'
+import type { BoundaryDataItem } from './types'
+import { MiniBoundaryTester } from './MiniBoundaryTester'
 
 // Pipeline preview types
 interface PipelineStepVariant {
-  image_base64: string;
-  label: string;
-  description: string;
+  image_base64: string
+  label: string
+  description: string
 }
 
 interface PipelineStep {
-  step: number;
-  name: string;
-  title: string;
-  description: string;
-  image_base64?: string;
-  variants?: PipelineStepVariant[];
-  error?: string;
-  note?: string;
-  original_size?: string;
-  target_size?: string;
+  step: number
+  name: string
+  title: string
+  description: string
+  image_base64?: string
+  variants?: PipelineStepVariant[]
+  error?: string
+  note?: string
+  original_size?: string
+  target_size?: string
 }
 
 interface PipelinePreview {
-  steps: PipelineStep[];
+  steps: PipelineStep[]
 }
 
 export interface BoundaryDetailContentProps {
   /** The selected boundary frame */
-  item: BoundaryDataItem;
+  item: BoundaryDataItem
   /** Handler to delete the item */
-  onDelete: () => void;
+  onDelete: () => void
   /** Whether delete is in progress */
-  isDeleting: boolean;
+  isDeleting: boolean
 }
 
 /**
  * Detail content for boundary detector frames.
  * Shows preview with corners, marker masking, pipeline preview, and metadata.
  */
-export function BoundaryDetailContent({
-  item,
-  onDelete,
-  isDeleting,
-}: BoundaryDetailContentProps) {
+export function BoundaryDetailContent({ item, onDelete, isDeleting }: BoundaryDetailContentProps) {
   // Marker masking preview state
-  const [maskedImageUrl, setMaskedImageUrl] = useState<string | null>(null);
-  const [maskingInProgress, setMaskingInProgress] = useState(false);
-  const [maskingError, setMaskingError] = useState<string | null>(null);
+  const [maskedImageUrl, setMaskedImageUrl] = useState<string | null>(null)
+  const [maskingInProgress, setMaskingInProgress] = useState(false)
+  const [maskingError, setMaskingError] = useState<string | null>(null)
   const [maskRegions, setMaskRegions] = useState<
     Array<{ x1: number; y1: number; x2: number; y2: number }>
-  >([]);
-  const [showMaskedPreview, setShowMaskedPreview] = useState(true);
+  >([])
+  const [showMaskedPreview, setShowMaskedPreview] = useState(true)
 
   // Pipeline preview state
-  const [pipelinePreview, setPipelinePreview] =
-    useState<PipelinePreview | null>(null);
-  const [pipelineLoading, setPipelineLoading] = useState(false);
-  const [pipelineError, setPipelineError] = useState<string | null>(null);
-  const [showPipelinePreview, setShowPipelinePreview] = useState(false);
+  const [pipelinePreview, setPipelinePreview] = useState<PipelinePreview | null>(null)
+  const [pipelineLoading, setPipelineLoading] = useState(false)
+  const [pipelineError, setPipelineError] = useState<string | null>(null)
+  const [showPipelinePreview, setShowPipelinePreview] = useState(false)
 
   // Fetch masked preview when item changes
   useEffect(() => {
     if (!showMaskedPreview) {
-      setMaskedImageUrl(null);
-      setMaskRegions([]);
-      setMaskingError(null);
-      return;
+      setMaskedImageUrl(null)
+      setMaskRegions([])
+      setMaskingError(null)
+      return
     }
 
     const fetchMaskedPreview = async () => {
-      setMaskingInProgress(true);
-      setMaskingError(null);
-      setMaskedImageUrl(null);
-      setMaskRegions([]);
+      setMaskingInProgress(true)
+      setMaskingError(null)
+      setMaskedImageUrl(null)
+      setMaskRegions([])
 
       try {
-        const imageResponse = await fetch(item.imagePath);
-        const imageBlob = await imageResponse.blob();
+        const imageResponse = await fetch(item.imagePath)
+        const imageBlob = await imageResponse.blob()
         const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
+          const reader = new FileReader()
           reader.onload = () => {
-            const result = reader.result as string;
-            const base64Data = result.replace(
-              /^data:image\/[a-z]+;base64,/,
-              "",
-            );
-            resolve(base64Data);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(imageBlob);
-        });
+            const result = reader.result as string
+            const base64Data = result.replace(/^data:image\/[a-z]+;base64,/, '')
+            resolve(base64Data)
+          }
+          reader.onerror = reject
+          reader.readAsDataURL(imageBlob)
+        })
 
-        const response = await fetch("/api/vision-training/preview-masked", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const response = await fetch('/api/vision-training/preview-masked', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             imageData: base64,
             corners: item.corners,
-            method: "noise",
+            method: 'noise',
           }),
-        });
+        })
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.error || "Failed to generate masked preview",
-          );
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to generate masked preview')
         }
 
-        const result = await response.json();
-        setMaskedImageUrl(`data:image/png;base64,${result.maskedImageData}`);
-        setMaskRegions(result.maskRegions || []);
+        const result = await response.json()
+        setMaskedImageUrl(`data:image/png;base64,${result.maskedImageData}`)
+        setMaskRegions(result.maskRegions || [])
       } catch (error) {
-        console.error("[BoundaryDetailContent] Masking error:", error);
-        setMaskingError(
-          error instanceof Error ? error.message : "Unknown error",
-        );
+        console.error('[BoundaryDetailContent] Masking error:', error)
+        setMaskingError(error instanceof Error ? error.message : 'Unknown error')
       } finally {
-        setMaskingInProgress(false);
+        setMaskingInProgress(false)
       }
-    };
+    }
 
-    fetchMaskedPreview();
-  }, [item, showMaskedPreview]);
+    fetchMaskedPreview()
+  }, [item, showMaskedPreview])
 
   // Fetch pipeline preview when enabled
   useEffect(() => {
     if (!showPipelinePreview) {
-      setPipelinePreview(null);
-      setPipelineError(null);
-      return;
+      setPipelinePreview(null)
+      setPipelineError(null)
+      return
     }
 
     const fetchPipelinePreview = async () => {
-      setPipelineLoading(true);
-      setPipelineError(null);
-      setPipelinePreview(null);
+      setPipelineLoading(true)
+      setPipelineError(null)
+      setPipelinePreview(null)
 
       try {
-        const imageResponse = await fetch(item.imagePath);
-        const imageBlob = await imageResponse.blob();
+        const imageResponse = await fetch(item.imagePath)
+        const imageBlob = await imageResponse.blob()
         const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
+          const reader = new FileReader()
           reader.onload = () => {
-            const result = reader.result as string;
-            const base64Data = result.replace(
-              /^data:image\/[a-z]+;base64,/,
-              "",
-            );
-            resolve(base64Data);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(imageBlob);
-        });
+            const result = reader.result as string
+            const base64Data = result.replace(/^data:image\/[a-z]+;base64,/, '')
+            resolve(base64Data)
+          }
+          reader.onerror = reject
+          reader.readAsDataURL(imageBlob)
+        })
 
-        const response = await fetch(
-          "/api/vision-training/preview-augmentation",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              imageData: base64,
-              corners: item.corners,
-            }),
-          },
-        );
+        const response = await fetch('/api/vision-training/preview-augmentation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageData: base64,
+            corners: item.corners,
+          }),
+        })
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.error || "Failed to generate pipeline preview",
-          );
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to generate pipeline preview')
         }
 
-        const result = await response.json();
-        setPipelinePreview(result.pipeline);
+        const result = await response.json()
+        setPipelinePreview(result.pipeline)
       } catch (error) {
-        console.error("[BoundaryDetailContent] Pipeline preview error:", error);
-        setPipelineError(
-          error instanceof Error ? error.message : "Unknown error",
-        );
+        console.error('[BoundaryDetailContent] Pipeline preview error:', error)
+        setPipelineError(error instanceof Error ? error.message : 'Unknown error')
       } finally {
-        setPipelineLoading(false);
+        setPipelineLoading(false)
       }
-    };
+    }
 
-    fetchPipelinePreview();
-  }, [item, showPipelinePreview]);
+    fetchPipelinePreview()
+  }, [item, showPipelinePreview])
 
   return (
     <div
       data-component="boundary-detail-content"
       className={css({
-        display: "flex",
-        flexDirection: "column",
+        display: 'flex',
+        flexDirection: 'column',
         gap: 4,
-        height: "100%",
-        overflow: "auto",
+        height: '100%',
+        overflow: 'auto',
       })}
     >
       {/* Preview with corners */}
       <div
         className={css({
-          position: "relative",
-          borderRadius: "md",
-          overflow: "hidden",
+          position: 'relative',
+          borderRadius: 'md',
+          overflow: 'hidden',
         })}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={item.imagePath}
           alt="Selected frame"
-          className={css({ width: "100%", display: "block" })}
+          className={css({ width: '100%', display: 'block' })}
         />
         <svg
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           className={css({
-            position: "absolute",
+            position: 'absolute',
             inset: 0,
-            width: "100%",
-            height: "100%",
-            pointerEvents: "none",
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
           })}
         >
           <polygon
@@ -265,29 +243,27 @@ export function BoundaryDetailContent({
       <div
         className={css({
           p: 2,
-          bg: "gray.900",
-          borderRadius: "md",
-          border: "1px solid",
-          borderColor: "orange.700/50",
+          bg: 'gray.900',
+          borderRadius: 'md',
+          border: '1px solid',
+          borderColor: 'orange.700/50',
         })}
       >
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             mb: showMaskedPreview ? 2 : 0,
           })}
         >
-          <div
-            className={css({ display: "flex", alignItems: "center", gap: 2 })}
-          >
-            <span className={css({ fontSize: "sm" })}>🎭</span>
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+            <span className={css({ fontSize: 'sm' })}>🎭</span>
             <span
               className={css({
-                fontSize: "sm",
-                fontWeight: "medium",
-                color: "orange.300",
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: 'orange.300',
               })}
             >
               Marker Masking Preview
@@ -297,15 +273,15 @@ export function BoundaryDetailContent({
             type="button"
             onClick={() => setShowMaskedPreview(!showMaskedPreview)}
             className={css({
-              fontSize: "xs",
-              color: "gray.400",
-              bg: "transparent",
-              border: "none",
-              cursor: "pointer",
-              _hover: { color: "gray.200" },
+              fontSize: 'xs',
+              color: 'gray.400',
+              bg: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              _hover: { color: 'gray.200' },
             })}
           >
-            {showMaskedPreview ? "Hide" : "Show"}
+            {showMaskedPreview ? 'Hide' : 'Show'}
           </button>
         </div>
 
@@ -313,43 +289,39 @@ export function BoundaryDetailContent({
           <>
             <div
               className={css({
-                position: "relative",
-                borderRadius: "md",
-                overflow: "hidden",
-                bg: "gray.800",
-                minHeight: "100px",
+                position: 'relative',
+                borderRadius: 'md',
+                overflow: 'hidden',
+                bg: 'gray.800',
+                minHeight: '100px',
               })}
             >
               {maskingInProgress ? (
                 <div
                   className={css({
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: "100px",
-                    color: "gray.400",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100px',
+                    color: 'gray.400',
                   })}
                 >
-                  <span
-                    className={css({ animation: "spin 1s linear infinite" })}
-                  >
-                    ⏳
-                  </span>
-                  <span className={css({ ml: 2, fontSize: "sm" })}>
+                  <span className={css({ animation: 'spin 1s linear infinite' })}>⏳</span>
+                  <span className={css({ ml: 2, fontSize: 'sm' })}>
                     Generating masked preview...
                   </span>
                 </div>
               ) : maskingError ? (
                 <div
                   className={css({
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: "100px",
-                    color: "red.400",
-                    fontSize: "sm",
-                    textAlign: "center",
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100px',
+                    color: 'red.400',
+                    fontSize: 'sm',
+                    textAlign: 'center',
                     p: 2,
                   })}
                 >
@@ -361,17 +333,17 @@ export function BoundaryDetailContent({
                   <img
                     src={maskedImageUrl}
                     alt="Marker-masked preview"
-                    className={css({ width: "100%", display: "block" })}
+                    className={css({ width: '100%', display: 'block' })}
                   />
                   <svg
                     viewBox="0 0 100 100"
                     preserveAspectRatio="none"
                     className={css({
-                      position: "absolute",
+                      position: 'absolute',
                       inset: 0,
-                      width: "100%",
-                      height: "100%",
-                      pointerEvents: "none",
+                      width: '100%',
+                      height: '100%',
+                      pointerEvents: 'none',
                     })}
                   >
                     <polygon
@@ -385,12 +357,12 @@ export function BoundaryDetailContent({
               ) : (
                 <div
                   className={css({
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: "100px",
-                    color: "gray.500",
-                    fontSize: "sm",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100px',
+                    color: 'gray.500',
+                    fontSize: 'sm',
                   })}
                 >
                   No masked preview
@@ -399,17 +371,14 @@ export function BoundaryDetailContent({
             </div>
 
             {maskedImageUrl && maskRegions.length > 0 && (
-              <div
-                className={css({ mt: 2, fontSize: "xs", color: "gray.400" })}
-              >
+              <div className={css({ mt: 2, fontSize: 'xs', color: 'gray.400' })}>
                 {maskRegions.length} marker region
-                {maskRegions.length !== 1 ? "s" : ""} masked
+                {maskRegions.length !== 1 ? 's' : ''} masked
               </div>
             )}
 
-            <div className={css({ mt: 2, fontSize: "xs", color: "gray.500" })}>
-              Training with masked images forces the model to learn frame edges,
-              not markers.
+            <div className={css({ mt: 2, fontSize: 'xs', color: 'gray.500' })}>
+              Training with masked images forces the model to learn frame edges, not markers.
             </div>
           </>
         )}
@@ -419,29 +388,27 @@ export function BoundaryDetailContent({
       <div
         className={css({
           p: 2,
-          bg: "gray.900",
-          borderRadius: "md",
-          border: "1px solid",
-          borderColor: "blue.700/50",
+          bg: 'gray.900',
+          borderRadius: 'md',
+          border: '1px solid',
+          borderColor: 'blue.700/50',
         })}
       >
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             mb: showPipelinePreview ? 2 : 0,
           })}
         >
-          <div
-            className={css({ display: "flex", alignItems: "center", gap: 2 })}
-          >
-            <span className={css({ fontSize: "sm" })}>🔬</span>
+          <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+            <span className={css({ fontSize: 'sm' })}>🔬</span>
             <span
               className={css({
-                fontSize: "sm",
-                fontWeight: "medium",
-                color: "blue.300",
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: 'blue.300',
               })}
             >
               Preprocessing Pipeline
@@ -451,15 +418,15 @@ export function BoundaryDetailContent({
             type="button"
             onClick={() => setShowPipelinePreview(!showPipelinePreview)}
             className={css({
-              fontSize: "xs",
-              color: "gray.400",
-              bg: "transparent",
-              border: "none",
-              cursor: "pointer",
-              _hover: { color: "gray.200" },
+              fontSize: 'xs',
+              color: 'gray.400',
+              bg: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              _hover: { color: 'gray.200' },
             })}
           >
-            {showPipelinePreview ? "Hide" : "Show"}
+            {showPipelinePreview ? 'Hide' : 'Show'}
           </button>
         </div>
 
@@ -468,31 +435,29 @@ export function BoundaryDetailContent({
             {pipelineLoading ? (
               <div
                 className={css({
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100px",
-                  color: "gray.400",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100px',
+                  color: 'gray.400',
                 })}
               >
-                <span className={css({ animation: "spin 1s linear infinite" })}>
-                  ⏳
-                </span>
-                <span className={css({ ml: 2, fontSize: "sm" })}>
+                <span className={css({ animation: 'spin 1s linear infinite' })}>⏳</span>
+                <span className={css({ ml: 2, fontSize: 'sm' })}>
                   Generating pipeline preview...
                 </span>
               </div>
             ) : pipelineError ? (
               <div
                 className={css({
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100px",
-                  color: "red.400",
-                  fontSize: "sm",
-                  textAlign: "center",
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100px',
+                  color: 'red.400',
+                  fontSize: 'sm',
+                  textAlign: 'center',
                   p: 2,
                 })}
               >
@@ -501,8 +466,8 @@ export function BoundaryDetailContent({
             ) : pipelinePreview ? (
               <div
                 className={css({
-                  display: "flex",
-                  flexDirection: "column",
+                  display: 'flex',
+                  flexDirection: 'column',
                   gap: 3,
                 })}
               >
@@ -511,41 +476,41 @@ export function BoundaryDetailContent({
                     key={step.step}
                     className={css({
                       p: 2,
-                      bg: "gray.800",
-                      borderRadius: "md",
-                      border: "1px solid",
-                      borderColor: "gray.700",
+                      bg: 'gray.800',
+                      borderRadius: 'md',
+                      border: '1px solid',
+                      borderColor: 'gray.700',
                     })}
                   >
                     <div
                       className={css({
-                        display: "flex",
-                        alignItems: "center",
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: 2,
                         mb: 2,
                       })}
                     >
                       <span
                         className={css({
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: "20px",
-                          height: "20px",
-                          bg: "blue.600",
-                          color: "white",
-                          borderRadius: "full",
-                          fontSize: "xs",
-                          fontWeight: "bold",
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '20px',
+                          height: '20px',
+                          bg: 'blue.600',
+                          color: 'white',
+                          borderRadius: 'full',
+                          fontSize: 'xs',
+                          fontWeight: 'bold',
                         })}
                       >
                         {step.step}
                       </span>
                       <span
                         className={css({
-                          fontSize: "sm",
-                          fontWeight: "medium",
-                          color: "gray.100",
+                          fontSize: 'sm',
+                          fontWeight: 'medium',
+                          color: 'gray.100',
                         })}
                       >
                         {step.title}
@@ -554,8 +519,8 @@ export function BoundaryDetailContent({
 
                     <div
                       className={css({
-                        fontSize: "xs",
-                        color: "gray.400",
+                        fontSize: 'xs',
+                        color: 'gray.400',
                         mb: 2,
                       })}
                     >
@@ -565,17 +530,17 @@ export function BoundaryDetailContent({
                     {step.image_base64 && (
                       <div
                         className={css({
-                          borderRadius: "sm",
-                          overflow: "hidden",
-                          border: "1px solid",
-                          borderColor: "gray.600",
+                          borderRadius: 'sm',
+                          overflow: 'hidden',
+                          border: '1px solid',
+                          borderColor: 'gray.600',
                         })}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={`data:image/jpeg;base64,${step.image_base64}`}
                           alt={step.title}
-                          className={css({ width: "100%", display: "block" })}
+                          className={css({ width: '100%', display: 'block' })}
                         />
                       </div>
                     )}
@@ -583,8 +548,8 @@ export function BoundaryDetailContent({
                     {step.variants && (
                       <div
                         className={css({
-                          display: "grid",
-                          gridTemplateColumns: "repeat(3, 1fr)",
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3, 1fr)',
                           gap: 1,
                         })}
                       >
@@ -592,17 +557,11 @@ export function BoundaryDetailContent({
                           <div
                             key={i}
                             className={css({
-                              position: "relative",
-                              borderRadius: "sm",
-                              overflow: "hidden",
-                              border:
-                                variant.label === "Original"
-                                  ? "2px solid"
-                                  : "1px solid",
-                              borderColor:
-                                variant.label === "Original"
-                                  ? "green.500"
-                                  : "gray.600",
+                              position: 'relative',
+                              borderRadius: 'sm',
+                              overflow: 'hidden',
+                              border: variant.label === 'Original' ? '2px solid' : '1px solid',
+                              borderColor: variant.label === 'Original' ? 'green.500' : 'gray.600',
                             })}
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -610,22 +569,22 @@ export function BoundaryDetailContent({
                               src={`data:image/jpeg;base64,${variant.image_base64}`}
                               alt={variant.label}
                               className={css({
-                                width: "100%",
-                                aspectRatio: "1",
-                                objectFit: "cover",
+                                width: '100%',
+                                aspectRatio: '1',
+                                objectFit: 'cover',
                               })}
                             />
                             <div
                               className={css({
-                                position: "absolute",
+                                position: 'absolute',
                                 bottom: 0,
                                 left: 0,
                                 right: 0,
-                                bg: "black/80",
-                                fontSize: "8px",
-                                color: "gray.200",
-                                textAlign: "center",
-                                py: "2px",
+                                bg: 'black/80',
+                                fontSize: '8px',
+                                color: 'gray.200',
+                                textAlign: 'center',
+                                py: '2px',
                                 px: 1,
                               })}
                               title={variant.description}
@@ -641,9 +600,9 @@ export function BoundaryDetailContent({
                       <div
                         className={css({
                           mt: 2,
-                          fontSize: "xs",
-                          color: "gray.500",
-                          fontStyle: "italic",
+                          fontSize: 'xs',
+                          color: 'gray.500',
+                          fontStyle: 'italic',
                         })}
                       >
                         Note: {step.note}
@@ -654,8 +613,8 @@ export function BoundaryDetailContent({
                       <div
                         className={css({
                           mt: 2,
-                          fontSize: "xs",
-                          color: "red.400",
+                          fontSize: 'xs',
+                          color: 'red.400',
                         })}
                       >
                         Error: {step.error}
@@ -664,20 +623,19 @@ export function BoundaryDetailContent({
                   </div>
                 ))}
 
-                <div className={css({ fontSize: "xs", color: "gray.500" })}>
-                  This shows the exact preprocessing pipeline used during
-                  training.
+                <div className={css({ fontSize: 'xs', color: 'gray.500' })}>
+                  This shows the exact preprocessing pipeline used during training.
                 </div>
               </div>
             ) : (
               <div
                 className={css({
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "60px",
-                  color: "gray.500",
-                  fontSize: "sm",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '60px',
+                  color: 'gray.500',
+                  fontSize: 'sm',
                 })}
               >
                 Click "Show" to load pipeline preview
@@ -688,35 +646,30 @@ export function BoundaryDetailContent({
       </div>
 
       {/* Model Tester */}
-      <MiniBoundaryTester
-        imagePath={item.imagePath}
-        groundTruthCorners={item.corners}
-      />
+      <MiniBoundaryTester imagePath={item.imagePath} groundTruthCorners={item.corners} />
 
       {/* Metadata */}
-      <div className={css({ fontSize: "sm" })}>
-        <div className={css({ color: "gray.400", mb: 1 })}>Captured</div>
-        <div className={css({ color: "gray.200" })}>
-          {item.capturedAt
-            ? new Date(item.capturedAt).toLocaleString()
-            : "Unknown"}
+      <div className={css({ fontSize: 'sm' })}>
+        <div className={css({ color: 'gray.400', mb: 1 })}>Captured</div>
+        <div className={css({ color: 'gray.200' })}>
+          {item.capturedAt ? new Date(item.capturedAt).toLocaleString() : 'Unknown'}
         </div>
       </div>
 
-      <div className={css({ fontSize: "sm" })}>
-        <div className={css({ color: "gray.400", mb: 1 })}>Resolution</div>
-        <div className={css({ color: "gray.200" })}>
+      <div className={css({ fontSize: 'sm' })}>
+        <div className={css({ color: 'gray.400', mb: 1 })}>Resolution</div>
+        <div className={css({ color: 'gray.200' })}>
           {item.frameWidth} × {item.frameHeight}
         </div>
       </div>
 
-      <div className={css({ fontSize: "sm" })}>
-        <div className={css({ color: "gray.400", mb: 1 })}>Device</div>
+      <div className={css({ fontSize: 'sm' })}>
+        <div className={css({ color: 'gray.400', mb: 1 })}>Device</div>
         <div
           className={css({
-            color: "gray.200",
-            fontFamily: "mono",
-            fontSize: "xs",
+            color: 'gray.200',
+            fontFamily: 'mono',
+            fontSize: 'xs',
           })}
         >
           {item.deviceId}
@@ -729,21 +682,21 @@ export function BoundaryDetailContent({
         onClick={onDelete}
         disabled={isDeleting}
         className={css({
-          mt: "auto",
+          mt: 'auto',
           py: 2,
-          bg: "red.600/20",
-          color: "red.400",
-          border: "1px solid",
-          borderColor: "red.600/50",
-          borderRadius: "md",
-          cursor: "pointer",
-          fontWeight: "medium",
-          _hover: { bg: "red.600/30", borderColor: "red.500" },
-          _disabled: { opacity: 0.5, cursor: "not-allowed" },
+          bg: 'red.600/20',
+          color: 'red.400',
+          border: '1px solid',
+          borderColor: 'red.600/50',
+          borderRadius: 'md',
+          cursor: 'pointer',
+          fontWeight: 'medium',
+          _hover: { bg: 'red.600/30', borderColor: 'red.500' },
+          _disabled: { opacity: 0.5, cursor: 'not-allowed' },
         })}
       >
-        {isDeleting ? "Deleting..." : "🗑️ Delete Frame"}
+        {isDeleting ? 'Deleting...' : '🗑️ Delete Frame'}
       </button>
     </div>
-  );
+  )
 }

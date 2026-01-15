@@ -11,7 +11,7 @@ export type {
   CVPoint,
   CVSize,
   WindowWithOpenCV,
-} from "./types";
+} from './types'
 
 export {
   loadOpenCV,
@@ -20,4 +20,4 @@ export {
   isOpenCVLoading,
   isOpenCVReady,
   resetOpenCVLoader,
-} from "./loader";
+} from './loader'

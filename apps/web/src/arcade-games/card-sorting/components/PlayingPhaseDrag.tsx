@@ -1,15 +1,15 @@
-"use client";
+'use client'
 
-import { css } from "../../../../styled-system/css";
-import { useCardSorting } from "../Provider";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useSpring, animated, to } from "@react-spring/web";
-import { useViewport } from "@/contexts/ViewportContext";
-import type { SortingCard } from "../types";
+import { css } from '../../../../styled-system/css'
+import { useCardSorting } from '../Provider'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSpring, animated, to } from '@react-spring/web'
+import { useViewport } from '@/contexts/ViewportContext'
+import type { SortingCard } from '../types'
 
 // Add celebration animations
-if (typeof document !== "undefined") {
-  const style = document.createElement("style");
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style')
   style.textContent = `
     @keyframes celebrate {
       0%, 100% {
@@ -51,15 +51,15 @@ if (typeof document !== "undefined") {
         transform: translate(-50%, -50%) scale(1.15);
       }
     }
-  `;
-  document.head.appendChild(style);
+  `
+  document.head.appendChild(style)
 }
 
 interface CardState {
-  x: number; // % of viewport width (0-100)
-  y: number; // % of viewport height (0-100)
-  rotation: number; // degrees
-  zIndex: number;
+  x: number // % of viewport width (0-100)
+  y: number // % of viewport height (0-100)
+  rotation: number // degrees
+  zIndex: number
 }
 
 /**
@@ -76,66 +76,66 @@ interface CardState {
  */
 function inferSequenceFromPositions(
   cardStates: Map<string, CardState>,
-  allCards: SortingCard[],
+  allCards: SortingCard[]
 ): SortingCard[] {
-  const VERTICAL_TOLERANCE = 8; // Cards within 8% of viewport height are in the same "lane"
+  const VERTICAL_TOLERANCE = 8 // Cards within 8% of viewport height are in the same "lane"
 
   // Get all positioned cards
   const positionedCards = allCards
     .map((card) => {
-      const state = cardStates.get(card.id);
-      if (!state) return null;
-      return { card, ...state };
+      const state = cardStates.get(card.id)
+      if (!state) return null
+      return { card, ...state }
     })
     .filter(
       (
-        item,
+        item
       ): item is {
-        card: SortingCard;
-        x: number;
-        y: number;
-        rotation: number;
-        zIndex: number;
-      } => item !== null,
-    );
+        card: SortingCard
+        x: number
+        y: number
+        rotation: number
+        zIndex: number
+      } => item !== null
+    )
 
-  if (positionedCards.length === 0) return [];
+  if (positionedCards.length === 0) return []
 
   // Sort by x position first
-  const sortedByX = [...positionedCards].sort((a, b) => a.x - b.x);
+  const sortedByX = [...positionedCards].sort((a, b) => a.x - b.x)
 
   // Group into lanes
-  const lanes: (typeof positionedCards)[] = [];
+  const lanes: (typeof positionedCards)[] = []
 
   for (const item of sortedByX) {
     // Find a lane this card fits into (similar y position)
     const matchingLane = lanes.find((lane) => {
       // Check if card's y is within tolerance of lane's average y
-      const laneAvgY = lane.reduce((sum, c) => sum + c.y, 0) / lane.length;
-      return Math.abs(item.y - laneAvgY) < VERTICAL_TOLERANCE;
-    });
+      const laneAvgY = lane.reduce((sum, c) => sum + c.y, 0) / lane.length
+      return Math.abs(item.y - laneAvgY) < VERTICAL_TOLERANCE
+    })
 
     if (matchingLane) {
-      matchingLane.push(item);
+      matchingLane.push(item)
     } else {
-      lanes.push([item]);
+      lanes.push([item])
     }
   }
 
   // Sort lanes top-to-bottom
   lanes.sort((laneA, laneB) => {
-    const avgYA = laneA.reduce((sum, c) => sum + c.y, 0) / laneA.length;
-    const avgYB = laneB.reduce((sum, c) => sum + c.y, 0) / laneB.length;
-    return avgYA - avgYB;
-  });
+    const avgYA = laneA.reduce((sum, c) => sum + c.y, 0) / laneA.length
+    const avgYB = laneB.reduce((sum, c) => sum + c.y, 0) / laneB.length
+    return avgYA - avgYB
+  })
 
   // Within each lane, sort left-to-right
   for (const lane of lanes) {
-    lane.sort((a, b) => a.x - b.x);
+    lane.sort((a, b) => a.x - b.x)
   }
 
   // Flatten to get final sequence
-  return lanes.flat().map((item) => item.card);
+  return lanes.flat().map((item) => item.card)
 }
 
 /**
@@ -150,71 +150,68 @@ function ContinuousSequencePath({
   spectatorEducationalMode,
   isSpectating,
 }: {
-  cardStates: Map<string, CardState>;
-  sequence: SortingCard[];
-  correctOrder: SortingCard[];
-  viewportWidth: number;
-  viewportHeight: number;
-  spectatorEducationalMode: boolean;
-  isSpectating: boolean;
+  cardStates: Map<string, CardState>
+  sequence: SortingCard[]
+  correctOrder: SortingCard[]
+  viewportWidth: number
+  viewportHeight: number
+  spectatorEducationalMode: boolean
+  isSpectating: boolean
 }) {
-  if (sequence.length < 2) return null;
+  if (sequence.length < 2) return null
 
   // Card dimensions (base size)
-  const CARD_WIDTH = 140;
-  const CARD_HEIGHT = 180;
-  const CARD_HALF_WIDTH = CARD_WIDTH / 2;
-  const CARD_HALF_HEIGHT = CARD_HEIGHT / 2;
+  const CARD_WIDTH = 140
+  const CARD_HEIGHT = 180
+  const CARD_HALF_WIDTH = CARD_WIDTH / 2
+  const CARD_HALF_HEIGHT = CARD_HEIGHT / 2
 
   // Helper to check if a card is part of the correct prefix or suffix (and thus scaled to 50%)
   const isCardCorrect = (card: SortingCard): boolean => {
-    const positionInSequence = sequence.findIndex((c) => c.id === card.id);
-    if (positionInSequence < 0) return false;
+    const positionInSequence = sequence.findIndex((c) => c.id === card.id)
+    if (positionInSequence < 0) return false
 
     // Check if card is part of correct prefix
-    let isInCorrectPrefix = true;
+    let isInCorrectPrefix = true
     for (let i = 0; i <= positionInSequence; i++) {
       if (sequence[i]?.id !== correctOrder[i]?.id) {
-        isInCorrectPrefix = false;
-        break;
+        isInCorrectPrefix = false
+        break
       }
     }
 
     // Check if card is part of correct suffix
-    let isInCorrectSuffix = true;
-    const offsetFromEnd = sequence.length - 1 - positionInSequence;
+    let isInCorrectSuffix = true
+    const offsetFromEnd = sequence.length - 1 - positionInSequence
     for (let i = 0; i <= offsetFromEnd; i++) {
-      const seqIdx = sequence.length - 1 - i;
-      const correctIdx = correctOrder.length - 1 - i;
+      const seqIdx = sequence.length - 1 - i
+      const correctIdx = correctOrder.length - 1 - i
       if (sequence[seqIdx]?.id !== correctOrder[correctIdx]?.id) {
-        isInCorrectSuffix = false;
-        break;
+        isInCorrectSuffix = false
+        break
       }
     }
 
-    const isCorrect = isInCorrectPrefix || isInCorrectSuffix;
-    return isSpectating ? spectatorEducationalMode && isCorrect : isCorrect;
-  };
+    const isCorrect = isInCorrectPrefix || isInCorrectSuffix
+    return isSpectating ? spectatorEducationalMode && isCorrect : isCorrect
+  }
 
   // Get all card positions (card centers) with scale information
   const cardCenters = sequence
     .map((card) => {
-      const state = cardStates.get(card.id);
-      if (!state) return null;
-      const scale = isCardCorrect(card) ? 0.5 : 1;
+      const state = cardStates.get(card.id)
+      if (!state) return null
+      const scale = isCardCorrect(card) ? 0.5 : 1
       return {
         x: (state.x / 100) * viewportWidth + CARD_HALF_WIDTH,
         y: (state.y / 100) * viewportHeight + CARD_HALF_HEIGHT,
         cardId: card.id,
         scale,
-      };
+      }
     })
-    .filter(
-      (p): p is { x: number; y: number; cardId: string; scale: number } =>
-        p !== null,
-    );
+    .filter((p): p is { x: number; y: number; cardId: string; scale: number } => p !== null)
 
-  if (cardCenters.length < 2) return null;
+  if (cardCenters.length < 2) return null
 
   // Helper function to find intersection of line from center in direction (dx, dy) with card rectangle
   const findCardEdgePoint = (
@@ -222,97 +219,96 @@ function ContinuousSequencePath({
     centerY: number,
     dx: number,
     dy: number,
-    scale: number,
+    scale: number
   ): { x: number; y: number } => {
     // Normalize direction
-    const length = Math.sqrt(dx * dx + dy * dy);
-    const ndx = dx / length;
-    const ndy = dy / length;
+    const length = Math.sqrt(dx * dx + dy * dy)
+    const ndx = dx / length
+    const ndy = dy / length
 
     // Apply scale to card dimensions
-    const scaledHalfWidth = CARD_HALF_WIDTH * scale;
-    const scaledHalfHeight = CARD_HALF_HEIGHT * scale;
+    const scaledHalfWidth = CARD_HALF_WIDTH * scale
+    const scaledHalfHeight = CARD_HALF_HEIGHT * scale
 
     // Find which edge we hit first
-    const txRight = ndx > 0 ? scaledHalfWidth / ndx : Number.POSITIVE_INFINITY;
-    const txLeft = ndx < 0 ? -scaledHalfWidth / ndx : Number.POSITIVE_INFINITY;
-    const tyBottom =
-      ndy > 0 ? scaledHalfHeight / ndy : Number.POSITIVE_INFINITY;
-    const tyTop = ndy < 0 ? -scaledHalfHeight / ndy : Number.POSITIVE_INFINITY;
+    const txRight = ndx > 0 ? scaledHalfWidth / ndx : Number.POSITIVE_INFINITY
+    const txLeft = ndx < 0 ? -scaledHalfWidth / ndx : Number.POSITIVE_INFINITY
+    const tyBottom = ndy > 0 ? scaledHalfHeight / ndy : Number.POSITIVE_INFINITY
+    const tyTop = ndy < 0 ? -scaledHalfHeight / ndy : Number.POSITIVE_INFINITY
 
-    const t = Math.min(txRight, txLeft, tyBottom, tyTop);
+    const t = Math.min(txRight, txLeft, tyBottom, tyTop)
 
     return {
       x: centerX + ndx * t,
       y: centerY + ndy * t,
-    };
-  };
+    }
+  }
 
   // Calculate edge points for each card based on direction to next/prev card
   const positions = cardCenters.map((center, i) => {
     if (i === 0) {
       // First card: direction towards next card
-      const next = cardCenters[i + 1];
-      const dx = next.x - center.x;
-      const dy = next.y - center.y;
-      return findCardEdgePoint(center.x, center.y, dx, dy, center.scale);
+      const next = cardCenters[i + 1]
+      const dx = next.x - center.x
+      const dy = next.y - center.y
+      return findCardEdgePoint(center.x, center.y, dx, dy, center.scale)
     }
     if (i === cardCenters.length - 1) {
       // Last card: direction from previous card
-      const prev = cardCenters[i - 1];
-      const dx = center.x - prev.x;
-      const dy = center.y - prev.y;
-      return findCardEdgePoint(center.x, center.y, dx, dy, center.scale);
+      const prev = cardCenters[i - 1]
+      const dx = center.x - prev.x
+      const dy = center.y - prev.y
+      return findCardEdgePoint(center.x, center.y, dx, dy, center.scale)
     }
     // Middle cards: average direction between prev and next
-    const prev = cardCenters[i - 1];
-    const next = cardCenters[i + 1];
-    const dx = next.x - prev.x;
-    const dy = next.y - prev.y;
-    return findCardEdgePoint(center.x, center.y, dx, dy, center.scale);
-  });
+    const prev = cardCenters[i - 1]
+    const next = cardCenters[i + 1]
+    const dx = next.x - prev.x
+    const dy = next.y - prev.y
+    return findCardEdgePoint(center.x, center.y, dx, dy, center.scale)
+  })
 
-  if (positions.length < 2) return null;
+  if (positions.length < 2) return null
 
   // Build continuous curved path using cubic bezier curves with smooth transitions
   // Use Catmull-Rom style control points for smooth continuous curves
-  let pathD = `M ${positions[0].x} ${positions[0].y}`;
+  let pathD = `M ${positions[0].x} ${positions[0].y}`
 
   for (let i = 0; i < positions.length - 1; i++) {
-    const current = positions[i];
-    const next = positions[i + 1];
+    const current = positions[i]
+    const next = positions[i + 1]
 
     // Get previous and next-next points for tangent calculation (or use current/next if at edges)
-    const prev = i > 0 ? positions[i - 1] : current;
-    const nextNext = i < positions.length - 2 ? positions[i + 2] : next;
+    const prev = i > 0 ? positions[i - 1] : current
+    const nextNext = i < positions.length - 2 ? positions[i + 2] : next
 
     // Calculate tangent vectors for smooth curve
     // Tangent at current point: direction from prev to next
-    const tension = 0.3; // Adjust this to control curve tightness (0 = loose, 1 = tight)
+    const tension = 0.3 // Adjust this to control curve tightness (0 = loose, 1 = tight)
 
-    const tangent1X = (next.x - prev.x) * tension;
-    const tangent1Y = (next.y - prev.y) * tension;
+    const tangent1X = (next.x - prev.x) * tension
+    const tangent1Y = (next.y - prev.y) * tension
 
     // Tangent at next point: direction from current to nextNext
-    const tangent2X = (nextNext.x - current.x) * tension;
-    const tangent2Y = (nextNext.y - current.y) * tension;
+    const tangent2X = (nextNext.x - current.x) * tension
+    const tangent2Y = (nextNext.y - current.y) * tension
 
     // Control points for cubic bezier
-    const cp1X = current.x + tangent1X;
-    const cp1Y = current.y + tangent1Y;
-    const cp2X = next.x - tangent2X;
-    const cp2Y = next.y - tangent2Y;
+    const cp1X = current.x + tangent1X
+    const cp1Y = current.y + tangent1Y
+    const cp2X = next.x - tangent2X
+    const cp2Y = next.y - tangent2Y
 
-    pathD += ` C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${next.x} ${next.y}`;
+    pathD += ` C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${next.x} ${next.y}`
   }
 
   // Calculate badge positions along the actual drawn path at arc-length midpoint
   const badges: Array<{
-    x: number;
-    y: number;
-    number: number;
-    isCorrect: boolean;
-  }> = [];
+    x: number
+    y: number
+    number: number
+    isCorrect: boolean
+  }> = []
 
   // Helper to evaluate cubic bezier at parameter t
   const evalCubicBezier = (
@@ -324,78 +320,57 @@ function ContinuousSequencePath({
     cp2y: number,
     p1x: number,
     p1y: number,
-    t: number,
+    t: number
   ) => {
-    const mt = 1 - t;
+    const mt = 1 - t
     return {
-      x:
-        mt * mt * mt * p0x +
-        3 * mt * mt * t * cp1x +
-        3 * mt * t * t * cp2x +
-        t * t * t * p1x,
-      y:
-        mt * mt * mt * p0y +
-        3 * mt * mt * t * cp1y +
-        3 * mt * t * t * cp2y +
-        t * t * t * p1y,
-    };
-  };
+      x: mt * mt * mt * p0x + 3 * mt * mt * t * cp1x + 3 * mt * t * t * cp2x + t * t * t * p1x,
+      y: mt * mt * mt * p0y + 3 * mt * mt * t * cp1y + 3 * mt * t * t * cp2y + t * t * t * p1y,
+    }
+  }
 
   for (let i = 0; i < positions.length - 1; i++) {
-    const current = positions[i];
-    const next = positions[i + 1];
+    const current = positions[i]
+    const next = positions[i + 1]
 
     // Use the actual edge-based control points (same as the drawn path)
-    const prev = i > 0 ? positions[i - 1] : current;
-    const nextNext = i < positions.length - 2 ? positions[i + 2] : next;
-    const tension = 0.3;
+    const prev = i > 0 ? positions[i - 1] : current
+    const nextNext = i < positions.length - 2 ? positions[i + 2] : next
+    const tension = 0.3
 
-    const tangent1X = (next.x - prev.x) * tension;
-    const tangent1Y = (next.y - prev.y) * tension;
-    const tangent2X = (nextNext.x - current.x) * tension;
-    const tangent2Y = (nextNext.y - current.y) * tension;
+    const tangent1X = (next.x - prev.x) * tension
+    const tangent1Y = (next.y - prev.y) * tension
+    const tangent2X = (nextNext.x - current.x) * tension
+    const tangent2Y = (nextNext.y - current.y) * tension
 
-    const cp1X = current.x + tangent1X;
-    const cp1Y = current.y + tangent1Y;
-    const cp2X = next.x - tangent2X;
-    const cp2Y = next.y - tangent2Y;
+    const cp1X = current.x + tangent1X
+    const cp1Y = current.y + tangent1Y
+    const cp2X = next.x - tangent2X
+    const cp2Y = next.y - tangent2Y
 
     // Sample the curve at many points to calculate arc length
-    const samples = 50;
-    const arcLengths: number[] = [0];
-    let prevPoint = { x: current.x, y: current.y };
+    const samples = 50
+    const arcLengths: number[] = [0]
+    let prevPoint = { x: current.x, y: current.y }
 
     for (let j = 1; j <= samples; j++) {
-      const t = j / samples;
-      const point = evalCubicBezier(
-        current.x,
-        current.y,
-        cp1X,
-        cp1Y,
-        cp2X,
-        cp2Y,
-        next.x,
-        next.y,
-        t,
-      );
-      const segmentLength = Math.sqrt(
-        (point.x - prevPoint.x) ** 2 + (point.y - prevPoint.y) ** 2,
-      );
-      arcLengths.push(arcLengths[arcLengths.length - 1] + segmentLength);
-      prevPoint = point;
+      const t = j / samples
+      const point = evalCubicBezier(current.x, current.y, cp1X, cp1Y, cp2X, cp2Y, next.x, next.y, t)
+      const segmentLength = Math.sqrt((point.x - prevPoint.x) ** 2 + (point.y - prevPoint.y) ** 2)
+      arcLengths.push(arcLengths[arcLengths.length - 1] + segmentLength)
+      prevPoint = point
     }
 
     // Find the t value that corresponds to 50% of arc length
-    const totalArcLength = arcLengths[arcLengths.length - 1];
-    const targetLength = totalArcLength * 0.5;
+    const totalArcLength = arcLengths[arcLengths.length - 1]
+    const targetLength = totalArcLength * 0.5
 
-    let tAtMidArc = 0.5;
+    let tAtMidArc = 0.5
     for (let j = 0; j < arcLengths.length - 1; j++) {
       if (arcLengths[j] <= targetLength && targetLength <= arcLengths[j + 1]) {
-        const ratio =
-          (targetLength - arcLengths[j]) / (arcLengths[j + 1] - arcLengths[j]);
-        tAtMidArc = (j + ratio) / samples;
-        break;
+        const ratio = (targetLength - arcLengths[j]) / (arcLengths[j + 1] - arcLengths[j])
+        tAtMidArc = (j + ratio) / samples
+        break
       }
     }
 
@@ -409,130 +384,119 @@ function ContinuousSequencePath({
       cp2Y,
       next.x,
       next.y,
-      tAtMidArc,
-    );
+      tAtMidArc
+    )
 
     // Calculate tangent at this t for perpendicular offset
-    const mt = 1 - tAtMidArc;
+    const mt = 1 - tAtMidArc
     const tangentAtMidX =
       3 * mt * mt * (cp1X - current.x) +
       6 * mt * tAtMidArc * (cp2X - cp1X) +
-      3 * tAtMidArc * tAtMidArc * (next.x - cp2X);
+      3 * tAtMidArc * tAtMidArc * (next.x - cp2X)
     const tangentAtMidY =
       3 * mt * mt * (cp1Y - current.y) +
       6 * mt * tAtMidArc * (cp2Y - cp1Y) +
-      3 * tAtMidArc * tAtMidArc * (next.y - cp2Y);
+      3 * tAtMidArc * tAtMidArc * (next.y - cp2Y)
 
     // Small perpendicular offset so badges sit slightly off the curve line
-    const perpX = -tangentAtMidY;
-    const perpY = tangentAtMidX;
-    const perpLength = Math.sqrt(perpX * perpX + perpY * perpY);
-    const offsetDistance = 5; // Small offset
+    const perpX = -tangentAtMidY
+    const perpY = tangentAtMidX
+    const perpLength = Math.sqrt(perpX * perpX + perpY * perpY)
+    const offsetDistance = 5 // Small offset
 
-    const finalX = midPoint.x + (perpX / perpLength) * offsetDistance;
-    const finalY = midPoint.y + (perpY / perpLength) * offsetDistance;
+    const finalX = midPoint.x + (perpX / perpLength) * offsetDistance
+    const finalY = midPoint.y + (perpY / perpLength) * offsetDistance
 
     // Check if this connection is correct
     const isCorrect =
-      correctOrder[i]?.id === sequence[i].id &&
-      correctOrder[i + 1]?.id === sequence[i + 1].id;
+      correctOrder[i]?.id === sequence[i].id && correctOrder[i + 1]?.id === sequence[i + 1].id
 
     badges.push({
       x: finalX,
       y: finalY,
       number: i + 1,
       isCorrect,
-    });
+    })
   }
 
   // Check if entire sequence is correct for coloring
-  const allCorrect = sequence.every(
-    (card, idx) => correctOrder[idx]?.id === card.id,
-  );
+  const allCorrect = sequence.every((card, idx) => correctOrder[idx]?.id === card.id)
 
   return (
     <div
       style={{
-        position: "absolute",
+        position: 'absolute',
         left: 0,
         top: 0,
-        width: "100%",
-        height: "100%",
-        pointerEvents: "none",
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
         zIndex: 0,
       }}
     >
       <svg
         style={{
-          position: "absolute",
+          position: 'absolute',
           left: 0,
           top: 0,
-          width: "100%",
-          height: "100%",
-          overflow: "visible",
+          width: '100%',
+          height: '100%',
+          overflow: 'visible',
         }}
       >
         {/* Continuous curved path */}
         <path
           d={pathD}
-          stroke={
-            allCorrect ? "rgba(34, 197, 94, 0.8)" : "rgba(251, 146, 60, 0.7)"
-          }
-          strokeWidth={allCorrect ? "8" : "6"}
+          stroke={allCorrect ? 'rgba(34, 197, 94, 0.8)' : 'rgba(251, 146, 60, 0.7)'}
+          strokeWidth={allCorrect ? '8' : '6'}
           fill="none"
           style={{
-            filter: allCorrect
-              ? "drop-shadow(0 0 8px rgba(34, 197, 94, 0.6))"
-              : "none",
+            filter: allCorrect ? 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.6))' : 'none',
           }}
         />
 
         {/* Arrowhead at the end */}
         {(() => {
-          const i = positions.length - 2; // Last segment index
-          const current = positions[i];
-          const next = positions[i + 1];
+          const i = positions.length - 2 // Last segment index
+          const current = positions[i]
+          const next = positions[i + 1]
 
           // Recalculate control points for last segment
-          const prev = i > 0 ? positions[i - 1] : current;
-          const nextNext = next; // At the end, so nextNext is same as next
-          const tension = 0.3;
+          const prev = i > 0 ? positions[i - 1] : current
+          const nextNext = next // At the end, so nextNext is same as next
+          const tension = 0.3
 
-          const tangent1X = (next.x - prev.x) * tension;
-          const tangent1Y = (next.y - prev.y) * tension;
-          const tangent2X = (nextNext.x - current.x) * tension;
-          const tangent2Y = (nextNext.y - current.y) * tension;
+          const tangent1X = (next.x - prev.x) * tension
+          const tangent1Y = (next.y - prev.y) * tension
+          const tangent2X = (nextNext.x - current.x) * tension
+          const tangent2Y = (nextNext.y - current.y) * tension
 
-          const cp1X = current.x + tangent1X;
-          const cp1Y = current.y + tangent1Y;
-          const cp2X = next.x - tangent2X;
-          const cp2Y = next.y - tangent2Y;
+          const cp1X = current.x + tangent1X
+          const cp1Y = current.y + tangent1Y
+          const cp2X = next.x - tangent2X
+          const cp2Y = next.y - tangent2Y
 
           // Calculate tangent at t=1 (end of curve) for cubic bezier
           // Derivative: B'(t) = 3(1-t)²(P1-P0) + 6(1-t)t(P2-P1) + 3t²(P3-P2)
           // At t=1: B'(1) = 3(P3-P2)
-          const tangentX = 3 * (next.x - cp2X);
-          const tangentY = 3 * (next.y - cp2Y);
-          const arrowAngle = Math.atan2(tangentY, tangentX);
+          const tangentX = 3 * (next.x - cp2X)
+          const tangentY = 3 * (next.y - cp2Y)
+          const arrowAngle = Math.atan2(tangentY, tangentX)
 
           // Arrow triangle
-          const tipX = next.x;
-          const tipY = next.y;
-          const baseX = tipX - Math.cos(arrowAngle) * 10;
-          const baseY = tipY - Math.sin(arrowAngle) * 10;
-          const left = `${baseX + Math.cos(arrowAngle + Math.PI / 2) * 6},${baseY + Math.sin(arrowAngle + Math.PI / 2) * 6}`;
-          const right = `${baseX + Math.cos(arrowAngle - Math.PI / 2) * 6},${baseY + Math.sin(arrowAngle - Math.PI / 2) * 6}`;
+          const tipX = next.x
+          const tipY = next.y
+          const baseX = tipX - Math.cos(arrowAngle) * 10
+          const baseY = tipY - Math.sin(arrowAngle) * 10
+          const left = `${baseX + Math.cos(arrowAngle + Math.PI / 2) * 6},${baseY + Math.sin(arrowAngle + Math.PI / 2) * 6}`
+          const right = `${baseX + Math.cos(arrowAngle - Math.PI / 2) * 6},${baseY + Math.sin(arrowAngle - Math.PI / 2) * 6}`
 
           return (
             <polygon
               points={`${tipX},${tipY} ${left} ${right}`}
-              fill={
-                allCorrect
-                  ? "rgba(34, 197, 94, 0.9)"
-                  : "rgba(251, 146, 60, 0.8)"
-              }
+              fill={allCorrect ? 'rgba(34, 197, 94, 0.9)' : 'rgba(251, 146, 60, 0.8)'}
             />
-          );
+          )
         })()}
       </svg>
 
@@ -541,34 +505,32 @@ function ContinuousSequencePath({
         <div
           key={badge.number}
           style={{
-            position: "absolute",
+            position: 'absolute',
             left: `${badge.x}px`,
             top: `${badge.y}px`,
-            transform: "translate(-50%, -50%)",
-            background: badge.isCorrect ? "#22c55e" : "#f97316",
-            color: "white",
-            borderRadius: "50%",
-            width: "32px",
-            height: "32px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "14px",
-            fontWeight: "bold",
-            border: "3px solid white",
+            transform: 'translate(-50%, -50%)',
+            background: badge.isCorrect ? '#22c55e' : '#f97316',
+            color: 'white',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            border: '3px solid white',
             boxShadow: badge.isCorrect
-              ? "0 0 0 2px #22c55e, 0 4px 8px rgba(0, 0, 0, 0.3)"
-              : "0 0 0 2px #f97316, 0 4px 8px rgba(0, 0, 0, 0.3)",
-            animation: badge.isCorrect
-              ? "correctBadgePulse 1.5s ease-in-out infinite"
-              : "none",
+              ? '0 0 0 2px #22c55e, 0 4px 8px rgba(0, 0, 0, 0.3)'
+              : '0 0 0 2px #f97316, 0 4px 8px rgba(0, 0, 0, 0.3)',
+            animation: badge.isCorrect ? 'correctBadgePulse 1.5s ease-in-out infinite' : 'none',
           }}
         >
           {badge.number}
         </div>
       ))}
     </div>
-  );
+  )
 }
 
 /**
@@ -584,36 +546,36 @@ function AnimatedArrow({
   viewportWidth,
   viewportHeight,
 }: {
-  fromCard: CardState;
-  toCard: CardState;
-  isCorrect: boolean;
-  sequenceNumber: number;
-  isDragging: boolean;
-  isResizing: boolean;
-  viewportWidth: number;
-  viewportHeight: number;
+  fromCard: CardState
+  toCard: CardState
+  isCorrect: boolean
+  sequenceNumber: number
+  isDragging: boolean
+  isResizing: boolean
+  viewportWidth: number
+  viewportHeight: number
 }) {
   // Convert percentage positions to pixels
   const fromPx = {
     x: (fromCard.x / 100) * viewportWidth,
     y: (fromCard.y / 100) * viewportHeight,
-  };
+  }
   const toPx = {
     x: (toCard.x / 100) * viewportWidth,
     y: (toCard.y / 100) * viewportHeight,
-  };
+  }
 
   // Calculate arrow position (from center of current card to center of next card)
-  const fromX = fromPx.x + 70; // 70 = half of card width (140px)
-  const fromY = fromPx.y + 90; // 90 = half of card height (180px)
-  const toX = toPx.x + 70;
-  const toY = toPx.y + 90;
+  const fromX = fromPx.x + 70 // 70 = half of card width (140px)
+  const fromY = fromPx.y + 90 // 90 = half of card height (180px)
+  const toX = toPx.x + 70
+  const toY = toPx.y + 90
 
   // Calculate angle and distance
-  const dx = toX - fromX;
-  const dy = toY - fromY;
-  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-  const distance = Math.sqrt(dx * dx + dy * dy);
+  const dx = toX - fromX
+  const dy = toY - fromY
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI)
+  const distance = Math.sqrt(dx * dx + dy * dy)
 
   // Use spring animation for arrow position and size
   // Disable animation when dragging or resizing
@@ -627,179 +589,147 @@ function AnimatedArrow({
       tension: 300,
       friction: 30,
     },
-  });
+  })
 
   // Don't draw arrow if cards are too close
-  if (distance < 80) return null;
+  if (distance < 80) return null
 
   // Calculate control point for bezier curve (perpendicular to line, offset by 30px)
-  const midX = (fromX + toX) / 2;
-  const midY = (fromY + toY) / 2;
-  const perpAngle = angle + 90; // Perpendicular to the line
-  const curveOffset = 30; // How much to curve (in pixels)
-  const controlX = midX + Math.cos((perpAngle * Math.PI) / 180) * curveOffset;
-  const controlY = midY + Math.sin((perpAngle * Math.PI) / 180) * curveOffset;
+  const midX = (fromX + toX) / 2
+  const midY = (fromY + toY) / 2
+  const perpAngle = angle + 90 // Perpendicular to the line
+  const curveOffset = 30 // How much to curve (in pixels)
+  const controlX = midX + Math.cos((perpAngle * Math.PI) / 180) * curveOffset
+  const controlY = midY + Math.sin((perpAngle * Math.PI) / 180) * curveOffset
 
   // Calculate arrowhead position and angle at the end of the curve
   // For a quadratic bezier, the tangent at t=1 is: 2*(P2 - P1)
-  const tangentX = toX - controlX;
-  const tangentY = toY - controlY;
-  const arrowAngle = Math.atan2(tangentY, tangentX) * (180 / Math.PI);
+  const tangentX = toX - controlX
+  const tangentY = toY - controlY
+  const arrowAngle = Math.atan2(tangentY, tangentX) * (180 / Math.PI)
 
   return (
     <animated.div
       style={{
-        position: "absolute",
+        position: 'absolute',
         left: 0,
         top: 0,
-        width: "100%",
-        height: "100%",
-        pointerEvents: "none",
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
         zIndex: 0,
       }}
     >
       <svg
         style={{
-          position: "absolute",
+          position: 'absolute',
           left: 0,
           top: 0,
-          width: "100%",
-          height: "100%",
-          overflow: "visible",
+          width: '100%',
+          height: '100%',
+          overflow: 'visible',
         }}
       >
         {/* Curved line using quadratic bezier */}
         <animated.path
           d={to(
-            [
-              springProps.fromX,
-              springProps.fromY,
-              springProps.distance,
-              springProps.angle,
-            ],
+            [springProps.fromX, springProps.fromY, springProps.distance, springProps.angle],
             (fx, fy, dist, ang) => {
               // Recalculate curve with animated values
-              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist;
-              const ty = fy + Math.sin((ang * Math.PI) / 180) * dist;
-              const mx = (fx + tx) / 2;
-              const my = (fy + ty) / 2;
-              const perpAng = ang + 90;
-              const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset;
-              const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset;
-              return `M ${fx} ${fy} Q ${cx} ${cy} ${tx} ${ty}`;
-            },
+              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist
+              const ty = fy + Math.sin((ang * Math.PI) / 180) * dist
+              const mx = (fx + tx) / 2
+              const my = (fy + ty) / 2
+              const perpAng = ang + 90
+              const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset
+              const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset
+              return `M ${fx} ${fy} Q ${cx} ${cy} ${tx} ${ty}`
+            }
           )}
-          stroke={
-            isCorrect ? "rgba(34, 197, 94, 0.8)" : "rgba(251, 146, 60, 0.7)"
-          }
-          strokeWidth={isCorrect ? "4" : "3"}
+          stroke={isCorrect ? 'rgba(34, 197, 94, 0.8)' : 'rgba(251, 146, 60, 0.7)'}
+          strokeWidth={isCorrect ? '4' : '3'}
           fill="none"
           style={{
-            filter: isCorrect
-              ? "drop-shadow(0 0 8px rgba(34, 197, 94, 0.6))"
-              : "none",
+            filter: isCorrect ? 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.6))' : 'none',
           }}
         />
 
         {/* Arrowhead */}
         <animated.polygon
           points={to(
-            [
-              springProps.fromX,
-              springProps.fromY,
-              springProps.distance,
-              springProps.angle,
-            ],
+            [springProps.fromX, springProps.fromY, springProps.distance, springProps.angle],
             (fx, fy, dist, ang) => {
               // Recalculate end position and angle
-              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist;
-              const ty = fy + Math.sin((ang * Math.PI) / 180) * dist;
-              const mx = (fx + tx) / 2;
-              const my = (fy + ty) / 2;
-              const perpAng = ang + 90;
-              const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset;
-              const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset;
-              const tangX = tx - cx;
-              const tangY = ty - cy;
-              const aAngle = Math.atan2(tangY, tangX);
+              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist
+              const ty = fy + Math.sin((ang * Math.PI) / 180) * dist
+              const mx = (fx + tx) / 2
+              const my = (fy + ty) / 2
+              const perpAng = ang + 90
+              const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset
+              const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset
+              const tangX = tx - cx
+              const tangY = ty - cy
+              const aAngle = Math.atan2(tangY, tangX)
 
               // Arrow points relative to tip
-              const tipX = tx;
-              const tipY = ty;
-              const baseX = tipX - Math.cos(aAngle) * 10;
-              const baseY = tipY - Math.sin(aAngle) * 10;
-              const left = `${baseX + Math.cos(aAngle + Math.PI / 2) * 6},${baseY + Math.sin(aAngle + Math.PI / 2) * 6}`;
-              const right = `${baseX + Math.cos(aAngle - Math.PI / 2) * 6},${baseY + Math.sin(aAngle - Math.PI / 2) * 6}`;
-              return `${tipX},${tipY} ${left} ${right}`;
-            },
+              const tipX = tx
+              const tipY = ty
+              const baseX = tipX - Math.cos(aAngle) * 10
+              const baseY = tipY - Math.sin(aAngle) * 10
+              const left = `${baseX + Math.cos(aAngle + Math.PI / 2) * 6},${baseY + Math.sin(aAngle + Math.PI / 2) * 6}`
+              const right = `${baseX + Math.cos(aAngle - Math.PI / 2) * 6},${baseY + Math.sin(aAngle - Math.PI / 2) * 6}`
+              return `${tipX},${tipY} ${left} ${right}`
+            }
           )}
-          fill={
-            isCorrect ? "rgba(34, 197, 94, 0.9)" : "rgba(251, 146, 60, 0.8)"
-          }
+          fill={isCorrect ? 'rgba(34, 197, 94, 0.9)' : 'rgba(251, 146, 60, 0.8)'}
         />
       </svg>
 
       {/* Sequence number badge */}
       <animated.div
         style={{
-          position: "absolute",
+          position: 'absolute',
           left: to(
-            [
-              springProps.fromX,
-              springProps.fromY,
-              springProps.distance,
-              springProps.angle,
-            ],
+            [springProps.fromX, springProps.fromY, springProps.distance, springProps.angle],
             (fx, fy, dist, ang) => {
-              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist;
-              const mx = (fx + tx) / 2;
-              const perpAng = ang + 90;
-              const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset;
-              return `${cx}px`;
-            },
+              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist
+              const mx = (fx + tx) / 2
+              const perpAng = ang + 90
+              const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset
+              return `${cx}px`
+            }
           ),
           top: to(
-            [
-              springProps.fromX,
-              springProps.fromY,
-              springProps.distance,
-              springProps.angle,
-            ],
+            [springProps.fromX, springProps.fromY, springProps.distance, springProps.angle],
             (fx, fy, dist, ang) => {
-              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist;
-              const ty = fy + Math.sin((ang * Math.PI) / 180) * dist;
-              const my = (fy + ty) / 2;
-              const perpAng = ang + 90;
-              const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset;
-              return `${cy}px`;
-            },
+              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist
+              const ty = fy + Math.sin((ang * Math.PI) / 180) * dist
+              const my = (fy + ty) / 2
+              const perpAng = ang + 90
+              const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset
+              return `${cy}px`
+            }
           ),
-          transform: "translate(-50%, -50%)",
-          background: isCorrect
-            ? "rgba(34, 197, 94, 0.95)"
-            : "rgba(251, 146, 60, 0.95)",
-          color: "white",
-          borderRadius: "50%",
-          width: "24px",
-          height: "24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "12px",
-          fontWeight: "bold",
-          border: "2px solid white",
-          boxShadow: isCorrect
-            ? "0 0 12px rgba(34, 197, 94, 0.6)"
-            : "0 2px 4px rgba(0,0,0,0.2)",
-          animation: isCorrect
-            ? "correctBadgePulse 1.5s ease-in-out infinite"
-            : "none",
+          transform: 'translate(-50%, -50%)',
+          background: isCorrect ? 'rgba(34, 197, 94, 0.95)' : 'rgba(251, 146, 60, 0.95)',
+          color: 'white',
+          borderRadius: '50%',
+          width: '24px',
+          height: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          border: '2px solid white',
+          boxShadow: isCorrect ? '0 0 12px rgba(34, 197, 94, 0.6)' : '0 2px 4px rgba(0,0,0,0.2)',
+          animation: isCorrect ? 'correctBadgePulse 1.5s ease-in-out infinite' : 'none',
         }}
       >
         {sequenceNumber}
       </animated.div>
     </animated.div>
-  );
+  )
 }
 
 /**
@@ -821,34 +751,34 @@ function AnimatedCard({
   onPointerMove,
   onPointerUp,
 }: {
-  card: SortingCard;
-  cardState: CardState;
-  isDragging: boolean;
-  isResizing: boolean;
-  isSpectating: boolean;
-  isCorrect: boolean;
-  draggedByPlayerId?: string;
-  localPlayerId?: string;
-  players: Map<string, { id: string; name: string; emoji: string }>;
-  viewportWidth: number;
-  viewportHeight: number;
-  onPointerDown: (e: React.PointerEvent) => void;
-  onPointerMove: (e: React.PointerEvent) => void;
-  onPointerUp: (e: React.PointerEvent) => void;
+  card: SortingCard
+  cardState: CardState
+  isDragging: boolean
+  isResizing: boolean
+  isSpectating: boolean
+  isCorrect: boolean
+  draggedByPlayerId?: string
+  localPlayerId?: string
+  players: Map<string, { id: string; name: string; emoji: string }>
+  viewportWidth: number
+  viewportHeight: number
+  onPointerDown: (e: React.PointerEvent) => void
+  onPointerMove: (e: React.PointerEvent) => void
+  onPointerUp: (e: React.PointerEvent) => void
 }) {
   // Convert percentage position to pixels for rendering
   const pixelPos = {
     x: (cardState.x / 100) * viewportWidth,
     y: (cardState.y / 100) * viewportHeight,
-  };
+  }
 
   // Determine if card is in correct prefix or suffix position
   // These cards should be scaled down to 50% and faded to 50% opacity
   const isInCorrectPosition = (() => {
     // For AnimatedCard, we need to recalculate since we don't have inferredSequence here
     // This is a simplified check - we'll need to pass this as a prop or recalculate
-    return isCorrect;
-  })();
+    return isCorrect
+  })()
 
   // Use spring animation for position, rotation, scale, and opacity
   // Disable animation when:
@@ -862,15 +792,15 @@ function AnimatedCard({
     opacity: isInCorrectPosition ? 0.5 : 1,
     immediate: (key) => {
       // Scale and opacity always animate smoothly
-      if (key === "scale" || key === "opacity") return false;
+      if (key === 'scale' || key === 'opacity') return false
       // Position and rotation are immediate when dragging or resizing
-      return isDragging || isResizing;
+      return isDragging || isResizing
     },
     config: {
       tension: 300,
       friction: 30,
     },
-  });
+  })
 
   return (
     <animated.div
@@ -878,45 +808,43 @@ function AnimatedCard({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       className={css({
-        position: "absolute",
-        width: "140px",
-        height: "180px",
-        cursor: isSpectating ? "default" : "grab",
-        touchAction: "none",
-        userSelect: "none",
-        transition: "box-shadow 0.2s ease",
-        borderRadius: "12px",
-        overflow: "hidden",
+        position: 'absolute',
+        width: '140px',
+        height: '180px',
+        cursor: isSpectating ? 'default' : 'grab',
+        touchAction: 'none',
+        userSelect: 'none',
+        transition: 'box-shadow 0.2s ease',
+        borderRadius: '12px',
+        overflow: 'hidden',
       })}
       style={{
         left: springProps.left.to((val) => `${val}px`),
         top: springProps.top.to((val) => `${val}px`),
         transform: to(
           [springProps.rotation, springProps.scale],
-          (r, s) => `rotate(${r}deg) scale(${s})`,
+          (r, s) => `rotate(${r}deg) scale(${s})`
         ),
         opacity: springProps.opacity,
         zIndex: cardState.zIndex,
-        boxShadow: isDragging
-          ? "0 20px 40px rgba(0, 0, 0, 0.3)"
-          : "0 4px 8px rgba(0, 0, 0, 0.15)",
+        boxShadow: isDragging ? '0 20px 40px rgba(0, 0, 0, 0.3)' : '0 4px 8px rgba(0, 0, 0, 0.15)',
       }}
     >
       <div
         className={css({
-          width: "100%",
-          height: "100%",
-          background: "white",
-          borderRadius: "12px",
-          border: isCorrect ? "3px solid #22c55e" : "3px solid #0369a1",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "12px",
-          boxSizing: "border-box",
-          overflow: "hidden",
+          width: '100%',
+          height: '100%',
+          background: 'white',
+          borderRadius: '12px',
+          border: isCorrect ? '3px solid #22c55e' : '3px solid #0369a1',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '12px',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
           // Clip content to border-box so rounded corners work properly
-          backgroundClip: "border-box",
+          backgroundClip: 'border-box',
         })}
         dangerouslySetInnerHTML={{ __html: card.svgContent }}
       />
@@ -925,34 +853,34 @@ function AnimatedCard({
       {draggedByPlayerId &&
         draggedByPlayerId !== localPlayerId &&
         (() => {
-          const player = players.get(draggedByPlayerId);
-          if (!player) return null;
+          const player = players.get(draggedByPlayerId)
+          if (!player) return null
 
           return (
             <div
               style={{
-                position: "absolute",
+                position: 'absolute',
                 top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,
-                borderRadius: "12px",
-                background: "rgba(59, 130, 246, 0.15)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "120px",
+                borderRadius: '12px',
+                background: 'rgba(59, 130, 246, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '120px',
                 zIndex: 10,
-                pointerEvents: "none",
+                pointerEvents: 'none',
                 opacity: 0.3,
               }}
             >
               {player.emoji}
             </div>
-          );
+          )
         })()}
     </animated.div>
-  );
+  )
 }
 
 export function PlayingPhaseDrag() {
@@ -967,102 +895,99 @@ export function PlayingPhaseDrag() {
     isSpectating,
     localPlayerId,
     players,
-  } = useCardSorting();
+  } = useCardSorting()
 
   // Spectator educational mode (show correctness indicators)
-  const [spectatorEducationalMode, setSpectatorEducationalMode] =
-    useState(false);
+  const [spectatorEducationalMode, setSpectatorEducationalMode] = useState(false)
   // Spectator stats sidebar collapsed state
-  const [spectatorStatsCollapsed, setSpectatorStatsCollapsed] = useState(false);
+  const [spectatorStatsCollapsed, setSpectatorStatsCollapsed] = useState(false)
 
   // Activity feed notifications
   interface ActivityNotification {
-    id: string;
-    playerId: string;
-    playerEmoji: string;
-    playerName: string;
-    action: string;
-    timestamp: number;
+    id: string
+    playerId: string
+    playerEmoji: string
+    playerName: string
+    action: string
+    timestamp: number
   }
-  const [activityFeed, setActivityFeed] = useState<ActivityNotification[]>([]);
-  const activityIdCounter = useRef(0);
+  const [activityFeed, setActivityFeed] = useState<ActivityNotification[]>([])
+  const activityIdCounter = useRef(0)
 
   // Perfect sequence countdown (auto-submit after 3-2-1)
-  const [perfectCountdown, setPerfectCountdown] = useState<number | null>(null);
+  const [perfectCountdown, setPerfectCountdown] = useState<number | null>(null)
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{
-    cardId: string;
-    offsetX: number;
-    offsetY: number;
-    startX: number;
-    startY: number;
-    initialRotation: number;
-  } | null>(null);
+    cardId: string
+    offsetX: number
+    offsetY: number
+    startX: number
+    startY: number
+    initialRotation: number
+  } | null>(null)
 
   // Generate a stable unique ID for this browser window/tab
   // This allows us to identify our own position updates when they echo back from the server
-  const windowIdRef = useRef<string>();
+  const windowIdRef = useRef<string>()
   if (!windowIdRef.current) {
-    windowIdRef.current = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    windowIdRef.current = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   }
 
   // Track card positions and visual states (UI only - not game state)
-  const [cardStates, setCardStates] = useState<Map<string, CardState>>(
-    new Map(),
-  );
-  const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
-  const [nextZIndex, setNextZIndex] = useState(1);
+  const [cardStates, setCardStates] = useState<Map<string, CardState>>(new Map())
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null)
+  const [nextZIndex, setNextZIndex] = useState(1)
 
   // Track viewport dimensions for responsive positioning
   // Get viewport dimensions (uses mock dimensions in preview mode)
-  const viewport = useViewport();
+  const viewport = useViewport()
 
   // For spectators, reduce dimensions to account for panels
   const getEffectiveViewportWidth = () => {
-    const baseWidth = viewport.width;
+    const baseWidth = viewport.width
     // Sidebar is hidden on mobile (< 768px), narrower on desktop
     if (isSpectating && !spectatorStatsCollapsed && baseWidth >= 768) {
-      return baseWidth - 240; // Subtract stats sidebar width on desktop
+      return baseWidth - 240 // Subtract stats sidebar width on desktop
     }
-    return baseWidth;
-  };
+    return baseWidth
+  }
 
   const getEffectiveViewportHeight = () => {
-    const baseHeight = viewport.height;
-    const baseWidth = viewport.width;
+    const baseHeight = viewport.height
+    const baseWidth = viewport.width
     if (isSpectating) {
       // Banner is 170px on mobile (130px mini nav + 40px spectator banner), 56px on desktop
-      return baseHeight - (baseWidth < 768 ? 170 : 56);
+      return baseHeight - (baseWidth < 768 ? 170 : 56)
     }
-    return baseHeight;
-  };
+    return baseHeight
+  }
 
   const [viewportDimensions, setViewportDimensions] = useState({
     width: getEffectiveViewportWidth(),
     height: getEffectiveViewportHeight(),
-  });
+  })
 
   // Track if we're currently resizing to disable spring animations
-  const [isResizing, setIsResizing] = useState(false);
-  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isResizing, setIsResizing] = useState(false)
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Throttle position updates during drag (every 100ms)
-  const lastSyncTimeRef = useRef<number>(0);
+  const lastSyncTimeRef = useRef<number>(0)
 
   // Track when we're waiting to check solution
-  const [waitingToCheck, setWaitingToCheck] = useState(false);
-  const cardsToInsertRef = useRef<SortingCard[]>([]);
-  const currentInsertIndexRef = useRef(0);
+  const [waitingToCheck, setWaitingToCheck] = useState(false)
+  const cardsToInsertRef = useRef<SortingCard[]>([])
+  const currentInsertIndexRef = useRef(0)
 
   // Helper to add activity notifications (only in collaborative mode)
   const addActivityNotification = useCallback(
     (playerId: string, action: string) => {
-      if (state.gameMode !== "collaborative") return;
-      if (playerId === localPlayerId) return; // Don't show notifications for own actions
+      if (state.gameMode !== 'collaborative') return
+      if (playerId === localPlayerId) return // Don't show notifications for own actions
 
-      const player = players.get(playerId);
-      if (!player) return;
+      const player = players.get(playerId)
+      if (!player) return
 
       const notification: ActivityNotification = {
         id: `activity-${activityIdCounter.current++}`,
@@ -1071,98 +996,93 @@ export function PlayingPhaseDrag() {
         playerName: player.name,
         action,
         timestamp: Date.now(),
-      };
+      }
 
-      setActivityFeed((prev) => [...prev, notification]);
+      setActivityFeed((prev) => [...prev, notification])
     },
-    [state.gameMode, localPlayerId, players],
-  );
+    [state.gameMode, localPlayerId, players]
+  )
 
   // Auto-dismiss notifications after 3 seconds
   useEffect(() => {
-    if (activityFeed.length === 0) return;
+    if (activityFeed.length === 0) return
 
     const timeout = setTimeout(() => {
-      const now = Date.now();
-      setActivityFeed((prev) => prev.filter((n) => now - n.timestamp < 3000));
-    }, 100); // Check every 100ms for smooth removal
+      const now = Date.now()
+      setActivityFeed((prev) => prev.filter((n) => now - n.timestamp < 3000))
+    }, 100) // Check every 100ms for smooth removal
 
-    return () => clearTimeout(timeout);
-  }, [activityFeed]);
+    return () => clearTimeout(timeout)
+  }, [activityFeed])
 
   // Track previous state for detecting changes
-  const prevDraggingPlayersRef = useRef<Set<string>>(new Set());
+  const prevDraggingPlayersRef = useRef<Set<string>>(new Set())
 
   // Detect state changes and generate activity notifications
   useEffect(() => {
     // Only track in collaborative mode
-    if (state.gameMode !== "collaborative") return;
-    if (!state.cardPositions) return;
+    if (state.gameMode !== 'collaborative') return
+    if (!state.cardPositions) return
 
     // Detect who is currently dragging cards
-    const currentlyDragging = new Set<string>();
+    const currentlyDragging = new Set<string>()
     for (const pos of state.cardPositions) {
       if (pos.draggedByPlayerId && pos.draggedByPlayerId !== localPlayerId) {
-        currentlyDragging.add(pos.draggedByPlayerId);
+        currentlyDragging.add(pos.draggedByPlayerId)
       }
     }
 
     // Detect new players starting to drag (activity notification)
     for (const playerId of currentlyDragging) {
       if (!prevDraggingPlayersRef.current.has(playerId)) {
-        addActivityNotification(playerId, "is moving cards");
+        addActivityNotification(playerId, 'is moving cards')
       }
     }
 
-    prevDraggingPlayersRef.current = currentlyDragging;
-  }, [
-    state.cardPositions,
-    state.gameMode,
-    localPlayerId,
-    addActivityNotification,
-  ]);
+    prevDraggingPlayersRef.current = currentlyDragging
+  }, [state.cardPositions, state.gameMode, localPlayerId, addActivityNotification])
 
   // Handle viewport resize
   useEffect(() => {
     const handleResize = () => {
       // Set resizing flag to disable spring animations
-      setIsResizing(true);
+      setIsResizing(true)
 
       // Update viewport dimensions immediately (accounting for spectator panels)
       setViewportDimensions({
         width: getEffectiveViewportWidth(),
         height: getEffectiveViewportHeight(),
-      });
+      })
 
       // Clear any existing timeout
       if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
+        clearTimeout(resizeTimeoutRef.current)
       }
 
       // After 150ms of no resize events, re-enable spring animations
       resizeTimeoutRef.current = setTimeout(() => {
-        setIsResizing(false);
-      }, 150);
-    };
+        setIsResizing(false)
+      }, 150)
+    }
 
-    window.addEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize)
     return () => {
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener('resize', handleResize)
       if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
+        clearTimeout(resizeTimeoutRef.current)
       }
-    };
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [])
 
   // Update viewport dimensions when spectator panels change
   useEffect(() => {
     setViewportDimensions({
       width: getEffectiveViewportWidth(),
       height: getEffectiveViewportHeight(),
-    });
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSpectating, spectatorStatsCollapsed]);
+  }, [isSpectating, spectatorStatsCollapsed])
 
   // Initialize card positions when game starts or restarts
   useEffect(() => {
@@ -1170,25 +1090,23 @@ export function PlayingPhaseDrag() {
     const allCards = [
       ...state.availableCards,
       ...state.placedCards.filter((c): c is SortingCard => c !== null),
-    ];
+    ]
 
     // Only initialize if we have cards and either:
     // 1. No card states exist yet, OR
     // 2. The number of cards has changed (new game started)
     const shouldInitialize =
-      allCards.length > 0 &&
-      (cardStates.size === 0 || cardStates.size !== allCards.length);
+      allCards.length > 0 && (cardStates.size === 0 || cardStates.size !== allCards.length)
 
-    if (!shouldInitialize) return;
+    if (!shouldInitialize) return
 
-    const newStates = new Map<string, CardState>();
+    const newStates = new Map<string, CardState>()
 
     // Check if we have server positions to restore from
-    const hasServerPositions =
-      state.cardPositions && state.cardPositions.length === allCards.length;
+    const hasServerPositions = state.cardPositions && state.cardPositions.length === allCards.length
 
     allCards.forEach((card, index) => {
-      const serverPos = state.cardPositions?.find((p) => p.cardId === card.id);
+      const serverPos = state.cardPositions?.find((p) => p.cardId === card.id)
 
       if (hasServerPositions && serverPos) {
         // Restore from server (already in percentages)
@@ -1197,75 +1115,68 @@ export function PlayingPhaseDrag() {
           y: serverPos.y,
           rotation: serverPos.rotation,
           zIndex: serverPos.zIndex,
-        });
+        })
       } else {
         // Generate scattered positions that look like cards thrown on a table
         // Card is ~140px wide on ~1000px viewport = ~14% of width
         // Card is ~180px tall on ~800px viewport = ~22.5% of height
-        const xMargin = 5; // 5% margin on sides
-        const yMargin = 15; // 15% margin for top UI
+        const xMargin = 5 // 5% margin on sides
+        const yMargin = 15 // 15% margin for top UI
 
         // Create a more natural distribution by using clusters
         // Divide the play area into a rough grid, then add randomness
-        const numCards = allCards.length;
-        const cols = Math.ceil(Math.sqrt(numCards * 1.5)); // Slightly wider grid
-        const rows = Math.ceil(numCards / cols);
+        const numCards = allCards.length
+        const cols = Math.ceil(Math.sqrt(numCards * 1.5)) // Slightly wider grid
+        const rows = Math.ceil(numCards / cols)
 
-        const row = Math.floor(index / cols);
-        const col = index % cols;
+        const row = Math.floor(index / cols)
+        const col = index % cols
 
         // Available space after margins
-        const availableWidth = 100 - 2 * xMargin - 14;
-        const availableHeight = 100 - yMargin - 22.5;
+        const availableWidth = 100 - 2 * xMargin - 14
+        const availableHeight = 100 - yMargin - 22.5
 
         // Grid cell size
-        const cellWidth = availableWidth / cols;
-        const cellHeight = availableHeight / rows;
+        const cellWidth = availableWidth / cols
+        const cellHeight = availableHeight / rows
 
         // Base position in grid (centered in cell)
-        const baseX = xMargin + col * cellWidth + cellWidth / 2 - 7; // -7 to center card
-        const baseY = yMargin + row * cellHeight + cellHeight / 2 - 11.25; // -11.25 to center card
+        const baseX = xMargin + col * cellWidth + cellWidth / 2 - 7 // -7 to center card
+        const baseY = yMargin + row * cellHeight + cellHeight / 2 - 11.25 // -11.25 to center card
 
         // Add significant randomness to make it look scattered (±40% of cell size)
-        const offsetX = (Math.random() - 0.5) * cellWidth * 0.8;
-        const offsetY = (Math.random() - 0.5) * cellHeight * 0.8;
+        const offsetX = (Math.random() - 0.5) * cellWidth * 0.8
+        const offsetY = (Math.random() - 0.5) * cellHeight * 0.8
 
         // Ensure we stay within bounds
-        const x = Math.max(
-          xMargin,
-          Math.min(100 - 14 - xMargin, baseX + offsetX),
-        );
-        const y = Math.max(yMargin, Math.min(100 - 22.5, baseY + offsetY));
+        const x = Math.max(xMargin, Math.min(100 - 14 - xMargin, baseX + offsetX))
+        const y = Math.max(yMargin, Math.min(100 - 22.5, baseY + offsetY))
 
         // More varied rotation for natural look
-        const rotation = (Math.random() - 0.5) * 40; // -20 to 20 degrees
+        const rotation = (Math.random() - 0.5) * 40 // -20 to 20 degrees
 
         // Randomize z-index for natural stacking
-        const zIndex = Math.floor(Math.random() * numCards);
+        const zIndex = Math.floor(Math.random() * numCards)
 
-        newStates.set(card.id, { x, y, rotation, zIndex });
+        newStates.set(card.id, { x, y, rotation, zIndex })
       }
-    });
+    })
 
-    setCardStates(newStates);
-    setNextZIndex(
-      Math.max(...Array.from(newStates.values()).map((s) => s.zIndex)) + 1,
-    );
+    setCardStates(newStates)
+    setNextZIndex(Math.max(...Array.from(newStates.values()).map((s) => s.zIndex)) + 1)
 
     // If we generated new positions (not restored from server), send them to server
     if (!hasServerPositions && !isSpectating) {
-      const positions = Array.from(newStates.entries()).map(
-        ([id, cardState]) => ({
-          cardId: id,
-          x: cardState.x,
-          y: cardState.y,
-          rotation: cardState.rotation,
-          zIndex: cardState.zIndex,
-          // Mark with our window ID to identify echoes
-          draggedByWindowId: windowIdRef.current,
-        }),
-      );
-      updateCardPositions(positions);
+      const positions = Array.from(newStates.entries()).map(([id, cardState]) => ({
+        cardId: id,
+        x: cardState.x,
+        y: cardState.y,
+        rotation: cardState.rotation,
+        zIndex: cardState.zIndex,
+        // Mark with our window ID to identify echoes
+        draggedByWindowId: windowIdRef.current,
+      }))
+      updateCardPositions(positions)
     }
   }, [
     state.availableCards.length,
@@ -1275,27 +1186,27 @@ export function PlayingPhaseDrag() {
     cardStates.size,
     isSpectating,
     updateCardPositions,
-  ]);
+  ])
 
   // Sync server position updates (for spectators and multi-window sync)
   useEffect(() => {
-    if (!state.cardPositions || state.cardPositions.length === 0) return;
-    if (cardStates.size === 0) return;
+    if (!state.cardPositions || state.cardPositions.length === 0) return
+    if (cardStates.size === 0) return
 
     // Check if any updates originated from this window - if so, skip the entire batch
     // This prevents replaying our own movements when they echo back from the server
     const hasOurUpdates = state.cardPositions.some(
-      (pos) => pos.draggedByWindowId === windowIdRef.current,
-    );
-    if (hasOurUpdates) return;
+      (pos) => pos.draggedByWindowId === windowIdRef.current
+    )
+    if (hasOurUpdates) return
 
     // Check if server positions differ from current positions
-    let needsUpdate = false;
-    const newStates = new Map(cardStates);
+    let needsUpdate = false
+    const newStates = new Map(cardStates)
 
     for (const serverPos of state.cardPositions) {
-      const currentState = cardStates.get(serverPos.cardId);
-      if (!currentState) continue;
+      const currentState = cardStates.get(serverPos.cardId)
+      if (!currentState) continue
 
       // Compare percentages directly (tolerance: 0.5%)
       if (
@@ -1304,52 +1215,52 @@ export function PlayingPhaseDrag() {
         Math.abs(currentState.rotation - serverPos.rotation) > 1 ||
         currentState.zIndex !== serverPos.zIndex
       ) {
-        needsUpdate = true;
+        needsUpdate = true
         newStates.set(serverPos.cardId, {
           x: serverPos.x,
           y: serverPos.y,
           rotation: serverPos.rotation,
           zIndex: serverPos.zIndex,
-        });
+        })
       }
     }
 
     if (needsUpdate && !draggingCardId) {
       // Only apply server updates if not currently dragging
-      setCardStates(newStates);
+      setCardStates(newStates)
     }
-  }, [state.cardPositions, draggingCardId, cardStates]);
+  }, [state.cardPositions, draggingCardId, cardStates])
 
   // Infer sequence from card positions
   const inferredSequence = inferSequenceFromPositions(cardStates, [
     ...state.availableCards,
     ...state.placedCards.filter((c): c is SortingCard => c !== null),
-  ]);
+  ])
 
   // Format time display
   const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
 
   // Handle pointer down (start drag)
   const handlePointerDown = (e: React.PointerEvent, cardId: string) => {
-    if (isSpectating) return;
+    if (isSpectating) return
 
-    const target = e.currentTarget as HTMLElement;
-    target.setPointerCapture(e.pointerId);
+    const target = e.currentTarget as HTMLElement
+    target.setPointerCapture(e.pointerId)
 
     // Get current card state to calculate proper offset
-    const currentCard = cardStates.get(cardId);
-    if (!currentCard) return;
+    const currentCard = cardStates.get(cardId)
+    if (!currentCard) return
 
     // Calculate offset from card's actual position (in pixels) to pointer
     // This accounts for rotation and prevents position jump
-    const cardPixelX = (currentCard.x / 100) * viewportDimensions.width;
-    const cardPixelY = (currentCard.y / 100) * viewportDimensions.height;
-    const offsetX = e.clientX - cardPixelX;
-    const offsetY = e.clientY - cardPixelY;
+    const cardPixelX = (currentCard.x / 100) * viewportDimensions.width
+    const cardPixelY = (currentCard.y / 100) * viewportDimensions.height
+    const offsetX = e.clientX - cardPixelX
+    const offsetY = e.clientY - cardPixelY
 
     dragStateRef.current = {
       cardId,
@@ -1358,220 +1269,208 @@ export function PlayingPhaseDrag() {
       startX: e.clientX,
       startY: e.clientY,
       initialRotation: currentCard.rotation,
-    };
+    }
 
-    setDraggingCardId(cardId);
+    setDraggingCardId(cardId)
 
     // Bring card to front
     setCardStates((prev) => {
-      const newStates = new Map(prev);
-      const cardState = newStates.get(cardId);
+      const newStates = new Map(prev)
+      const cardState = newStates.get(cardId)
       if (cardState) {
-        newStates.set(cardId, { ...cardState, zIndex: nextZIndex });
+        newStates.set(cardId, { ...cardState, zIndex: nextZIndex })
       }
-      return newStates;
-    });
-    setNextZIndex((prev) => prev + 1);
-  };
+      return newStates
+    })
+    setNextZIndex((prev) => prev + 1)
+  }
 
   // Handle pointer move (dragging)
   const handlePointerMove = (e: React.PointerEvent, cardId: string) => {
-    if (!dragStateRef.current || dragStateRef.current.cardId !== cardId) return;
+    if (!dragStateRef.current || dragStateRef.current.cardId !== cardId) return
 
-    const { offsetX, offsetY } = dragStateRef.current;
+    const { offsetX, offsetY } = dragStateRef.current
 
     // Calculate new position in pixels
-    const newXPx = e.clientX - offsetX;
-    const newYPx = e.clientY - offsetY;
+    const newXPx = e.clientX - offsetX
+    const newYPx = e.clientY - offsetY
 
     // Convert to percentages
-    const viewportWidth = viewport.width;
-    const viewportHeight = viewport.height;
-    const newX = (newXPx / viewportWidth) * 100;
-    const newY = (newYPx / viewportHeight) * 100;
+    const viewportWidth = viewport.width
+    const viewportHeight = viewport.height
+    const newX = (newXPx / viewportWidth) * 100
+    const newY = (newYPx / viewportHeight) * 100
 
     // Calculate rotation based on drag velocity, adding to initial rotation
-    const dragDeltaX = e.clientX - dragStateRef.current.startX;
-    const dragRotation = Math.max(-15, Math.min(15, dragDeltaX * 0.05));
-    const rotation = dragStateRef.current.initialRotation + dragRotation;
+    const dragDeltaX = e.clientX - dragStateRef.current.startX
+    const dragRotation = Math.max(-15, Math.min(15, dragDeltaX * 0.05))
+    const rotation = dragStateRef.current.initialRotation + dragRotation
 
     setCardStates((prev) => {
-      const newStates = new Map(prev);
-      const cardState = newStates.get(cardId);
+      const newStates = new Map(prev)
+      const cardState = newStates.get(cardId)
       if (cardState) {
         newStates.set(cardId, {
           ...cardState,
           x: newX,
           y: newY,
           rotation,
-        });
+        })
 
         // Send real-time position updates (throttled to every 100ms)
         if (!isSpectating) {
-          const now = Date.now();
+          const now = Date.now()
           if (now - lastSyncTimeRef.current > 100) {
-            lastSyncTimeRef.current = now;
-            const positions = Array.from(newStates.entries()).map(
-              ([id, state]) => ({
-                cardId: id,
-                x: state.x,
-                y: state.y,
-                rotation: state.rotation,
-                zIndex: state.zIndex,
-                // Mark this card as being dragged by local player
-                draggedByPlayerId: id === cardId ? localPlayerId : undefined,
-                // Mark with our window ID to identify echoes
-                draggedByWindowId: windowIdRef.current,
-              }),
-            );
-            updateCardPositions(positions);
+            lastSyncTimeRef.current = now
+            const positions = Array.from(newStates.entries()).map(([id, state]) => ({
+              cardId: id,
+              x: state.x,
+              y: state.y,
+              rotation: state.rotation,
+              zIndex: state.zIndex,
+              // Mark this card as being dragged by local player
+              draggedByPlayerId: id === cardId ? localPlayerId : undefined,
+              // Mark with our window ID to identify echoes
+              draggedByWindowId: windowIdRef.current,
+            }))
+            updateCardPositions(positions)
           }
         }
       }
-      return newStates;
-    });
-  };
+      return newStates
+    })
+  }
 
   // Handle pointer up (end drag)
   const handlePointerUp = (e: React.PointerEvent, cardId: string) => {
-    if (!dragStateRef.current || dragStateRef.current.cardId !== cardId) return;
+    if (!dragStateRef.current || dragStateRef.current.cardId !== cardId) return
 
-    const target = e.currentTarget as HTMLElement;
-    target.releasePointerCapture(e.pointerId);
+    const target = e.currentTarget as HTMLElement
+    target.releasePointerCapture(e.pointerId)
 
     // Reset rotation to slight random tilt
-    const updatedStates = new Map(cardStates);
-    const cardState = updatedStates.get(cardId);
+    const updatedStates = new Map(cardStates)
+    const cardState = updatedStates.get(cardId)
     if (cardState) {
       updatedStates.set(cardId, {
         ...cardState,
         rotation: Math.random() * 10 - 5,
-      });
-      setCardStates(updatedStates);
+      })
+      setCardStates(updatedStates)
 
       // Sync positions to server (already in percentages)
       if (!isSpectating) {
-        const positions = Array.from(updatedStates.entries()).map(
-          ([id, state]) => ({
-            cardId: id,
-            x: state.x,
-            y: state.y,
-            rotation: state.rotation,
-            zIndex: state.zIndex,
-            // Clear draggedByPlayerId when drag ends
-            draggedByPlayerId: undefined,
-            // Mark with our window ID to identify echoes
-            draggedByWindowId: windowIdRef.current,
-          }),
-        );
-        updateCardPositions(positions);
+        const positions = Array.from(updatedStates.entries()).map(([id, state]) => ({
+          cardId: id,
+          x: state.x,
+          y: state.y,
+          rotation: state.rotation,
+          zIndex: state.zIndex,
+          // Clear draggedByPlayerId when drag ends
+          draggedByPlayerId: undefined,
+          // Mark with our window ID to identify echoes
+          draggedByWindowId: windowIdRef.current,
+        }))
+        updateCardPositions(positions)
       }
     }
 
-    dragStateRef.current = null;
-    setDraggingCardId(null);
-  };
+    dragStateRef.current = null
+    setDraggingCardId(null)
+  }
 
   // For drag mode, check solution is available when we have a valid inferred sequence
-  const canCheckSolutionDrag = inferredSequence.length === state.cardCount;
+  const canCheckSolutionDrag = inferredSequence.length === state.cardCount
 
   // Real-time check: is the current sequence correct?
   const isSequenceCorrect =
     canCheckSolutionDrag &&
     inferredSequence.every((card, index) => {
-      const correctCard = state.correctOrder[index];
-      return correctCard && card.id === correctCard.id;
-    });
+      const correctCard = state.correctOrder[index]
+      return correctCard && card.id === correctCard.id
+    })
 
   // Start countdown when sequence is perfect
   useEffect(() => {
     if (isSequenceCorrect && !isSpectating) {
       // Start countdown from 3
-      setPerfectCountdown(3);
+      setPerfectCountdown(3)
     } else {
       // Reset countdown if sequence is no longer perfect
-      setPerfectCountdown(null);
+      setPerfectCountdown(null)
     }
-  }, [isSequenceCorrect, isSpectating]);
+  }, [isSequenceCorrect, isSpectating])
 
   // Countdown timer effect
   useEffect(() => {
-    if (perfectCountdown === null) return;
+    if (perfectCountdown === null) return
     if (perfectCountdown <= 0) {
       // Auto-submit when countdown reaches 0
-      handleCheckSolution();
-      setPerfectCountdown(null);
-      return;
+      handleCheckSolution()
+      setPerfectCountdown(null)
+      return
     }
 
     // Decrement every 1.5 seconds
     const timer = setTimeout(() => {
-      setPerfectCountdown((prev) => (prev !== null ? prev - 1 : null));
-    }, 1500);
+      setPerfectCountdown((prev) => (prev !== null ? prev - 1 : null))
+    }, 1500)
 
-    return () => clearTimeout(timer);
+    return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perfectCountdown]);
+  }, [perfectCountdown])
 
   // Watch for server confirmations and insert next card or check solution
   useEffect(() => {
-    if (!waitingToCheck) return;
+    if (!waitingToCheck) return
 
-    const cardsToInsert = cardsToInsertRef.current;
-    const currentIndex = currentInsertIndexRef.current;
+    const cardsToInsert = cardsToInsertRef.current
+    const currentIndex = currentInsertIndexRef.current
 
-    console.log("[PlayingPhaseDrag] useEffect check:", {
+    console.log('[PlayingPhaseDrag] useEffect check:', {
       waitingToCheck,
       currentIndex,
       totalCards: cardsToInsert.length,
       canCheckSolution,
-    });
+    })
 
     // If all cards have been sent, wait for server to confirm all are placed
     if (currentIndex >= cardsToInsert.length) {
       if (canCheckSolution) {
-        console.log(
-          "[PlayingPhaseDrag] ✅ Server confirmed all cards placed, checking solution",
-        );
-        setWaitingToCheck(false);
-        cardsToInsertRef.current = [];
-        currentInsertIndexRef.current = 0;
-        checkSolution();
+        console.log('[PlayingPhaseDrag] ✅ Server confirmed all cards placed, checking solution')
+        setWaitingToCheck(false)
+        cardsToInsertRef.current = []
+        currentInsertIndexRef.current = 0
+        checkSolution()
       }
-      return;
+      return
     }
 
     // Send next card
-    const card = cardsToInsert[currentIndex];
-    const position = inferredSequence.findIndex((c) => c.id === card.id);
+    const card = cardsToInsert[currentIndex]
+    const position = inferredSequence.findIndex((c) => c.id === card.id)
     console.log(
-      `[PlayingPhaseDrag] 📥 Inserting card ${currentIndex + 1}/${cardsToInsert.length}: ${card.id} at position ${position}`,
-    );
-    insertCard(card.id, position);
-    currentInsertIndexRef.current++;
-  }, [
-    waitingToCheck,
-    canCheckSolution,
-    checkSolution,
-    insertCard,
-    inferredSequence,
-  ]);
+      `[PlayingPhaseDrag] 📥 Inserting card ${currentIndex + 1}/${cardsToInsert.length}: ${card.id} at position ${position}`
+    )
+    insertCard(card.id, position)
+    currentInsertIndexRef.current++
+  }, [waitingToCheck, canCheckSolution, checkSolution, insertCard, inferredSequence])
 
   // Custom check solution that uses the inferred sequence
   const handleCheckSolution = () => {
-    if (isSpectating) return;
-    if (!canCheckSolutionDrag) return;
+    if (isSpectating) return
+    if (!canCheckSolutionDrag) return
 
     // Send the complete inferred sequence to the server
-    checkSolution(inferredSequence);
-  };
+    checkSolution(inferredSequence)
+  }
 
   return (
     <div
       className={css({
-        width: "100%",
-        height: "100%",
-        position: "fixed",
+        width: '100%',
+        height: '100%',
+        position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
@@ -1582,35 +1481,33 @@ export function PlayingPhaseDrag() {
       {isSpectating && (
         <div
           className={css({
-            position: "fixed",
-            top: { base: "130px", md: 0 },
+            position: 'fixed',
+            top: { base: '130px', md: 0 },
             left: 0,
             right: 0,
-            height: { base: "40px", md: "56px" },
-            background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-            color: "white",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: { base: "0 8px", md: "0 24px" },
+            height: { base: '40px', md: '56px' },
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: { base: '0 8px', md: '0 24px' },
             zIndex: 100,
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
-            gap: { base: "8px", md: "16px" },
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+            gap: { base: '8px', md: '16px' },
           })}
         >
           {/* Player info */}
           <div
             className={css({
-              display: "flex",
-              alignItems: "center",
-              gap: { base: "6px", md: "12px" },
-              fontSize: { base: "12px", md: "16px" },
+              display: 'flex',
+              alignItems: 'center',
+              gap: { base: '6px', md: '12px' },
+              fontSize: { base: '12px', md: '16px' },
               fontWeight: 600,
             })}
           >
-            <span className={css({ display: { base: "none", sm: "inline" } })}>
-              👀 Spectating:
-            </span>
+            <span className={css({ display: { base: 'none', sm: 'inline' } })}>👀 Spectating:</span>
             <span>
               {state.playerMetadata.emoji} {state.playerMetadata.name}
             </span>
@@ -1619,71 +1516,58 @@ export function PlayingPhaseDrag() {
           {/* Progress */}
           <div
             className={css({
-              display: "flex",
-              alignItems: "center",
-              gap: { base: "8px", md: "16px" },
-              fontSize: { base: "11px", md: "14px" },
+              display: 'flex',
+              alignItems: 'center',
+              gap: { base: '8px', md: '16px' },
+              fontSize: { base: '11px', md: '14px' },
             })}
           >
             <div
               className={css({
-                display: "flex",
-                alignItems: "center",
-                gap: { base: "4px", md: "8px" },
+                display: 'flex',
+                alignItems: 'center',
+                gap: { base: '4px', md: '8px' },
               })}
             >
-              <span
-                className={css({ display: { base: "none", sm: "inline" } })}
-              >
-                Progress:
-              </span>
+              <span className={css({ display: { base: 'none', sm: 'inline' } })}>Progress:</span>
               <span
                 className={css({
                   fontWeight: 600,
-                  fontSize: { base: "12px", md: "16px" },
+                  fontSize: { base: '12px', md: '16px' },
                 })}
               >
-                {state.placedCards.filter((c) => c !== null).length}/
-                {state.cardCount}
+                {state.placedCards.filter((c) => c !== null).length}/{state.cardCount}
               </span>
-              <span
-                className={css({ display: { base: "none", sm: "inline" } })}
-              >
-                cards
-              </span>
+              <span className={css({ display: { base: 'none', sm: 'inline' } })}>cards</span>
             </div>
 
             {/* Educational Mode Toggle */}
             <button
               type="button"
-              onClick={() =>
-                setSpectatorEducationalMode(!spectatorEducationalMode)
-              }
+              onClick={() => setSpectatorEducationalMode(!spectatorEducationalMode)}
               className={css({
-                display: "flex",
-                alignItems: "center",
-                gap: { base: "4px", md: "8px" },
-                padding: { base: "4px 8px", md: "6px 12px" },
-                borderRadius: "20px",
-                border: "2px solid rgba(255, 255, 255, 0.3)",
+                display: 'flex',
+                alignItems: 'center',
+                gap: { base: '4px', md: '8px' },
+                padding: { base: '4px 8px', md: '6px 12px' },
+                borderRadius: '20px',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
                 background: spectatorEducationalMode
-                  ? "rgba(255, 255, 255, 0.2)"
-                  : "rgba(255, 255, 255, 0.1)",
-                color: "white",
-                fontSize: { base: "11px", md: "14px" },
+                  ? 'rgba(255, 255, 255, 0.2)'
+                  : 'rgba(255, 255, 255, 0.1)',
+                color: 'white',
+                fontSize: { base: '11px', md: '14px' },
                 fontWeight: 500,
-                cursor: "pointer",
-                transition: "all 0.2s",
+                cursor: 'pointer',
+                transition: 'all 0.2s',
                 _hover: {
-                  background: "rgba(255, 255, 255, 0.25)",
-                  borderColor: "rgba(255, 255, 255, 0.5)",
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
                 },
               })}
             >
-              <span>{spectatorEducationalMode ? "✅" : "📚"}</span>
-              <span
-                className={css({ display: { base: "none", sm: "inline" } })}
-              >
+              <span>{spectatorEducationalMode ? '✅' : '📚'}</span>
+              <span className={css({ display: { base: 'none', sm: 'inline' } })}>
                 Educational Mode
               </span>
             </button>
@@ -1695,26 +1579,26 @@ export function PlayingPhaseDrag() {
       {isSpectating && (
         <div
           className={css({
-            position: "fixed",
+            position: 'fixed',
             // Mobile: bottom sheet, Desktop: right sidebar
-            top: { base: "auto", md: "56px" },
+            top: { base: 'auto', md: '56px' },
             bottom: {
-              base: spectatorStatsCollapsed ? "-120px" : "0",
-              md: "auto",
+              base: spectatorStatsCollapsed ? '-120px' : '0',
+              md: 'auto',
             },
-            right: { base: "0", md: spectatorStatsCollapsed ? "-240px" : "0" },
-            left: { base: "0", md: "auto" },
-            width: { base: "100%", md: "240px" },
-            height: { base: "120px", md: "calc(100vh - 56px)" },
-            background: "rgba(255, 255, 255, 0.95)",
+            right: { base: '0', md: spectatorStatsCollapsed ? '-240px' : '0' },
+            left: { base: '0', md: 'auto' },
+            width: { base: '100%', md: '240px' },
+            height: { base: '120px', md: 'calc(100vh - 56px)' },
+            background: 'rgba(255, 255, 255, 0.95)',
             boxShadow: {
-              base: "0 -2px 12px rgba(0, 0, 0, 0.1)",
-              md: "-2px 0 12px rgba(0, 0, 0, 0.1)",
+              base: '0 -2px 12px rgba(0, 0, 0, 0.1)',
+              md: '-2px 0 12px rgba(0, 0, 0, 0.1)',
             },
-            transition: { base: "bottom 0.3s ease", md: "right 0.3s ease" },
+            transition: { base: 'bottom 0.3s ease', md: 'right 0.3s ease' },
             zIndex: 90,
-            display: "flex",
-            flexDirection: "column",
+            display: 'flex',
+            flexDirection: 'column',
           })}
         >
           {/* Collapse/Expand Toggle */}
@@ -1722,167 +1606,145 @@ export function PlayingPhaseDrag() {
             type="button"
             onClick={() => setSpectatorStatsCollapsed(!spectatorStatsCollapsed)}
             className={css({
-              position: "absolute",
+              position: 'absolute',
               // Mobile: top center, Desktop: left middle
-              left: { base: "50%", md: "-40px" },
-              top: { base: "-30px", md: "50%" },
-              transform: { base: "translateX(-50%)", md: "translateY(-50%)" },
-              width: { base: "80px", md: "40px" },
-              height: { base: "30px", md: "80px" },
-              background: "rgba(255, 255, 255, 0.95)",
-              border: "none",
-              borderRadius: { base: "8px 8px 0 0", md: "8px 0 0 8px" },
+              left: { base: '50%', md: '-40px' },
+              top: { base: '-30px', md: '50%' },
+              transform: { base: 'translateX(-50%)', md: 'translateY(-50%)' },
+              width: { base: '80px', md: '40px' },
+              height: { base: '30px', md: '80px' },
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: 'none',
+              borderRadius: { base: '8px 8px 0 0', md: '8px 0 0 8px' },
               boxShadow: {
-                base: "0 -2px 8px rgba(0, 0, 0, 0.1)",
-                md: "-2px 0 8px rgba(0, 0, 0, 0.1)",
+                base: '0 -2px 8px rgba(0, 0, 0, 0.1)',
+                md: '-2px 0 8px rgba(0, 0, 0, 0.1)',
               },
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: { base: "16px", md: "20px" },
-              transition: "all 0.2s",
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: { base: '16px', md: '20px' },
+              transition: 'all 0.2s',
               _hover: {
-                background: "rgba(255, 255, 255, 1)",
+                background: 'rgba(255, 255, 255, 1)',
               },
             })}
           >
-            <span className={css({ display: { base: "inline", md: "none" } })}>
-              {spectatorStatsCollapsed ? "▲" : "▼"}
+            <span className={css({ display: { base: 'inline', md: 'none' } })}>
+              {spectatorStatsCollapsed ? '▲' : '▼'}
             </span>
-            <span className={css({ display: { base: "none", md: "inline" } })}>
-              {spectatorStatsCollapsed ? "◀" : "▶"}
+            <span className={css({ display: { base: 'none', md: 'inline' } })}>
+              {spectatorStatsCollapsed ? '◀' : '▶'}
             </span>
           </button>
 
           {/* Stats Content */}
           <div
             className={css({
-              padding: { base: "8px 12px", md: "24px" },
-              overflowY: "auto",
+              padding: { base: '8px 12px', md: '24px' },
+              overflowY: 'auto',
               flex: 1,
             })}
           >
             <h3
               className={css({
-                fontSize: { base: "12px", md: "18px" },
+                fontSize: { base: '12px', md: '18px' },
                 fontWeight: 700,
-                marginBottom: { base: "6px", md: "20px" },
-                color: "#1e293b",
-                borderBottom: "2px solid #e2e8f0",
-                paddingBottom: { base: "3px", md: "8px" },
+                marginBottom: { base: '6px', md: '20px' },
+                color: '#1e293b',
+                borderBottom: '2px solid #e2e8f0',
+                paddingBottom: { base: '3px', md: '8px' },
               })}
             >
-              <span
-                className={css({ display: { base: "none", md: "inline" } })}
-              >
+              <span className={css({ display: { base: 'none', md: 'inline' } })}>
                 📊 Live Stats
               </span>
-              <span
-                className={css({ display: { base: "inline", md: "none" } })}
-              >
-                📊 Stats
-              </span>
+              <span className={css({ display: { base: 'inline', md: 'none' } })}>📊 Stats</span>
             </h3>
 
             {/* Mobile: horizontal layout, Desktop: vertical layout */}
             <div
               className={css({
-                display: { base: "grid", md: "block" },
-                gridTemplateColumns: { base: "repeat(3, 1fr)", md: "none" },
-                gap: { base: "8px", md: "0" },
+                display: { base: 'grid', md: 'block' },
+                gridTemplateColumns: { base: 'repeat(3, 1fr)', md: 'none' },
+                gap: { base: '8px', md: '0' },
               })}
             >
               {/* Time Elapsed */}
               <div
                 className={css({
-                  marginBottom: { base: "0", md: "16px" },
-                  padding: { base: "8px", md: "12px" },
-                  background: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
-                  borderRadius: { base: "6px", md: "8px" },
-                  border: "1px solid #93c5fd",
+                  marginBottom: { base: '0', md: '16px' },
+                  padding: { base: '8px', md: '12px' },
+                  background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                  borderRadius: { base: '6px', md: '8px' },
+                  border: '1px solid #93c5fd',
                 })}
               >
                 <div
                   className={css({
-                    fontSize: { base: "10px", md: "12px" },
-                    color: "#1e40af",
-                    marginBottom: "4px",
+                    fontSize: { base: '10px', md: '12px' },
+                    color: '#1e40af',
+                    marginBottom: '4px',
                   })}
                 >
-                  <span
-                    className={css({ display: { base: "none", md: "inline" } })}
-                  >
+                  <span className={css({ display: { base: 'none', md: 'inline' } })}>
                     ⏱️ Time Elapsed
                   </span>
-                  <span
-                    className={css({ display: { base: "inline", md: "none" } })}
-                  >
-                    ⏱️
-                  </span>
+                  <span className={css({ display: { base: 'inline', md: 'none' } })}>⏱️</span>
                 </div>
                 <div
                   className={css({
-                    fontSize: { base: "16px", md: "24px" },
+                    fontSize: { base: '16px', md: '24px' },
                     fontWeight: 700,
-                    color: "#1e3a8a",
+                    color: '#1e3a8a',
                   })}
                 >
-                  {Math.floor(elapsedTime / 60)}:
-                  {(elapsedTime % 60).toString().padStart(2, "0")}
+                  {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
                 </div>
               </div>
 
               {/* Cards Placed */}
               <div
                 className={css({
-                  marginBottom: { base: "0", md: "16px" },
-                  padding: { base: "8px", md: "12px" },
-                  background: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
-                  borderRadius: { base: "6px", md: "8px" },
-                  border: "1px solid #86efac",
+                  marginBottom: { base: '0', md: '16px' },
+                  padding: { base: '8px', md: '12px' },
+                  background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
+                  borderRadius: { base: '6px', md: '8px' },
+                  border: '1px solid #86efac',
                 })}
               >
                 <div
                   className={css({
-                    fontSize: { base: "10px", md: "12px" },
-                    color: "#15803d",
-                    marginBottom: "4px",
+                    fontSize: { base: '10px', md: '12px' },
+                    color: '#15803d',
+                    marginBottom: '4px',
                   })}
                 >
-                  <span
-                    className={css({ display: { base: "none", md: "inline" } })}
-                  >
+                  <span className={css({ display: { base: 'none', md: 'inline' } })}>
                     🎯 Cards Placed
                   </span>
-                  <span
-                    className={css({ display: { base: "inline", md: "none" } })}
-                  >
-                    🎯
-                  </span>
+                  <span className={css({ display: { base: 'inline', md: 'none' } })}>🎯</span>
                 </div>
                 <div
                   className={css({
-                    fontSize: { base: "16px", md: "24px" },
+                    fontSize: { base: '16px', md: '24px' },
                     fontWeight: 700,
-                    color: "#14532d",
+                    color: '#14532d',
                   })}
                 >
-                  {state.placedCards.filter((c) => c !== null).length} /{" "}
-                  {state.cardCount}
+                  {state.placedCards.filter((c) => c !== null).length} / {state.cardCount}
                 </div>
                 <div
                   className={css({
-                    fontSize: "11px",
-                    color: "#15803d",
-                    marginTop: "4px",
-                    display: { base: "none", md: "block" },
+                    fontSize: '11px',
+                    color: '#15803d',
+                    marginTop: '4px',
+                    display: { base: 'none', md: 'block' },
                   })}
                 >
                   {Math.round(
-                    (state.placedCards.filter((c) => c !== null).length /
-                      state.cardCount) *
-                      100,
+                    (state.placedCards.filter((c) => c !== null).length / state.cardCount) * 100
                   )}
                   % complete
                 </div>
@@ -1891,55 +1753,49 @@ export function PlayingPhaseDrag() {
               {/* Current Accuracy */}
               <div
                 className={css({
-                  marginBottom: { base: "0", md: "16px" },
-                  padding: { base: "8px", md: "12px" },
-                  background: "linear-gradient(135deg, #fef3c7, #fde68a)",
-                  borderRadius: { base: "6px", md: "8px" },
-                  border: "1px solid #fbbf24",
+                  marginBottom: { base: '0', md: '16px' },
+                  padding: { base: '8px', md: '12px' },
+                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                  borderRadius: { base: '6px', md: '8px' },
+                  border: '1px solid #fbbf24',
                 })}
               >
                 <div
                   className={css({
-                    fontSize: { base: "10px", md: "12px" },
-                    color: "#92400e",
-                    marginBottom: "4px",
+                    fontSize: { base: '10px', md: '12px' },
+                    color: '#92400e',
+                    marginBottom: '4px',
                   })}
                 >
-                  <span
-                    className={css({ display: { base: "none", md: "inline" } })}
-                  >
+                  <span className={css({ display: { base: 'none', md: 'inline' } })}>
                     ✨ Current Accuracy
                   </span>
-                  <span
-                    className={css({ display: { base: "inline", md: "none" } })}
-                  >
-                    ✨
-                  </span>
+                  <span className={css({ display: { base: 'inline', md: 'none' } })}>✨</span>
                 </div>
                 <div
                   className={css({
-                    fontSize: { base: "16px", md: "24px" },
+                    fontSize: { base: '16px', md: '24px' },
                     fontWeight: 700,
-                    color: "#78350f",
+                    color: '#78350f',
                   })}
                 >
                   {(() => {
                     const placedCards = state.placedCards.filter(
-                      (c): c is SortingCard => c !== null,
-                    );
-                    if (placedCards.length === 0) return "0%";
+                      (c): c is SortingCard => c !== null
+                    )
+                    if (placedCards.length === 0) return '0%'
                     const correctCount = placedCards.filter(
-                      (c, i) => state.correctOrder[i]?.id === c.id,
-                    ).length;
-                    return `${Math.round((correctCount / placedCards.length) * 100)}%`;
+                      (c, i) => state.correctOrder[i]?.id === c.id
+                    ).length
+                    return `${Math.round((correctCount / placedCards.length) * 100)}%`
                   })()}
                 </div>
                 <div
                   className={css({
-                    fontSize: "11px",
-                    color: "#92400e",
-                    marginTop: "4px",
-                    display: { base: "none", md: "block" },
+                    fontSize: '11px',
+                    color: '#92400e',
+                    marginTop: '4px',
+                    display: { base: 'none', md: 'block' },
                   })}
                 >
                   Cards in correct position
@@ -1954,21 +1810,21 @@ export function PlayingPhaseDrag() {
       {!isSpectating && (
         <div
           className={css({
-            position: "absolute",
-            top: "16px",
-            right: "16px",
-            display: "flex",
-            gap: "12px",
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            display: 'flex',
+            gap: '12px',
             zIndex: 10,
           })}
         >
           {/* Check Solution Button with Label */}
           <div
             className={css({
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "6px",
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '6px',
             })}
           >
             <button
@@ -1977,67 +1833,55 @@ export function PlayingPhaseDrag() {
               disabled={!canCheckSolutionDrag}
               title="Check Solution"
               className={css({
-                width: "64px",
-                height: "64px",
+                width: '64px',
+                height: '64px',
                 background: isSequenceCorrect
-                  ? "linear-gradient(135deg, #fbbf24, #f59e0b, #fbbf24)"
+                  ? 'linear-gradient(135deg, #fbbf24, #f59e0b, #fbbf24)'
                   : canCheckSolutionDrag
-                    ? "linear-gradient(135deg, #bbf7d0, #86efac)"
-                    : "linear-gradient(135deg, #e5e7eb, #d1d5db)",
-                border: "4px solid",
+                    ? 'linear-gradient(135deg, #bbf7d0, #86efac)'
+                    : 'linear-gradient(135deg, #e5e7eb, #d1d5db)',
+                border: '4px solid',
                 borderColor: isSequenceCorrect
-                  ? "#f59e0b"
+                  ? '#f59e0b'
                   : canCheckSolutionDrag
-                    ? "#22c55e"
-                    : "#9ca3af",
-                borderRadius: "50%",
-                fontSize: "32px",
-                cursor: canCheckSolutionDrag ? "pointer" : "not-allowed",
+                    ? '#22c55e'
+                    : '#9ca3af',
+                borderRadius: '50%',
+                fontSize: '32px',
+                cursor: canCheckSolutionDrag ? 'pointer' : 'not-allowed',
                 opacity: canCheckSolutionDrag ? 1 : 0.5,
-                transition: isSequenceCorrect ? "none" : "all 0.2s ease",
+                transition: isSequenceCorrect ? 'none' : 'all 0.2s ease',
                 boxShadow: isSequenceCorrect
-                  ? "0 0 30px rgba(245, 158, 11, 0.8), 0 0 60px rgba(245, 158, 11, 0.6)"
-                  : "0 4px 12px rgba(0, 0, 0, 0.15)",
-                animation: isSequenceCorrect
-                  ? "celebrate 0.5s ease-in-out infinite"
-                  : "none",
-                backgroundSize: isSequenceCorrect ? "200% 200%" : "100% 100%",
+                  ? '0 0 30px rgba(245, 158, 11, 0.8), 0 0 60px rgba(245, 158, 11, 0.6)'
+                  : '0 4px 12px rgba(0, 0, 0, 0.15)',
+                animation: isSequenceCorrect ? 'celebrate 0.5s ease-in-out infinite' : 'none',
+                backgroundSize: isSequenceCorrect ? '200% 200%' : '100% 100%',
                 _hover:
                   canCheckSolutionDrag && !isSequenceCorrect
                     ? {
-                        transform: "scale(1.1)",
-                        boxShadow: "0 6px 20px rgba(34, 197, 94, 0.4)",
+                        transform: 'scale(1.1)',
+                        boxShadow: '0 6px 20px rgba(34, 197, 94, 0.4)',
                       }
                     : {},
               })}
               style={{
-                animationName: isSequenceCorrect ? "celebrate" : undefined,
+                animationName: isSequenceCorrect ? 'celebrate' : undefined,
               }}
             >
-              {perfectCountdown !== null && perfectCountdown > 0
-                ? perfectCountdown
-                : "✓"}
+              {perfectCountdown !== null && perfectCountdown > 0 ? perfectCountdown : '✓'}
             </button>
             <div
               className={css({
-                fontSize: "13px",
+                fontSize: '13px',
                 fontWeight: 700,
-                color: isSequenceCorrect
-                  ? "#f59e0b"
-                  : canCheckSolutionDrag
-                    ? "#22c55e"
-                    : "#9ca3af",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-                textShadow: isSequenceCorrect
-                  ? "0 0 10px rgba(245, 158, 11, 0.8)"
-                  : "none",
-                animation: isSequenceCorrect
-                  ? "pulse 0.5s ease-in-out infinite"
-                  : "none",
+                color: isSequenceCorrect ? '#f59e0b' : canCheckSolutionDrag ? '#22c55e' : '#9ca3af',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                textShadow: isSequenceCorrect ? '0 0 10px rgba(245, 158, 11, 0.8)' : 'none',
+                animation: isSequenceCorrect ? 'pulse 0.5s ease-in-out infinite' : 'none',
               })}
             >
-              {isSequenceCorrect ? "PERFECT!" : "Done?"}
+              {isSequenceCorrect ? 'PERFECT!' : 'Done?'}
             </div>
           </div>
         </div>
@@ -2047,18 +1891,18 @@ export function PlayingPhaseDrag() {
       {!isSpectating && (
         <div
           className={css({
-            position: "absolute",
-            top: "16px",
-            left: "16px",
-            padding: "8px 16px",
-            background: "rgba(255, 255, 255, 0.9)",
-            border: "2px solid rgba(59, 130, 246, 0.3)",
-            borderRadius: "20px",
-            fontSize: "16px",
+            position: 'absolute',
+            top: '16px',
+            left: '16px',
+            padding: '8px 16px',
+            background: 'rgba(255, 255, 255, 0.9)',
+            border: '2px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '20px',
+            fontSize: '16px',
             fontWeight: 600,
-            color: "#0c4a6e",
+            color: '#0c4a6e',
             zIndex: 10,
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
           })}
         >
           ⏱️ {formatTime(elapsedTime)}
@@ -2069,23 +1913,23 @@ export function PlayingPhaseDrag() {
       <div
         ref={containerRef}
         className={css({
-          position: "absolute",
+          position: 'absolute',
           left: 0,
-          background: "linear-gradient(135deg, #f0f9ff, #e0f2fe)",
-          overflow: "hidden",
-          transition: "width 0.3s ease, height 0.3s ease, top 0.3s ease",
+          background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
+          overflow: 'hidden',
+          transition: 'width 0.3s ease, height 0.3s ease, top 0.3s ease',
         })}
         style={{
           width:
             isSpectating && !spectatorStatsCollapsed && viewport.width >= 768
-              ? "calc(100vw - 240px)"
-              : "100vw",
+              ? 'calc(100vw - 240px)'
+              : '100vw',
           height: isSpectating
             ? viewport.width < 768
-              ? "calc(100vh - 170px)"
-              : "calc(100vh - 56px)"
-            : "100vh",
-          top: isSpectating ? (viewport.width < 768 ? "170px" : "56px") : "0",
+              ? 'calc(100vh - 170px)'
+              : 'calc(100vh - 56px)'
+            : '100vh',
+          top: isSpectating ? (viewport.width < 768 ? '170px' : '56px') : '0',
         }}
       >
         {/* Render continuous curved path through the entire sequence */}
@@ -2106,56 +1950,48 @@ export function PlayingPhaseDrag() {
           ...state.availableCards,
           ...state.placedCards.filter((c): c is SortingCard => c !== null),
         ].map((card) => {
-          const cardState = cardStates.get(card.id);
-          if (!cardState) return null;
+          const cardState = cardStates.get(card.id)
+          if (!cardState) return null
 
-          const isDragging = draggingCardId === card.id;
+          const isDragging = draggingCardId === card.id
 
           // Check if card is in correct prefix or suffix position (for scaling/fading)
-          const positionInSequence = inferredSequence.findIndex(
-            (c) => c.id === card.id,
-          );
-          let isInCorrectPrefixOrSuffix = false;
+          const positionInSequence = inferredSequence.findIndex((c) => c.id === card.id)
+          let isInCorrectPrefixOrSuffix = false
 
           if (positionInSequence >= 0) {
             // Check if card is part of correct prefix
-            let isInCorrectPrefix = true;
+            let isInCorrectPrefix = true
             for (let i = 0; i <= positionInSequence; i++) {
               if (inferredSequence[i]?.id !== state.correctOrder[i]?.id) {
-                isInCorrectPrefix = false;
-                break;
+                isInCorrectPrefix = false
+                break
               }
             }
 
             // Check if card is part of correct suffix
-            let isInCorrectSuffix = true;
-            const offsetFromEnd =
-              inferredSequence.length - 1 - positionInSequence;
+            let isInCorrectSuffix = true
+            const offsetFromEnd = inferredSequence.length - 1 - positionInSequence
             for (let i = 0; i <= offsetFromEnd; i++) {
-              const seqIdx = inferredSequence.length - 1 - i;
-              const correctIdx = state.correctOrder.length - 1 - i;
-              if (
-                inferredSequence[seqIdx]?.id !==
-                state.correctOrder[correctIdx]?.id
-              ) {
-                isInCorrectSuffix = false;
-                break;
+              const seqIdx = inferredSequence.length - 1 - i
+              const correctIdx = state.correctOrder.length - 1 - i
+              if (inferredSequence[seqIdx]?.id !== state.correctOrder[correctIdx]?.id) {
+                isInCorrectSuffix = false
+                break
               }
             }
 
-            isInCorrectPrefixOrSuffix = isInCorrectPrefix || isInCorrectSuffix;
+            isInCorrectPrefixOrSuffix = isInCorrectPrefix || isInCorrectSuffix
           }
 
           // Show correctness based on educational mode for spectators
           const isCorrect = isSpectating
             ? spectatorEducationalMode && isInCorrectPrefixOrSuffix
-            : isInCorrectPrefixOrSuffix;
+            : isInCorrectPrefixOrSuffix
 
           // Get draggedByPlayerId from server state
-          const serverPosition = state.cardPositions.find(
-            (p) => p.cardId === card.id,
-          );
-          const draggedByPlayerId = serverPosition?.draggedByPlayerId;
+          const serverPosition = state.cardPositions.find((p) => p.cardId === card.id)
+          const draggedByPlayerId = serverPosition?.draggedByPlayerId
 
           return (
             <AnimatedCard
@@ -2175,64 +2011,59 @@ export function PlayingPhaseDrag() {
               onPointerMove={(e) => handlePointerMove(e, card.id)}
               onPointerUp={(e) => handlePointerUp(e, card.id)}
             />
-          );
+          )
         })}
       </div>
 
       {/* Activity Feed (collaborative mode only, hidden for spectators) */}
-      {state.gameMode === "collaborative" &&
-        !isSpectating &&
-        activityFeed.length > 0 && (
-          <div
-            className={css({
-              position: "fixed",
-              bottom: "24px",
-              right: "24px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-              zIndex: 150,
-              maxWidth: "320px",
-            })}
-          >
-            {activityFeed.map((notification) => {
-              const age = Date.now() - notification.timestamp;
-              const opacity = Math.max(0, 1 - age / 3000); // Fade out over 3 seconds
+      {state.gameMode === 'collaborative' && !isSpectating && activityFeed.length > 0 && (
+        <div
+          className={css({
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            zIndex: 150,
+            maxWidth: '320px',
+          })}
+        >
+          {activityFeed.map((notification) => {
+            const age = Date.now() - notification.timestamp
+            const opacity = Math.max(0, 1 - age / 3000) // Fade out over 3 seconds
 
-              return (
-                <div
-                  key={notification.id}
-                  className={css({
-                    padding: "12px 16px",
-                    background: "rgba(255, 255, 255, 0.95)",
-                    border: "2px solid rgba(99, 102, 241, 0.3)",
-                    borderRadius: "12px",
-                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    color: "#1f2937",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    transition: "all 0.3s ease",
-                  })}
-                  style={{
-                    opacity,
-                    transform: `translateY(${(1 - opacity) * 20}px)`,
-                  }}
-                >
-                  <span style={{ fontSize: "20px" }}>
-                    {notification.playerEmoji}
-                  </span>
-                  <span>
-                    <strong>{notification.playerName}</strong>{" "}
-                    {notification.action}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
+            return (
+              <div
+                key={notification.id}
+                className={css({
+                  padding: '12px 16px',
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  border: '2px solid rgba(99, 102, 241, 0.3)',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  color: '#1f2937',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.3s ease',
+                })}
+                style={{
+                  opacity,
+                  transform: `translateY(${(1 - opacity) * 20}px)`,
+                }}
+              >
+                <span style={{ fontSize: '20px' }}>{notification.playerEmoji}</span>
+                <span>
+                  <strong>{notification.playerName}</strong> {notification.action}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
-  );
+  )
 }

@@ -1,38 +1,36 @@
-import { notFound, redirect } from "next/navigation";
-import { getPlayerAccess, isParentOf } from "@/lib/classroom";
-import { getActiveSessionPlan, getPlayer } from "@/lib/curriculum/server";
-import type { ActiveSessionInfo } from "@/hooks/useClassroom";
-import { getDbUserId } from "@/lib/viewer";
-import { ObservationClient } from "./ObservationClient";
-import { StudentNotPresentPage } from "./StudentNotPresentPage";
+import { notFound, redirect } from 'next/navigation'
+import { getPlayerAccess, isParentOf } from '@/lib/classroom'
+import { getActiveSessionPlan, getPlayer } from '@/lib/curriculum/server'
+import type { ActiveSessionInfo } from '@/hooks/useClassroom'
+import { getDbUserId } from '@/lib/viewer'
+import { ObservationClient } from './ObservationClient'
+import { StudentNotPresentPage } from './StudentNotPresentPage'
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic'
 
 interface ObservationPageProps {
-  params: Promise<{ studentId: string }>;
+  params: Promise<{ studentId: string }>
 }
 
-export default async function PracticeObservationPage({
-  params,
-}: ObservationPageProps) {
-  const { studentId } = await params;
+export default async function PracticeObservationPage({ params }: ObservationPageProps) {
+  const { studentId } = await params
   const [observerId, player, activeSession] = await Promise.all([
     getDbUserId(),
     getPlayer(studentId),
     getActiveSessionPlan(studentId),
-  ]);
+  ])
 
   if (!player) {
-    notFound();
+    notFound()
   }
 
   const [access, isParent] = await Promise.all([
     getPlayerAccess(observerId, studentId),
     isParentOf(observerId, studentId),
-  ]);
+  ])
 
   // Check if user can observe (parent or teacher-present)
-  const canObserve = access.isParent || access.isPresent;
+  const canObserve = access.isParent || access.isPresent
 
   if (!canObserve) {
     // If they're a teacher but student isn't present, show helpful message
@@ -44,10 +42,10 @@ export default async function PracticeObservationPage({
           studentId={studentId}
           classroomId={access.classroomId}
         />
-      );
+      )
     }
     // Otherwise, they have no relationship to this student
-    notFound();
+    notFound()
   }
 
   // If session is completed, show the observation page with a banner linking to the report
@@ -61,14 +59,8 @@ export default async function PracticeObservationPage({
           currentPartIndex: activeSession.currentPartIndex,
           currentSlotIndex: activeSession.currentSlotIndex,
           totalParts: activeSession.parts.length,
-          totalProblems: activeSession.parts.reduce(
-            (sum, part) => sum + part.slots.length,
-            0,
-          ),
-          completedProblems: activeSession.parts.reduce(
-            (sum, part) => sum + part.slots.length,
-            0,
-          ),
+          totalProblems: activeSession.parts.reduce((sum, part) => sum + part.slots.length, 0),
+          completedProblems: activeSession.parts.reduce((sum, part) => sum + part.slots.length, 0),
         }}
         observerId={observerId}
         student={{
@@ -81,23 +73,20 @@ export default async function PracticeObservationPage({
         sessionReportUrl={`/practice/${studentId}/session/${activeSession.id}`}
         sessionEnded
       />
-    );
+    )
   }
 
   // If no active session or session hasn't started, go to dashboard
   if (!activeSession || !activeSession.startedAt) {
-    redirect(`/practice/${studentId}/dashboard`);
+    redirect(`/practice/${studentId}/dashboard`)
   }
 
-  const totalProblems = activeSession.parts.reduce(
-    (sum, part) => sum + part.slots.length,
-    0,
-  );
-  let completedProblems = 0;
+  const totalProblems = activeSession.parts.reduce((sum, part) => sum + part.slots.length, 0)
+  let completedProblems = 0
   for (let i = 0; i < activeSession.currentPartIndex; i++) {
-    completedProblems += activeSession.parts[i]?.slots.length ?? 0;
+    completedProblems += activeSession.parts[i]?.slots.length ?? 0
   }
-  completedProblems += activeSession.currentSlotIndex;
+  completedProblems += activeSession.currentSlotIndex
 
   const session: ActiveSessionInfo = {
     sessionId: activeSession.id,
@@ -108,7 +97,7 @@ export default async function PracticeObservationPage({
     totalParts: activeSession.parts.length,
     totalProblems,
     completedProblems,
-  };
+  }
 
   return (
     <ObservationClient
@@ -122,5 +111,5 @@ export default async function PracticeObservationPage({
       studentId={studentId}
       isParent={isParent}
     />
-  );
+  )
 }

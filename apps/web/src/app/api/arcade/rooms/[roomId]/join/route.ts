@@ -1,20 +1,17 @@
-import bcrypt from "bcryptjs";
-import { type NextRequest, NextResponse } from "next/server";
-import {
-  getActivePlayers,
-  getRoomActivePlayers,
-} from "@/lib/arcade/player-manager";
-import { getInvitation, acceptInvitation } from "@/lib/arcade/room-invitations";
-import { getJoinRequest } from "@/lib/arcade/room-join-requests";
-import { getRoomById, touchRoom } from "@/lib/arcade/room-manager";
-import { addRoomMember, getRoomMembers } from "@/lib/arcade/room-membership";
-import { isUserBanned } from "@/lib/arcade/room-moderation";
-import { getSocketIO } from "@/lib/socket-io";
-import { getViewerId } from "@/lib/viewer";
+import bcrypt from 'bcryptjs'
+import { type NextRequest, NextResponse } from 'next/server'
+import { getActivePlayers, getRoomActivePlayers } from '@/lib/arcade/player-manager'
+import { getInvitation, acceptInvitation } from '@/lib/arcade/room-invitations'
+import { getJoinRequest } from '@/lib/arcade/room-join-requests'
+import { getRoomById, touchRoom } from '@/lib/arcade/room-manager'
+import { addRoomMember, getRoomMembers } from '@/lib/arcade/room-membership'
+import { isUserBanned } from '@/lib/arcade/room-moderation'
+import { getSocketIO } from '@/lib/socket-io'
+import { getViewerId } from '@/lib/viewer'
 
 type RouteContext = {
-  params: Promise<{ roomId: string }>;
-};
+  params: Promise<{ roomId: string }>
+}
 
 /**
  * POST /api/arcade/rooms/:roomId/join
@@ -25,162 +22,139 @@ type RouteContext = {
  */
 export async function POST(req: NextRequest, context: RouteContext) {
   try {
-    const { roomId } = await context.params;
-    const viewerId = await getViewerId();
-    const body = await req.json().catch(() => ({}));
+    const { roomId } = await context.params
+    const viewerId = await getViewerId()
+    const body = await req.json().catch(() => ({}))
 
-    console.log(
-      `[Join API] User ${viewerId} attempting to join room ${roomId}`,
-    );
+    console.log(`[Join API] User ${viewerId} attempting to join room ${roomId}`)
 
     // Get room
-    const room = await getRoomById(roomId);
+    const room = await getRoomById(roomId)
     if (!room) {
-      console.log(`[Join API] Room ${roomId} not found`);
-      return NextResponse.json({ error: "Room not found" }, { status: 404 });
+      console.log(`[Join API] Room ${roomId} not found`)
+      return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
     console.log(
-      `[Join API] Room ${roomId} found: name="${room.name}" accessMode="${room.accessMode}" game="${room.gameName}"`,
-    );
+      `[Join API] Room ${roomId} found: name="${room.name}" accessMode="${room.accessMode}" game="${room.gameName}"`
+    )
 
     // Check if user is banned
-    const banned = await isUserBanned(roomId, viewerId);
+    const banned = await isUserBanned(roomId, viewerId)
     if (banned) {
-      return NextResponse.json(
-        { error: "You are banned from this room" },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: 'You are banned from this room' }, { status: 403 })
     }
 
     // Check if user is already a member (for locked/retired room access)
-    const members = await getRoomMembers(roomId);
-    const isExistingMember = members.some((m) => m.userId === viewerId);
-    const isRoomCreator = room.createdBy === viewerId;
+    const members = await getRoomMembers(roomId)
+    const isExistingMember = members.some((m) => m.userId === viewerId)
+    const isRoomCreator = room.createdBy === viewerId
 
     // Track invitation/join request to mark as accepted after successful join
-    let invitationToAccept: string | null = null;
-    let joinRequestToAccept: string | null = null;
+    let invitationToAccept: string | null = null
+    let joinRequestToAccept: string | null = null
 
     // Check for pending invitation (regardless of access mode)
     // This ensures invitations are marked as accepted when user joins ANY room type
-    const invitation = await getInvitation(roomId, viewerId);
-    if (invitation && invitation.status === "pending") {
-      invitationToAccept = invitation.id;
+    const invitation = await getInvitation(roomId, viewerId)
+    if (invitation && invitation.status === 'pending') {
+      invitationToAccept = invitation.id
       console.log(
-        `[Join API] Found pending invitation ${invitation.id} for user ${viewerId} in room ${roomId}`,
-      );
+        `[Join API] Found pending invitation ${invitation.id} for user ${viewerId} in room ${roomId}`
+      )
     }
 
     // Validate access mode
     switch (room.accessMode) {
-      case "locked":
+      case 'locked':
         // Allow existing members to continue using the room, but block new members
         if (!isExistingMember) {
           return NextResponse.json(
-            { error: "This room is locked and not accepting new members" },
-            { status: 403 },
-          );
+            { error: 'This room is locked and not accepting new members' },
+            { status: 403 }
+          )
         }
-        break;
+        break
 
-      case "retired":
+      case 'retired':
         // Only the room creator can access retired rooms
         if (!isRoomCreator) {
           return NextResponse.json(
             {
-              error:
-                "This room has been retired and is only accessible to the owner",
+              error: 'This room has been retired and is only accessible to the owner',
             },
-            { status: 410 },
-          );
+            { status: 410 }
+          )
         }
-        break;
+        break
 
-      case "password": {
+      case 'password': {
         if (!body.password) {
           return NextResponse.json(
-            { error: "Password required to join this room" },
-            { status: 401 },
-          );
+            { error: 'Password required to join this room' },
+            { status: 401 }
+          )
         }
         if (!room.password) {
-          return NextResponse.json(
-            { error: "Room password not configured" },
-            { status: 500 },
-          );
+          return NextResponse.json({ error: 'Room password not configured' }, { status: 500 })
         }
-        const passwordMatch = await bcrypt.compare(
-          body.password,
-          room.password,
-        );
+        const passwordMatch = await bcrypt.compare(body.password, room.password)
         if (!passwordMatch) {
-          return NextResponse.json(
-            { error: "Incorrect password" },
-            { status: 401 },
-          );
+          return NextResponse.json({ error: 'Incorrect password' }, { status: 401 })
         }
-        break;
+        break
       }
 
-      case "restricted": {
-        console.log(
-          `[Join API] Room is restricted, checking invitation for user ${viewerId}`,
-        );
+      case 'restricted': {
+        console.log(`[Join API] Room is restricted, checking invitation for user ${viewerId}`)
         // Room creator can always rejoin their own room
         if (!isRoomCreator) {
           // For restricted rooms, invitation is REQUIRED
           if (!invitationToAccept) {
-            console.log(
-              `[Join API] No valid pending invitation, rejecting join`,
-            );
+            console.log(`[Join API] No valid pending invitation, rejecting join`)
             return NextResponse.json(
-              { error: "You need a valid invitation to join this room" },
-              { status: 403 },
-            );
+              { error: 'You need a valid invitation to join this room' },
+              { status: 403 }
+            )
           }
-          console.log(
-            `[Join API] Valid invitation found, will accept after member added`,
-          );
+          console.log(`[Join API] Valid invitation found, will accept after member added`)
         } else {
-          console.log(
-            `[Join API] User is room creator, skipping invitation check`,
-          );
+          console.log(`[Join API] User is room creator, skipping invitation check`)
         }
-        break;
+        break
       }
 
-      case "approval-only": {
+      case 'approval-only': {
         // Room creator can always rejoin their own room without approval
         if (!isRoomCreator) {
           // Check for approved join request
-          const joinRequest = await getJoinRequest(roomId, viewerId);
-          if (!joinRequest || joinRequest.status !== "approved") {
+          const joinRequest = await getJoinRequest(roomId, viewerId)
+          if (!joinRequest || joinRequest.status !== 'approved') {
             return NextResponse.json(
-              { error: "Your join request must be approved by the host" },
-              { status: 403 },
-            );
+              { error: 'Your join request must be approved by the host' },
+              { status: 403 }
+            )
           }
           // Note: Join request stays in "approved" status after join
           // (No need to update it - "approved" indicates they were allowed in)
-          joinRequestToAccept = joinRequest.id;
+          joinRequestToAccept = joinRequest.id
         }
-        break;
+        break
       }
       default:
         // No additional checks needed
-        break;
+        break
     }
 
     // Get or generate display name
-    const displayName = body.displayName || `Guest ${viewerId.slice(-4)}`;
+    const displayName = body.displayName || `Guest ${viewerId.slice(-4)}`
 
     // Validate display name length
     if (displayName.length > 50) {
       return NextResponse.json(
-        { error: "Display name too long (max 50 characters)" },
-        { status: 400 },
-      );
+        { error: 'Display name too long (max 50 characters)' },
+        { status: 400 }
+      )
     }
 
     // Add member (with auto-leave logic for modal room enforcement)
@@ -189,98 +163,91 @@ export async function POST(req: NextRequest, context: RouteContext) {
       userId: viewerId,
       displayName,
       isCreator: false,
-    });
+    })
 
     // Mark invitation as accepted (if applicable)
     if (invitationToAccept) {
-      await acceptInvitation(invitationToAccept);
-      console.log(
-        `[Join API] Accepted invitation ${invitationToAccept} for user ${viewerId}`,
-      );
+      await acceptInvitation(invitationToAccept)
+      console.log(`[Join API] Accepted invitation ${invitationToAccept} for user ${viewerId}`)
     }
     // Note: Join requests stay in "approved" status (no need to update)
 
     // Broadcast member-left events to any rooms the user was auto-left from
     if (autoLeaveResult && autoLeaveResult.leftRooms.length > 0) {
-      const io = await getSocketIO();
+      const io = await getSocketIO()
       if (io) {
         for (const leftRoomId of autoLeaveResult.leftRooms) {
           try {
             // Get current members/players of the room the user left
-            const leftRoomMembers = await getRoomMembers(leftRoomId);
-            const leftRoomPlayers = await getRoomActivePlayers(leftRoomId);
+            const leftRoomMembers = await getRoomMembers(leftRoomId)
+            const leftRoomPlayers = await getRoomActivePlayers(leftRoomId)
 
             // Convert to object for JSON serialization
-            const leftRoomPlayersObj: Record<string, any[]> = {};
+            const leftRoomPlayersObj: Record<string, any[]> = {}
             for (const [uid, players] of leftRoomPlayers.entries()) {
-              leftRoomPlayersObj[uid] = players;
+              leftRoomPlayersObj[uid] = players
             }
 
             // Broadcast to all remaining users in the old room
-            io.to(`room:${leftRoomId}`).emit("member-left", {
+            io.to(`room:${leftRoomId}`).emit('member-left', {
               roomId: leftRoomId,
               userId: viewerId,
               members: leftRoomMembers,
               memberPlayers: leftRoomPlayersObj,
-              reason: "auto-left", // Indicate this was automatic, not voluntary
-            });
+              reason: 'auto-left', // Indicate this was automatic, not voluntary
+            })
 
             console.log(
-              `[Join API] Broadcasted member-left for user ${viewerId} in room ${leftRoomId} (auto-leave)`,
-            );
+              `[Join API] Broadcasted member-left for user ${viewerId} in room ${leftRoomId} (auto-leave)`
+            )
           } catch (socketError) {
             console.error(
               `[Join API] Failed to broadcast member-left for room ${leftRoomId}:`,
-              socketError,
-            );
+              socketError
+            )
           }
         }
       }
     }
 
     // Fetch user's active players (these will participate in the game)
-    const activePlayers = await getActivePlayers(viewerId);
+    const activePlayers = await getActivePlayers(viewerId)
 
     // Update room activity to refresh TTL
-    await touchRoom(roomId);
+    await touchRoom(roomId)
 
     // Broadcast to all users in the room via socket
-    const io = await getSocketIO();
+    const io = await getSocketIO()
     if (io) {
       try {
-        const members = await getRoomMembers(roomId);
-        const memberPlayers = await getRoomActivePlayers(roomId);
+        const members = await getRoomMembers(roomId)
+        const memberPlayers = await getRoomActivePlayers(roomId)
 
         // Convert memberPlayers Map to object for JSON serialization
-        const memberPlayersObj: Record<string, any[]> = {};
+        const memberPlayersObj: Record<string, any[]> = {}
         for (const [uid, players] of memberPlayers.entries()) {
-          memberPlayersObj[uid] = players;
+          memberPlayersObj[uid] = players
         }
 
         // Broadcast to all users in this room
-        io.to(`room:${roomId}`).emit("member-joined", {
+        io.to(`room:${roomId}`).emit('member-joined', {
           roomId,
           userId: viewerId,
           members,
           memberPlayers: memberPlayersObj,
-        });
+        })
 
-        console.log(
-          `[Join API] Broadcasted member-joined for user ${viewerId} in room ${roomId}`,
-        );
+        console.log(`[Join API] Broadcasted member-joined for user ${viewerId} in room ${roomId}`)
       } catch (socketError) {
         // Log but don't fail the request if socket broadcast fails
-        console.error(
-          "[Join API] Failed to broadcast member-joined:",
-          socketError,
-        );
+        console.error('[Join API] Failed to broadcast member-joined:', socketError)
       }
     }
 
     // Build response with auto-leave info if applicable
     console.log(
-      `[Join API] Successfully added user ${viewerId} to room ${roomId} (invitation=${invitationToAccept ? "accepted" : "N/A"})`,
-    );
+      `[Join API] Successfully added user ${viewerId} to room ${roomId} (invitation=${invitationToAccept ? 'accepted' : 'N/A'})`
+    )
 
     return NextResponse.json(
       {
@@ -294,27 +261,27 @@ export async function POST(req: NextRequest, context: RouteContext) {
             }
           : undefined,
       },
-      { status: 201 },
-    );
+      { status: 201 }
+    )
   } catch (error: any) {
-    console.error("Failed to join room:", error);
+    console.error('Failed to join room:', error)
 
     // Handle specific constraint violation error
-    if (error.message?.includes("ROOM_MEMBERSHIP_CONFLICT")) {
+    if (error.message?.includes('ROOM_MEMBERSHIP_CONFLICT')) {
       return NextResponse.json(
         {
-          error: "You are already in another room",
-          code: "ROOM_MEMBERSHIP_CONFLICT",
+          error: 'You are already in another room',
+          code: 'ROOM_MEMBERSHIP_CONFLICT',
           message:
-            "You can only be in one room at a time. Please leave your current room before joining a new one.",
+            'You can only be in one room at a time. Please leave your current room before joining a new one.',
           userMessage:
-            "⚠️ Already in Another Room\n\nYou can only be in one room at a time. Please refresh the page and try again.",
+            '⚠️ Already in Another Room\n\nYou can only be in one room at a time. Please refresh the page and try again.',
         },
-        { status: 409 }, // 409 Conflict
-      );
+        { status: 409 } // 409 Conflict
+      )
     }
 
     // Generic error
-    return NextResponse.json({ error: "Failed to join room" }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to join room' }, { status: 500 })
   }
 }

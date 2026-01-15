@@ -57,24 +57,24 @@ export type {
   PrecisionModeFilterProps,
   PrecisionModeScrimProps,
   PrecisionModeStatusLabelOptions,
-} from "./PrecisionModeIndicator";
+} from './PrecisionModeIndicator'
 // Components
 // Utilities
 export {
   getPrecisionModeFilter,
   getPrecisionModeStatusLabel,
   PrecisionModeScrim,
-} from "./PrecisionModeIndicator";
+} from './PrecisionModeIndicator'
 export type {
   PrecisionModeIndicatorProps,
   ThresholdStatus,
   UsePrecisionModeOptions,
   UsePrecisionModeReturn,
-} from "./types";
+} from './types'
 export {
   type UsePrecisionCalculationsOptions,
   type UsePrecisionCalculationsReturn,
   usePrecisionCalculations,
-} from "./usePrecisionCalculations";
+} from './usePrecisionCalculations'
 // Hooks
-export { usePrecisionMode } from "./usePrecisionMode";
+export { usePrecisionMode } from './usePrecisionMode'

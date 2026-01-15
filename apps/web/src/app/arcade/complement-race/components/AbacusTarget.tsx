@@ -1,9 +1,9 @@
-"use client";
+'use client'
 
-import { AbacusReact } from "@soroban/abacus-react";
+import { AbacusReact } from '@soroban/abacus-react'
 
 interface AbacusTargetProps {
-  number: number; // The complement number to display
+  number: number // The complement number to display
 }
 
 /**
@@ -14,9 +14,9 @@ export function AbacusTarget({ number }: AbacusTargetProps) {
   return (
     <div
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         lineHeight: 0,
       }}
     >
@@ -30,5 +30,5 @@ export function AbacusTarget({ number }: AbacusTargetProps) {
         scaleFactor={0.72}
       />
     </div>
-  );
+  )
 }

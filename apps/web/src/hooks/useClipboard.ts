@@ -1,28 +1,28 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState } from 'react'
 
 export interface UseClipboardOptions {
   /**
    * Timeout in milliseconds to reset the copied state
    * @default 1500
    */
-  timeout?: number;
+  timeout?: number
 }
 
 export interface UseClipboardReturn {
   /**
    * Whether the text was recently copied
    */
-  copied: boolean;
+  copied: boolean
 
   /**
    * Copy text to clipboard
    */
-  copy: (text: string) => Promise<void>;
+  copy: (text: string) => Promise<void>
 
   /**
    * Reset the copied state manually
    */
-  reset: () => void;
+  reset: () => void
 }
 
 /**
@@ -37,30 +37,28 @@ export interface UseClipboardReturn {
  * </button>
  * ```
  */
-export function useClipboard(
-  options: UseClipboardOptions = {},
-): UseClipboardReturn {
-  const { timeout = 1500 } = options;
-  const [copied, setCopied] = useState(false);
+export function useClipboard(options: UseClipboardOptions = {}): UseClipboardReturn {
+  const { timeout = 1500 } = options
+  const [copied, setCopied] = useState(false)
 
   const copy = useCallback(
     async (text: string) => {
       try {
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
+        await navigator.clipboard.writeText(text)
+        setCopied(true)
         setTimeout(() => {
-          setCopied(false);
-        }, timeout);
+          setCopied(false)
+        }, timeout)
       } catch (error) {
-        console.error("[useClipboard] Failed to copy to clipboard:", error);
+        console.error('[useClipboard] Failed to copy to clipboard:', error)
       }
     },
-    [timeout],
-  );
+    [timeout]
+  )
 
   const reset = useCallback(() => {
-    setCopied(false);
-  }, []);
+    setCopied(false)
+  }, [])
 
-  return { copied, copy, reset };
+  return { copied, copy, reset }
 }

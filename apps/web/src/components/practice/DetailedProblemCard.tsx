@@ -17,127 +17,127 @@ import type {
   SessionPart,
   SkillMasteryDisplay,
   SlotResult,
-} from "@/db/schema/session-plans";
-import { css } from "../../../styled-system/css";
-import type { AutoPauseStats } from "./autoPauseCalculator";
-import { formatMs, getAutoPauseExplanation } from "./autoPauseCalculator";
+} from '@/db/schema/session-plans'
+import { css } from '../../../styled-system/css'
+import type { AutoPauseStats } from './autoPauseCalculator'
+import { formatMs, getAutoPauseExplanation } from './autoPauseCalculator'
 
 export interface DetailedProblemCardProps {
   /** The problem slot with constraints and generated problem */
-  slot: ProblemSlot;
+  slot: ProblemSlot
   /** The session part this problem belongs to */
-  part: SessionPart;
+  part: SessionPart
   /** Result if the problem was answered */
-  result?: SlotResult;
+  result?: SlotResult
   /** Auto-pause stats at this problem position */
-  autoPauseStats?: AutoPauseStats;
+  autoPauseStats?: AutoPauseStats
   /** Dark mode */
-  isDark: boolean;
+  isDark: boolean
   /** Problem index within the session (1-based for display) */
-  problemNumber: number;
+  problemNumber: number
 }
 
 /**
  * Get display label for slot purpose
  */
-function getPurposeLabel(purpose: ProblemSlot["purpose"]): {
-  label: string;
-  emoji: string;
-  color: string;
+function getPurposeLabel(purpose: ProblemSlot['purpose']): {
+  label: string
+  emoji: string
+  color: string
 } {
   switch (purpose) {
-    case "focus":
-      return { label: "Focus", emoji: "🎯", color: "blue" };
-    case "reinforce":
-      return { label: "Reinforce", emoji: "💪", color: "green" };
-    case "review":
-      return { label: "Review", emoji: "📝", color: "purple" };
-    case "challenge":
-      return { label: "Challenge", emoji: "⭐", color: "orange" };
+    case 'focus':
+      return { label: 'Focus', emoji: '🎯', color: 'blue' }
+    case 'reinforce':
+      return { label: 'Reinforce', emoji: '💪', color: 'green' }
+    case 'review':
+      return { label: 'Review', emoji: '📝', color: 'purple' }
+    case 'challenge':
+      return { label: 'Challenge', emoji: '⭐', color: 'orange' }
   }
 }
 
 /**
  * Get display label for part type
  */
-function getPartTypeLabel(type: SessionPart["type"]): string {
+function getPartTypeLabel(type: SessionPart['type']): string {
   switch (type) {
-    case "abacus":
-      return "Use Abacus";
-    case "visualization":
-      return "Mental Math (Visualization)";
-    case "linear":
-      return "Linear Math";
+    case 'abacus':
+      return 'Use Abacus'
+    case 'visualization':
+      return 'Mental Math (Visualization)'
+    case 'linear':
+      return 'Linear Math'
   }
 }
 
 /**
  * Check if part type uses vertical layout
  */
-function isVerticalPart(type: SessionPart["type"]): boolean {
-  return type === "abacus" || type === "visualization";
+function isVerticalPart(type: SessionPart['type']): boolean {
+  return type === 'abacus' || type === 'visualization'
 }
 
 /**
  * Format constraints for display
  */
 function formatConstraints(slot: ProblemSlot): string[] {
-  const lines: string[] = [];
-  const c = slot.constraints;
+  const lines: string[] = []
+  const c = slot.constraints
 
   if (c.termCount) {
-    lines.push(`Terms: ${c.termCount.min}-${c.termCount.max}`);
+    lines.push(`Terms: ${c.termCount.min}-${c.termCount.max}`)
   }
   if (c.digitRange) {
-    lines.push(`Digits: ${c.digitRange.min}-${c.digitRange.max}`);
+    lines.push(`Digits: ${c.digitRange.min}-${c.digitRange.max}`)
   }
   if (slot.complexityBounds) {
-    const { min, max } = slot.complexityBounds;
+    const { min, max } = slot.complexityBounds
     if (min !== undefined && max !== undefined) {
-      lines.push(`Budget: ${min}-${max}/term`);
+      lines.push(`Budget: ${min}-${max}/term`)
     } else if (max !== undefined) {
-      lines.push(`Max budget: ${max}/term`);
+      lines.push(`Max budget: ${max}/term`)
     } else if (min !== undefined) {
-      lines.push(`Min budget: ${min}/term`);
+      lines.push(`Min budget: ${min}/term`)
     }
   }
 
-  return lines;
+  return lines
 }
 
 /**
  * Cell dimensions matching VerticalProblem.tsx
  */
-const CELL_WIDTH = "1.4rem";
-const CELL_HEIGHT = "1.8rem";
+const CELL_WIDTH = '1.4rem'
+const CELL_HEIGHT = '1.8rem'
 
 /**
  * Format a skill ID for human-readable display
  */
 function formatSkillName(skillId: string): string {
-  const parts = skillId.split(".");
-  const category = parts[0];
-  const specific = parts[1] || skillId;
+  const parts = skillId.split('.')
+  const category = parts[0]
+  const specific = parts[1] || skillId
 
   // Make complement skills readable
-  if (category === "fiveComplements" || category === "fiveComplementsSub") {
-    return `5's complement: ${specific}`;
+  if (category === 'fiveComplements' || category === 'fiveComplementsSub') {
+    return `5's complement: ${specific}`
   }
-  if (category === "tenComplements" || category === "tenComplementsSub") {
-    return `10's complement: ${specific}`;
+  if (category === 'tenComplements' || category === 'tenComplementsSub') {
+    return `10's complement: ${specific}`
   }
-  if (category === "basic") {
+  if (category === 'basic') {
     const names: Record<string, string> = {
-      directAddition: "Direct addition",
-      heavenBead: "Heaven bead",
-      simpleCombinations: "Simple combinations",
-      directSubtraction: "Direct subtraction",
-      heavenBeadSubtraction: "Heaven bead (sub)",
-      simpleCombinationsSub: "Simple combinations (sub)",
-    };
-    return names[specific] || specific;
+      directAddition: 'Direct addition',
+      heavenBead: 'Heaven bead',
+      simpleCombinations: 'Simple combinations',
+      directSubtraction: 'Direct subtraction',
+      heavenBeadSubtraction: 'Heaven bead (sub)',
+      simpleCombinationsSub: 'Simple combinations (sub)',
+    }
+    return names[specific] || specific
   }
-  return specific;
+  return specific
 }
 
 /**
@@ -147,12 +147,12 @@ function formatSkillName(skillId: string): string {
  * is a simplified fallback indicating whether the skill is in the active practice rotation.
  */
 function getRotationLabel(isPracticing: boolean): {
-  label: string;
-  color: string;
+  label: string
+  color: string
 } {
   return isPracticing
-    ? { label: "Practicing", color: "blue" }
-    : { label: "Not in rotation", color: "gray" };
+    ? { label: 'Practicing', color: 'blue' }
+    : { label: 'Not in rotation', color: 'gray' }
 }
 
 /**
@@ -163,47 +163,46 @@ function InlineSkillList({
   skillMasteryContext,
   isDark,
 }: {
-  step: GenerationTraceStep;
-  skillMasteryContext?: Record<string, SkillMasteryDisplay>;
-  isDark: boolean;
+  step: GenerationTraceStep
+  skillMasteryContext?: Record<string, SkillMasteryDisplay>
+  isDark: boolean
 }) {
-  const { skillsUsed } = step;
+  const { skillsUsed } = step
 
   // No skills = starting value
   if (skillsUsed.length === 0) {
     return (
       <span
         className={css({
-          fontSize: "0.75rem",
-          color: isDark ? "gray.500" : "gray.400",
-          fontStyle: "italic",
+          fontSize: '0.75rem',
+          color: isDark ? 'gray.500' : 'gray.400',
+          fontStyle: 'italic',
         })}
       >
         (start)
       </span>
-    );
+    )
   }
 
   return (
     <div
       data-element="inline-skill-list"
       className={css({
-        display: "flex",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: "0.375rem",
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '0.375rem',
         flex: 1,
       })}
     >
       {skillsUsed.map((skillId, i) => {
-        const masteryInfo = skillMasteryContext?.[skillId];
-        const baseCost = masteryInfo?.baseCost ?? 1;
-        const effectiveCost = masteryInfo?.effectiveCost ?? baseCost;
-        const isPracticing = masteryInfo?.isPracticing;
-        const rotation =
-          isPracticing !== undefined ? getRotationLabel(isPracticing) : null;
-        const hasMultiplier = rotation && effectiveCost !== baseCost;
-        const isZeroCost = effectiveCost === 0;
+        const masteryInfo = skillMasteryContext?.[skillId]
+        const baseCost = masteryInfo?.baseCost ?? 1
+        const effectiveCost = masteryInfo?.effectiveCost ?? baseCost
+        const isPracticing = masteryInfo?.isPracticing
+        const rotation = isPracticing !== undefined ? getRotationLabel(isPracticing) : null
+        const hasMultiplier = rotation && effectiveCost !== baseCost
+        const isZeroCost = effectiveCost === 0
 
         return (
           <span
@@ -211,24 +210,24 @@ function InlineSkillList({
             data-element="skill-pill"
             data-zero-cost={isZeroCost || undefined}
             className={css({
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.25rem",
-              padding: "0.125rem 0.5rem",
-              backgroundColor: isDark ? "gray.800" : "gray.100",
-              borderRadius: "9999px",
-              fontSize: "0.6875rem",
-              whiteSpace: "nowrap",
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.125rem 0.5rem',
+              backgroundColor: isDark ? 'gray.800' : 'gray.100',
+              borderRadius: '9999px',
+              fontSize: '0.6875rem',
+              whiteSpace: 'nowrap',
               opacity: isZeroCost ? 0.75 : 1,
             })}
           >
-            <span className={css({ color: isDark ? "gray.300" : "gray.600" })}>
+            <span className={css({ color: isDark ? 'gray.300' : 'gray.600' })}>
               {formatSkillName(skillId)}
             </span>
             <span
               className={css({
-                fontWeight: "bold",
-                color: isDark ? "blue.300" : "blue.600",
+                fontWeight: 'bold',
+                color: isDark ? 'blue.300' : 'blue.600',
               })}
             >
               {effectiveCost}
@@ -236,8 +235,8 @@ function InlineSkillList({
             {hasMultiplier && (
               <span
                 className={css({
-                  color: isDark ? "gray.500" : "gray.400",
-                  fontSize: "0.625rem",
+                  color: isDark ? 'gray.500' : 'gray.400',
+                  fontSize: '0.625rem',
                 })}
               >
                 ({baseCost}×{effectiveCost / baseCost})
@@ -246,25 +245,21 @@ function InlineSkillList({
             {rotation && (
               <span
                 className={css({
-                  padding: "0 0.25rem",
-                  borderRadius: "4px",
-                  fontSize: "0.5625rem",
-                  backgroundColor: isDark
-                    ? `${rotation.color}.900`
-                    : `${rotation.color}.100`,
-                  color: isDark
-                    ? `${rotation.color}.300`
-                    : `${rotation.color}.600`,
+                  padding: '0 0.25rem',
+                  borderRadius: '4px',
+                  fontSize: '0.5625rem',
+                  backgroundColor: isDark ? `${rotation.color}.900` : `${rotation.color}.100`,
+                  color: isDark ? `${rotation.color}.300` : `${rotation.color}.600`,
                 })}
               >
                 {rotation.label}
               </span>
             )}
           </span>
-        );
+        )
       })}
     </div>
-  );
+  )
 }
 
 /**
@@ -277,19 +272,18 @@ function TermTotalBadge({
   isFirstTerm,
   isDark,
 }: {
-  cost: number | undefined;
-  maxBudget?: number;
-  minBudget?: number;
-  isFirstTerm: boolean;
-  isDark: boolean;
+  cost: number | undefined
+  maxBudget?: number
+  minBudget?: number
+  isFirstTerm: boolean
+  isDark: boolean
 }) {
-  if (cost === undefined) return null;
+  if (cost === undefined) return null
 
-  const isOverBudget = maxBudget !== undefined && cost > maxBudget;
-  const isUnderBudget =
-    minBudget !== undefined && cost < minBudget && !isFirstTerm;
-  const budgetStatus = isOverBudget ? "over" : isUnderBudget ? "under" : "ok";
-  const isZeroCost = cost === 0;
+  const isOverBudget = maxBudget !== undefined && cost > maxBudget
+  const isUnderBudget = minBudget !== undefined && cost < minBudget && !isFirstTerm
+  const budgetStatus = isOverBudget ? 'over' : isUnderBudget ? 'under' : 'ok'
+  const isZeroCost = cost === 0
 
   return (
     <span
@@ -297,59 +291,59 @@ function TermTotalBadge({
       data-zero-cost={isZeroCost || undefined}
       className={css({
         opacity: isZeroCost ? 0.75 : 1,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minWidth: "2.5rem",
-        padding: "0.25rem 0.5rem",
-        borderRadius: "4px",
-        fontSize: "0.875rem",
-        fontWeight: "bold",
-        fontFamily: "var(--font-mono, monospace)",
-        border: "2px solid",
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: '2.5rem',
+        padding: '0.25rem 0.5rem',
+        borderRadius: '4px',
+        fontSize: '0.875rem',
+        fontWeight: 'bold',
+        fontFamily: 'var(--font-mono, monospace)',
+        border: '2px solid',
         backgroundColor:
-          budgetStatus === "over"
+          budgetStatus === 'over'
             ? isDark
-              ? "red.900"
-              : "red.50"
-            : budgetStatus === "under"
+              ? 'red.900'
+              : 'red.50'
+            : budgetStatus === 'under'
               ? isDark
-                ? "yellow.900"
-                : "yellow.50"
+                ? 'yellow.900'
+                : 'yellow.50'
               : isDark
-                ? "green.900"
-                : "green.50",
+                ? 'green.900'
+                : 'green.50',
         borderColor:
-          budgetStatus === "over"
+          budgetStatus === 'over'
             ? isDark
-              ? "red.600"
-              : "red.300"
-            : budgetStatus === "under"
+              ? 'red.600'
+              : 'red.300'
+            : budgetStatus === 'under'
               ? isDark
-                ? "yellow.600"
-                : "yellow.300"
+                ? 'yellow.600'
+                : 'yellow.300'
               : isDark
-                ? "green.600"
-                : "green.300",
+                ? 'green.600'
+                : 'green.300',
         color:
-          budgetStatus === "over"
+          budgetStatus === 'over'
             ? isDark
-              ? "red.300"
-              : "red.700"
-            : budgetStatus === "under"
+              ? 'red.300'
+              : 'red.700'
+            : budgetStatus === 'under'
               ? isDark
-                ? "yellow.300"
-                : "yellow.700"
+                ? 'yellow.300'
+                : 'yellow.700'
               : isDark
-                ? "green.300"
-                : "green.700",
+                ? 'green.300'
+                : 'green.700',
       })}
     >
       {cost}
-      {budgetStatus === "over" && "!"}
-      {budgetStatus === "under" && "↓"}
+      {budgetStatus === 'over' && '!'}
+      {budgetStatus === 'under' && '↓'}
     </span>
-  );
+  )
 }
 
 /**
@@ -365,95 +359,95 @@ function DetailedVerticalProblem({
   isDark,
   result,
 }: {
-  terms: number[];
-  answer: number;
-  trace?: GenerationTrace;
-  maxBudget?: number;
-  minBudget?: number;
-  isDark: boolean;
-  result?: SlotResult;
+  terms: number[]
+  answer: number
+  trace?: GenerationTrace
+  maxBudget?: number
+  minBudget?: number
+  isDark: boolean
+  result?: SlotResult
 }) {
   // Calculate max digits for alignment
   const maxDigits = Math.max(
     ...terms.map((t) => Math.abs(t).toString().length),
-    Math.abs(answer).toString().length,
-  );
+    Math.abs(answer).toString().length
+  )
 
-  const hasTrace = trace && trace.steps.length > 0;
+  const hasTrace = trace && trace.steps.length > 0
 
   return (
     <div
       data-element="detailed-vertical-problem"
       className={css({
-        display: "flex",
-        flexDirection: "column",
-        gap: "0.25rem",
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.25rem',
       })}
     >
       {/* Terms - compact single line each */}
       {terms.map((term, i) => {
-        const isNegative = term < 0;
-        const absValue = Math.abs(term);
-        const digits = absValue.toString().padStart(maxDigits, " ").split("");
-        const step = trace?.steps[i];
+        const isNegative = term < 0
+        const absValue = Math.abs(term)
+        const digits = absValue.toString().padStart(maxDigits, ' ').split('')
+        const step = trace?.steps[i]
 
         return (
           <div
             key={i}
             data-element="term-row"
             className={css({
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem",
-              padding: "0.25rem 0.5rem",
-              borderRadius: "4px",
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.25rem 0.5rem',
+              borderRadius: '4px',
               backgroundColor:
                 i % 2 === 0
                   ? isDark
-                    ? "rgba(255,255,255,0.02)"
-                    : "rgba(0,0,0,0.015)"
-                  : "transparent",
+                    ? 'rgba(255,255,255,0.02)'
+                    : 'rgba(0,0,0,0.015)'
+                  : 'transparent',
             })}
           >
             {/* Term display */}
             <div
               data-element="term-display"
               className={css({
-                display: "flex",
-                alignItems: "center",
-                fontFamily: "var(--font-mono, monospace)",
-                fontSize: "1.25rem",
-                fontWeight: "bold",
+                display: 'flex',
+                alignItems: 'center',
+                fontFamily: 'var(--font-mono, monospace)',
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
                 flexShrink: 0,
               })}
             >
               {/* Operator */}
               <span
                 className={css({
-                  width: "1.25rem",
-                  textAlign: "center",
+                  width: '1.25rem',
+                  textAlign: 'center',
                   color:
                     i === 0
-                      ? "transparent"
+                      ? 'transparent'
                       : isNegative
                         ? isDark
-                          ? "red.400"
-                          : "red.600"
+                          ? 'red.400'
+                          : 'red.600'
                         : isDark
-                          ? "green.400"
-                          : "green.600",
+                          ? 'green.400'
+                          : 'green.600',
                 })}
               >
-                {i === 0 ? "" : isNegative ? "−" : "+"}
+                {i === 0 ? '' : isNegative ? '−' : '+'}
               </span>
               {/* Digits */}
               {digits.map((digit, di) => (
                 <span
                   key={di}
                   className={css({
-                    width: "0.9rem",
-                    textAlign: "center",
-                    color: isDark ? "gray.100" : "gray.900",
+                    width: '0.9rem',
+                    textAlign: 'center',
+                    color: isDark ? 'gray.100' : 'gray.900',
                   })}
                 >
                   {digit}
@@ -465,15 +459,15 @@ function DetailedVerticalProblem({
             {hasTrace && (
               <div
                 className={css({
-                  width: "2px",
-                  height: "1.25rem",
+                  width: '2px',
+                  height: '1.25rem',
                   backgroundColor: step
                     ? isDark
-                      ? "blue.600"
-                      : "blue.400"
+                      ? 'blue.600'
+                      : 'blue.400'
                     : isDark
-                      ? "gray.700"
-                      : "gray.300",
+                      ? 'gray.700'
+                      : 'gray.300',
                   flexShrink: 0,
                 })}
               />
@@ -505,23 +499,23 @@ function DetailedVerticalProblem({
               />
             )}
           </div>
-        );
+        )
       })}
 
       {/* Separator line */}
       <div
         className={css({
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem",
-          padding: "0.125rem 0.5rem",
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          padding: '0.125rem 0.5rem',
         })}
       >
         <div
           className={css({
             width: `calc(1.25rem + ${maxDigits} * 0.9rem)`,
-            height: "2px",
-            backgroundColor: isDark ? "gray.500" : "gray.400",
+            height: '2px',
+            backgroundColor: isDark ? 'gray.500' : 'gray.400',
           })}
         />
       </div>
@@ -530,63 +524,63 @@ function DetailedVerticalProblem({
       <div
         data-element="answer-row"
         className={css({
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem",
-          padding: "0.25rem 0.5rem",
-          borderRadius: "4px",
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          padding: '0.25rem 0.5rem',
+          borderRadius: '4px',
           backgroundColor: result
             ? result.isCorrect
               ? isDark
-                ? "green.900/40"
-                : "green.50"
+                ? 'green.900/40'
+                : 'green.50'
               : isDark
-                ? "red.900/40"
-                : "red.50"
-            : "transparent",
+                ? 'red.900/40'
+                : 'red.50'
+            : 'transparent',
         })}
       >
         {/* Answer display */}
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            fontFamily: "var(--font-mono, monospace)",
-            fontSize: "1.25rem",
-            fontWeight: "bold",
+            display: 'flex',
+            alignItems: 'center',
+            fontFamily: 'var(--font-mono, monospace)',
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
             flexShrink: 0,
           })}
         >
           <span
             className={css({
-              width: "1.25rem",
-              textAlign: "center",
-              color: isDark ? "gray.400" : "gray.500",
+              width: '1.25rem',
+              textAlign: 'center',
+              color: isDark ? 'gray.400' : 'gray.500',
             })}
           >
             =
           </span>
           {Math.abs(answer)
             .toString()
-            .padStart(maxDigits, " ")
-            .split("")
+            .padStart(maxDigits, ' ')
+            .split('')
             .map((digit, di) => (
               <span
                 key={di}
                 className={css({
-                  width: "0.9rem",
-                  textAlign: "center",
+                  width: '0.9rem',
+                  textAlign: 'center',
                   color: result
                     ? result.isCorrect
                       ? isDark
-                        ? "green.300"
-                        : "green.700"
+                        ? 'green.300'
+                        : 'green.700'
                       : isDark
-                        ? "red.300"
-                        : "red.700"
+                        ? 'red.300'
+                        : 'red.700'
                     : isDark
-                      ? "gray.100"
-                      : "gray.900",
+                      ? 'gray.100'
+                      : 'gray.900',
                 })}
               >
                 {digit}
@@ -598,9 +592,9 @@ function DetailedVerticalProblem({
         {hasTrace && (
           <div
             className={css({
-              width: "2px",
-              height: "1.25rem",
-              backgroundColor: isDark ? "blue.600" : "blue.400",
+              width: '2px',
+              height: '1.25rem',
+              backgroundColor: isDark ? 'blue.600' : 'blue.400',
               flexShrink: 0,
             })}
           />
@@ -609,9 +603,9 @@ function DetailedVerticalProblem({
         {/* Result indicator - takes up flexible space */}
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
             flex: 1,
           })}
         >
@@ -620,8 +614,8 @@ function DetailedVerticalProblem({
               {result.isCorrect ? (
                 <span
                   className={css({
-                    fontSize: "1rem",
-                    color: isDark ? "green.400" : "green.600",
+                    fontSize: '1rem',
+                    color: isDark ? 'green.400' : 'green.600',
                   })}
                 >
                   ✓
@@ -629,14 +623,14 @@ function DetailedVerticalProblem({
               ) : (
                 <span
                   className={css({
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "0.25rem",
-                    padding: "0.125rem 0.5rem",
-                    borderRadius: "4px",
-                    fontSize: "0.875rem",
-                    backgroundColor: isDark ? "red.900/60" : "red.100",
-                    color: isDark ? "red.300" : "red.700",
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    padding: '0.125rem 0.5rem',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    backgroundColor: isDark ? 'red.900/60' : 'red.100',
+                    color: isDark ? 'red.300' : 'red.700',
                   })}
                 >
                   You said {result.studentAnswer}
@@ -651,19 +645,19 @@ function DetailedVerticalProblem({
           <span
             data-element="grand-total"
             className={css({
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minWidth: "2.5rem",
-              padding: "0.25rem 0.5rem",
-              borderRadius: "4px",
-              fontSize: "0.875rem",
-              fontWeight: "bold",
-              fontFamily: "var(--font-mono, monospace)",
-              border: "2px solid",
-              backgroundColor: isDark ? "blue.900" : "blue.50",
-              borderColor: isDark ? "blue.600" : "blue.300",
-              color: isDark ? "blue.200" : "blue.700",
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '2.5rem',
+              padding: '0.25rem 0.5rem',
+              borderRadius: '4px',
+              fontSize: '0.875rem',
+              fontWeight: 'bold',
+              fontFamily: 'var(--font-mono, monospace)',
+              border: '2px solid',
+              backgroundColor: isDark ? 'blue.900' : 'blue.50',
+              borderColor: isDark ? 'blue.600' : 'blue.300',
+              color: isDark ? 'blue.200' : 'blue.700',
             })}
           >
             Σ{trace.totalComplexityCost}
@@ -671,7 +665,7 @@ function DetailedVerticalProblem({
         )}
       </div>
     </div>
-  );
+  )
 }
 
 /**
@@ -687,79 +681,77 @@ function DetailedLinearProblem({
   isDark,
   result,
 }: {
-  terms: number[];
-  answer: number;
-  trace?: GenerationTrace;
-  maxBudget?: number;
-  minBudget?: number;
-  isDark: boolean;
-  result?: SlotResult;
+  terms: number[]
+  answer: number
+  trace?: GenerationTrace
+  maxBudget?: number
+  minBudget?: number
+  isDark: boolean
+  result?: SlotResult
 }) {
   const equation = terms
     .map((term, i) => {
-      if (i === 0) return String(term);
-      return term < 0 ? ` − ${Math.abs(term)}` : ` + ${term}`;
+      if (i === 0) return String(term)
+      return term < 0 ? ` − ${Math.abs(term)}` : ` + ${term}`
     })
-    .join("");
+    .join('')
 
-  const hasTrace = trace && trace.steps.length > 0;
+  const hasTrace = trace && trace.steps.length > 0
 
   return (
     <div
       data-element="detailed-linear-problem"
       className={css({
-        display: "flex",
-        flexDirection: "column",
-        gap: "0.375rem",
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.375rem',
       })}
     >
       {/* Equation header - compact */}
       <div
         data-element="equation-section"
         className={css({
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem",
-          padding: "0.375rem 0.5rem",
-          borderRadius: "6px",
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          padding: '0.375rem 0.5rem',
+          borderRadius: '6px',
           backgroundColor: result
             ? result.isCorrect
               ? isDark
-                ? "green.900/40"
-                : "green.50"
+                ? 'green.900/40'
+                : 'green.50'
               : isDark
-                ? "red.900/40"
-                : "red.50"
+                ? 'red.900/40'
+                : 'red.50'
             : isDark
-              ? "gray.800/50"
-              : "gray.50",
-          flexWrap: "wrap",
+              ? 'gray.800/50'
+              : 'gray.50',
+          flexWrap: 'wrap',
         })}
       >
         {/* Equation */}
         <div
           className={css({
-            fontFamily: "var(--font-mono, monospace)",
-            fontSize: "1.25rem",
-            fontWeight: "bold",
+            fontFamily: 'var(--font-mono, monospace)',
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
           })}
         >
-          <span className={css({ color: isDark ? "gray.200" : "gray.800" })}>
-            {equation} ={" "}
-          </span>
+          <span className={css({ color: isDark ? 'gray.200' : 'gray.800' })}>{equation} = </span>
           <span
             className={css({
               color: result
                 ? result.isCorrect
                   ? isDark
-                    ? "green.300"
-                    : "green.700"
+                    ? 'green.300'
+                    : 'green.700'
                   : isDark
-                    ? "red.300"
-                    : "red.700"
+                    ? 'red.300'
+                    : 'red.700'
                 : isDark
-                  ? "gray.100"
-                  : "gray.900",
+                  ? 'gray.100'
+                  : 'gray.900',
             })}
           >
             {answer}
@@ -770,17 +762,17 @@ function DetailedLinearProblem({
         {result && (
           <span
             className={css({
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              fontSize: "0.875rem",
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '0.875rem',
             })}
           >
             {result.isCorrect ? (
               <span
                 className={css({
-                  color: isDark ? "green.400" : "green.600",
-                  fontSize: "1rem",
+                  color: isDark ? 'green.400' : 'green.600',
+                  fontSize: '1rem',
                 })}
               >
                 ✓
@@ -788,13 +780,13 @@ function DetailedLinearProblem({
             ) : (
               <span
                 className={css({
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.25rem",
-                  padding: "0.125rem 0.5rem",
-                  borderRadius: "4px",
-                  backgroundColor: isDark ? "red.900/60" : "red.100",
-                  color: isDark ? "red.300" : "red.700",
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  padding: '0.125rem 0.5rem',
+                  borderRadius: '4px',
+                  backgroundColor: isDark ? 'red.900/60' : 'red.100',
+                  color: isDark ? 'red.300' : 'red.700',
                 })}
               >
                 You said {result.studentAnswer}
@@ -809,9 +801,9 @@ function DetailedLinearProblem({
         <div
           data-element="term-breakdown"
           className={css({
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.25rem",
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.25rem',
           })}
         >
           {trace.steps.map((step, i) => (
@@ -819,48 +811,48 @@ function DetailedLinearProblem({
               key={i}
               data-element="term-row"
               className={css({
-                display: "flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                padding: "0.25rem 0.5rem",
-                borderRadius: "4px",
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '4px',
                 backgroundColor:
                   i % 2 === 0
                     ? isDark
-                      ? "rgba(255,255,255,0.02)"
-                      : "rgba(0,0,0,0.015)"
-                    : "transparent",
+                      ? 'rgba(255,255,255,0.02)'
+                      : 'rgba(0,0,0,0.015)'
+                    : 'transparent',
               })}
             >
               {/* Term value - compact */}
               <div
                 data-element="term-label"
                 className={css({
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.25rem",
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
                   flexShrink: 0,
                 })}
               >
                 <span
                   className={css({
-                    fontFamily: "var(--font-mono, monospace)",
-                    fontSize: "1rem",
-                    fontWeight: "bold",
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
                     color:
                       i === 0
                         ? isDark
-                          ? "gray.300"
-                          : "gray.700"
+                          ? 'gray.300'
+                          : 'gray.700'
                         : step.termAdded >= 0
                           ? isDark
-                            ? "green.400"
-                            : "green.600"
+                            ? 'green.400'
+                            : 'green.600'
                           : isDark
-                            ? "red.400"
-                            : "red.600",
-                    minWidth: "3.5rem",
-                    textAlign: "right",
+                            ? 'red.400'
+                            : 'red.600',
+                    minWidth: '3.5rem',
+                    textAlign: 'right',
                   })}
                 >
                   {i === 0
@@ -874,9 +866,9 @@ function DetailedLinearProblem({
               {/* Vertical separator */}
               <div
                 className={css({
-                  width: "2px",
-                  height: "1.25rem",
-                  backgroundColor: isDark ? "blue.600" : "blue.400",
+                  width: '2px',
+                  height: '1.25rem',
+                  backgroundColor: isDark ? 'blue.600' : 'blue.400',
                   flexShrink: 0,
                 })}
               />
@@ -904,25 +896,25 @@ function DetailedLinearProblem({
             <div
               data-element="summary-row"
               className={css({
-                display: "flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                padding: "0.25rem 0.5rem",
-                borderRadius: "4px",
-                marginTop: "0.25rem",
-                borderTop: "2px solid",
-                borderColor: isDark ? "gray.600" : "gray.300",
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '4px',
+                marginTop: '0.25rem',
+                borderTop: '2px solid',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
               })}
             >
               {/* Spacer for term column */}
-              <div className={css({ minWidth: "3.5rem" })} />
+              <div className={css({ minWidth: '3.5rem' })} />
 
               {/* Vertical separator */}
               <div
                 className={css({
-                  width: "2px",
-                  height: "1.25rem",
-                  backgroundColor: isDark ? "blue.600" : "blue.400",
+                  width: '2px',
+                  height: '1.25rem',
+                  backgroundColor: isDark ? 'blue.600' : 'blue.400',
                   flexShrink: 0,
                 })}
               />
@@ -931,9 +923,9 @@ function DetailedLinearProblem({
               <div
                 className={css({
                   flex: 1,
-                  fontSize: "0.75rem",
-                  fontWeight: "bold",
-                  color: isDark ? "gray.400" : "gray.600",
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  color: isDark ? 'gray.400' : 'gray.600',
                 })}
               >
                 Total complexity
@@ -943,19 +935,19 @@ function DetailedLinearProblem({
               <span
                 data-element="grand-total"
                 className={css({
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minWidth: "2.5rem",
-                  padding: "0.25rem 0.5rem",
-                  borderRadius: "4px",
-                  fontSize: "0.875rem",
-                  fontWeight: "bold",
-                  fontFamily: "var(--font-mono, monospace)",
-                  border: "2px solid",
-                  backgroundColor: isDark ? "blue.900" : "blue.50",
-                  borderColor: isDark ? "blue.600" : "blue.300",
-                  color: isDark ? "blue.200" : "blue.700",
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '2.5rem',
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.875rem',
+                  fontWeight: 'bold',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  border: '2px solid',
+                  backgroundColor: isDark ? 'blue.900' : 'blue.50',
+                  borderColor: isDark ? 'blue.600' : 'blue.300',
+                  color: isDark ? 'blue.200' : 'blue.700',
                 })}
               >
                 Σ{trace.totalComplexityCost}
@@ -965,7 +957,7 @@ function DetailedLinearProblem({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 export function DetailedProblemCard({
@@ -976,76 +968,72 @@ export function DetailedProblemCard({
   isDark,
   problemNumber,
 }: DetailedProblemCardProps) {
-  const problem = slot.problem;
+  const problem = slot.problem
   const {
     label: purposeLabel,
     emoji: purposeEmoji,
     color: purposeColor,
-  } = getPurposeLabel(slot.purpose);
+  } = getPurposeLabel(slot.purpose)
 
   // Get budget constraints
-  const maxBudget =
-    slot.complexityBounds?.max ?? slot.constraints.maxComplexityBudgetPerTerm;
-  const minBudget =
-    slot.complexityBounds?.min ?? slot.constraints.minComplexityBudgetPerTerm;
+  const maxBudget = slot.complexityBounds?.max ?? slot.constraints.maxComplexityBudgetPerTerm
+  const minBudget = slot.complexityBounds?.min ?? slot.constraints.minComplexityBudgetPerTerm
 
   return (
     <div
       data-component="detailed-problem-card"
       data-purpose={slot.purpose}
       className={css({
-        display: "flex",
-        flexDirection: "column",
-        gap: "0.75rem",
-        padding: "1rem",
-        borderRadius: "8px",
-        border: "1px solid",
-        borderColor: isDark ? "gray.700" : "gray.200",
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.75rem',
+        padding: '1rem',
+        borderRadius: '8px',
+        border: '1px solid',
+        borderColor: isDark ? 'gray.700' : 'gray.200',
         backgroundColor: result
           ? result.isCorrect
             ? isDark
-              ? "green.900/30"
-              : "green.50"
+              ? 'green.900/30'
+              : 'green.50'
             : isDark
-              ? "red.900/30"
-              : "red.50"
+              ? 'red.900/30'
+              : 'red.50'
           : isDark
-            ? "gray.800"
-            : "white",
+            ? 'gray.800'
+            : 'white',
       })}
     >
       {/* Header */}
       <div
         className={css({
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
         })}
       >
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
           })}
         >
           <span
             className={css({
-              fontWeight: "bold",
-              color: isDark ? "gray.200" : "gray.800",
+              fontWeight: 'bold',
+              color: isDark ? 'gray.200' : 'gray.800',
             })}
           >
             #{problemNumber}
           </span>
           <span
             className={css({
-              padding: "0.125rem 0.5rem",
-              borderRadius: "4px",
-              fontSize: "0.75rem",
-              fontWeight: "500",
-              backgroundColor: isDark
-                ? `${purposeColor}.900`
-                : `${purposeColor}.100`,
+              padding: '0.125rem 0.5rem',
+              borderRadius: '4px',
+              fontSize: '0.75rem',
+              fontWeight: '500',
+              backgroundColor: isDark ? `${purposeColor}.900` : `${purposeColor}.100`,
               color: isDark ? `${purposeColor}.200` : `${purposeColor}.700`,
             })}
           >
@@ -1056,7 +1044,7 @@ export function DetailedProblemCard({
 
       {/* Problem display with annotations */}
       {problem && (
-        <div className={css({ marginTop: "0.5rem" })}>
+        <div className={css({ marginTop: '0.5rem' })}>
           {isVerticalPart(part.type) ? (
             <DetailedVerticalProblem
               terms={problem.terms}
@@ -1084,25 +1072,25 @@ export function DetailedProblemCard({
       {/* Constraints and timing info */}
       <div
         className={css({
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "1rem",
-          paddingTop: "0.5rem",
-          borderTop: "1px dashed",
-          borderColor: isDark ? "gray.700" : "gray.200",
-          fontSize: "0.75rem",
-          color: isDark ? "gray.400" : "gray.500",
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          paddingTop: '0.5rem',
+          borderTop: '1px dashed',
+          borderColor: isDark ? 'gray.700' : 'gray.200',
+          fontSize: '0.75rem',
+          color: isDark ? 'gray.400' : 'gray.500',
         })}
       >
         {/* Constraints */}
         <div
           className={css({
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.125rem",
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.125rem',
           })}
         >
-          <span className={css({ fontWeight: "bold" })}>Constraints:</span>
+          <span className={css({ fontWeight: 'bold' })}>Constraints:</span>
           {formatConstraints(slot).map((line, i) => (
             <span key={i}>{line}</span>
           ))}
@@ -1113,16 +1101,14 @@ export function DetailedProblemCard({
         {autoPauseStats && (
           <div
             className={css({
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.125rem",
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.125rem',
             })}
           >
-            <span className={css({ fontWeight: "bold" })}>
-              Auto-pause threshold:
-            </span>
+            <span className={css({ fontWeight: 'bold' })}>Auto-pause threshold:</span>
             <span>{formatMs(autoPauseStats.thresholdMs)}</span>
-            <span className={css({ fontSize: "0.625rem", maxWidth: "200px" })}>
+            <span className={css({ fontSize: '0.625rem', maxWidth: '200px' })}>
               {getAutoPauseExplanation(autoPauseStats)}
             </span>
           </div>
@@ -1132,32 +1118,31 @@ export function DetailedProblemCard({
         {result && (
           <div
             className={css({
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.125rem",
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.125rem',
             })}
           >
-            <span className={css({ fontWeight: "bold" })}>Response:</span>
+            <span className={css({ fontWeight: 'bold' })}>Response:</span>
             <span
               className={css({
                 color:
-                  autoPauseStats &&
-                  result.responseTimeMs > autoPauseStats.thresholdMs
+                  autoPauseStats && result.responseTimeMs > autoPauseStats.thresholdMs
                     ? isDark
-                      ? "yellow.400"
-                      : "yellow.600"
+                      ? 'yellow.400'
+                      : 'yellow.600'
                     : undefined,
               })}
             >
               {formatMs(result.responseTimeMs)}
               {autoPauseStats &&
                 result.responseTimeMs > autoPauseStats.thresholdMs &&
-                " (over threshold)"}
+                ' (over threshold)'}
             </span>
             {result.hadHelp && <span>Used help</span>}
           </div>
         )}
       </div>
     </div>
-  );
+  )
 }

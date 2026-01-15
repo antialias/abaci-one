@@ -9,4 +9,4 @@ export {
   type UseCelebrationAnimationOptions,
   type UseCelebrationAnimationReturn,
   type Celebration,
-} from "./useCelebrationAnimation";
+} from './useCelebrationAnimation'

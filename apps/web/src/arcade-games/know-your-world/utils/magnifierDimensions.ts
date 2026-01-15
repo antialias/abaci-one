@@ -6,44 +6,34 @@
  */
 
 // Magnifier size ratios - responsive to container aspect ratio
-export const MAGNIFIER_SIZE_SMALL = 1 / 3; // Used for the constrained dimension
-export const MAGNIFIER_SIZE_LARGE = 1 / 2; // Used for the unconstrained dimension
+export const MAGNIFIER_SIZE_SMALL = 1 / 3 // Used for the constrained dimension
+export const MAGNIFIER_SIZE_LARGE = 1 / 2 // Used for the unconstrained dimension
 
 // Margin around expanded magnifier (allows clicking outside to dismiss)
-export const EXPANDED_MAGNIFIER_MARGIN = 20; // pixels
+export const EXPANDED_MAGNIFIER_MARGIN = 20 // pixels
 
 /**
  * Calculate magnifier dimensions based on container aspect ratio.
  * - Landscape (wider): 1/3 width, 1/2 height (more vertical space available)
  * - Portrait (taller): 1/2 width, 1/3 height (more horizontal space available)
  */
-export function getMagnifierDimensions(
-  containerWidth: number,
-  containerHeight: number,
-) {
-  const isLandscape = containerWidth > containerHeight;
+export function getMagnifierDimensions(containerWidth: number, containerHeight: number) {
+  const isLandscape = containerWidth > containerHeight
   return {
-    width:
-      containerWidth *
-      (isLandscape ? MAGNIFIER_SIZE_SMALL : MAGNIFIER_SIZE_LARGE),
-    height:
-      containerHeight *
-      (isLandscape ? MAGNIFIER_SIZE_LARGE : MAGNIFIER_SIZE_SMALL),
-  };
+    width: containerWidth * (isLandscape ? MAGNIFIER_SIZE_SMALL : MAGNIFIER_SIZE_LARGE),
+    height: containerHeight * (isLandscape ? MAGNIFIER_SIZE_LARGE : MAGNIFIER_SIZE_SMALL),
+  }
 }
 
 /**
  * Calculate expanded magnifier dimensions (fills leftover area minus margin).
  * The margin allows clicking outside the magnifier to dismiss it.
  */
-export function getExpandedMagnifierDimensions(
-  leftoverWidth: number,
-  leftoverHeight: number,
-) {
+export function getExpandedMagnifierDimensions(leftoverWidth: number, leftoverHeight: number) {
   return {
     width: leftoverWidth - EXPANDED_MAGNIFIER_MARGIN * 2,
     height: leftoverHeight - EXPANDED_MAGNIFIER_MARGIN * 2,
-  };
+  }
 }
 
 /**
@@ -69,32 +59,32 @@ export function getAdjustedMagnifiedDimensions(
   viewBoxHeight: number,
   zoom: number,
   containerWidth: number,
-  containerHeight: number,
+  containerHeight: number
 ) {
   const { width: magWidth, height: magHeight } = getMagnifierDimensions(
     containerWidth,
-    containerHeight,
-  );
+    containerHeight
+  )
 
   // Base dimensions from zoom (what we'd show without aspect ratio adjustment)
-  const baseWidth = viewBoxWidth / zoom;
-  const baseHeight = viewBoxHeight / zoom;
+  const baseWidth = viewBoxWidth / zoom
+  const baseHeight = viewBoxHeight / zoom
 
   // Compare aspect ratios
-  const containerAspect = magWidth / magHeight;
-  const viewBoxAspect = baseWidth / baseHeight;
+  const containerAspect = magWidth / magHeight
+  const viewBoxAspect = baseWidth / baseHeight
 
   if (containerAspect > viewBoxAspect) {
     // Container is wider than viewBox aspect ratio - expand width to fill
     return {
       width: baseHeight * containerAspect,
       height: baseHeight,
-    };
+    }
   } else {
     // Container is taller than viewBox aspect ratio - expand height to fill
     return {
       width: baseWidth,
       height: baseWidth / containerAspect,
-    };
+    }
   }
 }

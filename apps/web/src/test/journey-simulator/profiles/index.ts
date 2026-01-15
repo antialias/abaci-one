@@ -13,8 +13,8 @@
 export {
   AVERAGE_LEARNER_WEAK_SKILLS,
   averageLearnerProfile,
-} from "./average-learner";
-export { FAST_LEARNER_WEAK_SKILLS, fastLearnerProfile } from "./fast-learner";
+} from './average-learner'
+export { FAST_LEARNER_WEAK_SKILLS, fastLearnerProfile } from './fast-learner'
 // Per-skill deficiency profiles (comprehensive A/B testing)
 export {
   generateAllDeficiencyProfiles,
@@ -26,19 +26,19 @@ export {
   LEARNER_TYPES,
   type LearnerType,
   SKILL_ORDER,
-} from "./per-skill-deficiency";
-export { SLOW_LEARNER_WEAK_SKILLS, slowLearnerProfile } from "./slow-learner";
+} from './per-skill-deficiency'
+export { SLOW_LEARNER_WEAK_SKILLS, slowLearnerProfile } from './slow-learner'
 export {
   STARK_STRONG_SKILLS,
   STARK_WEAK_SKILLS,
   starkContrastProfile,
-} from "./stark-contrast";
+} from './stark-contrast'
 // Legacy profiles for specific test scenarios (not blank slate)
 export {
   STRONG_SKILLS,
   unevenSkillsProfile,
   WEAK_SKILLS,
-} from "./uneven-skills";
+} from './uneven-skills'
 
 /**
  * All skills used across profiles.
@@ -46,42 +46,42 @@ export {
  */
 export const ALL_SKILLS = [
   // Basic addition
-  "basic.directAddition",
-  "basic.heavenBead",
-  "basic.simpleCombinations",
+  'basic.directAddition',
+  'basic.heavenBead',
+  'basic.simpleCombinations',
   // Basic subtraction
-  "basic.directSubtraction",
-  "basic.heavenBeadSubtraction",
-  "basic.simpleCombinationsSub",
+  'basic.directSubtraction',
+  'basic.heavenBeadSubtraction',
+  'basic.simpleCombinationsSub',
   // Five complements (addition)
-  "fiveComplements.4=5-1",
-  "fiveComplements.3=5-2",
-  "fiveComplements.2=5-3",
-  "fiveComplements.1=5-4",
+  'fiveComplements.4=5-1',
+  'fiveComplements.3=5-2',
+  'fiveComplements.2=5-3',
+  'fiveComplements.1=5-4',
   // Ten complements (addition)
-  "tenComplements.9=10-1",
-  "tenComplements.8=10-2",
-  "tenComplements.7=10-3",
-  "tenComplements.6=10-4",
-  "tenComplements.5=10-5",
-] as const;
+  'tenComplements.9=10-1',
+  'tenComplements.8=10-2',
+  'tenComplements.7=10-3',
+  'tenComplements.6=10-4',
+  'tenComplements.5=10-5',
+] as const
 
 /**
  * A minimal set of skills for quick tests.
  * Includes one from each category.
  */
 export const MINIMAL_SKILLS = [
-  "basic.directAddition",
-  "basic.heavenBead",
-  "fiveComplements.4=5-1",
-  "tenComplements.9=10-1",
-] as const;
+  'basic.directAddition',
+  'basic.heavenBead',
+  'fiveComplements.4=5-1',
+  'tenComplements.9=10-1',
+] as const
 
 /**
  * Basic skills only - for testing students just starting out.
  */
 export const BASIC_SKILLS = [
-  "basic.directAddition",
-  "basic.heavenBead",
-  "basic.simpleCombinations",
-] as const;
+  'basic.directAddition',
+  'basic.heavenBead',
+  'basic.simpleCombinations',
+] as const

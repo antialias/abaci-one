@@ -11,4 +11,4 @@ export {
   type GiveUpReveal,
   type ZoomTarget,
   type ButtonPosition,
-} from "./useGiveUpReveal";
+} from './useGiveUpReveal'

@@ -1,19 +1,19 @@
-"use client";
+'use client'
 
-import type { Meta, StoryObj } from "@storybook/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { css } from "../../../../../styled-system/css";
+import type { Meta, StoryObj } from '@storybook/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { css } from '../../../../../styled-system/css'
 import {
   ScoreboardTab,
   MasteryBar,
   SkillsProgressSection,
   SkillsLeaderboardSection,
-} from "./ScoreboardTab";
+} from './ScoreboardTab'
 import type {
   StudentSkillMetrics,
   ClassroomSkillsLeaderboard,
   SkillCategory,
-} from "@/lib/curriculum/skill-metrics";
+} from '@/lib/curriculum/skill-metrics'
 
 /**
  * Stories for ScoreboardTab - the dashboard tab showing game results, skill progress, and leaderboards
@@ -36,15 +36,13 @@ const createQueryClient = () =>
         refetchOnWindowFocus: false,
       },
     },
-  });
+  })
 
 // Wrapper component to provide QueryClient
 const QueryWrapper = ({ children }: { children: React.ReactNode }) => {
-  const queryClient = createQueryClient();
-  return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-};
+  const queryClient = createQueryClient()
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+}
 
 // ============================================================================
 // Mock Data
@@ -93,12 +91,12 @@ const mockSkillMetricsBeginner: StudentSkillMetrics = {
   },
   timing: {
     avgSecondsPerTerm: 4.2,
-    trend: "improving",
+    trend: 'improving',
   },
   accuracy: {
     overallPercent: 68,
     recentPercent: 72,
-    trend: "improving",
+    trend: 'improving',
   },
   progress: {
     improvementRate: 8.5,
@@ -106,7 +104,7 @@ const mockSkillMetricsBeginner: StudentSkillMetrics = {
     totalProblems: 45,
     weeklyProblems: 28,
   },
-};
+}
 
 const mockSkillMetricsIntermediate: StudentSkillMetrics = {
   computedAt: new Date(),
@@ -151,12 +149,12 @@ const mockSkillMetricsIntermediate: StudentSkillMetrics = {
   },
   timing: {
     avgSecondsPerTerm: 2.8,
-    trend: "stable",
+    trend: 'stable',
   },
   accuracy: {
     overallPercent: 82,
     recentPercent: 85,
-    trend: "improving",
+    trend: 'improving',
   },
   progress: {
     improvementRate: 5.2,
@@ -164,7 +162,7 @@ const mockSkillMetricsIntermediate: StudentSkillMetrics = {
     totalProblems: 320,
     weeklyProblems: 65,
   },
-};
+}
 
 const mockSkillMetricsAdvanced: StudentSkillMetrics = {
   computedAt: new Date(),
@@ -209,12 +207,12 @@ const mockSkillMetricsAdvanced: StudentSkillMetrics = {
   },
   timing: {
     avgSecondsPerTerm: 1.4,
-    trend: "improving",
+    trend: 'improving',
   },
   accuracy: {
     overallPercent: 94,
     recentPercent: 96,
-    trend: "stable",
+    trend: 'stable',
   },
   progress: {
     improvementRate: 2.1,
@@ -222,7 +220,7 @@ const mockSkillMetricsAdvanced: StudentSkillMetrics = {
     totalProblems: 1250,
     weeklyProblems: 42,
   },
-};
+}
 
 const mockSkillMetricsDeclining: StudentSkillMetrics = {
   computedAt: new Date(),
@@ -267,12 +265,12 @@ const mockSkillMetricsDeclining: StudentSkillMetrics = {
   },
   timing: {
     avgSecondsPerTerm: 3.5,
-    trend: "slowing",
+    trend: 'slowing',
   },
   accuracy: {
     overallPercent: 75,
     recentPercent: 68,
-    trend: "declining",
+    trend: 'declining',
   },
   progress: {
     improvementRate: -2.3,
@@ -280,480 +278,480 @@ const mockSkillMetricsDeclining: StudentSkillMetrics = {
     totalProblems: 180,
     weeklyProblems: 5,
   },
-};
+}
 
 const mockClassroomLeaderboard: ClassroomSkillsLeaderboard = {
   computedAt: new Date(),
   playerCount: 8,
   byWeeklyProblems: [
     {
-      playerId: "p1",
-      playerName: "Marcus",
-      playerEmoji: "🦖",
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
       value: 95,
       rank: 1,
     },
     {
-      playerId: "p2",
-      playerName: "Luna",
-      playerEmoji: "🌙",
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
       value: 78,
       rank: 2,
     },
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 65,
       rank: 3,
     },
     {
-      playerId: "p4",
-      playerName: "Kai",
-      playerEmoji: "🐬",
+      playerId: 'p4',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
       value: 42,
       rank: 4,
     },
     {
-      playerId: "p5",
-      playerName: "Emma",
-      playerEmoji: "🌸",
+      playerId: 'p5',
+      playerName: 'Emma',
+      playerEmoji: '🌸',
       value: 38,
       rank: 5,
     },
   ],
   byTotalProblems: [
     {
-      playerId: "p2",
-      playerName: "Luna",
-      playerEmoji: "🌙",
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
       value: 1850,
       rank: 1,
     },
     {
-      playerId: "p1",
-      playerName: "Marcus",
-      playerEmoji: "🦖",
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
       value: 1620,
       rank: 2,
     },
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 1250,
       rank: 3,
     },
     {
-      playerId: "p5",
-      playerName: "Emma",
-      playerEmoji: "🌸",
+      playerId: 'p5',
+      playerName: 'Emma',
+      playerEmoji: '🌸',
       value: 980,
       rank: 4,
     },
   ],
   byPracticeStreak: [
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 45,
       rank: 1,
     },
     {
-      playerId: "p2",
-      playerName: "Luna",
-      playerEmoji: "🌙",
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
       value: 32,
       rank: 2,
     },
     {
-      playerId: "p1",
-      playerName: "Marcus",
-      playerEmoji: "🦖",
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
       value: 28,
       rank: 3,
     },
     {
-      playerId: "p4",
-      playerName: "Kai",
-      playerEmoji: "🐬",
+      playerId: 'p4',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
       value: 15,
       rank: 4,
     },
   ],
   byImprovementRate: [
     {
-      playerId: "p4",
-      playerName: "Kai",
-      playerEmoji: "🐬",
+      playerId: 'p4',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
       value: 12.5,
       rank: 1,
     },
     {
-      playerId: "p1",
-      playerName: "Marcus",
-      playerEmoji: "🦖",
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
       value: 8.2,
       rank: 2,
     },
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 5.8,
       rank: 3,
     },
     {
-      playerId: "p2",
-      playerName: "Luna",
-      playerEmoji: "🌙",
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
       value: 3.1,
       rank: 4,
     },
   ],
   speedChampions: [
     {
-      category: "basic" as SkillCategory,
-      categoryName: "Basic Operations",
+      category: 'basic' as SkillCategory,
+      categoryName: 'Basic Operations',
       leaders: [
         {
-          playerId: "p2",
-          playerName: "Luna",
-          playerEmoji: "🌙",
+          playerId: 'p2',
+          playerName: 'Luna',
+          playerEmoji: '🌙',
           value: 0.8,
           rank: 1,
         },
         {
-          playerId: "current",
-          playerName: "Sonia",
-          playerEmoji: "🦋",
+          playerId: 'current',
+          playerName: 'Sonia',
+          playerEmoji: '🦋',
           value: 1.1,
           rank: 2,
         },
         {
-          playerId: "p1",
-          playerName: "Marcus",
-          playerEmoji: "🦖",
+          playerId: 'p1',
+          playerName: 'Marcus',
+          playerEmoji: '🦖',
           value: 1.3,
           rank: 3,
         },
       ],
     },
     {
-      category: "fiveComplements" as SkillCategory,
-      categoryName: "Five Complements",
+      category: 'fiveComplements' as SkillCategory,
+      categoryName: 'Five Complements',
       leaders: [
         {
-          playerId: "current",
-          playerName: "Sonia",
-          playerEmoji: "🦋",
+          playerId: 'current',
+          playerName: 'Sonia',
+          playerEmoji: '🦋',
           value: 1.4,
           rank: 1,
         },
         {
-          playerId: "p2",
-          playerName: "Luna",
-          playerEmoji: "🌙",
+          playerId: 'p2',
+          playerName: 'Luna',
+          playerEmoji: '🌙',
           value: 1.6,
           rank: 2,
         },
         {
-          playerId: "p1",
-          playerName: "Marcus",
-          playerEmoji: "🦖",
+          playerId: 'p1',
+          playerName: 'Marcus',
+          playerEmoji: '🦖',
           value: 1.9,
           rank: 3,
         },
       ],
     },
     {
-      category: "tenComplements" as SkillCategory,
-      categoryName: "Ten Complements",
+      category: 'tenComplements' as SkillCategory,
+      categoryName: 'Ten Complements',
       leaders: [
         {
-          playerId: "p1",
-          playerName: "Marcus",
-          playerEmoji: "🦖",
+          playerId: 'p1',
+          playerName: 'Marcus',
+          playerEmoji: '🦖',
           value: 1.8,
           rank: 1,
         },
         {
-          playerId: "p2",
-          playerName: "Luna",
-          playerEmoji: "🌙",
+          playerId: 'p2',
+          playerName: 'Luna',
+          playerEmoji: '🌙',
           value: 2.0,
           rank: 2,
         },
       ],
     },
   ],
-};
+}
 
 const mockClassroomLeaderboardSmall: ClassroomSkillsLeaderboard = {
   computedAt: new Date(),
   playerCount: 3,
   byWeeklyProblems: [
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 42,
       rank: 1,
     },
     {
-      playerId: "p2",
-      playerName: "Alex",
-      playerEmoji: "🚀",
+      playerId: 'p2',
+      playerName: 'Alex',
+      playerEmoji: '🚀',
       value: 28,
       rank: 2,
     },
   ],
   byTotalProblems: [
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 320,
       rank: 1,
     },
     {
-      playerId: "p2",
-      playerName: "Alex",
-      playerEmoji: "🚀",
+      playerId: 'p2',
+      playerName: 'Alex',
+      playerEmoji: '🚀',
       value: 180,
       rank: 2,
     },
   ],
   byPracticeStreak: [
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 12,
       rank: 1,
     },
     {
-      playerId: "p2",
-      playerName: "Alex",
-      playerEmoji: "🚀",
+      playerId: 'p2',
+      playerName: 'Alex',
+      playerEmoji: '🚀',
       value: 5,
       rank: 2,
     },
   ],
   byImprovementRate: [
     {
-      playerId: "p2",
-      playerName: "Alex",
-      playerEmoji: "🚀",
+      playerId: 'p2',
+      playerName: 'Alex',
+      playerEmoji: '🚀',
       value: 15.2,
       rank: 1,
     },
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 8.5,
       rank: 2,
     },
   ],
   speedChampions: [],
-};
+}
 
 const mockClassroomLeaderboardCurrentNotTop: ClassroomSkillsLeaderboard = {
   computedAt: new Date(),
   playerCount: 12,
   byWeeklyProblems: [
     {
-      playerId: "p1",
-      playerName: "Marcus",
-      playerEmoji: "🦖",
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
       value: 120,
       rank: 1,
     },
     {
-      playerId: "p2",
-      playerName: "Luna",
-      playerEmoji: "🌙",
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
       value: 95,
       rank: 2,
     },
     {
-      playerId: "p3",
-      playerName: "Kai",
-      playerEmoji: "🐬",
+      playerId: 'p3',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
       value: 88,
       rank: 3,
     },
     {
-      playerId: "p4",
-      playerName: "Emma",
-      playerEmoji: "🌸",
+      playerId: 'p4',
+      playerName: 'Emma',
+      playerEmoji: '🌸',
       value: 72,
       rank: 4,
     },
     {
-      playerId: "p5",
-      playerName: "Oliver",
-      playerEmoji: "🦁",
+      playerId: 'p5',
+      playerName: 'Oliver',
+      playerEmoji: '🦁',
       value: 65,
       rank: 5,
     },
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 42,
       rank: 7,
     },
   ],
   byTotalProblems: [
     {
-      playerId: "p2",
-      playerName: "Luna",
-      playerEmoji: "🌙",
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
       value: 2500,
       rank: 1,
     },
     {
-      playerId: "p1",
-      playerName: "Marcus",
-      playerEmoji: "🦖",
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
       value: 2200,
       rank: 2,
     },
     {
-      playerId: "p3",
-      playerName: "Kai",
-      playerEmoji: "🐬",
+      playerId: 'p3',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
       value: 1800,
       rank: 3,
     },
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 1250,
       rank: 5,
     },
   ],
   byPracticeStreak: [
     {
-      playerId: "p3",
-      playerName: "Kai",
-      playerEmoji: "🐬",
+      playerId: 'p3',
+      playerName: 'Kai',
+      playerEmoji: '🐬',
       value: 60,
       rank: 1,
     },
     {
-      playerId: "p2",
-      playerName: "Luna",
-      playerEmoji: "🌙",
+      playerId: 'p2',
+      playerName: 'Luna',
+      playerEmoji: '🌙',
       value: 45,
       rank: 2,
     },
     {
-      playerId: "p1",
-      playerName: "Marcus",
-      playerEmoji: "🦖",
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
       value: 38,
       rank: 3,
     },
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 12,
       rank: 6,
     },
   ],
   byImprovementRate: [
     {
-      playerId: "p4",
-      playerName: "Emma",
-      playerEmoji: "🌸",
+      playerId: 'p4',
+      playerName: 'Emma',
+      playerEmoji: '🌸',
       value: 18.5,
       rank: 1,
     },
     {
-      playerId: "p5",
-      playerName: "Oliver",
-      playerEmoji: "🦁",
+      playerId: 'p5',
+      playerName: 'Oliver',
+      playerEmoji: '🦁',
       value: 14.2,
       rank: 2,
     },
     {
-      playerId: "p1",
-      playerName: "Marcus",
-      playerEmoji: "🦖",
+      playerId: 'p1',
+      playerName: 'Marcus',
+      playerEmoji: '🦖',
       value: 10.8,
       rank: 3,
     },
     {
-      playerId: "current",
-      playerName: "Sonia",
-      playerEmoji: "🦋",
+      playerId: 'current',
+      playerName: 'Sonia',
+      playerEmoji: '🦋',
       value: 5.2,
       rank: 8,
     },
   ],
   speedChampions: [
     {
-      category: "basic" as SkillCategory,
-      categoryName: "Basic Operations",
+      category: 'basic' as SkillCategory,
+      categoryName: 'Basic Operations',
       leaders: [
         {
-          playerId: "p2",
-          playerName: "Luna",
-          playerEmoji: "🌙",
+          playerId: 'p2',
+          playerName: 'Luna',
+          playerEmoji: '🌙',
           value: 0.6,
           rank: 1,
         },
         {
-          playerId: "p3",
-          playerName: "Kai",
-          playerEmoji: "🐬",
+          playerId: 'p3',
+          playerName: 'Kai',
+          playerEmoji: '🐬',
           value: 0.8,
           rank: 2,
         },
         {
-          playerId: "p1",
-          playerName: "Marcus",
-          playerEmoji: "🦖",
+          playerId: 'p1',
+          playerName: 'Marcus',
+          playerEmoji: '🦖',
           value: 0.9,
           rank: 3,
         },
       ],
     },
     {
-      category: "fiveComplements" as SkillCategory,
-      categoryName: "Five Complements",
+      category: 'fiveComplements' as SkillCategory,
+      categoryName: 'Five Complements',
       leaders: [
         {
-          playerId: "p1",
-          playerName: "Marcus",
-          playerEmoji: "🦖",
+          playerId: 'p1',
+          playerName: 'Marcus',
+          playerEmoji: '🦖',
           value: 1.2,
           rank: 1,
         },
         {
-          playerId: "p2",
-          playerName: "Luna",
-          playerEmoji: "🌙",
+          playerId: 'p2',
+          playerName: 'Luna',
+          playerEmoji: '🌙',
           value: 1.4,
           rank: 2,
         },
         {
-          playerId: "current",
-          playerName: "Sonia",
-          playerEmoji: "🦋",
+          playerId: 'current',
+          playerName: 'Sonia',
+          playerEmoji: '🦋',
           value: 1.5,
           rank: 3,
         },
       ],
     },
   ],
-};
+}
 
 // ============================================================================
 // Story Wrapper Components
@@ -763,22 +761,22 @@ function StoryWrapper({
   children,
   isDark = false,
 }: {
-  children: React.ReactNode;
-  isDark?: boolean;
+  children: React.ReactNode
+  isDark?: boolean
 }) {
   return (
     <div
       className={css({
-        backgroundColor: isDark ? "gray.900" : "white",
-        padding: "2rem",
-        borderRadius: "12px",
-        minWidth: "600px",
-        maxWidth: "800px",
+        backgroundColor: isDark ? 'gray.900' : 'white',
+        padding: '2rem',
+        borderRadius: '12px',
+        minWidth: '600px',
+        maxWidth: '800px',
       })}
     >
       {children}
     </div>
-  );
+  )
 }
 
 function SectionWrapper({
@@ -786,31 +784,31 @@ function SectionWrapper({
   isDark = false,
   title,
 }: {
-  children: React.ReactNode;
-  isDark?: boolean;
-  title: string;
+  children: React.ReactNode
+  isDark?: boolean
+  title: string
 }) {
   return (
     <section
       className={css({
-        backgroundColor: isDark ? "gray.800" : "gray.50",
-        borderRadius: "16px",
-        padding: "1.25rem",
+        backgroundColor: isDark ? 'gray.800' : 'gray.50',
+        borderRadius: '16px',
+        padding: '1.25rem',
       })}
     >
       <h2
         className={css({
-          fontSize: "1.125rem",
-          fontWeight: "bold",
-          color: isDark ? "gray.100" : "gray.900",
-          marginBottom: "1rem",
+          fontSize: '1.125rem',
+          fontWeight: 'bold',
+          color: isDark ? 'gray.100' : 'gray.900',
+          marginBottom: '1rem',
         })}
       >
         {title}
       </h2>
       {children}
     </section>
-  );
+  )
 }
 
 // ============================================================================
@@ -818,16 +816,16 @@ function SectionWrapper({
 // ============================================================================
 
 const meta: Meta<typeof ScoreboardTab> = {
-  title: "Practice/Dashboard/ScoreboardTab",
+  title: 'Practice/Dashboard/ScoreboardTab',
   component: ScoreboardTab,
   parameters: {
-    layout: "padded",
+    layout: 'padded',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   decorators: [
     (Story) => (
       <QueryWrapper>
-        <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <Story />
         </div>
       </QueryWrapper>
@@ -835,20 +833,19 @@ const meta: Meta<typeof ScoreboardTab> = {
   ],
   argTypes: {
     isDark: {
-      control: "boolean",
-      description: "Dark mode toggle",
+      control: 'boolean',
+      description: 'Dark mode toggle',
     },
     classroomId: {
-      control: "text",
-      description:
-        "Classroom ID for leaderboard (null/undefined hides leaderboard)",
+      control: 'text',
+      description: 'Classroom ID for leaderboard (null/undefined hides leaderboard)',
     },
   },
-};
+}
 
-export default meta;
+export default meta
 
-type Story = StoryObj<typeof ScoreboardTab>;
+type Story = StoryObj<typeof ScoreboardTab>
 
 // ============================================================================
 // Full ScoreboardTab Stories (with loading states)
@@ -859,50 +856,50 @@ type Story = StoryObj<typeof ScoreboardTab>;
  */
 export const LightModeWithClassroom: Story = {
   args: {
-    studentId: "student-1",
-    classroomId: "classroom-1",
+    studentId: 'student-1',
+    classroomId: 'classroom-1',
     isDark: false,
   },
-};
+}
 
 /**
  * Dark mode with classroom
  */
 export const DarkModeWithClassroom: Story = {
   args: {
-    studentId: "student-1",
-    classroomId: "classroom-1",
+    studentId: 'student-1',
+    classroomId: 'classroom-1',
     isDark: true,
   },
   parameters: {
-    backgrounds: { default: "dark" },
+    backgrounds: { default: 'dark' },
   },
-};
+}
 
 /**
  * Light mode without classroom - hides leaderboard
  */
 export const LightModeNoClassroom: Story = {
   args: {
-    studentId: "student-1",
+    studentId: 'student-1',
     classroomId: null,
     isDark: false,
   },
-};
+}
 
 /**
  * Dark mode without classroom
  */
 export const DarkModeNoClassroom: Story = {
   args: {
-    studentId: "student-1",
+    studentId: 'student-1',
     classroomId: null,
     isDark: true,
   },
   parameters: {
-    backgrounds: { default: "dark" },
+    backgrounds: { default: 'dark' },
   },
-};
+}
 
 // ============================================================================
 // MasteryBar Component Stories
@@ -916,24 +913,19 @@ export const MasteryBarVariations: StoryObj = {
     <StoryWrapper>
       <div
         className={css({
-          display: "flex",
-          flexDirection: "column",
-          gap: "1.5rem",
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
         })}
       >
         <div>
-          <h3 className={css({ fontWeight: "bold", marginBottom: "0.5rem" })}>
+          <h3 className={css({ fontWeight: 'bold', marginBottom: '0.5rem' })}>
             High Mastery (80%+)
           </h3>
-          <MasteryBar
-            value={0.92}
-            label="Basic Operations"
-            emoji="🔢"
-            isDark={false}
-          />
+          <MasteryBar value={0.92} label="Basic Operations" emoji="🔢" isDark={false} />
         </div>
         <div>
-          <h3 className={css({ fontWeight: "bold", marginBottom: "0.5rem" })}>
+          <h3 className={css({ fontWeight: 'bold', marginBottom: '0.5rem' })}>
             Medium Mastery (50-79%)
           </h3>
           <MasteryBar
@@ -945,7 +937,7 @@ export const MasteryBarVariations: StoryObj = {
           />
         </div>
         <div>
-          <h3 className={css({ fontWeight: "bold", marginBottom: "0.5rem" })}>
+          <h3 className={css({ fontWeight: 'bold', marginBottom: '0.5rem' })}>
             Low Mastery (&lt;50%)
           </h3>
           <MasteryBar
@@ -957,9 +949,7 @@ export const MasteryBarVariations: StoryObj = {
           />
         </div>
         <div>
-          <h3 className={css({ fontWeight: "bold", marginBottom: "0.5rem" })}>
-            Zero Progress
-          </h3>
+          <h3 className={css({ fontWeight: 'bold', marginBottom: '0.5rem' })}>Zero Progress</h3>
           <MasteryBar
             value={0}
             label="Advanced Combinations"
@@ -969,7 +959,7 @@ export const MasteryBarVariations: StoryObj = {
           />
         </div>
         <div>
-          <h3 className={css({ fontWeight: "bold", marginBottom: "0.5rem" })}>
+          <h3 className={css({ fontWeight: 'bold', marginBottom: '0.5rem' })}>
             Full Mastery (100%)
           </h3>
           <MasteryBar
@@ -983,7 +973,7 @@ export const MasteryBarVariations: StoryObj = {
       </div>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * MasteryBar in dark mode
@@ -993,39 +983,21 @@ export const MasteryBarDarkMode: StoryObj = {
     <StoryWrapper isDark>
       <div
         className={css({
-          display: "flex",
-          flexDirection: "column",
-          gap: "1rem",
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem',
         })}
       >
-        <MasteryBar
-          value={0.85}
-          label="Basic Operations"
-          detail="3/3 mastered"
-          emoji="🔢"
-          isDark
-        />
-        <MasteryBar
-          value={0.58}
-          label="Five Complements"
-          detail="2/4 mastered"
-          emoji="✋"
-          isDark
-        />
-        <MasteryBar
-          value={0.22}
-          label="Ten Complements"
-          detail="2/9 practiced"
-          emoji="🔟"
-          isDark
-        />
+        <MasteryBar value={0.85} label="Basic Operations" detail="3/3 mastered" emoji="🔢" isDark />
+        <MasteryBar value={0.58} label="Five Complements" detail="2/4 mastered" emoji="✋" isDark />
+        <MasteryBar value={0.22} label="Ten Complements" detail="2/9 practiced" emoji="🔟" isDark />
       </div>
     </StoryWrapper>
   ),
   parameters: {
-    backgrounds: { default: "dark" },
+    backgrounds: { default: 'dark' },
   },
-};
+}
 
 // ============================================================================
 // SkillsProgressSection Stories
@@ -1046,7 +1018,7 @@ export const SkillsProgressBeginner: StoryObj = {
       </SectionWrapper>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * Skills Progress - Intermediate student (good progress)
@@ -1063,7 +1035,7 @@ export const SkillsProgressIntermediate: StoryObj = {
       </SectionWrapper>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * Skills Progress - Advanced student (high mastery)
@@ -1080,7 +1052,7 @@ export const SkillsProgressAdvanced: StoryObj = {
       </SectionWrapper>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * Skills Progress - Declining student (negative trends)
@@ -1097,7 +1069,7 @@ export const SkillsProgressDeclining: StoryObj = {
       </SectionWrapper>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * Skills Progress - Loading state
@@ -1106,15 +1078,11 @@ export const SkillsProgressLoading: StoryObj = {
   render: () => (
     <StoryWrapper>
       <SectionWrapper title="Skills Progress" isDark={false}>
-        <SkillsProgressSection
-          metrics={undefined}
-          isLoading={true}
-          isDark={false}
-        />
+        <SkillsProgressSection metrics={undefined} isLoading={true} isDark={false} />
       </SectionWrapper>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * Skills Progress - Empty state (no data)
@@ -1137,7 +1105,7 @@ export const SkillsProgressEmpty: StoryObj = {
       </SectionWrapper>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * Skills Progress - Dark mode
@@ -1146,18 +1114,14 @@ export const SkillsProgressDarkMode: StoryObj = {
   render: () => (
     <StoryWrapper isDark>
       <SectionWrapper title="Skills Progress" isDark>
-        <SkillsProgressSection
-          metrics={mockSkillMetricsIntermediate}
-          isLoading={false}
-          isDark
-        />
+        <SkillsProgressSection metrics={mockSkillMetricsIntermediate} isLoading={false} isDark />
       </SectionWrapper>
     </StoryWrapper>
   ),
   parameters: {
-    backgrounds: { default: "dark" },
+    backgrounds: { default: 'dark' },
   },
-};
+}
 
 // ============================================================================
 // SkillsLeaderboardSection Stories
@@ -1179,7 +1143,7 @@ export const SkillsLeaderboardFull: StoryObj = {
       </SectionWrapper>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * Skills Leaderboard - Small classroom (few students)
@@ -1197,7 +1161,7 @@ export const SkillsLeaderboardSmall: StoryObj = {
       </SectionWrapper>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * Skills Leaderboard - Current student not in top 3
@@ -1216,7 +1180,7 @@ export const SkillsLeaderboardNotTop3: StoryObj = {
       </SectionWrapper>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * Skills Leaderboard - Loading state
@@ -1234,7 +1198,7 @@ export const SkillsLeaderboardLoading: StoryObj = {
       </SectionWrapper>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * Skills Leaderboard - Empty state (no players)
@@ -1252,7 +1216,7 @@ export const SkillsLeaderboardEmpty: StoryObj = {
       </SectionWrapper>
     </StoryWrapper>
   ),
-};
+}
 
 /**
  * Skills Leaderboard - Dark mode
@@ -1271,9 +1235,9 @@ export const SkillsLeaderboardDarkMode: StoryObj = {
     </StoryWrapper>
   ),
   parameters: {
-    backgrounds: { default: "dark" },
+    backgrounds: { default: 'dark' },
   },
-};
+}
 
 // ============================================================================
 // Combined Stories - All Progress Levels
@@ -1284,16 +1248,14 @@ export const SkillsLeaderboardDarkMode: StoryObj = {
  */
 export const AllProgressLevels: StoryObj = {
   render: () => (
-    <div
-      className={css({ display: "flex", flexDirection: "column", gap: "2rem" })}
-    >
+    <div className={css({ display: 'flex', flexDirection: 'column', gap: '2rem' })}>
       <div>
         <h3
           className={css({
-            fontSize: "1rem",
-            fontWeight: "bold",
-            marginBottom: "0.5rem",
-            color: "blue.600",
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+            color: 'blue.600',
           })}
         >
           Beginner (25% mastery)
@@ -1311,10 +1273,10 @@ export const AllProgressLevels: StoryObj = {
       <div>
         <h3
           className={css({
-            fontSize: "1rem",
-            fontWeight: "bold",
-            marginBottom: "0.5rem",
-            color: "yellow.600",
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+            color: 'yellow.600',
           })}
         >
           Intermediate (58% mastery)
@@ -1332,10 +1294,10 @@ export const AllProgressLevels: StoryObj = {
       <div>
         <h3
           className={css({
-            fontSize: "1rem",
-            fontWeight: "bold",
-            marginBottom: "0.5rem",
-            color: "green.600",
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+            color: 'green.600',
           })}
         >
           Advanced (89% mastery)
@@ -1353,10 +1315,10 @@ export const AllProgressLevels: StoryObj = {
       <div>
         <h3
           className={css({
-            fontSize: "1rem",
-            fontWeight: "bold",
-            marginBottom: "0.5rem",
-            color: "red.600",
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+            color: 'red.600',
           })}
         >
           Declining (negative trends)
@@ -1373,4 +1335,4 @@ export const AllProgressLevels: StoryObj = {
       </div>
     </div>
   ),
-};
+}

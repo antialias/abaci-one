@@ -6,49 +6,45 @@
  * - Classroom skills leaderboard (effort-based, improvement-based, speed champions)
  */
 
-"use client";
+'use client'
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/queryClient";
-import { skillMetricsKeys } from "@/lib/queryKeys";
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/queryClient'
+import { skillMetricsKeys } from '@/lib/queryKeys'
 import type {
   StudentSkillMetrics,
   ClassroomSkillsLeaderboard,
-} from "@/lib/curriculum/skill-metrics";
+} from '@/lib/curriculum/skill-metrics'
 
 // Re-export query keys for consumers
-export { skillMetricsKeys } from "@/lib/queryKeys";
+export { skillMetricsKeys } from '@/lib/queryKeys'
 
 // ============================================================================
 // API Functions
 // ============================================================================
 
-async function fetchPlayerSkillMetrics(
-  playerId: string,
-): Promise<StudentSkillMetrics> {
-  const response = await api(`curriculum/${playerId}/skills/metrics`);
+async function fetchPlayerSkillMetrics(playerId: string): Promise<StudentSkillMetrics> {
+  const response = await api(`curriculum/${playerId}/skills/metrics`)
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch skill metrics: ${response.statusText}`);
+    throw new Error(`Failed to fetch skill metrics: ${response.statusText}`)
   }
 
-  const data = await response.json();
-  return data.metrics;
+  const data = await response.json()
+  return data.metrics
 }
 
 async function fetchClassroomSkillsLeaderboard(
-  classroomId: string,
+  classroomId: string
 ): Promise<ClassroomSkillsLeaderboard> {
-  const response = await api(`classroom/${classroomId}/skills/leaderboard`);
+  const response = await api(`classroom/${classroomId}/skills/leaderboard`)
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to fetch skills leaderboard: ${response.statusText}`,
-    );
+    throw new Error(`Failed to fetch skills leaderboard: ${response.statusText}`)
   }
 
-  const data = await response.json();
-  return data.leaderboard;
+  const data = await response.json()
+  return data.leaderboard
 }
 
 // ============================================================================
@@ -67,12 +63,12 @@ async function fetchClassroomSkillsLeaderboard(
  */
 export function usePlayerSkillMetrics(playerId: string | null) {
   return useQuery({
-    queryKey: skillMetricsKeys.player(playerId ?? ""),
+    queryKey: skillMetricsKeys.player(playerId ?? ''),
     queryFn: () => fetchPlayerSkillMetrics(playerId!),
     enabled: !!playerId,
     // Skill metrics don't change frequently, cache for 1 minute
     staleTime: 60 * 1000,
-  });
+  })
 }
 
 /**
@@ -85,10 +81,10 @@ export function usePlayerSkillMetrics(playerId: string | null) {
  */
 export function useClassroomSkillsLeaderboard(classroomId: string | null) {
   return useQuery({
-    queryKey: skillMetricsKeys.classroomLeaderboard(classroomId ?? ""),
+    queryKey: skillMetricsKeys.classroomLeaderboard(classroomId ?? ''),
     queryFn: () => fetchClassroomSkillsLeaderboard(classroomId!),
     enabled: !!classroomId,
     // Leaderboard is computed on demand, cache for 2 minutes
     staleTime: 2 * 60 * 1000,
-  });
+  })
 }

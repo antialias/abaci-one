@@ -5,7 +5,7 @@
  * cursor control when the magnifier zoom exceeds a threshold.
  */
 
-import type { RefObject } from "react";
+import type { RefObject } from 'react'
 
 // ============================================================================
 // Hook Options
@@ -16,17 +16,17 @@ import type { RefObject } from "react";
  */
 export interface UsePrecisionModeOptions {
   /** Container element ref for pointer lock */
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement>
   /** SVG element ref for viewport calculations */
-  svgRef: RefObject<SVGSVGElement>;
+  svgRef: RefObject<SVGSVGElement>
   /** SVG viewBox string */
-  viewBox: string;
+  viewBox: string
   /** Current zoom level */
-  currentZoom: number;
+  currentZoom: number
   /** Callback when precision mode is activated */
-  onActivate?: () => void;
+  onActivate?: () => void
   /** Callback when precision mode is deactivated */
-  onDeactivate?: () => void;
+  onDeactivate?: () => void
 }
 
 // ============================================================================
@@ -41,29 +41,29 @@ export interface UsePrecisionModeReturn {
   // State
   // -------------------------------------------------------------------------
   /** Whether pointer lock is currently active */
-  pointerLocked: boolean;
+  pointerLocked: boolean
   /** Whether device supports precision mode (pointer lock + fine pointer) */
-  canUsePrecisionMode: boolean;
+  canUsePrecisionMode: boolean
   /** Whether current zoom is at or above threshold (precision recommended) */
-  isAtThreshold: boolean;
+  isAtThreshold: boolean
   /** Current screen pixel ratio */
-  screenPixelRatio: number;
+  screenPixelRatio: number
 
   // -------------------------------------------------------------------------
   // Actions
   // -------------------------------------------------------------------------
   /** Request pointer lock to activate precision mode */
-  requestPrecisionMode: () => void;
+  requestPrecisionMode: () => void
   /** Exit pointer lock to deactivate precision mode */
-  exitPrecisionMode: () => void;
+  exitPrecisionMode: () => void
 
   // -------------------------------------------------------------------------
   // For Magnifier Integration
   // -------------------------------------------------------------------------
   /** Whether zoom should be capped (at threshold but not in precision mode) */
-  shouldCapZoom: boolean;
+  shouldCapZoom: boolean
   /** Maximum zoom level that keeps screen pixel ratio at threshold */
-  maxZoomAtThreshold: number;
+  maxZoomAtThreshold: number
 }
 
 // ============================================================================
@@ -75,17 +75,17 @@ export interface UsePrecisionModeReturn {
  */
 export interface PrecisionModeIndicatorProps {
   /** Whether precision mode is at threshold */
-  isAtThreshold: boolean;
+  isAtThreshold: boolean
   /** Whether precision mode is available */
-  canUsePrecisionMode: boolean;
+  canUsePrecisionMode: boolean
   /** Whether pointer lock is active */
-  pointerLocked: boolean;
+  pointerLocked: boolean
   /** Request precision mode */
-  onRequestPrecisionMode: () => void;
+  onRequestPrecisionMode: () => void
   /** Whether to show the indicator */
-  show: boolean;
+  show: boolean
   /** Optional position offset from container */
-  offsetTop?: number;
+  offsetTop?: number
 }
 
 // ============================================================================
@@ -97,8 +97,8 @@ export interface PrecisionModeIndicatorProps {
  */
 export type ThresholdStatus =
   /** Below threshold, normal operation */
-  | "normal"
+  | 'normal'
   /** At threshold, precision mode recommended */
-  | "at-threshold"
+  | 'at-threshold'
   /** At threshold, precision mode active */
-  | "precision-active";
+  | 'precision-active'

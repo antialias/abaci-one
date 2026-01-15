@@ -1,8 +1,8 @@
-"use client";
+'use client'
 
-import { useCallback, useMemo } from "react";
-import { css } from "../../../../../../styled-system/css";
-import { TimelineRangeSelector } from "@/components/vision/TimelineRangeSelector";
+import { useCallback, useMemo } from 'react'
+import { css } from '../../../../../../styled-system/css'
+import { TimelineRangeSelector } from '@/components/vision/TimelineRangeSelector'
 import {
   type DataPanelItem,
   type DataPanelFilters as FilterState,
@@ -11,21 +11,21 @@ import {
   getDefaultFilters,
   applyFilters,
   isPassiveDevice,
-} from "./types";
+} from './types'
 
 export interface DataPanelFiltersProps<T extends DataPanelItem> {
   /** All items to filter */
-  items: T[];
+  items: T[]
   /** Current filter values */
-  filters: FilterState;
+  filters: FilterState
   /** Callback when filters change */
-  onFiltersChange: (filters: FilterState) => void;
+  onFiltersChange: (filters: FilterState) => void
   /** Whether filters panel is expanded */
-  isExpanded: boolean;
+  isExpanded: boolean
   /** Toggle expansion */
-  onToggleExpanded: () => void;
+  onToggleExpanded: () => void
   /** Label for items (e.g., "frames", "images") */
-  itemLabel?: string;
+  itemLabel?: string
 }
 
 /**
@@ -38,36 +38,35 @@ export function DataPanelFilters<T extends DataPanelItem>({
   onFiltersChange,
   isExpanded,
   onToggleExpanded,
-  itemLabel = "items",
+  itemLabel = 'items',
 }: DataPanelFiltersProps<T>) {
   // Extract unique values for dropdowns
-  const { devices, sessions, players, passiveCount, explicitCount } =
-    useMemo(() => {
-      const deviceSet = new Set<string>();
-      const sessionSet = new Set<string>();
-      const playerSet = new Set<string>();
-      let passive = 0;
-      let explicit = 0;
+  const { devices, sessions, players, passiveCount, explicitCount } = useMemo(() => {
+    const deviceSet = new Set<string>()
+    const sessionSet = new Set<string>()
+    const playerSet = new Set<string>()
+    let passive = 0
+    let explicit = 0
 
-      for (const item of items) {
-        deviceSet.add(item.deviceId);
-        if (item.sessionId) sessionSet.add(item.sessionId);
-        if (item.playerId) playerSet.add(item.playerId);
-        if (isPassiveDevice(item.deviceId)) {
-          passive++;
-        } else {
-          explicit++;
-        }
+    for (const item of items) {
+      deviceSet.add(item.deviceId)
+      if (item.sessionId) sessionSet.add(item.sessionId)
+      if (item.playerId) playerSet.add(item.playerId)
+      if (isPassiveDevice(item.deviceId)) {
+        passive++
+      } else {
+        explicit++
       }
+    }
 
-      return {
-        devices: Array.from(deviceSet).sort(),
-        sessions: Array.from(sessionSet).sort(),
-        players: Array.from(playerSet).sort(),
-        passiveCount: passive,
-        explicitCount: explicit,
-      };
-    }, [items]);
+    return {
+      devices: Array.from(deviceSet).sort(),
+      sessions: Array.from(sessionSet).sort(),
+      players: Array.from(playerSet).sort(),
+      passiveCount: passive,
+      explicitCount: explicit,
+    }
+  }, [items])
 
   // Convert items to timeline format
   const timelineImages = useMemo(() => {
@@ -76,24 +75,21 @@ export function DataPanelFilters<T extends DataPanelItem>({
       .map((item) => ({
         timestamp: new Date(item.capturedAt).getTime(),
         sessionId: item.sessionId || item.deviceId,
-      }));
-  }, [items]);
+      }))
+  }, [items])
 
   // Count active filters
   const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (filters.captureType !== "all") count++;
-    if (filters.deviceId) count++;
-    if (filters.sessionId) count++;
-    if (filters.playerId) count++;
-    if (filters.timeRangeMode !== "all") count++;
-    return count;
-  }, [filters]);
+    let count = 0
+    if (filters.captureType !== 'all') count++
+    if (filters.deviceId) count++
+    if (filters.sessionId) count++
+    if (filters.playerId) count++
+    if (filters.timeRangeMode !== 'all') count++
+    return count
+  }, [filters])
 
-  const filteredCount = useMemo(
-    () => applyFilters(items, filters).length,
-    [items, filters],
-  );
+  const filteredCount = useMemo(() => applyFilters(items, filters).length, [items, filters])
 
   const handleTimeRangeChange = useCallback(
     (before?: number, after?: number) => {
@@ -101,14 +97,14 @@ export function DataPanelFilters<T extends DataPanelItem>({
         ...filters,
         beforeTimestamp: before,
         afterTimestamp: after,
-      });
+      })
     },
-    [filters, onFiltersChange],
-  );
+    [filters, onFiltersChange]
+  )
 
   const handleReset = useCallback(() => {
-    onFiltersChange(getDefaultFilters());
-  }, [onFiltersChange]);
+    onFiltersChange(getDefaultFilters())
+  }, [onFiltersChange])
 
   return (
     <div data-component="data-panel-filters">
@@ -117,46 +113,46 @@ export function DataPanelFilters<T extends DataPanelItem>({
         type="button"
         onClick={onToggleExpanded}
         className={css({
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          width: "100%",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
           p: 3,
-          bg: "gray.800",
-          border: "1px solid",
-          borderColor: activeFilterCount > 0 ? "purple.600" : "gray.700",
-          borderRadius: isExpanded ? "lg lg 0 0" : "lg",
-          cursor: "pointer",
-          color: "gray.100",
-          _hover: { bg: "gray.750" },
+          bg: 'gray.800',
+          border: '1px solid',
+          borderColor: activeFilterCount > 0 ? 'purple.600' : 'gray.700',
+          borderRadius: isExpanded ? 'lg lg 0 0' : 'lg',
+          cursor: 'pointer',
+          color: 'gray.100',
+          _hover: { bg: 'gray.750' },
         })}
       >
-        <div className={css({ display: "flex", alignItems: "center", gap: 2 })}>
+        <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
           <span>🔍</span>
-          <span className={css({ fontWeight: "medium" })}>Filters</span>
+          <span className={css({ fontWeight: 'medium' })}>Filters</span>
           {activeFilterCount > 0 && (
             <span
               className={css({
                 px: 2,
                 py: 0.5,
-                bg: "purple.600",
-                borderRadius: "full",
-                fontSize: "xs",
-                fontWeight: "bold",
+                bg: 'purple.600',
+                borderRadius: 'full',
+                fontSize: 'xs',
+                fontWeight: 'bold',
               })}
             >
               {activeFilterCount}
             </span>
           )}
         </div>
-        <div className={css({ display: "flex", alignItems: "center", gap: 2 })}>
-          <span className={css({ fontSize: "sm", color: "gray.400" })}>
+        <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+          <span className={css({ fontSize: 'sm', color: 'gray.400' })}>
             {filteredCount} / {items.length} {itemLabel}
           </span>
           <span
             className={css({
-              transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-              transition: "transform 0.2s",
+              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s',
             })}
           >
             ▼
@@ -169,18 +165,18 @@ export function DataPanelFilters<T extends DataPanelItem>({
         <div
           className={css({
             p: 4,
-            bg: "gray.850",
-            border: "1px solid",
-            borderTop: "none",
-            borderColor: activeFilterCount > 0 ? "purple.600" : "gray.700",
-            borderRadius: "0 0 lg lg",
+            bg: 'gray.850',
+            border: '1px solid',
+            borderTop: 'none',
+            borderColor: activeFilterCount > 0 ? 'purple.600' : 'gray.700',
+            borderRadius: '0 0 lg lg',
           })}
         >
           {/* Quick filters row */}
           <div
             className={css({
-              display: "flex",
-              flexWrap: "wrap",
+              display: 'flex',
+              flexWrap: 'wrap',
               gap: 3,
               mb: 4,
             })}
@@ -188,26 +184,24 @@ export function DataPanelFilters<T extends DataPanelItem>({
             {/* Capture type toggle */}
             <div
               className={css({
-                display: "flex",
-                flexDirection: "column",
+                display: 'flex',
+                flexDirection: 'column',
                 gap: 1,
               })}
             >
-              <label className={css({ fontSize: "xs", color: "gray.500" })}>
-                Capture Type
-              </label>
+              <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Capture Type</label>
               <div
                 className={css({
-                  display: "flex",
-                  bg: "gray.800",
-                  borderRadius: "md",
-                  p: "2px",
+                  display: 'flex',
+                  bg: 'gray.800',
+                  borderRadius: 'md',
+                  p: '2px',
                 })}
               >
                 {[
-                  { value: "all", label: `All (${items.length})` },
-                  { value: "passive", label: `Passive (${passiveCount})` },
-                  { value: "explicit", label: `Explicit (${explicitCount})` },
+                  { value: 'all', label: `All (${items.length})` },
+                  { value: 'passive', label: `Passive (${passiveCount})` },
+                  { value: 'explicit', label: `Explicit (${explicitCount})` },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -221,20 +215,14 @@ export function DataPanelFilters<T extends DataPanelItem>({
                     className={css({
                       px: 2,
                       py: 1,
-                      borderRadius: "sm",
-                      border: "none",
-                      fontSize: "xs",
-                      fontWeight: "medium",
-                      cursor: "pointer",
-                      bg:
-                        filters.captureType === opt.value
-                          ? "purple.600"
-                          : "transparent",
-                      color:
-                        filters.captureType === opt.value
-                          ? "white"
-                          : "gray.400",
-                      _hover: { color: "white" },
+                      borderRadius: 'sm',
+                      border: 'none',
+                      fontSize: 'xs',
+                      fontWeight: 'medium',
+                      cursor: 'pointer',
+                      bg: filters.captureType === opt.value ? 'purple.600' : 'transparent',
+                      color: filters.captureType === opt.value ? 'white' : 'gray.400',
+                      _hover: { color: 'white' },
                     })}
                   >
                     {opt.label}
@@ -247,30 +235,26 @@ export function DataPanelFilters<T extends DataPanelItem>({
             {devices.length > 1 && (
               <div
                 className={css({
-                  display: "flex",
-                  flexDirection: "column",
+                  display: 'flex',
+                  flexDirection: 'column',
                   gap: 1,
                 })}
               >
-                <label className={css({ fontSize: "xs", color: "gray.500" })}>
-                  Device
-                </label>
+                <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Device</label>
                 <select
                   value={filters.deviceId}
-                  onChange={(e) =>
-                    onFiltersChange({ ...filters, deviceId: e.target.value })
-                  }
+                  onChange={(e) => onFiltersChange({ ...filters, deviceId: e.target.value })}
                   className={css({
                     px: 2,
                     py: 1.5,
-                    bg: "gray.800",
-                    border: "1px solid",
-                    borderColor: filters.deviceId ? "purple.500" : "gray.700",
-                    borderRadius: "md",
-                    color: "gray.200",
-                    fontSize: "sm",
-                    cursor: "pointer",
-                    minWidth: "140px",
+                    bg: 'gray.800',
+                    border: '1px solid',
+                    borderColor: filters.deviceId ? 'purple.500' : 'gray.700',
+                    borderRadius: 'md',
+                    color: 'gray.200',
+                    fontSize: 'sm',
+                    cursor: 'pointer',
+                    minWidth: '140px',
                   })}
                 >
                   <option value="">All devices</option>
@@ -287,30 +271,26 @@ export function DataPanelFilters<T extends DataPanelItem>({
             {sessions.length > 0 && (
               <div
                 className={css({
-                  display: "flex",
-                  flexDirection: "column",
+                  display: 'flex',
+                  flexDirection: 'column',
                   gap: 1,
                 })}
               >
-                <label className={css({ fontSize: "xs", color: "gray.500" })}>
-                  Session
-                </label>
+                <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Session</label>
                 <select
                   value={filters.sessionId}
-                  onChange={(e) =>
-                    onFiltersChange({ ...filters, sessionId: e.target.value })
-                  }
+                  onChange={(e) => onFiltersChange({ ...filters, sessionId: e.target.value })}
                   className={css({
                     px: 2,
                     py: 1.5,
-                    bg: "gray.800",
-                    border: "1px solid",
-                    borderColor: filters.sessionId ? "purple.500" : "gray.700",
-                    borderRadius: "md",
-                    color: "gray.200",
-                    fontSize: "sm",
-                    cursor: "pointer",
-                    minWidth: "140px",
+                    bg: 'gray.800',
+                    border: '1px solid',
+                    borderColor: filters.sessionId ? 'purple.500' : 'gray.700',
+                    borderRadius: 'md',
+                    color: 'gray.200',
+                    fontSize: 'sm',
+                    cursor: 'pointer',
+                    minWidth: '140px',
                   })}
                 >
                   <option value="">All sessions</option>
@@ -327,30 +307,26 @@ export function DataPanelFilters<T extends DataPanelItem>({
             {players.length > 0 && (
               <div
                 className={css({
-                  display: "flex",
-                  flexDirection: "column",
+                  display: 'flex',
+                  flexDirection: 'column',
                   gap: 1,
                 })}
               >
-                <label className={css({ fontSize: "xs", color: "gray.500" })}>
-                  Player
-                </label>
+                <label className={css({ fontSize: 'xs', color: 'gray.500' })}>Player</label>
                 <select
                   value={filters.playerId}
-                  onChange={(e) =>
-                    onFiltersChange({ ...filters, playerId: e.target.value })
-                  }
+                  onChange={(e) => onFiltersChange({ ...filters, playerId: e.target.value })}
                   className={css({
                     px: 2,
                     py: 1.5,
-                    bg: "gray.800",
-                    border: "1px solid",
-                    borderColor: filters.playerId ? "purple.500" : "gray.700",
-                    borderRadius: "md",
-                    color: "gray.200",
-                    fontSize: "sm",
-                    cursor: "pointer",
-                    minWidth: "140px",
+                    bg: 'gray.800',
+                    border: '1px solid',
+                    borderColor: filters.playerId ? 'purple.500' : 'gray.700',
+                    borderRadius: 'md',
+                    color: 'gray.200',
+                    fontSize: 'sm',
+                    cursor: 'pointer',
+                    minWidth: '140px',
                   })}
                 >
                   <option value="">All players</option>
@@ -365,20 +341,20 @@ export function DataPanelFilters<T extends DataPanelItem>({
 
             {/* Reset button */}
             {activeFilterCount > 0 && (
-              <div className={css({ display: "flex", alignItems: "flex-end" })}>
+              <div className={css({ display: 'flex', alignItems: 'flex-end' })}>
                 <button
                   type="button"
                   onClick={handleReset}
                   className={css({
                     px: 3,
                     py: 1.5,
-                    bg: "gray.700",
-                    border: "none",
-                    borderRadius: "md",
-                    color: "gray.300",
-                    fontSize: "sm",
-                    cursor: "pointer",
-                    _hover: { bg: "gray.600" },
+                    bg: 'gray.700',
+                    border: 'none',
+                    borderRadius: 'md',
+                    color: 'gray.300',
+                    fontSize: 'sm',
+                    cursor: 'pointer',
+                    _hover: { bg: 'gray.600' },
                   })}
                 >
                   Reset
@@ -390,35 +366,33 @@ export function DataPanelFilters<T extends DataPanelItem>({
           {/* Time range filter */}
           <div
             className={css({
-              borderTop: "1px solid",
-              borderColor: "gray.700",
+              borderTop: '1px solid',
+              borderColor: 'gray.700',
               pt: 4,
             })}
           >
             <div
               className={css({
-                display: "flex",
-                alignItems: "center",
+                display: 'flex',
+                alignItems: 'center',
                 gap: 3,
                 mb: 3,
               })}
             >
-              <label className={css({ fontSize: "sm", color: "gray.400" })}>
-                Time Range
-              </label>
+              <label className={css({ fontSize: 'sm', color: 'gray.400' })}>Time Range</label>
               <div
                 className={css({
-                  display: "flex",
-                  bg: "gray.800",
-                  borderRadius: "md",
-                  p: "2px",
+                  display: 'flex',
+                  bg: 'gray.800',
+                  borderRadius: 'md',
+                  p: '2px',
                 })}
               >
                 {[
-                  { value: "all", label: "All Time" },
-                  { value: "before", label: "Before" },
-                  { value: "after", label: "After" },
-                  { value: "between", label: "Between" },
+                  { value: 'all', label: 'All Time' },
+                  { value: 'before', label: 'Before' },
+                  { value: 'after', label: 'After' },
+                  { value: 'between', label: 'Between' },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -432,20 +406,14 @@ export function DataPanelFilters<T extends DataPanelItem>({
                     className={css({
                       px: 2,
                       py: 1,
-                      borderRadius: "sm",
-                      border: "none",
-                      fontSize: "xs",
-                      fontWeight: "medium",
-                      cursor: "pointer",
-                      bg:
-                        filters.timeRangeMode === opt.value
-                          ? "purple.600"
-                          : "transparent",
-                      color:
-                        filters.timeRangeMode === opt.value
-                          ? "white"
-                          : "gray.400",
-                      _hover: { color: "white" },
+                      borderRadius: 'sm',
+                      border: 'none',
+                      fontSize: 'xs',
+                      fontWeight: 'medium',
+                      cursor: 'pointer',
+                      bg: filters.timeRangeMode === opt.value ? 'purple.600' : 'transparent',
+                      color: filters.timeRangeMode === opt.value ? 'white' : 'gray.400',
+                      _hover: { color: 'white' },
                     })}
                   >
                     {opt.label}
@@ -455,7 +423,7 @@ export function DataPanelFilters<T extends DataPanelItem>({
             </div>
 
             {/* Timeline selector */}
-            {filters.timeRangeMode !== "all" && timelineImages.length > 0 && (
+            {filters.timeRangeMode !== 'all' && timelineImages.length > 0 && (
               <TimelineRangeSelector
                 images={timelineImages}
                 mode={filters.timeRangeMode}
@@ -468,5 +436,5 @@ export function DataPanelFilters<T extends DataPanelItem>({
         </div>
       )}
     </div>
-  );
+  )
 }

@@ -3,8 +3,8 @@
  * Uses AbacusStatic for server-side rendering (no client hooks)
  */
 
-import React from "react";
-import { AbacusStatic } from "@soroban/abacus-react/static";
+import React from 'react'
+import { AbacusStatic } from '@soroban/abacus-react/static'
 
 export function generateAbacusElement(value: number, columns: number) {
   return (
@@ -15,5 +15,5 @@ export function generateAbacusElement(value: number, columns: number) {
       showNumbers={false}
       frameVisible={true}
     />
-  );
+  )
 }

@@ -1,4 +1,4 @@
-"use client";
+'use client'
 
 /**
  * RetryTransitionScreen - Brief transition between epochs when retrying wrong problems
@@ -7,16 +7,16 @@
  * with info about how many problems need retrying and which attempt this is.
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { useTheme } from "@/contexts/ThemeContext";
-import { css } from "../../../styled-system/css";
+import { useCallback, useEffect, useState } from 'react'
+import { useTheme } from '@/contexts/ThemeContext'
+import { css } from '../../../styled-system/css'
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 /** Countdown duration for retry transition */
-export const RETRY_TRANSITION_COUNTDOWN_MS = 3000;
+export const RETRY_TRANSITION_COUNTDOWN_MS = 3000
 
 // ============================================================================
 // Types
@@ -24,18 +24,18 @@ export const RETRY_TRANSITION_COUNTDOWN_MS = 3000;
 
 export interface RetryTransitionScreenProps {
   /** Whether the transition screen is visible */
-  isVisible: boolean;
+  isVisible: boolean
   /** Which retry epoch we're starting (1 = first retry, 2 = second retry) */
-  epochNumber: number;
+  epochNumber: number
   /** Number of problems that need retrying */
-  problemCount: number;
+  problemCount: number
   /** Student info for display */
   student: {
-    name: string;
-    emoji: string;
-  };
+    name: string
+    emoji: string
+  }
   /** Called when transition completes (countdown or skip) */
-  onComplete: () => void;
+  onComplete: () => void
 }
 
 // ============================================================================
@@ -49,88 +49,88 @@ export function RetryTransitionScreen({
   student,
   onComplete,
 }: RetryTransitionScreenProps) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(3)
 
   // Reset countdown when screen becomes visible
   useEffect(() => {
     if (isVisible) {
-      setCountdown(3);
+      setCountdown(3)
     }
-  }, [isVisible]);
+  }, [isVisible])
 
   // Countdown timer
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible) return
 
     const interval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          onComplete();
-          return 0;
+          onComplete()
+          return 0
         }
-        return prev - 1;
-      });
-    }, 1000);
+        return prev - 1
+      })
+    }, 1000)
 
-    return () => clearInterval(interval);
-  }, [isVisible, onComplete]);
+    return () => clearInterval(interval)
+  }, [isVisible, onComplete])
 
   const handleSkip = useCallback(() => {
-    onComplete();
-  }, [onComplete]);
+    onComplete()
+  }, [onComplete])
 
-  if (!isVisible) return null;
+  if (!isVisible) return null
 
   // Get encouraging message based on epoch
   const getMessage = () => {
     if (epochNumber === 1) {
-      return "Let's practice those again!";
+      return "Let's practice those again!"
     }
-    return "One more try!";
-  };
+    return 'One more try!'
+  }
 
   const getSubMessage = () => {
-    const plural = problemCount === 1 ? "problem" : "problems";
+    const plural = problemCount === 1 ? 'problem' : 'problems'
     if (epochNumber === 1) {
-      return `You have ${problemCount} ${plural} to practice again.`;
+      return `You have ${problemCount} ${plural} to practice again.`
     }
-    return `${problemCount} ${plural} left. You can do it!`;
-  };
+    return `${problemCount} ${plural} left. You can do it!`
+  }
 
   return (
     <div
       data-component="retry-transition-screen"
       data-epoch={epochNumber}
       className={css({
-        position: "fixed",
+        position: 'fixed',
         inset: 0,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: isDark ? "gray.900" : "orange.50",
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: isDark ? 'gray.900' : 'orange.50',
         zIndex: 50,
-        padding: "2rem",
+        padding: '2rem',
       })}
     >
       {/* Main content */}
       <div
         className={css({
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          maxWidth: "400px",
-          textAlign: "center",
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          maxWidth: '400px',
+          textAlign: 'center',
         })}
       >
         {/* Student avatar */}
         <div
           className={css({
-            fontSize: "4rem",
-            marginBottom: "1.5rem",
+            fontSize: '4rem',
+            marginBottom: '1.5rem',
           })}
         >
           {student.emoji}
@@ -139,10 +139,10 @@ export function RetryTransitionScreen({
         {/* Main message */}
         <h2
           className={css({
-            fontSize: "2rem",
-            fontWeight: "bold",
-            color: isDark ? "orange.200" : "orange.700",
-            marginBottom: "1rem",
+            fontSize: '2rem',
+            fontWeight: 'bold',
+            color: isDark ? 'orange.200' : 'orange.700',
+            marginBottom: '1rem',
           })}
         >
           {getMessage()}
@@ -151,9 +151,9 @@ export function RetryTransitionScreen({
         {/* Sub message */}
         <p
           className={css({
-            fontSize: "1.25rem",
-            color: isDark ? "gray.300" : "gray.600",
-            marginBottom: "2rem",
+            fontSize: '1.25rem',
+            color: isDark ? 'gray.300' : 'gray.600',
+            marginBottom: '2rem',
           })}
         >
           {getSubMessage()}
@@ -162,20 +162,20 @@ export function RetryTransitionScreen({
         {/* Attempt indicator */}
         <div
           className={css({
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            padding: "0.5rem 1rem",
-            backgroundColor: isDark ? "orange.900" : "orange.100",
-            borderRadius: "999px",
-            marginBottom: "2rem",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.5rem 1rem',
+            backgroundColor: isDark ? 'orange.900' : 'orange.100',
+            borderRadius: '999px',
+            marginBottom: '2rem',
           })}
         >
           <span
             className={css({
-              fontSize: "0.875rem",
-              fontWeight: "bold",
-              color: isDark ? "orange.200" : "orange.700",
+              fontSize: '0.875rem',
+              fontWeight: 'bold',
+              color: isDark ? 'orange.200' : 'orange.700',
             })}
           >
             Attempt {epochNumber + 1} of 3
@@ -185,17 +185,17 @@ export function RetryTransitionScreen({
         {/* Countdown / Skip */}
         <div
           className={css({
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "1rem",
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem',
           })}
         >
           <div
             className={css({
-              fontSize: "1.5rem",
-              fontWeight: "bold",
-              color: isDark ? "gray.400" : "gray.500",
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.400' : 'gray.500',
             })}
           >
             Starting in {countdown}...
@@ -205,18 +205,18 @@ export function RetryTransitionScreen({
             type="button"
             onClick={handleSkip}
             className={css({
-              padding: "0.75rem 2rem",
-              fontSize: "1rem",
-              fontWeight: "bold",
-              color: "white",
-              backgroundColor: isDark ? "orange.600" : "orange.500",
-              borderRadius: "12px",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.15s ease",
+              padding: '0.75rem 2rem',
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              color: 'white',
+              backgroundColor: isDark ? 'orange.600' : 'orange.500',
+              borderRadius: '12px',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
               _hover: {
-                backgroundColor: isDark ? "orange.500" : "orange.600",
-                transform: "scale(1.05)",
+                backgroundColor: isDark ? 'orange.500' : 'orange.600',
+                transform: 'scale(1.05)',
               },
             })}
           >
@@ -225,5 +225,5 @@ export function RetryTransitionScreen({
         </div>
       </div>
     </div>
-  );
+  )
 }
