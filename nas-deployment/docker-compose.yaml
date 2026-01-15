@@ -13,12 +13,16 @@ x-app: &app
   restart: unless-stopped
   env_file:
     - .env
+  environment:
+    - REDIS_URL=redis://redis:6379
   volumes:
     - ./public:/app/public
     - ./data:/app/apps/web/data
     - ./uploads:/app/uploads
   networks:
     - webgateway
+  depends_on:
+    - redis
   healthcheck:
     test:
       [
@@ -76,6 +80,21 @@ services:
       docker-compose-watcher.dir: /volume1/homes/antialias/projects/abaci.one
       docker-compose-watcher.file: docker-compose.green.yaml
 
+  redis:
+    image: redis:7-alpine
+    container_name: abaci-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - webgateway
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   ddns-updater:
     image: qmcgaw/ddns-updater:latest
     container_name: ddns-updater
@@ -88,6 +107,9 @@ services:
     restart: unless-stopped
     networks:
       - webgateway
+
+volumes:
+  redis-data:
 
 networks:
   webgateway:

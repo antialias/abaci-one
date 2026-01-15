@@ -10,11 +10,11 @@ import {
  */
 export async function POST() {
   try {
-    const session = createRemoteCameraSession()
+    const session = await createRemoteCameraSession()
 
     return NextResponse.json({
       sessionId: session.id,
-      expiresAt: session.expiresAt.toISOString(),
+      expiresAt: session.expiresAt,
     })
   } catch (error) {
     console.error('Failed to create remote camera session:', error)
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Session ID required' }, { status: 400 })
     }
 
-    const session = getRemoteCameraSession(sessionId)
+    const session = await getRemoteCameraSession(sessionId)
 
     if (!session) {
       return NextResponse.json({ error: 'Session not found or expired' }, { status: 404 })
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       sessionId: session.id,
       phoneConnected: session.phoneConnected,
-      expiresAt: session.expiresAt.toISOString(),
+      expiresAt: session.expiresAt,
     })
   } catch (error) {
     console.error('Failed to get remote camera session:', error)

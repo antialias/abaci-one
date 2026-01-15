@@ -5,12 +5,16 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./public:/app/public
       - ./data:/app/apps/web/data
       - ./uploads:/app/uploads
     networks:
       - webgateway
+    depends_on:
+      - redis
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 10s

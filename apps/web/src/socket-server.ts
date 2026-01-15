@@ -1,6 +1,7 @@
 import type { Server as HTTPServer } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
 import type { Server as SocketIOServerType } from 'socket.io'
+import { createAdapter } from '@socket.io/redis-adapter'
 import {
   applyGameMove,
   createArcadeSession,
@@ -23,6 +24,7 @@ import {
   markPhoneConnected,
   markPhoneDisconnected,
 } from './lib/remote-camera/session-manager'
+import { createRedisClient } from './lib/redis'
 import { VisionRecorder, type VisionFrame, type PracticeStateInput } from './lib/vision/recording'
 
 // Throttle map for DVR buffer info emissions (sessionId -> last emit timestamp)
@@ -335,6 +337,17 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       credentials: true,
     },
   })
+
+  // Set up Redis adapter for cross-instance Socket.IO broadcasts (production only)
+  // In dev without Redis, Socket.IO works normally on single instance
+  const pubClient = createRedisClient()
+  if (pubClient) {
+    const subClient = pubClient.duplicate()
+    io.adapter(createAdapter(pubClient, subClient))
+    console.log('[Socket.IO] Redis adapter configured for cross-instance communication')
+  } else {
+    console.log('[Socket.IO] No Redis available, using default in-memory adapter (single instance)')
+  }
 
   // Initialize Yjs server over Socket.IO
   initializeYjsServer(io)
@@ -1366,7 +1379,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     // Remote Camera: Phone joins a remote camera session
     socket.on('remote-camera:join', async ({ sessionId }: { sessionId: string }) => {
       try {
-        const session = getRemoteCameraSession(sessionId)
+        const session = await getRemoteCameraSession(sessionId)
         if (!session) {
           socket.emit('remote-camera:error', {
             error: 'Invalid or expired session',
@@ -1375,7 +1388,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         }
 
         // Mark phone as connected
-        markPhoneConnected(sessionId)
+        await markPhoneConnected(sessionId)
 
         // Join the session room
         await socket.join(`remote-camera:${sessionId}`)
@@ -1400,7 +1413,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     // Remote Camera: Desktop subscribes to receive frames
     socket.on('remote-camera:subscribe', async ({ sessionId }: { sessionId: string }) => {
       try {
-        const session = getRemoteCameraSession(sessionId)
+        const session = await getRemoteCameraSession(sessionId)
         if (!session) {
           socket.emit('remote-camera:error', {
             error: 'Invalid or expired session',
@@ -1573,7 +1586,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
         // If this was the phone, mark as disconnected
         if (socket.data.remoteCameraSessionId === sessionId) {
-          markPhoneDisconnected(sessionId)
+          await markPhoneDisconnected(sessionId)
           socket.data.remoteCameraSessionId = undefined
 
           console.log(`📱 Phone left remote camera session: ${sessionId}`)
@@ -1592,7 +1605,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       // Handle remote camera cleanup on disconnect
       const remoteCameraSessionId = socket.data.remoteCameraSessionId as string | undefined
       if (remoteCameraSessionId) {
-        markPhoneDisconnected(remoteCameraSessionId)
+        // Fire-and-forget async cleanup (don't block disconnect handling)
+        void markPhoneDisconnected(remoteCameraSessionId)
         io!.to(`remote-camera:${remoteCameraSessionId}`).emit('remote-camera:disconnected', {
           phoneConnected: false,
         })
