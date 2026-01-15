@@ -1,28 +1,28 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { css } from '../../../styled-system/css'
+import { useEffect, useState } from "react";
+import { css } from "../../../styled-system/css";
 
 interface SkillPerformance {
-  skillId: string
+  skillId: string;
   /** BKT-based mastery classification */
-  bktClassification: 'strong' | 'developing' | 'weak' | null
-  attempts: number
-  correct: number
-  avgResponseTimeMs: number | null
-  responseTimeCount: number
+  bktClassification: "strong" | "developing" | "weak" | null;
+  attempts: number;
+  correct: number;
+  avgResponseTimeMs: number | null;
+  responseTimeCount: number;
 }
 
 interface SkillPerformanceAnalysis {
-  skills: SkillPerformance[]
-  overallAvgResponseTimeMs: number | null
-  fastSkills: SkillPerformance[]
-  slowSkills: SkillPerformance[]
+  skills: SkillPerformance[];
+  overallAvgResponseTimeMs: number | null;
+  fastSkills: SkillPerformance[];
+  slowSkills: SkillPerformance[];
 }
 
 interface SkillPerformanceReportsProps {
-  playerId: string
-  isDark?: boolean
+  playerId: string;
+  isDark?: boolean;
 }
 
 // Format skill ID to human-readable name
@@ -32,79 +32,79 @@ function formatSkillName(skillId: string): string {
   // "fiveComplements.4=5-1" -> "5s: 4=5-1"
   // "tenComplements.9=10-1" -> "10s: 9=10-1"
 
-  if (skillId.startsWith('basic.')) {
-    const skill = skillId.replace('basic.', '')
-    if (skill === 'directAddition') return 'Direct Addition'
-    if (skill === 'heavenBead') return 'Heaven Bead'
-    if (skill === 'simpleCombinations') return 'Simple Combos'
-    if (skill === 'directSubtraction') return 'Direct Subtraction'
-    if (skill === 'heavenBeadSubtraction') return 'Heaven Bead Sub'
-    if (skill === 'simpleCombinationsSub') return 'Simple Combos Sub'
-    return skill
+  if (skillId.startsWith("basic.")) {
+    const skill = skillId.replace("basic.", "");
+    if (skill === "directAddition") return "Direct Addition";
+    if (skill === "heavenBead") return "Heaven Bead";
+    if (skill === "simpleCombinations") return "Simple Combos";
+    if (skill === "directSubtraction") return "Direct Subtraction";
+    if (skill === "heavenBeadSubtraction") return "Heaven Bead Sub";
+    if (skill === "simpleCombinationsSub") return "Simple Combos Sub";
+    return skill;
   }
-  if (skillId.startsWith('fiveComplements.')) {
-    return `5s: ${skillId.replace('fiveComplements.', '')}`
+  if (skillId.startsWith("fiveComplements.")) {
+    return `5s: ${skillId.replace("fiveComplements.", "")}`;
   }
-  if (skillId.startsWith('tenComplements.')) {
-    return `10s: ${skillId.replace('tenComplements.', '')}`
+  if (skillId.startsWith("tenComplements.")) {
+    return `10s: ${skillId.replace("tenComplements.", "")}`;
   }
-  if (skillId.startsWith('fiveComplementsSub.')) {
-    return `5s Sub: ${skillId.replace('fiveComplementsSub.', '')}`
+  if (skillId.startsWith("fiveComplementsSub.")) {
+    return `5s Sub: ${skillId.replace("fiveComplementsSub.", "")}`;
   }
-  if (skillId.startsWith('tenComplementsSub.')) {
-    return `10s Sub: ${skillId.replace('tenComplementsSub.', '')}`
+  if (skillId.startsWith("tenComplementsSub.")) {
+    return `10s Sub: ${skillId.replace("tenComplementsSub.", "")}`;
   }
-  return skillId
+  return skillId;
 }
 
 // Format milliseconds to readable duration
 function formatTime(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
-  const seconds = ms / 1000
-  if (seconds < 60) return `${seconds.toFixed(1)}s`
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = Math.round(seconds % 60)
-  return `${minutes}m ${remainingSeconds}s`
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+  return `${minutes}m ${remainingSeconds}s`;
 }
 
 // Get BKT classification badge style
 function getBktBadgeStyle(
-  classification: 'strong' | 'developing' | 'weak' | null,
-  isDark: boolean
+  classification: "strong" | "developing" | "weak" | null,
+  isDark: boolean,
 ) {
   const baseStyle = {
-    display: 'inline-block',
-    padding: '2px 8px',
-    borderRadius: '12px',
-    fontSize: '0.75rem',
-    fontWeight: 'bold',
-  }
+    display: "inline-block",
+    padding: "2px 8px",
+    borderRadius: "12px",
+    fontSize: "0.75rem",
+    fontWeight: "bold",
+  };
 
   switch (classification) {
-    case 'strong':
+    case "strong":
       return {
         ...baseStyle,
-        backgroundColor: isDark ? 'green.800' : 'green.100',
-        color: isDark ? 'green.200' : 'green.800',
-      }
-    case 'developing':
+        backgroundColor: isDark ? "green.800" : "green.100",
+        color: isDark ? "green.200" : "green.800",
+      };
+    case "developing":
       return {
         ...baseStyle,
-        backgroundColor: isDark ? 'yellow.800' : 'yellow.100',
-        color: isDark ? 'yellow.200' : 'yellow.800',
-      }
-    case 'weak':
+        backgroundColor: isDark ? "yellow.800" : "yellow.100",
+        color: isDark ? "yellow.200" : "yellow.800",
+      };
+    case "weak":
       return {
         ...baseStyle,
-        backgroundColor: isDark ? 'red.800' : 'red.100',
-        color: isDark ? 'red.200' : 'red.800',
-      }
+        backgroundColor: isDark ? "red.800" : "red.100",
+        color: isDark ? "red.200" : "red.800",
+      };
     default:
       return {
         ...baseStyle,
-        backgroundColor: isDark ? 'gray.700' : 'gray.200',
-        color: isDark ? 'gray.300' : 'gray.700',
-      }
+        backgroundColor: isDark ? "gray.700" : "gray.200",
+        color: isDark ? "gray.300" : "gray.700",
+      };
   }
 }
 
@@ -113,96 +113,107 @@ function SkillCard({
   isDark,
   overallAvgMs,
 }: {
-  skill: SkillPerformance
-  isDark: boolean
-  overallAvgMs: number | null
+  skill: SkillPerformance;
+  isDark: boolean;
+  overallAvgMs: number | null;
 }) {
   const speedIndicator = (() => {
-    if (!skill.avgResponseTimeMs || !overallAvgMs) return null
-    const ratio = skill.avgResponseTimeMs / overallAvgMs
-    if (ratio < 0.7) return { emoji: '🚀', label: 'Fast', color: 'green' }
-    if (ratio > 1.3) return { emoji: '🐢', label: 'Slow', color: 'orange' }
-    return { emoji: '➡️', label: 'Average', color: 'gray' }
-  })()
+    if (!skill.avgResponseTimeMs || !overallAvgMs) return null;
+    const ratio = skill.avgResponseTimeMs / overallAvgMs;
+    if (ratio < 0.7) return { emoji: "🚀", label: "Fast", color: "green" };
+    if (ratio > 1.3) return { emoji: "🐢", label: "Slow", color: "orange" };
+    return { emoji: "➡️", label: "Average", color: "gray" };
+  })();
 
   return (
     <div
       data-element="skill-card"
       className={css({
-        padding: '12px',
-        borderRadius: '8px',
-        backgroundColor: isDark ? 'gray.800' : 'white',
-        border: '1px solid',
-        borderColor: isDark ? 'gray.700' : 'gray.200',
+        padding: "12px",
+        borderRadius: "8px",
+        backgroundColor: isDark ? "gray.800" : "white",
+        border: "1px solid",
+        borderColor: isDark ? "gray.700" : "gray.200",
       })}
     >
       <div
         className={css({
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '8px',
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "8px",
         })}
       >
         <span
           className={css({
-            fontWeight: 'bold',
-            color: isDark ? 'gray.100' : 'gray.900',
+            fontWeight: "bold",
+            color: isDark ? "gray.100" : "gray.900",
           })}
         >
           {formatSkillName(skill.skillId)}
         </span>
-        <span className={css(getBktBadgeStyle(skill.bktClassification, isDark))}>
-          {skill.bktClassification ?? 'New'}
+        <span
+          className={css(getBktBadgeStyle(skill.bktClassification, isDark))}
+        >
+          {skill.bktClassification ?? "New"}
         </span>
       </div>
 
       <div
         className={css({
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '8px',
-          fontSize: '0.875rem',
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "8px",
+          fontSize: "0.875rem",
         })}
       >
         {/* Honest framing: show counts instead of misleading accuracy % */}
         <div>
-          <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>Correct: </span>
+          <span className={css({ color: isDark ? "gray.400" : "gray.500" })}>
+            Correct:{" "}
+          </span>
           <span
             className={css({
-              color: isDark ? 'green.400' : 'green.600',
-              fontWeight: 'medium',
+              color: isDark ? "green.400" : "green.600",
+              fontWeight: "medium",
             })}
           >
             {skill.correct}
           </span>
         </div>
         <div>
-          <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>In errors: </span>
+          <span className={css({ color: isDark ? "gray.400" : "gray.500" })}>
+            In errors:{" "}
+          </span>
           <span
             className={css({
               color:
                 skill.attempts - skill.correct > 0
                   ? isDark
-                    ? 'orange.400'
-                    : 'orange.600'
+                    ? "orange.400"
+                    : "orange.600"
                   : isDark
-                    ? 'gray.400'
-                    : 'gray.500',
-              fontWeight: 'medium',
+                    ? "gray.400"
+                    : "gray.500",
+              fontWeight: "medium",
             })}
           >
             {skill.attempts - skill.correct}
           </span>
         </div>
         {skill.avgResponseTimeMs && (
-          <div className={css({ gridColumn: 'span 2' })}>
-            <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>Avg Time: </span>
-            <span className={css({ color: isDark ? 'gray.200' : 'gray.700' })}>
+          <div className={css({ gridColumn: "span 2" })}>
+            <span className={css({ color: isDark ? "gray.400" : "gray.500" })}>
+              Avg Time:{" "}
+            </span>
+            <span className={css({ color: isDark ? "gray.200" : "gray.700" })}>
               {formatTime(skill.avgResponseTimeMs)}
             </span>
             {speedIndicator && (
-              <span className={css({ marginLeft: '8px' })} title={speedIndicator.label}>
+              <span
+                className={css({ marginLeft: "8px" })}
+                title={speedIndicator.label}
+              >
                 {speedIndicator.emoji}
               </span>
             )}
@@ -210,56 +221,60 @@ function SkillCard({
         )}
       </div>
     </div>
-  )
+  );
 }
 
 export function SkillPerformanceReports({
   playerId,
   isDark = false,
 }: SkillPerformanceReportsProps) {
-  const [analysis, setAnalysis] = useState<SkillPerformanceAnalysis | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [analysis, setAnalysis] = useState<SkillPerformanceAnalysis | null>(
+    null,
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchPerformance() {
       try {
-        const response = await fetch(`/api/curriculum/${playerId}/skills/performance`)
-        if (!response.ok) throw new Error('Failed to fetch')
-        const data = await response.json()
-        setAnalysis(data.analysis)
+        const response = await fetch(
+          `/api/curriculum/${playerId}/skills/performance`,
+        );
+        if (!response.ok) throw new Error("Failed to fetch");
+        const data = await response.json();
+        setAnalysis(data.analysis);
       } catch (err) {
-        setError('Failed to load performance data')
-        console.error('Error fetching skill performance:', err)
+        setError("Failed to load performance data");
+        console.error("Error fetching skill performance:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    fetchPerformance()
-  }, [playerId])
+    fetchPerformance();
+  }, [playerId]);
 
   if (loading) {
     return (
       <div
         data-component="skill-performance-reports"
         className={css({
-          padding: '24px',
-          borderRadius: '12px',
-          backgroundColor: isDark ? 'gray.800' : 'white',
-          border: '1px solid',
-          borderColor: isDark ? 'gray.700' : 'gray.200',
+          padding: "24px",
+          borderRadius: "12px",
+          backgroundColor: isDark ? "gray.800" : "white",
+          border: "1px solid",
+          borderColor: isDark ? "gray.700" : "gray.200",
         })}
       >
         <div
           className={css({
-            color: isDark ? 'gray.400' : 'gray.500',
-            textAlign: 'center',
+            color: isDark ? "gray.400" : "gray.500",
+            textAlign: "center",
           })}
         >
           Loading performance data...
         </div>
       </div>
-    )
+    );
   }
 
   if (error || !analysis) {
@@ -267,27 +282,27 @@ export function SkillPerformanceReports({
       <div
         data-component="skill-performance-reports"
         className={css({
-          padding: '24px',
-          borderRadius: '12px',
-          backgroundColor: isDark ? 'gray.800' : 'white',
-          border: '1px solid',
-          borderColor: isDark ? 'gray.700' : 'gray.200',
+          padding: "24px",
+          borderRadius: "12px",
+          backgroundColor: isDark ? "gray.800" : "white",
+          border: "1px solid",
+          borderColor: isDark ? "gray.700" : "gray.200",
         })}
       >
         <div
           className={css({
-            color: isDark ? 'red.400' : 'red.600',
-            textAlign: 'center',
+            color: isDark ? "red.400" : "red.600",
+            textAlign: "center",
           })}
         >
-          {error || 'No performance data available'}
+          {error || "No performance data available"}
         </div>
       </div>
-    )
+    );
   }
 
-  const hasTimingData = analysis.skills.some((s) => s.responseTimeCount > 0)
-  const hasSlowSkills = analysis.slowSkills.length > 0
+  const hasTimingData = analysis.skills.some((s) => s.responseTimeCount > 0);
+  const hasSlowSkills = analysis.slowSkills.length > 0;
 
   // No data yet
   if (analysis.skills.length === 0) {
@@ -295,47 +310,48 @@ export function SkillPerformanceReports({
       <div
         data-component="skill-performance-reports"
         className={css({
-          padding: '24px',
-          borderRadius: '12px',
-          backgroundColor: isDark ? 'gray.800' : 'white',
-          border: '1px solid',
-          borderColor: isDark ? 'gray.700' : 'gray.200',
+          padding: "24px",
+          borderRadius: "12px",
+          backgroundColor: isDark ? "gray.800" : "white",
+          border: "1px solid",
+          borderColor: isDark ? "gray.700" : "gray.200",
         })}
       >
         <h3
           className={css({
-            fontSize: '1.125rem',
-            fontWeight: 'bold',
-            color: isDark ? 'gray.100' : 'gray.900',
-            marginBottom: '12px',
+            fontSize: "1.125rem",
+            fontWeight: "bold",
+            color: isDark ? "gray.100" : "gray.900",
+            marginBottom: "12px",
           })}
         >
           📊 Skill Performance
         </h3>
-        <p className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>
-          No practice data yet. Complete some practice sessions to see performance insights.
+        <p className={css({ color: isDark ? "gray.400" : "gray.500" })}>
+          No practice data yet. Complete some practice sessions to see
+          performance insights.
         </p>
       </div>
-    )
+    );
   }
 
   return (
     <div
       data-component="skill-performance-reports"
       className={css({
-        padding: '24px',
-        borderRadius: '12px',
-        backgroundColor: isDark ? 'gray.800' : 'white',
-        border: '1px solid',
-        borderColor: isDark ? 'gray.700' : 'gray.200',
+        padding: "24px",
+        borderRadius: "12px",
+        backgroundColor: isDark ? "gray.800" : "white",
+        border: "1px solid",
+        borderColor: isDark ? "gray.700" : "gray.200",
       })}
     >
       <h3
         className={css({
-          fontSize: '1.125rem',
-          fontWeight: 'bold',
-          color: isDark ? 'gray.100' : 'gray.900',
-          marginBottom: '16px',
+          fontSize: "1.125rem",
+          fontWeight: "bold",
+          color: isDark ? "gray.100" : "gray.900",
+          marginBottom: "16px",
         })}
       >
         📊 Skill Performance Reports
@@ -345,25 +361,25 @@ export function SkillPerformanceReports({
       {hasTimingData && analysis.overallAvgResponseTimeMs && (
         <div
           className={css({
-            marginBottom: '20px',
-            padding: '12px',
-            backgroundColor: isDark ? 'gray.700' : 'gray.100',
-            borderRadius: '8px',
+            marginBottom: "20px",
+            padding: "12px",
+            backgroundColor: isDark ? "gray.700" : "gray.100",
+            borderRadius: "8px",
           })}
         >
           <div
             className={css({
-              fontSize: '0.875rem',
-              color: isDark ? 'gray.400' : 'gray.500',
+              fontSize: "0.875rem",
+              color: isDark ? "gray.400" : "gray.500",
             })}
           >
             Average Response Time
           </div>
           <div
             className={css({
-              fontSize: '1.5rem',
-              fontWeight: 'bold',
-              color: isDark ? 'gray.100' : 'gray.900',
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+              color: isDark ? "gray.100" : "gray.900",
             })}
           >
             {formatTime(analysis.overallAvgResponseTimeMs)}
@@ -373,32 +389,33 @@ export function SkillPerformanceReports({
 
       {/* Skills with slow response times */}
       {hasSlowSkills && (
-        <div className={css({ marginBottom: '20px' })}>
+        <div className={css({ marginBottom: "20px" })}>
           <h4
             className={css({
-              fontSize: '1rem',
-              fontWeight: 'semibold',
-              color: isDark ? 'orange.400' : 'orange.600',
-              marginBottom: '12px',
+              fontSize: "1rem",
+              fontWeight: "semibold",
+              color: isDark ? "orange.400" : "orange.600",
+              marginBottom: "12px",
             })}
           >
             🐢 Slow Response Times
           </h4>
           <p
             className={css({
-              fontSize: '0.75rem',
-              color: isDark ? 'gray.400' : 'gray.500',
-              marginBottom: '12px',
-              fontStyle: 'italic',
+              fontSize: "0.75rem",
+              color: isDark ? "gray.400" : "gray.500",
+              marginBottom: "12px",
+              fontStyle: "italic",
             })}
           >
-            These skills take longer than average. More practice may help build fluency.
+            These skills take longer than average. More practice may help build
+            fluency.
           </p>
           <div
             className={css({
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
             })}
           >
             {analysis.slowSkills.map((skill) => (
@@ -415,22 +432,22 @@ export function SkillPerformanceReports({
 
       {/* Strengths */}
       {analysis.fastSkills.length > 0 && (
-        <div className={css({ marginBottom: '20px' })}>
+        <div className={css({ marginBottom: "20px" })}>
           <h4
             className={css({
-              fontSize: '1rem',
-              fontWeight: 'semibold',
-              color: isDark ? 'green.400' : 'green.600',
-              marginBottom: '12px',
+              fontSize: "1rem",
+              fontWeight: "semibold",
+              color: isDark ? "green.400" : "green.600",
+              marginBottom: "12px",
             })}
           >
             🌟 Strengths
           </h4>
           <div
             className={css({
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
             })}
           >
             {analysis.fastSkills.map((skill) => (
@@ -449,21 +466,21 @@ export function SkillPerformanceReports({
       <div>
         <h4
           className={css({
-            fontSize: '1rem',
-            fontWeight: 'semibold',
-            color: isDark ? 'gray.300' : 'gray.700',
-            marginBottom: '12px',
+            fontSize: "1rem",
+            fontWeight: "semibold",
+            color: isDark ? "gray.300" : "gray.700",
+            marginBottom: "12px",
           })}
         >
           All Skills ({analysis.skills.length})
         </h4>
         <div
           className={css({
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            maxHeight: '400px',
-            overflowY: 'auto',
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+            maxHeight: "400px",
+            overflowY: "auto",
           })}
         >
           {analysis.skills.map((skill) => (
@@ -477,5 +494,5 @@ export function SkillPerformanceReports({
         </div>
       </div>
     </div>
-  )
+  );
 }

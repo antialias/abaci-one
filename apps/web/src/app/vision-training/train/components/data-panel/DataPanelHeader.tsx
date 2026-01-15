@@ -1,41 +1,41 @@
-'use client'
+"use client";
 
-import { css } from '../../../../../../styled-system/css'
-import type { ModelType } from '../wizard/types'
-import type { SyncStatus, SyncProgress } from './types'
-import { SyncHistoryIndicator } from '../SyncHistoryIndicator'
+import { css } from "../../../../../../styled-system/css";
+import type { ModelType } from "../wizard/types";
+import type { SyncStatus, SyncProgress } from "./types";
+import { SyncHistoryIndicator } from "../SyncHistoryIndicator";
 
 export interface DataPanelHeaderProps {
   /** Model type */
-  modelType: ModelType
+  modelType: ModelType;
   /** Total item count */
-  totalCount: number
+  totalCount: number;
   /** Data quality label */
-  dataQuality: string
+  dataQuality: string;
   /** Sync status (optional) */
-  syncStatus?: SyncStatus | null
+  syncStatus?: SyncStatus | null;
   /** Sync progress (optional) */
-  syncProgress?: SyncProgress
+  syncProgress?: SyncProgress;
   /** Handler to start sync */
-  onStartSync?: () => void
+  onStartSync?: () => void;
   /** Handler to cancel sync */
-  onCancelSync?: () => void
+  onCancelSync?: () => void;
   /** Trigger for sync history refresh */
-  syncHistoryRefreshTrigger?: number
+  syncHistoryRefreshTrigger?: number;
 }
 
 const MODEL_CONFIG = {
-  'boundary-detector': {
-    icon: '🎯',
-    title: 'Boundary Training Data',
-    itemLabel: 'frames',
+  "boundary-detector": {
+    icon: "🎯",
+    title: "Boundary Training Data",
+    itemLabel: "frames",
   },
-  'column-classifier': {
-    icon: '🔢',
-    title: 'Column Classifier Data',
-    itemLabel: 'images',
+  "column-classifier": {
+    icon: "🔢",
+    title: "Column Classifier Data",
+    itemLabel: "images",
   },
-} as const
+} as const;
 
 /**
  * Shared header component for data panels.
@@ -51,48 +51,50 @@ export function DataPanelHeader({
   onCancelSync,
   syncHistoryRefreshTrigger = 0,
 }: DataPanelHeaderProps) {
-  const config = MODEL_CONFIG[modelType]
-  const isSyncing = syncProgress?.phase === 'connecting' || syncProgress?.phase === 'syncing'
-  const hasNewOnRemote = (syncStatus?.newOnRemote ?? 0) > 0
+  const config = MODEL_CONFIG[modelType];
+  const isSyncing =
+    syncProgress?.phase === "connecting" || syncProgress?.phase === "syncing";
+  const hasNewOnRemote = (syncStatus?.newOnRemote ?? 0) > 0;
 
   return (
     <div
       data-element="data-panel-header"
       className={css({
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
         px: { base: 3, lg: 5 },
         py: 3,
-        borderBottom: '1px solid',
-        borderColor: 'gray.800',
-        bg: 'gray.850',
+        borderBottom: "1px solid",
+        borderColor: "gray.800",
+        bg: "gray.850",
       })}
     >
       {/* Title group */}
       <div
         data-element="header-title-group"
-        className={css({ display: 'flex', alignItems: 'center', gap: 3 })}
+        className={css({ display: "flex", alignItems: "center", gap: 3 })}
       >
-        <span data-element="header-icon" className={css({ fontSize: 'xl' })}>
+        <span data-element="header-icon" className={css({ fontSize: "xl" })}>
           {config.icon}
         </span>
         <div data-element="header-text">
           <h2
             data-element="header-title"
             className={css({
-              fontSize: 'lg',
-              fontWeight: 'bold',
-              color: 'gray.100',
+              fontSize: "lg",
+              fontWeight: "bold",
+              color: "gray.100",
             })}
           >
             {config.title}
           </h2>
           <div
             data-element="header-subtitle"
-            className={css({ fontSize: 'sm', color: 'gray.500' })}
+            className={css({ fontSize: "sm", color: "gray.500" })}
           >
-            {totalCount.toLocaleString()} {config.itemLabel} • {dataQuality} quality
+            {totalCount.toLocaleString()} {config.itemLabel} • {dataQuality}{" "}
+            quality
           </div>
         </div>
       </div>
@@ -100,11 +102,14 @@ export function DataPanelHeader({
       {/* Actions */}
       <div
         data-element="header-actions"
-        className={css({ display: 'flex', alignItems: 'center', gap: 3 })}
+        className={css({ display: "flex", alignItems: "center", gap: 3 })}
       >
         {/* Sync history indicator */}
         {syncStatus?.available && (
-          <SyncHistoryIndicator modelType={modelType} refreshTrigger={syncHistoryRefreshTrigger} />
+          <SyncHistoryIndicator
+            modelType={modelType}
+            refreshTrigger={syncHistoryRefreshTrigger}
+          />
         )}
 
         {/* Sync button */}
@@ -112,37 +117,43 @@ export function DataPanelHeader({
           <button
             type="button"
             data-action="sync"
-            data-status={isSyncing ? 'syncing' : hasNewOnRemote ? 'has-new' : 'in-sync'}
+            data-status={
+              isSyncing ? "syncing" : hasNewOnRemote ? "has-new" : "in-sync"
+            }
             onClick={isSyncing ? onCancelSync : onStartSync}
             disabled={!hasNewOnRemote && !isSyncing}
             className={css({
-              display: 'flex',
-              alignItems: 'center',
+              display: "flex",
+              alignItems: "center",
               gap: 2,
               px: 3,
               py: 2,
-              bg: isSyncing ? 'blue.800' : hasNewOnRemote ? 'blue.600' : 'gray.700',
-              color: hasNewOnRemote || isSyncing ? 'white' : 'gray.500',
-              borderRadius: 'lg',
-              border: 'none',
-              cursor: hasNewOnRemote || isSyncing ? 'pointer' : 'not-allowed',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              _hover: hasNewOnRemote ? { bg: 'blue.500' } : {},
+              bg: isSyncing
+                ? "blue.800"
+                : hasNewOnRemote
+                  ? "blue.600"
+                  : "gray.700",
+              color: hasNewOnRemote || isSyncing ? "white" : "gray.500",
+              borderRadius: "lg",
+              border: "none",
+              cursor: hasNewOnRemote || isSyncing ? "pointer" : "not-allowed",
+              fontSize: "sm",
+              fontWeight: "medium",
+              _hover: hasNewOnRemote ? { bg: "blue.500" } : {},
             })}
           >
             {isSyncing ? (
               <>
                 <span
                   className={css({
-                    animation: 'spin 1s linear infinite',
+                    animation: "spin 1s linear infinite",
                   })}
                 >
                   🔄
                 </span>
                 <span
                   className={css({
-                    display: { base: 'none', md: 'inline' },
+                    display: { base: "none", md: "inline" },
                   })}
                 >
                   {syncProgress?.message}
@@ -153,7 +164,7 @@ export function DataPanelHeader({
                 <span>☁️</span>
                 <span
                   className={css({
-                    display: { base: 'none', md: 'inline' },
+                    display: { base: "none", md: "inline" },
                   })}
                 >
                   Sync {syncStatus.newOnRemote} new
@@ -164,7 +175,7 @@ export function DataPanelHeader({
                 <span>✓</span>
                 <span
                   className={css({
-                    display: { base: 'none', md: 'inline' },
+                    display: { base: "none", md: "inline" },
                   })}
                 >
                   In sync
@@ -175,5 +186,5 @@ export function DataPanelHeader({
         )}
       </div>
     </div>
-  )
+  );
 }

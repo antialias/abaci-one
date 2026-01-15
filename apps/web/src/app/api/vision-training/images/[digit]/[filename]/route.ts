@@ -1,18 +1,23 @@
-import fs from 'fs/promises'
-import path from 'path'
-import { NextResponse } from 'next/server'
-import { deleteColumnClassifierSample } from '@/lib/vision/trainingDataDeletion'
+import fs from "fs/promises";
+import path from "path";
+import { NextResponse } from "next/server";
+import { deleteColumnClassifierSample } from "@/lib/vision/trainingDataDeletion";
 
 /**
  * Directory where collected training data is stored
  */
-const TRAINING_DATA_DIR = path.join(process.cwd(), 'data', 'vision-training', 'collected')
+const TRAINING_DATA_DIR = path.join(
+  process.cwd(),
+  "data",
+  "vision-training",
+  "collected",
+);
 
 interface RouteParams {
   params: Promise<{
-    digit: string
-    filename: string
-  }>
+    digit: string;
+    filename: string;
+  }>;
 }
 
 /**
@@ -20,36 +25,46 @@ interface RouteParams {
  *
  * Serves a training image file.
  */
-export async function GET(_request: Request, { params }: RouteParams): Promise<NextResponse> {
+export async function GET(
+  _request: Request,
+  { params }: RouteParams,
+): Promise<NextResponse> {
   try {
-    const { digit, filename } = await params
+    const { digit, filename } = await params;
 
     // Validate digit
     if (!/^[0-9]$/.test(digit)) {
-      return NextResponse.json({ error: 'Invalid digit' }, { status: 400 })
+      return NextResponse.json({ error: "Invalid digit" }, { status: 400 });
     }
 
     // Validate filename (prevent path traversal)
-    if (filename.includes('..') || filename.includes('/') || !filename.endsWith('.png')) {
-      return NextResponse.json({ error: 'Invalid filename' }, { status: 400 })
+    if (
+      filename.includes("..") ||
+      filename.includes("/") ||
+      !filename.endsWith(".png")
+    ) {
+      return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
     }
 
-    const filePath = path.join(TRAINING_DATA_DIR, digit, filename)
+    const filePath = path.join(TRAINING_DATA_DIR, digit, filename);
 
     try {
-      const data = await fs.readFile(filePath)
+      const data = await fs.readFile(filePath);
       return new NextResponse(new Uint8Array(data), {
         headers: {
-          'Content-Type': 'image/png',
-          'Cache-Control': 'public, max-age=31536000, immutable',
+          "Content-Type": "image/png",
+          "Cache-Control": "public, max-age=31536000, immutable",
         },
-      })
+      });
     } catch {
-      return NextResponse.json({ error: 'Image not found' }, { status: 404 })
+      return NextResponse.json({ error: "Image not found" }, { status: 404 });
     }
   } catch (error) {
-    console.error('[vision-training] Error serving image:', error)
-    return NextResponse.json({ error: 'Failed to serve image' }, { status: 500 })
+    console.error("[vision-training] Error serving image:", error);
+    return NextResponse.json(
+      { error: "Failed to serve image" },
+      { status: 500 },
+    );
   }
 }
 
@@ -59,30 +74,40 @@ export async function GET(_request: Request, { params }: RouteParams): Promise<N
  * Reclassifies a training image by moving it to a different digit folder.
  * Body: { newDigit: number }
  */
-export async function PATCH(request: Request, { params }: RouteParams): Promise<NextResponse> {
+export async function PATCH(
+  request: Request,
+  { params }: RouteParams,
+): Promise<NextResponse> {
   try {
-    const { digit, filename } = await params
-    const body = await request.json()
-    const { newDigit } = body
+    const { digit, filename } = await params;
+    const body = await request.json();
+    const { newDigit } = body;
 
     // Validate current digit
     if (!/^[0-9]$/.test(digit)) {
-      return NextResponse.json({ error: 'Invalid current digit' }, { status: 400 })
+      return NextResponse.json(
+        { error: "Invalid current digit" },
+        { status: 400 },
+      );
     }
 
     // Validate new digit
     if (
-      typeof newDigit !== 'number' ||
+      typeof newDigit !== "number" ||
       newDigit < 0 ||
       newDigit > 9 ||
       !Number.isInteger(newDigit)
     ) {
-      return NextResponse.json({ error: 'Invalid new digit' }, { status: 400 })
+      return NextResponse.json({ error: "Invalid new digit" }, { status: 400 });
     }
 
     // Validate filename (prevent path traversal)
-    if (filename.includes('..') || filename.includes('/') || !filename.endsWith('.png')) {
-      return NextResponse.json({ error: 'Invalid filename' }, { status: 400 })
+    if (
+      filename.includes("..") ||
+      filename.includes("/") ||
+      !filename.endsWith(".png")
+    ) {
+      return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
     }
 
     // No-op if same digit
@@ -90,20 +115,20 @@ export async function PATCH(request: Request, { params }: RouteParams): Promise<
       return NextResponse.json({
         success: true,
         reclassified: false,
-        message: 'Same digit',
-      })
+        message: "Same digit",
+      });
     }
 
-    const srcPath = path.join(TRAINING_DATA_DIR, digit, filename)
-    const destDir = path.join(TRAINING_DATA_DIR, String(newDigit))
-    const destPath = path.join(destDir, filename)
+    const srcPath = path.join(TRAINING_DATA_DIR, digit, filename);
+    const destDir = path.join(TRAINING_DATA_DIR, String(newDigit));
+    const destPath = path.join(destDir, filename);
 
     // Ensure destination directory exists
-    await fs.mkdir(destDir, { recursive: true })
+    await fs.mkdir(destDir, { recursive: true });
 
     try {
       // Move the file
-      await fs.rename(srcPath, destPath)
+      await fs.rename(srcPath, destPath);
       return NextResponse.json({
         success: true,
         reclassified: true,
@@ -111,16 +136,19 @@ export async function PATCH(request: Request, { params }: RouteParams): Promise<
         newDigit,
         filename,
         newImageUrl: `/api/vision-training/images/${newDigit}/${filename}`,
-      })
+      });
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return NextResponse.json({ error: 'Image not found' }, { status: 404 })
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return NextResponse.json({ error: "Image not found" }, { status: 404 });
       }
-      throw error
+      throw error;
     }
   } catch (error) {
-    console.error('[vision-training] Error reclassifying image:', error)
-    return NextResponse.json({ error: 'Failed to reclassify image' }, { status: 500 })
+    console.error("[vision-training] Error reclassifying image:", error);
+    return NextResponse.json(
+      { error: "Failed to reclassify image" },
+      { status: 500 },
+    );
   }
 }
 
@@ -129,23 +157,29 @@ export async function PATCH(request: Request, { params }: RouteParams): Promise<
  *
  * Deletes a training image file and records to tombstone.
  */
-export async function DELETE(_request: Request, { params }: RouteParams): Promise<NextResponse> {
+export async function DELETE(
+  _request: Request,
+  { params }: RouteParams,
+): Promise<NextResponse> {
   try {
-    const { digit, filename } = await params
+    const { digit, filename } = await params;
 
     // Validate digit format (detailed validation in shared function)
     if (!/^[0-9]$/.test(digit)) {
-      return NextResponse.json({ error: 'Invalid digit' }, { status: 400 })
+      return NextResponse.json({ error: "Invalid digit" }, { status: 400 });
     }
 
-    const result = await deleteColumnClassifierSample(parseInt(digit, 10), filename)
+    const result = await deleteColumnClassifierSample(
+      parseInt(digit, 10),
+      filename,
+    );
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 })
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
     if (!result.deleted) {
-      return NextResponse.json({ error: 'Image not found' }, { status: 404 })
+      return NextResponse.json({ error: "Image not found" }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -153,9 +187,12 @@ export async function DELETE(_request: Request, { params }: RouteParams): Promis
       deleted: filename,
       tombstoneRecorded: result.tombstoneRecorded,
       warning: result.tombstoneRecorded ? undefined : result.error,
-    })
+    });
   } catch (error) {
-    console.error('[vision-training] Error deleting image:', error)
-    return NextResponse.json({ error: 'Failed to delete image' }, { status: 500 })
+    console.error("[vision-training] Error deleting image:", error);
+    return NextResponse.json(
+      { error: "Failed to delete image" },
+      { status: 500 },
+    );
   }
 }

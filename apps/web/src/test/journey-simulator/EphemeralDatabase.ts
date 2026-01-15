@@ -5,25 +5,28 @@
  * Each database is fully isolated with all migrations applied.
  */
 
-import Database from 'better-sqlite3'
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
-import * as schema from '@/db/schema'
+import Database from "better-sqlite3";
+import {
+  drizzle,
+  type BetterSQLite3Database,
+} from "drizzle-orm/better-sqlite3";
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import * as schema from "@/db/schema";
 
 /**
  * Type alias for the database client with schema
  */
-export type TestDatabase = BetterSQLite3Database<typeof schema>
+export type TestDatabase = BetterSQLite3Database<typeof schema>;
 
 // Module-level variable to hold the "current" ephemeral database for mocking
-let currentEphemeralDb: TestDatabase | null = null
+let currentEphemeralDb: TestDatabase | null = null;
 
 /**
  * Sets the current ephemeral database for mocking purposes.
  * Call this in beforeEach to make the mock work.
  */
 export function setCurrentEphemeralDb(db: TestDatabase | null): void {
-  currentEphemeralDb = db
+  currentEphemeralDb = db;
 }
 
 /**
@@ -32,9 +35,11 @@ export function setCurrentEphemeralDb(db: TestDatabase | null): void {
  */
 export function getCurrentEphemeralDb(): TestDatabase {
   if (!currentEphemeralDb) {
-    throw new Error('No ephemeral database set. Call setCurrentEphemeralDb() in beforeEach.')
+    throw new Error(
+      "No ephemeral database set. Call setCurrentEphemeralDb() in beforeEach.",
+    );
   }
-  return currentEphemeralDb
+  return currentEphemeralDb;
 }
 
 /**
@@ -42,11 +47,11 @@ export function getCurrentEphemeralDb(): TestDatabase {
  */
 export interface EphemeralDbResult {
   /** Drizzle database client */
-  db: TestDatabase
+  db: TestDatabase;
   /** Underlying better-sqlite3 instance */
-  sqlite: Database.Database
+  sqlite: Database.Database;
   /** Cleanup function to close the database */
-  cleanup: () => void
+  cleanup: () => void;
 }
 
 /**
@@ -57,24 +62,24 @@ export interface EphemeralDbResult {
  */
 export function createEphemeralDatabase(): EphemeralDbResult {
   // Create in-memory SQLite database
-  const sqlite = new Database(':memory:')
+  const sqlite = new Database(":memory:");
 
   // Enable foreign keys (required for cascading deletes)
-  sqlite.pragma('foreign_keys = ON')
+  sqlite.pragma("foreign_keys = ON");
 
   // Create Drizzle instance with schema
-  const db = drizzle(sqlite, { schema })
+  const db = drizzle(sqlite, { schema });
 
   // Apply all migrations
-  migrate(db, { migrationsFolder: './drizzle' })
+  migrate(db, { migrationsFolder: "./drizzle" });
 
   return {
     db,
     sqlite,
     cleanup: () => {
-      sqlite.close()
+      sqlite.close();
     },
-  }
+  };
 }
 
 /**
@@ -86,39 +91,39 @@ export function createEphemeralDatabase(): EphemeralDbResult {
  */
 export async function createTestStudent(
   db: TestDatabase,
-  playerId: string = 'test-student'
+  playerId: string = "test-student",
 ): Promise<{ userId: string; playerId: string }> {
-  const userId = `user-${playerId}`
-  const now = new Date()
+  const userId = `user-${playerId}`;
+  const now = new Date();
 
   // Create user
   await db.insert(schema.users).values({
     id: userId,
     guestId: `guest-${playerId}-${Date.now()}`,
     createdAt: now,
-  })
+  });
 
   // Create player
   await db.insert(schema.players).values({
     id: playerId,
     userId,
-    name: 'Test Student',
-    emoji: '🧪',
-    color: '#4F46E5',
+    name: "Test Student",
+    emoji: "🧪",
+    color: "#4F46E5",
     isActive: true,
     createdAt: now,
-  })
+  });
 
   // Initialize curriculum position
   await db.insert(schema.playerCurriculum).values({
     playerId,
     currentLevel: 1,
-    currentPhaseId: 'L1.add.+1.direct',
+    currentPhaseId: "L1.add.+1.direct",
     createdAt: now,
     updatedAt: now,
-  })
+  });
 
-  return { userId, playerId }
+  return { userId, playerId };
 }
 
 /**
@@ -133,9 +138,9 @@ export async function initializeSkillMastery(
   db: TestDatabase,
   playerId: string,
   skillIds: string[],
-  isPracticing: boolean = true
+  isPracticing: boolean = true,
 ): Promise<void> {
-  const now = new Date()
+  const now = new Date();
 
   for (const skillId of skillIds) {
     await db.insert(schema.playerSkillMastery).values({
@@ -145,7 +150,7 @@ export async function initializeSkillMastery(
       lastHadHelp: false,
       createdAt: now,
       lastPracticedAt: null,
-    })
+    });
   }
 }
 
@@ -157,9 +162,9 @@ export async function initializeSkillMastery(
  */
 export async function resetDatabase(db: TestDatabase): Promise<void> {
   // Delete in reverse order of dependencies
-  await db.delete(schema.sessionPlans)
-  await db.delete(schema.playerSkillMastery)
-  await db.delete(schema.playerCurriculum)
-  await db.delete(schema.players)
-  await db.delete(schema.users)
+  await db.delete(schema.sessionPlans);
+  await db.delete(schema.playerSkillMastery);
+  await db.delete(schema.playerCurriculum);
+  await db.delete(schema.players);
+  await db.delete(schema.users);
 }

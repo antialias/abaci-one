@@ -1,8 +1,8 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { getClassroomByCode } from '@/lib/classroom'
+import { type NextRequest, NextResponse } from "next/server";
+import { getClassroomByCode } from "@/lib/classroom";
 
 interface RouteParams {
-  params: Promise<{ code: string }>
+  params: Promise<{ code: string }>;
 }
 
 /**
@@ -13,12 +13,15 @@ interface RouteParams {
  */
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    const { code } = await params
+    const { code } = await params;
 
-    const classroom = await getClassroomByCode(code)
+    const classroom = await getClassroomByCode(code);
 
     if (!classroom) {
-      return NextResponse.json({ error: 'Classroom not found' }, { status: 404 })
+      return NextResponse.json(
+        { error: "Classroom not found" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({
@@ -34,9 +37,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
             name: classroom.teacher.name,
           }
         : null,
-    })
+    });
   } catch (error) {
-    console.error('Failed to lookup classroom:', error)
-    return NextResponse.json({ error: 'Failed to lookup classroom' }, { status: 500 })
+    console.error("Failed to lookup classroom:", error);
+    return NextResponse.json(
+      { error: "Failed to lookup classroom" },
+      { status: 500 },
+    );
   }
 }

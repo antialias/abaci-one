@@ -7,44 +7,44 @@
 
 export interface StudentActionContext {
   /** Whether the viewer is a teacher */
-  isTeacher: boolean
+  isTeacher: boolean;
   /** Classroom ID if teacher has one */
-  classroomId?: string
+  classroomId?: string;
 }
 
 export interface StudentActionData {
-  id: string
-  name: string
-  isArchived?: boolean
+  id: string;
+  name: string;
+  isArchived?: boolean;
   relationship?: {
-    isMyChild: boolean
-    isEnrolled: boolean
-    isPresent: boolean
-    enrollmentStatus: string | null
-  }
+    isMyChild: boolean;
+    isEnrolled: boolean;
+    isPresent: boolean;
+    enrollmentStatus: string | null;
+  };
   activity?: {
-    status: string
-    sessionId?: string
-  }
+    status: string;
+    sessionId?: string;
+  };
 }
 
 export interface AvailableActions {
   // Primary actions
-  startPractice: boolean
-  watchSession: boolean
-  enterClassroom: boolean
-  leaveClassroom: boolean
-  removeFromClassroom: boolean
-  promptToEnter: boolean
+  startPractice: boolean;
+  watchSession: boolean;
+  enterClassroom: boolean;
+  leaveClassroom: boolean;
+  removeFromClassroom: boolean;
+  promptToEnter: boolean;
 
   // Enrollment actions
-  enrollInClassroom: boolean
-  unenrollStudent: boolean
+  enrollInClassroom: boolean;
+  unenrollStudent: boolean;
 
   // Management actions
-  shareAccess: boolean
-  archive: boolean
-  unarchive: boolean
+  shareAccess: boolean;
+  archive: boolean;
+  unarchive: boolean;
 }
 
 /**
@@ -54,21 +54,22 @@ export function getAvailableActions(
   student: StudentActionData,
   context: StudentActionContext,
   options: {
-    hasEnrolledClassrooms?: boolean
-  } = {}
+    hasEnrolledClassrooms?: boolean;
+  } = {},
 ): AvailableActions {
-  const { relationship, activity, isArchived } = student
-  const { isTeacher } = context
-  const { hasEnrolledClassrooms = relationship?.isEnrolled } = options
+  const { relationship, activity, isArchived } = student;
+  const { isTeacher } = context;
+  const { hasEnrolledClassrooms = relationship?.isEnrolled } = options;
 
-  const isPracticing = activity?.status === 'practicing'
-  const hasSessionId = !!activity?.sessionId
-  const isPresent = !!relationship?.isPresent
-  const isEnrolled = !!relationship?.isEnrolled
-  const isMyChild = !!relationship?.isMyChild
+  const isPracticing = activity?.status === "practicing";
+  const hasSessionId = !!activity?.sessionId;
+  const isPresent = !!relationship?.isPresent;
+  const isEnrolled = !!relationship?.isEnrolled;
+  const isMyChild = !!relationship?.isMyChild;
 
   // Check if this is a pending enrollment request - disable most actions
-  const isPendingEnrollment = relationship?.enrollmentStatus?.startsWith('pending') ?? false
+  const isPendingEnrollment =
+    relationship?.enrollmentStatus?.startsWith("pending") ?? false;
 
   // For pending enrollment requests, only allow viewing (no actions)
   if (isPendingEnrollment) {
@@ -84,7 +85,7 @@ export function getAvailableActions(
       shareAccess: false,
       archive: false,
       unarchive: false,
-    }
+    };
   }
 
   return {
@@ -108,26 +109,26 @@ export function getAvailableActions(
     shareAccess: isMyChild,
     archive: !isArchived && isMyChild,
     unarchive: !!isArchived && isMyChild,
-  }
+  };
 }
 
 /**
  * Action definitions for consistent rendering
  */
 export const ACTION_DEFINITIONS = {
-  startPractice: { icon: '▶️', label: 'Start Practice' },
-  watchSession: { icon: '👁', label: 'Watch Session' },
-  enterClassroom: { icon: '🏫', label: 'Enter Classroom' },
-  leaveClassroom: { icon: '🚪', label: 'Leave Classroom' },
-  removeFromClassroom: { icon: '🚪', label: 'Remove from Classroom' },
-  promptToEnter: { icon: '📣', label: 'Prompt to Enter' },
-  enrollInClassroom: { icon: '➕', label: 'Enroll in Classroom' },
+  startPractice: { icon: "▶️", label: "Start Practice" },
+  watchSession: { icon: "👁", label: "Watch Session" },
+  enterClassroom: { icon: "🏫", label: "Enter Classroom" },
+  leaveClassroom: { icon: "🚪", label: "Leave Classroom" },
+  removeFromClassroom: { icon: "🚪", label: "Remove from Classroom" },
+  promptToEnter: { icon: "📣", label: "Prompt to Enter" },
+  enrollInClassroom: { icon: "➕", label: "Enroll in Classroom" },
   unenrollStudent: {
-    icon: '📋',
-    label: 'Unenroll Student',
-    variant: 'danger' as const,
+    icon: "📋",
+    label: "Unenroll Student",
+    variant: "danger" as const,
   },
-  shareAccess: { icon: '🔗', label: 'Share Access' },
-  archive: { icon: '📦', label: 'Archive' },
-  unarchive: { icon: '📤', label: 'Unarchive' },
-} as const
+  shareAccess: { icon: "🔗", label: "Share Access" },
+  archive: { icon: "📦", label: "Archive" },
+  unarchive: { icon: "📤", label: "Unarchive" },
+} as const;

@@ -1,49 +1,49 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { css } from '@styled/css'
-import { useWorksheetPreview } from './WorksheetPreviewContext'
+import { useState } from "react";
+import { css } from "@styled/css";
+import { useWorksheetPreview } from "./WorksheetPreviewContext";
 
 export function DuplicateWarningBanner() {
-  const { warnings, isDismissed, setIsDismissed } = useWorksheetPreview()
-  const [showDetails, setShowDetails] = useState(false)
+  const { warnings, isDismissed, setIsDismissed } = useWorksheetPreview();
+  const [showDetails, setShowDetails] = useState(false);
 
   if (warnings.length === 0 || isDismissed) {
-    return null
+    return null;
   }
 
   // Parse warnings to extract actionable items
-  const firstWarning = warnings[0]
-  const hasMultipleWarnings = warnings.length > 1
+  const firstWarning = warnings[0];
+  const hasMultipleWarnings = warnings.length > 1;
 
   return (
     <div
       data-element="problem-space-warning"
       className={css({
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        maxW: 'calc(100% - 160px)', // Leave space for action button
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        maxW: "calc(100% - 160px)", // Leave space for action button
         zIndex: 100,
-        bg: 'rgba(254, 243, 199, 0.95)', // amber.100 with transparency
-        backdropFilter: 'blur(8px)',
-        border: '1px solid',
-        borderColor: 'amber.300',
-        rounded: '15px',
-        p: '4',
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '3',
-        boxShadow: '0 2px 12px rgba(217, 119, 6, 0.15)', // amber shadow
+        bg: "rgba(254, 243, 199, 0.95)", // amber.100 with transparency
+        backdropFilter: "blur(8px)",
+        border: "1px solid",
+        borderColor: "amber.300",
+        rounded: "15px",
+        p: "4",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: "3",
+        boxShadow: "0 2px 12px rgba(217, 119, 6, 0.15)", // amber shadow
       })}
     >
       {/* Warning Icon */}
       <div
         className={css({
-          fontSize: '2xl',
-          lineHeight: '1',
-          flexShrink: '0',
+          fontSize: "2xl",
+          lineHeight: "1",
+          flexShrink: "0",
         })}
       >
         ⚠️
@@ -52,26 +52,26 @@ export function DuplicateWarningBanner() {
       {/* Content */}
       <div
         className={css({
-          flex: '1',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '2',
+          flex: "1",
+          display: "flex",
+          flexDirection: "column",
+          gap: "2",
         })}
       >
         <div
           className={css({
-            fontWeight: 'bold',
-            fontSize: 'md',
-            color: 'amber.900',
+            fontWeight: "bold",
+            fontSize: "md",
+            color: "amber.900",
           })}
         >
           Not Enough Unique Problems
         </div>
         <div
           className={css({
-            fontSize: 'sm',
-            color: 'amber.800',
-            lineHeight: '1.5',
+            fontSize: "sm",
+            color: "amber.800",
+            lineHeight: "1.5",
           })}
         >
           {firstWarning}
@@ -83,21 +83,21 @@ export function DuplicateWarningBanner() {
             type="button"
             onClick={() => setShowDetails(!showDetails)}
             className={css({
-              alignSelf: 'flex-start',
-              fontSize: 'xs',
-              fontWeight: 'semibold',
-              color: 'amber.700',
-              cursor: 'pointer',
-              bg: 'transparent',
-              border: 'none',
-              p: '0',
-              textDecoration: 'underline',
+              alignSelf: "flex-start",
+              fontSize: "xs",
+              fontWeight: "semibold",
+              color: "amber.700",
+              cursor: "pointer",
+              bg: "transparent",
+              border: "none",
+              p: "0",
+              textDecoration: "underline",
               _hover: {
-                color: 'amber.900',
+                color: "amber.900",
               },
             })}
           >
-            {showDetails ? '▼ Hide details' : '▶ Show details'}
+            {showDetails ? "▼ Hide details" : "▶ Show details"}
           </button>
         )}
 
@@ -105,17 +105,17 @@ export function DuplicateWarningBanner() {
         {showDetails && hasMultipleWarnings && (
           <div
             className={css({
-              fontSize: 'xs',
-              color: 'amber.800',
-              whiteSpace: 'pre-wrap',
-              lineHeight: '1.6',
-              mt: '2',
-              pl: '3',
-              borderLeft: '2px solid',
-              borderColor: 'amber.300',
+              fontSize: "xs",
+              color: "amber.800",
+              whiteSpace: "pre-wrap",
+              lineHeight: "1.6",
+              mt: "2",
+              pl: "3",
+              borderLeft: "2px solid",
+              borderColor: "amber.300",
             })}
           >
-            {warnings.slice(1).join('\n\n')}
+            {warnings.slice(1).join("\n\n")}
           </div>
         )}
       </div>
@@ -125,23 +125,23 @@ export function DuplicateWarningBanner() {
         type="button"
         onClick={() => setIsDismissed(true)}
         className={css({
-          flexShrink: '0',
-          px: '3',
-          py: '1.5',
-          bg: 'amber.600',
-          color: 'white',
-          fontSize: 'sm',
-          fontWeight: 'bold',
-          rounded: 'full',
-          cursor: 'pointer',
-          border: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1',
-          transition: 'all 0.2s',
+          flexShrink: "0",
+          px: "3",
+          py: "1.5",
+          bg: "amber.600",
+          color: "white",
+          fontSize: "sm",
+          fontWeight: "bold",
+          rounded: "full",
+          cursor: "pointer",
+          border: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: "1",
+          transition: "all 0.2s",
           _hover: {
-            bg: 'amber.700',
-            transform: 'scale(1.05)',
+            bg: "amber.700",
+            transform: "scale(1.05)",
           },
         })}
         aria-label="Dismiss warning"
@@ -150,5 +150,5 @@ export function DuplicateWarningBanner() {
         <span>Dismiss</span>
       </button>
     </div>
-  )
+  );
 }

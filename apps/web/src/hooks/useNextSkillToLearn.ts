@@ -5,32 +5,34 @@
  * when a new skill is ready to be unlocked.
  */
 
-import { useQuery } from '@tanstack/react-query'
-import type { SkillSuggestion } from '@/lib/curriculum/skill-unlock'
+import { useQuery } from "@tanstack/react-query";
+import type { SkillSuggestion } from "@/lib/curriculum/skill-unlock";
 
 interface NextSkillResponse {
-  suggestion: SkillSuggestion | null
+  suggestion: SkillSuggestion | null;
 }
 
 export const nextSkillKeys = {
-  all: ['nextSkill'] as const,
+  all: ["nextSkill"] as const,
   forPlayer: (playerId: string) => [...nextSkillKeys.all, playerId] as const,
-}
+};
 
 /**
  * Fetch the next skill the student should learn.
  * Returns null if no new skill is available (student is working on current skills).
  */
-async function fetchNextSkillToLearn(playerId: string): Promise<SkillSuggestion | null> {
-  const response = await fetch(`/api/curriculum/${playerId}/next-skill`)
+async function fetchNextSkillToLearn(
+  playerId: string,
+): Promise<SkillSuggestion | null> {
+  const response = await fetch(`/api/curriculum/${playerId}/next-skill`);
 
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.message || 'Failed to fetch next skill')
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch next skill");
   }
 
-  const data: NextSkillResponse = await response.json()
-  return data.suggestion
+  const data: NextSkillResponse = await response.json();
+  return data.suggestion;
 }
 
 /**
@@ -47,5 +49,5 @@ export function useNextSkillToLearn(playerId: string, enabled = true) {
     enabled: enabled && !!playerId,
     staleTime: 30_000, // 30 seconds - skill state doesn't change frequently
     refetchOnWindowFocus: false,
-  })
+  });
 }

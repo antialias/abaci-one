@@ -8,8 +8,8 @@ export type {
   CursorPosition,
   CursorSquish,
   CustomCursorProps,
-} from './CustomCursor'
-export { CustomCursor } from './CustomCursor'
+} from "./CustomCursor";
+export { CustomCursor } from "./CustomCursor";
 
-export type { HeatCrosshairProps } from './HeatCrosshair'
-export { HeatCrosshair } from './HeatCrosshair'
+export type { HeatCrosshairProps } from "./HeatCrosshair";
+export { HeatCrosshair } from "./HeatCrosshair";

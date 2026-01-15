@@ -1,6 +1,6 @@
-import Link from 'next/link'
-import { css } from '../../../../styled-system/css'
-import { stack } from '../../../../styled-system/patterns'
+import Link from "next/link";
+import { css } from "../../../../styled-system/css";
+import { stack } from "../../../../styled-system/patterns";
 
 /**
  * Lightweight Not Found page for invalid student IDs
@@ -14,52 +14,53 @@ export default function StudentNotFound() {
     <div
       data-component="practice-not-found"
       className={css({
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bg: 'gray.50',
-        padding: '2rem',
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bg: "gray.50",
+        padding: "2rem",
       })}
     >
       <div
         className={stack({
-          gap: '1rem',
-          alignItems: 'center',
-          textAlign: 'center',
+          gap: "1rem",
+          alignItems: "center",
+          textAlign: "center",
         })}
       >
-        <div className={css({ fontSize: '4rem' })}>🔍</div>
+        <div className={css({ fontSize: "4rem" })}>🔍</div>
         <h1
           className={css({
-            fontSize: '1.5rem',
-            fontWeight: 'bold',
-            color: 'gray.800',
+            fontSize: "1.5rem",
+            fontWeight: "bold",
+            color: "gray.800",
           })}
         >
           Student Not Found
         </h1>
-        <p className={css({ color: 'gray.600' })}>
-          We couldn&apos;t find a student with this ID. They may have been removed.
+        <p className={css({ color: "gray.600" })}>
+          We couldn&apos;t find a student with this ID. They may have been
+          removed.
         </p>
         <Link
           href="/practice"
           scroll={false}
           className={css({
-            display: 'inline-block',
-            padding: '0.75rem 2rem',
-            fontSize: '1rem',
-            fontWeight: 'bold',
-            color: 'white',
-            backgroundColor: 'blue.500',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            _hover: { backgroundColor: 'blue.600' },
+            display: "inline-block",
+            padding: "0.75rem 2rem",
+            fontSize: "1rem",
+            fontWeight: "bold",
+            color: "white",
+            backgroundColor: "blue.500",
+            borderRadius: "8px",
+            textDecoration: "none",
+            _hover: { backgroundColor: "blue.600" },
           })}
         >
           Select a Student
         </Link>
       </div>
     </div>
-  )
+  );
 }

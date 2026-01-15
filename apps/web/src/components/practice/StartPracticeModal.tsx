@@ -1,25 +1,25 @@
-'use client'
+"use client";
 
-import * as Dialog from '@radix-ui/react-dialog'
-import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import * as Dialog from "@radix-ui/react-dialog";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 import {
   useSkillTutorialBroadcast,
   type SkillTutorialBroadcastState,
-} from '@/hooks/useSkillTutorialBroadcast'
-import type { SkillTutorialControlAction } from '@/lib/classroom/socket-events'
-import { useTheme } from '@/contexts/ThemeContext'
-import type { SessionPlan } from '@/db/schema/session-plans'
-import type { SessionMode } from '@/lib/curriculum/session-mode'
-import { sessionModeKeys } from '@/hooks/useSessionMode'
-import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
-import { css } from '../../../styled-system/css'
-import { SkillTutorialLauncher } from '../tutorial/SkillTutorialLauncher'
+} from "@/hooks/useSkillTutorialBroadcast";
+import type { SkillTutorialControlAction } from "@/lib/classroom/socket-events";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { SessionPlan } from "@/db/schema/session-plans";
+import type { SessionMode } from "@/lib/curriculum/session-mode";
+import { sessionModeKeys } from "@/hooks/useSessionMode";
+import type { ProblemResultWithContext } from "@/lib/curriculum/session-planner";
+import { css } from "../../../styled-system/css";
+import { SkillTutorialLauncher } from "../tutorial/SkillTutorialLauncher";
 import {
   StartPracticeModalProvider,
   useStartPracticeModal,
   type GameInfo,
-} from './StartPracticeModalContext'
+} from "./StartPracticeModalContext";
 import {
   SessionConfigSummary,
   DurationSelector,
@@ -30,25 +30,25 @@ import {
   RemediationCTA,
   ErrorDisplay,
   StartButton,
-} from './start-practice-modal'
+} from "./start-practice-modal";
 
 interface StartPracticeModalProps {
-  studentId: string
-  studentName: string
-  focusDescription: string
-  sessionMode: SessionMode
-  secondsPerTerm?: number
+  studentId: string;
+  studentName: string;
+  focusDescription: string;
+  sessionMode: SessionMode;
+  secondsPerTerm?: number;
   /** @deprecated Use secondsPerTerm instead */
-  avgSecondsPerProblem?: number
-  existingPlan?: SessionPlan | null
-  problemHistory?: ProblemResultWithContext[]
-  onClose: () => void
-  onStarted?: () => void
-  open?: boolean
+  avgSecondsPerProblem?: number;
+  existingPlan?: SessionPlan | null;
+  problemHistory?: ProblemResultWithContext[];
+  onClose: () => void;
+  onStarted?: () => void;
+  open?: boolean;
   /** Initial expanded state for settings panel (for Storybook) */
-  initialExpanded?: boolean
+  initialExpanded?: boolean;
   /** Override practice-approved games list (for Storybook/testing) */
-  practiceApprovedGamesOverride?: GameInfo[]
+  practiceApprovedGamesOverride?: GameInfo[];
 }
 
 export function StartPracticeModal({
@@ -86,15 +86,15 @@ export function StartPracticeModal({
         open={open}
       />
     </StartPracticeModalProvider>
-  )
+  );
 }
 
 interface StartPracticeModalContentProps {
-  studentId: string
-  studentName: string
-  focusDescription: string
-  onClose: () => void
-  open: boolean
+  studentId: string;
+  studentName: string;
+  focusDescription: string;
+  onClose: () => void;
+  open: boolean;
 }
 
 function StartPracticeModalContent({
@@ -104,97 +104,107 @@ function StartPracticeModalContent({
   onClose,
   open,
 }: StartPracticeModalContentProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
-  const queryClient = useQueryClient()
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const queryClient = useQueryClient();
 
-  const { nextSkill, isExpanded, setIsExpanded, handleStart } = useStartPracticeModal()
+  const { nextSkill, isExpanded, setIsExpanded, handleStart } =
+    useStartPracticeModal();
 
   // Tutorial state (stays in this component for WebSocket broadcast coordination)
-  const [showTutorial, setShowTutorial] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialBroadcastState, setTutorialBroadcastState] =
-    useState<SkillTutorialBroadcastState | null>(null)
+    useState<SkillTutorialBroadcastState | null>(null);
   const [pendingControlAction, setPendingControlAction] =
-    useState<SkillTutorialControlAction | null>(null)
+    useState<SkillTutorialControlAction | null>(null);
 
   const handleControlActionProcessed = useCallback(() => {
-    setPendingControlAction(null)
-  }, [])
+    setPendingControlAction(null);
+  }, []);
 
-  const handleControlReceived = useCallback((action: SkillTutorialControlAction) => {
-    console.log('[StartPracticeModal] Received control action from teacher:', action)
-    setPendingControlAction(action)
-  }, [])
+  const handleControlReceived = useCallback(
+    (action: SkillTutorialControlAction) => {
+      console.log(
+        "[StartPracticeModal] Received control action from teacher:",
+        action,
+      );
+      setPendingControlAction(action);
+    },
+    [],
+  );
 
   useSkillTutorialBroadcast(
     studentId,
     studentName,
     showTutorial ? tutorialBroadcastState : null,
-    handleControlReceived
-  )
+    handleControlReceived,
+  );
 
   const handleTutorialComplete = useCallback(() => {
-    setShowTutorial(false)
+    setShowTutorial(false);
     queryClient.invalidateQueries({
       queryKey: sessionModeKeys.forPlayer(studentId),
-    })
-    handleStart()
-  }, [queryClient, studentId, handleStart])
+    });
+    handleStart();
+  }, [queryClient, studentId, handleStart]);
 
   const handleTutorialSkip = useCallback(() => {
-    setShowTutorial(false)
-    handleStart()
-  }, [handleStart])
+    setShowTutorial(false);
+    handleStart();
+  }, [handleStart]);
 
   const handleTutorialCancel = useCallback(() => {
-    setShowTutorial(false)
-    onClose()
-  }, [onClose])
+    setShowTutorial(false);
+    onClose();
+  }, [onClose]);
 
   const handleStartTutorial = useCallback(() => {
-    setShowTutorial(true)
-  }, [])
+    setShowTutorial(true);
+  }, []);
 
   // Render tutorial modal if tutorial is active
   if (showTutorial && nextSkill) {
     return (
-      <Dialog.Root open={open} onOpenChange={(o) => !o && handleTutorialCancel()}>
+      <Dialog.Root
+        open={open}
+        onOpenChange={(o) => !o && handleTutorialCancel()}
+      >
         <Dialog.Portal>
           <Dialog.Overlay
             className={css({
-              position: 'fixed',
+              position: "fixed",
               inset: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              backdropFilter: 'blur(8px)',
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(8px)",
               zIndex: 1000,
             })}
           />
           <Dialog.Content
             data-component="skill-tutorial-modal"
             className={css({
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 'calc(100% - 2rem)',
-              maxWidth: '800px',
-              maxHeight: 'calc(100vh - 2rem)',
-              overflowY: 'auto',
-              borderRadius: '20px',
-              boxShadow: '0 20px 50px -12px rgba(0, 0, 0, 0.4)',
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "calc(100% - 2rem)",
+              maxWidth: "800px",
+              maxHeight: "calc(100vh - 2rem)",
+              overflowY: "auto",
+              borderRadius: "20px",
+              boxShadow: "0 20px 50px -12px rgba(0, 0, 0, 0.4)",
               zIndex: 1001,
-              outline: 'none',
+              outline: "none",
             })}
             style={{
               background: isDark
-                ? 'linear-gradient(150deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)'
-                : 'linear-gradient(150deg, #ffffff 0%, #f8fafc 60%, #f0f9ff 100%)',
+                ? "linear-gradient(150deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)"
+                : "linear-gradient(150deg, #ffffff 0%, #f8fafc 60%, #f0f9ff 100%)",
             }}
           >
             <SkillTutorialLauncher
               skillId={nextSkill.skillId}
               playerId={studentId}
-              theme={isDark ? 'dark' : 'light'}
+              theme={isDark ? "dark" : "light"}
               onComplete={handleTutorialComplete}
               onSkip={handleTutorialSkip}
               onCancel={handleTutorialCancel}
@@ -205,7 +215,7 @@ function StartPracticeModalContent({
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-    )
+    );
   }
 
   // Main modal
@@ -214,47 +224,47 @@ function StartPracticeModalContent({
       <Dialog.Portal>
         <Dialog.Overlay
           className={css({
-            position: 'fixed',
+            position: "fixed",
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(8px)',
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(8px)",
             zIndex: 1000,
           })}
         />
         <Dialog.Content
           data-component="start-practice-modal"
           className={css({
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 'calc(100% - 2rem)',
-            maxWidth: '360px',
-            borderRadius: '20px',
-            boxShadow: '0 20px 50px -12px rgba(0, 0, 0, 0.4)',
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "calc(100% - 2rem)",
+            maxWidth: "360px",
+            borderRadius: "20px",
+            boxShadow: "0 20px 50px -12px rgba(0, 0, 0, 0.4)",
             zIndex: 1001,
-            outline: 'none',
-            '@media (min-width: 480px)': {
-              width: 'auto',
-              minWidth: '360px',
+            outline: "none",
+            "@media (min-width: 480px)": {
+              width: "auto",
+              minWidth: "360px",
             },
-            '@media (max-width: 480px), (max-height: 700px)': {
+            "@media (max-width: 480px), (max-height: 700px)": {
               top: 0,
               left: 0,
-              transform: 'none',
-              width: '100%',
-              maxWidth: 'none',
-              height: '100%',
+              transform: "none",
+              width: "100%",
+              maxWidth: "none",
+              height: "100%",
               borderRadius: 0,
-              boxShadow: 'none',
-              display: 'flex',
-              flexDirection: 'column',
+              boxShadow: "none",
+              display: "flex",
+              flexDirection: "column",
             },
           })}
           style={{
             background: isDark
-              ? 'linear-gradient(150deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)'
-              : 'linear-gradient(150deg, #ffffff 0%, #f8fafc 60%, #f0f9ff 100%)',
+              ? "linear-gradient(150deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)"
+              : "linear-gradient(150deg, #ffffff 0%, #f8fafc 60%, #f0f9ff 100%)",
           }}
         >
           {/* Close button */}
@@ -263,31 +273,35 @@ function StartPracticeModalContent({
               type="button"
               data-action="close-modal"
               className={css({
-                position: 'absolute',
-                top: '0.75rem',
-                right: '0.75rem',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1rem',
-                color: isDark ? 'gray.500' : 'gray.400',
-                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
-                border: 'none',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
+                position: "absolute",
+                top: "0.75rem",
+                right: "0.75rem",
+                width: "32px",
+                height: "32px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "1rem",
+                color: isDark ? "gray.500" : "gray.400",
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.08)"
+                  : "rgba(0,0,0,0.04)",
+                border: "none",
+                borderRadius: "50%",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
                 _hover: {
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-                  color: isDark ? 'gray.300' : 'gray.600',
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.12)"
+                    : "rgba(0,0,0,0.08)",
+                  color: isDark ? "gray.300" : "gray.600",
                 },
-                '@media (max-width: 480px), (max-height: 700px)': {
-                  top: '0.375rem',
-                  right: '0.375rem',
-                  width: '24px',
-                  height: '24px',
-                  fontSize: '0.75rem',
+                "@media (max-width: 480px), (max-height: 700px)": {
+                  top: "0.375rem",
+                  right: "0.375rem",
+                  width: "24px",
+                  height: "24px",
+                  fontSize: "0.75rem",
                 },
               })}
               aria-label="Close"
@@ -300,21 +314,23 @@ function StartPracticeModalContent({
             data-section="modal-content"
             data-expanded={isExpanded}
             className={css({
-              padding: '1.5rem',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
+              padding: "1.5rem",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
               flex: 1,
-              overflow: 'hidden',
-              '@media (max-height: 500px) and (orientation: landscape)': {
-                padding: '0.75rem 1.5rem',
-                paddingTop: '2rem',
-                justifyContent: 'flex-start',
+              overflow: "hidden",
+              "@media (max-height: 500px) and (orientation: landscape)": {
+                padding: "0.75rem 1.5rem",
+                paddingTop: "2rem",
+                justifyContent: "flex-start",
               },
             })}
           >
             {/* Screen reader only title/description */}
-            <Dialog.Title className={css({ srOnly: true })}>Start Practice Session</Dialog.Title>
+            <Dialog.Title className={css({ srOnly: true })}>
+              Start Practice Session
+            </Dialog.Title>
             <Dialog.Description className={css({ srOnly: true })}>
               {focusDescription}
             </Dialog.Description>
@@ -323,14 +339,14 @@ function StartPracticeModalContent({
             <div
               data-section="config-and-action"
               className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-                '@media (max-height: 500px) and (orientation: landscape)': {
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem",
+                "@media (max-height: 500px) and (orientation: landscape)": {
                   flex: 1,
                   minHeight: 0,
-                  overflow: 'hidden',
-                  gap: '0.5rem',
+                  overflow: "hidden",
+                  gap: "0.5rem",
                 },
               })}
             >
@@ -339,13 +355,15 @@ function StartPracticeModalContent({
                 data-section="session-config"
                 className={css({
                   order: 99,
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  transition: 'all 0.3s ease',
+                  borderRadius: "12px",
+                  overflow: "hidden",
+                  transition: "all 0.3s ease",
                 })}
                 style={{
-                  background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                  background: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.03)",
+                  border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
                 }}
               >
                 {/* Summary view (collapsed) */}
@@ -355,47 +373,47 @@ function StartPracticeModalContent({
                 <div
                   data-section="config-expanded"
                   className={css({
-                    overflow: 'hidden',
-                    transition: 'all 0.3s ease',
-                    '@media (max-height: 500px) and (min-width: 500px)': {
-                      overflow: 'auto',
-                      maxHeight: '100%',
+                    overflow: "hidden",
+                    transition: "all 0.3s ease",
+                    "@media (max-height: 500px) and (min-width: 500px)": {
+                      overflow: "auto",
+                      maxHeight: "100%",
                     },
                   })}
                   style={{
-                    maxHeight: isExpanded ? '620px' : '0px',
+                    maxHeight: isExpanded ? "620px" : "0px",
                     opacity: isExpanded ? 1 : 0,
                   }}
                 >
                   <div
                     className={css({
-                      padding: '1rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.875rem',
+                      padding: "1rem",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.875rem",
                     })}
                   >
                     {/* Expanded header with collapse button */}
                     <div
                       className={css({
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: '-0.25rem',
-                        '@media (max-width: 480px), (max-height: 700px)': {
-                          marginBottom: '-0.125rem',
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: "-0.25rem",
+                        "@media (max-width: 480px), (max-height: 700px)": {
+                          marginBottom: "-0.125rem",
                         },
                       })}
                     >
                       <span
                         className={css({
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          color: isDark ? 'gray.400' : 'gray.500',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          '@media (max-width: 480px), (max-height: 700px)': {
-                            fontSize: '0.625rem',
+                          fontSize: "0.75rem",
+                          fontWeight: "600",
+                          color: isDark ? "gray.400" : "gray.500",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          "@media (max-width: 480px), (max-height: 700px)": {
+                            fontSize: "0.625rem",
                           },
                         })}
                       >
@@ -406,25 +424,29 @@ function StartPracticeModalContent({
                         data-action="collapse-settings"
                         onClick={() => setIsExpanded(false)}
                         className={css({
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          padding: '0.25rem 0.5rem',
-                          fontSize: '0.6875rem',
-                          fontWeight: '500',
-                          color: isDark ? 'gray.400' : 'gray.500',
-                          backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.25rem",
+                          padding: "0.25rem 0.5rem",
+                          fontSize: "0.6875rem",
+                          fontWeight: "500",
+                          color: isDark ? "gray.400" : "gray.500",
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.05)"
+                            : "rgba(0,0,0,0.03)",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
                           _hover: {
-                            backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
-                            color: isDark ? 'gray.300' : 'gray.600',
+                            backgroundColor: isDark
+                              ? "rgba(255,255,255,0.1)"
+                              : "rgba(0,0,0,0.06)",
+                            color: isDark ? "gray.300" : "gray.600",
                           },
-                          '@media (max-width: 480px), (max-height: 700px)': {
-                            padding: '0.125rem 0.375rem',
-                            fontSize: '0.5625rem',
+                          "@media (max-width: 480px), (max-height: 700px)": {
+                            padding: "0.125rem 0.375rem",
+                            fontSize: "0.5625rem",
                           },
                         })}
                       >
@@ -437,16 +459,16 @@ function StartPracticeModalContent({
                     <div
                       data-element="settings-grid"
                       className={css({
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.875rem',
-                        '@media (max-width: 480px), (max-height: 700px)': {
-                          gap: '0.375rem',
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.875rem",
+                        "@media (max-width: 480px), (max-height: 700px)": {
+                          gap: "0.375rem",
                         },
-                        '@media (max-height: 500px) and (min-width: 500px)': {
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: '0.5rem',
+                        "@media (max-height: 500px) and (min-width: 500px)": {
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "0.5rem",
                         },
                       })}
                     >
@@ -469,7 +491,7 @@ function StartPracticeModalContent({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-  )
+  );
 }
 
-export default StartPracticeModal
+export default StartPracticeModal;

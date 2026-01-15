@@ -1,25 +1,30 @@
-'use client'
+"use client";
 
-import * as Dialog from '@radix-ui/react-dialog'
-import dynamic from 'next/dynamic'
-import type { Corner, Rotation } from '@/types/attachments'
-import { Z_INDEX } from '@/constants/zIndex'
-import { VisualDebugProvider } from '@/contexts/VisualDebugContext'
-import { css } from '../../../styled-system/css'
+import * as Dialog from "@radix-ui/react-dialog";
+import dynamic from "next/dynamic";
+import type { Corner, Rotation } from "@/types/attachments";
+import { Z_INDEX } from "@/constants/zIndex";
+import { VisualDebugProvider } from "@/contexts/VisualDebugContext";
+import { css } from "../../../styled-system/css";
 
 // Dynamic import for heavy camera component
 const FullscreenCamera = dynamic(
-  () => import('@/app/practice/[studentId]/summary/FullscreenCamera'),
-  { ssr: false }
-)
+  () => import("@/app/practice/[studentId]/summary/FullscreenCamera"),
+  { ssr: false },
+);
 
 export interface CameraModalProps {
   /** Whether the modal is open */
-  isOpen: boolean
+  isOpen: boolean;
   /** Callback when modal is closed */
-  onClose: () => void
+  onClose: () => void;
   /** Callback when a photo is captured */
-  onCapture: (croppedFile: File, originalFile: File, corners: Corner[], rotation: Rotation) => void
+  onCapture: (
+    croppedFile: File,
+    originalFile: File,
+    corners: Corner[],
+    rotation: Rotation,
+  ) => void;
 }
 
 /**
@@ -34,22 +39,24 @@ export function CameraModal({ isOpen, onClose, onCapture }: CameraModalProps) {
       <Dialog.Portal>
         <Dialog.Overlay
           className={css({
-            position: 'fixed',
+            position: "fixed",
             inset: 0,
-            bg: 'black',
+            bg: "black",
             zIndex: Z_INDEX.MODAL,
           })}
         />
         <Dialog.Content
           className={css({
-            position: 'fixed',
+            position: "fixed",
             inset: 0,
             zIndex: Z_INDEX.MODAL + 1,
-            outline: 'none',
+            outline: "none",
           })}
         >
           <VisualDebugProvider>
-            <Dialog.Title className={css({ srOnly: true })}>Take Photo</Dialog.Title>
+            <Dialog.Title className={css({ srOnly: true })}>
+              Take Photo
+            </Dialog.Title>
             <Dialog.Description className={css({ srOnly: true })}>
               Camera viewfinder. Tap capture to take a photo.
             </Dialog.Description>
@@ -58,7 +65,7 @@ export function CameraModal({ isOpen, onClose, onCapture }: CameraModalProps) {
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-  )
+  );
 }
 
-export default CameraModal
+export default CameraModal;

@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
-import { db, schema } from '@/db'
-import { getViewerId } from '@/lib/viewer'
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { db, schema } from "@/db";
+import { getViewerId } from "@/lib/viewer";
 
 /**
  * GET /api/arcade/invitations/pending
@@ -10,7 +10,7 @@ import { getViewerId } from '@/lib/viewer'
  */
 export async function GET(req: NextRequest) {
   try {
-    const viewerId = await getViewerId()
+    const viewerId = await getViewerId();
 
     // Get pending invitations with room details
     const invitations = await db
@@ -30,26 +30,35 @@ export async function GET(req: NextRequest) {
         expiresAt: schema.roomInvitations.expiresAt,
       })
       .from(schema.roomInvitations)
-      .innerJoin(schema.arcadeRooms, eq(schema.roomInvitations.roomId, schema.arcadeRooms.id))
+      .innerJoin(
+        schema.arcadeRooms,
+        eq(schema.roomInvitations.roomId, schema.arcadeRooms.id),
+      )
       .where(eq(schema.roomInvitations.userId, viewerId))
-      .orderBy(schema.roomInvitations.createdAt)
+      .orderBy(schema.roomInvitations.createdAt);
 
     // Get all active bans for this user (bans are deleted when unbanned, so any existing ban is active)
     const activeBans = await db
       .select({ roomId: schema.roomBans.roomId })
       .from(schema.roomBans)
-      .where(eq(schema.roomBans.userId, viewerId))
+      .where(eq(schema.roomBans.userId, viewerId));
 
-    const bannedRoomIds = new Set(activeBans.map((ban) => ban.roomId))
+    const bannedRoomIds = new Set(activeBans.map((ban) => ban.roomId));
 
     // Filter to only pending invitations, excluding banned rooms
     const pendingInvitations = invitations.filter(
-      (inv) => inv.status === 'pending' && !bannedRoomIds.has(inv.roomId)
-    )
+      (inv) => inv.status === "pending" && !bannedRoomIds.has(inv.roomId),
+    );
 
-    return NextResponse.json({ invitations: pendingInvitations }, { status: 200 })
+    return NextResponse.json(
+      { invitations: pendingInvitations },
+      { status: 200 },
+    );
   } catch (error: any) {
-    console.error('Failed to get pending invitations:', error)
-    return NextResponse.json({ error: 'Failed to get pending invitations' }, { status: 500 })
+    console.error("Failed to get pending invitations:", error);
+    return NextResponse.json(
+      { error: "Failed to get pending invitations" },
+      { status: 500 },
+    );
   }
 }

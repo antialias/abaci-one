@@ -12,8 +12,8 @@
  * - Admins can still control which ready games are actually offered
  */
 
-import { getAvailableGames, getGame } from './game-registry'
-import type { GameDefinition } from './game-sdk/types'
+import { getAvailableGames, getGame } from "./game-registry";
+import type { GameDefinition } from "./game-sdk/types";
 
 /**
  * Whitelist of games approved for practice breaks.
@@ -26,19 +26,21 @@ import type { GameDefinition } from './game-sdk/types'
  * - yjs-demo: Demo/testing only
  */
 export const PRACTICE_APPROVED_GAMES = [
-  'memory-quiz', // Quick memory rounds, soroban-focused
-  'complement-race', // Fast-paced complement practice
-  'card-sorting', // Single-player sorting challenge
-  'matching', // Can be played solo, pairs matching
-] as const
+  "memory-quiz", // Quick memory rounds, soroban-focused
+  "complement-race", // Fast-paced complement practice
+  "card-sorting", // Single-player sorting challenge
+  "matching", // Can be played solo, pairs matching
+] as const;
 
-export type PracticeApprovedGameName = (typeof PRACTICE_APPROVED_GAMES)[number]
+export type PracticeApprovedGameName = (typeof PRACTICE_APPROVED_GAMES)[number];
 
 /**
  * Check if a game name is in the practice whitelist
  */
-export function isInPracticeWhitelist(gameName: string): gameName is PracticeApprovedGameName {
-  return PRACTICE_APPROVED_GAMES.includes(gameName as PracticeApprovedGameName)
+export function isInPracticeWhitelist(
+  gameName: string,
+): gameName is PracticeApprovedGameName {
+  return PRACTICE_APPROVED_GAMES.includes(gameName as PracticeApprovedGameName);
 }
 
 /**
@@ -46,12 +48,12 @@ export function isInPracticeWhitelist(gameName: string): gameName is PracticeApp
  * Requires BOTH whitelist inclusion AND practiceBreakReady manifest flag.
  */
 export function isPracticeApprovedGame(gameName: string): boolean {
-  if (!isInPracticeWhitelist(gameName)) return false
+  if (!isInPracticeWhitelist(gameName)) return false;
 
-  const game = getGame(gameName)
-  if (!game) return false
+  const game = getGame(gameName);
+  if (!game) return false;
 
-  return game.manifest.practiceBreakReady === true
+  return game.manifest.practiceBreakReady === true;
 }
 
 /**
@@ -60,17 +62,21 @@ export function isPracticeApprovedGame(gameName: string): boolean {
  */
 export function getPracticeApprovedGames(): GameDefinition<any, any, any>[] {
   return getAvailableGames().filter(
-    (game) => isInPracticeWhitelist(game.manifest.name) && game.manifest.practiceBreakReady === true
-  )
+    (game) =>
+      isInPracticeWhitelist(game.manifest.name) &&
+      game.manifest.practiceBreakReady === true,
+  );
 }
 
 /**
  * Get a random practice-approved game
  */
-export function getRandomPracticeApprovedGame(): GameDefinition<any, any, any> | undefined {
-  const games = getPracticeApprovedGames()
-  if (games.length === 0) return undefined
-  return games[Math.floor(Math.random() * games.length)]
+export function getRandomPracticeApprovedGame():
+  | GameDefinition<any, any, any>
+  | undefined {
+  const games = getPracticeApprovedGames();
+  if (games.length === 0) return undefined;
+  return games[Math.floor(Math.random() * games.length)];
 }
 
 /**
@@ -78,8 +84,8 @@ export function getRandomPracticeApprovedGame(): GameDefinition<any, any, any> |
  * Returns undefined if game is not practice-approved
  */
 export function getPracticeApprovedGame(
-  gameName: string
+  gameName: string,
 ): GameDefinition<any, any, any> | undefined {
-  if (!isPracticeApprovedGame(gameName)) return undefined
-  return getGame(gameName)
+  if (!isPracticeApprovedGame(gameName)) return undefined;
+  return getGame(gameName);
 }

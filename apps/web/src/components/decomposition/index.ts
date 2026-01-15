@@ -4,21 +4,21 @@
 export {
   DecompositionDisplay,
   DecompositionSection,
-} from './DecompositionDisplay'
-export { ReasonTooltip } from './ReasonTooltip'
+} from "./DecompositionDisplay";
+export { ReasonTooltip } from "./ReasonTooltip";
 export type {
   PedagogicalRule,
   PedagogicalSegment,
   TermReason,
-} from './ReasonTooltip'
+} from "./ReasonTooltip";
 
 // Re-export the context and hooks from contexts
 export {
   DecompositionProvider,
   useDecomposition,
   useDecompositionOptional,
-} from '@/contexts/DecompositionContext'
+} from "@/contexts/DecompositionContext";
 export type {
   DecompositionContextConfig,
   DecompositionContextType,
-} from '@/contexts/DecompositionContext'
+} from "@/contexts/DecompositionContext";

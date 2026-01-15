@@ -1,16 +1,16 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { css } from '@styled/css'
-import { useTheme } from '@/contexts/ThemeContext'
-import { useIsMobile } from '@/hooks/useMediaQuery'
-import NumberFlow from '@number-flow/react'
+import { useState } from "react";
+import { css } from "@styled/css";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useIsMobile } from "@/hooks/useMediaQuery";
+import NumberFlow from "@number-flow/react";
 
 interface FloatingPageIndicatorProps {
-  currentPage: number
-  totalPages: number
-  onJumpToPage: (pageIndex: number) => void
-  isScrolling?: boolean
+  currentPage: number;
+  totalPages: number;
+  onJumpToPage: (pageIndex: number) => void;
+  isScrolling?: boolean;
 }
 
 export function FloatingPageIndicator({
@@ -19,14 +19,14 @@ export function FloatingPageIndicator({
   onJumpToPage,
   isScrolling = false,
 }: FloatingPageIndicatorProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
-  const isMobile = useIsMobile()
-  const [isHovered, setIsHovered] = useState(false)
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const isMobile = useIsMobile();
+  const [isHovered, setIsHovered] = useState(false);
 
-  if (totalPages <= 1) return null
+  if (totalPages <= 1) return null;
 
-  const isActive = isHovered || isScrolling
+  const isActive = isHovered || isScrolling;
 
   return (
     <div
@@ -34,48 +34,48 @@ export function FloatingPageIndicator({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={css({
-        position: 'absolute',
+        position: "absolute",
         // Mobile: top-left with margin, Desktop: centered at top
-        top: '4',
-        left: isMobile ? '3' : '50%',
-        transform: isMobile ? 'none' : 'translateX(-50%)',
+        top: "4",
+        left: isMobile ? "3" : "50%",
+        transform: isMobile ? "none" : "translateX(-50%)",
         zIndex: 10,
-        bg: isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid',
-        borderColor: isDark ? 'gray.600' : 'gray.200',
-        rounded: 'full',
+        bg: isDark ? "rgba(31, 41, 55, 0.95)" : "rgba(255, 255, 255, 0.95)",
+        backdropFilter: "blur(8px)",
+        border: "1px solid",
+        borderColor: isDark ? "gray.600" : "gray.200",
+        rounded: "full",
         // Mobile: smaller padding
-        px: isMobile ? '2' : '4',
-        py: isMobile ? '1' : '2',
-        shadow: 'lg',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: isMobile ? '2' : '3',
+        px: isMobile ? "2" : "4",
+        py: isMobile ? "1" : "2",
+        shadow: "lg",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: isMobile ? "2" : "3",
         opacity: isActive ? 1 : 0.7,
-        transition: 'opacity 0.3s ease-in-out',
+        transition: "opacity 0.3s ease-in-out",
         // Mobile: slightly smaller scale
-        fontSize: isMobile ? 'xs' : 'sm',
+        fontSize: isMobile ? "xs" : "sm",
       })}
     >
       <button
         onClick={() => onJumpToPage(Math.max(0, currentPage - 1))}
         disabled={currentPage === 0}
         className={css({
-          px: isMobile ? '1' : '2',
-          py: '1',
-          rounded: 'md',
-          fontSize: isMobile ? 'xs' : 'sm',
-          fontWeight: 'medium',
-          color: isDark ? 'gray.300' : 'gray.700',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
+          px: isMobile ? "1" : "2",
+          py: "1",
+          rounded: "md",
+          fontSize: isMobile ? "xs" : "sm",
+          fontWeight: "medium",
+          color: isDark ? "gray.300" : "gray.700",
+          cursor: "pointer",
+          transition: "all 0.2s",
           _disabled: {
             opacity: 0.3,
-            cursor: 'not-allowed',
+            cursor: "not-allowed",
           },
           _hover: {
-            bg: isDark ? 'gray.700' : 'gray.100',
+            bg: isDark ? "gray.700" : "gray.100",
           },
         })}
       >
@@ -84,15 +84,15 @@ export function FloatingPageIndicator({
 
       <span
         className={css({
-          fontSize: isMobile ? 'xs' : 'sm',
-          fontWeight: 'semibold',
-          color: isDark ? 'gray.100' : 'gray.900',
-          minW: isMobile ? '16' : '20',
-          textAlign: 'center',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1',
-          whiteSpace: 'nowrap',
+          fontSize: isMobile ? "xs" : "sm",
+          fontWeight: "semibold",
+          color: isDark ? "gray.100" : "gray.900",
+          minW: isMobile ? "16" : "20",
+          textAlign: "center",
+          display: "flex",
+          alignItems: "center",
+          gap: "1",
+          whiteSpace: "nowrap",
         })}
       >
         {isMobile ? (
@@ -100,53 +100,53 @@ export function FloatingPageIndicator({
           <>
             <NumberFlow
               value={currentPage + 1}
-              format={{ notation: 'standard' }}
+              format={{ notation: "standard" }}
               trend={0}
               animated
               style={{
-                fontWeight: 'inherit',
-                fontSize: 'inherit',
-                color: 'inherit',
+                fontWeight: "inherit",
+                fontSize: "inherit",
+                color: "inherit",
               }}
             />
             /
             <NumberFlow
               value={totalPages}
-              format={{ notation: 'standard' }}
+              format={{ notation: "standard" }}
               trend={0}
               animated
               style={{
-                fontWeight: 'inherit',
-                fontSize: 'inherit',
-                color: 'inherit',
+                fontWeight: "inherit",
+                fontSize: "inherit",
+                color: "inherit",
               }}
             />
           </>
         ) : (
           // Desktop: full format "Page 1 of 5"
           <>
-            Page{' '}
+            Page{" "}
             <NumberFlow
               value={currentPage + 1}
-              format={{ notation: 'standard' }}
+              format={{ notation: "standard" }}
               trend={0}
               animated
               style={{
-                fontWeight: 'inherit',
-                fontSize: 'inherit',
-                color: 'inherit',
+                fontWeight: "inherit",
+                fontSize: "inherit",
+                color: "inherit",
               }}
-            />{' '}
-            of{' '}
+            />{" "}
+            of{" "}
             <NumberFlow
               value={totalPages}
-              format={{ notation: 'standard' }}
+              format={{ notation: "standard" }}
               trend={0}
               animated
               style={{
-                fontWeight: 'inherit',
-                fontSize: 'inherit',
-                color: 'inherit',
+                fontWeight: "inherit",
+                fontSize: "inherit",
+                color: "inherit",
               }}
             />
           </>
@@ -157,25 +157,25 @@ export function FloatingPageIndicator({
         onClick={() => onJumpToPage(Math.min(totalPages - 1, currentPage + 1))}
         disabled={currentPage === totalPages - 1}
         className={css({
-          px: isMobile ? '1' : '2',
-          py: '1',
-          rounded: 'md',
-          fontSize: isMobile ? 'xs' : 'sm',
-          fontWeight: 'medium',
-          color: isDark ? 'gray.300' : 'gray.700',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
+          px: isMobile ? "1" : "2",
+          py: "1",
+          rounded: "md",
+          fontSize: isMobile ? "xs" : "sm",
+          fontWeight: "medium",
+          color: isDark ? "gray.300" : "gray.700",
+          cursor: "pointer",
+          transition: "all 0.2s",
           _disabled: {
             opacity: 0.3,
-            cursor: 'not-allowed',
+            cursor: "not-allowed",
           },
           _hover: {
-            bg: isDark ? 'gray.700' : 'gray.100',
+            bg: isDark ? "gray.700" : "gray.100",
           },
         })}
       >
         →
       </button>
     </div>
-  )
+  );
 }

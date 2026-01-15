@@ -12,43 +12,43 @@
 
 export interface PointerLockBounds {
   /** SVG offset X within container */
-  svgOffsetX: number
+  svgOffsetX: number;
   /** SVG offset Y within container */
-  svgOffsetY: number
+  svgOffsetY: number;
   /** SVG width */
-  svgWidth: number
+  svgWidth: number;
   /** SVG height */
-  svgHeight: number
+  svgHeight: number;
 }
 
 export interface PointerLockMovementInput {
   /** Previous cursor X position */
-  lastX: number
+  lastX: number;
   /** Previous cursor Y position */
-  lastY: number
+  lastY: number;
   /** Mouse movement X delta */
-  movementX: number
+  movementX: number;
   /** Mouse movement Y delta */
-  movementY: number
+  movementY: number;
   /** Current movement multiplier from spring animation */
-  currentMultiplier: number
+  currentMultiplier: number;
   /** Bounds for dampening calculations */
-  bounds: PointerLockBounds
+  bounds: PointerLockBounds;
 }
 
 export interface PointerLockMovementResult {
   /** New cursor X position (clamped and dampened) */
-  cursorX: number
+  cursorX: number;
   /** New cursor Y position (clamped and dampened) */
-  cursorY: number
+  cursorY: number;
   /** X squish factor (1.0 = normal, <1.0 = compressed) */
-  squishX: number
+  squishX: number;
   /** Y squish factor (1.0 = normal, <1.0 = compressed) */
-  squishY: number
+  squishY: number;
   /** Whether cursor has reached escape threshold */
-  shouldEscape: boolean
+  shouldEscape: boolean;
   /** Distance from nearest edge */
-  minDistance: number
+  minDistance: number;
 }
 
 // ============================================================================
@@ -56,13 +56,13 @@ export interface PointerLockMovementResult {
 // ============================================================================
 
 /** Distance from edge where dampening starts (px) */
-export const DAMPEN_ZONE = 40
+export const DAMPEN_ZONE = 40;
 
 /** Distance from edge where squish becomes visible (px) */
-export const SQUISH_ZONE = 20
+export const SQUISH_ZONE = 20;
 
 /** When within this distance, escape! (px) */
-export const ESCAPE_THRESHOLD = 2
+export const ESCAPE_THRESHOLD = 2;
 
 // ============================================================================
 // Functions
@@ -80,78 +80,79 @@ export const ESCAPE_THRESHOLD = 2
  * @returns New position, squish factors, and escape status
  */
 export function calculatePointerLockMovement(
-  input: PointerLockMovementInput
+  input: PointerLockMovementInput,
 ): PointerLockMovementResult {
-  const { lastX, lastY, movementX, movementY, currentMultiplier, bounds } = input
-  const { svgOffsetX, svgOffsetY, svgWidth, svgHeight } = bounds
+  const { lastX, lastY, movementX, movementY, currentMultiplier, bounds } =
+    input;
+  const { svgOffsetX, svgOffsetY, svgWidth, svgHeight } = bounds;
 
   // First, calculate undampened position to check how close we are to edges
-  const undampenedX = lastX + movementX * currentMultiplier
-  const undampenedY = lastY + movementY * currentMultiplier
+  const undampenedX = lastX + movementX * currentMultiplier;
+  const undampenedY = lastY + movementY * currentMultiplier;
 
   // Calculate distance from SVG edges (not container edges!)
-  const distLeft = undampenedX - svgOffsetX
-  const distRight = svgOffsetX + svgWidth - undampenedX
-  const distTop = undampenedY - svgOffsetY
-  const distBottom = svgOffsetY + svgHeight - undampenedY
+  const distLeft = undampenedX - svgOffsetX;
+  const distRight = svgOffsetX + svgWidth - undampenedX;
+  const distTop = undampenedY - svgOffsetY;
+  const distBottom = svgOffsetY + svgHeight - undampenedY;
 
   // Find closest edge distance
-  const minDist = Math.min(distLeft, distRight, distTop, distBottom)
+  const minDist = Math.min(distLeft, distRight, distTop, distBottom);
 
   // Calculate dampening factor based on proximity to edge
-  let dampenFactor = 1.0
+  let dampenFactor = 1.0;
   if (minDist < DAMPEN_ZONE) {
     // Quadratic easing for smooth dampening
-    const t = minDist / DAMPEN_ZONE
-    dampenFactor = t * t // Squared for stronger dampening near edge
+    const t = minDist / DAMPEN_ZONE;
+    dampenFactor = t * t; // Squared for stronger dampening near edge
   }
 
   // Apply dampening to movement
-  const dampenedDeltaX = movementX * currentMultiplier * dampenFactor
-  const dampenedDeltaY = movementY * currentMultiplier * dampenFactor
-  let cursorX = lastX + dampenedDeltaX
-  let cursorY = lastY + dampenedDeltaY
+  const dampenedDeltaX = movementX * currentMultiplier * dampenFactor;
+  const dampenedDeltaY = movementY * currentMultiplier * dampenFactor;
+  let cursorX = lastX + dampenedDeltaX;
+  let cursorY = lastY + dampenedDeltaY;
 
   // Calculate distances using dampened position for escape check
-  const dampenedDistLeft = cursorX - svgOffsetX
-  const dampenedDistRight = svgOffsetX + svgWidth - cursorX
-  const dampenedDistTop = cursorY - svgOffsetY
-  const dampenedDistBottom = svgOffsetY + svgHeight - cursorY
+  const dampenedDistLeft = cursorX - svgOffsetX;
+  const dampenedDistRight = svgOffsetX + svgWidth - cursorX;
+  const dampenedDistTop = cursorY - svgOffsetY;
+  const dampenedDistBottom = svgOffsetY + svgHeight - cursorY;
   const dampenedMinDist = Math.min(
     dampenedDistLeft,
     dampenedDistRight,
     dampenedDistTop,
-    dampenedDistBottom
-  )
+    dampenedDistBottom,
+  );
 
   // Check if cursor should escape
-  const shouldEscape = dampenedMinDist < ESCAPE_THRESHOLD
+  const shouldEscape = dampenedMinDist < ESCAPE_THRESHOLD;
 
   // Calculate squish effect based on proximity to edges (using dampened position)
-  let squishX = 1.0
-  let squishY = 1.0
+  let squishX = 1.0;
+  let squishY = 1.0;
 
   // Horizontal squishing (left/right edges)
   if (dampenedDistLeft < SQUISH_ZONE) {
-    const t = 1 - dampenedDistLeft / SQUISH_ZONE
-    squishX = Math.min(squishX, 1.0 - t * 0.5) // Compress to 50% width
+    const t = 1 - dampenedDistLeft / SQUISH_ZONE;
+    squishX = Math.min(squishX, 1.0 - t * 0.5); // Compress to 50% width
   } else if (dampenedDistRight < SQUISH_ZONE) {
-    const t = 1 - dampenedDistRight / SQUISH_ZONE
-    squishX = Math.min(squishX, 1.0 - t * 0.5)
+    const t = 1 - dampenedDistRight / SQUISH_ZONE;
+    squishX = Math.min(squishX, 1.0 - t * 0.5);
   }
 
   // Vertical squishing (top/bottom edges)
   if (dampenedDistTop < SQUISH_ZONE) {
-    const t = 1 - dampenedDistTop / SQUISH_ZONE
-    squishY = Math.min(squishY, 1.0 - t * 0.5)
+    const t = 1 - dampenedDistTop / SQUISH_ZONE;
+    squishY = Math.min(squishY, 1.0 - t * 0.5);
   } else if (dampenedDistBottom < SQUISH_ZONE) {
-    const t = 1 - dampenedDistBottom / SQUISH_ZONE
-    squishY = Math.min(squishY, 1.0 - t * 0.5)
+    const t = 1 - dampenedDistBottom / SQUISH_ZONE;
+    squishY = Math.min(squishY, 1.0 - t * 0.5);
   }
 
   // Clamp to SVG bounds
-  cursorX = Math.max(svgOffsetX, Math.min(svgOffsetX + svgWidth, cursorX))
-  cursorY = Math.max(svgOffsetY, Math.min(svgOffsetY + svgHeight, cursorY))
+  cursorX = Math.max(svgOffsetX, Math.min(svgOffsetX + svgWidth, cursorX));
+  cursorY = Math.max(svgOffsetY, Math.min(svgOffsetY + svgHeight, cursorY));
 
   return {
     cursorX,
@@ -160,7 +161,7 @@ export function calculatePointerLockMovement(
     squishY,
     shouldEscape,
     minDistance: dampenedMinDist,
-  }
+  };
 }
 
 /**
@@ -178,10 +179,10 @@ export function checkDragThreshold(
   cursorY: number,
   dragStartX: number,
   dragStartY: number,
-  threshold: number
+  threshold: number,
 ): boolean {
-  const deltaX = cursorX - dragStartX
-  const deltaY = cursorY - dragStartY
-  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-  return distance >= threshold
+  const deltaX = cursorX - dragStartX;
+  const deltaY = cursorY - dragStartY;
+  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  return distance >= threshold;
 }

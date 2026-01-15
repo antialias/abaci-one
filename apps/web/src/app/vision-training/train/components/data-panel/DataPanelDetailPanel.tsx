@@ -1,27 +1,27 @@
-'use client'
+"use client";
 
-import { css } from '../../../../../../styled-system/css'
-import type { ModelType } from '../wizard/types'
-import type { AnyDataItem, ColumnDataItem } from './types'
-import { isBoundaryDataItem, isColumnDataItem } from './types'
-import { BoundaryDetailContent } from './BoundaryDetailContent'
-import { ColumnDetailContent } from './ColumnDetailContent'
+import { css } from "../../../../../../styled-system/css";
+import type { ModelType } from "../wizard/types";
+import type { AnyDataItem, ColumnDataItem } from "./types";
+import { isBoundaryDataItem, isColumnDataItem } from "./types";
+import { BoundaryDetailContent } from "./BoundaryDetailContent";
+import { ColumnDetailContent } from "./ColumnDetailContent";
 
 export interface DataPanelDetailPanelProps {
   /** Model type */
-  modelType: ModelType
+  modelType: ModelType;
   /** Selected item (or null if nothing selected) */
-  selectedItem: AnyDataItem | null
+  selectedItem: AnyDataItem | null;
   /** Handler to close the detail panel */
-  onClose: () => void
+  onClose: () => void;
   /** Handler to delete the selected item */
-  onDelete: (item: AnyDataItem) => void
+  onDelete: (item: AnyDataItem) => void;
   /** Whether delete is in progress */
-  isDeleting: boolean
+  isDeleting: boolean;
   /** Handler to reclassify (column classifier only) */
-  onReclassify?: (item: ColumnDataItem, newDigit: number) => void
+  onReclassify?: (item: ColumnDataItem, newDigit: number) => void;
   /** Whether reclassification is in progress */
-  isReclassifying?: boolean
+  isReclassifying?: boolean;
 }
 
 /**
@@ -37,46 +37,48 @@ export function DataPanelDetailPanel({
   onReclassify,
   isReclassifying = false,
 }: DataPanelDetailPanelProps) {
-  if (!selectedItem) return null
+  if (!selectedItem) return null;
 
   return (
     <div
       data-component="data-panel-detail"
       className={css({
-        width: '320px',
+        width: "320px",
         flexShrink: 0,
-        bg: 'gray.800',
-        borderRadius: 'lg',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
+        bg: "gray.800",
+        borderRadius: "lg",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
       })}
     >
       {/* Header with close button */}
       <div
         className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
           p: 3,
-          borderBottom: '1px solid',
-          borderColor: 'gray.700',
+          borderBottom: "1px solid",
+          borderColor: "gray.700",
         })}
       >
-        <div className={css({ fontWeight: 'medium', color: 'gray.200' })}>
-          {modelType === 'boundary-detector' ? 'Frame Details' : 'Image Details'}
+        <div className={css({ fontWeight: "medium", color: "gray.200" })}>
+          {modelType === "boundary-detector"
+            ? "Frame Details"
+            : "Image Details"}
         </div>
         <button
           type="button"
           onClick={onClose}
           className={css({
             p: 1,
-            bg: 'transparent',
-            border: 'none',
-            color: 'gray.400',
-            cursor: 'pointer',
-            borderRadius: 'md',
-            _hover: { bg: 'gray.700', color: 'gray.200' },
+            bg: "transparent",
+            border: "none",
+            color: "gray.400",
+            cursor: "pointer",
+            borderRadius: "md",
+            _hover: { bg: "gray.700", color: "gray.200" },
           })}
         >
           ✕
@@ -84,25 +86,29 @@ export function DataPanelDetailPanel({
       </div>
 
       {/* Content area */}
-      <div className={css({ flex: 1, p: 4, overflow: 'auto' })}>
-        {modelType === 'boundary-detector' && isBoundaryDataItem(selectedItem) && (
-          <BoundaryDetailContent
-            item={selectedItem}
-            onDelete={() => onDelete(selectedItem)}
-            isDeleting={isDeleting}
-          />
-        )}
+      <div className={css({ flex: 1, p: 4, overflow: "auto" })}>
+        {modelType === "boundary-detector" &&
+          isBoundaryDataItem(selectedItem) && (
+            <BoundaryDetailContent
+              item={selectedItem}
+              onDelete={() => onDelete(selectedItem)}
+              isDeleting={isDeleting}
+            />
+          )}
 
-        {modelType === 'column-classifier' && isColumnDataItem(selectedItem) && (
-          <ColumnDetailContent
-            item={selectedItem}
-            onDelete={() => onDelete(selectedItem)}
-            isDeleting={isDeleting}
-            onReclassify={(newDigit) => onReclassify?.(selectedItem, newDigit)}
-            isReclassifying={isReclassifying}
-          />
-        )}
+        {modelType === "column-classifier" &&
+          isColumnDataItem(selectedItem) && (
+            <ColumnDetailContent
+              item={selectedItem}
+              onDelete={() => onDelete(selectedItem)}
+              isDeleting={isDeleting}
+              onReclassify={(newDigit) =>
+                onReclassify?.(selectedItem, newDigit)
+              }
+              isReclassifying={isReclassifying}
+            />
+          )}
       </div>
     </div>
-  )
+  );
 }

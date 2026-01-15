@@ -15,13 +15,13 @@
 
 export interface EnrollmentRequestCreatedEvent {
   request: {
-    id: string
-    classroomId: string
-    classroomName: string
-    playerId: string
-    playerName: string
-    requestedByRole: 'parent' | 'teacher'
-  }
+    id: string;
+    classroomId: string;
+    classroomName: string;
+    playerId: string;
+    playerName: string;
+    requestedByRole: "parent" | "teacher";
+  };
 }
 
 /**
@@ -33,12 +33,12 @@ export interface EnrollmentRequestCreatedEvent {
  * - Parent approves teacher-initiated request → notify teacher (via classroom channel)
  */
 export interface EnrollmentRequestApprovedEvent {
-  requestId: string
-  classroomId: string
-  classroomName: string
-  playerId: string
-  playerName: string
-  approvedBy: 'teacher' | 'parent'
+  requestId: string;
+  classroomId: string;
+  classroomName: string;
+  playerId: string;
+  playerName: string;
+  approvedBy: "teacher" | "parent";
 }
 
 /**
@@ -49,12 +49,12 @@ export interface EnrollmentRequestApprovedEvent {
  * - Parent denies teacher's request → notify teacher (via classroom channel)
  */
 export interface EnrollmentRequestDeniedEvent {
-  requestId: string
-  classroomId: string
-  classroomName: string
-  playerId: string
-  playerName: string
-  deniedBy: 'teacher' | 'parent'
+  requestId: string;
+  classroomId: string;
+  classroomName: string;
+  playerId: string;
+  playerName: string;
+  deniedBy: "teacher" | "parent";
 }
 
 /**
@@ -62,10 +62,10 @@ export interface EnrollmentRequestDeniedEvent {
  * The student is now enrolled in the classroom.
  */
 export interface EnrollmentApprovedEvent {
-  classroomId: string
-  classroomName: string
-  playerId: string
-  playerName: string
+  classroomId: string;
+  classroomName: string;
+  playerId: string;
+  playerName: string;
 }
 
 /**
@@ -78,20 +78,20 @@ export interface EnrollmentApprovedEvent {
  * - user:${parentIds} - Parents see child is no longer enrolled
  */
 export interface StudentUnenrolledEvent {
-  classroomId: string
-  classroomName: string
-  playerId: string
-  playerName: string
-  unenrolledBy: 'teacher' | 'parent'
+  classroomId: string;
+  classroomName: string;
+  playerId: string;
+  playerName: string;
+  unenrolledBy: "teacher" | "parent";
 }
 
 /**
  * @deprecated Use EnrollmentRequestDeniedEvent instead
  */
 export interface EnrollmentDeniedEvent {
-  classroomId: string
-  playerId: string
-  deniedBy: 'teacher' | 'parent'
+  classroomId: string;
+  playerId: string;
+  deniedBy: "teacher" | "parent";
 }
 
 // ============================================================================
@@ -103,15 +103,15 @@ export interface EnrollmentDeniedEvent {
  * Broadcast to all parents of the student.
  */
 export interface EntryPromptCreatedEvent {
-  promptId: string
-  classroomId: string
-  classroomName: string
-  playerId: string
-  playerName: string
-  playerEmoji: string
-  teacherName: string
+  promptId: string;
+  classroomId: string;
+  classroomName: string;
+  playerId: string;
+  playerName: string;
+  playerEmoji: string;
+  teacherName: string;
   /** When the prompt expires (ISO timestamp) */
-  expiresAt: string
+  expiresAt: string;
 }
 
 /**
@@ -119,12 +119,12 @@ export interface EntryPromptCreatedEvent {
  * Broadcast to teacher and classroom channel.
  */
 export interface EntryPromptAcceptedEvent {
-  promptId: string
-  classroomId: string
-  playerId: string
-  playerName: string
+  promptId: string;
+  classroomId: string;
+  playerId: string;
+  playerName: string;
   /** Parent who accepted */
-  acceptedBy: string
+  acceptedBy: string;
 }
 
 /**
@@ -132,12 +132,12 @@ export interface EntryPromptAcceptedEvent {
  * Broadcast only to teacher.
  */
 export interface EntryPromptDeclinedEvent {
-  promptId: string
-  classroomId: string
-  playerId: string
-  playerName: string
+  promptId: string;
+  classroomId: string;
+  playerId: string;
+  playerName: string;
   /** Parent who declined */
-  declinedBy: string
+  declinedBy: string;
 }
 
 // ============================================================================
@@ -145,14 +145,14 @@ export interface EntryPromptDeclinedEvent {
 // ============================================================================
 
 export interface StudentEnteredEvent {
-  playerId: string
-  playerName: string
-  enteredBy: string
+  playerId: string;
+  playerName: string;
+  enteredBy: string;
 }
 
 export interface StudentLeftEvent {
-  playerId: string
-  playerName: string
+  playerId: string;
+  playerName: string;
 }
 
 // ============================================================================
@@ -160,8 +160,8 @@ export interface StudentLeftEvent {
 // ============================================================================
 
 export interface PresenceRemovedEvent {
-  classroomId: string
-  removedBy: 'teacher' | 'self'
+  classroomId: string;
+  removedBy: "teacher" | "self";
 }
 
 // ============================================================================
@@ -173,76 +173,76 @@ export interface PresenceRemovedEvent {
  */
 export interface BroadcastComplexity {
   /** Complexity bounds from slot constraints */
-  bounds?: { min?: number; max?: number }
+  bounds?: { min?: number; max?: number };
   /** Total complexity cost from generation trace */
-  totalCost?: number
+  totalCost?: number;
   /** Number of steps (for per-term average) */
-  stepCount?: number
+  stepCount?: number;
   /** Pre-formatted target skill name */
-  targetSkillName?: string
+  targetSkillName?: string;
 }
 
 export interface PracticeStateEvent {
-  sessionId: string
-  currentProblem: unknown // GeneratedProblem type from curriculum
-  phase: 'problem' | 'feedback' | 'tutorial'
+  sessionId: string;
+  currentProblem: unknown; // GeneratedProblem type from curriculum
+  phase: "problem" | "feedback" | "tutorial";
   /** Student's current typed answer (digit by digit) */
-  studentAnswer: string
-  isCorrect: boolean | null
+  studentAnswer: string;
+  isCorrect: boolean | null;
   timing: {
-    startedAt: number
-    elapsed: number
-  }
+    startedAt: number;
+    elapsed: number;
+  };
   /** Purpose of this problem slot (why it was selected) */
-  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
+  purpose: "focus" | "reinforce" | "review" | "challenge";
   /** Complexity data for tooltip display */
-  complexity?: BroadcastComplexity
+  complexity?: BroadcastComplexity;
   /** Current problem number (1-indexed for display) */
-  currentProblemNumber: number
+  currentProblemNumber: number;
   /** Total problems in the session */
-  totalProblems: number
+  totalProblems: number;
   /** Session structure for progress indicator */
-  sessionParts?: unknown[] // SessionPart[] - sent for observer progress display
+  sessionParts?: unknown[]; // SessionPart[] - sent for observer progress display
   /** Current part index for progress indicator */
-  currentPartIndex?: number
+  currentPartIndex?: number;
   /** Current slot index within the part */
-  currentSlotIndex?: number
+  currentSlotIndex?: number;
   /** Accumulated results for progress indicator */
-  slotResults?: unknown[] // SlotResult[] - for observer progress display
+  slotResults?: unknown[]; // SlotResult[] - for observer progress display
 }
 
 export interface TutorialStateEvent {
-  sessionId: string
-  currentStep: number
-  totalSteps: number
-  content: unknown // TutorialStep type
+  sessionId: string;
+  currentStep: number;
+  totalSteps: number;
+  content: unknown; // TutorialStep type
 }
 
 export interface TutorialControlEvent {
-  sessionId: string
-  action: 'skip' | 'next' | 'previous'
+  sessionId: string;
+  action: "skip" | "next" | "previous";
 }
 
 export interface AbacusControlEvent {
-  sessionId: string
-  target: 'help' | 'hero'
-  action: 'show' | 'hide' | 'set-value'
-  value?: number
+  sessionId: string;
+  target: "help" | "hero";
+  action: "show" | "hide" | "set-value";
+  value?: number;
 }
 
 export interface ObserverJoinedEvent {
-  observerId: string
+  observerId: string;
 }
 
 export interface SessionPausedEvent {
-  sessionId: string
-  reason: string
+  sessionId: string;
+  reason: string;
   /** Optional message from teacher to show on pause screen */
-  message?: string
+  message?: string;
 }
 
 export interface SessionResumedEvent {
-  sessionId: string
+  sessionId: string;
 }
 
 /**
@@ -250,22 +250,22 @@ export interface SessionResumedEvent {
  * Used to show observers the transition screen with synchronized countdown.
  */
 export interface PartTransitionEvent {
-  sessionId: string
+  sessionId: string;
   /** Part type we're transitioning FROM (null if session start) */
-  previousPartType: 'abacus' | 'visualization' | 'linear' | null
+  previousPartType: "abacus" | "visualization" | "linear" | null;
   /** Part type we're transitioning TO */
-  nextPartType: 'abacus' | 'visualization' | 'linear'
+  nextPartType: "abacus" | "visualization" | "linear";
   /** Timestamp when countdown started (for sync) */
-  countdownStartTime: number
+  countdownStartTime: number;
   /** Countdown duration in ms */
-  countdownDurationMs: number
+  countdownDurationMs: number;
 }
 
 /**
  * Sent when part transition completes (countdown finished or skipped)
  */
 export interface PartTransitionCompleteEvent {
-  sessionId: string
+  sessionId: string;
 }
 
 /**
@@ -273,15 +273,15 @@ export interface PartTransitionCompleteEvent {
  * Sent when student has vision mode enabled during practice.
  */
 export interface VisionFrameEvent {
-  sessionId: string
+  sessionId: string;
   /** Base64-encoded JPEG image data */
-  imageData: string
+  imageData: string;
   /** Detected abacus value (null if not yet detected) */
-  detectedValue: number | null
+  detectedValue: number | null;
   /** Detection confidence (0-1) */
-  confidence: number
+  confidence: number;
   /** Timestamp when frame was captured */
-  timestamp: number
+  timestamp: number;
 }
 
 /**
@@ -289,9 +289,9 @@ export interface VisionFrameEvent {
  * Allows teacher to see session status update in real-time.
  */
 export interface SessionStartedEvent {
-  sessionId: string
-  playerId: string
-  playerName: string
+  sessionId: string;
+  playerId: string;
+  playerName: string;
 }
 
 /**
@@ -299,10 +299,10 @@ export interface SessionStartedEvent {
  * while present in a classroom.
  */
 export interface SessionEndedEvent {
-  sessionId: string
-  playerId: string
-  playerName: string
-  reason: 'completed' | 'ended_early' | 'abandoned'
+  sessionId: string;
+  playerId: string;
+  playerName: string;
+  reason: "completed" | "ended_early" | "abandoned";
 }
 
 // ============================================================================
@@ -314,27 +314,27 @@ export interface SessionEndedEvent {
  */
 export interface TutorialStepState {
   /** Current step index (0-based) */
-  currentStepIndex: number
+  currentStepIndex: number;
   /** Total steps in the tutorial */
-  totalSteps: number
+  totalSteps: number;
   /** Current multi-step index within the step (for decomposition) */
-  currentMultiStep: number
+  currentMultiStep: number;
   /** Total multi-steps in current step */
-  totalMultiSteps: number
+  totalMultiSteps: number;
   /** Current abacus value */
-  currentValue: number
+  currentValue: number;
   /** Target value to reach */
-  targetValue: number
+  targetValue: number;
   /** Starting value for this step */
-  startValue: number
+  startValue: number;
   /** Whether the current step is completed */
-  isStepCompleted: boolean
+  isStepCompleted: boolean;
   /** Problem string (e.g., "0 +1 = 1") */
-  problem: string
+  problem: string;
   /** Step description */
-  description: string
+  description: string;
   /** Current instruction text */
-  currentInstruction: string
+  currentInstruction: string;
 }
 
 /**
@@ -343,40 +343,40 @@ export interface TutorialStepState {
  */
 export interface SkillTutorialStateEvent {
   /** Player viewing the tutorial */
-  playerId: string
+  playerId: string;
   /** Player name for display */
-  playerName: string
+  playerName: string;
   /** Current launcher state */
-  launcherState: 'intro' | 'tutorial' | 'complete'
+  launcherState: "intro" | "tutorial" | "complete";
   /** Skill being learned */
-  skillId: string
+  skillId: string;
   /** Skill display title */
-  skillTitle: string
+  skillTitle: string;
   /** Tutorial state details (only present when launcherState is 'tutorial') */
-  tutorialState?: TutorialStepState
+  tutorialState?: TutorialStepState;
 }
 
 /**
  * Control actions a teacher can send to a student's tutorial
  */
 export type SkillTutorialControlAction =
-  | { type: 'start-tutorial' }
-  | { type: 'skip-tutorial' }
-  | { type: 'next-step' }
-  | { type: 'previous-step' }
-  | { type: 'go-to-step'; stepIndex: number }
-  | { type: 'set-abacus-value'; value: number }
-  | { type: 'advance-multi-step' }
-  | { type: 'previous-multi-step' }
+  | { type: "start-tutorial" }
+  | { type: "skip-tutorial" }
+  | { type: "next-step" }
+  | { type: "previous-step" }
+  | { type: "go-to-step"; stepIndex: number }
+  | { type: "set-abacus-value"; value: number }
+  | { type: "advance-multi-step" }
+  | { type: "previous-multi-step" };
 
 /**
  * Control event sent from teacher to student during skill tutorial
  */
 export interface SkillTutorialControlEvent {
   /** Target player ID */
-  playerId: string
+  playerId: string;
   /** Control action to apply */
-  action: SkillTutorialControlAction
+  action: SkillTutorialControlAction;
 }
 
 // ============================================================================
@@ -388,44 +388,44 @@ export interface SkillTutorialControlEvent {
  */
 export interface ClassroomServerToClientEvents {
   // Enrollment events
-  'enrollment-request-created': (data: EnrollmentRequestCreatedEvent) => void
-  'enrollment-request-approved': (data: EnrollmentRequestApprovedEvent) => void
-  'enrollment-request-denied': (data: EnrollmentRequestDeniedEvent) => void
-  'enrollment-approved': (data: EnrollmentApprovedEvent) => void
-  'student-unenrolled': (data: StudentUnenrolledEvent) => void
-  'enrollment-denied': (data: EnrollmentDeniedEvent) => void // deprecated
+  "enrollment-request-created": (data: EnrollmentRequestCreatedEvent) => void;
+  "enrollment-request-approved": (data: EnrollmentRequestApprovedEvent) => void;
+  "enrollment-request-denied": (data: EnrollmentRequestDeniedEvent) => void;
+  "enrollment-approved": (data: EnrollmentApprovedEvent) => void;
+  "student-unenrolled": (data: StudentUnenrolledEvent) => void;
+  "enrollment-denied": (data: EnrollmentDeniedEvent) => void; // deprecated
 
   // Entry prompt events (user channel for parents, classroom channel for teacher)
-  'entry-prompt-created': (data: EntryPromptCreatedEvent) => void
-  'entry-prompt-accepted': (data: EntryPromptAcceptedEvent) => void
-  'entry-prompt-declined': (data: EntryPromptDeclinedEvent) => void
+  "entry-prompt-created": (data: EntryPromptCreatedEvent) => void;
+  "entry-prompt-accepted": (data: EntryPromptAcceptedEvent) => void;
+  "entry-prompt-declined": (data: EntryPromptDeclinedEvent) => void;
 
   // Presence events (classroom channel)
-  'student-entered': (data: StudentEnteredEvent) => void
-  'student-left': (data: StudentLeftEvent) => void
+  "student-entered": (data: StudentEnteredEvent) => void;
+  "student-left": (data: StudentLeftEvent) => void;
 
   // Player presence events (player channel)
-  'presence-removed': (data: PresenceRemovedEvent) => void
+  "presence-removed": (data: PresenceRemovedEvent) => void;
 
   // Session observation events
-  'practice-state': (data: PracticeStateEvent) => void
-  'tutorial-state': (data: TutorialStateEvent) => void
-  'tutorial-control': (data: TutorialControlEvent) => void
-  'abacus-control': (data: AbacusControlEvent) => void
-  'observer-joined': (data: ObserverJoinedEvent) => void
-  'session-paused': (data: SessionPausedEvent) => void
-  'session-resumed': (data: SessionResumedEvent) => void
-  'part-transition': (data: PartTransitionEvent) => void
-  'part-transition-complete': (data: PartTransitionCompleteEvent) => void
-  'vision-frame': (data: VisionFrameEvent) => void
+  "practice-state": (data: PracticeStateEvent) => void;
+  "tutorial-state": (data: TutorialStateEvent) => void;
+  "tutorial-control": (data: TutorialControlEvent) => void;
+  "abacus-control": (data: AbacusControlEvent) => void;
+  "observer-joined": (data: ObserverJoinedEvent) => void;
+  "session-paused": (data: SessionPausedEvent) => void;
+  "session-resumed": (data: SessionResumedEvent) => void;
+  "part-transition": (data: PartTransitionEvent) => void;
+  "part-transition-complete": (data: PartTransitionCompleteEvent) => void;
+  "vision-frame": (data: VisionFrameEvent) => void;
 
   // Session status events (classroom channel - for teacher's active sessions view)
-  'session-started': (data: SessionStartedEvent) => void
-  'session-ended': (data: SessionEndedEvent) => void
+  "session-started": (data: SessionStartedEvent) => void;
+  "session-ended": (data: SessionEndedEvent) => void;
 
   // Skill tutorial events (classroom channel - for teacher's observation)
-  'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
-  'skill-tutorial-control': (data: SkillTutorialControlEvent) => void
+  "skill-tutorial-state": (data: SkillTutorialStateEvent) => void;
+  "skill-tutorial-control": (data: SkillTutorialControlEvent) => void;
 }
 
 /**
@@ -433,28 +433,28 @@ export interface ClassroomServerToClientEvents {
  */
 export interface ClassroomClientToServerEvents {
   // Channel subscriptions
-  'join-classroom': (data: { classroomId: string }) => void
-  'leave-classroom': (data: { classroomId: string }) => void
-  'join-player': (data: { playerId: string }) => void
-  'leave-player': (data: { playerId: string }) => void
-  'join-session': (data: { sessionId: string }) => void
-  'observe-session': (data: { sessionId: string; observerId: string }) => void
-  'stop-observing': (data: { sessionId: string }) => void
+  "join-classroom": (data: { classroomId: string }) => void;
+  "leave-classroom": (data: { classroomId: string }) => void;
+  "join-player": (data: { playerId: string }) => void;
+  "leave-player": (data: { playerId: string }) => void;
+  "join-session": (data: { sessionId: string }) => void;
+  "observe-session": (data: { sessionId: string; observerId: string }) => void;
+  "stop-observing": (data: { sessionId: string }) => void;
 
   // Session state broadcasts (from student client)
-  'practice-state': (data: PracticeStateEvent) => void
-  'tutorial-state': (data: TutorialStateEvent) => void
-  'vision-frame': (data: VisionFrameEvent) => void
+  "practice-state": (data: PracticeStateEvent) => void;
+  "tutorial-state": (data: TutorialStateEvent) => void;
+  "vision-frame": (data: VisionFrameEvent) => void;
 
   // Observer controls
-  'tutorial-control': (data: TutorialControlEvent) => void
-  'abacus-control': (data: AbacusControlEvent) => void
-  'session-pause': (data: SessionPausedEvent) => void
-  'session-resume': (data: SessionResumedEvent) => void
-  'part-transition': (data: PartTransitionEvent) => void
-  'part-transition-complete': (data: PartTransitionCompleteEvent) => void
+  "tutorial-control": (data: TutorialControlEvent) => void;
+  "abacus-control": (data: AbacusControlEvent) => void;
+  "session-pause": (data: SessionPausedEvent) => void;
+  "session-resume": (data: SessionResumedEvent) => void;
+  "part-transition": (data: PartTransitionEvent) => void;
+  "part-transition-complete": (data: PartTransitionCompleteEvent) => void;
 
   // Skill tutorial broadcasts (from student client to classroom channel)
-  'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
-  'skill-tutorial-control': (data: SkillTutorialControlEvent) => void
+  "skill-tutorial-state": (data: SkillTutorialStateEvent) => void;
+  "skill-tutorial-control": (data: SkillTutorialControlEvent) => void;
 }

@@ -5,11 +5,11 @@
  * Uses the room_game_configs table (one row per game per room).
  */
 
-import { and, eq } from 'drizzle-orm'
-import { createId } from '@paralleldrive/cuid2'
-import { db, schema } from '@/db'
-import type { GameName } from './validators'
-import type { GameConfigByName } from './game-configs'
+import { and, eq } from "drizzle-orm";
+import { createId } from "@paralleldrive/cuid2";
+import { db, schema } from "@/db";
+import type { GameName } from "./validators";
+import type { GameConfigByName } from "./game-configs";
 import {
   DEFAULT_MATCHING_CONFIG,
   DEFAULT_MEMORY_QUIZ_CONFIG,
@@ -18,51 +18,53 @@ import {
   DEFAULT_RITHMOMACHIA_CONFIG,
   DEFAULT_YIJS_DEMO_CONFIG,
   DEFAULT_KNOW_YOUR_WORLD_CONFIG,
-} from './game-configs'
+} from "./game-configs";
 
 // Lazy-load game registry to avoid loading React components on server
 function getGame(gameName: string) {
   // Only load game registry in browser environment
   // On server, we fall back to switch statement validation
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     try {
-      const { getGame: registryGetGame } = require('./game-registry')
-      return registryGetGame(gameName)
+      const { getGame: registryGetGame } = require("./game-registry");
+      return registryGetGame(gameName);
     } catch (error) {
-      console.warn('[GameConfig] Failed to load game registry:', error)
-      return undefined
+      console.warn("[GameConfig] Failed to load game registry:", error);
+      return undefined;
     }
   }
-  return undefined
+  return undefined;
 }
 
 /**
  * Extended game name type that includes both registered validators and legacy games
  * TODO: Remove 'complement-race' once migrated to the new modular system
  */
-type ExtendedGameName = GameName | 'complement-race'
+type ExtendedGameName = GameName | "complement-race";
 
 /**
  * Get default config for a game
  */
-function getDefaultGameConfig(gameName: ExtendedGameName): GameConfigByName[ExtendedGameName] {
+function getDefaultGameConfig(
+  gameName: ExtendedGameName,
+): GameConfigByName[ExtendedGameName] {
   switch (gameName) {
-    case 'matching':
-      return DEFAULT_MATCHING_CONFIG
-    case 'memory-quiz':
-      return DEFAULT_MEMORY_QUIZ_CONFIG
-    case 'complement-race':
-      return DEFAULT_COMPLEMENT_RACE_CONFIG
-    case 'card-sorting':
-      return DEFAULT_CARD_SORTING_CONFIG
-    case 'rithmomachia':
-      return DEFAULT_RITHMOMACHIA_CONFIG
-    case 'yjs-demo':
-      return DEFAULT_YIJS_DEMO_CONFIG
-    case 'know-your-world':
-      return DEFAULT_KNOW_YOUR_WORLD_CONFIG
+    case "matching":
+      return DEFAULT_MATCHING_CONFIG;
+    case "memory-quiz":
+      return DEFAULT_MEMORY_QUIZ_CONFIG;
+    case "complement-race":
+      return DEFAULT_COMPLEMENT_RACE_CONFIG;
+    case "card-sorting":
+      return DEFAULT_CARD_SORTING_CONFIG;
+    case "rithmomachia":
+      return DEFAULT_RITHMOMACHIA_CONFIG;
+    case "yjs-demo":
+      return DEFAULT_YIJS_DEMO_CONFIG;
+    case "know-your-world":
+      return DEFAULT_KNOW_YOUR_WORLD_CONFIG;
     default:
-      throw new Error(`Unknown game: ${gameName}`)
+      throw new Error(`Unknown game: ${gameName}`);
   }
 }
 
@@ -72,27 +74,27 @@ function getDefaultGameConfig(gameName: ExtendedGameName): GameConfigByName[Exte
  */
 export async function getGameConfig<T extends ExtendedGameName>(
   roomId: string,
-  gameName: T
+  gameName: T,
 ): Promise<GameConfigByName[T]> {
   // Query the room_game_configs table for this specific room+game
   const configRow = await db.query.roomGameConfigs.findFirst({
     where: and(
       eq(schema.roomGameConfigs.roomId, roomId),
-      eq(schema.roomGameConfigs.gameName, gameName)
+      eq(schema.roomGameConfigs.gameName, gameName),
     ),
-  })
+  });
 
   // If no config exists, return defaults
   if (!configRow) {
-    return getDefaultGameConfig(gameName) as GameConfigByName[T]
+    return getDefaultGameConfig(gameName) as GameConfigByName[T];
   }
 
   // Merge saved config with defaults to handle missing fields
-  const defaults = getDefaultGameConfig(gameName)
+  const defaults = getDefaultGameConfig(gameName);
   return {
     ...defaults,
     ...(configRow.config as object),
-  } as GameConfigByName[T]
+  } as GameConfigByName[T];
 }
 
 /**
@@ -102,32 +104,32 @@ export async function getGameConfig<T extends ExtendedGameName>(
 export async function setGameConfig<T extends ExtendedGameName>(
   roomId: string,
   gameName: T,
-  config: Partial<GameConfigByName[T]>
+  config: Partial<GameConfigByName[T]>,
 ): Promise<void> {
-  const now = new Date()
+  const now = new Date();
 
   // Check if config already exists
   const existing = await db.query.roomGameConfigs.findFirst({
     where: and(
       eq(schema.roomGameConfigs.roomId, roomId),
-      eq(schema.roomGameConfigs.gameName, gameName)
+      eq(schema.roomGameConfigs.gameName, gameName),
     ),
-  })
+  });
 
   if (existing) {
     // Update existing config (merge with existing values)
-    const mergedConfig = { ...(existing.config as object), ...config }
+    const mergedConfig = { ...(existing.config as object), ...config };
     await db
       .update(schema.roomGameConfigs)
       .set({
         config: mergedConfig as any,
         updatedAt: now,
       })
-      .where(eq(schema.roomGameConfigs.id, existing.id))
+      .where(eq(schema.roomGameConfigs.id, existing.id));
   } else {
     // Insert new config (merge with defaults)
-    const defaults = getDefaultGameConfig(gameName)
-    const mergedConfig = { ...defaults, ...config }
+    const defaults = getDefaultGameConfig(gameName);
+    const mergedConfig = { ...defaults, ...config };
 
     await db.insert(schema.roomGameConfigs).values({
       id: createId(),
@@ -136,10 +138,10 @@ export async function setGameConfig<T extends ExtendedGameName>(
       config: mergedConfig as any,
       createdAt: now,
       updatedAt: now,
-    })
+    });
   }
 
-  console.log(`[GameConfig] Updated ${gameName} config for room ${roomId}`)
+  console.log(`[GameConfig] Updated ${gameName} config for room ${roomId}`);
 }
 
 /**
@@ -149,25 +151,36 @@ export async function setGameConfig<T extends ExtendedGameName>(
 export async function updateGameConfigField<
   T extends ExtendedGameName,
   K extends keyof GameConfigByName[T],
->(roomId: string, gameName: T, field: K, value: GameConfigByName[T][K]): Promise<void> {
+>(
+  roomId: string,
+  gameName: T,
+  field: K,
+  value: GameConfigByName[T][K],
+): Promise<void> {
   // Create a partial config with just the field being updated
-  const partialConfig: Partial<GameConfigByName[T]> = {} as any
-  ;(partialConfig as any)[field] = value
-  await setGameConfig(roomId, gameName, partialConfig)
+  const partialConfig: Partial<GameConfigByName[T]> = {} as any;
+  (partialConfig as any)[field] = value;
+  await setGameConfig(roomId, gameName, partialConfig);
 }
 
 /**
  * Delete a game's config from the database
  * Useful when clearing game selection or cleaning up
  */
-export async function deleteGameConfig(roomId: string, gameName: ExtendedGameName): Promise<void> {
+export async function deleteGameConfig(
+  roomId: string,
+  gameName: ExtendedGameName,
+): Promise<void> {
   await db
     .delete(schema.roomGameConfigs)
     .where(
-      and(eq(schema.roomGameConfigs.roomId, roomId), eq(schema.roomGameConfigs.gameName, gameName))
-    )
+      and(
+        eq(schema.roomGameConfigs.roomId, roomId),
+        eq(schema.roomGameConfigs.gameName, gameName),
+      ),
+    );
 
-  console.log(`[GameConfig] Deleted ${gameName} config for room ${roomId}`)
+  console.log(`[GameConfig] Deleted ${gameName} config for room ${roomId}`);
 }
 
 /**
@@ -175,18 +188,18 @@ export async function deleteGameConfig(roomId: string, gameName: ExtendedGameNam
  * Returns a map of gameName -> config
  */
 export async function getAllGameConfigs(
-  roomId: string
+  roomId: string,
 ): Promise<Partial<Record<ExtendedGameName, unknown>>> {
   const configs = await db.query.roomGameConfigs.findMany({
     where: eq(schema.roomGameConfigs.roomId, roomId),
-  })
+  });
 
-  const result: Partial<Record<ExtendedGameName, unknown>> = {}
+  const result: Partial<Record<ExtendedGameName, unknown>> = {};
   for (const config of configs) {
-    result[config.gameName as ExtendedGameName] = config.config
+    result[config.gameName as ExtendedGameName] = config.config;
   }
 
-  return result
+  return result;
 }
 
 /**
@@ -194,8 +207,10 @@ export async function getAllGameConfigs(
  * Called when deleting a room (cascade should handle this, but useful for explicit cleanup)
  */
 export async function deleteAllGameConfigs(roomId: string): Promise<void> {
-  await db.delete(schema.roomGameConfigs).where(eq(schema.roomGameConfigs.roomId, roomId))
-  console.log(`[GameConfig] Deleted all configs for room ${roomId}`)
+  await db
+    .delete(schema.roomGameConfigs)
+    .where(eq(schema.roomGameConfigs.roomId, roomId));
+  console.log(`[GameConfig] Deleted all configs for room ${roomId}`);
 }
 
 /**
@@ -205,46 +220,51 @@ export async function deleteAllGameConfigs(roomId: string): Promise<void> {
  * NEW: Uses game registry validation functions instead of switch statements.
  * Games now own their own validation logic!
  */
-export function validateGameConfig(gameName: ExtendedGameName, config: any): boolean {
+export function validateGameConfig(
+  gameName: ExtendedGameName,
+  config: any,
+): boolean {
   // Try to get game from registry
-  const game = getGame(gameName)
+  const game = getGame(gameName);
 
   // If game has a validateConfig function, use it
   if (game && game.validateConfig) {
-    return game.validateConfig(config)
+    return game.validateConfig(config);
   }
 
   // Fallback for legacy games without registry (e.g., complement-race, matching, memory-quiz)
   switch (gameName) {
-    case 'matching':
+    case "matching":
       return (
-        typeof config === 'object' &&
+        typeof config === "object" &&
         config !== null &&
-        ['abacus-numeral', 'complement-pairs'].includes(config.gameType) &&
-        typeof config.difficulty === 'number' &&
+        ["abacus-numeral", "complement-pairs"].includes(config.gameType) &&
+        typeof config.difficulty === "number" &&
         [6, 8, 12, 15].includes(config.difficulty) &&
-        typeof config.turnTimer === 'number' &&
+        typeof config.turnTimer === "number" &&
         config.turnTimer >= 5 &&
         config.turnTimer <= 300
-      )
+      );
 
-    case 'memory-quiz':
+    case "memory-quiz":
       return (
-        typeof config === 'object' &&
+        typeof config === "object" &&
         config !== null &&
         [2, 5, 8, 12, 15].includes(config.selectedCount) &&
-        typeof config.displayTime === 'number' &&
+        typeof config.displayTime === "number" &&
         config.displayTime > 0 &&
-        ['beginner', 'easy', 'medium', 'hard', 'expert'].includes(config.selectedDifficulty) &&
-        ['cooperative', 'competitive'].includes(config.playMode)
-      )
+        ["beginner", "easy", "medium", "hard", "expert"].includes(
+          config.selectedDifficulty,
+        ) &&
+        ["cooperative", "competitive"].includes(config.playMode)
+      );
 
-    case 'complement-race':
+    case "complement-race":
       // TODO: Add validation when complement-race settings are defined
-      return typeof config === 'object' && config !== null
+      return typeof config === "object" && config !== null;
 
     default:
       // If no validator found, accept any object
-      return typeof config === 'object' && config !== null
+      return typeof config === "object" && config !== null;
   }
 }

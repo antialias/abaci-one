@@ -1,16 +1,16 @@
-'use client'
+"use client";
 
-import type { ReactNode } from 'react'
-import { notFound } from 'next/navigation'
-import { css } from '../../../../styled-system/css'
-import { VisionTrainingNav } from '../components/VisionTrainingNav'
-import { isValidModelType } from '../hooks/useModelType'
+import type { ReactNode } from "react";
+import { notFound } from "next/navigation";
+import { css } from "../../../../styled-system/css";
+import { VisionTrainingNav } from "../components/VisionTrainingNav";
+import { isValidModelType } from "../hooks/useModelType";
 
-const NAV_HEIGHT = 56
+const NAV_HEIGHT = 56;
 
 interface VisionTrainingLayoutProps {
-  children: ReactNode
-  params: { model: string }
+  children: ReactNode;
+  params: { model: string };
 }
 
 /**
@@ -26,20 +26,23 @@ interface VisionTrainingLayoutProps {
  * The --nav-height variable allows child pages with absolute/fixed positioning
  * to correctly offset their content below the nav bar.
  */
-export default function VisionTrainingLayout({ children, params }: VisionTrainingLayoutProps) {
+export default function VisionTrainingLayout({
+  children,
+  params,
+}: VisionTrainingLayoutProps) {
   // Validate model param - show 404 for invalid models
   if (!isValidModelType(params.model)) {
-    notFound()
+    notFound();
   }
 
   return (
     <div
       data-component="vision-training-layout"
-      style={{ '--nav-height': `${NAV_HEIGHT}px` } as React.CSSProperties}
+      style={{ "--nav-height": `${NAV_HEIGHT}px` } as React.CSSProperties}
       className={css({
-        minHeight: '100vh',
-        bg: 'gray.900',
-        color: 'gray.100',
+        minHeight: "100vh",
+        bg: "gray.900",
+        color: "gray.100",
       })}
     >
       {/* Fixed nav - always at top */}
@@ -49,12 +52,12 @@ export default function VisionTrainingLayout({ children, params }: VisionTrainin
       <main
         data-element="vision-content"
         className={css({
-          minHeight: '100vh',
+          minHeight: "100vh",
         })}
-        style={{ paddingTop: 'var(--nav-height)' }}
+        style={{ paddingTop: "var(--nav-height)" }}
       >
         {children}
       </main>
     </div>
-  )
+  );
 }

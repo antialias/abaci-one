@@ -12,9 +12,9 @@
  * - Computed refs for async-safe access in event handlers
  */
 
-'use client'
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ============================================================================
 // Types
@@ -22,9 +22,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 export interface UseGameSettingsOptions {
   /** Assistance level from game config */
-  assistanceLevel?: string
+  assistanceLevel?: string;
   /** Whether the assistance level allows hot/cold feedback */
-  assistanceAllowsHotCold: boolean
+  assistanceAllowsHotCold: boolean;
 }
 
 export interface UseGameSettingsReturn {
@@ -32,51 +32,51 @@ export interface UseGameSettingsReturn {
   // State Values
   // -------------------------------------------------------------------------
   /** Whether to automatically speak hints */
-  autoSpeak: boolean
+  autoSpeak: boolean;
   /** Whether to use native accent for pronunciation */
-  withAccent: boolean
+  withAccent: boolean;
   /** Whether to auto-open hints on prompt change */
-  autoHint: boolean
+  autoHint: boolean;
   /** Whether hot/cold audio feedback is enabled */
-  hotColdEnabled: boolean
+  hotColdEnabled: boolean;
   /** Effective hot/cold (requires both user setting and assistance level) */
-  effectiveHotColdEnabled: boolean
+  effectiveHotColdEnabled: boolean;
 
   // -------------------------------------------------------------------------
   // Setters (with localStorage persistence)
   // -------------------------------------------------------------------------
   /** Set auto-speak preference */
-  setAutoSpeak: (enabled: boolean) => void
+  setAutoSpeak: (enabled: boolean) => void;
   /** Set with-accent preference */
-  setWithAccent: (enabled: boolean) => void
+  setWithAccent: (enabled: boolean) => void;
   /** Set auto-hint preference */
-  setAutoHint: (enabled: boolean) => void
+  setAutoHint: (enabled: boolean) => void;
   /** Set hot/cold preference */
-  setHotColdEnabled: (enabled: boolean) => void
+  setHotColdEnabled: (enabled: boolean) => void;
 
   // -------------------------------------------------------------------------
   // Toggle Callbacks
   // -------------------------------------------------------------------------
   /** Toggle auto-speak */
-  toggleAutoSpeak: () => void
+  toggleAutoSpeak: () => void;
   /** Toggle with-accent */
-  toggleWithAccent: () => void
+  toggleWithAccent: () => void;
   /** Toggle auto-hint */
-  toggleAutoHint: () => void
+  toggleAutoHint: () => void;
   /** Toggle hot/cold */
-  toggleHotCold: () => void
+  toggleHotCold: () => void;
 
   // -------------------------------------------------------------------------
   // Refs for Async Access
   // -------------------------------------------------------------------------
   /** Ref to current autoHint value */
-  autoHintRef: React.MutableRefObject<boolean>
+  autoHintRef: React.MutableRefObject<boolean>;
   /** Ref to current autoSpeak value */
-  autoSpeakRef: React.MutableRefObject<boolean>
+  autoSpeakRef: React.MutableRefObject<boolean>;
   /** Ref to current withAccent value */
-  withAccentRef: React.MutableRefObject<boolean>
+  withAccentRef: React.MutableRefObject<boolean>;
   /** Ref to current effectiveHotColdEnabled value */
-  hotColdEnabledRef: React.MutableRefObject<boolean>
+  hotColdEnabledRef: React.MutableRefObject<boolean>;
 }
 
 // ============================================================================
@@ -84,26 +84,26 @@ export interface UseGameSettingsReturn {
 // ============================================================================
 
 const STORAGE_KEYS = {
-  autoSpeak: 'knowYourWorld.autoSpeakHint',
-  withAccent: 'knowYourWorld.withAccent',
-  autoHint: 'knowYourWorld.autoHint',
-  hotCold: 'knowYourWorld.hotColdAudio',
-} as const
+  autoSpeak: "knowYourWorld.autoSpeakHint",
+  withAccent: "knowYourWorld.withAccent",
+  autoHint: "knowYourWorld.autoHint",
+  hotCold: "knowYourWorld.hotColdAudio",
+} as const;
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
 function getStoredBoolean(key: string, defaultValue: boolean = false): boolean {
-  if (typeof window === 'undefined') return defaultValue
-  const stored = localStorage.getItem(key)
-  if (stored === null) return defaultValue
-  return stored === 'true'
+  if (typeof window === "undefined") return defaultValue;
+  const stored = localStorage.getItem(key);
+  if (stored === null) return defaultValue;
+  return stored === "true";
 }
 
 function setStoredBoolean(key: string, value: boolean): void {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(key, String(value))
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, String(value));
 }
 
 // ============================================================================
@@ -135,105 +135,111 @@ function setStoredBoolean(key: string, value: boolean): void {
  * }
  * ```
  */
-export function useGameSettings(options: UseGameSettingsOptions): UseGameSettingsReturn {
-  const { assistanceLevel, assistanceAllowsHotCold } = options
+export function useGameSettings(
+  options: UseGameSettingsOptions,
+): UseGameSettingsReturn {
+  const { assistanceLevel, assistanceAllowsHotCold } = options;
 
   // -------------------------------------------------------------------------
   // State with localStorage initialization
   // -------------------------------------------------------------------------
 
   const [autoSpeak, setAutoSpeakState] = useState(() =>
-    getStoredBoolean(STORAGE_KEYS.autoSpeak, false)
-  )
+    getStoredBoolean(STORAGE_KEYS.autoSpeak, false),
+  );
 
   const [withAccent, setWithAccentState] = useState(() =>
-    getStoredBoolean(STORAGE_KEYS.withAccent, false)
-  )
+    getStoredBoolean(STORAGE_KEYS.withAccent, false),
+  );
 
   const [autoHint, setAutoHintState] = useState(() =>
-    getStoredBoolean(STORAGE_KEYS.autoHint, false)
-  )
+    getStoredBoolean(STORAGE_KEYS.autoHint, false),
+  );
 
   const [hotColdEnabled, setHotColdEnabledState] = useState(() =>
-    getStoredBoolean(STORAGE_KEYS.hotCold, false)
-  )
+    getStoredBoolean(STORAGE_KEYS.hotCold, false),
+  );
 
   // -------------------------------------------------------------------------
   // Computed Values
   // -------------------------------------------------------------------------
 
   // Hot/cold is only active when both: 1) assistance level allows it, 2) user has it enabled
-  const effectiveHotColdEnabled = assistanceAllowsHotCold && hotColdEnabled
+  const effectiveHotColdEnabled = assistanceAllowsHotCold && hotColdEnabled;
 
   // -------------------------------------------------------------------------
   // Refs for Async Access
   // -------------------------------------------------------------------------
 
-  const autoHintRef = useRef(autoHint)
-  const autoSpeakRef = useRef(autoSpeak)
-  const withAccentRef = useRef(withAccent)
-  const hotColdEnabledRef = useRef(effectiveHotColdEnabled)
+  const autoHintRef = useRef(autoHint);
+  const autoSpeakRef = useRef(autoSpeak);
+  const withAccentRef = useRef(withAccent);
+  const hotColdEnabledRef = useRef(effectiveHotColdEnabled);
 
   // Keep refs in sync
-  autoHintRef.current = autoHint
-  autoSpeakRef.current = autoSpeak
-  withAccentRef.current = withAccent
-  hotColdEnabledRef.current = effectiveHotColdEnabled
+  autoHintRef.current = autoHint;
+  autoSpeakRef.current = autoSpeak;
+  withAccentRef.current = withAccent;
+  hotColdEnabledRef.current = effectiveHotColdEnabled;
 
   // -------------------------------------------------------------------------
   // Auto-enable hot/cold for learning mode
   // -------------------------------------------------------------------------
 
   useEffect(() => {
-    if (assistanceLevel === 'learning' && assistanceAllowsHotCold && !hotColdEnabled) {
-      setHotColdEnabledState(true)
-      setStoredBoolean(STORAGE_KEYS.hotCold, true)
+    if (
+      assistanceLevel === "learning" &&
+      assistanceAllowsHotCold &&
+      !hotColdEnabled
+    ) {
+      setHotColdEnabledState(true);
+      setStoredBoolean(STORAGE_KEYS.hotCold, true);
     }
-  }, [assistanceLevel, assistanceAllowsHotCold, hotColdEnabled])
+  }, [assistanceLevel, assistanceAllowsHotCold, hotColdEnabled]);
 
   // -------------------------------------------------------------------------
   // Setters with localStorage persistence
   // -------------------------------------------------------------------------
 
   const setAutoSpeak = useCallback((enabled: boolean) => {
-    setAutoSpeakState(enabled)
-    setStoredBoolean(STORAGE_KEYS.autoSpeak, enabled)
-  }, [])
+    setAutoSpeakState(enabled);
+    setStoredBoolean(STORAGE_KEYS.autoSpeak, enabled);
+  }, []);
 
   const setWithAccent = useCallback((enabled: boolean) => {
-    setWithAccentState(enabled)
-    setStoredBoolean(STORAGE_KEYS.withAccent, enabled)
-  }, [])
+    setWithAccentState(enabled);
+    setStoredBoolean(STORAGE_KEYS.withAccent, enabled);
+  }, []);
 
   const setAutoHint = useCallback((enabled: boolean) => {
-    setAutoHintState(enabled)
-    setStoredBoolean(STORAGE_KEYS.autoHint, enabled)
-  }, [])
+    setAutoHintState(enabled);
+    setStoredBoolean(STORAGE_KEYS.autoHint, enabled);
+  }, []);
 
   const setHotColdEnabled = useCallback((enabled: boolean) => {
-    setHotColdEnabledState(enabled)
-    setStoredBoolean(STORAGE_KEYS.hotCold, enabled)
-  }, [])
+    setHotColdEnabledState(enabled);
+    setStoredBoolean(STORAGE_KEYS.hotCold, enabled);
+  }, []);
 
   // -------------------------------------------------------------------------
   // Toggle Callbacks
   // -------------------------------------------------------------------------
 
   const toggleAutoSpeak = useCallback(() => {
-    setAutoSpeak(!autoSpeak)
-  }, [autoSpeak, setAutoSpeak])
+    setAutoSpeak(!autoSpeak);
+  }, [autoSpeak, setAutoSpeak]);
 
   const toggleWithAccent = useCallback(() => {
-    setWithAccent(!withAccent)
-  }, [withAccent, setWithAccent])
+    setWithAccent(!withAccent);
+  }, [withAccent, setWithAccent]);
 
   const toggleAutoHint = useCallback(() => {
-    setAutoHint(!autoHint)
-  }, [autoHint, setAutoHint])
+    setAutoHint(!autoHint);
+  }, [autoHint, setAutoHint]);
 
   const toggleHotCold = useCallback(() => {
-    setHotColdEnabled(!hotColdEnabled)
-  }, [hotColdEnabled, setHotColdEnabled])
+    setHotColdEnabled(!hotColdEnabled);
+  }, [hotColdEnabled, setHotColdEnabled]);
 
   // -------------------------------------------------------------------------
   // Return
@@ -261,5 +267,5 @@ export function useGameSettings(options: UseGameSettingsOptions): UseGameSetting
     autoSpeakRef,
     withAccentRef,
     hotColdEnabledRef,
-  }
+  };
 }

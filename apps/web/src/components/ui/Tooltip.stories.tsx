@@ -1,20 +1,20 @@
-import type { Meta, StoryObj } from '@storybook/react'
-import { css } from '../../../styled-system/css'
-import { Tooltip, TooltipProvider } from './Tooltip'
+import type { Meta, StoryObj } from "@storybook/react";
+import { css } from "../../../styled-system/css";
+import { Tooltip, TooltipProvider } from "./Tooltip";
 
 const meta: Meta<typeof Tooltip> = {
-  title: 'UI/Tooltip',
+  title: "UI/Tooltip",
   component: Tooltip,
   decorators: [
     (Story) => (
       <TooltipProvider>
         <div
           className={css({
-            padding: '4rem',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '200px',
+            padding: "4rem",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "200px",
           })}
         >
           <Story />
@@ -23,12 +23,12 @@ const meta: Meta<typeof Tooltip> = {
     ),
   ],
   parameters: {
-    layout: 'centered',
+    layout: "centered",
   },
-}
+};
 
-export default meta
-type Story = StoryObj<typeof Tooltip>
+export default meta;
+type Story = StoryObj<typeof Tooltip>;
 
 // =============================================================================
 // Basic Usage
@@ -40,19 +40,19 @@ export const Default: Story = {
       <button
         type="button"
         className={css({
-          padding: '0.5rem 1rem',
-          backgroundColor: 'blue.500',
-          color: 'white',
-          borderRadius: '6px',
-          border: 'none',
-          cursor: 'pointer',
+          padding: "0.5rem 1rem",
+          backgroundColor: "blue.500",
+          color: "white",
+          borderRadius: "6px",
+          border: "none",
+          cursor: "pointer",
         })}
       >
         Hover me
       </button>
     </Tooltip>
   ),
-}
+};
 
 export const LongContent: Story = {
   render: () => (
@@ -60,19 +60,19 @@ export const LongContent: Story = {
       <button
         type="button"
         className={css({
-          padding: '0.5rem 1rem',
-          backgroundColor: 'blue.500',
-          color: 'white',
-          borderRadius: '6px',
-          border: 'none',
-          cursor: 'pointer',
+          padding: "0.5rem 1rem",
+          backgroundColor: "blue.500",
+          color: "white",
+          borderRadius: "6px",
+          border: "none",
+          cursor: "pointer",
         })}
       >
         Hover for long text
       </button>
     </Tooltip>
   ),
-}
+};
 
 // =============================================================================
 // Positioning
@@ -84,19 +84,19 @@ export const PositionTop: Story = {
       <button
         type="button"
         className={css({
-          padding: '0.5rem 1rem',
-          backgroundColor: 'gray.600',
-          color: 'white',
-          borderRadius: '6px',
-          border: 'none',
-          cursor: 'pointer',
+          padding: "0.5rem 1rem",
+          backgroundColor: "gray.600",
+          color: "white",
+          borderRadius: "6px",
+          border: "none",
+          cursor: "pointer",
         })}
       >
         Top (default)
       </button>
     </Tooltip>
   ),
-}
+};
 
 export const PositionBottom: Story = {
   render: () => (
@@ -104,19 +104,19 @@ export const PositionBottom: Story = {
       <button
         type="button"
         className={css({
-          padding: '0.5rem 1rem',
-          backgroundColor: 'gray.600',
-          color: 'white',
-          borderRadius: '6px',
-          border: 'none',
-          cursor: 'pointer',
+          padding: "0.5rem 1rem",
+          backgroundColor: "gray.600",
+          color: "white",
+          borderRadius: "6px",
+          border: "none",
+          cursor: "pointer",
         })}
       >
         Bottom
       </button>
     </Tooltip>
   ),
-}
+};
 
 export const PositionLeft: Story = {
   render: () => (
@@ -124,19 +124,19 @@ export const PositionLeft: Story = {
       <button
         type="button"
         className={css({
-          padding: '0.5rem 1rem',
-          backgroundColor: 'gray.600',
-          color: 'white',
-          borderRadius: '6px',
-          border: 'none',
-          cursor: 'pointer',
+          padding: "0.5rem 1rem",
+          backgroundColor: "gray.600",
+          color: "white",
+          borderRadius: "6px",
+          border: "none",
+          cursor: "pointer",
         })}
       >
         Left
       </button>
     </Tooltip>
   ),
-}
+};
 
 export const PositionRight: Story = {
   render: () => (
@@ -144,19 +144,19 @@ export const PositionRight: Story = {
       <button
         type="button"
         className={css({
-          padding: '0.5rem 1rem',
-          backgroundColor: 'gray.600',
-          color: 'white',
-          borderRadius: '6px',
-          border: 'none',
-          cursor: 'pointer',
+          padding: "0.5rem 1rem",
+          backgroundColor: "gray.600",
+          color: "white",
+          borderRadius: "6px",
+          border: "none",
+          cursor: "pointer",
         })}
       >
         Right
       </button>
     </Tooltip>
   ),
-}
+};
 
 // =============================================================================
 // Rich Content
@@ -164,42 +164,42 @@ export const PositionRight: Story = {
 
 const richContentStyles = {
   container: css({
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.5rem",
   }),
   header: css({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    fontWeight: 'bold',
-    fontSize: '0.9375rem',
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    fontWeight: "bold",
+    fontSize: "0.9375rem",
   }),
   emoji: css({
-    fontSize: '1.125rem',
+    fontSize: "1.125rem",
   }),
   description: css({
-    color: 'gray.300',
-    lineHeight: '1.5',
+    color: "gray.300",
+    lineHeight: "1.5",
   }),
   detail: css({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.375rem',
-    padding: '0.375rem 0.5rem',
-    backgroundColor: 'gray.800',
-    borderRadius: '6px',
-    fontSize: '0.8125rem',
+    display: "flex",
+    alignItems: "center",
+    gap: "0.375rem",
+    padding: "0.375rem 0.5rem",
+    backgroundColor: "gray.800",
+    borderRadius: "6px",
+    fontSize: "0.8125rem",
   }),
   detailLabel: css({
-    color: 'gray.400',
-    fontWeight: '500',
+    color: "gray.400",
+    fontWeight: "500",
   }),
   detailValue: css({
-    color: 'white',
-    fontFamily: 'mono',
+    color: "white",
+    fontFamily: "mono",
   }),
-}
+};
 
 export const RichContent: Story = {
   render: () => (
@@ -211,12 +211,14 @@ export const RichContent: Story = {
             <span>Focus Practice</span>
           </div>
           <p className={richContentStyles.description}>
-            Building mastery of your current curriculum skills. These problems are at the heart of
-            what you&apos;re learning right now.
+            Building mastery of your current curriculum skills. These problems
+            are at the heart of what you&apos;re learning right now.
           </p>
           <div className={richContentStyles.detail}>
             <span className={richContentStyles.detailLabel}>Distribution:</span>
-            <span className={richContentStyles.detailValue}>60% of session</span>
+            <span className={richContentStyles.detailValue}>
+              60% of session
+            </span>
           </div>
         </div>
       }
@@ -224,21 +226,21 @@ export const RichContent: Story = {
     >
       <span
         className={css({
-          padding: '0.25rem 0.75rem',
-          backgroundColor: 'blue.100',
-          color: 'blue.700',
-          borderRadius: '20px',
-          fontSize: '0.75rem',
-          fontWeight: 'bold',
-          textTransform: 'uppercase',
-          cursor: 'help',
+          padding: "0.25rem 0.75rem",
+          backgroundColor: "blue.100",
+          color: "blue.700",
+          borderRadius: "20px",
+          fontSize: "0.75rem",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          cursor: "help",
         })}
       >
         focus
       </span>
     </Tooltip>
   ),
-}
+};
 
 export const RichContentReinforce: Story = {
   render: () => (
@@ -250,23 +252,25 @@ export const RichContentReinforce: Story = {
             <span>Reinforcement</span>
           </div>
           <p className={richContentStyles.description}>
-            Extra practice for skills that need more work. These problems target areas where
-            accuracy has been below 70%.
+            Extra practice for skills that need more work. These problems target
+            areas where accuracy has been below 70%.
           </p>
           <div className={richContentStyles.detail}>
             <span className={richContentStyles.detailLabel}>Targeting:</span>
-            <span className={richContentStyles.detailValue}>5-complement for 4</span>
+            <span className={richContentStyles.detailValue}>
+              5-complement for 4
+            </span>
           </div>
           <div className={richContentStyles.detail}>
             <span className={richContentStyles.detailLabel}>Threshold:</span>
             <span
               className={css({
-                padding: '0.125rem 0.375rem',
-                backgroundColor: 'orange.900',
-                color: 'orange.200',
-                borderRadius: '4px',
-                fontSize: '0.75rem',
-                fontWeight: 'bold',
+                padding: "0.125rem 0.375rem",
+                backgroundColor: "orange.900",
+                color: "orange.200",
+                borderRadius: "4px",
+                fontSize: "0.75rem",
+                fontWeight: "bold",
               })}
             >
               &lt;70% accuracy
@@ -278,21 +282,21 @@ export const RichContentReinforce: Story = {
     >
       <span
         className={css({
-          padding: '0.25rem 0.75rem',
-          backgroundColor: 'orange.100',
-          color: 'orange.700',
-          borderRadius: '20px',
-          fontSize: '0.75rem',
-          fontWeight: 'bold',
-          textTransform: 'uppercase',
-          cursor: 'help',
+          padding: "0.25rem 0.75rem",
+          backgroundColor: "orange.100",
+          color: "orange.700",
+          borderRadius: "20px",
+          fontSize: "0.75rem",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          cursor: "help",
         })}
       >
         reinforce
       </span>
     </Tooltip>
   ),
-}
+};
 
 export const RichContentReview: Story = {
   render: () => (
@@ -304,8 +308,8 @@ export const RichContentReview: Story = {
             <span>Spaced Review</span>
           </div>
           <p className={richContentStyles.description}>
-            Keeping mastered skills fresh through spaced repetition. Regular review prevents
-            forgetting and strengthens long-term memory.
+            Keeping mastered skills fresh through spaced repetition. Regular
+            review prevents forgetting and strengthens long-term memory.
           </p>
           <div className={richContentStyles.detail}>
             <span className={richContentStyles.detailLabel}>Reviewing:</span>
@@ -323,21 +327,21 @@ export const RichContentReview: Story = {
     >
       <span
         className={css({
-          padding: '0.25rem 0.75rem',
-          backgroundColor: 'green.100',
-          color: 'green.700',
-          borderRadius: '20px',
-          fontSize: '0.75rem',
-          fontWeight: 'bold',
-          textTransform: 'uppercase',
-          cursor: 'help',
+          padding: "0.25rem 0.75rem",
+          backgroundColor: "green.100",
+          color: "green.700",
+          borderRadius: "20px",
+          fontSize: "0.75rem",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          cursor: "help",
         })}
       >
         review
       </span>
     </Tooltip>
   ),
-}
+};
 
 export const RichContentChallenge: Story = {
   render: () => (
@@ -349,8 +353,8 @@ export const RichContentChallenge: Story = {
             <span>Mixed Practice</span>
           </div>
           <p className={richContentStyles.description}>
-            Problems that combine multiple mastered skills. Great for building fluency and applying
-            what you&apos;ve learned in new ways.
+            Problems that combine multiple mastered skills. Great for building
+            fluency and applying what you&apos;ve learned in new ways.
           </p>
           <div className={richContentStyles.detail}>
             <span className={richContentStyles.detailLabel}>Skills:</span>
@@ -362,21 +366,21 @@ export const RichContentChallenge: Story = {
     >
       <span
         className={css({
-          padding: '0.25rem 0.75rem',
-          backgroundColor: 'purple.100',
-          color: 'purple.700',
-          borderRadius: '20px',
-          fontSize: '0.75rem',
-          fontWeight: 'bold',
-          textTransform: 'uppercase',
-          cursor: 'help',
+          padding: "0.25rem 0.75rem",
+          backgroundColor: "purple.100",
+          color: "purple.700",
+          borderRadius: "20px",
+          fontSize: "0.75rem",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          cursor: "help",
         })}
       >
         challenge
       </span>
     </Tooltip>
   ),
-}
+};
 
 // =============================================================================
 // All Purpose Badges Together
@@ -384,7 +388,7 @@ export const RichContentChallenge: Story = {
 
 export const AllPurposeBadges: Story = {
   render: () => (
-    <div className={css({ display: 'flex', gap: '1rem', flexWrap: 'wrap' })}>
+    <div className={css({ display: "flex", gap: "1rem", flexWrap: "wrap" })}>
       <Tooltip
         content={
           <div className={richContentStyles.container}>
@@ -396,8 +400,12 @@ export const AllPurposeBadges: Story = {
               Building mastery of your current curriculum skills.
             </p>
             <div className={richContentStyles.detail}>
-              <span className={richContentStyles.detailLabel}>Distribution:</span>
-              <span className={richContentStyles.detailValue}>60% of session</span>
+              <span className={richContentStyles.detailLabel}>
+                Distribution:
+              </span>
+              <span className={richContentStyles.detailValue}>
+                60% of session
+              </span>
             </div>
           </div>
         }
@@ -405,16 +413,16 @@ export const AllPurposeBadges: Story = {
       >
         <span
           className={css({
-            padding: '0.25rem 0.75rem',
-            backgroundColor: 'blue.100',
-            color: 'blue.700',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            textTransform: 'uppercase',
-            cursor: 'help',
-            transition: 'transform 0.15s ease',
-            _hover: { transform: 'scale(1.05)' },
+            padding: "0.25rem 0.75rem",
+            backgroundColor: "blue.100",
+            color: "blue.700",
+            borderRadius: "20px",
+            fontSize: "0.75rem",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            cursor: "help",
+            transition: "transform 0.15s ease",
+            _hover: { transform: "scale(1.05)" },
           })}
         >
           focus
@@ -435,12 +443,12 @@ export const AllPurposeBadges: Story = {
               <span className={richContentStyles.detailLabel}>Threshold:</span>
               <span
                 className={css({
-                  padding: '0.125rem 0.375rem',
-                  backgroundColor: 'orange.900',
-                  color: 'orange.200',
-                  borderRadius: '4px',
-                  fontSize: '0.75rem',
-                  fontWeight: 'bold',
+                  padding: "0.125rem 0.375rem",
+                  backgroundColor: "orange.900",
+                  color: "orange.200",
+                  borderRadius: "4px",
+                  fontSize: "0.75rem",
+                  fontWeight: "bold",
                 })}
               >
                 &lt;70% accuracy
@@ -452,16 +460,16 @@ export const AllPurposeBadges: Story = {
       >
         <span
           className={css({
-            padding: '0.25rem 0.75rem',
-            backgroundColor: 'orange.100',
-            color: 'orange.700',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            textTransform: 'uppercase',
-            cursor: 'help',
-            transition: 'transform 0.15s ease',
-            _hover: { transform: 'scale(1.05)' },
+            padding: "0.25rem 0.75rem",
+            backgroundColor: "orange.100",
+            color: "orange.700",
+            borderRadius: "20px",
+            fontSize: "0.75rem",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            cursor: "help",
+            transition: "transform 0.15s ease",
+            _hover: { transform: "scale(1.05)" },
           })}
         >
           reinforce
@@ -488,16 +496,16 @@ export const AllPurposeBadges: Story = {
       >
         <span
           className={css({
-            padding: '0.25rem 0.75rem',
-            backgroundColor: 'green.100',
-            color: 'green.700',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            textTransform: 'uppercase',
-            cursor: 'help',
-            transition: 'transform 0.15s ease',
-            _hover: { transform: 'scale(1.05)' },
+            padding: "0.25rem 0.75rem",
+            backgroundColor: "green.100",
+            color: "green.700",
+            borderRadius: "20px",
+            fontSize: "0.75rem",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            cursor: "help",
+            transition: "transform 0.15s ease",
+            _hover: { transform: "scale(1.05)" },
           })}
         >
           review
@@ -516,7 +524,9 @@ export const AllPurposeBadges: Story = {
             </p>
             <div className={richContentStyles.detail}>
               <span className={richContentStyles.detailLabel}>Skills:</span>
-              <span className={richContentStyles.detailValue}>All mastered</span>
+              <span className={richContentStyles.detailValue}>
+                All mastered
+              </span>
             </div>
           </div>
         }
@@ -524,16 +534,16 @@ export const AllPurposeBadges: Story = {
       >
         <span
           className={css({
-            padding: '0.25rem 0.75rem',
-            backgroundColor: 'purple.100',
-            color: 'purple.700',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            textTransform: 'uppercase',
-            cursor: 'help',
-            transition: 'transform 0.15s ease',
-            _hover: { transform: 'scale(1.05)' },
+            padding: "0.25rem 0.75rem",
+            backgroundColor: "purple.100",
+            color: "purple.700",
+            borderRadius: "20px",
+            fontSize: "0.75rem",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            cursor: "help",
+            transition: "transform 0.15s ease",
+            _hover: { transform: "scale(1.05)" },
           })}
         >
           challenge
@@ -541,7 +551,7 @@ export const AllPurposeBadges: Story = {
       </Tooltip>
     </div>
   ),
-}
+};
 
 // =============================================================================
 // Dark Mode
@@ -549,10 +559,10 @@ export const AllPurposeBadges: Story = {
 
 export const DarkModeBadges: Story = {
   parameters: {
-    backgrounds: { default: 'dark' },
+    backgrounds: { default: "dark" },
   },
   render: () => (
-    <div className={css({ display: 'flex', gap: '1rem', flexWrap: 'wrap' })}>
+    <div className={css({ display: "flex", gap: "1rem", flexWrap: "wrap" })}>
       <Tooltip
         content={
           <div className={richContentStyles.container}>
@@ -569,14 +579,14 @@ export const DarkModeBadges: Story = {
       >
         <span
           className={css({
-            padding: '0.25rem 0.75rem',
-            backgroundColor: 'blue.900',
-            color: 'blue.200',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            textTransform: 'uppercase',
-            cursor: 'help',
+            padding: "0.25rem 0.75rem",
+            backgroundColor: "blue.900",
+            color: "blue.200",
+            borderRadius: "20px",
+            fontSize: "0.75rem",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            cursor: "help",
           })}
         >
           focus
@@ -590,21 +600,23 @@ export const DarkModeBadges: Story = {
               <span className={richContentStyles.emoji}>💪</span>
               <span>Reinforcement</span>
             </div>
-            <p className={richContentStyles.description}>Extra practice for struggling skills.</p>
+            <p className={richContentStyles.description}>
+              Extra practice for struggling skills.
+            </p>
           </div>
         }
         side="bottom"
       >
         <span
           className={css({
-            padding: '0.25rem 0.75rem',
-            backgroundColor: 'orange.900',
-            color: 'orange.200',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            textTransform: 'uppercase',
-            cursor: 'help',
+            padding: "0.25rem 0.75rem",
+            backgroundColor: "orange.900",
+            color: "orange.200",
+            borderRadius: "20px",
+            fontSize: "0.75rem",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            cursor: "help",
           })}
         >
           reinforce
@@ -618,21 +630,23 @@ export const DarkModeBadges: Story = {
               <span className={richContentStyles.emoji}>🔄</span>
               <span>Spaced Review</span>
             </div>
-            <p className={richContentStyles.description}>Keeping mastered skills fresh.</p>
+            <p className={richContentStyles.description}>
+              Keeping mastered skills fresh.
+            </p>
           </div>
         }
         side="bottom"
       >
         <span
           className={css({
-            padding: '0.25rem 0.75rem',
-            backgroundColor: 'green.900',
-            color: 'green.200',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            textTransform: 'uppercase',
-            cursor: 'help',
+            padding: "0.25rem 0.75rem",
+            backgroundColor: "green.900",
+            color: "green.200",
+            borderRadius: "20px",
+            fontSize: "0.75rem",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            cursor: "help",
           })}
         >
           review
@@ -646,21 +660,23 @@ export const DarkModeBadges: Story = {
               <span className={richContentStyles.emoji}>⭐</span>
               <span>Mixed Practice</span>
             </div>
-            <p className={richContentStyles.description}>Combining multiple mastered skills.</p>
+            <p className={richContentStyles.description}>
+              Combining multiple mastered skills.
+            </p>
           </div>
         }
         side="bottom"
       >
         <span
           className={css({
-            padding: '0.25rem 0.75rem',
-            backgroundColor: 'purple.900',
-            color: 'purple.200',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            textTransform: 'uppercase',
-            cursor: 'help',
+            padding: "0.25rem 0.75rem",
+            backgroundColor: "purple.900",
+            color: "purple.200",
+            borderRadius: "20px",
+            fontSize: "0.75rem",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            cursor: "help",
           })}
         >
           challenge
@@ -668,7 +684,7 @@ export const DarkModeBadges: Story = {
       </Tooltip>
     </div>
   ),
-}
+};
 
 // =============================================================================
 // Delay Variations
@@ -680,19 +696,19 @@ export const InstantTooltip: Story = {
       <button
         type="button"
         className={css({
-          padding: '0.5rem 1rem',
-          backgroundColor: 'green.500',
-          color: 'white',
-          borderRadius: '6px',
-          border: 'none',
-          cursor: 'pointer',
+          padding: "0.5rem 1rem",
+          backgroundColor: "green.500",
+          color: "white",
+          borderRadius: "6px",
+          border: "none",
+          cursor: "pointer",
         })}
       >
         No delay
       </button>
     </Tooltip>
   ),
-}
+};
 
 export const SlowTooltip: Story = {
   render: () => (
@@ -700,16 +716,16 @@ export const SlowTooltip: Story = {
       <button
         type="button"
         className={css({
-          padding: '0.5rem 1rem',
-          backgroundColor: 'orange.500',
-          color: 'white',
-          borderRadius: '6px',
-          border: 'none',
-          cursor: 'pointer',
+          padding: "0.5rem 1rem",
+          backgroundColor: "orange.500",
+          color: "white",
+          borderRadius: "6px",
+          border: "none",
+          cursor: "pointer",
         })}
       >
         1 second delay
       </button>
     </Tooltip>
   ),
-}
+};

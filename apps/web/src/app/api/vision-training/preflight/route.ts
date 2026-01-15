@@ -1,28 +1,33 @@
-import { NextResponse } from 'next/server'
-import { checkDependencies, ensureVenvReady, isPlatformSupported, TRAINING_PYTHON } from '../config'
+import { NextResponse } from "next/server";
+import {
+  checkDependencies,
+  ensureVenvReady,
+  isPlatformSupported,
+  TRAINING_PYTHON,
+} from "../config";
 
 // Force dynamic rendering - this route checks system dependencies at runtime
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 export interface PreflightResult {
-  ready: boolean
+  ready: boolean;
   platform: {
-    supported: boolean
-    reason?: string
-  }
+    supported: boolean;
+    reason?: string;
+  };
   venv: {
-    exists: boolean
-    python: string
-    isAppleSilicon: boolean
-    hasGpu: boolean
-    error?: string
-  }
+    exists: boolean;
+    python: string;
+    isAppleSilicon: boolean;
+    hasGpu: boolean;
+    error?: string;
+  };
   dependencies: {
-    allInstalled: boolean
-    installed: { name: string; pipName: string }[]
-    missing: { name: string; pipName: string }[]
-    error?: string
-  }
+    allInstalled: boolean;
+    installed: { name: string; pipName: string }[];
+    missing: { name: string; pipName: string }[];
+    error?: string;
+  };
 }
 
 /**
@@ -37,7 +42,7 @@ export interface PreflightResult {
  */
 export async function GET(): Promise<NextResponse<PreflightResult>> {
   // Check platform support first
-  const platformCheck = isPlatformSupported()
+  const platformCheck = isPlatformSupported();
   if (!platformCheck.supported) {
     return NextResponse.json({
       ready: false,
@@ -52,13 +57,13 @@ export async function GET(): Promise<NextResponse<PreflightResult>> {
         allInstalled: false,
         installed: [],
         missing: [],
-        error: 'Platform not supported',
+        error: "Platform not supported",
       },
-    })
+    });
   }
 
   // Check/setup venv
-  const venvResult = await ensureVenvReady()
+  const venvResult = await ensureVenvReady();
 
   if (!venvResult.success) {
     return NextResponse.json({
@@ -75,15 +80,15 @@ export async function GET(): Promise<NextResponse<PreflightResult>> {
         allInstalled: false,
         installed: [],
         missing: [],
-        error: 'Venv setup failed',
+        error: "Venv setup failed",
       },
-    })
+    });
   }
 
   // Check all dependencies
-  const depResult = await checkDependencies()
+  const depResult = await checkDependencies();
 
-  const ready = depResult.allInstalled
+  const ready = depResult.allInstalled;
 
   return NextResponse.json({
     ready,
@@ -95,5 +100,5 @@ export async function GET(): Promise<NextResponse<PreflightResult>> {
       hasGpu: venvResult.hasGpu,
     },
     dependencies: depResult,
-  })
+  });
 }

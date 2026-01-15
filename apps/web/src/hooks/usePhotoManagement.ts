@@ -1,18 +1,22 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { useDocumentDetection } from '@/components/practice/useDocumentDetection'
-import type { DocumentAdjustmentState, Corner, Rotation } from '@/types/attachments'
-import { attachmentKeys } from '@/lib/queryKeys'
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useDocumentDetection } from "@/components/practice/useDocumentDetection";
+import type {
+  DocumentAdjustmentState,
+  Corner,
+  Rotation,
+} from "@/types/attachments";
+import { attachmentKeys } from "@/lib/queryKeys";
 
 /**
  * Options for usePhotoManagement hook
  */
 export interface UsePhotoManagementOptions {
-  studentId: string
-  sessionId: string | undefined
-  onError?: (message: string) => void
+  studentId: string;
+  sessionId: string | undefined;
+  onError?: (message: string) => void;
 }
 
 /**
@@ -20,54 +24,58 @@ export interface UsePhotoManagementOptions {
  */
 export interface UsePhotoManagementReturn {
   // Camera state
-  showCamera: boolean
-  openCamera: () => void
-  closeCamera: () => void
+  showCamera: boolean;
+  openCamera: () => void;
+  closeCamera: () => void;
   handleCameraCapture: (
     cropped: File,
     original: File,
     corners: Corner[],
-    rotation: Rotation
-  ) => void
+    rotation: Rotation,
+  ) => void;
 
   // Drag-drop state
-  dragOver: boolean
-  handleDrop: (e: React.DragEvent) => void
-  handleDragOver: (e: React.DragEvent) => void
-  handleDragLeave: () => void
+  dragOver: boolean;
+  handleDrop: (e: React.DragEvent) => void;
+  handleDragOver: (e: React.DragEvent) => void;
+  handleDragLeave: () => void;
 
   // File input
-  fileInputRef: React.RefObject<HTMLInputElement>
-  handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
 
   // Upload state
-  isUploading: boolean
-  uploadError: string | null
+  isUploading: boolean;
+  uploadError: string | null;
 
   // Delete state
-  deletingId: string | null
-  deletePhoto: (attachmentId: string) => Promise<void>
+  deletingId: string | null;
+  deletePhoto: (attachmentId: string) => Promise<void>;
 
   // Document adjustment modal state
-  adjustmentState: DocumentAdjustmentState | null
-  handleAdjustmentConfirm: (cropped: File, corners: Corner[], rotation: Rotation) => Promise<void>
-  handleAdjustmentSkip: () => Promise<void>
-  handleAdjustmentCancel: () => void
-  queueLength: number
+  adjustmentState: DocumentAdjustmentState | null;
+  handleAdjustmentConfirm: (
+    cropped: File,
+    corners: Corner[],
+    rotation: Rotation,
+  ) => Promise<void>;
+  handleAdjustmentSkip: () => Promise<void>;
+  handleAdjustmentCancel: () => void;
+  queueLength: number;
 
   // OpenCV reference (needed by DocumentAdjuster)
-  opencvRef: unknown
+  opencvRef: unknown;
   detectQuadsInImage: (
-    canvas: HTMLCanvasElement
-  ) => import('@/components/practice/useDocumentDetection').DetectQuadsInImageResult
+    canvas: HTMLCanvasElement,
+  ) => import("@/components/practice/useDocumentDetection").DetectQuadsInImageResult;
 
   // Photo editing
   handlePhotoEditConfirm: (
     photoId: string,
     croppedFile: File,
     corners: Corner[],
-    rotation: Rotation
-  ) => Promise<void>
+    rotation: Rotation,
+  ) => Promise<void>;
 }
 
 /**
@@ -86,27 +94,28 @@ export function usePhotoManagement({
   sessionId,
   onError,
 }: UsePhotoManagementOptions): UsePhotoManagementReturn {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   // Camera state
-  const [showCamera, setShowCamera] = useState(false)
+  const [showCamera, setShowCamera] = useState(false);
 
   // Drag-drop state
-  const [dragOver, setDragOver] = useState(false)
+  const [dragOver, setDragOver] = useState(false);
 
   // Upload state
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Delete state
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // File input ref (non-null type to match OfflineWorkSection expectations)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // File queue for document adjustment
-  const [fileQueue, setFileQueue] = useState<File[]>([])
-  const [adjustmentState, setAdjustmentState] = useState<DocumentAdjustmentState | null>(null)
+  const [fileQueue, setFileQueue] = useState<File[]>([]);
+  const [adjustmentState, setAdjustmentState] =
+    useState<DocumentAdjustmentState | null>(null);
 
   // Document detection hook (lazy loads OpenCV)
   const {
@@ -114,16 +123,16 @@ export function usePhotoManagement({
     detectQuadsInImage,
     loadImageToCanvas,
     cv: opencvRef,
-  } = useDocumentDetection()
+  } = useDocumentDetection();
 
   // Report errors through callback or state
   const reportError = useCallback(
     (message: string) => {
-      setUploadError(message)
-      onError?.(message)
+      setUploadError(message);
+      onError?.(message);
     },
-    [onError]
-  )
+    [onError],
+  );
 
   // Upload photos with optional original preservation and corners
   const uploadPhotos = useCallback(
@@ -131,232 +140,257 @@ export function usePhotoManagement({
       photos: File[],
       originals?: File[],
       cornersData?: Array<Corner[] | null>,
-      rotationData?: Rotation[]
+      rotationData?: Rotation[],
     ) => {
-      if (!sessionId || photos.length === 0) return
+      if (!sessionId || photos.length === 0) return;
 
-      setIsUploading(true)
-      setUploadError(null)
+      setIsUploading(true);
+      setUploadError(null);
 
       try {
-        const formData = new FormData()
+        const formData = new FormData();
         for (const file of photos) {
-          formData.append('photos', file)
+          formData.append("photos", file);
         }
         if (originals) {
           for (const file of originals) {
-            formData.append('originals', file)
+            formData.append("originals", file);
           }
         }
         if (cornersData) {
           for (const corners of cornersData) {
-            formData.append('corners', corners ? JSON.stringify(corners) : '')
+            formData.append("corners", corners ? JSON.stringify(corners) : "");
           }
         }
         if (rotationData) {
           for (const rotation of rotationData) {
-            formData.append('rotation', rotation.toString())
+            formData.append("rotation", rotation.toString());
           }
         }
 
         const response = await fetch(
           `/api/curriculum/${studentId}/sessions/${sessionId}/attachments`,
-          { method: 'POST', body: formData }
-        )
+          { method: "POST", body: formData },
+        );
 
         if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Failed to upload photos')
+          const data = await response.json();
+          throw new Error(data.error || "Failed to upload photos");
         }
 
         // Refresh attachments
         queryClient.invalidateQueries({
           queryKey: attachmentKeys.session(studentId, sessionId),
-        })
+        });
       } catch (err) {
-        reportError(err instanceof Error ? err.message : 'Failed to upload photos')
+        reportError(
+          err instanceof Error ? err.message : "Failed to upload photos",
+        );
       } finally {
-        setIsUploading(false)
+        setIsUploading(false);
       }
     },
-    [studentId, sessionId, queryClient, reportError]
-  )
+    [studentId, sessionId, queryClient, reportError],
+  );
 
   // Process next file in queue - load, detect quads, show adjuster
   const processNextFile = useCallback(async () => {
     if (fileQueue.length === 0) {
-      setAdjustmentState(null)
-      return
+      setAdjustmentState(null);
+      return;
     }
 
-    const nextFile = fileQueue[0]
+    const nextFile = fileQueue[0];
 
     // Load file to canvas (doesn't require OpenCV)
-    const canvas = await loadImageToCanvas(nextFile)
+    const canvas = await loadImageToCanvas(nextFile);
     if (!canvas) {
-      console.warn('Failed to load image:', nextFile.name)
+      console.warn("Failed to load image:", nextFile.name);
       // Skip this file and process next
-      setFileQueue((prev) => prev.slice(1))
-      return
+      setFileQueue((prev) => prev.slice(1));
+      return;
     }
 
     // Ensure OpenCV is loaded before detecting quads (lazy load)
-    await ensureOpenCVLoaded()
+    await ensureOpenCVLoaded();
 
     // Detect quads (or get fallback corners if OpenCV failed to load)
-    const result = detectQuadsInImage(canvas)
+    const result = detectQuadsInImage(canvas);
 
     // Show adjustment UI
     setAdjustmentState({
       originalFile: nextFile,
       sourceCanvas: result.sourceCanvas,
       corners: result.corners,
-    })
-  }, [fileQueue, loadImageToCanvas, ensureOpenCVLoaded, detectQuadsInImage])
+    });
+  }, [fileQueue, loadImageToCanvas, ensureOpenCVLoaded, detectQuadsInImage]);
 
   // Start processing queue when files are added
   useEffect(() => {
     if (fileQueue.length > 0 && !adjustmentState) {
-      processNextFile()
+      processNextFile();
     }
-  }, [fileQueue, adjustmentState, processNextFile])
+  }, [fileQueue, adjustmentState, processNextFile]);
 
   // Camera handlers
-  const openCamera = useCallback(() => setShowCamera(true), [])
-  const closeCamera = useCallback(() => setShowCamera(false), [])
+  const openCamera = useCallback(() => setShowCamera(true), []);
+  const closeCamera = useCallback(() => setShowCamera(false), []);
 
   const handleCameraCapture = useCallback(
     (cropped: File, original: File, corners: Corner[], rotation: Rotation) => {
-      setShowCamera(false)
-      uploadPhotos([cropped], [original], [corners], [rotation])
+      setShowCamera(false);
+      uploadPhotos([cropped], [original], [corners], [rotation]);
     },
-    [uploadPhotos]
-  )
+    [uploadPhotos],
+  );
 
   // Drag-drop handlers
   const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(false)
-    const files = Array.from(e.dataTransfer.files)
-    const imageFiles = files.filter((f) => f.type.startsWith('image/'))
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter((f) => f.type.startsWith("image/"));
     if (imageFiles.length > 0) {
-      setFileQueue((prev) => [...prev, ...imageFiles])
+      setFileQueue((prev) => [...prev, ...imageFiles]);
     }
-  }, [])
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(true)
-  }, [])
+    e.preventDefault();
+    setDragOver(true);
+  }, []);
 
   const handleDragLeave = useCallback(() => {
-    setDragOver(false)
-  }, [])
+    setDragOver(false);
+  }, []);
 
   // File input handler
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : []
-    const imageFiles = files.filter((f) => f.type.startsWith('image/'))
-    if (imageFiles.length > 0) {
-      setFileQueue((prev) => [...prev, ...imageFiles])
-    }
-    e.target.value = ''
-  }, [])
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files ? Array.from(e.target.files) : [];
+      const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+      if (imageFiles.length > 0) {
+        setFileQueue((prev) => [...prev, ...imageFiles]);
+      }
+      e.target.value = "";
+    },
+    [],
+  );
 
   // Delete photo
   const deletePhoto = useCallback(
     async (attachmentId: string) => {
-      if (!sessionId) return
+      if (!sessionId) return;
 
-      setDeletingId(attachmentId)
+      setDeletingId(attachmentId);
       try {
-        const response = await fetch(`/api/curriculum/${studentId}/attachments/${attachmentId}`, {
-          method: 'DELETE',
-        })
+        const response = await fetch(
+          `/api/curriculum/${studentId}/attachments/${attachmentId}`,
+          {
+            method: "DELETE",
+          },
+        );
 
         if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Failed to delete photo')
+          const data = await response.json();
+          throw new Error(data.error || "Failed to delete photo");
         }
 
         // Refresh attachments
         queryClient.invalidateQueries({
           queryKey: attachmentKeys.session(studentId, sessionId),
-        })
+        });
       } catch (err) {
-        reportError(err instanceof Error ? err.message : 'Failed to delete photo')
+        reportError(
+          err instanceof Error ? err.message : "Failed to delete photo",
+        );
       } finally {
-        setDeletingId(null)
+        setDeletingId(null);
       }
     },
-    [studentId, sessionId, queryClient, reportError]
-  )
+    [studentId, sessionId, queryClient, reportError],
+  );
 
   // Document adjustment handlers
   const handleAdjustmentConfirm = useCallback(
     async (cropped: File, corners: Corner[], rotation: Rotation) => {
-      if (!adjustmentState) return
+      if (!adjustmentState) return;
 
       // Upload both cropped and original, with corners and rotation for later re-editing
-      await uploadPhotos([cropped], [adjustmentState.originalFile], [corners], [rotation])
+      await uploadPhotos(
+        [cropped],
+        [adjustmentState.originalFile],
+        [corners],
+        [rotation],
+      );
 
       // Remove from queue and process next
-      setFileQueue((prev) => prev.slice(1))
-      setAdjustmentState(null)
+      setFileQueue((prev) => prev.slice(1));
+      setAdjustmentState(null);
     },
-    [adjustmentState, uploadPhotos]
-  )
+    [adjustmentState, uploadPhotos],
+  );
 
   const handleAdjustmentSkip = useCallback(async () => {
-    if (!adjustmentState) return
+    if (!adjustmentState) return;
 
     // Upload original only (no crop)
-    await uploadPhotos([adjustmentState.originalFile])
+    await uploadPhotos([adjustmentState.originalFile]);
 
     // Remove from queue and process next
-    setFileQueue((prev) => prev.slice(1))
-    setAdjustmentState(null)
-  }, [adjustmentState, uploadPhotos])
+    setFileQueue((prev) => prev.slice(1));
+    setAdjustmentState(null);
+  }, [adjustmentState, uploadPhotos]);
 
   const handleAdjustmentCancel = useCallback(() => {
-    setFileQueue([])
-    setAdjustmentState(null)
-  }, [])
+    setFileQueue([]);
+    setAdjustmentState(null);
+  }, []);
 
   // Photo edit confirm (from PhotoViewerEditor)
   const handlePhotoEditConfirm = useCallback(
-    async (photoId: string, croppedFile: File, corners: Corner[], rotation: Rotation) => {
+    async (
+      photoId: string,
+      croppedFile: File,
+      corners: Corner[],
+      rotation: Rotation,
+    ) => {
       try {
-        setIsUploading(true)
-        const formData = new FormData()
-        formData.append('file', croppedFile)
-        formData.append('corners', JSON.stringify(corners))
-        formData.append('rotation', rotation.toString())
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append("file", croppedFile);
+        formData.append("corners", JSON.stringify(corners));
+        formData.append("rotation", rotation.toString());
 
-        const response = await fetch(`/api/curriculum/${studentId}/attachments/${photoId}`, {
-          method: 'PATCH',
-          body: formData,
-        })
+        const response = await fetch(
+          `/api/curriculum/${studentId}/attachments/${photoId}`,
+          {
+            method: "PATCH",
+            body: formData,
+          },
+        );
 
         if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Failed to update photo')
+          const data = await response.json();
+          throw new Error(data.error || "Failed to update photo");
         }
 
         // Refresh attachments
         if (sessionId) {
           queryClient.invalidateQueries({
             queryKey: attachmentKeys.session(studentId, sessionId),
-          })
+          });
         }
       } catch (err) {
-        reportError(err instanceof Error ? err.message : 'Failed to update photo')
+        reportError(
+          err instanceof Error ? err.message : "Failed to update photo",
+        );
       } finally {
-        setIsUploading(false)
+        setIsUploading(false);
       }
     },
-    [studentId, sessionId, queryClient, reportError]
-  )
+    [studentId, sessionId, queryClient, reportError],
+  );
 
   return {
     // Camera
@@ -396,7 +430,7 @@ export function usePhotoManagement({
 
     // Photo editing
     handlePhotoEditConfirm,
-  }
+  };
 }
 
-export default usePhotoManagement
+export default usePhotoManagement;

@@ -1,24 +1,35 @@
-'use client'
+"use client";
 
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import type { SessionPlan, SlotResult, GameBreakSettings } from '@/db/schema/session-plans'
-import type { ProblemGenerationMode } from '@/lib/curriculum/config'
-import type { SessionMode } from '@/lib/curriculum/session-mode'
-import { api } from '@/lib/queryClient'
-import { sessionPlanKeys } from '@/lib/queryKeys'
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
+import type {
+  SessionPlan,
+  SlotResult,
+  GameBreakSettings,
+} from "@/db/schema/session-plans";
+import type { ProblemGenerationMode } from "@/lib/curriculum/config";
+import type { SessionMode } from "@/lib/curriculum/session-mode";
+import { api } from "@/lib/queryClient";
+import { sessionPlanKeys } from "@/lib/queryKeys";
 
 // Re-export query keys for consumers
-export { sessionPlanKeys } from '@/lib/queryKeys'
+export { sessionPlanKeys } from "@/lib/queryKeys";
 
 // ============================================================================
 // API Functions
 // ============================================================================
 
-async function fetchActiveSessionPlan(playerId: string): Promise<SessionPlan | null> {
-  const res = await api(`curriculum/${playerId}/sessions/plans`)
-  if (!res.ok) throw new Error('Failed to fetch active session plan')
-  const data = await res.json()
-  return data.plan ?? null
+async function fetchActiveSessionPlan(
+  playerId: string,
+): Promise<SessionPlan | null> {
+  const res = await api(`curriculum/${playerId}/sessions/plans`);
+  if (!res.ok) throw new Error("Failed to fetch active session plan");
+  const data = await res.json();
+  return data.plan ?? null;
 }
 
 /**
@@ -27,8 +38,8 @@ async function fetchActiveSessionPlan(playerId: string): Promise<SessionPlan | n
  */
 export class ActiveSessionExistsClientError extends Error {
   constructor(public readonly existingPlan: SessionPlan) {
-    super('Active session already exists')
-    this.name = 'ActiveSessionExistsClientError'
+    super("Active session already exists");
+    this.name = "ActiveSessionExistsClientError";
   }
 }
 
@@ -37,8 +48,8 @@ export class ActiveSessionExistsClientError extends Error {
  */
 export class NoSkillsEnabledClientError extends Error {
   constructor(message: string) {
-    super(message)
-    this.name = 'NoSkillsEnabledClientError'
+    super(message);
+    this.name = "NoSkillsEnabledClientError";
   }
 }
 
@@ -46,9 +57,9 @@ export class NoSkillsEnabledClientError extends Error {
  * Which session parts to include
  */
 interface EnabledParts {
-  abacus: boolean
-  visualization: boolean
-  linear: boolean
+  abacus: boolean;
+  visualization: boolean;
+  linear: boolean;
 }
 
 async function generateSessionPlan({
@@ -61,18 +72,18 @@ async function generateSessionPlan({
   sessionMode,
   gameBreakSettings,
 }: {
-  playerId: string
-  durationMinutes: number
-  abacusTermCount?: { min: number; max: number }
-  enabledParts?: EnabledParts
-  problemGenerationMode?: ProblemGenerationMode
-  confidenceThreshold?: number
-  sessionMode?: SessionMode
-  gameBreakSettings?: GameBreakSettings
+  playerId: string;
+  durationMinutes: number;
+  abacusTermCount?: { min: number; max: number };
+  enabledParts?: EnabledParts;
+  problemGenerationMode?: ProblemGenerationMode;
+  confidenceThreshold?: number;
+  sessionMode?: SessionMode;
+  gameBreakSettings?: GameBreakSettings;
 }): Promise<SessionPlan> {
   const res = await api(`curriculum/${playerId}/sessions/plans`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       durationMinutes,
       abacusTermCount,
@@ -82,28 +93,28 @@ async function generateSessionPlan({
       sessionMode,
       gameBreakSettings,
     }),
-  })
+  });
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}))
+    const errorData = await res.json().catch(() => ({}));
 
     // Handle 409 conflict - active session exists
     if (
       res.status === 409 &&
-      errorData.code === 'ACTIVE_SESSION_EXISTS' &&
+      errorData.code === "ACTIVE_SESSION_EXISTS" &&
       errorData.existingPlan
     ) {
-      throw new ActiveSessionExistsClientError(errorData.existingPlan)
+      throw new ActiveSessionExistsClientError(errorData.existingPlan);
     }
 
     // Handle 400 - no skills enabled
-    if (res.status === 400 && errorData.code === 'NO_SKILLS_ENABLED') {
-      throw new NoSkillsEnabledClientError(errorData.error)
+    if (res.status === 400 && errorData.code === "NO_SKILLS_ENABLED") {
+      throw new NoSkillsEnabledClientError(errorData.error);
     }
 
-    throw new Error(errorData.error || 'Failed to generate session plan')
+    throw new Error(errorData.error || "Failed to generate session plan");
   }
-  const data = await res.json()
-  return data.plan
+  const data = await res.json();
+  return data.plan;
 }
 
 async function updateSessionPlan({
@@ -113,23 +124,23 @@ async function updateSessionPlan({
   result,
   reason,
 }: {
-  playerId: string
-  planId: string
-  action: 'approve' | 'start' | 'record' | 'end_early' | 'abandon'
-  result?: Omit<SlotResult, 'timestamp' | 'partNumber'>
-  reason?: string
+  playerId: string;
+  planId: string;
+  action: "approve" | "start" | "record" | "end_early" | "abandon";
+  result?: Omit<SlotResult, "timestamp" | "partNumber">;
+  reason?: string;
 }): Promise<SessionPlan> {
   const res = await api(`curriculum/${playerId}/sessions/plans/${planId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action, result, reason }),
-  })
+  });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new Error(error.error || `Failed to ${action} session plan`)
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `Failed to ${action} session plan`);
   }
-  const data = await res.json()
-  return data.plan
+  const data = await res.json();
+  return data.plan;
 }
 
 /**
@@ -137,11 +148,11 @@ async function updateSessionPlan({
  */
 export interface RedoContext {
   /** Part index of the problem being redone */
-  originalPartIndex: number
+  originalPartIndex: number;
   /** Slot index of the problem being redone */
-  originalSlotIndex: number
+  originalSlotIndex: number;
   /** Whether the original answer was correct (affects recording logic) */
-  originalWasCorrect: boolean
+  originalWasCorrect: boolean;
 }
 
 async function recordRedoResult({
@@ -150,22 +161,22 @@ async function recordRedoResult({
   result,
   redoContext,
 }: {
-  playerId: string
-  planId: string
-  result: Omit<SlotResult, 'timestamp' | 'partNumber'>
-  redoContext: RedoContext
+  playerId: string;
+  planId: string;
+  result: Omit<SlotResult, "timestamp" | "partNumber">;
+  redoContext: RedoContext;
 }): Promise<SessionPlan> {
   const res = await api(`curriculum/${playerId}/sessions/plans/${planId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'record_redo', result, redoContext }),
-  })
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "record_redo", result, redoContext }),
+  });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new Error(error.error || 'Failed to record redo result')
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || "Failed to record redo result");
   }
-  const data = await res.json()
-  return data.plan
+  const data = await res.json();
+  return data.plan;
 }
 
 // ============================================================================
@@ -178,9 +189,12 @@ async function recordRedoResult({
  * @param playerId - The player ID to fetch the session for
  * @param initialData - Optional initial data from server-side props (avoids loading state on direct page load)
  */
-export function useActiveSessionPlan(playerId: string | null, initialData?: SessionPlan | null) {
+export function useActiveSessionPlan(
+  playerId: string | null,
+  initialData?: SessionPlan | null,
+) {
   return useQuery({
-    queryKey: sessionPlanKeys.active(playerId ?? ''),
+    queryKey: sessionPlanKeys.active(playerId ?? ""),
     queryFn: () => fetchActiveSessionPlan(playerId!),
     enabled: !!playerId,
     // Use server-provided data as initial cache value
@@ -189,7 +203,7 @@ export function useActiveSessionPlan(playerId: string | null, initialData?: Sess
     // Don't refetch on mount if we have initial data - trust the server
     // The query will still refetch on window focus or after stale time
     staleTime: initialData ? 30000 : 0, // 30s stale time if we have initial data
-  })
+  });
 }
 
 /**
@@ -199,72 +213,72 @@ export function useActiveSessionPlanSuspense(playerId: string) {
   return useSuspenseQuery({
     queryKey: sessionPlanKeys.active(playerId),
     queryFn: () => fetchActiveSessionPlan(playerId),
-  })
+  });
 }
 
 /**
  * Hook: Generate a new session plan
  */
 export function useGenerateSessionPlan() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: generateSessionPlan,
     onSuccess: (plan, { playerId }) => {
       // Update the active plan cache
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan);
       // Also cache by plan ID
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan);
     },
     onError: (err) => {
-      console.error('Failed to generate session plan:', err.message)
+      console.error("Failed to generate session plan:", err.message);
     },
-  })
+  });
 }
 
 /**
  * Hook: Approve a session plan (teacher clicks "Let's Go!")
  */
 export function useApproveSessionPlan() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ playerId, planId }: { playerId: string; planId: string }) =>
-      updateSessionPlan({ playerId, planId, action: 'approve' }),
+      updateSessionPlan({ playerId, planId, action: "approve" }),
     onSuccess: (plan, { playerId }) => {
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan);
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan);
     },
     onError: (err) => {
-      console.error('Failed to approve session plan:', err.message)
+      console.error("Failed to approve session plan:", err.message);
     },
-  })
+  });
 }
 
 /**
  * Hook: Start a session plan (begin practice)
  */
 export function useStartSessionPlan() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ playerId, planId }: { playerId: string; planId: string }) =>
-      updateSessionPlan({ playerId, planId, action: 'start' }),
+      updateSessionPlan({ playerId, planId, action: "start" }),
     onSuccess: (plan, { playerId }) => {
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan);
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan);
     },
     onError: (err) => {
-      console.error('Failed to start session plan:', err.message)
+      console.error("Failed to start session plan:", err.message);
     },
-  })
+  });
 }
 
 /**
  * Hook: Record a slot result (answer submitted)
  */
 export function useRecordSlotResult() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({
@@ -272,25 +286,25 @@ export function useRecordSlotResult() {
       planId,
       result,
     }: {
-      playerId: string
-      planId: string
-      result: Omit<SlotResult, 'timestamp' | 'partNumber'>
-    }) => updateSessionPlan({ playerId, planId, action: 'record', result }),
+      playerId: string;
+      planId: string;
+      result: Omit<SlotResult, "timestamp" | "partNumber">;
+    }) => updateSessionPlan({ playerId, planId, action: "record", result }),
     onSuccess: (plan, { playerId }) => {
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan);
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan);
     },
     onError: (err) => {
-      console.error('Failed to record slot result:', err.message)
+      console.error("Failed to record slot result:", err.message);
     },
-  })
+  });
 }
 
 /**
  * Hook: End session early
  */
 export function useEndSessionEarly() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({
@@ -298,40 +312,40 @@ export function useEndSessionEarly() {
       planId,
       reason,
     }: {
-      playerId: string
-      planId: string
-      reason?: string
-    }) => updateSessionPlan({ playerId, planId, action: 'end_early', reason }),
+      playerId: string;
+      planId: string;
+      reason?: string;
+    }) => updateSessionPlan({ playerId, planId, action: "end_early", reason }),
     onSuccess: (plan, { playerId }) => {
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan);
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan);
       // Invalidate the list to show in history
-      queryClient.invalidateQueries({ queryKey: sessionPlanKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: sessionPlanKeys.lists() });
     },
     onError: (err) => {
-      console.error('Failed to end session early:', err.message)
+      console.error("Failed to end session early:", err.message);
     },
-  })
+  });
 }
 
 /**
  * Hook: Abandon session (user navigates away)
  */
 export function useAbandonSession() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ playerId, planId }: { playerId: string; planId: string }) =>
-      updateSessionPlan({ playerId, planId, action: 'abandon' }),
+      updateSessionPlan({ playerId, planId, action: "abandon" }),
     onSuccess: (plan, { playerId }) => {
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), null)
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
-      queryClient.invalidateQueries({ queryKey: sessionPlanKeys.lists() })
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), null);
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan);
+      queryClient.invalidateQueries({ queryKey: sessionPlanKeys.lists() });
     },
     onError: (err) => {
-      console.error('Failed to abandon session:', err.message)
+      console.error("Failed to abandon session:", err.message);
     },
-  })
+  });
 }
 
 /**
@@ -343,7 +357,7 @@ export function useAbandonSession() {
  * - If original was correct and redo is wrong, no result is recorded (avoid penalty)
  */
 export function useRecordRedoResult() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({
@@ -352,19 +366,19 @@ export function useRecordRedoResult() {
       result,
       redoContext,
     }: {
-      playerId: string
-      planId: string
-      result: Omit<SlotResult, 'timestamp' | 'partNumber'>
-      redoContext: RedoContext
+      playerId: string;
+      planId: string;
+      result: Omit<SlotResult, "timestamp" | "partNumber">;
+      redoContext: RedoContext;
     }) => recordRedoResult({ playerId, planId, result, redoContext }),
     onSuccess: (plan, { playerId }) => {
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan);
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan);
     },
     onError: (err) => {
-      console.error('Failed to record redo result:', err.message)
+      console.error("Failed to record redo result:", err.message);
     },
-  })
+  });
 }
 
 /**
@@ -375,24 +389,24 @@ async function setRemoteCameraSession({
   planId,
   remoteCameraSessionId,
 }: {
-  playerId: string
-  planId: string
-  remoteCameraSessionId: string | null
+  playerId: string;
+  planId: string;
+  remoteCameraSessionId: string | null;
 }): Promise<SessionPlan> {
   const res = await api(`curriculum/${playerId}/sessions/plans/${planId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      action: 'set_remote_camera',
+      action: "set_remote_camera",
       remoteCameraSessionId,
     }),
-  })
+  });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new Error(error.error || 'Failed to set remote camera session')
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || "Failed to set remote camera session");
   }
-  const data = await res.json()
-  return data.plan
+  const data = await res.json();
+  return data.plan;
 }
 
 /**
@@ -400,16 +414,16 @@ async function setRemoteCameraSession({
  * Used when setting up phone camera for vision-based practice
  */
 export function useSetRemoteCameraSession() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: setRemoteCameraSession,
     onSuccess: (plan, { playerId }) => {
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan);
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan);
     },
     onError: (err) => {
-      console.error('Failed to set remote camera session:', err.message)
+      console.error("Failed to set remote camera session:", err.message);
     },
-  })
+  });
 }

@@ -8,37 +8,37 @@
  * - Region highlighting in magnified view
  */
 
-import type { SpringValue } from '@react-spring/web'
+import type { SpringValue } from "@react-spring/web";
 
 /**
  * Heat-based styling for hot/cold feedback
  */
 export interface HeatColors {
-  border: string
-  glow: string
-  width: number
+  border: string;
+  glow: string;
+  width: number;
 }
 
 /**
  * Crosshair styling based on hot/cold feedback
  */
 export interface CrosshairStyle {
-  color: string
-  strokeWidth: number
-  opacity: number
+  color: string;
+  strokeWidth: number;
+  opacity: number;
 }
 
 /**
  * Viewport information for SVG coordinate calculations
  */
 export interface ViewportInfo {
-  letterboxX: number
-  letterboxY: number
-  scale: number
-  renderedWidth: number
-  renderedHeight: number
-  viewBoxX: number
-  viewBoxY: number
+  letterboxX: number;
+  letterboxY: number;
+  scale: number;
+  renderedWidth: number;
+  renderedHeight: number;
+  viewBoxX: number;
+  viewBoxY: number;
 }
 
 /**
@@ -46,15 +46,15 @@ export interface ViewportInfo {
  */
 export interface MagnifierCrosshairProps {
   /** Cursor X position in SVG coordinates */
-  cursorSvgX: number
+  cursorSvgX: number;
   /** Cursor Y position in SVG coordinates */
-  cursorSvgY: number
+  cursorSvgY: number;
   /** ViewBox width for calculating crosshair size */
-  viewBoxWidth: number
+  viewBoxWidth: number;
   /** Spring value for rotation animation */
-  rotationAngle: SpringValue<number>
+  rotationAngle: SpringValue<number>;
   /** Heat-based crosshair style */
-  heatStyle: CrosshairStyle
+  heatStyle: CrosshairStyle;
 }
 
 /**
@@ -62,22 +62,22 @@ export interface MagnifierCrosshairProps {
  */
 export interface MagnifierPixelGridProps {
   /** Current zoom level */
-  currentZoom: number
+  currentZoom: number;
   /** Screen pixel ratio at current zoom */
-  screenPixelRatio: number
+  screenPixelRatio: number;
   /** Precision mode threshold */
-  precisionModeThreshold: number
+  precisionModeThreshold: number;
   /** Cursor X position in SVG coordinates */
-  cursorSvgX: number
+  cursorSvgX: number;
   /** Cursor Y position in SVG coordinates */
-  cursorSvgY: number
+  cursorSvgY: number;
   /** ViewBox dimensions */
-  viewBoxWidth: number
-  viewBoxHeight: number
+  viewBoxWidth: number;
+  viewBoxHeight: number;
   /** Viewport scale from main map */
-  viewportScale: number
+  viewportScale: number;
   /** Whether dark mode is active */
-  isDark: boolean
+  isDark: boolean;
 }
 
 /**
@@ -86,49 +86,49 @@ export interface MagnifierPixelGridProps {
 export interface MagnifierRegionsProps {
   /** All regions to render */
   regions: Array<{
-    id: string
-    path: string
-  }>
+    id: string;
+    path: string;
+  }>;
   /** IDs of regions that have been found */
-  regionsFound: string[]
+  regionsFound: string[];
   /** Currently hovered region ID */
-  hoveredRegion: string | null
+  hoveredRegion: string | null;
   /** Region being revealed in give-up animation */
-  giveUpReveal: { regionId: string } | null
+  giveUpReveal: { regionId: string } | null;
   /** Region being celebrated */
-  celebration: { regionId: string } | null
+  celebration: { regionId: string } | null;
   /** Flash progress for give-up animation (0-1) */
-  giveUpFlashProgress: number
+  giveUpFlashProgress: number;
   /** Flash progress for celebration animation (0-1) */
-  celebrationFlashProgress: number
+  celebrationFlashProgress: number;
   /** Whether give-up animation is playing */
-  isGiveUpAnimating: boolean
+  isGiveUpAnimating: boolean;
   /** Whether dark mode is active */
-  isDark: boolean
+  isDark: boolean;
   /** Get player who found a region */
-  getPlayerWhoFoundRegion: (regionId: string) => string | null
+  getPlayerWhoFoundRegion: (regionId: string) => string | null;
   /** Get region fill color */
   getRegionColor: (
     regionId: string,
     isFound: boolean,
     isHovered: boolean,
-    isDark: boolean
-  ) => string
+    isDark: boolean,
+  ) => string;
   /** Get region stroke color */
-  getRegionStroke: (isFound: boolean, isDark: boolean) => string
+  getRegionStroke: (isFound: boolean, isDark: boolean) => string;
   /** Whether to show outline for a region */
-  showOutline: (region: { id: string }) => boolean
+  showOutline: (region: { id: string }) => boolean;
 }
 
 /**
  * Debug bounding box information
  */
 export interface DebugBoundingBox {
-  regionId: string
-  x: number
-  y: number
-  width: number
-  height: number
-  importance?: number
-  wasAccepted?: boolean
+  regionId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  importance?: number;
+  wasAccepted?: boolean;
 }

@@ -1,5 +1,5 @@
-import fs from 'fs/promises'
-import path from 'path'
+import fs from "fs/promises";
+import path from "path";
 
 /**
  * Shared training data deletion utilities.
@@ -9,22 +9,28 @@ import path from 'path'
  */
 
 // Base paths for training data
-const VISION_TRAINING_DIR = path.join(process.cwd(), 'data/vision-training')
-const COLUMN_CLASSIFIER_DIR = path.join(VISION_TRAINING_DIR, 'collected')
-const BOUNDARY_DETECTOR_DIR = path.join(VISION_TRAINING_DIR, 'boundary-frames')
+const VISION_TRAINING_DIR = path.join(process.cwd(), "data/vision-training");
+const COLUMN_CLASSIFIER_DIR = path.join(VISION_TRAINING_DIR, "collected");
+const BOUNDARY_DETECTOR_DIR = path.join(VISION_TRAINING_DIR, "boundary-frames");
 
 // Tombstone file paths
-const COLUMN_CLASSIFIER_TOMBSTONE = path.join(COLUMN_CLASSIFIER_DIR, '.deleted')
-const BOUNDARY_DETECTOR_TOMBSTONE = path.join(BOUNDARY_DETECTOR_DIR, '.deleted')
+const COLUMN_CLASSIFIER_TOMBSTONE = path.join(
+  COLUMN_CLASSIFIER_DIR,
+  ".deleted",
+);
+const BOUNDARY_DETECTOR_TOMBSTONE = path.join(
+  BOUNDARY_DETECTOR_DIR,
+  ".deleted",
+);
 
 export interface DeletionResult {
-  success: boolean
+  success: boolean;
   /** True if file was deleted (false if it didn't exist) */
-  deleted: boolean
+  deleted: boolean;
   /** True if deletion was recorded to tombstone */
-  tombstoneRecorded: boolean
+  tombstoneRecorded: boolean;
   /** Error message if something went wrong */
-  error?: string
+  error?: string;
 }
 
 /**
@@ -37,16 +43,22 @@ export interface DeletionResult {
  * @param relativePath - Relative path of the deleted file (e.g., "3/filename.png")
  * @returns True if recorded successfully, false otherwise
  */
-async function recordToTombstone(tombstonePath: string, relativePath: string): Promise<boolean> {
+async function recordToTombstone(
+  tombstonePath: string,
+  relativePath: string,
+): Promise<boolean> {
   try {
     // Ensure parent directory exists
-    await fs.mkdir(path.dirname(tombstonePath), { recursive: true })
+    await fs.mkdir(path.dirname(tombstonePath), { recursive: true });
     // Append to tombstone file
-    await fs.appendFile(tombstonePath, `${relativePath}\n`)
-    return true
+    await fs.appendFile(tombstonePath, `${relativePath}\n`);
+    return true;
   } catch (error) {
-    console.error('[trainingDataDeletion] Failed to record to tombstone:', error)
-    return false
+    console.error(
+      "[trainingDataDeletion] Failed to record to tombstone:",
+      error,
+    );
+    return false;
   }
 }
 
@@ -61,7 +73,7 @@ async function recordToTombstone(tombstonePath: string, relativePath: string): P
  */
 export async function deleteColumnClassifierSample(
   digit: number,
-  filename: string
+  filename: string,
 ): Promise<DeletionResult> {
   // Validate inputs
   if (!Number.isInteger(digit) || digit < 0 || digit > 9) {
@@ -69,38 +81,43 @@ export async function deleteColumnClassifierSample(
       success: false,
       deleted: false,
       tombstoneRecorded: false,
-      error: 'Invalid digit',
-    }
+      error: "Invalid digit",
+    };
   }
-  if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+  if (
+    !filename ||
+    filename.includes("..") ||
+    filename.includes("/") ||
+    filename.includes("\\")
+  ) {
     return {
       success: false,
       deleted: false,
       tombstoneRecorded: false,
-      error: 'Invalid filename',
-    }
+      error: "Invalid filename",
+    };
   }
-  if (!filename.endsWith('.png')) {
+  if (!filename.endsWith(".png")) {
     return {
       success: false,
       deleted: false,
       tombstoneRecorded: false,
-      error: 'Filename must end with .png',
-    }
+      error: "Filename must end with .png",
+    };
   }
 
-  const filePath = path.join(COLUMN_CLASSIFIER_DIR, String(digit), filename)
-  const relativePath = `${digit}/${filename}`
+  const filePath = path.join(COLUMN_CLASSIFIER_DIR, String(digit), filename);
+  const relativePath = `${digit}/${filename}`;
 
-  let deleted = false
-  let tombstoneRecorded = false
+  let deleted = false;
+  let tombstoneRecorded = false;
 
   // Try to delete the file
   try {
-    await fs.unlink(filePath)
-    deleted = true
+    await fs.unlink(filePath);
+    deleted = true;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       // File doesn't exist - that's fine, still record to tombstone
       // (in case it exists on production)
     } else {
@@ -109,19 +126,24 @@ export async function deleteColumnClassifierSample(
         deleted: false,
         tombstoneRecorded: false,
         error: `Failed to delete file: ${(error as Error).message}`,
-      }
+      };
     }
   }
 
   // Record to tombstone (even if file didn't exist locally - it might exist on production)
-  tombstoneRecorded = await recordToTombstone(COLUMN_CLASSIFIER_TOMBSTONE, relativePath)
+  tombstoneRecorded = await recordToTombstone(
+    COLUMN_CLASSIFIER_TOMBSTONE,
+    relativePath,
+  );
 
   return {
     success: true,
     deleted,
     tombstoneRecorded,
-    error: tombstoneRecorded ? undefined : 'Warning: deletion not recorded to tombstone',
-  }
+    error: tombstoneRecorded
+      ? undefined
+      : "Warning: deletion not recorded to tombstone",
+  };
 }
 
 /**
@@ -135,101 +157,125 @@ export async function deleteColumnClassifierSample(
  */
 export async function deleteBoundaryDetectorSample(
   deviceId: string,
-  baseName: string
+  baseName: string,
 ): Promise<DeletionResult> {
   // Validate inputs
-  if (!deviceId || deviceId.includes('..') || deviceId.includes('/') || deviceId.includes('\\')) {
+  if (
+    !deviceId ||
+    deviceId.includes("..") ||
+    deviceId.includes("/") ||
+    deviceId.includes("\\")
+  ) {
     return {
       success: false,
       deleted: false,
       tombstoneRecorded: false,
-      error: 'Invalid deviceId',
-    }
+      error: "Invalid deviceId",
+    };
   }
-  if (!baseName || baseName.includes('..') || baseName.includes('/') || baseName.includes('\\')) {
+  if (
+    !baseName ||
+    baseName.includes("..") ||
+    baseName.includes("/") ||
+    baseName.includes("\\")
+  ) {
     return {
       success: false,
       deleted: false,
       tombstoneRecorded: false,
-      error: 'Invalid baseName',
-    }
+      error: "Invalid baseName",
+    };
   }
 
-  const deviceDir = path.join(BOUNDARY_DETECTOR_DIR, deviceId)
-  const pngPath = path.join(deviceDir, `${baseName}.png`)
-  const jpgPath = path.join(deviceDir, `${baseName}.jpg`)
-  const jsonPath = path.join(deviceDir, `${baseName}.json`)
+  const deviceDir = path.join(BOUNDARY_DETECTOR_DIR, deviceId);
+  const pngPath = path.join(deviceDir, `${baseName}.png`);
+  const jpgPath = path.join(deviceDir, `${baseName}.jpg`);
+  const jsonPath = path.join(deviceDir, `${baseName}.json`);
 
-  let deleted = false
-  let imageExtension: 'png' | 'jpg' | null = null
+  let deleted = false;
+  let imageExtension: "png" | "jpg" | null = null;
 
   // Try to delete PNG version
   try {
-    await fs.unlink(pngPath)
-    deleted = true
-    imageExtension = 'png'
+    await fs.unlink(pngPath);
+    deleted = true;
+    imageExtension = "png";
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
       return {
         success: false,
         deleted: false,
         tombstoneRecorded: false,
         error: `Failed to delete PNG: ${(error as Error).message}`,
-      }
+      };
     }
   }
 
   // Try to delete JPG version
   try {
-    await fs.unlink(jpgPath)
-    deleted = true
-    imageExtension = 'jpg'
+    await fs.unlink(jpgPath);
+    deleted = true;
+    imageExtension = "jpg";
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
       return {
         success: false,
         deleted: false,
         tombstoneRecorded: false,
         error: `Failed to delete JPG: ${(error as Error).message}`,
-      }
+      };
     }
   }
 
   // Try to delete JSON annotation
   try {
-    await fs.unlink(jsonPath)
-    deleted = true
+    await fs.unlink(jsonPath);
+    deleted = true;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
       // Log but don't fail - the image is the primary file
-      console.error('[trainingDataDeletion] Failed to delete JSON:', error)
+      console.error("[trainingDataDeletion] Failed to delete JSON:", error);
     }
   }
 
   // Record to tombstone
   // We record both PNG and JPG patterns to be safe
-  let tombstoneRecorded = false
-  const pngRelativePath = `${deviceId}/${baseName}.png`
-  const jpgRelativePath = `${deviceId}/${baseName}.jpg`
+  let tombstoneRecorded = false;
+  const pngRelativePath = `${deviceId}/${baseName}.png`;
+  const jpgRelativePath = `${deviceId}/${baseName}.jpg`;
 
   // Record the actual extension if known, otherwise record both
-  if (imageExtension === 'png') {
-    tombstoneRecorded = await recordToTombstone(BOUNDARY_DETECTOR_TOMBSTONE, pngRelativePath)
-  } else if (imageExtension === 'jpg') {
-    tombstoneRecorded = await recordToTombstone(BOUNDARY_DETECTOR_TOMBSTONE, jpgRelativePath)
+  if (imageExtension === "png") {
+    tombstoneRecorded = await recordToTombstone(
+      BOUNDARY_DETECTOR_TOMBSTONE,
+      pngRelativePath,
+    );
+  } else if (imageExtension === "jpg") {
+    tombstoneRecorded = await recordToTombstone(
+      BOUNDARY_DETECTOR_TOMBSTONE,
+      jpgRelativePath,
+    );
   } else {
     // Unknown extension - record both to be safe
-    const pngRecorded = await recordToTombstone(BOUNDARY_DETECTOR_TOMBSTONE, pngRelativePath)
-    const jpgRecorded = await recordToTombstone(BOUNDARY_DETECTOR_TOMBSTONE, jpgRelativePath)
-    tombstoneRecorded = pngRecorded || jpgRecorded
+    const pngRecorded = await recordToTombstone(
+      BOUNDARY_DETECTOR_TOMBSTONE,
+      pngRelativePath,
+    );
+    const jpgRecorded = await recordToTombstone(
+      BOUNDARY_DETECTOR_TOMBSTONE,
+      jpgRelativePath,
+    );
+    tombstoneRecorded = pngRecorded || jpgRecorded;
   }
 
   return {
     success: true,
     deleted,
     tombstoneRecorded,
-    error: tombstoneRecorded ? undefined : 'Warning: deletion not recorded to tombstone',
-  }
+    error: tombstoneRecorded
+      ? undefined
+      : "Warning: deletion not recorded to tombstone",
+  };
 }
 
 /**
@@ -239,18 +285,20 @@ export async function deleteBoundaryDetectorSample(
  * @returns Set of relative paths that have been deleted
  */
 export async function readTombstone(
-  modelType: 'column-classifier' | 'boundary-detector'
+  modelType: "column-classifier" | "boundary-detector",
 ): Promise<Set<string>> {
   const tombstonePath =
-    modelType === 'column-classifier' ? COLUMN_CLASSIFIER_TOMBSTONE : BOUNDARY_DETECTOR_TOMBSTONE
+    modelType === "column-classifier"
+      ? COLUMN_CLASSIFIER_TOMBSTONE
+      : BOUNDARY_DETECTOR_TOMBSTONE;
 
   try {
-    const content = await fs.readFile(tombstonePath, 'utf-8')
-    const lines = content.split('\n').filter((line) => line.trim())
-    return new Set(lines)
+    const content = await fs.readFile(tombstonePath, "utf-8");
+    const lines = content.split("\n").filter((line) => line.trim());
+    return new Set(lines);
   } catch {
     // File doesn't exist yet - no deletions recorded
-    return new Set()
+    return new Set();
   }
 }
 
@@ -270,44 +318,51 @@ export async function readTombstone(
  * @returns True if initialized (created or already existed), false on error
  */
 export async function initializeTombstone(
-  modelType: 'column-classifier' | 'boundary-detector'
+  modelType: "column-classifier" | "boundary-detector",
 ): Promise<boolean> {
   const tombstonePath =
-    modelType === 'column-classifier' ? COLUMN_CLASSIFIER_TOMBSTONE : BOUNDARY_DETECTOR_TOMBSTONE
+    modelType === "column-classifier"
+      ? COLUMN_CLASSIFIER_TOMBSTONE
+      : BOUNDARY_DETECTOR_TOMBSTONE;
 
   try {
     // Check if file already exists
     try {
-      await fs.access(tombstonePath)
+      await fs.access(tombstonePath);
       // File exists, nothing to do
-      return true
+      return true;
     } catch {
       // File doesn't exist, create it
     }
 
     // Ensure parent directory exists
-    await fs.mkdir(path.dirname(tombstonePath), { recursive: true })
+    await fs.mkdir(path.dirname(tombstonePath), { recursive: true });
 
     // Create empty tombstone file
-    await fs.writeFile(tombstonePath, '')
-    console.log(`[trainingDataDeletion] Initialized tombstone: ${tombstonePath}`)
-    return true
+    await fs.writeFile(tombstonePath, "");
+    console.log(
+      `[trainingDataDeletion] Initialized tombstone: ${tombstonePath}`,
+    );
+    return true;
   } catch (error) {
-    console.error('[trainingDataDeletion] Failed to initialize tombstone:', error)
-    return false
+    console.error(
+      "[trainingDataDeletion] Failed to initialize tombstone:",
+      error,
+    );
+    return false;
   }
 }
 
 export interface PruneTombstoneResult {
-  success: boolean
+  success: boolean;
   /** Number of entries before pruning */
-  entriesBefore: number
+  entriesBefore: number;
   /** Number of entries after pruning */
-  entriesAfter: number
+  entriesAfter: number;
   /** Number of entries removed */
-  entriesPruned: number
+  entriesPruned: number;
   /** Error message if pruning failed */
-  error?: string
+  error?: string;
 }
 
 /**
@@ -328,16 +383,18 @@ export interface PruneTombstoneResult {
  * @returns Result with pruning statistics
  */
 export async function pruneTombstone(
-  modelType: 'column-classifier' | 'boundary-detector',
-  remoteFiles: Set<string>
+  modelType: "column-classifier" | "boundary-detector",
+  remoteFiles: Set<string>,
 ): Promise<PruneTombstoneResult> {
   const tombstonePath =
-    modelType === 'column-classifier' ? COLUMN_CLASSIFIER_TOMBSTONE : BOUNDARY_DETECTOR_TOMBSTONE
+    modelType === "column-classifier"
+      ? COLUMN_CLASSIFIER_TOMBSTONE
+      : BOUNDARY_DETECTOR_TOMBSTONE;
 
   try {
     // Read current tombstone entries
-    const currentEntries = await readTombstone(modelType)
-    const entriesBefore = currentEntries.size
+    const currentEntries = await readTombstone(modelType);
+    const entriesBefore = currentEntries.size;
 
     if (entriesBefore === 0) {
       return {
@@ -345,30 +402,31 @@ export async function pruneTombstone(
         entriesBefore: 0,
         entriesAfter: 0,
         entriesPruned: 0,
-      }
+      };
     }
 
     // Keep only entries that still exist on production
     // (if file doesn't exist on production, no need to exclude it from sync)
-    const entriesToKeep: string[] = []
+    const entriesToKeep: string[] = [];
     for (const entry of currentEntries) {
       if (remoteFiles.has(entry)) {
-        entriesToKeep.push(entry)
+        entriesToKeep.push(entry);
       }
     }
 
-    const entriesAfter = entriesToKeep.length
-    const entriesPruned = entriesBefore - entriesAfter
+    const entriesAfter = entriesToKeep.length;
+    const entriesPruned = entriesBefore - entriesAfter;
 
     // Only write if something changed
     if (entriesPruned > 0) {
       // Write the pruned tombstone (with trailing newline if non-empty)
-      const content = entriesToKeep.length > 0 ? entriesToKeep.join('\n') + '\n' : ''
-      await fs.writeFile(tombstonePath, content)
+      const content =
+        entriesToKeep.length > 0 ? entriesToKeep.join("\n") + "\n" : "";
+      await fs.writeFile(tombstonePath, content);
       console.log(
         `[trainingDataDeletion] Pruned tombstone for ${modelType}: ` +
-          `${entriesPruned} entries removed, ${entriesAfter} remaining`
-      )
+          `${entriesPruned} entries removed, ${entriesAfter} remaining`,
+      );
     }
 
     return {
@@ -376,15 +434,15 @@ export async function pruneTombstone(
       entriesBefore,
       entriesAfter,
       entriesPruned,
-    }
+    };
   } catch (error) {
-    console.error('[trainingDataDeletion] Failed to prune tombstone:', error)
+    console.error("[trainingDataDeletion] Failed to prune tombstone:", error);
     return {
       success: false,
       entriesBefore: 0,
       entriesAfter: 0,
       entriesPruned: 0,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
   }
 }

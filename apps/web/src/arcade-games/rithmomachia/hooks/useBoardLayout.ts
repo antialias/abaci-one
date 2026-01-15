@@ -1,16 +1,19 @@
-import { useMemo } from 'react'
-import { BOARD_COLUMNS, BOARD_ROWS } from '../constants/board'
-import { getBoardDimensions, getSquarePosition } from '../utils/boardCoordinates'
+import { useMemo } from "react";
+import { BOARD_COLUMNS, BOARD_ROWS } from "../constants/board";
+import {
+  getBoardDimensions,
+  getSquarePosition,
+} from "../utils/boardCoordinates";
 
 /**
  * Layout configuration for the game board
  */
 export interface BoardLayout {
-  cellSize: number
-  gap: number
-  padding: number
-  rows: number
-  columns: number
+  cellSize: number;
+  gap: number;
+  padding: number;
+  rows: number;
+  columns: number;
 }
 
 /**
@@ -25,15 +28,15 @@ export function useBoardLayout(): BoardLayout {
       rows: BOARD_ROWS,
       columns: BOARD_COLUMNS,
     }),
-    []
-  )
+    [],
+  );
 }
 
 /**
  * Hook that provides layout with derived values
  */
 export function useBoardLayoutWithUtils() {
-  const layout = useBoardLayout()
+  const layout = useBoardLayout();
 
   return useMemo(
     () => ({
@@ -43,6 +46,6 @@ export function useBoardLayoutWithUtils() {
       dimensions: getBoardDimensions(layout),
       getSquarePosition: (square: string) => getSquarePosition(square, layout),
     }),
-    [layout]
-  )
+    [layout],
+  );
 }

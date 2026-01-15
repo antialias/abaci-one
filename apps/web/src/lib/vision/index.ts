@@ -12,7 +12,7 @@ export {
   disposeModel,
   getModelInputSize,
   type ClassificationResult,
-} from './columnClassifier'
+} from "./columnClassifier";
 
 export {
   extractROI,
@@ -23,4 +23,4 @@ export {
   calculateFrameDiff,
   digitsToNumber,
   getMinConfidence,
-} from './frameProcessor'
+} from "./frameProcessor";

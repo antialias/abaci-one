@@ -1,6 +1,11 @@
-import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import { players } from './players'
-import { users } from './users'
+import {
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
+import { players } from "./players";
+import { users } from "./users";
 
 /**
  * Parent-child relationships
@@ -10,27 +15,27 @@ import { users } from './users'
  * All linked parents have equal access to the child.
  */
 export const parentChild = sqliteTable(
-  'parent_child',
+  "parent_child",
   {
     /** Parent's user ID */
-    parentUserId: text('parent_user_id')
+    parentUserId: text("parent_user_id")
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => users.id, { onDelete: "cascade" }),
 
     /** Child's player ID */
-    childPlayerId: text('child_player_id')
+    childPlayerId: text("child_player_id")
       .notNull()
-      .references(() => players.id, { onDelete: 'cascade' }),
+      .references(() => players.id, { onDelete: "cascade" }),
 
     /** When this relationship was created */
-    linkedAt: integer('linked_at', { mode: 'timestamp' })
+    linkedAt: integer("linked_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.parentUserId, table.childPlayerId] }),
-  })
-)
+  }),
+);
 
-export type ParentChild = typeof parentChild.$inferSelect
-export type NewParentChild = typeof parentChild.$inferInsert
+export type ParentChild = typeof parentChild.$inferSelect;
+export type NewParentChild = typeof parentChild.$inferInsert;

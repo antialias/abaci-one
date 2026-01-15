@@ -3,18 +3,18 @@
  * Handles invitation logic for room members
  */
 
-import { and, eq } from 'drizzle-orm'
-import { db, schema } from '@/db'
+import { and, eq } from "drizzle-orm";
+import { db, schema } from "@/db";
 
 export interface CreateInvitationParams {
-  roomId: string
-  userId: string
-  userName: string
-  invitedBy: string
-  invitedByName: string
-  invitationType: 'manual' | 'auto-unban' | 'auto-create'
-  message?: string
-  expiresAt?: Date
+  roomId: string;
+  userId: string;
+  userName: string;
+  invitedBy: string;
+  invitedByName: string;
+  invitationType: "manual" | "auto-unban" | "auto-create";
+  message?: string;
+  expiresAt?: Date;
 }
 
 /**
@@ -22,9 +22,9 @@ export interface CreateInvitationParams {
  * If a pending invitation exists, it will be replaced
  */
 export async function createInvitation(
-  params: CreateInvitationParams
+  params: CreateInvitationParams,
 ): Promise<schema.RoomInvitation> {
-  const now = new Date()
+  const now = new Date();
 
   // Check if there's an existing invitation
   const existing = await db
@@ -33,10 +33,10 @@ export async function createInvitation(
     .where(
       and(
         eq(schema.roomInvitations.roomId, params.roomId),
-        eq(schema.roomInvitations.userId, params.userId)
-      )
+        eq(schema.roomInvitations.userId, params.userId),
+      ),
     )
-    .limit(1)
+    .limit(1);
 
   if (existing.length > 0) {
     // Update existing invitation
@@ -48,20 +48,20 @@ export async function createInvitation(
         invitedByName: params.invitedByName,
         invitationType: params.invitationType,
         message: params.message,
-        status: 'pending', // Reset to pending
+        status: "pending", // Reset to pending
         createdAt: now, // Update timestamp
         respondedAt: null,
         expiresAt: params.expiresAt,
       })
       .where(eq(schema.roomInvitations.id, existing[0].id))
-      .returning()
+      .returning();
 
-    console.log('[Room Invitations] Updated invitation:', {
+    console.log("[Room Invitations] Updated invitation:", {
       userId: params.userId,
       roomId: params.roomId,
-    })
+    });
 
-    return updated
+    return updated;
   }
 
   // Create new invitation
@@ -75,91 +75,108 @@ export async function createInvitation(
       invitedByName: params.invitedByName,
       invitationType: params.invitationType,
       message: params.message,
-      status: 'pending',
+      status: "pending",
       createdAt: now,
       expiresAt: params.expiresAt,
     })
-    .returning()
+    .returning();
 
-  console.log('[Room Invitations] Created invitation:', {
+  console.log("[Room Invitations] Created invitation:", {
     userId: params.userId,
     roomId: params.roomId,
-  })
+  });
 
-  return invitation
+  return invitation;
 }
 
 /**
  * Get all pending invitations for a user
  */
-export async function getUserPendingInvitations(userId: string): Promise<schema.RoomInvitation[]> {
+export async function getUserPendingInvitations(
+  userId: string,
+): Promise<schema.RoomInvitation[]> {
   return await db
     .select()
     .from(schema.roomInvitations)
     .where(
-      and(eq(schema.roomInvitations.userId, userId), eq(schema.roomInvitations.status, 'pending'))
+      and(
+        eq(schema.roomInvitations.userId, userId),
+        eq(schema.roomInvitations.status, "pending"),
+      ),
     )
-    .orderBy(schema.roomInvitations.createdAt)
+    .orderBy(schema.roomInvitations.createdAt);
 }
 
 /**
  * Get all invitations for a room
  */
-export async function getRoomInvitations(roomId: string): Promise<schema.RoomInvitation[]> {
+export async function getRoomInvitations(
+  roomId: string,
+): Promise<schema.RoomInvitation[]> {
   return await db
     .select()
     .from(schema.roomInvitations)
     .where(eq(schema.roomInvitations.roomId, roomId))
-    .orderBy(schema.roomInvitations.createdAt)
+    .orderBy(schema.roomInvitations.createdAt);
 }
 
 /**
  * Accept an invitation
  */
-export async function acceptInvitation(invitationId: string): Promise<schema.RoomInvitation> {
+export async function acceptInvitation(
+  invitationId: string,
+): Promise<schema.RoomInvitation> {
   const [invitation] = await db
     .update(schema.roomInvitations)
     .set({
-      status: 'accepted',
+      status: "accepted",
       respondedAt: new Date(),
     })
     .where(eq(schema.roomInvitations.id, invitationId))
-    .returning()
+    .returning();
 
-  console.log('[Room Invitations] Accepted invitation:', invitationId)
+  console.log("[Room Invitations] Accepted invitation:", invitationId);
 
-  return invitation
+  return invitation;
 }
 
 /**
  * Decline an invitation
  */
-export async function declineInvitation(invitationId: string): Promise<schema.RoomInvitation> {
+export async function declineInvitation(
+  invitationId: string,
+): Promise<schema.RoomInvitation> {
   const [invitation] = await db
     .update(schema.roomInvitations)
     .set({
-      status: 'declined',
+      status: "declined",
       respondedAt: new Date(),
     })
     .where(eq(schema.roomInvitations.id, invitationId))
-    .returning()
+    .returning();
 
-  console.log('[Room Invitations] Declined invitation:', invitationId)
+  console.log("[Room Invitations] Declined invitation:", invitationId);
 
-  return invitation
+  return invitation;
 }
 
 /**
  * Cancel/delete an invitation
  */
-export async function cancelInvitation(roomId: string, userId: string): Promise<void> {
+export async function cancelInvitation(
+  roomId: string,
+  userId: string,
+): Promise<void> {
   await db
     .delete(schema.roomInvitations)
     .where(
-      and(eq(schema.roomInvitations.roomId, roomId), eq(schema.roomInvitations.userId, userId))
-    )
+      and(
+        eq(schema.roomInvitations.roomId, roomId),
+        eq(schema.roomInvitations.userId, userId),
+      ),
+    );
 
-  console.log('[Room Invitations] Cancelled invitation:', { userId, roomId })
+  console.log("[Room Invitations] Cancelled invitation:", { userId, roomId });
 }
 
 /**
@@ -167,15 +184,18 @@ export async function cancelInvitation(roomId: string, userId: string): Promise<
  */
 export async function getInvitation(
   roomId: string,
-  userId: string
+  userId: string,
 ): Promise<schema.RoomInvitation | undefined> {
   const results = await db
     .select()
     .from(schema.roomInvitations)
     .where(
-      and(eq(schema.roomInvitations.roomId, roomId), eq(schema.roomInvitations.userId, userId))
+      and(
+        eq(schema.roomInvitations.roomId, roomId),
+        eq(schema.roomInvitations.userId, userId),
+      ),
     )
-    .limit(1)
+    .limit(1);
 
-  return results[0]
+  return results[0];
 }

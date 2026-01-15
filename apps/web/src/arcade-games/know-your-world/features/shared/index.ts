@@ -23,7 +23,7 @@ export type {
   SVGPosition,
   ViewBoxComponents,
   ViewportInfo,
-} from './types'
+} from "./types";
 
 // Constants
 export {
@@ -41,7 +41,7 @@ export {
   SHOW_DEBUG_BOUNDING_BOXES,
   SHOW_MAGNIFIER_DEBUG_INFO,
   SHOW_SAFE_ZONE_DEBUG,
-} from './constants'
+} from "./constants";
 
 // Viewport utilities
 export {
@@ -51,7 +51,7 @@ export {
   parseViewBox,
   screenToSVG,
   svgToScreen,
-} from './viewportUtils'
+} from "./viewportUtils";
 
 // Note: MapRendererContext has been removed - it was defined but never used.
 // Use MagnifierContext from features/magnifier for magnifier-specific state,

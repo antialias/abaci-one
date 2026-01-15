@@ -5,7 +5,7 @@
  * and how session time is divided across part types (abacus, visualization, linear).
  */
 
-import type { SessionPartType } from '@/db/schema/session-plans'
+import type { SessionPartType } from "@/db/schema/session-plans";
 
 // =============================================================================
 // Problem Purpose Distribution
@@ -31,7 +31,7 @@ export const PURPOSE_WEIGHTS = {
   review: 0.15,
   // Note: Challenge slots are allocated using CHALLENGE_RATIO_BY_PART_TYPE (per part type),
   // not a fixed weight. See session-planner.ts for the allocation logic.
-} as const
+} as const;
 
 /**
  * Challenge problem ratios by part type.
@@ -50,7 +50,7 @@ export const CHALLENGE_RATIO_BY_PART_TYPE: Record<SessionPartType, number> = {
   visualization: 0.15,
   /** ~2 challenge problems per 10 (middle ground) */
   linear: 0.2,
-} as const
+} as const;
 
 // =============================================================================
 // Session Part Time Distribution
@@ -67,7 +67,7 @@ export const PART_TIME_WEIGHTS: Record<SessionPartType, number> = {
   abacus: 0.5,
   visualization: 0.3,
   linear: 0.2,
-} as const
+} as const;
 
 // =============================================================================
 // Term Count Ranges
@@ -79,40 +79,43 @@ export const PART_TIME_WEIGHTS: Record<SessionPartType, number> = {
  *
  * Example: { min: 3, max: 6 } means problems like "23 + 14 + 8" to "12 + 5 + 9 + 3 + 7 + 2"
  */
-export const TERM_COUNT_RANGES: Record<SessionPartType, { min: number; max: number } | null> = {
+export const TERM_COUNT_RANGES: Record<
+  SessionPartType,
+  { min: number; max: number } | null
+> = {
   /** Base term count - physical abacus allows more complex problems */
   abacus: { min: 3, max: 6 },
   /** null = derive from abacus (typically 75% of abacus range) */
   visualization: null,
   /** null = same as abacus by default */
   linear: null,
-} as const
+} as const;
 
 /**
  * Get effective term count range for a part type.
  * Falls back to abacus range (or adjusted) if null.
  */
 export function getTermCountRange(partType: SessionPartType): {
-  min: number
-  max: number
+  min: number;
+  max: number;
 } {
-  const explicit = TERM_COUNT_RANGES[partType]
-  if (explicit) return explicit
+  const explicit = TERM_COUNT_RANGES[partType];
+  if (explicit) return explicit;
 
   // Fall back to abacus range
-  const abacusRange = TERM_COUNT_RANGES.abacus ?? { min: 3, max: 6 }
+  const abacusRange = TERM_COUNT_RANGES.abacus ?? { min: 3, max: 6 };
 
-  if (partType === 'visualization') {
+  if (partType === "visualization") {
     // Visualization uses 75% of abacus range (mental math is harder)
     return {
       min: Math.max(2, Math.floor(abacusRange.min * 0.75)),
       max: Math.max(3, Math.floor(abacusRange.max * 0.75)),
-    }
+    };
   }
 
   // Linear uses same as abacus
-  return abacusRange
+  return abacusRange;
 }
 
-export type PurposeWeights = typeof PURPOSE_WEIGHTS
-export type PartTimeWeights = typeof PART_TIME_WEIGHTS
+export type PurposeWeights = typeof PURPOSE_WEIGHTS;
+export type PartTimeWeights = typeof PART_TIME_WEIGHTS;

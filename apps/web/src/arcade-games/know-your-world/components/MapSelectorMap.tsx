@@ -1,28 +1,28 @@
-'use client'
+"use client";
 
-import { useMemo, memo } from 'react'
-import { css } from '@styled/css'
-import { animated, useSpring, type Interpolation } from '@react-spring/web'
-import { useTheme } from '@/contexts/ThemeContext'
-import type { MapData } from '../types'
-import { getRegionColor } from '../mapColors'
+import { useMemo, memo } from "react";
+import { css } from "@styled/css";
+import { animated, useSpring, type Interpolation } from "@react-spring/web";
+import { useTheme } from "@/contexts/ThemeContext";
+import type { MapData } from "../types";
+import { getRegionColor } from "../mapColors";
 
 /**
  * Animated SVG path component for smooth color/style transitions
  */
 interface AnimatedRegionProps {
-  id: string
-  path: string
-  fill: string
-  stroke: string
-  strokeWidth: number
-  opacity: number
-  isExcluded: boolean
-  isPreviewAdd: boolean
-  isPreviewRemove: boolean
-  onMouseEnter: () => void
-  onMouseLeave: () => void
-  onClick: (e: React.MouseEvent) => void
+  id: string;
+  path: string;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  opacity: number;
+  isExcluded: boolean;
+  isPreviewAdd: boolean;
+  isPreviewRemove: boolean;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  onClick: (e: React.MouseEvent) => void;
 }
 
 const AnimatedRegion = memo(function AnimatedRegion({
@@ -45,14 +45,14 @@ const AnimatedRegion = memo(function AnimatedRegion({
     strokeWidth,
     opacity,
     config: { duration: 400 },
-  })
+  });
 
   return (
     <animated.path
       data-region={id}
-      data-excluded={isExcluded ? 'true' : undefined}
-      data-preview-add={isPreviewAdd ? 'true' : undefined}
-      data-preview-remove={isPreviewRemove ? 'true' : undefined}
+      data-excluded={isExcluded ? "true" : undefined}
+      data-preview-add={isPreviewAdd ? "true" : undefined}
+      data-preview-remove={isPreviewRemove ? "true" : undefined}
       d={path}
       fill={springProps.fill}
       stroke={springProps.stroke}
@@ -62,76 +62,76 @@ const AnimatedRegion = memo(function AnimatedRegion({
       onMouseLeave={onMouseLeave}
       onClick={onClick}
       style={{
-        cursor: 'pointer',
-        pointerEvents: 'all',
+        cursor: "pointer",
+        pointerEvents: "all",
         opacity: springProps.opacity,
-        touchAction: 'manipulation',
+        touchAction: "manipulation",
       }}
     />
-  )
-})
+  );
+});
 
 interface MapSelectorMapProps {
   /** Map data to display */
-  mapData: MapData
+  mapData: MapData;
   /** ViewBox for the SVG (may be cropped for continent views) */
-  viewBox: string
+  viewBox: string;
   /** Callback when a region is clicked */
-  onRegionClick: (regionId: string) => void
+  onRegionClick: (regionId: string) => void;
   /** Callback when hover state changes */
-  onRegionHover: (regionId: string | null) => void
+  onRegionHover: (regionId: string | null) => void;
   /** Currently hovered region ID */
-  hoveredRegion: string | null
+  hoveredRegion: string | null;
   /** Regions with sub-maps available (get special styling) */
-  highlightedRegions?: string[]
+  highlightedRegions?: string[];
   /** Render only regions whose IDs are in this list (undefined = show all) */
-  visibleRegions?: string[]
+  visibleRegions?: string[];
   /**
    * Region grouping for hover highlighting.
    * When hovering a region, all regions in the same group get highlighted.
    * Map from region ID to group ID.
    */
-  regionGroups?: Map<string, string>
+  regionGroups?: Map<string, string>;
   /**
    * Currently selected group ID (e.g., selected continent).
    * Regions in this group get persistent selection styling.
    */
-  selectedGroup?: string | null
+  selectedGroup?: string | null;
   /**
    * Limit hover highlighting to only these regions.
    * If undefined, all regions are hoverable.
    * Use this to disable hover on non-interactive regions.
    */
-  hoverableRegions?: string[]
+  hoverableRegions?: string[];
   /**
    * Regions that are excluded by region size filtering.
    * These will be shown dimmed/grayed out.
    */
-  excludedRegions?: string[]
+  excludedRegions?: string[];
   /**
    * Regions that would be ADDED to the selection if the user clicks.
    * Shown with a distinct "preview add" style (e.g., green tint).
    */
-  previewAddRegions?: string[]
+  previewAddRegions?: string[];
   /**
    * Regions that would be REMOVED from the selection if the user clicks.
    * Shown with a distinct "preview remove" style (e.g., red/orange tint).
    */
-  previewRemoveRegions?: string[]
+  previewRemoveRegions?: string[];
   /**
    * Animated viewBox for smooth zoom transitions.
    * When provided, uses animated.svg for smooth interpolation.
    */
-  animatedViewBox?: Interpolation<number, string>
+  animatedViewBox?: Interpolation<number, string>;
   /**
    * Region ID to visually highlight (e.g., when hovering over region name in popover)
    */
-  focusedRegion?: string | null
+  focusedRegion?: string | null;
   /**
    * When true, fills the parent container (100% width and height) instead of using fixed aspect ratio.
    * Used for full-viewport setup screen layout.
    */
-  fillContainer?: boolean
+  fillContainer?: boolean;
 }
 
 export function MapSelectorMap({
@@ -152,221 +152,221 @@ export function MapSelectorMap({
   focusedRegion,
   fillContainer = false,
 }: MapSelectorMapProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   // Filter regions if visibleRegions is provided
   const displayRegions = visibleRegions
     ? mapData.regions.filter((r) => visibleRegions.includes(r.id))
-    : mapData.regions
+    : mapData.regions;
 
   // Compute which group is currently hovered (if using groups)
   const hoveredGroup = useMemo(() => {
-    if (!hoveredRegion || !regionGroups) return null
-    return regionGroups.get(hoveredRegion) ?? null
-  }, [hoveredRegion, regionGroups])
+    if (!hoveredRegion || !regionGroups) return null;
+    return regionGroups.get(hoveredRegion) ?? null;
+  }, [hoveredRegion, regionGroups]);
 
   // Check if a region is in the hovered group
   const isRegionHighlighted = (regionId: string): boolean => {
-    if (!hoveredRegion) return false
+    if (!hoveredRegion) return false;
 
     // If hoverableRegions is specified, only those regions can be highlighted
     if (hoverableRegions && !hoverableRegions.includes(regionId)) {
-      return false
+      return false;
     }
 
     // If we have groups, check if this region is in the same group as hovered
     if (regionGroups && hoveredGroup) {
-      const thisGroup = regionGroups.get(regionId)
-      return thisGroup === hoveredGroup
+      const thisGroup = regionGroups.get(regionId);
+      return thisGroup === hoveredGroup;
     }
 
     // No groups - just check direct hover
-    return regionId === hoveredRegion
-  }
+    return regionId === hoveredRegion;
+  };
 
   // Check if a region is in the selected group
   const isRegionSelected = (regionId: string): boolean => {
-    if (!selectedGroup || !regionGroups) return false
-    const thisGroup = regionGroups.get(regionId)
-    return thisGroup === selectedGroup
-  }
+    if (!selectedGroup || !regionGroups) return false;
+    const thisGroup = regionGroups.get(regionId);
+    return thisGroup === selectedGroup;
+  };
 
   // Check if a region is excluded by size filtering
   const isRegionExcluded = (regionId: string): boolean => {
-    return excludedRegions.includes(regionId)
-  }
+    return excludedRegions.includes(regionId);
+  };
 
   // Check if a region would be added in a preview
   const isRegionPreviewAdd = (regionId: string): boolean => {
-    return previewAddRegions.includes(regionId)
-  }
+    return previewAddRegions.includes(regionId);
+  };
 
   // Check if a region would be removed in a preview
   const isRegionPreviewRemove = (regionId: string): boolean => {
-    return previewRemoveRegions.includes(regionId)
-  }
+    return previewRemoveRegions.includes(regionId);
+  };
 
   // Check if a region is the focused region (from popover hover)
   const isRegionFocused = (regionId: string): boolean => {
-    return focusedRegion === regionId
-  }
+    return focusedRegion === regionId;
+  };
 
   // Get fill color for a region
   const getRegionFill = (regionId: string): string => {
-    const isExcluded = isRegionExcluded(regionId)
-    const isPreviewAdd = isRegionPreviewAdd(regionId)
-    const isPreviewRemove = isRegionPreviewRemove(regionId)
-    const isHovered = isRegionHighlighted(regionId)
-    const isSelected = isRegionSelected(regionId)
-    const isFocused = isRegionFocused(regionId)
-    const hasSubMap = highlightedRegions.includes(regionId)
+    const isExcluded = isRegionExcluded(regionId);
+    const isPreviewAdd = isRegionPreviewAdd(regionId);
+    const isPreviewRemove = isRegionPreviewRemove(regionId);
+    const isHovered = isRegionHighlighted(regionId);
+    const isSelected = isRegionSelected(regionId);
+    const isFocused = isRegionFocused(regionId);
+    const hasSubMap = highlightedRegions.includes(regionId);
 
     // Focused region (from popover hover) takes highest precedence
     if (isFocused) {
-      return isDark ? '#7c3aed' : '#a78bfa' // Purple/violet for focus
+      return isDark ? "#7c3aed" : "#a78bfa"; // Purple/violet for focus
     }
 
     // Preview states take precedence - show what would happen on click
     if (isPreviewAdd) {
       // Region would be ADDED - show with green/teal tint
-      return isDark ? '#065f46' : '#a7f3d0'
+      return isDark ? "#065f46" : "#a7f3d0";
     }
     if (isPreviewRemove) {
       // Region would be REMOVED - show with amber/orange tint
-      return isDark ? '#78350f' : '#fde68a'
+      return isDark ? "#78350f" : "#fde68a";
     }
 
     // Excluded regions are dimmed (but not if preview is showing something else)
     if (isExcluded) {
-      return isDark ? '#1f2937' : '#e5e7eb' // Gray out excluded regions
+      return isDark ? "#1f2937" : "#e5e7eb"; // Gray out excluded regions
     }
 
     // Use the game's color algorithm
-    const baseColor = getRegionColor(regionId, false, isHovered, isDark)
+    const baseColor = getRegionColor(regionId, false, isHovered, isDark);
 
     // Hover takes precedence
     if (isHovered) {
-      return baseColor
+      return baseColor;
     }
 
     // Selected regions get a distinct color
     if (isSelected) {
-      return isDark ? '#065f46' : '#a7f3d0' // Green tint for selection
+      return isDark ? "#065f46" : "#a7f3d0"; // Green tint for selection
     }
 
     // If this region has a sub-map, give it a subtle glow effect
     if (hasSubMap) {
       // Slightly brighter to indicate drillable
-      return isDark ? '#4a5568' : '#c4b39a'
+      return isDark ? "#4a5568" : "#c4b39a";
     }
 
-    return baseColor
-  }
+    return baseColor;
+  };
 
   // Get stroke color for a region
   const getRegionStroke = (regionId: string): string => {
-    const isExcluded = isRegionExcluded(regionId)
-    const isPreviewAdd = isRegionPreviewAdd(regionId)
-    const isPreviewRemove = isRegionPreviewRemove(regionId)
-    const isHovered = isRegionHighlighted(regionId)
-    const isSelected = isRegionSelected(regionId)
-    const isFocused = isRegionFocused(regionId)
-    const hasSubMap = highlightedRegions.includes(regionId)
+    const isExcluded = isRegionExcluded(regionId);
+    const isPreviewAdd = isRegionPreviewAdd(regionId);
+    const isPreviewRemove = isRegionPreviewRemove(regionId);
+    const isHovered = isRegionHighlighted(regionId);
+    const isSelected = isRegionSelected(regionId);
+    const isFocused = isRegionFocused(regionId);
+    const hasSubMap = highlightedRegions.includes(regionId);
 
     // Focused region gets prominent border
     if (isFocused) {
-      return isDark ? '#c4b5fd' : '#7c3aed' // Purple border for focus
+      return isDark ? "#c4b5fd" : "#7c3aed"; // Purple border for focus
     }
 
     // Preview states take precedence
     if (isPreviewAdd) {
-      return isDark ? '#10b981' : '#059669' // Green border
+      return isDark ? "#10b981" : "#059669"; // Green border
     }
     if (isPreviewRemove) {
-      return isDark ? '#f59e0b' : '#d97706' // Amber border
+      return isDark ? "#f59e0b" : "#d97706"; // Amber border
     }
 
     // Excluded regions get subtle stroke
     if (isExcluded) {
-      return isDark ? '#374151' : '#d1d5db'
+      return isDark ? "#374151" : "#d1d5db";
     }
 
     if (isHovered) {
-      return isDark ? '#60a5fa' : '#1d4ed8'
+      return isDark ? "#60a5fa" : "#1d4ed8";
     }
 
     if (isSelected) {
-      return isDark ? '#10b981' : '#059669' // Green border for selection
+      return isDark ? "#10b981" : "#059669"; // Green border for selection
     }
 
     if (hasSubMap) {
       // Subtle highlight for drillable regions
-      return isDark ? '#60a5fa40' : '#1d4ed840'
+      return isDark ? "#60a5fa40" : "#1d4ed840";
     }
 
-    return isDark ? '#374151' : '#9ca3af'
-  }
+    return isDark ? "#374151" : "#9ca3af";
+  };
 
   // Get stroke width for a region
   const getRegionStrokeWidth = (regionId: string): number => {
-    const isPreviewAdd = isRegionPreviewAdd(regionId)
-    const isPreviewRemove = isRegionPreviewRemove(regionId)
-    const isHovered = isRegionHighlighted(regionId)
-    const isSelected = isRegionSelected(regionId)
-    const isFocused = isRegionFocused(regionId)
-    const hasSubMap = highlightedRegions.includes(regionId)
+    const isPreviewAdd = isRegionPreviewAdd(regionId);
+    const isPreviewRemove = isRegionPreviewRemove(regionId);
+    const isHovered = isRegionHighlighted(regionId);
+    const isSelected = isRegionSelected(regionId);
+    const isFocused = isRegionFocused(regionId);
+    const hasSubMap = highlightedRegions.includes(regionId);
 
-    if (isFocused) return 3 // Prominent stroke for focused region
-    if (isPreviewAdd || isPreviewRemove) return 1.5
-    if (isHovered) return 2
-    if (isSelected) return 1.5
-    if (hasSubMap) return 1.5
-    return 0.5
-  }
+    if (isFocused) return 3; // Prominent stroke for focused region
+    if (isPreviewAdd || isPreviewRemove) return 1.5;
+    if (isHovered) return 2;
+    if (isSelected) return 1.5;
+    if (hasSubMap) return 1.5;
+    return 0.5;
+  };
 
   // Get opacity for a region (preview regions should be fully visible)
   const getRegionOpacity = (regionId: string): number => {
-    const isExcluded = isRegionExcluded(regionId)
-    const isPreviewAdd = isRegionPreviewAdd(regionId)
-    const isPreviewRemove = isRegionPreviewRemove(regionId)
+    const isExcluded = isRegionExcluded(regionId);
+    const isPreviewAdd = isRegionPreviewAdd(regionId);
+    const isPreviewRemove = isRegionPreviewRemove(regionId);
 
     // Preview states override excluded opacity
-    if (isPreviewAdd || isPreviewRemove) return 1
-    if (isExcluded) return 0.5
-    return 1
-  }
+    if (isPreviewAdd || isPreviewRemove) return 1;
+    if (isExcluded) return 0.5;
+    return 1;
+  };
 
   // Use animated SVG when animatedViewBox is provided for smooth zoom transitions
-  const SvgComponent = animatedViewBox ? animated.svg : 'svg'
-  const svgViewBox = animatedViewBox || viewBox
+  const SvgComponent = animatedViewBox ? animated.svg : "svg";
+  const svgViewBox = animatedViewBox || viewBox;
 
   return (
     <div
       data-component="map-selector-map"
       className={css({
-        width: '100%',
+        width: "100%",
         // When fillContainer is true, fill the parent; otherwise use fixed 16:9 aspect ratio
-        ...(fillContainer ? { height: '100%' } : { aspectRatio: '16 / 9' }),
-        bg: isDark ? 'gray.900' : 'gray.50',
-        rounded: fillContainer ? 'none' : 'xl',
-        border: fillContainer ? 'none' : '2px solid',
-        borderColor: isDark ? 'gray.700' : 'gray.200',
-        overflow: 'hidden',
-        position: 'relative',
+        ...(fillContainer ? { height: "100%" } : { aspectRatio: "16 / 9" }),
+        bg: isDark ? "gray.900" : "gray.50",
+        rounded: fillContainer ? "none" : "xl",
+        border: fillContainer ? "none" : "2px solid",
+        borderColor: isDark ? "gray.700" : "gray.200",
+        overflow: "hidden",
+        position: "relative",
       })}
     >
       <SvgComponent
         viewBox={svgViewBox as string}
         className={css({
-          position: 'absolute',
+          position: "absolute",
           top: 0,
           left: 0,
-          width: '100%',
-          height: '100%',
-          cursor: 'crosshair',
-          display: 'block',
-          touchAction: 'manipulation',
+          width: "100%",
+          height: "100%",
+          cursor: "crosshair",
+          display: "block",
+          touchAction: "manipulation",
         })}
         preserveAspectRatio="xMidYMid meet"
       >
@@ -376,14 +376,14 @@ export function MapSelectorMap({
           y="-10000"
           width="30000"
           height="30000"
-          fill={isDark ? '#111827' : '#e0f2fe'}
+          fill={isDark ? "#111827" : "#e0f2fe"}
         />
 
         {/* Render each region with smooth animations */}
         {displayRegions.map((region) => {
-          const isExcluded = excludedRegions.includes(region.id)
-          const isPreviewAdd = previewAddRegions.includes(region.id)
-          const isPreviewRemove = previewRemoveRegions.includes(region.id)
+          const isExcluded = excludedRegions.includes(region.id);
+          const isPreviewAdd = previewAddRegions.includes(region.id);
+          const isPreviewRemove = previewRemoveRegions.includes(region.id);
           return (
             <AnimatedRegion
               key={region.id}
@@ -399,13 +399,13 @@ export function MapSelectorMap({
               onMouseEnter={() => onRegionHover(region.id)}
               onMouseLeave={() => onRegionHover(null)}
               onClick={(e) => {
-                e.stopPropagation()
-                onRegionClick(region.id)
+                e.stopPropagation();
+                onRegionClick(region.id);
               }}
             />
-          )
+          );
         })}
       </SvgComponent>
     </div>
-  )
+  );
 }

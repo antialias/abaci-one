@@ -1,14 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { vi } from 'vitest'
-import type { Tutorial } from '../../../types/tutorial'
-import { TutorialPlayer } from '../TutorialPlayer'
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { vi } from "vitest";
+import type { Tutorial } from "../../../types/tutorial";
+import { TutorialPlayer } from "../TutorialPlayer";
 
 // Mock the AbacusReact component for integration tests
-vi.mock('@soroban/abacus-react', () => ({
+vi.mock("@soroban/abacus-react", () => ({
   AbacusReact: ({ value, onValueChange, onClick }: any) => (
     <div data-testid="mock-abacus">
       <div data-testid="abacus-value">{value}</div>
-      <button data-testid="bead-click" onClick={() => onValueChange?.(value + 1)}>
+      <button
+        data-testid="bead-click"
+        onClick={() => onValueChange?.(value + 1)}
+      >
         Click Bead (+1)
       </button>
       <button data-testid="set-target" onClick={() => onValueChange?.(42)}>
@@ -16,118 +19,122 @@ vi.mock('@soroban/abacus-react', () => ({
       </button>
     </div>
   ),
-  AbacusOverlay: ({ children }: any) => <div data-testid="mock-overlay">{children}</div>,
-}))
+  AbacusOverlay: ({ children }: any) => (
+    <div data-testid="mock-overlay">{children}</div>
+  ),
+}));
 
 // Mock tutorial data with multi-step instructions
 const mockTutorial: Tutorial = {
-  id: 'integration-test',
-  title: 'Integration Test Tutorial',
-  description: 'Testing TutorialPlayer integration',
+  id: "integration-test",
+  title: "Integration Test Tutorial",
+  description: "Testing TutorialPlayer integration",
   steps: [
     {
-      id: 'step-1',
-      title: 'First Step',
-      problem: '5 + 3 = ?',
-      description: 'Add 3 to 5',
+      id: "step-1",
+      title: "First Step",
+      problem: "5 + 3 = ?",
+      description: "Add 3 to 5",
       startValue: 5,
       targetValue: 8,
       multiStepInstructions: [
-        'First, show 5 on the abacus',
-        'Then add 3 more',
-        'Result should be 8',
+        "First, show 5 on the abacus",
+        "Then add 3 more",
+        "Result should be 8",
       ],
     },
     {
-      id: 'step-2',
-      title: 'Second Step',
-      problem: '10 - 2 = ?',
-      description: 'Subtract 2 from 10',
+      id: "step-2",
+      title: "Second Step",
+      problem: "10 - 2 = ?",
+      description: "Subtract 2 from 10",
       startValue: 10,
       targetValue: 8,
     },
   ],
-}
+};
 
-describe('TutorialPlayer Integration', () => {
+describe("TutorialPlayer Integration", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
-  describe('AbacusReact Integration', () => {
-    it('should pass correct startValue to AbacusReact on step initialization', async () => {
-      render(<TutorialPlayer tutorial={mockTutorial} />)
+  describe("AbacusReact Integration", () => {
+    it("should pass correct startValue to AbacusReact on step initialization", async () => {
+      render(<TutorialPlayer tutorial={mockTutorial} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
-      })
-    })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("5");
+      });
+    });
 
-    it('should update AbacusReact value when navigating between steps', async () => {
-      render(<TutorialPlayer tutorial={mockTutorial} showDebugPanel={true} />)
+    it("should update AbacusReact value when navigating between steps", async () => {
+      render(<TutorialPlayer tutorial={mockTutorial} showDebugPanel={true} />);
 
       // Initial step should show startValue = 5
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("5");
+      });
 
       // Navigate to next step
-      const nextButton = screen.getByText('Next →')
-      fireEvent.click(nextButton)
+      const nextButton = screen.getByText("Next →");
+      fireEvent.click(nextButton);
 
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('10')
-      })
-    })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("10");
+      });
+    });
 
-    it('should handle user interactions with AbacusReact', async () => {
-      render(<TutorialPlayer tutorial={mockTutorial} />)
+    it("should handle user interactions with AbacusReact", async () => {
+      render(<TutorialPlayer tutorial={mockTutorial} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("5");
+      });
 
       // User clicks a bead
-      fireEvent.click(screen.getByTestId('bead-click'))
+      fireEvent.click(screen.getByTestId("bead-click"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('6')
-      })
-    })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("6");
+      });
+    });
 
-    it('should complete step when user reaches target value', async () => {
-      render(<TutorialPlayer tutorial={mockTutorial} />)
+    it("should complete step when user reaches target value", async () => {
+      render(<TutorialPlayer tutorial={mockTutorial} />);
 
       // Initial state
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("5");
+      });
 
       // Simulate user changing abacus to target value (8)
       // We'll click the bead 3 times to go from 5 to 8
-      fireEvent.click(screen.getByTestId('bead-click')) // 6
-      fireEvent.click(screen.getByTestId('bead-click')) // 7
-      fireEvent.click(screen.getByTestId('bead-click')) // 8
+      fireEvent.click(screen.getByTestId("bead-click")); // 6
+      fireEvent.click(screen.getByTestId("bead-click")); // 7
+      fireEvent.click(screen.getByTestId("bead-click")); // 8
 
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('8')
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("8");
         // Should show success feedback
-        expect(screen.getByText(/excellent/i)).toBeInTheDocument()
-      })
-    })
-  })
+        expect(screen.getByText(/excellent/i)).toBeInTheDocument();
+      });
+    });
+  });
 
-  describe('Multi-Step Progression', () => {
-    it('should show multi-step instructions for steps that have them', async () => {
-      render(<TutorialPlayer tutorial={mockTutorial} />)
+  describe("Multi-Step Progression", () => {
+    it("should show multi-step instructions for steps that have them", async () => {
+      render(<TutorialPlayer tutorial={mockTutorial} />);
 
       await waitFor(() => {
         // Should show multi-step navigation controls
-        expect(screen.getByText('First, show 5 on the abacus')).toBeInTheDocument()
-      })
-    })
+        expect(
+          screen.getByText("First, show 5 on the abacus"),
+        ).toBeInTheDocument();
+      });
+    });
 
-    it('should advance multi-steps automatically when user reaches expected values', async () => {
+    it("should advance multi-steps automatically when user reaches expected values", async () => {
       const tutorialWithExpectedSteps: Tutorial = {
         ...mockTutorial,
         steps: [
@@ -137,17 +144,17 @@ describe('TutorialPlayer Integration', () => {
             // For testing, we'll simulate the expected intermediate values
           },
         ],
-      }
+      };
 
-      render(<TutorialPlayer tutorial={tutorialWithExpectedSteps} />)
+      render(<TutorialPlayer tutorial={tutorialWithExpectedSteps} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("5");
+      });
 
       // Simulate reaching an intermediate target that should advance multi-step
       // This would be based on the unified step generator's expected values
-      fireEvent.click(screen.getByTestId('bead-click'))
+      fireEvent.click(screen.getByTestId("bead-click"));
 
       // The multi-step should advance after a delay
       await waitFor(
@@ -156,32 +163,32 @@ describe('TutorialPlayer Integration', () => {
           // Since we don't have the exact expected values in this test,
           // we're testing the integration pattern rather than specific values
         },
-        { timeout: 2000 }
-      )
-    })
+        { timeout: 2000 },
+      );
+    });
 
-    it('should allow manual multi-step navigation', async () => {
-      render(<TutorialPlayer tutorial={mockTutorial} />)
+    it("should allow manual multi-step navigation", async () => {
+      render(<TutorialPlayer tutorial={mockTutorial} />);
 
       // Should show multi-step controls
       await waitFor(() => {
-        expect(screen.getByText('⏪ Prev')).toBeInTheDocument()
-        expect(screen.getByText('Next ⏩')).toBeInTheDocument()
-      })
+        expect(screen.getByText("⏪ Prev")).toBeInTheDocument();
+        expect(screen.getByText("Next ⏩")).toBeInTheDocument();
+      });
 
       // Navigate to next multi-step
-      fireEvent.click(screen.getByText('Next ⏩'))
+      fireEvent.click(screen.getByText("Next ⏩"));
 
       await waitFor(() => {
-        expect(screen.getByText('Then add 3 more')).toBeInTheDocument()
-      })
-    })
-  })
+        expect(screen.getByText("Then add 3 more")).toBeInTheDocument();
+      });
+    });
+  });
 
-  describe('Context State Management', () => {
-    it('should maintain consistent state across components', async () => {
-      const onStepChange = vi.fn()
-      const onStepComplete = vi.fn()
+  describe("Context State Management", () => {
+    it("should maintain consistent state across components", async () => {
+      const onStepChange = vi.fn();
+      const onStepComplete = vi.fn();
 
       render(
         <TutorialPlayer
@@ -189,141 +196,143 @@ describe('TutorialPlayer Integration', () => {
           onStepChange={onStepChange}
           onStepComplete={onStepComplete}
           showDebugPanel={true}
-        />
-      )
+        />,
+      );
 
       // Initial step change should be called
       await waitFor(() => {
-        expect(onStepChange).toHaveBeenCalledWith(0, mockTutorial.steps[0])
-      })
+        expect(onStepChange).toHaveBeenCalledWith(0, mockTutorial.steps[0]);
+      });
 
       // Navigate to next step
-      fireEvent.click(screen.getByText('Next →'))
+      fireEvent.click(screen.getByText("Next →"));
 
       await waitFor(() => {
-        expect(onStepChange).toHaveBeenCalledWith(1, mockTutorial.steps[1])
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('10')
-      })
-    })
+        expect(onStepChange).toHaveBeenCalledWith(1, mockTutorial.steps[1]);
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("10");
+      });
+    });
 
-    it('should prevent feedback loops between AbacusReact and context', async () => {
-      const _onValueChange = vi.fn()
+    it("should prevent feedback loops between AbacusReact and context", async () => {
+      const _onValueChange = vi.fn();
 
-      render(<TutorialPlayer tutorial={mockTutorial} showDebugPanel={true} />)
+      render(<TutorialPlayer tutorial={mockTutorial} showDebugPanel={true} />);
 
       // Initial value should be set without causing loops
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("5");
+      });
 
       // Navigate between steps rapidly
-      fireEvent.click(screen.getByText('Next →'))
-      fireEvent.click(screen.getByText('← Prev'))
-      fireEvent.click(screen.getByText('Next →'))
+      fireEvent.click(screen.getByText("Next →"));
+      fireEvent.click(screen.getByText("← Prev"));
+      fireEvent.click(screen.getByText("Next →"));
 
       // Should handle rapid navigation without getting stuck
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('10')
-      })
-    })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("10");
+      });
+    });
 
-    it('should handle programmatic changes correctly', async () => {
-      render(<TutorialPlayer tutorial={mockTutorial} />)
+    it("should handle programmatic changes correctly", async () => {
+      render(<TutorialPlayer tutorial={mockTutorial} />);
 
       // Initial programmatic setting
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("5");
+      });
 
       // User change
-      fireEvent.click(screen.getByTestId('bead-click'))
+      fireEvent.click(screen.getByTestId("bead-click"));
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('6')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("6");
+      });
 
       // Navigate to new step (programmatic change)
-      fireEvent.click(screen.getByText('Next →'))
+      fireEvent.click(screen.getByText("Next →"));
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('10')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("10");
+      });
 
       // User should still be able to interact after programmatic change
-      fireEvent.click(screen.getByTestId('bead-click'))
+      fireEvent.click(screen.getByTestId("bead-click"));
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('11')
-      })
-    })
-  })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("11");
+      });
+    });
+  });
 
-  describe('Error Recovery', () => {
-    it('should handle AbacusReact errors gracefully', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  describe("Error Recovery", () => {
+    it("should handle AbacusReact errors gracefully", async () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       // Mock AbacusReact to throw an error
       const ErrorAbacus = () => {
-        throw new Error('AbacusReact error')
-      }
+        throw new Error("AbacusReact error");
+      };
 
-      vi.mocked(require('@soroban/abacus-react')).AbacusReact = ErrorAbacus
+      vi.mocked(require("@soroban/abacus-react")).AbacusReact = ErrorAbacus;
 
       expect(() => {
-        render(<TutorialPlayer tutorial={mockTutorial} />)
-      }).not.toThrow()
+        render(<TutorialPlayer tutorial={mockTutorial} />);
+      }).not.toThrow();
 
-      consoleSpy.mockRestore()
-    })
+      consoleSpy.mockRestore();
+    });
 
-    it('should recover from invalid state transitions', async () => {
-      render(<TutorialPlayer tutorial={mockTutorial} />)
+    it("should recover from invalid state transitions", async () => {
+      render(<TutorialPlayer tutorial={mockTutorial} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("5");
+      });
 
       // Try to set an invalid value
-      fireEvent.click(screen.getByTestId('set-target'))
+      fireEvent.click(screen.getByTestId("set-target"));
 
       // Should still function normally
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('42')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("42");
+      });
 
       // Navigation should still work
-      fireEvent.click(screen.getByText('Next →'))
+      fireEvent.click(screen.getByText("Next →"));
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('10')
-      })
-    })
-  })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("10");
+      });
+    });
+  });
 
-  describe('Performance', () => {
-    it('should not cause excessive re-renders', async () => {
-      let renderCount = 0
+  describe("Performance", () => {
+    it("should not cause excessive re-renders", async () => {
+      let renderCount = 0;
 
       const TestWrapper = () => {
-        renderCount++
-        return <TutorialPlayer tutorial={mockTutorial} />
-      }
+        renderCount++;
+        return <TutorialPlayer tutorial={mockTutorial} />;
+      };
 
-      render(<TestWrapper />)
+      render(<TestWrapper />);
 
-      const initialRenderCount = renderCount
+      const initialRenderCount = renderCount;
 
       // Perform various interactions
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("5");
+      });
 
-      fireEvent.click(screen.getByTestId('bead-click'))
-      fireEvent.click(screen.getByText('Next →'))
-      fireEvent.click(screen.getByText('← Prev'))
+      fireEvent.click(screen.getByTestId("bead-click"));
+      fireEvent.click(screen.getByText("Next →"));
+      fireEvent.click(screen.getByText("← Prev"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
-      })
+        expect(screen.getByTestId("abacus-value")).toHaveTextContent("5");
+      });
 
       // Should not cause excessive re-renders
-      expect(renderCount).toBeLessThan(initialRenderCount + 10)
-    })
-  })
-})
+      expect(renderCount).toBeLessThan(initialRenderCount + 10);
+    });
+  });
+});

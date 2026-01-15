@@ -1,7 +1,7 @@
-import type { Meta, StoryObj } from '@storybook/react'
-import { useState, useCallback } from 'react'
-import { SimpleLetterKeyboard } from './SimpleLetterKeyboard'
-import { getNthNonSpaceLetter } from '../Validator'
+import type { Meta, StoryObj } from "@storybook/react";
+import { useState, useCallback } from "react";
+import { SimpleLetterKeyboard } from "./SimpleLetterKeyboard";
+import { getNthNonSpaceLetter } from "../Validator";
 
 /**
  * Normalize accented characters to their base ASCII letters.
@@ -10,9 +10,9 @@ import { getNthNonSpaceLetter } from '../Validator'
  */
 function normalizeToBaseLetter(char: string): string {
   return char
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
 /**
@@ -26,96 +26,101 @@ function LetterConfirmationGameDemo({
   requiredLetters = 3,
   isDark = true,
 }: {
-  regionName: string
-  flagEmoji?: string
-  requiredLetters?: number
-  isDark?: boolean
+  regionName: string;
+  flagEmoji?: string;
+  requiredLetters?: number;
+  isDark?: boolean;
 }) {
-  const [confirmedCount, setConfirmedCount] = useState(0)
+  const [confirmedCount, setConfirmedCount] = useState(0);
 
   // Get the next expected letter (skipping spaces)
-  const nextLetterInfo = getNthNonSpaceLetter(regionName, confirmedCount)
-  const isComplete = confirmedCount >= requiredLetters
+  const nextLetterInfo = getNthNonSpaceLetter(regionName, confirmedCount);
+  const isComplete = confirmedCount >= requiredLetters;
 
   const handleKeyPress = useCallback(
     (letter: string) => {
-      if (isComplete || !nextLetterInfo) return
+      if (isComplete || !nextLetterInfo) return;
 
       // Use normalizeToBaseLetter so 'e' matches 'é', 'n' matches 'ñ', etc.
       if (letter.toLowerCase() === normalizeToBaseLetter(nextLetterInfo.char)) {
-        setConfirmedCount((c) => c + 1)
+        setConfirmedCount((c) => c + 1);
       }
     },
-    [isComplete, nextLetterInfo]
-  )
+    [isComplete, nextLetterInfo],
+  );
 
   // Render the region name with the exact same styling as the game
   const renderRegionName = () => {
-    let nonSpaceIndex = 0
-    return regionName.split('').map((char, index) => {
-      const isSpace = char === ' '
-      const currentNonSpaceIndex = isSpace ? -1 : nonSpaceIndex
+    let nonSpaceIndex = 0;
+    return regionName.split("").map((char, index) => {
+      const isSpace = char === " ";
+      const currentNonSpaceIndex = isSpace ? -1 : nonSpaceIndex;
 
       if (!isSpace) {
-        nonSpaceIndex++
+        nonSpaceIndex++;
       }
 
       // Spaces are always shown at full opacity
       if (isSpace) {
         return (
-          <span key={index} style={{ transition: 'all 0.15s ease-out' }}>
+          <span key={index} style={{ transition: "all 0.15s ease-out" }}>
             {char}
           </span>
-        )
+        );
       }
 
       // For letters, check confirmation status using non-space index
-      const needsConfirmation = currentNonSpaceIndex < requiredLetters
-      const isConfirmed = currentNonSpaceIndex < confirmedCount
-      const isNextToConfirm = currentNonSpaceIndex === confirmedCount && !isComplete
+      const needsConfirmation = currentNonSpaceIndex < requiredLetters;
+      const isConfirmed = currentNonSpaceIndex < confirmedCount;
+      const isNextToConfirm =
+        currentNonSpaceIndex === confirmedCount && !isComplete;
 
       return (
         <span
           key={index}
           style={{
-            transition: 'all 0.15s ease-out',
+            transition: "all 0.15s ease-out",
             opacity: needsConfirmation && !isConfirmed ? 0.4 : 1,
-            textDecoration: isNextToConfirm ? 'underline' : 'none',
-            textDecorationColor: isNextToConfirm ? (isDark ? '#60a5fa' : '#3b82f6') : undefined,
-            textUnderlineOffset: isNextToConfirm ? '4px' : undefined,
+            textDecoration: isNextToConfirm ? "underline" : "none",
+            textDecorationColor: isNextToConfirm
+              ? isDark
+                ? "#60a5fa"
+                : "#3b82f6"
+              : undefined,
+            textUnderlineOffset: isNextToConfirm ? "4px" : undefined,
           }}
         >
           {char}
         </span>
-      )
-    })
-  }
+      );
+    });
+  };
 
-  const bgColor = isDark ? '#0f172a' : '#f1f5f9'
-  const mapBgColor = isDark ? '#1e293b' : '#e2e8f0'
+  const bgColor = isDark ? "#0f172a" : "#f1f5f9";
+  const mapBgColor = isDark ? "#1e293b" : "#e2e8f0";
 
   return (
     <div
       style={{
-        position: 'relative',
-        width: '100%',
-        height: '600px',
+        position: "relative",
+        width: "100%",
+        height: "600px",
         background: bgColor,
-        borderRadius: '12px',
-        overflow: 'hidden',
+        borderRadius: "12px",
+        overflow: "hidden",
       }}
     >
       {/* Map placeholder background */}
       <div
         style={{
-          position: 'absolute',
+          position: "absolute",
           inset: 0,
           background: mapBgColor,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: isDark ? '#475569' : '#94a3b8',
-          fontSize: '48px',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: isDark ? "#475569" : "#94a3b8",
+          fontSize: "48px",
         }}
       >
         🗺️
@@ -124,73 +129,75 @@ function LetterConfirmationGameDemo({
       {/* Takeover overlay - mimics the actual game */}
       <div
         style={{
-          position: 'absolute',
+          position: "absolute",
           inset: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          pointerEvents: isComplete ? 'none' : 'auto',
-          transition: 'opacity 0.3s ease-out',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          pointerEvents: isComplete ? "none" : "auto",
+          transition: "opacity 0.3s ease-out",
           opacity: isComplete ? 0 : 1,
         }}
       >
         {/* Dark backdrop */}
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.7)',
-            backdropFilter: 'blur(4px)',
+            background: "rgba(0, 0, 0, 0.7)",
+            backdropFilter: "blur(4px)",
           }}
         />
 
         {/* Content container */}
         <div
           style={{
-            position: 'relative',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '16px',
-            padding: '32px',
+            position: "relative",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "16px",
+            padding: "32px",
           }}
         >
           {/* Region name with flag */}
           <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              fontSize: '48px',
-              fontWeight: 'bold',
-              color: 'white',
-              textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              fontSize: "48px",
+              fontWeight: "bold",
+              color: "white",
+              textShadow: "0 2px 4px rgba(0,0,0,0.5)",
             }}
           >
-            {flagEmoji && <span style={{ fontSize: '40px' }}>{flagEmoji}</span>}
+            {flagEmoji && <span style={{ fontSize: "40px" }}>{flagEmoji}</span>}
             <span>{renderRegionName()}</span>
           </div>
 
           {/* Type instruction */}
           <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              color: '#fcd34d',
-              fontSize: '18px',
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              color: "#fcd34d",
+              fontSize: "18px",
             }}
           >
             <span>⌨️</span>
-            <span>Type the underlined letter{requiredLetters > 1 ? 's' : ''}</span>
+            <span>
+              Type the underlined letter{requiredLetters > 1 ? "s" : ""}
+            </span>
           </div>
 
           {/* Progress indicator */}
           <div
             style={{
-              color: '#94a3b8',
-              fontSize: '14px',
+              color: "#94a3b8",
+              fontSize: "14px",
             }}
           >
             {confirmedCount} of {requiredLetters} letters confirmed
@@ -202,18 +209,20 @@ function LetterConfirmationGameDemo({
       {!isComplete && (
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             bottom: 0,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '100%',
-            maxWidth: '500px',
-            padding: '8px',
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "100%",
+            maxWidth: "500px",
+            padding: "8px",
             zIndex: 160,
           }}
         >
           <SimpleLetterKeyboard
-            uppercase={nextLetterInfo?.char.toUpperCase() === nextLetterInfo?.char}
+            uppercase={
+              nextLetterInfo?.char.toUpperCase() === nextLetterInfo?.char
+            }
             isDark={true}
             forceShow={true}
             onKeyPress={handleKeyPress}
@@ -225,23 +234,23 @@ function LetterConfirmationGameDemo({
       {isComplete && (
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             inset: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(34, 197, 94, 0.2)',
-            backdropFilter: 'blur(2px)',
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(34, 197, 94, 0.2)",
+            backdropFilter: "blur(2px)",
           }}
         >
-          <div style={{ fontSize: '72px', marginBottom: '16px' }}>✅</div>
+          <div style={{ fontSize: "72px", marginBottom: "16px" }}>✅</div>
           <div
             style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              color: 'white',
-              textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+              fontSize: "24px",
+              fontWeight: "bold",
+              color: "white",
+              textShadow: "0 2px 4px rgba(0,0,0,0.5)",
             }}
           >
             Name confirmed! Now find it on the map.
@@ -250,15 +259,15 @@ function LetterConfirmationGameDemo({
             type="button"
             onClick={() => setConfirmedCount(0)}
             style={{
-              marginTop: '16px',
-              padding: '8px 24px',
-              background: 'white',
-              color: '#0f172a',
-              border: 'none',
-              borderRadius: '8px',
+              marginTop: "16px",
+              padding: "8px 24px",
+              background: "white",
+              color: "#0f172a",
+              border: "none",
+              borderRadius: "8px",
               fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: '16px',
+              cursor: "pointer",
+              fontSize: "16px",
             }}
           >
             Try Again
@@ -266,25 +275,25 @@ function LetterConfirmationGameDemo({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 const meta: Meta<typeof LetterConfirmationGameDemo> = {
-  title: 'Arcade/KnowYourWorld/LetterConfirmation',
+  title: "Arcade/KnowYourWorld/LetterConfirmation",
   component: LetterConfirmationGameDemo,
   parameters: {
-    layout: 'padded',
+    layout: "padded",
   },
-}
+};
 
-export default meta
-type Story = StoryObj<typeof LetterConfirmationGameDemo>
+export default meta;
+type Story = StoryObj<typeof LetterConfirmationGameDemo>;
 
 // Main demo - US Virgin Islands (tests space-skipping)
 export const USVirginIslands: Story = {
   args: {
-    regionName: 'US Virgin Islands',
-    flagEmoji: '🇻🇮',
+    regionName: "US Virgin Islands",
+    flagEmoji: "🇻🇮",
     requiredLetters: 3,
     isDark: true,
   },
@@ -303,13 +312,13 @@ This is the exact UI users see in Learning mode on mobile devices.
       },
     },
   },
-}
+};
 
 // Other regions with spaces
 export const NewZealand: Story = {
   args: {
-    regionName: 'New Zealand',
-    flagEmoji: '🇳🇿',
+    regionName: "New Zealand",
+    flagEmoji: "🇳🇿",
     requiredLetters: 3,
     isDark: true,
   },
@@ -320,90 +329,90 @@ export const NewZealand: Story = {
       },
     },
   },
-}
+};
 
 export const SouthAfrica: Story = {
   args: {
-    regionName: 'South Africa',
-    flagEmoji: '🇿🇦',
+    regionName: "South Africa",
+    flagEmoji: "🇿🇦",
     requiredLetters: 3,
     isDark: true,
   },
   parameters: {
     docs: {
       description: {
-        story: 'Type S, O, U (first 3 letters are before the space)',
+        story: "Type S, O, U (first 3 letters are before the space)",
       },
     },
   },
-}
+};
 
 export const UnitedKingdom: Story = {
   args: {
-    regionName: 'United Kingdom',
-    flagEmoji: '🇬🇧',
+    regionName: "United Kingdom",
+    flagEmoji: "🇬🇧",
     requiredLetters: 3,
     isDark: true,
   },
   parameters: {
     docs: {
       description: {
-        story: 'Type U, N, I (first 3 letters)',
+        story: "Type U, N, I (first 3 letters)",
       },
     },
   },
-}
+};
 
 // Simple region (no spaces)
 export const France: Story = {
   args: {
-    regionName: 'France',
-    flagEmoji: '🇫🇷',
+    regionName: "France",
+    flagEmoji: "🇫🇷",
     requiredLetters: 3,
     isDark: true,
   },
   parameters: {
     docs: {
       description: {
-        story: 'Simple case - type F, R, A',
+        story: "Simple case - type F, R, A",
       },
     },
   },
-}
+};
 
 // Edge case - very short name
 export const Chad: Story = {
   args: {
-    regionName: 'Chad',
-    flagEmoji: '🇹🇩',
+    regionName: "Chad",
+    flagEmoji: "🇹🇩",
     requiredLetters: 3,
     isDark: true,
   },
   parameters: {
     docs: {
       description: {
-        story: 'Short name - type C, H, A',
+        story: "Short name - type C, H, A",
       },
     },
   },
-}
+};
 
 // Light mode variant
 export const LightMode: Story = {
   args: {
-    regionName: 'US Virgin Islands',
-    flagEmoji: '🇻🇮',
+    regionName: "US Virgin Islands",
+    flagEmoji: "🇻🇮",
     requiredLetters: 3,
     isDark: false,
   },
   parameters: {
     docs: {
       description: {
-        story: 'Light mode variant of the UI',
+        story: "Light mode variant of the UI",
       },
     },
   },
-}
+};
 
 // ============================================
 // ACCENTED CHARACTER TESTS
@@ -413,7 +422,7 @@ export const LightMode: Story = {
 export const CoteDIvoire: Story = {
   args: {
     regionName: "Côte d'Ivoire",
-    flagEmoji: '🇨🇮',
+    flagEmoji: "🇨🇮",
     requiredLetters: 3,
     isDark: true,
   },
@@ -430,12 +439,12 @@ export const CoteDIvoire: Story = {
       },
     },
   },
-}
+};
 
 export const SaoTome: Story = {
   args: {
-    regionName: 'São Tomé and Príncipe',
-    flagEmoji: '🇸🇹',
+    regionName: "São Tomé and Príncipe",
+    flagEmoji: "🇸🇹",
     requiredLetters: 3,
     isDark: true,
   },
@@ -452,12 +461,12 @@ export const SaoTome: Story = {
       },
     },
   },
-}
+};
 
 export const Curacao: Story = {
   args: {
-    regionName: 'Curaçao',
-    flagEmoji: '🇨🇼',
+    regionName: "Curaçao",
+    flagEmoji: "🇨🇼",
     requiredLetters: 3,
     isDark: true,
   },
@@ -474,12 +483,12 @@ export const Curacao: Story = {
       },
     },
   },
-}
+};
 
 export const Reunion: Story = {
   args: {
-    regionName: 'Réunion',
-    flagEmoji: '🇷🇪',
+    regionName: "Réunion",
+    flagEmoji: "🇷🇪",
     requiredLetters: 3,
     isDark: true,
   },
@@ -496,12 +505,12 @@ export const Reunion: Story = {
       },
     },
   },
-}
+};
 
 export const Mexico: Story = {
   args: {
-    regionName: 'México',
-    flagEmoji: '🇲🇽',
+    regionName: "México",
+    flagEmoji: "🇲🇽",
     requiredLetters: 3,
     isDark: true,
   },
@@ -518,12 +527,12 @@ export const Mexico: Story = {
       },
     },
   },
-}
+};
 
 export const Peru: Story = {
   args: {
-    regionName: 'Perú',
-    flagEmoji: '🇵🇪',
+    regionName: "Perú",
+    flagEmoji: "🇵🇪",
     requiredLetters: 3,
     isDark: true,
   },
@@ -540,12 +549,12 @@ export const Peru: Story = {
       },
     },
   },
-}
+};
 
 export const SaintBarthelemy: Story = {
   args: {
-    regionName: 'Saint Barthélemy',
-    flagEmoji: '🇧🇱',
+    regionName: "Saint Barthélemy",
+    flagEmoji: "🇧🇱",
     requiredLetters: 3,
     isDark: true,
   },
@@ -562,4 +571,4 @@ export const SaintBarthelemy: Story = {
       },
     },
   },
-}
+};

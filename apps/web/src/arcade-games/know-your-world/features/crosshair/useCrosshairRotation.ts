@@ -22,10 +22,10 @@
  * ```
  */
 
-'use client'
+"use client";
 
-import { useEffect, useRef } from 'react'
-import { useSpringValue, type SpringValue } from '@react-spring/web'
+import { useEffect, useRef } from "react";
+import { useSpringValue, type SpringValue } from "@react-spring/web";
 
 // ============================================================================
 // Types
@@ -33,14 +33,14 @@ import { useSpringValue, type SpringValue } from '@react-spring/web'
 
 export interface UseCrosshairRotationOptions {
   /** Target rotation speed in degrees per second. 0 = stopped, higher = faster spin */
-  targetSpeedDegPerSec: number
+  targetSpeedDegPerSec: number;
 }
 
 export interface UseCrosshairRotationReturn {
   /** Animated rotation angle (degrees) - use with react-spring's animated components */
-  rotationAngle: SpringValue<number>
+  rotationAngle: SpringValue<number>;
   /** Current rotation speed - useful for debugging */
-  rotationSpeed: SpringValue<number>
+  rotationSpeed: SpringValue<number>;
 }
 
 // ============================================================================
@@ -48,10 +48,10 @@ export interface UseCrosshairRotationReturn {
 // ============================================================================
 
 /** Speed threshold below which we consider "stopped" and wind back to upright */
-const WIND_BACK_THRESHOLD = 5 // deg/s
+const WIND_BACK_THRESHOLD = 5; // deg/s
 
 /** Prevent angle overflow after hours of play */
-const MAX_ANGLE = 360000
+const MAX_ANGLE = 360000;
 
 // ============================================================================
 // Hook Implementation
@@ -67,74 +67,74 @@ const MAX_ANGLE = 360000
  * @returns Crosshair rotation animation values
  */
 export function useCrosshairRotation(
-  options: UseCrosshairRotationOptions
+  options: UseCrosshairRotationOptions,
 ): UseCrosshairRotationReturn {
-  const { targetSpeedDegPerSec } = options
+  const { targetSpeedDegPerSec } = options;
 
   // Spring for rotation speed - this is what makes speed changes smooth
   const rotationSpeed = useSpringValue(0, {
     config: { tension: 200, friction: 30 },
-  })
+  });
 
   // Spring value for the angle - we'll directly .set() this from the rAF loop
   // when rotating, or use spring animation when winding back to 0
   const rotationAngle = useSpringValue(0, {
     config: { tension: 120, friction: 14 }, // Gentle spring for wind-back
-  })
+  });
 
   // Track whether we're winding back (to avoid repeated .start() calls)
-  const isWindingBackRef = useRef(false)
+  const isWindingBackRef = useRef(false);
 
   // Update the speed spring when target changes
   useEffect(() => {
-    rotationSpeed.start(targetSpeedDegPerSec)
-  }, [targetSpeedDegPerSec, rotationSpeed])
+    rotationSpeed.start(targetSpeedDegPerSec);
+  }, [targetSpeedDegPerSec, rotationSpeed]);
 
   // requestAnimationFrame loop to integrate angle from speed
   // When speed is near 0, wind back to upright (0 degrees)
   useEffect(() => {
-    let lastTime = performance.now()
-    let frameId: number
+    let lastTime = performance.now();
+    let frameId: number;
 
     const loop = (now: number) => {
-      const dt = (now - lastTime) / 1000 // seconds
-      lastTime = now
+      const dt = (now - lastTime) / 1000; // seconds
+      lastTime = now;
 
-      const speed = rotationSpeed.get() // deg/s from the spring
-      const currentAngle = rotationAngle.get()
+      const speed = rotationSpeed.get(); // deg/s from the spring
+      const currentAngle = rotationAngle.get();
 
       if (Math.abs(speed) < WIND_BACK_THRESHOLD) {
         // Speed is essentially 0 - wind back to upright
         if (!isWindingBackRef.current) {
-          isWindingBackRef.current = true
+          isWindingBackRef.current = true;
           // Find the nearest 0 (could be 0, 360, 720, etc. or -360, etc.)
-          const nearestZero = Math.round(currentAngle / 360) * 360
-          rotationAngle.start(nearestZero)
+          const nearestZero = Math.round(currentAngle / 360) * 360;
+          rotationAngle.start(nearestZero);
         }
         // Let the spring handle it - don't set manually
       } else {
         // Speed is significant - integrate normally
-        isWindingBackRef.current = false
+        isWindingBackRef.current = false;
 
-        let angle = currentAngle + speed * dt // integrate
+        let angle = currentAngle + speed * dt; // integrate
 
         // Keep angle in reasonable range (prevent overflow after hours of play)
-        if (angle >= MAX_ANGLE) angle -= MAX_ANGLE
-        if (angle < 0) angle += 360
+        if (angle >= MAX_ANGLE) angle -= MAX_ANGLE;
+        if (angle < 0) angle += 360;
 
         // Direct set - no extra springing on angle itself
-        rotationAngle.set(angle)
+        rotationAngle.set(angle);
       }
 
-      frameId = requestAnimationFrame(loop)
-    }
+      frameId = requestAnimationFrame(loop);
+    };
 
-    frameId = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(frameId)
-  }, [rotationSpeed, rotationAngle])
+    frameId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(frameId);
+  }, [rotationSpeed, rotationAngle]);
 
   return {
     rotationAngle,
     rotationSpeed,
-  }
+  };
 }

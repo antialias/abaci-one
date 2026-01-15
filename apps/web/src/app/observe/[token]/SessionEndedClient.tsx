@@ -1,14 +1,14 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { css } from '../../../../styled-system/css'
+import Link from "next/link";
+import { css } from "../../../../styled-system/css";
 
 interface SessionEndedClientProps {
-  studentName: string
-  studentEmoji: string
-  sessionCompleted: boolean
+  studentName: string;
+  studentEmoji: string;
+  sessionCompleted: boolean;
   /** URL to the session report (only shown if user has access) */
-  sessionReportUrl?: string
+  sessionReportUrl?: string;
 }
 
 export function SessionEndedClient({
@@ -21,10 +21,10 @@ export function SessionEndedClient({
     <div
       data-component="session-ended-page"
       className={css({
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        bg: 'bg.canvas',
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        bg: "bg.canvas",
       })}
     >
       {/* Banner with link to session report (only shown if user has access) */}
@@ -32,37 +32,37 @@ export function SessionEndedClient({
         <div
           data-element="session-report-banner"
           className={css({
-            bg: 'green.500',
-            color: 'white',
+            bg: "green.500",
+            color: "white",
             py: 3,
             px: 4,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             gap: 3,
-            flexWrap: 'wrap',
-            textAlign: 'center',
+            flexWrap: "wrap",
+            textAlign: "center",
           })}
         >
-          <span className={css({ fontWeight: 'medium' })}>
+          <span className={css({ fontWeight: "medium" })}>
             You have access to view the full session report.
           </span>
           <Link
             href={sessionReportUrl}
             className={css({
-              display: 'inline-flex',
-              alignItems: 'center',
+              display: "inline-flex",
+              alignItems: "center",
               gap: 1,
-              bg: 'white',
-              color: 'green.700',
+              bg: "white",
+              color: "green.700",
               px: 4,
               py: 1.5,
-              borderRadius: 'md',
-              fontWeight: 'semibold',
-              fontSize: 'sm',
-              transition: 'all 0.2s',
+              borderRadius: "md",
+              fontWeight: "semibold",
+              fontSize: "sm",
+              transition: "all 0.2s",
               _hover: {
-                bg: 'green.50',
+                bg: "green.50",
               },
             })}
           >
@@ -75,40 +75,42 @@ export function SessionEndedClient({
       <div
         className={css({
           flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
           p: 6,
-          textAlign: 'center',
+          textAlign: "center",
         })}
       >
         <div
           className={css({
-            fontSize: '6xl',
+            fontSize: "6xl",
             mb: 4,
           })}
         >
-          {sessionCompleted ? '🎉' : '⏳'}
+          {sessionCompleted ? "🎉" : "⏳"}
         </div>
 
         <h1
           className={css({
-            fontSize: '2xl',
-            fontWeight: 'bold',
-            color: 'text.primary',
+            fontSize: "2xl",
+            fontWeight: "bold",
+            color: "text.primary",
             mb: 2,
           })}
         >
-          {sessionCompleted ? 'Practice Session Complete!' : 'Session Not Started'}
+          {sessionCompleted
+            ? "Practice Session Complete!"
+            : "Session Not Started"}
         </h1>
 
         <p
           className={css({
-            fontSize: 'lg',
-            color: 'text.secondary',
+            fontSize: "lg",
+            color: "text.secondary",
             mb: 6,
-            maxWidth: '400px',
+            maxWidth: "400px",
           })}
         >
           {sessionCompleted
@@ -119,21 +121,21 @@ export function SessionEndedClient({
         {!sessionReportUrl && sessionCompleted && (
           <p
             className={css({
-              fontSize: 'sm',
-              color: 'text.muted',
+              fontSize: "sm",
+              color: "text.muted",
               mb: 6,
             })}
           >
-            If you have an account with access to this student, you can sign in to view the session
-            report.
+            If you have an account with access to this student, you can sign in
+            to view the session report.
           </p>
         )}
 
         {!sessionCompleted && (
           <p
             className={css({
-              fontSize: 'sm',
-              color: 'text.muted',
+              fontSize: "sm",
+              color: "text.muted",
               mb: 6,
             })}
           >
@@ -144,18 +146,18 @@ export function SessionEndedClient({
         <Link
           href="/"
           className={css({
-            display: 'inline-flex',
-            alignItems: 'center',
+            display: "inline-flex",
+            alignItems: "center",
             gap: 2,
             px: 6,
             py: 3,
-            bg: 'brand.500',
-            color: 'white',
-            borderRadius: 'lg',
-            fontWeight: 'semibold',
-            transition: 'all 0.2s',
+            bg: "brand.500",
+            color: "white",
+            borderRadius: "lg",
+            fontWeight: "semibold",
+            transition: "all 0.2s",
             _hover: {
-              bg: 'brand.600',
+              bg: "brand.600",
             },
           })}
         >
@@ -163,5 +165,5 @@ export function SessionEndedClient({
         </Link>
       </div>
     </div>
-  )
+  );
 }

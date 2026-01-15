@@ -1,27 +1,33 @@
-'use client'
+"use client";
 
-import { useEffect, useRef, type CSSProperties, type HTMLAttributes } from 'react'
-import { useMyAbacus, type DockConfig } from '@/contexts/MyAbacusContext'
+import {
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type HTMLAttributes,
+} from "react";
+import { useMyAbacus, type DockConfig } from "@/contexts/MyAbacusContext";
 
-export interface AbacusDockProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
+export interface AbacusDockProps
+  extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
   /** Optional identifier for debugging */
-  id?: string
+  id?: string;
   /** Number of columns to display (default: 5) */
-  columns?: number
+  columns?: number;
   /** Whether the abacus is interactive (default: true) */
-  interactive?: boolean
+  interactive?: boolean;
   /** Whether to show numbers below columns (default: true) */
-  showNumbers?: boolean
+  showNumbers?: boolean;
   /** Whether to animate bead movements (default: true) */
-  animated?: boolean
+  animated?: boolean;
   /** Scale factor for the abacus (default: auto-fit to container) */
-  scaleFactor?: number
+  scaleFactor?: number;
   /** Controlled value - when provided, dock controls the abacus value */
-  value?: number
+  value?: number;
   /** Default value for uncontrolled mode */
-  defaultValue?: number
+  defaultValue?: number;
   /** Callback when value changes (for controlled mode) */
-  onValueChange?: (newValue: number) => void
+  onValueChange?: (newValue: number) => void;
 }
 
 /**
@@ -58,13 +64,13 @@ export function AbacusDock({
   style,
   ...divProps
 }: AbacusDockProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const { registerDock, unregisterDock, updateDockVisibility } = useMyAbacus()
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { registerDock, unregisterDock, updateDockVisibility } = useMyAbacus();
 
   // Register the dock
   useEffect(() => {
-    const element = containerRef.current
-    if (!element) return
+    const element = containerRef.current;
+    if (!element) return;
 
     const config: DockConfig = {
       element,
@@ -78,13 +84,13 @@ export function AbacusDock({
       defaultValue,
       onValueChange,
       isVisible: false, // Will be updated by IntersectionObserver
-    }
+    };
 
-    registerDock(config)
+    registerDock(config);
 
     return () => {
-      unregisterDock(element)
-    }
+      unregisterDock(element);
+    };
   }, [
     id,
     columns,
@@ -97,38 +103,41 @@ export function AbacusDock({
     onValueChange,
     registerDock,
     unregisterDock,
-  ])
+  ]);
 
   // Track visibility with IntersectionObserver
   useEffect(() => {
-    const element = containerRef.current
-    if (!element) return
+    const element = containerRef.current;
+    if (!element) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           // Consider visible if at least 20% is in view
-          updateDockVisibility(element, entry.isIntersecting && entry.intersectionRatio >= 0.2)
+          updateDockVisibility(
+            element,
+            entry.isIntersecting && entry.intersectionRatio >= 0.2,
+          );
         }
       },
       {
         threshold: [0, 0.2, 0.5, 1.0],
-      }
-    )
+      },
+    );
 
-    observer.observe(element)
+    observer.observe(element);
 
-    return () => observer.disconnect()
-  }, [updateDockVisibility])
+    return () => observer.disconnect();
+  }, [updateDockVisibility]);
 
   // Default styles for the dock container
   const defaultStyle: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
     ...style,
-  }
+  };
 
   return (
     <div
@@ -138,7 +147,7 @@ export function AbacusDock({
       style={defaultStyle}
       {...divProps}
     />
-  )
+  );
 }
 
-export default AbacusDock
+export default AbacusDock;

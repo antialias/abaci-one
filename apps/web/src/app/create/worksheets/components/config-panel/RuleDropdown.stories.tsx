@@ -1,101 +1,103 @@
-import type { Meta, StoryObj } from '@storybook/react'
-import { useState } from 'react'
-import { RuleDropdown } from './RuleDropdown'
-import type { RuleMode } from '../../displayRules'
+import type { Meta, StoryObj } from "@storybook/react";
+import { useState } from "react";
+import { RuleDropdown } from "./RuleDropdown";
+import type { RuleMode } from "../../displayRules";
 
 const meta = {
-  title: 'Worksheets/Config Panel/RuleDropdown',
+  title: "Worksheets/Config Panel/RuleDropdown",
   component: RuleDropdown,
   parameters: {
-    layout: 'padded',
+    layout: "padded",
   },
-  tags: ['autodocs'],
-} satisfies Meta<typeof RuleDropdown>
+  tags: ["autodocs"],
+} satisfies Meta<typeof RuleDropdown>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 // Wrapper to handle state
 function DropdownWrapper(args: React.ComponentProps<typeof RuleDropdown>) {
-  const [value, setValue] = useState<RuleMode>(args.value)
-  return <RuleDropdown {...args} value={value} onChange={setValue} />
+  const [value, setValue] = useState<RuleMode>(args.value);
+  return <RuleDropdown {...args} value={value} onChange={setValue} />;
 }
 
 export const AlwaysSelectedLight: Story = {
   render: (args) => <DropdownWrapper {...args} />,
   args: {
-    label: 'Ten-Frame Diagrams',
-    description: 'When should ten-frame visual aids be displayed?',
-    value: 'always',
+    label: "Ten-Frame Diagrams",
+    description: "When should ten-frame visual aids be displayed?",
+    value: "always",
     isDark: false,
   },
-}
+};
 
 export const NeverSelectedLight: Story = {
   render: (args) => <DropdownWrapper {...args} />,
   args: {
-    label: 'Carry Notation Boxes',
-    description: 'When should carry notation be shown?',
-    value: 'never',
+    label: "Carry Notation Boxes",
+    description: "When should carry notation be shown?",
+    value: "never",
     isDark: false,
   },
-}
+};
 
 export const WhenRegroupingLight: Story = {
   render: (args) => <DropdownWrapper {...args} />,
   args: {
-    label: 'Place Value Colors',
-    description: 'When should color-coding be applied?',
-    value: 'whenRegrouping',
+    label: "Place Value Colors",
+    description: "When should color-coding be applied?",
+    value: "whenRegrouping",
     isDark: false,
   },
-}
+};
 
 export const AlwaysSelectedDark: Story = {
   render: (args) => <DropdownWrapper {...args} />,
   args: {
-    label: 'Ten-Frame Diagrams',
-    description: 'When should ten-frame visual aids be displayed?',
-    value: 'always',
+    label: "Ten-Frame Diagrams",
+    description: "When should ten-frame visual aids be displayed?",
+    value: "always",
     isDark: true,
   },
   parameters: {
-    backgrounds: { default: 'dark' },
+    backgrounds: { default: "dark" },
   },
-}
+};
 
 export const NeverSelectedDark: Story = {
   render: (args) => <DropdownWrapper {...args} />,
   args: {
-    label: 'Carry Notation Boxes',
-    description: 'When should carry notation be shown?',
-    value: 'never',
+    label: "Carry Notation Boxes",
+    description: "When should carry notation be shown?",
+    value: "never",
     isDark: true,
   },
   parameters: {
-    backgrounds: { default: 'dark' },
+    backgrounds: { default: "dark" },
   },
-}
+};
 
 export const MultipleDropdowns: Story = {
   render: () => {
     const [rules, setRules] = useState({
-      tenFrames: 'always' as RuleMode,
-      carryBoxes: 'whenRegrouping' as RuleMode,
-      placeValueColors: 'never' as RuleMode,
-      answerBoxes: 'always' as RuleMode,
-    })
+      tenFrames: "always" as RuleMode,
+      carryBoxes: "whenRegrouping" as RuleMode,
+      placeValueColors: "never" as RuleMode,
+      answerBoxes: "always" as RuleMode,
+    });
 
     return (
       <div
         style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-          maxWidth: '400px',
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+          maxWidth: "400px",
         }}
       >
-        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Display Rules</h3>
+        <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>
+          Display Rules
+        </h3>
         <RuleDropdown
           label="Ten-Frame Diagrams"
           description="Visual representations using ten-frames"
@@ -122,46 +124,46 @@ export const MultipleDropdowns: Story = {
         />
         <div
           style={{
-            marginTop: '8px',
-            padding: '12px',
-            background: '#f3f4f6',
-            borderRadius: '6px',
-            fontSize: '12px',
+            marginTop: "8px",
+            padding: "12px",
+            background: "#f3f4f6",
+            borderRadius: "6px",
+            fontSize: "12px",
           }}
         >
           <strong>Current Configuration:</strong>
           <pre
             style={{
-              margin: '8px 0 0 0',
-              fontSize: '10px',
-              whiteSpace: 'pre-wrap',
+              margin: "8px 0 0 0",
+              fontSize: "10px",
+              whiteSpace: "pre-wrap",
             }}
           >
             {JSON.stringify(rules, null, 2)}
           </pre>
         </div>
       </div>
-    )
+    );
   },
-}
+};
 
 export const AllOptions: Story = {
   render: () => {
     const options: Array<{ value: RuleMode; label: string }> = [
-      { value: 'always', label: 'Always' },
-      { value: 'never', label: 'Never' },
-      { value: 'whenRegrouping', label: 'When Regrouping' },
-      { value: 'whenMultipleRegroups', label: 'Multiple Regroups' },
-      { value: 'when3PlusDigits', label: '3+ Digits' },
-    ]
+      { value: "always", label: "Always" },
+      { value: "never", label: "Never" },
+      { value: "whenRegrouping", label: "When Regrouping" },
+      { value: "whenMultipleRegroups", label: "Multiple Regroups" },
+      { value: "when3PlusDigits", label: "3+ Digits" },
+    ];
 
     return (
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '16px',
-          maxWidth: '800px',
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "16px",
+          maxWidth: "800px",
         }}
       >
         {options.map((option) => (
@@ -173,17 +175,17 @@ export const AllOptions: Story = {
           />
         ))}
       </div>
-    )
+    );
   },
-}
+};
 
 export const LongLabel: Story = {
   render: (args) => <DropdownWrapper {...args} />,
   args: {
-    label: 'Ten-Frame Diagrams for Visual Number Representation',
+    label: "Ten-Frame Diagrams for Visual Number Representation",
     description:
-      'Determine when ten-frame visual aids should be displayed to help students understand number composition and place value. Ten-frames are particularly effective for students in early elementary grades.',
-    value: 'always',
+      "Determine when ten-frame visual aids should be displayed to help students understand number composition and place value. Ten-frames are particularly effective for students in early elementary grades.",
+    value: "always",
     isDark: false,
   },
-}
+};

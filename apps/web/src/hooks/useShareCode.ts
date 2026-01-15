@@ -1,40 +1,40 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState } from "react";
 
-import { type ShareType, getShareUrl } from '@/lib/share/urls'
+import { type ShareType, getShareUrl } from "@/lib/share/urls";
 
-import { useClipboard } from './useClipboard'
+import { useClipboard } from "./useClipboard";
 
 export interface UseShareCodeOptions {
   /** The type of share (classroom, family, or room) */
-  type: ShareType
+  type: ShareType;
   /** The share code */
-  code: string
+  code: string;
   /** Optional callback to regenerate the code */
-  onRegenerate?: () => Promise<string>
+  onRegenerate?: () => Promise<string>;
 }
 
 export interface UseShareCodeReturn {
   // Data
   /** The share code */
-  code: string
+  code: string;
   /** The full share URL */
-  shareUrl: string
+  shareUrl: string;
 
   // Copy actions
   /** Copy the code to clipboard */
-  copyCode: () => void
+  copyCode: () => void;
   /** Whether the code was recently copied */
-  codeCopied: boolean
+  codeCopied: boolean;
   /** Copy the share URL to clipboard */
-  copyLink: () => void
+  copyLink: () => void;
   /** Whether the link was recently copied */
-  linkCopied: boolean
+  linkCopied: boolean;
 
   // Regeneration
   /** Regenerate the code (if supported) */
-  regenerate: (() => Promise<void>) | undefined
+  regenerate: (() => Promise<void>) | undefined;
   /** Whether regeneration is in progress */
-  isRegenerating: boolean
+  isRegenerating: boolean;
 }
 
 /**
@@ -64,36 +64,44 @@ export function useShareCode({
   code,
   onRegenerate,
 }: UseShareCodeOptions): UseShareCodeReturn {
-  const shareUrl = getShareUrl(type, code)
+  const shareUrl = getShareUrl(type, code);
 
   // Separate clipboard state for code and link
-  const { copied: codeCopied, copy: copyCodeToClipboard, reset: resetCodeCopied } = useClipboard()
-  const { copied: linkCopied, copy: copyLinkToClipboard, reset: resetLinkCopied } = useClipboard()
+  const {
+    copied: codeCopied,
+    copy: copyCodeToClipboard,
+    reset: resetCodeCopied,
+  } = useClipboard();
+  const {
+    copied: linkCopied,
+    copy: copyLinkToClipboard,
+    reset: resetLinkCopied,
+  } = useClipboard();
 
-  const [isRegenerating, setIsRegenerating] = useState(false)
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const copyCode = useCallback(() => {
     // Reset link copied state when copying code
-    resetLinkCopied()
-    copyCodeToClipboard(code)
-  }, [code, copyCodeToClipboard, resetLinkCopied])
+    resetLinkCopied();
+    copyCodeToClipboard(code);
+  }, [code, copyCodeToClipboard, resetLinkCopied]);
 
   const copyLink = useCallback(() => {
     // Reset code copied state when copying link
-    resetCodeCopied()
-    copyLinkToClipboard(shareUrl)
-  }, [shareUrl, copyLinkToClipboard, resetCodeCopied])
+    resetCodeCopied();
+    copyLinkToClipboard(shareUrl);
+  }, [shareUrl, copyLinkToClipboard, resetCodeCopied]);
 
   const regenerate = onRegenerate
     ? async () => {
-        setIsRegenerating(true)
+        setIsRegenerating(true);
         try {
-          await onRegenerate()
+          await onRegenerate();
         } finally {
-          setIsRegenerating(false)
+          setIsRegenerating(false);
         }
       }
-    : undefined
+    : undefined;
 
   return {
     code,
@@ -104,5 +112,5 @@ export function useShareCode({
     linkCopied,
     regenerate,
     isRegenerating,
-  }
+  };
 }

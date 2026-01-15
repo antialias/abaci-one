@@ -13,96 +13,96 @@
  * We use the ARUCO dictionary (7x7 markers, IDs 0-1022) for reliable detection.
  */
 
-import type { Point, QuadCorners } from '@/types/vision'
+import type { Point, QuadCorners } from "@/types/vision";
 
 // js-aruco2 types
 interface ArucoMarker {
-  id: number
-  corners: Array<{ x: number; y: number }>
+  id: number;
+  corners: Array<{ x: number; y: number }>;
 }
 
 interface ArucoDetector {
-  detect: (imageData: ImageData) => ArucoMarker[]
+  detect: (imageData: ImageData) => ArucoMarker[];
 }
 
 interface ArucoDictionary {
-  generateSVG: (id: number) => string
+  generateSVG: (id: number) => string;
 }
 
 // Global AR namespace from js-aruco2
 interface ARNamespace {
   Detector: new (options?: {
-    dictionaryName?: string
-    maxHammingDistance?: number
-  }) => ArucoDetector
-  Dictionary: new (dictionaryName: string) => ArucoDictionary
+    dictionaryName?: string;
+    maxHammingDistance?: number;
+  }) => ArucoDetector;
+  Dictionary: new (dictionaryName: string) => ArucoDictionary;
 }
 
 declare global {
   interface Window {
-    AR?: ARNamespace
+    AR?: ARNamespace;
   }
 }
 
-let arucoLoadPromise: Promise<void> | null = null
-let arucoLoaded = false
+let arucoLoadPromise: Promise<void> | null = null;
+let arucoLoaded = false;
 
 /**
  * Load js-aruco2 library dynamically
  */
 export async function loadAruco(): Promise<void> {
-  if (arucoLoaded) return
-  if (arucoLoadPromise) return arucoLoadPromise
+  if (arucoLoaded) return;
+  if (arucoLoadPromise) return arucoLoadPromise;
 
   arucoLoadPromise = new Promise<void>((resolve, reject) => {
-    if (typeof window === 'undefined') {
-      reject(new Error('js-aruco2 requires browser environment'))
-      return
+    if (typeof window === "undefined") {
+      reject(new Error("js-aruco2 requires browser environment"));
+      return;
     }
 
     // Check if already loaded
     if (window.AR) {
-      arucoLoaded = true
-      resolve()
-      return
+      arucoLoaded = true;
+      resolve();
+      return;
     }
 
     // Load cv.js first (dependency)
-    const cvScript = document.createElement('script')
-    cvScript.src = '/js-aruco2/cv.js'
-    cvScript.async = true
+    const cvScript = document.createElement("script");
+    cvScript.src = "/js-aruco2/cv.js";
+    cvScript.async = true;
 
     cvScript.onload = () => {
       // Then load aruco.js
-      const arucoScript = document.createElement('script')
-      arucoScript.src = '/js-aruco2/aruco.js'
-      arucoScript.async = true
+      const arucoScript = document.createElement("script");
+      arucoScript.src = "/js-aruco2/aruco.js";
+      arucoScript.async = true;
 
       arucoScript.onload = () => {
         if (window.AR) {
-          arucoLoaded = true
-          console.log('[ArUco] js-aruco2 loaded successfully')
-          resolve()
+          arucoLoaded = true;
+          console.log("[ArUco] js-aruco2 loaded successfully");
+          resolve();
         } else {
-          reject(new Error('js-aruco2 failed to initialize'))
+          reject(new Error("js-aruco2 failed to initialize"));
         }
-      }
+      };
 
       arucoScript.onerror = () => {
-        reject(new Error('Failed to load js-aruco2/aruco.js'))
-      }
+        reject(new Error("Failed to load js-aruco2/aruco.js"));
+      };
 
-      document.head.appendChild(arucoScript)
-    }
+      document.head.appendChild(arucoScript);
+    };
 
     cvScript.onerror = () => {
-      reject(new Error('Failed to load js-aruco2/cv.js'))
-    }
+      reject(new Error("Failed to load js-aruco2/cv.js"));
+    };
 
-    document.head.appendChild(cvScript)
-  })
+    document.head.appendChild(cvScript);
+  });
 
-  return arucoLoadPromise
+  return arucoLoadPromise;
 }
 
 /** Corner ID assignments for abacus calibration */
@@ -111,43 +111,47 @@ export const MARKER_IDS = {
   TOP_RIGHT: 1,
   BOTTOM_RIGHT: 2,
   BOTTOM_LEFT: 3,
-} as const
+} as const;
 
 /** Result of marker detection */
 export interface MarkerDetectionResult {
   /** Whether all 4 corner markers were detected */
-  allMarkersFound: boolean
+  allMarkersFound: boolean;
   /** Number of markers detected (0-4) */
-  markersFound: number
+  markersFound: number;
   /** Detected marker positions by ID */
-  markers: Map<number, MarkerCorners>
+  markers: Map<number, MarkerCorners>;
   /** Computed quad corners if all markers found */
-  quadCorners: QuadCorners | null
+  quadCorners: QuadCorners | null;
 }
 
 /** Corner positions for a single ArUco marker */
 export interface MarkerCorners {
   /** Top-left corner of the marker */
-  topLeft: Point
+  topLeft: Point;
   /** Top-right corner of the marker */
-  topRight: Point
+  topRight: Point;
   /** Bottom-right corner of the marker */
-  bottomRight: Point
+  bottomRight: Point;
   /** Bottom-left corner of the marker */
-  bottomLeft: Point
+  bottomLeft: Point;
   /** Center of the marker */
-  center: Point
+  center: Point;
 }
 
-let detector: ArucoDetector | null = null
-let dictionary: ArucoDictionary | null = null
-let isInitialized = false
+let detector: ArucoDetector | null = null;
+let dictionary: ArucoDictionary | null = null;
+let isInitialized = false;
 
 /**
  * Check if ArUco detection is available
  */
 export function isArucoAvailable(): boolean {
-  return typeof window !== 'undefined' && !!window.AR && typeof window.AR.Detector === 'function'
+  return (
+    typeof window !== "undefined" &&
+    !!window.AR &&
+    typeof window.AR.Detector === "function"
+  );
 }
 
 /**
@@ -155,23 +159,23 @@ export function isArucoAvailable(): boolean {
  */
 export function initArucoDetector(): boolean {
   if (isInitialized && detector) {
-    return true
+    return true;
   }
 
   if (!isArucoAvailable()) {
-    console.warn('[ArUco] js-aruco2 not loaded yet')
-    return false
+    console.warn("[ArUco] js-aruco2 not loaded yet");
+    return false;
   }
 
   try {
-    detector = new window.AR!.Detector({ dictionaryName: 'ARUCO' })
-    dictionary = new window.AR!.Dictionary('ARUCO')
-    isInitialized = true
-    console.log('[ArUco] Detector initialized successfully')
-    return true
+    detector = new window.AR!.Detector({ dictionaryName: "ARUCO" });
+    dictionary = new window.AR!.Dictionary("ARUCO");
+    isInitialized = true;
+    console.log("[ArUco] Detector initialized successfully");
+    return true;
   } catch (err) {
-    console.error('[ArUco] Failed to initialize detector:', err)
-    return false
+    console.error("[ArUco] Failed to initialize detector:", err);
+    return false;
   }
 }
 
@@ -179,9 +183,9 @@ export function initArucoDetector(): boolean {
  * Clean up ArUco detector resources
  */
 export function cleanupArucoDetector(): void {
-  detector = null
-  dictionary = null
-  isInitialized = false
+  detector = null;
+  dictionary = null;
+  isInitialized = false;
 }
 
 /**
@@ -189,18 +193,18 @@ export function cleanupArucoDetector(): void {
  */
 function extractMarkerCorners(marker: ArucoMarker): MarkerCorners {
   // js-aruco2 corners are in order: TL, TR, BR, BL
-  const corners = marker.corners
-  const topLeft = { x: corners[0].x, y: corners[0].y }
-  const topRight = { x: corners[1].x, y: corners[1].y }
-  const bottomRight = { x: corners[2].x, y: corners[2].y }
-  const bottomLeft = { x: corners[3].x, y: corners[3].y }
+  const corners = marker.corners;
+  const topLeft = { x: corners[0].x, y: corners[0].y };
+  const topRight = { x: corners[1].x, y: corners[1].y };
+  const bottomRight = { x: corners[2].x, y: corners[2].y };
+  const bottomLeft = { x: corners[3].x, y: corners[3].y };
 
   const center = {
     x: (topLeft.x + topRight.x + bottomRight.x + bottomLeft.x) / 4,
     y: (topLeft.y + topRight.y + bottomRight.y + bottomLeft.y) / 4,
-  }
+  };
 
-  return { topLeft, topRight, bottomRight, bottomLeft, center }
+  return { topLeft, topRight, bottomRight, bottomLeft, center };
 }
 
 /**
@@ -210,40 +214,42 @@ function extractMarkerCorners(marker: ArucoMarker): MarkerCorners {
 function getInnerCorner(marker: MarkerCorners, markerId: number): Point {
   switch (markerId) {
     case MARKER_IDS.TOP_LEFT:
-      return marker.bottomRight // Inner corner is bottom-right
+      return marker.bottomRight; // Inner corner is bottom-right
     case MARKER_IDS.TOP_RIGHT:
-      return marker.bottomLeft // Inner corner is bottom-left
+      return marker.bottomLeft; // Inner corner is bottom-left
     case MARKER_IDS.BOTTOM_RIGHT:
-      return marker.topLeft // Inner corner is top-left
+      return marker.topLeft; // Inner corner is top-left
     case MARKER_IDS.BOTTOM_LEFT:
-      return marker.topRight // Inner corner is top-right
+      return marker.topRight; // Inner corner is top-right
     default:
-      return marker.center
+      return marker.center;
   }
 }
 
 /**
  * Internal function to detect markers from ImageData
  */
-function detectMarkersFromImageData(imageData: ImageData): MarkerDetectionResult {
+function detectMarkersFromImageData(
+  imageData: ImageData,
+): MarkerDetectionResult {
   const result: MarkerDetectionResult = {
     allMarkersFound: false,
     markersFound: 0,
     markers: new Map(),
     quadCorners: null,
-  }
+  };
 
   if (!detector) {
     if (!initArucoDetector()) {
-      return result
+      return result;
     }
   }
 
-  if (!detector) return result
+  if (!detector) return result;
 
   try {
     // Detect markers using js-aruco2
-    const markers = detector.detect(imageData)
+    const markers = detector.detect(imageData);
 
     // Filter to only our corner markers (IDs 0-3)
     const cornerMarkers = markers.filter(
@@ -251,14 +257,14 @@ function detectMarkersFromImageData(imageData: ImageData): MarkerDetectionResult
         m.id === MARKER_IDS.TOP_LEFT ||
         m.id === MARKER_IDS.TOP_RIGHT ||
         m.id === MARKER_IDS.BOTTOM_RIGHT ||
-        m.id === MARKER_IDS.BOTTOM_LEFT
-    )
+        m.id === MARKER_IDS.BOTTOM_LEFT,
+    );
 
-    result.markersFound = cornerMarkers.length
+    result.markersFound = cornerMarkers.length;
 
     for (const marker of cornerMarkers) {
-      const markerCorners = extractMarkerCorners(marker)
-      result.markers.set(marker.id, markerCorners)
+      const markerCorners = extractMarkerCorners(marker);
+      result.markers.set(marker.id, markerCorners);
     }
 
     // Check if all 4 corner markers were found
@@ -266,16 +272,16 @@ function detectMarkersFromImageData(imageData: ImageData): MarkerDetectionResult
       result.markers.has(MARKER_IDS.TOP_LEFT) &&
       result.markers.has(MARKER_IDS.TOP_RIGHT) &&
       result.markers.has(MARKER_IDS.BOTTOM_RIGHT) &&
-      result.markers.has(MARKER_IDS.BOTTOM_LEFT)
+      result.markers.has(MARKER_IDS.BOTTOM_LEFT);
 
     if (hasAllMarkers) {
-      result.allMarkersFound = true
+      result.allMarkersFound = true;
 
       // Get marker centers - more reliable than corners for orientation
-      const tlMarker = result.markers.get(MARKER_IDS.TOP_LEFT)!
-      const trMarker = result.markers.get(MARKER_IDS.TOP_RIGHT)!
-      const brMarker = result.markers.get(MARKER_IDS.BOTTOM_RIGHT)!
-      const blMarker = result.markers.get(MARKER_IDS.BOTTOM_LEFT)!
+      const tlMarker = result.markers.get(MARKER_IDS.TOP_LEFT)!;
+      const trMarker = result.markers.get(MARKER_IDS.TOP_RIGHT)!;
+      const brMarker = result.markers.get(MARKER_IDS.BOTTOM_RIGHT)!;
+      const blMarker = result.markers.get(MARKER_IDS.BOTTOM_LEFT)!;
 
       // Use marker centers to define the quad
       // Desk View camera shows a 180° rotated view (flipped both vertically and horizontally)
@@ -285,13 +291,13 @@ function detectMarkersFromImageData(imageData: ImageData): MarkerDetectionResult
         topRight: blMarker.center,
         bottomRight: tlMarker.center,
         bottomLeft: trMarker.center,
-      }
+      };
     }
   } catch (err) {
-    console.error('[ArUco] Detection error:', err)
+    console.error("[ArUco] Detection error:", err);
   }
 
-  return result
+  return result;
 }
 
 /**
@@ -299,28 +305,28 @@ function detectMarkersFromImageData(imageData: ImageData): MarkerDetectionResult
  */
 export function detectMarkers(
   video: HTMLVideoElement,
-  canvas?: HTMLCanvasElement
+  canvas?: HTMLCanvasElement,
 ): MarkerDetectionResult {
   // Create temporary canvas if not provided
-  const tempCanvas = canvas || document.createElement('canvas')
-  tempCanvas.width = video.videoWidth
-  tempCanvas.height = video.videoHeight
+  const tempCanvas = canvas || document.createElement("canvas");
+  tempCanvas.width = video.videoWidth;
+  tempCanvas.height = video.videoHeight;
 
-  const ctx = tempCanvas.getContext('2d', { willReadFrequently: true })
+  const ctx = tempCanvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) {
     return {
       allMarkersFound: false,
       markersFound: 0,
       markers: new Map(),
       quadCorners: null,
-    }
+    };
   }
 
   // Draw video frame to canvas
-  ctx.drawImage(video, 0, 0)
-  const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height)
+  ctx.drawImage(video, 0, 0);
+  const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
 
-  return detectMarkersFromImageData(imageData)
+  return detectMarkersFromImageData(imageData);
 }
 
 /**
@@ -329,34 +335,39 @@ export function detectMarkers(
  * This is useful for phone camera frames which arrive as canvas images
  * rather than video elements.
  */
-export function detectMarkersFromCanvas(canvas: HTMLCanvasElement): MarkerDetectionResult {
+export function detectMarkersFromCanvas(
+  canvas: HTMLCanvasElement,
+): MarkerDetectionResult {
   if (canvas.width === 0 || canvas.height === 0) {
     return {
       allMarkersFound: false,
       markersFound: 0,
       markers: new Map(),
       quadCorners: null,
-    }
+    };
   }
 
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) {
     return {
       allMarkersFound: false,
       markersFound: 0,
       markers: new Map(),
       quadCorners: null,
-    }
+    };
   }
 
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  return detectMarkersFromImageData(imageData)
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  return detectMarkersFromImageData(imageData);
 }
 
 /**
  * Generate SVG for an ArUco marker using js-aruco2's built-in generator
  */
-export function generateMarkerSVG(markerId: number, size: number = 100): string {
+export function generateMarkerSVG(
+  markerId: number,
+  size: number = 100,
+): string {
   // Initialize dictionary if needed
   if (!dictionary) {
     if (!isArucoAvailable()) {
@@ -364,32 +375,32 @@ export function generateMarkerSVG(markerId: number, size: number = 100): string 
       return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
   <rect width="${size}" height="${size}" fill="white" stroke="black" stroke-width="2"/>
   <text x="${size / 2}" y="${size / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12">${markerId}</text>
-</svg>`
+</svg>`;
     }
-    dictionary = new window.AR!.Dictionary('ARUCO')
+    dictionary = new window.AR!.Dictionary("ARUCO");
   }
 
   try {
     // Get SVG from js-aruco2
-    const svg = dictionary!.generateSVG(markerId)
+    const svg = dictionary!.generateSVG(markerId);
 
     // The generated SVG may need size adjustment
     // Parse and resize the SVG
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(svg, 'image/svg+xml')
-    const svgElement = doc.documentElement
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svg, "image/svg+xml");
+    const svgElement = doc.documentElement;
 
-    svgElement.setAttribute('width', String(size))
-    svgElement.setAttribute('height', String(size))
+    svgElement.setAttribute("width", String(size));
+    svgElement.setAttribute("height", String(size));
 
-    return new XMLSerializer().serializeToString(svgElement)
+    return new XMLSerializer().serializeToString(svgElement);
   } catch (err) {
-    console.error('[ArUco] Failed to generate marker SVG:', err)
+    console.error("[ArUco] Failed to generate marker SVG:", err);
     // Fallback
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
   <rect width="${size}" height="${size}" fill="white" stroke="black" stroke-width="2"/>
   <text x="${size / 2}" y="${size / 2}" text-anchor="middle" dominant-baseline="middle" font-size="12">${markerId}</text>
-</svg>`
+</svg>`;
   }
 }
 
@@ -399,14 +410,14 @@ export function generateMarkerSVG(markerId: number, size: number = 100): string 
 export function getMarkerPositionLabel(markerId: number): string {
   switch (markerId) {
     case MARKER_IDS.TOP_LEFT:
-      return 'Top Left'
+      return "Top Left";
     case MARKER_IDS.TOP_RIGHT:
-      return 'Top Right'
+      return "Top Right";
     case MARKER_IDS.BOTTOM_RIGHT:
-      return 'Bottom Right'
+      return "Bottom Right";
     case MARKER_IDS.BOTTOM_LEFT:
-      return 'Bottom Left'
+      return "Bottom Left";
     default:
-      return `Marker ${markerId}`
+      return `Marker ${markerId}`;
   }
 }

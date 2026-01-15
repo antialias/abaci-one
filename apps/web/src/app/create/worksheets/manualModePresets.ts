@@ -1,16 +1,16 @@
 // Manual mode presets for direct display control
 
 export interface ManualModePreset {
-  name: string
-  label: string
-  description: string
-  showCarryBoxes: boolean
-  showAnswerBoxes: boolean
-  showPlaceValueColors: boolean
-  showTenFrames: boolean
-  showProblemNumbers: boolean
-  showCellBorder: boolean
-  showTenFramesForAll: boolean
+  name: string;
+  label: string;
+  description: string;
+  showCarryBoxes: boolean;
+  showAnswerBoxes: boolean;
+  showPlaceValueColors: boolean;
+  showTenFrames: boolean;
+  showProblemNumbers: boolean;
+  showCellBorder: boolean;
+  showTenFramesForAll: boolean;
 }
 
 /**
@@ -19,9 +19,9 @@ export interface ManualModePreset {
  */
 export const MANUAL_MODE_PRESETS = {
   fullScaffolding: {
-    name: 'fullScaffolding',
-    label: 'Full Scaffolding',
-    description: 'All visual aids enabled for maximum support',
+    name: "fullScaffolding",
+    label: "Full Scaffolding",
+    description: "All visual aids enabled for maximum support",
     showCarryBoxes: true,
     showAnswerBoxes: true,
     showPlaceValueColors: true,
@@ -32,9 +32,9 @@ export const MANUAL_MODE_PRESETS = {
   },
 
   minimalScaffolding: {
-    name: 'minimalScaffolding',
-    label: 'Minimal Scaffolding',
-    description: 'Basic structure only - for students building independence',
+    name: "minimalScaffolding",
+    label: "Minimal Scaffolding",
+    description: "Basic structure only - for students building independence",
     showCarryBoxes: false,
     showAnswerBoxes: false,
     showPlaceValueColors: false,
@@ -45,9 +45,9 @@ export const MANUAL_MODE_PRESETS = {
   },
 
   assessmentMode: {
-    name: 'assessmentMode',
-    label: 'Assessment Mode',
-    description: 'Clean layout for testing - minimal visual aids',
+    name: "assessmentMode",
+    label: "Assessment Mode",
+    description: "Clean layout for testing - minimal visual aids",
     showCarryBoxes: false,
     showAnswerBoxes: false,
     showPlaceValueColors: false,
@@ -58,9 +58,9 @@ export const MANUAL_MODE_PRESETS = {
   },
 
   tenFramesFocus: {
-    name: 'tenFramesFocus',
-    label: 'Ten-Frames Focus',
-    description: 'All aids plus ten-frames for concrete visualization',
+    name: "tenFramesFocus",
+    label: "Ten-Frames Focus",
+    description: "All aids plus ten-frames for concrete visualization",
     showCarryBoxes: true,
     showAnswerBoxes: true,
     showPlaceValueColors: true,
@@ -69,22 +69,22 @@ export const MANUAL_MODE_PRESETS = {
     showCellBorder: true,
     showTenFramesForAll: false,
   },
-} as const satisfies Record<string, ManualModePreset>
+} as const satisfies Record<string, ManualModePreset>;
 
-export type ManualModePresetName = keyof typeof MANUAL_MODE_PRESETS
+export type ManualModePresetName = keyof typeof MANUAL_MODE_PRESETS;
 
 /**
  * Check if manual display settings match a preset
  */
 export function getManualPresetFromConfig(config: {
-  showCarryBoxes: boolean
-  showAnswerBoxes: boolean
-  showPlaceValueColors: boolean
-  showTenFrames: boolean
-  showProblemNumbers: boolean
-  showCellBorder: boolean
-  showTenFramesForAll: boolean
-}): ManualModePresetName | 'custom' {
+  showCarryBoxes: boolean;
+  showAnswerBoxes: boolean;
+  showPlaceValueColors: boolean;
+  showTenFrames: boolean;
+  showProblemNumbers: boolean;
+  showCellBorder: boolean;
+  showTenFramesForAll: boolean;
+}): ManualModePresetName | "custom" {
   for (const [name, preset] of Object.entries(MANUAL_MODE_PRESETS)) {
     if (
       preset.showCarryBoxes === config.showCarryBoxes &&
@@ -95,8 +95,8 @@ export function getManualPresetFromConfig(config: {
       preset.showCellBorder === config.showCellBorder &&
       preset.showTenFramesForAll === config.showTenFramesForAll
     ) {
-      return name as ManualModePresetName
+      return name as ManualModePresetName;
     }
   }
-  return 'custom'
+  return "custom";
 }

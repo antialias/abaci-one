@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   QuadDetector,
   QuadTracker,
@@ -11,7 +11,7 @@ import {
   type QuadDetectionOptions,
   type QuadDetectionResult,
   type TrackedQuadResult,
-} from '@/lib/vision/quadDetection'
+} from "@/lib/vision/quadDetection";
 
 // Re-export types for convenience
 export type {
@@ -21,7 +21,7 @@ export type {
   QuadDetectionOptions,
   QuadDetectionResult,
   TrackedQuadResult,
-} from '@/lib/vision/quadDetection'
+} from "@/lib/vision/quadDetection";
 
 // Re-export utility functions
 export {
@@ -29,7 +29,7 @@ export {
   captureVideoFrame,
   orderCorners,
   distance,
-} from '@/lib/vision/quadDetection'
+} from "@/lib/vision/quadDetection";
 
 /**
  * React hook for quad detection in static images.
@@ -55,49 +55,53 @@ export {
  * ```
  */
 export function useQuadDetection(options?: QuadDetectionOptions) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [isReady, setIsReady] = useState(QuadDetector.isLoaded())
-  const [error, setError] = useState<string | null>(null)
-  const detectorRef = useRef<QuadDetector | null>(QuadDetector.getInstance())
-  const optionsRef = useRef(options)
+  const [isLoading, setIsLoading] = useState(false);
+  const [isReady, setIsReady] = useState(QuadDetector.isLoaded());
+  const [error, setError] = useState<string | null>(null);
+  const detectorRef = useRef<QuadDetector | null>(QuadDetector.getInstance());
+  const optionsRef = useRef(options);
 
   // Update options ref when they change
   useEffect(() => {
-    optionsRef.current = options
-  }, [options])
+    optionsRef.current = options;
+  }, [options]);
 
   /**
    * Load OpenCV and initialize detector.
    * Safe to call multiple times - returns immediately if already loaded.
    */
   const load = useCallback(async (): Promise<boolean> => {
-    if (detectorRef.current) return true
+    if (detectorRef.current) return true;
 
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
 
     try {
-      detectorRef.current = await QuadDetector.load()
-      setIsReady(true)
-      return true
+      detectorRef.current = await QuadDetector.load();
+      setIsReady(true);
+      return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load OpenCV'
-      setError(message)
-      console.error('QuadDetector load failed:', err)
-      return false
+      const message =
+        err instanceof Error ? err.message : "Failed to load OpenCV";
+      setError(message);
+      console.error("QuadDetector load failed:", err);
+      return false;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [])
+  }, []);
 
   /**
    * Detect quads in a canvas.
    * Returns null if detector is not loaded.
    */
-  const detect = useCallback((canvas: HTMLCanvasElement): QuadDetectionResult | null => {
-    if (!detectorRef.current) return null
-    return detectorRef.current.detect(canvas, optionsRef.current)
-  }, [])
+  const detect = useCallback(
+    (canvas: HTMLCanvasElement): QuadDetectionResult | null => {
+      if (!detectorRef.current) return null;
+      return detectorRef.current.detect(canvas, optionsRef.current);
+    },
+    [],
+  );
 
   /**
    * Detect quads in an image file.
@@ -105,91 +109,102 @@ export function useQuadDetection(options?: QuadDetectionOptions) {
    */
   const detectInImage = useCallback(
     async (
-      source: File | HTMLCanvasElement
+      source: File | HTMLCanvasElement,
     ): Promise<{
-      detected: boolean
-      corners: Corner[]
-      sourceCanvas: HTMLCanvasElement
+      detected: boolean;
+      corners: Corner[];
+      sourceCanvas: HTMLCanvasElement;
     }> => {
       // Ensure loaded
-      await load()
+      await load();
 
       // Get canvas
-      let canvas: HTMLCanvasElement | null
+      let canvas: HTMLCanvasElement | null;
       if (source instanceof File) {
-        canvas = await loadImageToCanvas(source)
+        canvas = await loadImageToCanvas(source);
       } else {
-        canvas = source
+        canvas = source;
       }
 
       if (!canvas) {
         // Return fallback
-        const fallbackCanvas = document.createElement('canvas')
-        fallbackCanvas.width = 100
-        fallbackCanvas.height = 100
+        const fallbackCanvas = document.createElement("canvas");
+        fallbackCanvas.width = 100;
+        fallbackCanvas.height = 100;
         return {
           detected: false,
           corners: getFallbackCorners(100, 100),
           sourceCanvas: fallbackCanvas,
-        }
+        };
       }
 
       // Detect
-      const detector = detectorRef.current
+      const detector = detectorRef.current;
       if (!detector) {
         return {
           detected: false,
           corners: getFallbackCorners(canvas.width, canvas.height),
           sourceCanvas: canvas,
-        }
+        };
       }
 
-      const result = detector.detect(canvas, optionsRef.current)
+      const result = detector.detect(canvas, optionsRef.current);
       return {
         detected: result.detected,
-        corners: result.bestQuad?.corners ?? getFallbackCorners(canvas.width, canvas.height),
+        corners:
+          result.bestQuad?.corners ??
+          getFallbackCorners(canvas.width, canvas.height),
         sourceCanvas: canvas,
-      }
+      };
     },
-    [load]
-  )
+    [load],
+  );
 
   /**
    * Extract a quad region using perspective transform.
    */
   const extract = useCallback(
-    (canvas: HTMLCanvasElement, corners: Corner[]): HTMLCanvasElement | null => {
-      if (!detectorRef.current) return null
-      return detectorRef.current.extract(canvas, corners)
+    (
+      canvas: HTMLCanvasElement,
+      corners: Corner[],
+    ): HTMLCanvasElement | null => {
+      if (!detectorRef.current) return null;
+      return detectorRef.current.extract(canvas, corners);
     },
-    []
-  )
+    [],
+  );
 
   /**
    * Analyze document orientation.
    */
-  const analyzeOrientation = useCallback((canvas: HTMLCanvasElement): 0 | 90 | 180 | 270 => {
-    if (!detectorRef.current) return 0
-    return detectorRef.current.analyzeOrientation(canvas)
-  }, [])
+  const analyzeOrientation = useCallback(
+    (canvas: HTMLCanvasElement): 0 | 90 | 180 | 270 => {
+      if (!detectorRef.current) return 0;
+      return detectorRef.current.analyzeOrientation(canvas);
+    },
+    [],
+  );
 
   /**
    * Rotate a canvas.
    */
   const rotate = useCallback(
-    (canvas: HTMLCanvasElement, degrees: 0 | 90 | 180 | 270): HTMLCanvasElement => {
-      if (!detectorRef.current) return canvas
-      return detectorRef.current.rotate(canvas, degrees)
+    (
+      canvas: HTMLCanvasElement,
+      degrees: 0 | 90 | 180 | 270,
+    ): HTMLCanvasElement => {
+      if (!detectorRef.current) return canvas;
+      return detectorRef.current.rotate(canvas, degrees);
     },
-    []
-  )
+    [],
+  );
 
   /**
    * Get OpenCV reference (for advanced use).
    */
   const getCV = useCallback(() => {
-    return detectorRef.current?.getCV() ?? null
-  }, [])
+    return detectorRef.current?.getCV() ?? null;
+  }, []);
 
   return {
     /** Whether OpenCV is currently loading */
@@ -214,7 +229,7 @@ export function useQuadDetection(options?: QuadDetectionOptions) {
     getCV,
     /** Get the detector instance */
     detector: detectorRef.current,
-  }
+  };
 }
 
 /**
@@ -246,106 +261,121 @@ export function useQuadDetection(options?: QuadDetectionOptions) {
  * ```
  */
 export function useQuadTracking(options?: QuadDetectionOptions) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [isReady, setIsReady] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [isStable, setIsStable] = useState(false)
-  const [isLocked, setIsLocked] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isStable, setIsStable] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
-  const detectorRef = useRef<QuadDetector | null>(null)
-  const trackerRef = useRef<QuadTracker | null>(null)
-  const optionsRef = useRef(options)
+  const detectorRef = useRef<QuadDetector | null>(null);
+  const trackerRef = useRef<QuadTracker | null>(null);
+  const optionsRef = useRef(options);
 
   // Update options when they change
   useEffect(() => {
-    optionsRef.current = options
-    trackerRef.current?.setOptions(options ?? {})
-  }, [options])
+    optionsRef.current = options;
+    trackerRef.current?.setOptions(options ?? {});
+  }, [options]);
 
   /**
    * Load OpenCV and initialize tracker.
    */
   const load = useCallback(async (): Promise<boolean> => {
-    if (trackerRef.current) return true
+    if (trackerRef.current) return true;
 
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
 
     try {
-      detectorRef.current = await QuadDetector.load()
-      trackerRef.current = new QuadTracker(detectorRef.current, optionsRef.current)
-      setIsReady(true)
-      return true
+      detectorRef.current = await QuadDetector.load();
+      trackerRef.current = new QuadTracker(
+        detectorRef.current,
+        optionsRef.current,
+      );
+      setIsReady(true);
+      return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load OpenCV'
-      setError(message)
-      console.error('QuadTracker load failed:', err)
-      return false
+      const message =
+        err instanceof Error ? err.message : "Failed to load OpenCV";
+      setError(message);
+      console.error("QuadTracker load failed:", err);
+      return false;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [])
+  }, []);
 
   /**
    * Process a video frame and update tracking.
    */
-  const processFrame = useCallback((frame: HTMLCanvasElement): TrackedQuadResult | null => {
-    if (!trackerRef.current) return null
+  const processFrame = useCallback(
+    (frame: HTMLCanvasElement): TrackedQuadResult | null => {
+      if (!trackerRef.current) return null;
 
-    const result = trackerRef.current.processFrame(frame)
-    setIsStable(result.isStable)
-    setIsLocked(result.isLocked)
-    return result
-  }, [])
+      const result = trackerRef.current.processFrame(frame);
+      setIsStable(result.isStable);
+      setIsLocked(result.isLocked);
+      return result;
+    },
+    [],
+  );
 
   /**
    * Process video element directly (convenience method).
    */
   const processVideo = useCallback(
-    (video: HTMLVideoElement, overlayCanvas?: HTMLCanvasElement): TrackedQuadResult | null => {
-      const frame = captureVideoFrame(video)
-      if (!frame) return null
+    (
+      video: HTMLVideoElement,
+      overlayCanvas?: HTMLCanvasElement,
+    ): TrackedQuadResult | null => {
+      const frame = captureVideoFrame(video);
+      if (!frame) return null;
 
-      const result = processFrame(frame)
+      const result = processFrame(frame);
 
       if (overlayCanvas && result && trackerRef.current) {
-        trackerRef.current.drawOverlay(overlayCanvas, result, video.videoWidth, video.videoHeight)
+        trackerRef.current.drawOverlay(
+          overlayCanvas,
+          result,
+          video.videoWidth,
+          video.videoHeight,
+        );
       }
 
-      return result
+      return result;
     },
-    [processFrame]
-  )
+    [processFrame],
+  );
 
   /**
    * Reset tracking state.
    */
   const reset = useCallback(() => {
-    trackerRef.current?.reset()
-    setIsStable(false)
-    setIsLocked(false)
-  }, [])
+    trackerRef.current?.reset();
+    setIsStable(false);
+    setIsLocked(false);
+  }, []);
 
   /**
    * Get current best quad corners.
    */
   const getBestCorners = useCallback((): Corner[] | null => {
-    return trackerRef.current?.getBestCorners() ?? null
-  }, [])
+    return trackerRef.current?.getBestCorners() ?? null;
+  }, []);
 
   /**
    * Get the last stable frame.
    */
   const getLastStableFrame = useCallback((): HTMLCanvasElement | null => {
-    return trackerRef.current?.getLastStableFrame() ?? null
-  }, [])
+    return trackerRef.current?.getLastStableFrame() ?? null;
+  }, []);
 
   /**
    * Get OpenCV reference.
    */
   const getCV = useCallback(() => {
-    return detectorRef.current?.getCV() ?? null
-  }, [])
+    return detectorRef.current?.getCV() ?? null;
+  }, []);
 
   return {
     /** Whether OpenCV is currently loading */
@@ -376,7 +406,7 @@ export function useQuadTracking(options?: QuadDetectionOptions) {
     detector: detectorRef.current,
     /** Get tracker instance */
     tracker: trackerRef.current,
-  }
+  };
 }
 
-export default useQuadDetection
+export default useQuadDetection;

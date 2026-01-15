@@ -1,5 +1,5 @@
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
-import { db } from './index'
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { db } from "./index";
 
 /**
  * Migration runner
@@ -11,13 +11,13 @@ import { db } from './index'
  */
 
 try {
-  console.log('🔄 Running migrations...')
+  console.log("🔄 Running migrations...");
 
-  migrate(db, { migrationsFolder: './drizzle' })
+  migrate(db, { migrationsFolder: "./drizzle" });
 
-  console.log('✅ Migrations complete')
-  process.exit(0)
+  console.log("✅ Migrations complete");
+  process.exit(0);
 } catch (error) {
-  console.error('❌ Migration failed:', error)
-  process.exit(1)
+  console.error("❌ Migration failed:", error);
+  process.exit(1);
 }

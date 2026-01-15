@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { PageWithNav } from '@/components/PageWithNav'
-import { ComplementRaceGame } from './components/ComplementRaceGame'
-import { ComplementRaceProvider } from '@/arcade-games/complement-race/Provider'
+import { PageWithNav } from "@/components/PageWithNav";
+import { ComplementRaceGame } from "./components/ComplementRaceGame";
+import { ComplementRaceProvider } from "@/arcade-games/complement-race/Provider";
 
 export default function ComplementRacePage() {
   return (
@@ -11,5 +11,5 @@ export default function ComplementRacePage() {
         <ComplementRaceGame />
       </ComplementRaceProvider>
     </PageWithNav>
-  )
+  );
 }

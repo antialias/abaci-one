@@ -4,31 +4,37 @@
  * Stories for the one-at-a-time focus review experience.
  */
 
-import type { Meta, StoryObj } from '@storybook/react'
-import { useCallback, useState } from 'react'
-import type { ParsedProblem, WorksheetParsingResult } from '@/lib/worksheet-parsing'
-import { css } from '../../../styled-system/css'
-import { ProblemReviewFlow } from './ProblemReviewFlow'
+import type { Meta, StoryObj } from "@storybook/react";
+import { useCallback, useState } from "react";
+import type {
+  ParsedProblem,
+  WorksheetParsingResult,
+} from "@/lib/worksheet-parsing";
+import { css } from "../../../styled-system/css";
+import { ProblemReviewFlow } from "./ProblemReviewFlow";
 
 /** Worksheet image for testing */
-const WORKSHEET_URL = '/storybook-assets/worksheets/worksheet-20-problems.jpg'
+const WORKSHEET_URL = "/storybook-assets/worksheets/worksheet-20-problems.jpg";
 
 /** Helper to create complete problem objects */
 function completeProblem(
-  raw: Omit<ParsedProblem, 'notes' | 'excluded' | 'reviewStatus' | 'reviewedAt'> & {
-    notes?: string | null
-    excluded?: boolean
-    reviewStatus?: 'pending' | 'approved' | 'corrected' | 'flagged'
-    reviewedAt?: string | null
-  }
+  raw: Omit<
+    ParsedProblem,
+    "notes" | "excluded" | "reviewStatus" | "reviewedAt"
+  > & {
+    notes?: string | null;
+    excluded?: boolean;
+    reviewStatus?: "pending" | "approved" | "corrected" | "flagged";
+    reviewedAt?: string | null;
+  },
 ): ParsedProblem {
   return {
     ...raw,
     notes: raw.notes ?? null,
     excluded: raw.excluded ?? false,
-    reviewStatus: raw.reviewStatus ?? 'pending',
+    reviewStatus: raw.reviewStatus ?? "pending",
     reviewedAt: raw.reviewedAt ?? null,
-  }
+  };
 }
 
 /** Sample 20-problem parsing result */
@@ -38,7 +44,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 1,
       row: 1,
       column: 1,
-      format: 'vertical',
+      format: "vertical",
       terms: [57, 52, 14, 5],
       correctAnswer: 128,
       studentAnswer: 100,
@@ -51,7 +57,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 2,
       row: 1,
       column: 2,
-      format: 'vertical',
+      format: "vertical",
       terms: [94, 65, 5, 14],
       correctAnswer: 178,
       studentAnswer: 150,
@@ -64,7 +70,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 3,
       row: 1,
       column: 3,
-      format: 'vertical',
+      format: "vertical",
       terms: [91, 19, 1, 10],
       correctAnswer: 121,
       studentAnswer: 99,
@@ -77,7 +83,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 4,
       row: 1,
       column: 4,
-      format: 'vertical',
+      format: "vertical",
       terms: [29, 47, 80, -50],
       correctAnswer: 106,
       studentAnswer: 106,
@@ -90,7 +96,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 5,
       row: 1,
       column: 5,
-      format: 'vertical',
+      format: "vertical",
       terms: [53, 72, 35, 41],
       correctAnswer: 201,
       studentAnswer: 149,
@@ -103,7 +109,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 6,
       row: 1,
       column: 6,
-      format: 'vertical',
+      format: "vertical",
       terms: [12, 43, 5, 11],
       correctAnswer: 71,
       studentAnswer: 49,
@@ -116,7 +122,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 7,
       row: 1,
       column: 7,
-      format: 'vertical',
+      format: "vertical",
       terms: [76, 34, 1, 90],
       correctAnswer: 201,
       studentAnswer: 19,
@@ -129,7 +135,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 8,
       row: 1,
       column: 8,
-      format: 'vertical',
+      format: "vertical",
       terms: [51, 2, 53, 10],
       correctAnswer: 116,
       studentAnswer: 93,
@@ -142,7 +148,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 9,
       row: 1,
       column: 9,
-      format: 'vertical',
+      format: "vertical",
       terms: [69, 51, 70, 1],
       correctAnswer: 191,
       studentAnswer: 49,
@@ -155,7 +161,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 10,
       row: 1,
       column: 10,
-      format: 'vertical',
+      format: "vertical",
       terms: [93, 31, 23, 18],
       correctAnswer: 165,
       studentAnswer: 83,
@@ -168,7 +174,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 11,
       row: 2,
       column: 1,
-      format: 'vertical',
+      format: "vertical",
       terms: [98, 13, 6, 11, 49],
       correctAnswer: 177,
       studentAnswer: 45,
@@ -181,7 +187,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 12,
       row: 2,
       column: 2,
-      format: 'vertical',
+      format: "vertical",
       terms: [39, 11, -40, 60, 21],
       correctAnswer: 91,
       studentAnswer: 49,
@@ -194,7 +200,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 13,
       row: 2,
       column: 3,
-      format: 'vertical',
+      format: "vertical",
       terms: [79, 85, 30, 28, 10],
       correctAnswer: 232,
       studentAnswer: 96,
@@ -207,7 +213,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 14,
       row: 2,
       column: 4,
-      format: 'vertical',
+      format: "vertical",
       terms: [27, 26, 79, 56, 76],
       correctAnswer: 264,
       studentAnswer: 56,
@@ -220,7 +226,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 15,
       row: 2,
       column: 5,
-      format: 'vertical',
+      format: "vertical",
       terms: [59, 41, 10, 41, 18],
       correctAnswer: 169,
       studentAnswer: 67,
@@ -233,7 +239,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 16,
       row: 2,
       column: 6,
-      format: 'vertical',
+      format: "vertical",
       terms: [67, 53, 1, 79, 11],
       correctAnswer: 211,
       studentAnswer: 29,
@@ -246,7 +252,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 17,
       row: 2,
       column: 7,
-      format: 'vertical',
+      format: "vertical",
       terms: [77, 49, 5, 81, 1],
       correctAnswer: 213,
       studentAnswer: 59,
@@ -259,7 +265,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 18,
       row: 2,
       column: 8,
-      format: 'vertical',
+      format: "vertical",
       terms: [94, 60, 7, 3, 21],
       correctAnswer: 185,
       studentAnswer: 129,
@@ -272,7 +278,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 19,
       row: 2,
       column: 9,
-      format: 'vertical',
+      format: "vertical",
       terms: [299, 7, 23, 33, 4],
       correctAnswer: 366,
       studentAnswer: 366,
@@ -285,7 +291,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemNumber: 20,
       row: 2,
       column: 10,
-      format: 'vertical',
+      format: "vertical",
       terms: [189, 11, 56, -44, -51],
       correctAnswer: 161,
       studentAnswer: 49,
@@ -299,55 +305,64 @@ const PARSING_RESULT: WorksheetParsingResult = {
     lessonId: null,
     weekId: null,
     pageNumber: null,
-    detectedFormat: 'vertical',
+    detectedFormat: "vertical",
     totalRows: 2,
     problemsPerRow: 10,
   },
   overallConfidence: 0.612,
   warnings: [],
   needsReview: true,
-}
+};
 
 const meta: Meta<typeof ProblemReviewFlow> = {
-  title: 'WorksheetParsing/ProblemReviewFlow',
+  title: "WorksheetParsing/ProblemReviewFlow",
   component: ProblemReviewFlow,
   parameters: {
-    layout: 'fullscreen',
-    backgrounds: { default: 'dark' },
+    layout: "fullscreen",
+    backgrounds: { default: "dark" },
   },
-  tags: ['autodocs'],
-}
+  tags: ["autodocs"],
+};
 
-export default meta
-type Story = StoryObj<typeof ProblemReviewFlow>
+export default meta;
+type Story = StoryObj<typeof ProblemReviewFlow>;
 
 /** Interactive review flow demo */
 function ReviewFlowDemo() {
-  const [problems, setProblems] = useState<ParsedProblem[]>(PARSING_RESULT.problems)
-  const [actionLog, setActionLog] = useState<string[]>([])
+  const [problems, setProblems] = useState<ParsedProblem[]>(
+    PARSING_RESULT.problems,
+  );
+  const [actionLog, setActionLog] = useState<string[]>([]);
 
   const log = useCallback((msg: string) => {
-    setActionLog((prev) => [...prev.slice(-9), `${new Date().toLocaleTimeString()}: ${msg}`])
-  }, [])
+    setActionLog((prev) => [
+      ...prev.slice(-9),
+      `${new Date().toLocaleTimeString()}: ${msg}`,
+    ]);
+  }, []);
 
   const handleApproveProblem = useCallback(
     async (problemIndex: number) => {
-      log(`Approved problem #${problemIndex + 1}`)
-      await new Promise((r) => setTimeout(r, 300))
+      log(`Approved problem #${problemIndex + 1}`);
+      await new Promise((r) => setTimeout(r, 300));
       setProblems((prev) =>
-        prev.map((p, i) => (i === problemIndex ? { ...p, reviewStatus: 'approved' as const } : p))
-      )
+        prev.map((p, i) =>
+          i === problemIndex ? { ...p, reviewStatus: "approved" as const } : p,
+        ),
+      );
     },
-    [log]
-  )
+    [log],
+  );
 
   const handleCorrectProblem = useCallback(
     async (
       problemIndex: number,
-      correction: { terms?: number[]; studentAnswer?: number | null }
+      correction: { terms?: number[]; studentAnswer?: number | null },
     ) => {
-      log(`Corrected problem #${problemIndex + 1}: ${JSON.stringify(correction)}`)
-      await new Promise((r) => setTimeout(r, 300))
+      log(
+        `Corrected problem #${problemIndex + 1}: ${JSON.stringify(correction)}`,
+      );
+      await new Promise((r) => setTimeout(r, 300));
       setProblems((prev) =>
         prev.map((p, i) =>
           i === problemIndex
@@ -357,30 +372,34 @@ function ReviewFlowDemo() {
                 ...(correction.studentAnswer !== undefined && {
                   studentAnswer: correction.studentAnswer,
                 }),
-                reviewStatus: 'corrected' as const,
+                reviewStatus: "corrected" as const,
               }
-            : p
-        )
-      )
+            : p,
+        ),
+      );
     },
-    [log]
-  )
+    [log],
+  );
 
   const handleFlagProblem = useCallback(
     async (problemIndex: number) => {
-      log(`Flagged problem #${problemIndex + 1}`)
-      await new Promise((r) => setTimeout(r, 300))
+      log(`Flagged problem #${problemIndex + 1}`);
+      await new Promise((r) => setTimeout(r, 300));
       setProblems((prev) =>
-        prev.map((p, i) => (i === problemIndex ? { ...p, reviewStatus: 'flagged' as const } : p))
-      )
+        prev.map((p, i) =>
+          i === problemIndex ? { ...p, reviewStatus: "flagged" as const } : p,
+        ),
+      );
     },
-    [log]
-  )
+    [log],
+  );
 
   return (
-    <div className={css({ display: 'flex', height: '100vh' })}>
+    <div className={css({ display: "flex", height: "100vh" })}>
       {/* Main review flow */}
-      <div className={css({ flex: 1, display: 'flex', flexDirection: 'column' })}>
+      <div
+        className={css({ flex: 1, display: "flex", flexDirection: "column" })}
+      >
         <ProblemReviewFlow
           worksheetImageUrl={WORKSHEET_URL}
           parsingResult={{ ...PARSING_RESULT, problems }}
@@ -388,8 +407,8 @@ function ReviewFlowDemo() {
           onApproveProblem={handleApproveProblem}
           onCorrectProblem={handleCorrectProblem}
           onFlagProblem={handleFlagProblem}
-          onReviewComplete={() => log('Review complete!')}
-          onClose={() => log('Close clicked')}
+          onReviewComplete={() => log("Review complete!")}
+          onClose={() => log("Close clicked")}
           isDark={true}
         />
       </div>
@@ -397,19 +416,19 @@ function ReviewFlowDemo() {
       {/* Action log sidebar */}
       <div
         className={css({
-          width: '250px',
-          backgroundColor: 'gray.900',
-          borderLeft: '1px solid',
-          borderColor: 'gray.700',
+          width: "250px",
+          backgroundColor: "gray.900",
+          borderLeft: "1px solid",
+          borderColor: "gray.700",
           p: 3,
-          overflow: 'auto',
+          overflow: "auto",
         })}
       >
         <h3
           className={css({
-            fontSize: 'sm',
-            fontWeight: 'bold',
-            color: 'gray.400',
+            fontSize: "sm",
+            fontWeight: "bold",
+            color: "gray.400",
             mb: 2,
           })}
         >
@@ -417,21 +436,23 @@ function ReviewFlowDemo() {
         </h3>
         <div
           className={css({
-            fontSize: 'xs',
-            fontFamily: 'mono',
-            color: 'gray.300',
+            fontSize: "xs",
+            fontFamily: "mono",
+            color: "gray.300",
           })}
         >
           {actionLog.length === 0 ? (
-            <span className={css({ color: 'gray.500' })}>Actions will appear here...</span>
+            <span className={css({ color: "gray.500" })}>
+              Actions will appear here...
+            </span>
           ) : (
             actionLog.map((msg, i) => (
               <div
                 key={i}
                 className={css({
                   py: 1,
-                  borderBottom: '1px solid',
-                  borderColor: 'gray.800',
+                  borderBottom: "1px solid",
+                  borderColor: "gray.800",
                 })}
               >
                 {msg}
@@ -441,13 +462,13 @@ function ReviewFlowDemo() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /** Full focus review flow - interactive demo */
 export const Interactive: Story = {
   render: () => <ReviewFlowDemo />,
-}
+};
 
 /** Review flow with some problems already reviewed */
 export const PartiallyComplete: Story = {
@@ -457,11 +478,11 @@ export const PartiallyComplete: Story = {
       ...PARSING_RESULT,
       problems: PARSING_RESULT.problems.map((p, i) => ({
         ...p,
-        reviewStatus: i < 12 ? ('approved' as const) : ('pending' as const),
+        reviewStatus: i < 12 ? ("approved" as const) : ("pending" as const),
       })),
     },
     reviewProgress: {
-      status: 'in_progress',
+      status: "in_progress",
       currentIndex: 12,
       lastReviewedAt: new Date().toISOString(),
       autoApprovedCount: 8,
@@ -469,14 +490,14 @@ export const PartiallyComplete: Story = {
       flaggedCount: 8,
       correctedCount: 0,
     },
-    onApproveProblem: async (i) => console.log('Approve:', i),
-    onCorrectProblem: async (i, c) => console.log('Correct:', i, c),
-    onFlagProblem: async (i) => console.log('Flag:', i),
-    onReviewComplete: () => console.log('Complete!'),
-    onClose: () => console.log('Close'),
+    onApproveProblem: async (i) => console.log("Approve:", i),
+    onCorrectProblem: async (i, c) => console.log("Correct:", i, c),
+    onFlagProblem: async (i) => console.log("Flag:", i),
+    onReviewComplete: () => console.log("Complete!"),
+    onClose: () => console.log("Close"),
     isDark: true,
   },
-}
+};
 
 /** Review flow showing completion state */
 export const Complete: Story = {
@@ -486,11 +507,11 @@ export const Complete: Story = {
       ...PARSING_RESULT,
       problems: PARSING_RESULT.problems.map((p) => ({
         ...p,
-        reviewStatus: 'approved' as const,
+        reviewStatus: "approved" as const,
       })),
     },
     reviewProgress: {
-      status: 'completed',
+      status: "completed",
       currentIndex: 20,
       lastReviewedAt: new Date().toISOString(),
       autoApprovedCount: 8,
@@ -498,11 +519,11 @@ export const Complete: Story = {
       flaggedCount: 0,
       correctedCount: 3,
     },
-    onApproveProblem: async (i) => console.log('Approve:', i),
-    onCorrectProblem: async (i, c) => console.log('Correct:', i, c),
-    onFlagProblem: async (i) => console.log('Flag:', i),
-    onReviewComplete: () => console.log('Complete!'),
-    onClose: () => console.log('Close'),
+    onApproveProblem: async (i) => console.log("Approve:", i),
+    onCorrectProblem: async (i, c) => console.log("Correct:", i, c),
+    onFlagProblem: async (i) => console.log("Flag:", i),
+    onReviewComplete: () => console.log("Complete!"),
+    onClose: () => console.log("Close"),
     isDark: true,
   },
-}
+};

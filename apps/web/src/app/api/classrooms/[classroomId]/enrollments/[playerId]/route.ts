@@ -1,9 +1,14 @@
-import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
-import { db, schema } from '@/db'
-import { getLinkedParentIds, getTeacherClassroom, isParent, unenrollStudent } from '@/lib/classroom'
-import { emitStudentUnenrolled } from '@/lib/classroom/socket-emitter'
-import { getViewerId } from '@/lib/viewer'
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { db, schema } from "@/db";
+import {
+  getLinkedParentIds,
+  getTeacherClassroom,
+  isParent,
+  unenrollStudent,
+} from "@/lib/classroom";
+import { emitStudentUnenrolled } from "@/lib/classroom/socket-emitter";
+import { getViewerId } from "@/lib/viewer";
 
 /**
  * Get or create user record for a viewerId (guestId)
@@ -11,18 +16,21 @@ import { getViewerId } from '@/lib/viewer'
 async function getOrCreateUser(viewerId: string) {
   let user = await db.query.users.findFirst({
     where: eq(schema.users.guestId, viewerId),
-  })
+  });
 
   if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
+    const [newUser] = await db
+      .insert(schema.users)
+      .values({ guestId: viewerId })
+      .returning();
+    user = newUser;
   }
 
-  return user
+  return user;
 }
 
 interface RouteParams {
-  params: Promise<{ classroomId: string; playerId: string }>
+  params: Promise<{ classroomId: string; playerId: string }>;
 }
 
 /**
@@ -33,23 +41,23 @@ interface RouteParams {
  */
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
-    const { classroomId, playerId } = await params
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const { classroomId, playerId } = await params;
+    const viewerId = await getViewerId();
+    const user = await getOrCreateUser(viewerId);
 
     // Check authorization: must be teacher of classroom OR parent of student
-    const classroom = await getTeacherClassroom(user.id)
-    const isTeacher = classroom?.id === classroomId
-    const parentCheck = await isParent(user.id, playerId)
+    const classroom = await getTeacherClassroom(user.id);
+    const isTeacher = classroom?.id === classroomId;
+    const parentCheck = await isParent(user.id, playerId);
 
     if (!isTeacher && !parentCheck) {
       return NextResponse.json(
-        { error: 'Must be the classroom teacher or a parent of the student' },
-        { status: 403 }
-      )
+        { error: "Must be the classroom teacher or a parent of the student" },
+        { status: 403 },
+      );
     }
 
-    await unenrollStudent(classroomId, playerId)
+    await unenrollStudent(classroomId, playerId);
 
     // Emit socket event for real-time updates
     try {
@@ -58,17 +66,17 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
         .select({ name: schema.classrooms.name })
         .from(schema.classrooms)
         .where(eq(schema.classrooms.id, classroomId))
-        .limit(1)
+        .limit(1);
 
       const [playerInfo] = await db
         .select({ name: schema.players.name })
         .from(schema.players)
         .where(eq(schema.players.id, playerId))
-        .limit(1)
+        .limit(1);
 
       if (classroomInfo && playerInfo) {
         // Get parent IDs to notify
-        const parentIds = await getLinkedParentIds(playerId)
+        const parentIds = await getLinkedParentIds(playerId);
 
         await emitStudentUnenrolled(
           {
@@ -76,22 +84,25 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
             classroomName: classroomInfo.name,
             playerId,
             playerName: playerInfo.name,
-            unenrolledBy: isTeacher ? 'teacher' : 'parent',
+            unenrolledBy: isTeacher ? "teacher" : "parent",
           },
           {
             classroomId, // Teacher sees student removed
             userIds: parentIds, // Parents see child is no longer enrolled
             playerIds: [playerId], // Student sees they're no longer in classroom
-          }
-        )
+          },
+        );
       }
     } catch (socketError) {
-      console.error('[Unenroll] Failed to emit socket event:', socketError)
+      console.error("[Unenroll] Failed to emit socket event:", socketError);
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to unenroll student:', error)
-    return NextResponse.json({ error: 'Failed to unenroll student' }, { status: 500 })
+    console.error("Failed to unenroll student:", error);
+    return NextResponse.json(
+      { error: "Failed to unenroll student" },
+      { status: 500 },
+    );
   }
 }

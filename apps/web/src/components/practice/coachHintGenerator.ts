@@ -5,7 +5,7 @@
  * tutorial CoachBar uses, ensuring consistent hints across the app.
  */
 
-import { generateUnifiedInstructionSequence } from '@/utils/unifiedStepGenerator'
+import { generateUnifiedInstructionSequence } from "@/utils/unifiedStepGenerator";
 
 /**
  * Generate a coach hint based on the current step
@@ -17,23 +17,23 @@ import { generateUnifiedInstructionSequence } from '@/utils/unifiedStepGenerator
 export function generateCoachHint(
   startValue: number,
   targetValue: number,
-  currentStepIndex: number = 0
+  currentStepIndex: number = 0,
 ): string | null {
-  const sequence = generateUnifiedInstructionSequence(startValue, targetValue)
+  const sequence = generateUnifiedInstructionSequence(startValue, targetValue);
 
   if (!sequence || sequence.steps.length === 0) {
-    return null
+    return null;
   }
 
   // Get the current step
-  const currentStep = sequence.steps[currentStepIndex]
+  const currentStep = sequence.steps[currentStepIndex];
   if (!currentStep) {
-    return null
+    return null;
   }
 
   // Find the segment this step belongs to
-  const segment = sequence.segments.find((s) => s.id === currentStep.segmentId)
+  const segment = sequence.segments.find((s) => s.id === currentStep.segmentId);
 
   // Return the segment's readable summary if available (same as tutorial CoachBar)
-  return segment?.readable?.summary ?? null
+  return segment?.readable?.summary ?? null;
 }

@@ -17,11 +17,11 @@ export const LAYOUT_CONSTANTS = {
    * Total: ~220px
    */
   SVG_PREVIEW_VIEWPORT_OFFSET: 220,
-} as const
+} as const;
 
 /**
  * Get the CSS calc() expression for max-height of SVG preview
  */
 export function getPreviewMaxHeight(): string {
-  return `calc(100vh - ${LAYOUT_CONSTANTS.SVG_PREVIEW_VIEWPORT_OFFSET}px)`
+  return `calc(100vh - ${LAYOUT_CONSTANTS.SVG_PREVIEW_VIEWPORT_OFFSET}px)`;
 }

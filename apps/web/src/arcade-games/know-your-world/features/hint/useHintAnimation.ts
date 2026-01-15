@@ -12,30 +12,30 @@
  * ```
  */
 
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { usePulsingAnimation } from '../animations'
+import { useEffect, useState } from "react";
+import { usePulsingAnimation } from "../animations";
 
 // ============================================================================
 // Types
 // ============================================================================
 
 export interface HintActive {
-  regionId: string
-  timestamp: number
+  regionId: string;
+  timestamp: number;
 }
 
 export interface UseHintAnimationOptions {
   /** The currently active hint, or null if no hint */
-  hintActive: HintActive | null
+  hintActive: HintActive | null;
 }
 
 export interface UseHintAnimationReturn {
   /** Pulsing value 0-1 for flash animation */
-  hintFlashProgress: number
+  hintFlashProgress: number;
   /** Whether animation is currently in progress */
-  isHintAnimating: boolean
+  isHintAnimating: boolean;
 }
 
 // ============================================================================
@@ -43,10 +43,10 @@ export interface UseHintAnimationReturn {
 // ============================================================================
 
 /** Duration of the hint animation in milliseconds */
-const HINT_ANIMATION_DURATION = 1500
+const HINT_ANIMATION_DURATION = 1500;
 
 /** Number of pulses during the hint animation */
-const HINT_ANIMATION_PULSES = 2
+const HINT_ANIMATION_PULSES = 2;
 
 // ============================================================================
 // Hook Implementation
@@ -61,26 +61,28 @@ const HINT_ANIMATION_PULSES = 2
  * @param options - Configuration options
  * @returns Hint animation state
  */
-export function useHintAnimation(options: UseHintAnimationOptions): UseHintAnimationReturn {
-  const { hintActive } = options
+export function useHintAnimation(
+  options: UseHintAnimationOptions,
+): UseHintAnimationReturn {
+  const { hintActive } = options;
 
   // Animation state
-  const [hintFlashProgress, setHintFlashProgress] = useState(0)
-  const [isHintAnimating, setIsHintAnimating] = useState(false)
+  const [hintFlashProgress, setHintFlashProgress] = useState(0);
+  const [isHintAnimating, setIsHintAnimating] = useState(false);
 
   // Animation controller
-  const hintAnimation = usePulsingAnimation()
+  const hintAnimation = usePulsingAnimation();
 
   // Hint animation effect - brief pulse to highlight target region
   useEffect(() => {
     if (!hintActive) {
-      setHintFlashProgress(0)
-      setIsHintAnimating(false)
-      return
+      setHintFlashProgress(0);
+      setIsHintAnimating(false);
+      return;
     }
 
     // Start animation
-    setIsHintAnimating(true)
+    setIsHintAnimating(true);
 
     // Animation: 2 pulses over 1.5 seconds (shorter than give-up)
     hintAnimation.start({
@@ -88,19 +90,19 @@ export function useHintAnimation(options: UseHintAnimationOptions): UseHintAnima
       pulses: HINT_ANIMATION_PULSES,
       onProgress: setHintFlashProgress,
       onComplete: () => {
-        setHintFlashProgress(0)
-        setIsHintAnimating(false)
+        setHintFlashProgress(0);
+        setIsHintAnimating(false);
       },
-    })
+    });
 
     // Cleanup
     return () => {
-      hintAnimation.cancel()
-    }
-  }, [hintActive?.timestamp, hintAnimation]) // Re-run when timestamp changes
+      hintAnimation.cancel();
+    };
+  }, [hintActive?.timestamp, hintAnimation]); // Re-run when timestamp changes
 
   return {
     hintFlashProgress,
     isHintAnimating,
-  }
+  };
 }

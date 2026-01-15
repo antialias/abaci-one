@@ -1,7 +1,7 @@
 // Minuend row rendering for subtraction problems
 // Shows the top number with optional scratch work boxes for borrowing
 
-import type { CellDimensions } from '../shared/types'
+import type { CellDimensions } from "../shared/types";
 
 /**
  * Generate Typst code for the minuend row
@@ -14,7 +14,7 @@ import type { CellDimensions } from '../shared/types'
  * @returns Typst code for minuend row
  */
 export function generateMinuendRow(cellDimensions: CellDimensions): string {
-  const { cellSize, cellSizeIn, cellSizePt } = cellDimensions
+  const { cellSize, cellSizeIn, cellSizePt } = cellDimensions;
 
   return String.raw`
       // Minuend row (top number with optional scratch work boxes)
@@ -93,5 +93,5 @@ export function generateMinuendRow(cellDimensions: CellDimensions): string {
           ],)
         }
       },
-`
+`;
 }

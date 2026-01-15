@@ -23,9 +23,9 @@ export {
   type ProblemMetadataEntry,
   type VideoReadyCallback,
   type VideoFailedCallback,
-} from './VisionRecorder'
+} from "./VisionRecorder";
 export {
   VideoEncoder,
   type VideoEncoderOptions,
   type EncodingResult,
-} from './VideoEncoder'
+} from "./VideoEncoder";

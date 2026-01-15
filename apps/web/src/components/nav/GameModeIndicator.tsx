@@ -1,23 +1,23 @@
-type GameMode = 'none' | 'single' | 'battle' | 'tournament'
+type GameMode = "none" | "single" | "battle" | "tournament";
 
 interface GameModeIndicatorProps {
-  gameMode: GameMode
-  shouldEmphasize: boolean
-  showFullscreenSelection: boolean
+  gameMode: GameMode;
+  shouldEmphasize: boolean;
+  showFullscreenSelection: boolean;
   /** Custom label to override the default mode label */
-  customModeLabel?: string
+  customModeLabel?: string;
   /** Custom emoji to override the default mode emoji */
-  customModeEmoji?: string
+  customModeEmoji?: string;
   /** Custom color to override the default mode color */
-  customModeColor?: string
+  customModeColor?: string;
 }
 
 const gameModeConfig = {
-  none: { label: 'Select Players', emoji: '👥', color: '#6b7280' },
-  single: { label: 'Solo', emoji: '🎯', color: '#3b82f6' },
-  battle: { label: 'Battle', emoji: '⚔️', color: '#8b5cf6' },
-  tournament: { label: 'Tournament', emoji: '🏆', color: '#f59e0b' },
-}
+  none: { label: "Select Players", emoji: "👥", color: "#6b7280" },
+  single: { label: "Solo", emoji: "🎯", color: "#3b82f6" },
+  battle: { label: "Battle", emoji: "⚔️", color: "#8b5cf6" },
+  tournament: { label: "Tournament", emoji: "🏆", color: "#f59e0b" },
+};
 
 export function GameModeIndicator({
   gameMode,
@@ -27,41 +27,41 @@ export function GameModeIndicator({
   customModeEmoji,
   customModeColor,
 }: GameModeIndicatorProps) {
-  const defaultModeInfo = gameModeConfig[gameMode]
+  const defaultModeInfo = gameModeConfig[gameMode];
   // Use custom overrides if provided, otherwise fall back to defaults
   const modeInfo = {
     label: customModeLabel ?? defaultModeInfo.label,
     emoji: customModeEmoji ?? defaultModeInfo.emoji,
     color: customModeColor ?? defaultModeInfo.color,
-  }
+  };
 
   return (
     <div
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: shouldEmphasize ? '10px' : '4px',
-        padding: shouldEmphasize ? '12px 24px' : '4px 8px',
+        display: "inline-flex",
+        alignItems: "center",
+        gap: shouldEmphasize ? "10px" : "4px",
+        padding: shouldEmphasize ? "12px 24px" : "4px 8px",
         background: shouldEmphasize
           ? `linear-gradient(135deg, ${modeInfo.color}25, ${modeInfo.color}35)`
           : `${modeInfo.color}20`,
-        border: `${shouldEmphasize ? '3px' : '2px'} solid ${modeInfo.color}${shouldEmphasize ? '70' : '40'}`,
-        borderRadius: shouldEmphasize ? '16px' : '6px',
-        fontSize: shouldEmphasize ? '20px' : '12px',
-        fontWeight: 'bold',
+        border: `${shouldEmphasize ? "3px" : "2px"} solid ${modeInfo.color}${shouldEmphasize ? "70" : "40"}`,
+        borderRadius: shouldEmphasize ? "16px" : "6px",
+        fontSize: shouldEmphasize ? "20px" : "12px",
+        fontWeight: "bold",
         color: modeInfo.color,
         boxShadow: shouldEmphasize
           ? `0 6px 20px ${modeInfo.color}40, inset 0 1px 0 rgba(255,255,255,0.3)`
-          : 'none',
-        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: shouldEmphasize ? 'scale(1.05)' : 'scale(1)',
+          : "none",
+        transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: shouldEmphasize ? "scale(1.05)" : "scale(1)",
         lineHeight: 1,
       }}
     >
       <span
         style={{
-          fontSize: shouldEmphasize ? '28px' : '12px',
-          transition: 'font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          fontSize: shouldEmphasize ? "28px" : "12px",
+          transition: "font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
           lineHeight: 1,
         }}
       >
@@ -69,5 +69,5 @@ export function GameModeIndicator({
       </span>
       <span style={{ lineHeight: 1 }}>{modeInfo.label}</span>
     </div>
-  )
+  );
 }

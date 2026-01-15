@@ -50,14 +50,14 @@ export type {
   SkillDataPoint,
   SkillTrajectory,
   StudentProfile,
-} from './types'
+} from "./types";
 
 // Seeded random
 export {
   SeededRandom,
   withSeededRandom,
   withSeededRandomAsync,
-} from './SeededRandom'
+} from "./SeededRandom";
 
 // Ephemeral database
 export {
@@ -68,13 +68,13 @@ export {
   resetDatabase,
   type EphemeralDbResult,
   type TestDatabase,
-} from './EphemeralDatabase'
+} from "./EphemeralDatabase";
 
 // Simulated student
-export { SimulatedStudent } from './SimulatedStudent'
+export { SimulatedStudent } from "./SimulatedStudent";
 
 // Journey runner
-export { JourneyRunner } from './JourneyRunner'
+export { JourneyRunner } from "./JourneyRunner";
 
 // Profiles
 export {
@@ -86,7 +86,7 @@ export {
   STRONG_SKILLS,
   unevenSkillsProfile,
   WEAK_SKILLS,
-} from './profiles'
+} from "./profiles";
 
 // Reporters
 export {
@@ -99,7 +99,7 @@ export {
   logComparisonResults,
   logJourneyResults,
   toJsonSerializable,
-} from './reporters'
+} from "./reporters";
 
 /**
  * Helper to run an A/B comparison between adaptive and classic modes.
@@ -107,54 +107,57 @@ export {
  * Runs the same profile with the same seed in both modes and compares results.
  */
 export async function runComparison(
-  db: import('./EphemeralDatabase').TestDatabase,
-  profile: import('./types').StudentProfile,
-  config: Omit<import('./types').JourneyConfig, 'profile' | 'mode'>,
-  playerId: string
-): Promise<import('./types').ComparisonResult> {
-  const { SeededRandom } = await import('./SeededRandom')
-  const { SimulatedStudent } = await import('./SimulatedStudent')
-  const { JourneyRunner } = await import('./JourneyRunner')
-  const { resetDatabase, createTestStudent } = await import('./EphemeralDatabase')
+  db: import("./EphemeralDatabase").TestDatabase,
+  profile: import("./types").StudentProfile,
+  config: Omit<import("./types").JourneyConfig, "profile" | "mode">,
+  playerId: string,
+): Promise<import("./types").ComparisonResult> {
+  const { SeededRandom } = await import("./SeededRandom");
+  const { SimulatedStudent } = await import("./SimulatedStudent");
+  const { JourneyRunner } = await import("./JourneyRunner");
+  const { resetDatabase, createTestStudent } = await import(
+    "./EphemeralDatabase"
+  );
 
   // Run adaptive mode
-  await resetDatabase(db)
-  await createTestStudent(db, playerId)
-  const adaptiveRng = new SeededRandom(config.seed)
-  const adaptiveStudent = new SimulatedStudent(profile, adaptiveRng)
+  await resetDatabase(db);
+  await createTestStudent(db, playerId);
+  const adaptiveRng = new SeededRandom(config.seed);
+  const adaptiveStudent = new SimulatedStudent(profile, adaptiveRng);
   const adaptiveRunner = new JourneyRunner(
     db,
     adaptiveStudent,
-    { ...config, profile, mode: 'adaptive' },
+    { ...config, profile, mode: "adaptive" },
     adaptiveRng,
-    playerId
-  )
-  const adaptiveResult = await adaptiveRunner.run()
+    playerId,
+  );
+  const adaptiveResult = await adaptiveRunner.run();
 
   // Run classic mode (same seed)
-  await resetDatabase(db)
-  await createTestStudent(db, playerId)
-  const classicRng = new SeededRandom(config.seed)
-  const classicStudent = new SimulatedStudent(profile, classicRng)
+  await resetDatabase(db);
+  await createTestStudent(db, playerId);
+  const classicRng = new SeededRandom(config.seed);
+  const classicStudent = new SimulatedStudent(profile, classicRng);
   const classicRunner = new JourneyRunner(
     db,
     classicStudent,
-    { ...config, profile, mode: 'classic' },
+    { ...config, profile, mode: "classic" },
     classicRng,
-    playerId
-  )
-  const classicResult = await classicRunner.run()
+    playerId,
+  );
+  const classicResult = await classicRunner.run();
 
   return {
     adaptiveResult,
     classicResult,
     correlationDelta:
-      adaptiveResult.finalMetrics.bktCorrelation - classicResult.finalMetrics.bktCorrelation,
+      adaptiveResult.finalMetrics.bktCorrelation -
+      classicResult.finalMetrics.bktCorrelation,
     weakSkillSurfacingDelta:
       adaptiveResult.finalMetrics.weakSkillSurfacing -
       classicResult.finalMetrics.weakSkillSurfacing,
     accuracyImprovementDelta:
       adaptiveResult.finalMetrics.accuracyImprovement -
       classicResult.finalMetrics.accuracyImprovement,
-  }
+  };
 }

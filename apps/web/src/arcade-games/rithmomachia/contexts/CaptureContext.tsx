@@ -1,25 +1,25 @@
-'use client'
+"use client";
 
-import { createContext, type ReactNode, useContext } from 'react'
-import type { Piece, RelationKind } from '../types'
+import { createContext, type ReactNode, useContext } from "react";
+import type { Piece, RelationKind } from "../types";
 
 /**
  * Layout information for the capture dialog
  */
 export interface CaptureLayout {
-  targetPos: { x: number; y: number }
-  cellSize: number
-  gap: number
-  padding: number
+  targetPos: { x: number; y: number };
+  cellSize: number;
+  gap: number;
+  padding: number;
 }
 
 /**
  * Pieces involved in the current capture attempt
  */
 export interface CapturePieces {
-  mover: Piece
-  target: Piece
-  helper: Piece | null
+  mover: Piece;
+  target: Piece;
+  helper: Piece | null;
 }
 
 /**
@@ -27,41 +27,45 @@ export interface CapturePieces {
  */
 export interface CaptureContextValue {
   // Layout (calculated once, shared by all capture components)
-  layout: CaptureLayout
+  layout: CaptureLayout;
 
   // Pieces involved in capture
-  pieces: CapturePieces
+  pieces: CapturePieces;
 
   // Capture state
-  selectedRelation: RelationKind | null
-  closing: boolean
+  selectedRelation: RelationKind | null;
+  closing: boolean;
 
   // All pieces on the board (for validation)
-  allPieces: Piece[]
+  allPieces: Piece[];
 
   // For pyramid pieces, maps relation to which face value to use
-  pyramidFaceValues: Map<RelationKind, number> | null
+  pyramidFaceValues: Map<RelationKind, number> | null;
 
   // Helper functions
-  findValidHelpers: (moverValue: number, targetValue: number, relation: RelationKind) => Piece[]
+  findValidHelpers: (
+    moverValue: number,
+    targetValue: number,
+    relation: RelationKind,
+  ) => Piece[];
 
   // Actions
-  selectRelation: (relation: RelationKind) => void
-  selectHelper: (pieceId: string) => void
-  dismissDialog: () => void
+  selectRelation: (relation: RelationKind) => void;
+  selectHelper: (pieceId: string) => void;
+  dismissDialog: () => void;
 }
 
-const CaptureContext = createContext<CaptureContextValue | null>(null)
+const CaptureContext = createContext<CaptureContextValue | null>(null);
 
 /**
  * Hook to access capture context
  */
 export function useCaptureContext(): CaptureContextValue {
-  const context = useContext(CaptureContext)
+  const context = useContext(CaptureContext);
   if (!context) {
-    throw new Error('useCaptureContext must be used within CaptureProvider')
+    throw new Error("useCaptureContext must be used within CaptureProvider");
   }
-  return context
+  return context;
 }
 
 /**
@@ -71,8 +75,10 @@ export function CaptureProvider({
   children,
   value,
 }: {
-  children: ReactNode
-  value: CaptureContextValue
+  children: ReactNode;
+  value: CaptureContextValue;
 }) {
-  return <CaptureContext.Provider value={value}>{children}</CaptureContext.Provider>
+  return (
+    <CaptureContext.Provider value={value}>{children}</CaptureContext.Provider>
+  );
 }

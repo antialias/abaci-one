@@ -1,35 +1,41 @@
-'use client'
+"use client";
 
-import { useCallback, useState } from 'react'
-import { css } from '../../../../../styled-system/css'
+import { useCallback, useState } from "react";
+import { css } from "../../../../../styled-system/css";
 
 export interface TrainingImageMeta {
-  filename: string
-  digit: number
-  timestamp: number
-  playerId: string
-  sessionId: string
-  columnIndex: number
-  imageUrl: string
+  filename: string;
+  digit: number;
+  timestamp: number;
+  playerId: string;
+  sessionId: string;
+  columnIndex: number;
+  imageUrl: string;
 }
 
 interface DigitImageBrowserProps {
   /** The digit being browsed */
-  digit: number
+  digit: number;
   /** Images for this digit */
-  images: TrainingImageMeta[]
+  images: TrainingImageMeta[];
   /** Loading state */
-  loading?: boolean
+  loading?: boolean;
   /** Callback when an image is deleted */
-  onDeleteImage?: (image: TrainingImageMeta) => Promise<void>
+  onDeleteImage?: (image: TrainingImageMeta) => Promise<void>;
   /** Callback when images are bulk deleted */
-  onBulkDeleteImages?: (images: TrainingImageMeta[]) => Promise<void>
+  onBulkDeleteImages?: (images: TrainingImageMeta[]) => Promise<void>;
   /** Callback when an image is reclassified to a different digit */
-  onReclassifyImage?: (image: TrainingImageMeta, newDigit: number) => Promise<void>
+  onReclassifyImage?: (
+    image: TrainingImageMeta,
+    newDigit: number,
+  ) => Promise<void>;
   /** Callback when images are bulk reclassified */
-  onBulkReclassifyImages?: (images: TrainingImageMeta[], newDigit: number) => Promise<void>
+  onBulkReclassifyImages?: (
+    images: TrainingImageMeta[],
+    newDigit: number,
+  ) => Promise<void>;
   /** Whether deletion is in progress */
-  deleting?: boolean
+  deleting?: boolean;
 }
 
 /**
@@ -46,111 +52,119 @@ export function DigitImageBrowser({
   onBulkReclassifyImages,
   deleting = false,
 }: DigitImageBrowserProps) {
-  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set())
-  const [reclassifyingImage, setReclassifyingImage] = useState<string | null>(null)
-  const [bulkActionInProgress, setBulkActionInProgress] = useState(false)
-  const [showBulkReclassify, setShowBulkReclassify] = useState(false)
-  const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null)
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [reclassifyingImage, setReclassifyingImage] = useState<string | null>(
+    null,
+  );
+  const [bulkActionInProgress, setBulkActionInProgress] = useState(false);
+  const [showBulkReclassify, setShowBulkReclassify] = useState(false);
+  const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
 
   const toggleSelect = useCallback(
     (filename: string, index: number, shiftKey: boolean) => {
       setSelectedImages((prev) => {
-        const next = new Set(prev)
+        const next = new Set(prev);
 
         // Shift+click for range selection/deselection
         if (shiftKey && lastClickedIndex !== null) {
-          const start = Math.min(lastClickedIndex, index)
-          const end = Math.max(lastClickedIndex, index)
+          const start = Math.min(lastClickedIndex, index);
+          const end = Math.max(lastClickedIndex, index);
           // Action based on clicked item: if it's selected, deselect range; if not, select range
-          const shouldSelect = !prev.has(filename)
+          const shouldSelect = !prev.has(filename);
           for (let i = start; i <= end; i++) {
             if (shouldSelect) {
-              next.add(images[i].filename)
+              next.add(images[i].filename);
             } else {
-              next.delete(images[i].filename)
+              next.delete(images[i].filename);
             }
           }
         } else {
           // Normal toggle
           if (next.has(filename)) {
-            next.delete(filename)
+            next.delete(filename);
           } else {
-            next.add(filename)
+            next.add(filename);
           }
         }
 
-        return next
-      })
+        return next;
+      });
 
       // Always update last clicked index (but not for shift clicks to allow extending range)
       if (!shiftKey) {
-        setLastClickedIndex(index)
+        setLastClickedIndex(index);
       }
     },
-    [lastClickedIndex, images]
-  )
+    [lastClickedIndex, images],
+  );
 
   const selectAll = useCallback(() => {
-    setSelectedImages(new Set(images.map((img) => img.filename)))
-  }, [images])
+    setSelectedImages(new Set(images.map((img) => img.filename)));
+  }, [images]);
 
   const clearSelection = useCallback(() => {
-    setSelectedImages(new Set())
-  }, [])
+    setSelectedImages(new Set());
+  }, []);
 
   const handleDelete = useCallback(
     async (image: TrainingImageMeta) => {
       if (onDeleteImage) {
-        await onDeleteImage(image)
+        await onDeleteImage(image);
       }
     },
-    [onDeleteImage]
-  )
+    [onDeleteImage],
+  );
 
   const handleReclassify = useCallback(
     async (image: TrainingImageMeta, newDigit: number) => {
       if (onReclassifyImage && newDigit !== image.digit) {
-        setReclassifyingImage(image.filename)
+        setReclassifyingImage(image.filename);
         try {
-          await onReclassifyImage(image, newDigit)
+          await onReclassifyImage(image, newDigit);
         } finally {
-          setReclassifyingImage(null)
+          setReclassifyingImage(null);
         }
       }
     },
-    [onReclassifyImage]
-  )
+    [onReclassifyImage],
+  );
 
   // Get selected image objects
-  const selectedImageObjects = images.filter((img) => selectedImages.has(img.filename))
+  const selectedImageObjects = images.filter((img) =>
+    selectedImages.has(img.filename),
+  );
 
   const handleBulkDelete = useCallback(async () => {
     if (onBulkDeleteImages && selectedImageObjects.length > 0) {
-      setBulkActionInProgress(true)
+      setBulkActionInProgress(true);
       try {
-        await onBulkDeleteImages(selectedImageObjects)
-        setSelectedImages(new Set())
+        await onBulkDeleteImages(selectedImageObjects);
+        setSelectedImages(new Set());
       } finally {
-        setBulkActionInProgress(false)
+        setBulkActionInProgress(false);
       }
     }
-  }, [onBulkDeleteImages, selectedImageObjects])
+  }, [onBulkDeleteImages, selectedImageObjects]);
 
   const handleBulkReclassify = useCallback(
     async (newDigit: number) => {
-      if (onBulkReclassifyImages && selectedImageObjects.length > 0 && newDigit !== digit) {
-        setBulkActionInProgress(true)
-        setShowBulkReclassify(false)
+      if (
+        onBulkReclassifyImages &&
+        selectedImageObjects.length > 0 &&
+        newDigit !== digit
+      ) {
+        setBulkActionInProgress(true);
+        setShowBulkReclassify(false);
         try {
-          await onBulkReclassifyImages(selectedImageObjects, newDigit)
-          setSelectedImages(new Set())
+          await onBulkReclassifyImages(selectedImageObjects, newDigit);
+          setSelectedImages(new Set());
         } finally {
-          setBulkActionInProgress(false)
+          setBulkActionInProgress(false);
         }
       }
     },
-    [onBulkReclassifyImages, selectedImageObjects, digit]
-  )
+    [onBulkReclassifyImages, selectedImageObjects, digit],
+  );
 
   if (loading) {
     return (
@@ -158,22 +172,22 @@ export function DigitImageBrowser({
         data-component="digit-image-browser"
         data-state="loading"
         className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '200px',
-          color: 'gray.500',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "200px",
+          color: "gray.500",
         })}
       >
         <span
           data-element="loading-spinner"
-          className={css({ animation: 'spin 1s linear infinite', mr: 2 })}
+          className={css({ animation: "spin 1s linear infinite", mr: 2 })}
         >
           ⏳
         </span>
         <span data-element="loading-text">Loading images...</span>
       </div>
-    )
+    );
   }
 
   if (images.length === 0) {
@@ -183,56 +197,76 @@ export function DigitImageBrowser({
         data-state="empty"
         data-digit={digit}
         className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '200px',
-          color: 'gray.500',
-          textAlign: 'center',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "200px",
+          color: "gray.500",
+          textAlign: "center",
           p: 4,
         })}
       >
-        <div data-element="empty-icon" className={css({ fontSize: '3xl', mb: 2, opacity: 0.5 })}>
+        <div
+          data-element="empty-icon"
+          className={css({ fontSize: "3xl", mb: 2, opacity: 0.5 })}
+        >
           📭
         </div>
-        <div data-element="empty-message" className={css({ fontSize: 'sm' })}>
-          No images for digit <strong className={css({ color: 'gray.300' })}>{digit}</strong>
+        <div data-element="empty-message" className={css({ fontSize: "sm" })}>
+          No images for digit{" "}
+          <strong className={css({ color: "gray.300" })}>{digit}</strong>
         </div>
         <div
           data-element="empty-hint"
-          className={css({ fontSize: 'xs', mt: 1, color: 'gray.600' })}
+          className={css({ fontSize: "xs", mt: 1, color: "gray.600" })}
         >
           Use the capture panel to add training images
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div data-component="digit-image-browser" data-digit={digit} data-image-count={images.length}>
+    <div
+      data-component="digit-image-browser"
+      data-digit={digit}
+      data-image-count={images.length}
+    >
       {/* Header with selection controls */}
       <div
         data-element="browser-header"
         className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
           mb: 3,
           pb: 2,
-          borderBottom: '1px solid',
-          borderColor: 'gray.800',
+          borderBottom: "1px solid",
+          borderColor: "gray.800",
         })}
       >
-        <div data-element="image-count" className={css({ fontSize: 'sm', color: 'gray.400' })}>
-          <strong className={css({ color: 'gray.200' })}>{images.length}</strong> images
+        <div
+          data-element="image-count"
+          className={css({ fontSize: "sm", color: "gray.400" })}
+        >
+          <strong className={css({ color: "gray.200" })}>
+            {images.length}
+          </strong>{" "}
+          images
           {selectedImages.size > 0 && (
-            <span data-element="selection-count" className={css({ color: 'blue.400', ml: 2 })}>
+            <span
+              data-element="selection-count"
+              className={css({ color: "blue.400", ml: 2 })}
+            >
               ({selectedImages.size} selected)
             </span>
           )}
         </div>
-        <div data-element="selection-actions" className={css({ display: 'flex', gap: 2 })}>
+        <div
+          data-element="selection-actions"
+          className={css({ display: "flex", gap: 2 })}
+        >
           {selectedImages.size > 0 ? (
             <>
               {/* Bulk delete button */}
@@ -245,15 +279,15 @@ export function DigitImageBrowser({
                   className={css({
                     px: 2,
                     py: 1,
-                    fontSize: 'xs',
-                    color: 'red.400',
-                    bg: 'transparent',
-                    border: '1px solid',
-                    borderColor: 'red.800',
-                    borderRadius: 'md',
-                    cursor: bulkActionInProgress ? 'not-allowed' : 'pointer',
+                    fontSize: "xs",
+                    color: "red.400",
+                    bg: "transparent",
+                    border: "1px solid",
+                    borderColor: "red.800",
+                    borderRadius: "md",
+                    cursor: bulkActionInProgress ? "not-allowed" : "pointer",
                     opacity: bulkActionInProgress ? 0.5 : 1,
-                    _hover: { borderColor: 'red.600', bg: 'red.900/30' },
+                    _hover: { borderColor: "red.600", bg: "red.900/30" },
                   })}
                 >
                   🗑️ Delete {selectedImages.size}
@@ -264,7 +298,7 @@ export function DigitImageBrowser({
               {onBulkReclassifyImages && (
                 <div
                   data-element="bulk-reclassify-wrapper"
-                  className={css({ position: 'relative' })}
+                  className={css({ position: "relative" })}
                 >
                   <button
                     type="button"
@@ -274,15 +308,15 @@ export function DigitImageBrowser({
                     className={css({
                       px: 2,
                       py: 1,
-                      fontSize: 'xs',
-                      color: 'blue.400',
-                      bg: 'transparent',
-                      border: '1px solid',
-                      borderColor: 'blue.800',
-                      borderRadius: 'md',
-                      cursor: bulkActionInProgress ? 'not-allowed' : 'pointer',
+                      fontSize: "xs",
+                      color: "blue.400",
+                      bg: "transparent",
+                      border: "1px solid",
+                      borderColor: "blue.800",
+                      borderRadius: "md",
+                      cursor: bulkActionInProgress ? "not-allowed" : "pointer",
                       opacity: bulkActionInProgress ? 0.5 : 1,
-                      _hover: { borderColor: 'blue.600', bg: 'blue.900/30' },
+                      _hover: { borderColor: "blue.600", bg: "blue.900/30" },
                     })}
                   >
                     ↻ Move {selectedImages.size}
@@ -292,24 +326,24 @@ export function DigitImageBrowser({
                     <div
                       data-element="bulk-reclassify-menu"
                       className={css({
-                        position: 'absolute',
-                        top: '100%',
+                        position: "absolute",
+                        top: "100%",
                         right: 0,
                         mt: 1,
                         p: 2,
-                        bg: 'gray.800',
-                        borderRadius: 'md',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                        border: '1px solid',
-                        borderColor: 'gray.700',
+                        bg: "gray.800",
+                        borderRadius: "md",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+                        border: "1px solid",
+                        borderColor: "gray.700",
                         zIndex: 100,
                       })}
                     >
                       <div
                         data-element="bulk-reclassify-label"
                         className={css({
-                          fontSize: 'xs',
-                          color: 'gray.400',
+                          fontSize: "xs",
+                          color: "gray.400",
                           mb: 2,
                         })}
                       >
@@ -318,8 +352,8 @@ export function DigitImageBrowser({
                       <div
                         data-element="bulk-reclassify-digit-grid"
                         className={css({
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(5, 1fr)',
+                          display: "grid",
+                          gridTemplateColumns: "repeat(5, 1fr)",
                           gap: 1,
                         })}
                       >
@@ -333,17 +367,20 @@ export function DigitImageBrowser({
                             onClick={() => handleBulkReclassify(d)}
                             disabled={d === digit}
                             className={css({
-                              width: '28px',
-                              height: '28px',
-                              fontSize: 'sm',
-                              fontWeight: 'bold',
-                              fontFamily: 'mono',
-                              color: d === digit ? 'gray.600' : 'gray.200',
-                              bg: d === digit ? 'gray.900' : 'gray.700',
-                              border: 'none',
-                              borderRadius: 'sm',
-                              cursor: d === digit ? 'not-allowed' : 'pointer',
-                              _hover: d === digit ? {} : { bg: 'blue.600', color: 'white' },
+                              width: "28px",
+                              height: "28px",
+                              fontSize: "sm",
+                              fontWeight: "bold",
+                              fontFamily: "mono",
+                              color: d === digit ? "gray.600" : "gray.200",
+                              bg: d === digit ? "gray.900" : "gray.700",
+                              border: "none",
+                              borderRadius: "sm",
+                              cursor: d === digit ? "not-allowed" : "pointer",
+                              _hover:
+                                d === digit
+                                  ? {}
+                                  : { bg: "blue.600", color: "white" },
                             })}
                           >
                             {d}
@@ -363,14 +400,14 @@ export function DigitImageBrowser({
                 className={css({
                   px: 2,
                   py: 1,
-                  fontSize: 'xs',
-                  color: 'gray.400',
-                  bg: 'transparent',
-                  border: '1px solid',
-                  borderColor: 'gray.700',
-                  borderRadius: 'md',
-                  cursor: 'pointer',
-                  _hover: { borderColor: 'gray.600', color: 'gray.300' },
+                  fontSize: "xs",
+                  color: "gray.400",
+                  bg: "transparent",
+                  border: "1px solid",
+                  borderColor: "gray.700",
+                  borderRadius: "md",
+                  cursor: "pointer",
+                  _hover: { borderColor: "gray.600", color: "gray.300" },
                 })}
               >
                 ✕
@@ -384,14 +421,14 @@ export function DigitImageBrowser({
               className={css({
                 px: 2,
                 py: 1,
-                fontSize: 'xs',
-                color: 'gray.400',
-                bg: 'transparent',
-                border: '1px solid',
-                borderColor: 'gray.700',
-                borderRadius: 'md',
-                cursor: 'pointer',
-                _hover: { borderColor: 'gray.600', color: 'gray.300' },
+                fontSize: "xs",
+                color: "gray.400",
+                bg: "transparent",
+                border: "1px solid",
+                borderColor: "gray.700",
+                borderRadius: "md",
+                cursor: "pointer",
+                _hover: { borderColor: "gray.600", color: "gray.300" },
               })}
             >
               Select All
@@ -404,14 +441,14 @@ export function DigitImageBrowser({
       <div
         data-element="image-grid"
         className={css({
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))',
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(70px, 1fr))",
           gap: 2,
         })}
       >
         {images.map((image, index) => {
-          const isSelected = selectedImages.has(image.filename)
-          const isReclassifying = reclassifyingImage === image.filename
+          const isSelected = selectedImages.has(image.filename);
+          const isReclassifying = reclassifyingImage === image.filename;
 
           return (
             <div
@@ -421,17 +458,17 @@ export function DigitImageBrowser({
               data-selected={isSelected}
               data-reclassifying={isReclassifying}
               className={css({
-                position: 'relative',
-                aspectRatio: '1',
-                borderRadius: 'md',
+                position: "relative",
+                aspectRatio: "1",
+                borderRadius: "md",
                 // Note: NO overflow:hidden here - allows dropdown to escape
-                border: '2px solid',
-                borderColor: isSelected ? 'blue.500' : 'transparent',
-                bg: 'gray.850',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
+                border: "2px solid",
+                borderColor: isSelected ? "blue.500" : "transparent",
+                bg: "gray.850",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
                 _hover: {
-                  borderColor: isSelected ? 'blue.400' : 'gray.600',
+                  borderColor: isSelected ? "blue.400" : "gray.600",
                   '& [data-element="image-actions"]': {
                     opacity: 1,
                   },
@@ -443,10 +480,10 @@ export function DigitImageBrowser({
               <div
                 data-element="image-wrapper"
                 className={css({
-                  position: 'absolute',
+                  position: "absolute",
                   inset: 0,
-                  borderRadius: 'md',
-                  overflow: 'hidden',
+                  borderRadius: "md",
+                  overflow: "hidden",
                 })}
               >
                 <img
@@ -454,9 +491,9 @@ export function DigitImageBrowser({
                   src={image.imageUrl}
                   alt={`Digit ${image.digit}`}
                   className={css({
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
                     opacity: isReclassifying ? 0.5 : 1,
                   })}
                 />
@@ -466,16 +503,16 @@ export function DigitImageBrowser({
               <div
                 data-element="image-actions"
                 className={css({
-                  position: 'absolute',
+                  position: "absolute",
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  display: 'flex',
+                  display: "flex",
                   gap: 1,
                   p: 1,
-                  bg: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
+                  bg: "linear-gradient(transparent, rgba(0,0,0,0.8))",
                   opacity: 0,
-                  transition: 'opacity 0.15s ease',
+                  transition: "opacity 0.15s ease",
                 })}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -488,13 +525,13 @@ export function DigitImageBrowser({
                   className={css({
                     flex: 1,
                     py: 1,
-                    fontSize: '2xs',
-                    color: 'red.400',
-                    bg: 'gray.900/80',
-                    border: 'none',
-                    borderRadius: 'sm',
-                    cursor: deleting ? 'not-allowed' : 'pointer',
-                    _hover: { bg: 'red.900/80' },
+                    fontSize: "2xs",
+                    color: "red.400",
+                    bg: "gray.900/80",
+                    border: "none",
+                    borderRadius: "sm",
+                    cursor: deleting ? "not-allowed" : "pointer",
+                    _hover: { bg: "red.900/80" },
                   })}
                 >
                   🗑️
@@ -513,23 +550,27 @@ export function DigitImageBrowser({
                 <div
                   data-element="reclassifying-overlay"
                   className={css({
-                    position: 'absolute',
+                    position: "absolute",
                     inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bg: 'gray.900/70',
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bg: "gray.900/70",
                   })}
                 >
-                  <span className={css({ animation: 'spin 1s linear infinite' })}>🔄</span>
+                  <span
+                    className={css({ animation: "spin 1s linear infinite" })}
+                  >
+                    🔄
+                  </span>
                 </div>
               )}
             </div>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -540,29 +581,32 @@ function ReclassifyDropdown({
   onSelect,
   disabled = false,
 }: {
-  currentDigit: number
-  onSelect: (digit: number) => void
-  disabled?: boolean
+  currentDigit: number;
+  onSelect: (digit: number) => void;
+  disabled?: boolean;
 }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div data-element="reclassify-dropdown" className={css({ position: 'relative', flex: 1 })}>
+    <div
+      data-element="reclassify-dropdown"
+      className={css({ position: "relative", flex: 1 })}
+    >
       <button
         type="button"
         data-action="open-reclassify"
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
         className={css({
-          width: '100%',
+          width: "100%",
           py: 1,
-          fontSize: '2xs',
-          color: 'blue.400',
-          bg: 'gray.900/80',
-          border: 'none',
-          borderRadius: 'sm',
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          _hover: { bg: 'blue.900/80' },
+          fontSize: "2xs",
+          color: "blue.400",
+          bg: "gray.900/80",
+          border: "none",
+          borderRadius: "sm",
+          cursor: disabled ? "not-allowed" : "pointer",
+          _hover: { bg: "blue.900/80" },
         })}
       >
         ↻
@@ -572,17 +616,17 @@ function ReclassifyDropdown({
         <div
           data-element="reclassify-menu"
           className={css({
-            position: 'absolute',
-            bottom: '100%',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            position: "absolute",
+            bottom: "100%",
+            left: "50%",
+            transform: "translateX(-50%)",
             mb: 1,
             p: 2,
-            bg: 'gray.800',
-            borderRadius: 'md',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-            border: '1px solid',
-            borderColor: 'gray.700',
+            bg: "gray.800",
+            borderRadius: "md",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+            border: "1px solid",
+            borderColor: "gray.700",
             zIndex: 100,
           })}
           onClick={(e) => e.stopPropagation()}
@@ -590,8 +634,8 @@ function ReclassifyDropdown({
           <div
             data-element="reclassify-digit-grid"
             className={css({
-              display: 'grid',
-              gridTemplateColumns: 'repeat(5, 1fr)',
+              display: "grid",
+              gridTemplateColumns: "repeat(5, 1fr)",
               gap: 1,
             })}
           >
@@ -603,22 +647,25 @@ function ReclassifyDropdown({
                 data-target-digit={d}
                 data-current={d === currentDigit}
                 onClick={() => {
-                  onSelect(d)
-                  setIsOpen(false)
+                  onSelect(d);
+                  setIsOpen(false);
                 }}
                 disabled={d === currentDigit}
                 className={css({
-                  width: '28px',
-                  height: '28px',
-                  fontSize: 'sm',
-                  fontWeight: 'bold',
-                  fontFamily: 'mono',
-                  color: d === currentDigit ? 'gray.600' : 'gray.200',
-                  bg: d === currentDigit ? 'gray.900' : 'gray.700',
-                  border: 'none',
-                  borderRadius: 'sm',
-                  cursor: d === currentDigit ? 'not-allowed' : 'pointer',
-                  _hover: d === currentDigit ? {} : { bg: 'blue.600', color: 'white' },
+                  width: "28px",
+                  height: "28px",
+                  fontSize: "sm",
+                  fontWeight: "bold",
+                  fontFamily: "mono",
+                  color: d === currentDigit ? "gray.600" : "gray.200",
+                  bg: d === currentDigit ? "gray.900" : "gray.700",
+                  border: "none",
+                  borderRadius: "sm",
+                  cursor: d === currentDigit ? "not-allowed" : "pointer",
+                  _hover:
+                    d === currentDigit
+                      ? {}
+                      : { bg: "blue.600", color: "white" },
                 })}
               >
                 {d}
@@ -628,7 +675,7 @@ function ReclassifyDropdown({
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default DigitImageBrowser
+export default DigitImageBrowser;

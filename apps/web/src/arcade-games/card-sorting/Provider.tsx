@@ -1,66 +1,78 @@
-'use client'
+"use client";
 
-import { type ReactNode, useCallback, useMemo, createContext, useContext, useState } from 'react'
-import { useArcadeSession } from '@/hooks/useArcadeSession'
-import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
-import { useViewerId } from '@/hooks/useViewerId'
-import { buildPlayerMetadata as buildPlayerMetadataUtil } from '@/lib/arcade/player-ownership.client'
-import type { GameMove } from '@/lib/arcade/validation'
-import { useGameMode } from '@/contexts/GameModeContext'
-import { generateRandomCards, shuffleCards } from './utils/cardGeneration'
+import {
+  type ReactNode,
+  useCallback,
+  useMemo,
+  createContext,
+  useContext,
+  useState,
+} from "react";
+import { useArcadeSession } from "@/hooks/useArcadeSession";
+import { useRoomData, useUpdateGameConfig } from "@/hooks/useRoomData";
+import { useViewerId } from "@/hooks/useViewerId";
+import { buildPlayerMetadata as buildPlayerMetadataUtil } from "@/lib/arcade/player-ownership.client";
+import type { GameMove } from "@/lib/arcade/validation";
+import { useGameMode } from "@/contexts/GameModeContext";
+import { generateRandomCards, shuffleCards } from "./utils/cardGeneration";
 import type {
   CardSortingState,
   CardSortingMove,
   SortingCard,
   CardSortingConfig,
   CardPosition,
-} from './types'
+} from "./types";
 
 // Context value interface
 interface CardSortingContextValue {
-  state: CardSortingState
+  state: CardSortingState;
   // Actions
-  startGame: () => void
-  placeCard: (cardId: string, position: number) => void
-  insertCard: (cardId: string, insertPosition: number) => void
-  removeCard: (position: number) => void
-  checkSolution: (finalSequence?: SortingCard[]) => void
-  goToSetup: () => void
-  resumeGame: () => void
-  setConfig: (field: 'cardCount' | 'timeLimit' | 'gameMode', value: unknown) => void
-  updateCardPositions: (positions: CardPosition[]) => void
-  exitSession: () => void
+  startGame: () => void;
+  placeCard: (cardId: string, position: number) => void;
+  insertCard: (cardId: string, insertPosition: number) => void;
+  removeCard: (position: number) => void;
+  checkSolution: (finalSequence?: SortingCard[]) => void;
+  goToSetup: () => void;
+  resumeGame: () => void;
+  setConfig: (
+    field: "cardCount" | "timeLimit" | "gameMode",
+    value: unknown,
+  ) => void;
+  updateCardPositions: (positions: CardPosition[]) => void;
+  exitSession: () => void;
   // Computed
-  canCheckSolution: boolean
-  placedCount: number
-  elapsedTime: number
-  hasConfigChanged: boolean
-  canResumeGame: boolean
+  canCheckSolution: boolean;
+  placedCount: number;
+  elapsedTime: number;
+  hasConfigChanged: boolean;
+  canResumeGame: boolean;
   // UI state
-  selectedCardId: string | null
-  selectCard: (cardId: string | null) => void
+  selectedCardId: string | null;
+  selectCard: (cardId: string | null) => void;
   // Spectator mode
-  localPlayerId: string | undefined
-  isSpectating: boolean
+  localPlayerId: string | undefined;
+  isSpectating: boolean;
   // Multiplayer
-  players: Map<string, { id: string; name: string; emoji: string }> // All room players
+  players: Map<string, { id: string; name: string; emoji: string }>; // All room players
 }
 
 // Create context
-const CardSortingContext = createContext<CardSortingContextValue | null>(null)
+const CardSortingContext = createContext<CardSortingContextValue | null>(null);
 
 // Initial state matching validator's getInitialState
-const createInitialState = (config: Partial<CardSortingConfig>): CardSortingState => ({
+const createInitialState = (
+  config: Partial<CardSortingConfig>,
+): CardSortingState => ({
   cardCount: config.cardCount ?? 8,
   timeLimit: config.timeLimit ?? null,
-  gameMode: config.gameMode ?? 'solo',
-  gamePhase: 'setup',
-  playerId: '',
+  gameMode: config.gameMode ?? "solo",
+  gamePhase: "setup",
+  playerId: "",
   playerMetadata: {
-    id: '',
-    name: '',
-    emoji: '',
-    userId: '',
+    id: "",
+    name: "",
+    emoji: "",
+    userId: "",
   },
   activePlayers: [],
   allPlayerMetadata: new Map(),
@@ -74,26 +86,33 @@ const createInitialState = (config: Partial<CardSortingConfig>): CardSortingStat
   cursorPositions: new Map(),
   selectedCardId: null,
   scoreBreakdown: null,
-})
+});
 
 /**
  * Optimistic move application (client-side prediction)
  */
-function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardSortingState {
-  const typedMove = move as CardSortingMove
+function applyMoveOptimistically(
+  state: CardSortingState,
+  move: GameMove,
+): CardSortingState {
+  const typedMove = move as CardSortingMove;
 
   switch (typedMove.type) {
-    case 'START_GAME': {
-      const selectedCards = typedMove.data.selectedCards as SortingCard[]
-      const correctOrder = [...selectedCards].sort((a, b) => a.number - b.number)
+    case "START_GAME": {
+      const selectedCards = typedMove.data.selectedCards as SortingCard[];
+      const correctOrder = [...selectedCards].sort(
+        (a, b) => a.number - b.number,
+      );
 
       return {
         ...state,
-        gamePhase: 'playing',
+        gamePhase: "playing",
         playerId: typedMove.playerId,
         playerMetadata: typedMove.data.playerMetadata,
         activePlayers: [typedMove.playerId],
-        allPlayerMetadata: new Map([[typedMove.playerId, typedMove.data.playerMetadata]]),
+        allPlayerMetadata: new Map([
+          [typedMove.playerId, typedMove.data.playerMetadata],
+        ]),
         gameStartTime: Date.now(),
         selectedCards,
         correctOrder,
@@ -108,113 +127,113 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
         },
         pausedGamePhase: undefined,
         pausedGameState: undefined,
-      }
+      };
     }
 
-    case 'PLACE_CARD': {
-      const { cardId, position } = typedMove.data
-      const card = state.availableCards.find((c) => c.id === cardId)
-      if (!card) return state
+    case "PLACE_CARD": {
+      const { cardId, position } = typedMove.data;
+      const card = state.availableCards.find((c) => c.id === cardId);
+      if (!card) return state;
 
       // Simple replacement (can leave gaps)
-      const newPlaced = [...state.placedCards]
-      const replacedCard = newPlaced[position]
-      newPlaced[position] = card
+      const newPlaced = [...state.placedCards];
+      const replacedCard = newPlaced[position];
+      newPlaced[position] = card;
 
       // Remove card from available
-      let newAvailable = state.availableCards.filter((c) => c.id !== cardId)
+      let newAvailable = state.availableCards.filter((c) => c.id !== cardId);
 
       // If slot was occupied, add replaced card back to available
       if (replacedCard) {
-        newAvailable = [...newAvailable, replacedCard]
+        newAvailable = [...newAvailable, replacedCard];
       }
 
       return {
         ...state,
         availableCards: newAvailable,
         placedCards: newPlaced,
-      }
+      };
     }
 
-    case 'INSERT_CARD': {
-      const { cardId, insertPosition } = typedMove.data
-      const card = state.availableCards.find((c) => c.id === cardId)
+    case "INSERT_CARD": {
+      const { cardId, insertPosition } = typedMove.data;
+      const card = state.availableCards.find((c) => c.id === cardId);
       if (!card) {
-        return state
+        return state;
       }
 
       // Insert with shift and compact (no gaps)
-      const newPlaced = new Array(state.cardCount).fill(null)
+      const newPlaced = new Array(state.cardCount).fill(null);
 
       // Copy existing cards, shifting those at/after insert position
       for (let i = 0; i < state.placedCards.length; i++) {
         if (state.placedCards[i] !== null) {
           if (i < insertPosition) {
-            newPlaced[i] = state.placedCards[i]
+            newPlaced[i] = state.placedCards[i];
           } else {
             // Cards at or after insert position shift right by 1
             // Card will be collected during compaction if it falls off the end
-            newPlaced[i + 1] = state.placedCards[i]
+            newPlaced[i + 1] = state.placedCards[i];
           }
         }
       }
 
       // Place new card at insert position
-      newPlaced[insertPosition] = card
+      newPlaced[insertPosition] = card;
 
       // Compact to remove gaps
-      const compacted: SortingCard[] = []
+      const compacted: SortingCard[] = [];
       for (const c of newPlaced) {
         if (c !== null) {
-          compacted.push(c)
+          compacted.push(c);
         }
       }
 
       // Fill final array (no gaps)
-      const finalPlaced = new Array(state.cardCount).fill(null)
+      const finalPlaced = new Array(state.cardCount).fill(null);
       for (let i = 0; i < Math.min(compacted.length, state.cardCount); i++) {
-        finalPlaced[i] = compacted[i]
+        finalPlaced[i] = compacted[i];
       }
 
       // Remove from available
-      let newAvailable = state.availableCards.filter((c) => c.id !== cardId)
+      let newAvailable = state.availableCards.filter((c) => c.id !== cardId);
 
       // Any excess cards go back to available
       if (compacted.length > state.cardCount) {
-        const excess = compacted.slice(state.cardCount)
-        newAvailable = [...newAvailable, ...excess]
+        const excess = compacted.slice(state.cardCount);
+        newAvailable = [...newAvailable, ...excess];
       }
 
       return {
         ...state,
         availableCards: newAvailable,
         placedCards: finalPlaced,
-      }
+      };
     }
 
-    case 'REMOVE_CARD': {
-      const { position } = typedMove.data
-      const card = state.placedCards[position]
-      if (!card) return state
+    case "REMOVE_CARD": {
+      const { position } = typedMove.data;
+      const card = state.placedCards[position];
+      if (!card) return state;
 
-      const newPlaced = [...state.placedCards]
-      newPlaced[position] = null
-      const newAvailable = [...state.availableCards, card]
+      const newPlaced = [...state.placedCards];
+      newPlaced[position] = null;
+      const newAvailable = [...state.availableCards, card];
 
       return {
         ...state,
         availableCards: newAvailable,
         placedCards: newPlaced,
-      }
+      };
     }
 
-    case 'CHECK_SOLUTION': {
+    case "CHECK_SOLUTION": {
       // Don't apply optimistic update - wait for server to calculate and return score
-      return state
+      return state;
     }
 
-    case 'GO_TO_SETUP': {
-      const isPausingGame = state.gamePhase === 'playing'
+    case "GO_TO_SETUP": {
+      const isPausingGame = state.gamePhase === "playing";
 
       return {
         ...createInitialState({
@@ -224,7 +243,7 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
         }),
         // Save paused state if coming from active game
         originalConfig: state.originalConfig,
-        pausedGamePhase: isPausingGame ? 'playing' : undefined,
+        pausedGamePhase: isPausingGame ? "playing" : undefined,
         pausedGameState: isPausingGame
           ? {
               selectedCards: state.selectedCards,
@@ -234,18 +253,20 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
               gameStartTime: state.gameStartTime || Date.now(),
             }
           : undefined,
-      }
+      };
     }
 
-    case 'SET_CONFIG': {
-      const { field, value } = typedMove.data
-      const clearPausedGame = !!state.pausedGamePhase
+    case "SET_CONFIG": {
+      const { field, value } = typedMove.data;
+      const clearPausedGame = !!state.pausedGamePhase;
 
       return {
         ...state,
         [field]: value,
         // Update placedCards array size if cardCount changes
-        ...(field === 'cardCount' ? { placedCards: new Array(value as number).fill(null) } : {}),
+        ...(field === "cardCount"
+          ? { placedCards: new Array(value as number).fill(null) }
+          : {}),
         // Clear paused game if config changed
         ...(clearPausedGame
           ? {
@@ -254,17 +275,17 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
               originalConfig: undefined,
             }
           : {}),
-      }
+      };
     }
 
-    case 'RESUME_GAME': {
+    case "RESUME_GAME": {
       if (!state.pausedGamePhase || !state.pausedGameState) {
-        return state
+        return state;
       }
 
       const correctOrder = [...state.pausedGameState.selectedCards].sort(
-        (a, b) => a.number - b.number
-      )
+        (a, b) => a.number - b.number,
+      );
 
       return {
         ...state,
@@ -277,18 +298,18 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
         gameStartTime: state.pausedGameState.gameStartTime,
         pausedGamePhase: undefined,
         pausedGameState: undefined,
-      }
+      };
     }
 
-    case 'UPDATE_CARD_POSITIONS': {
+    case "UPDATE_CARD_POSITIONS": {
       return {
         ...state,
         cardPositions: typedMove.data.positions,
-      }
+      };
     }
 
     default:
-      return state
+      return state;
   }
 }
 
@@ -296,120 +317,126 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
  * Card Sorting Provider - Single Player Pattern Recognition Game
  */
 export function CardSortingProvider({ children }: { children: ReactNode }) {
-  const { data: viewerId } = useViewerId()
-  const { roomData } = useRoomData()
-  const { activePlayers, players } = useGameMode()
-  const { mutate: updateGameConfig } = useUpdateGameConfig()
+  const { data: viewerId } = useViewerId();
+  const { roomData } = useRoomData();
+  const { activePlayers, players } = useGameMode();
+  const { mutate: updateGameConfig } = useUpdateGameConfig();
 
   // Local UI state (not synced to server)
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   // Get local player (single player game)
   const localPlayerId = useMemo(() => {
     return Array.from(activePlayers).find((id) => {
-      const player = players.get(id)
-      return player?.isLocal !== false
-    })
-  }, [activePlayers, players])
+      const player = players.get(id);
+      return player?.isLocal !== false;
+    });
+  }, [activePlayers, players]);
 
   // Merge saved config from room data
   const mergedInitialState = useMemo(() => {
-    const gameConfig = roomData?.gameConfig as Record<string, unknown> | null
-    const savedConfig = gameConfig?.['card-sorting'] as Partial<CardSortingConfig> | undefined
+    const gameConfig = roomData?.gameConfig as Record<string, unknown> | null;
+    const savedConfig = gameConfig?.["card-sorting"] as
+      | Partial<CardSortingConfig>
+      | undefined;
 
-    return createInitialState(savedConfig || {})
-  }, [roomData?.gameConfig])
+    return createInitialState(savedConfig || {});
+  }, [roomData?.gameConfig]);
 
   // Arcade session integration
   const { state, sendMove, exitSession } = useArcadeSession<CardSortingState>({
-    userId: viewerId || '',
+    userId: viewerId || "",
     roomId: roomData?.id,
     initialState: mergedInitialState,
     applyMove: applyMoveOptimistically,
-  })
+  });
 
   // Build player metadata for the single local player
   const buildPlayerMetadata = useCallback(() => {
     if (!localPlayerId) {
       return {
-        id: '',
-        name: '',
-        emoji: '',
-        userId: '',
-      }
+        id: "",
+        name: "",
+        emoji: "",
+        userId: "",
+      };
     }
 
-    const playerOwnership: Record<string, string> = {}
+    const playerOwnership: Record<string, string> = {};
     if (viewerId) {
-      playerOwnership[localPlayerId] = viewerId
+      playerOwnership[localPlayerId] = viewerId;
     }
 
     const metadata = buildPlayerMetadataUtil(
       [localPlayerId],
       playerOwnership,
       players,
-      viewerId ?? undefined
-    )
+      viewerId ?? undefined,
+    );
 
-    return metadata[localPlayerId] || { id: '', name: '', emoji: '', userId: '' }
-  }, [localPlayerId, players, viewerId])
+    return (
+      metadata[localPlayerId] || { id: "", name: "", emoji: "", userId: "" }
+    );
+  }, [localPlayerId, players, viewerId]);
 
   // Computed values
   const canCheckSolution = useMemo(
     () => state.placedCards.every((c) => c !== null),
-    [state.placedCards]
-  )
+    [state.placedCards],
+  );
 
   const placedCount = useMemo(
     () => state.placedCards.filter((c) => c !== null).length,
-    [state.placedCards]
-  )
+    [state.placedCards],
+  );
 
   const elapsedTime = useMemo(() => {
-    if (!state.gameStartTime) return 0
-    const now = state.gameEndTime || Date.now()
-    return Math.floor((now - state.gameStartTime) / 1000)
-  }, [state.gameStartTime, state.gameEndTime])
+    if (!state.gameStartTime) return 0;
+    const now = state.gameEndTime || Date.now();
+    return Math.floor((now - state.gameStartTime) / 1000);
+  }, [state.gameStartTime, state.gameEndTime]);
 
   const hasConfigChanged = useMemo(() => {
-    if (!state.originalConfig) return false
+    if (!state.originalConfig) return false;
     return (
       state.cardCount !== state.originalConfig.cardCount ||
       state.timeLimit !== state.originalConfig.timeLimit ||
       state.gameMode !== state.originalConfig.gameMode
-    )
-  }, [state.cardCount, state.timeLimit, state.gameMode, state.originalConfig])
+    );
+  }, [state.cardCount, state.timeLimit, state.gameMode, state.originalConfig]);
 
   const canResumeGame = useMemo(() => {
-    return !!state.pausedGamePhase && !!state.pausedGameState && !hasConfigChanged
-  }, [state.pausedGamePhase, state.pausedGameState, hasConfigChanged])
+    return (
+      !!state.pausedGamePhase && !!state.pausedGameState && !hasConfigChanged
+    );
+  }, [state.pausedGamePhase, state.pausedGameState, hasConfigChanged]);
 
   // Action creators
   const startGame = useCallback(() => {
     if (!localPlayerId) {
-      return
+      return;
     }
 
     // Prevent rapid double-sends within 500ms to avoid duplicate game starts
-    const now = Date.now()
-    const justStarted = state.gameStartTime && now - state.gameStartTime < 500
+    const now = Date.now();
+    const justStarted = state.gameStartTime && now - state.gameStartTime < 500;
 
     if (justStarted) {
-      return
+      return;
     }
 
-    const playerMetadata = buildPlayerMetadata()
-    const selectedCards = shuffleCards(generateRandomCards(state.cardCount))
+    const playerMetadata = buildPlayerMetadata();
+    const selectedCards = shuffleCards(generateRandomCards(state.cardCount));
 
     sendMove({
-      type: 'START_GAME',
+      type: "START_GAME",
       playerId: localPlayerId,
-      userId: viewerId || '',
+      userId: viewerId || "",
       data: {
         playerMetadata,
         selectedCards,
       },
-    })
+    });
   }, [
     localPlayerId,
     state.cardCount,
@@ -418,149 +445,152 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     buildPlayerMetadata,
     sendMove,
     viewerId,
-  ])
+  ]);
 
   const placeCard = useCallback(
     (cardId: string, position: number) => {
-      if (!localPlayerId) return
+      if (!localPlayerId) return;
 
       sendMove({
-        type: 'PLACE_CARD',
+        type: "PLACE_CARD",
         playerId: localPlayerId,
-        userId: viewerId || '',
+        userId: viewerId || "",
         data: { cardId, position },
-      })
+      });
 
       // Clear selection
-      setSelectedCardId(null)
+      setSelectedCardId(null);
     },
-    [localPlayerId, sendMove, viewerId]
-  )
+    [localPlayerId, sendMove, viewerId],
+  );
 
   const insertCard = useCallback(
     (cardId: string, insertPosition: number) => {
-      if (!localPlayerId) return
+      if (!localPlayerId) return;
 
       sendMove({
-        type: 'INSERT_CARD',
+        type: "INSERT_CARD",
         playerId: localPlayerId,
-        userId: viewerId || '',
+        userId: viewerId || "",
         data: { cardId, insertPosition },
-      })
+      });
 
       // Clear selection
-      setSelectedCardId(null)
+      setSelectedCardId(null);
     },
-    [localPlayerId, sendMove, viewerId]
-  )
+    [localPlayerId, sendMove, viewerId],
+  );
 
   const removeCard = useCallback(
     (position: number) => {
-      if (!localPlayerId) return
+      if (!localPlayerId) return;
 
       sendMove({
-        type: 'REMOVE_CARD',
+        type: "REMOVE_CARD",
         playerId: localPlayerId,
-        userId: viewerId || '',
+        userId: viewerId || "",
         data: { position },
-      })
+      });
     },
-    [localPlayerId, sendMove, viewerId]
-  )
+    [localPlayerId, sendMove, viewerId],
+  );
 
   const checkSolution = useCallback(
     (finalSequence?: SortingCard[]) => {
-      if (!localPlayerId) return
+      if (!localPlayerId) return;
 
       // If finalSequence provided, use it. Otherwise check current placedCards
       if (!finalSequence && !canCheckSolution) {
-        return
+        return;
       }
 
       sendMove({
-        type: 'CHECK_SOLUTION',
+        type: "CHECK_SOLUTION",
         playerId: localPlayerId,
-        userId: viewerId || '',
+        userId: viewerId || "",
         data: {
           finalSequence,
         },
-      })
+      });
     },
-    [localPlayerId, canCheckSolution, sendMove, viewerId]
-  )
+    [localPlayerId, canCheckSolution, sendMove, viewerId],
+  );
 
   const goToSetup = useCallback(() => {
-    if (!localPlayerId) return
+    if (!localPlayerId) return;
 
     sendMove({
-      type: 'GO_TO_SETUP',
+      type: "GO_TO_SETUP",
       playerId: localPlayerId,
-      userId: viewerId || '',
+      userId: viewerId || "",
       data: {},
-    })
-  }, [localPlayerId, sendMove, viewerId])
+    });
+  }, [localPlayerId, sendMove, viewerId]);
 
   const resumeGame = useCallback(() => {
     if (!localPlayerId || !canResumeGame) {
-      console.warn('[CardSortingProvider] Cannot resume - no paused game or config changed')
-      return
+      console.warn(
+        "[CardSortingProvider] Cannot resume - no paused game or config changed",
+      );
+      return;
     }
 
     sendMove({
-      type: 'RESUME_GAME',
+      type: "RESUME_GAME",
       playerId: localPlayerId,
-      userId: viewerId || '',
+      userId: viewerId || "",
       data: {},
-    })
-  }, [localPlayerId, canResumeGame, sendMove, viewerId])
+    });
+  }, [localPlayerId, canResumeGame, sendMove, viewerId]);
 
   const setConfig = useCallback(
-    (field: 'cardCount' | 'timeLimit' | 'gameMode', value: unknown) => {
-      if (!localPlayerId) return
+    (field: "cardCount" | "timeLimit" | "gameMode", value: unknown) => {
+      if (!localPlayerId) return;
 
       sendMove({
-        type: 'SET_CONFIG',
+        type: "SET_CONFIG",
         playerId: localPlayerId,
-        userId: viewerId || '',
+        userId: viewerId || "",
         data: { field, value },
-      })
+      });
 
       // Persist to database
       if (roomData?.id) {
-        const currentGameConfig = (roomData.gameConfig as Record<string, unknown>) || {}
+        const currentGameConfig =
+          (roomData.gameConfig as Record<string, unknown>) || {};
         const currentCardSortingConfig =
-          (currentGameConfig['card-sorting'] as Record<string, unknown>) || {}
+          (currentGameConfig["card-sorting"] as Record<string, unknown>) || {};
 
         const updatedConfig = {
           ...currentGameConfig,
-          'card-sorting': {
+          "card-sorting": {
             ...currentCardSortingConfig,
             [field]: value,
           },
-        }
+        };
 
         updateGameConfig({
           roomId: roomData.id,
           gameConfig: updatedConfig,
-        })
+        });
       }
     },
-    [localPlayerId, sendMove, viewerId, roomData, updateGameConfig]
-  )
+    [localPlayerId, sendMove, viewerId, roomData, updateGameConfig],
+  );
 
   const updateCardPositions = useCallback(
     (positions: CardPosition[]) => {
-      if (!localPlayerId) return
+      if (!localPlayerId) return;
 
       sendMove({
-        type: 'UPDATE_CARD_POSITIONS',
+        type: "UPDATE_CARD_POSITIONS",
         playerId: localPlayerId,
-        userId: viewerId || '',
+        userId: viewerId || "",
         data: { positions },
-      })
+      });
     },
-    [localPlayerId, sendMove, viewerId]
-  )
+    [localPlayerId, sendMove, viewerId],
+  );
 
   const contextValue: CardSortingContextValue = {
     state,
@@ -589,18 +619,22 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     isSpectating: !localPlayerId,
     // Multiplayer
     players,
-  }
+  };
 
-  return <CardSortingContext.Provider value={contextValue}>{children}</CardSortingContext.Provider>
+  return (
+    <CardSortingContext.Provider value={contextValue}>
+      {children}
+    </CardSortingContext.Provider>
+  );
 }
 
 /**
  * Hook to access Card Sorting context
  */
 export function useCardSorting() {
-  const context = useContext(CardSortingContext)
+  const context = useContext(CardSortingContext);
   if (!context) {
-    throw new Error('useCardSorting must be used within CardSortingProvider')
+    throw new Error("useCardSorting must be used within CardSortingProvider");
   }
-  return context
+  return context;
 }

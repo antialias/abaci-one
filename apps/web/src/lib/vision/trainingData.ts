@@ -10,13 +10,13 @@
  */
 export interface TrainingDataRequest {
   /** Array of column images, one per column (left to right) */
-  columns: ColumnImageData[]
+  columns: ColumnImageData[];
   /** The correct answer (validated by the app) */
-  correctAnswer: number
+  correctAnswer: number;
   /** Player ID for attribution */
-  playerId: string
+  playerId: string;
   /** Session ID for grouping */
-  sessionId: string
+  sessionId: string;
 }
 
 /**
@@ -24,9 +24,9 @@ export interface TrainingDataRequest {
  */
 export interface ColumnImageData {
   /** Column index (0 = leftmost/highest place value) */
-  columnIndex: number
+  columnIndex: number;
   /** Base64-encoded PNG image data (64x128 grayscale) */
-  imageData: string
+  imageData: string;
 }
 
 /**
@@ -34,11 +34,11 @@ export interface ColumnImageData {
  */
 export interface TrainingDataResponse {
   /** Whether the save was successful */
-  success: boolean
+  success: boolean;
   /** Number of column images saved */
-  savedCount: number
+  savedCount: number;
   /** Error message if any */
-  error?: string
+  error?: string;
 }
 
 /**
@@ -48,10 +48,13 @@ export interface TrainingDataResponse {
  * @param columnCount - Number of columns (pads with leading zeros if needed)
  * @returns Array of digits, one per column (leftmost first)
  */
-export function valueToDigitLabels(value: number, columnCount: number): number[] {
-  const valueStr = Math.abs(value).toString()
-  const padded = valueStr.padStart(columnCount, '0')
-  return padded.split('').map(Number)
+export function valueToDigitLabels(
+  value: number,
+  columnCount: number,
+): number[] {
+  const valueStr = Math.abs(value).toString();
+  const padded = valueStr.padStart(columnCount, "0");
+  return padded.split("").map(Number);
 }
 
 /**
@@ -61,14 +64,14 @@ export function valueToDigitLabels(value: number, columnCount: number): number[]
  * @returns Base64-encoded PNG data URL (without the data:image/png;base64, prefix)
  */
 export function imageDataToBase64Png(imageData: ImageData): string {
-  const canvas = document.createElement('canvas')
-  canvas.width = imageData.width
-  canvas.height = imageData.height
-  const ctx = canvas.getContext('2d')!
-  ctx.putImageData(imageData, 0, 0)
+  const canvas = document.createElement("canvas");
+  canvas.width = imageData.width;
+  canvas.height = imageData.height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.putImageData(imageData, 0, 0);
 
   // Get base64 PNG data
-  const dataUrl = canvas.toDataURL('image/png')
+  const dataUrl = canvas.toDataURL("image/png");
   // Remove the "data:image/png;base64," prefix
-  return dataUrl.replace(/^data:image\/png;base64,/, '')
+  return dataUrl.replace(/^data:image\/png;base64,/, "");
 }

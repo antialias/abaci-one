@@ -9,4 +9,4 @@
 export {
   useHasPhysicalKeyboard,
   useIsTouchDevice,
-} from '@/hooks/useDeviceCapabilities'
+} from "@/hooks/useDeviceCapabilities";

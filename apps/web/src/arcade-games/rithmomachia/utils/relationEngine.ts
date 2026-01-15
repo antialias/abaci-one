@@ -1,4 +1,4 @@
-import type { RelationKind } from '../types'
+import type { RelationKind } from "../types";
 
 /**
  * Relation checking engine for Rithmomachia captures.
@@ -6,9 +6,9 @@ import type { RelationKind } from '../types'
  */
 
 export interface RelationCheckResult {
-  valid: boolean
-  relation?: RelationKind
-  explanation?: string
+  valid: boolean;
+  relation?: RelationKind;
+  explanation?: string;
 }
 
 /**
@@ -19,14 +19,14 @@ export function checkEqual(a: number, b: number): RelationCheckResult {
   if (a === b) {
     return {
       valid: true,
-      relation: 'EQUAL',
+      relation: "EQUAL",
       explanation: `${a} == ${b}`,
-    }
+    };
   }
   return {
     valid: false,
     explanation: `${a} ≠ ${b} (values are not equal)`,
-  }
+  };
 }
 
 /**
@@ -34,18 +34,19 @@ export function checkEqual(a: number, b: number): RelationCheckResult {
  * a % b == 0 (a is a multiple of b)
  */
 export function checkMultiple(a: number, b: number): RelationCheckResult {
-  if (b === 0) return { valid: false, explanation: 'Cannot check multiple with zero' }
+  if (b === 0)
+    return { valid: false, explanation: "Cannot check multiple with zero" };
   if (a % b === 0) {
     return {
       valid: true,
-      relation: 'MULTIPLE',
+      relation: "MULTIPLE",
       explanation: `${a} is a multiple of ${b} (${a}÷${b}=${a / b})`,
-    }
+    };
   }
   return {
     valid: false,
     explanation: `${a} is not a multiple of ${b} (${a}÷${b}=${(a / b).toFixed(2)}...)`,
-  }
+  };
 }
 
 /**
@@ -53,18 +54,18 @@ export function checkMultiple(a: number, b: number): RelationCheckResult {
  * b % a == 0 (a is a divisor of b)
  */
 export function checkDivisor(a: number, b: number): RelationCheckResult {
-  if (a === 0) return { valid: false, explanation: 'Cannot divide by zero' }
+  if (a === 0) return { valid: false, explanation: "Cannot divide by zero" };
   if (b % a === 0) {
     return {
       valid: true,
-      relation: 'DIVISOR',
+      relation: "DIVISOR",
       explanation: `${a} divides ${b} (${b}÷${a}=${b / a})`,
-    }
+    };
   }
   return {
     valid: false,
     explanation: `${a} does not divide ${b} evenly (${b}÷${a}=${(b / a).toFixed(2)}...)`,
-  }
+  };
 }
 
 /**
@@ -75,79 +76,87 @@ export function checkSum(a: number, b: number, h: number): RelationCheckResult {
   if (a + h === b) {
     return {
       valid: true,
-      relation: 'SUM',
+      relation: "SUM",
       explanation: `${a} + ${h} = ${b}`,
-    }
+    };
   }
   if (b + h === a) {
     return {
       valid: true,
-      relation: 'SUM',
+      relation: "SUM",
       explanation: `${b} + ${h} = ${a}`,
-    }
+    };
   }
   return {
     valid: false,
     explanation: `Helper ${h} doesn't satisfy sum (need ${Math.abs(b - a)} but got ${h})`,
-  }
+  };
 }
 
 /**
  * Check if three values satisfy the DIFF relation.
  * |a - h| == b OR |b - h| == a
  */
-export function checkDiff(a: number, b: number, h: number): RelationCheckResult {
-  const abs = (x: number) => (x < 0 ? -x : x)
+export function checkDiff(
+  a: number,
+  b: number,
+  h: number,
+): RelationCheckResult {
+  const abs = (x: number) => (x < 0 ? -x : x);
 
-  const diff1 = abs(a - h)
+  const diff1 = abs(a - h);
   if (diff1 === b) {
     return {
       valid: true,
-      relation: 'DIFF',
+      relation: "DIFF",
       explanation: `|${a} - ${h}| = ${b}`,
-    }
+    };
   }
 
-  const diff2 = abs(b - h)
+  const diff2 = abs(b - h);
   if (diff2 === a) {
     return {
       valid: true,
-      relation: 'DIFF',
+      relation: "DIFF",
       explanation: `|${b} - ${h}| = ${a}`,
-    }
+    };
   }
 
   return {
     valid: false,
     explanation: `Helper ${h} doesn't satisfy difference (|${a}-${h}|=${diff1}, |${b}-${h}|=${diff2})`,
-  }
+  };
 }
 
 /**
  * Check if three values satisfy the PRODUCT relation.
  * a * h == b OR b * h == a
  */
-export function checkProduct(a: number, b: number, h: number): RelationCheckResult {
+export function checkProduct(
+  a: number,
+  b: number,
+  h: number,
+): RelationCheckResult {
   if (a * h === b) {
     return {
       valid: true,
-      relation: 'PRODUCT',
+      relation: "PRODUCT",
       explanation: `${a} × ${h} = ${b}`,
-    }
+    };
   }
   if (b * h === a) {
     return {
       valid: true,
-      relation: 'PRODUCT',
+      relation: "PRODUCT",
       explanation: `${b} × ${h} = ${a}`,
-    }
+    };
   }
-  const needed1 = a === 0 ? 'undefined' : (b / a).toFixed(2)
-  const needed2 = b === 0 ? 'undefined' : (a / b).toFixed(2)
+  const needed1 = a === 0 ? "undefined" : (b / a).toFixed(2);
+  const needed2 = b === 0 ? "undefined" : (a / b).toFixed(2);
   return {
     valid: false,
     explanation: `Helper ${h} doesn't satisfy product (need ${needed1} or ${needed2})`,
-  }
+  };
 }
 
 /**
@@ -155,29 +164,34 @@ export function checkProduct(a: number, b: number, h: number): RelationCheckResu
  * a * r == b OR b * r == a (where r is the helper value)
  * This is similar to PRODUCT but with explicit ratio semantics.
  */
-export function checkRatio(a: number, b: number, r: number): RelationCheckResult {
-  if (r === 0) return { valid: false, explanation: 'Cannot use zero as ratio helper' }
+export function checkRatio(
+  a: number,
+  b: number,
+  r: number,
+): RelationCheckResult {
+  if (r === 0)
+    return { valid: false, explanation: "Cannot use zero as ratio helper" };
 
   if (a * r === b) {
     return {
       valid: true,
-      relation: 'RATIO',
+      relation: "RATIO",
       explanation: `${a} × ${r} = ${b}`,
-    }
+    };
   }
   if (b * r === a) {
     return {
       valid: true,
-      relation: 'RATIO',
+      relation: "RATIO",
       explanation: `${b} × ${r} = ${a}`,
-    }
+    };
   }
-  const needed1 = a === 0 ? 'undefined' : (b / a).toFixed(2)
-  const needed2 = b === 0 ? 'undefined' : (a / b).toFixed(2)
+  const needed1 = a === 0 ? "undefined" : (b / a).toFixed(2);
+  const needed2 = b === 0 ? "undefined" : (a / b).toFixed(2);
   return {
     valid: false,
     explanation: `Helper ${r} doesn't satisfy ratio (need ${needed1} or ${needed2})`,
-  }
+  };
 }
 
 /**
@@ -188,44 +202,44 @@ export function checkRelation(
   relation: RelationKind,
   moverValue: number,
   targetValue: number,
-  helperValue?: number
+  helperValue?: number,
 ): RelationCheckResult {
   switch (relation) {
-    case 'EQUAL':
-      return checkEqual(moverValue, targetValue)
+    case "EQUAL":
+      return checkEqual(moverValue, targetValue);
 
-    case 'MULTIPLE':
-      return checkMultiple(moverValue, targetValue)
+    case "MULTIPLE":
+      return checkMultiple(moverValue, targetValue);
 
-    case 'DIVISOR':
-      return checkDivisor(moverValue, targetValue)
+    case "DIVISOR":
+      return checkDivisor(moverValue, targetValue);
 
-    case 'SUM':
+    case "SUM":
       if (helperValue === undefined) {
-        return { valid: false, explanation: 'SUM requires a helper' }
+        return { valid: false, explanation: "SUM requires a helper" };
       }
-      return checkSum(moverValue, targetValue, helperValue)
+      return checkSum(moverValue, targetValue, helperValue);
 
-    case 'DIFF':
+    case "DIFF":
       if (helperValue === undefined) {
-        return { valid: false, explanation: 'DIFF requires a helper' }
+        return { valid: false, explanation: "DIFF requires a helper" };
       }
-      return checkDiff(moverValue, targetValue, helperValue)
+      return checkDiff(moverValue, targetValue, helperValue);
 
-    case 'PRODUCT':
+    case "PRODUCT":
       if (helperValue === undefined) {
-        return { valid: false, explanation: 'PRODUCT requires a helper' }
+        return { valid: false, explanation: "PRODUCT requires a helper" };
       }
-      return checkProduct(moverValue, targetValue, helperValue)
+      return checkProduct(moverValue, targetValue, helperValue);
 
-    case 'RATIO':
+    case "RATIO":
       if (helperValue === undefined) {
-        return { valid: false, explanation: 'RATIO requires a helper' }
+        return { valid: false, explanation: "RATIO requires a helper" };
       }
-      return checkRatio(moverValue, targetValue, helperValue)
+      return checkRatio(moverValue, targetValue, helperValue);
 
     default:
-      return { valid: false, explanation: 'Unknown relation type' }
+      return { valid: false, explanation: "Unknown relation type" };
   }
 }
 
@@ -233,45 +247,55 @@ export function checkRelation(
  * Find all valid relations between two values (without helper).
  * Returns an array of valid relations.
  */
-export function findValidRelationsNoHelper(a: number, b: number): RelationKind[] {
-  const valid: RelationKind[] = []
+export function findValidRelationsNoHelper(
+  a: number,
+  b: number,
+): RelationKind[] {
+  const valid: RelationKind[] = [];
 
-  if (checkEqual(a, b).valid) valid.push('EQUAL')
-  if (checkMultiple(a, b).valid) valid.push('MULTIPLE')
-  if (checkDivisor(a, b).valid) valid.push('DIVISOR')
+  if (checkEqual(a, b).valid) valid.push("EQUAL");
+  if (checkMultiple(a, b).valid) valid.push("MULTIPLE");
+  if (checkDivisor(a, b).valid) valid.push("DIVISOR");
 
-  return valid
+  return valid;
 }
 
 /**
  * Find all valid relations between two values WITH a helper.
  * Returns an array of valid relations.
  */
-export function findValidRelationsWithHelper(a: number, b: number, h: number): RelationKind[] {
-  const valid: RelationKind[] = []
+export function findValidRelationsWithHelper(
+  a: number,
+  b: number,
+  h: number,
+): RelationKind[] {
+  const valid: RelationKind[] = [];
 
   // First check no-helper relations
-  valid.push(...findValidRelationsNoHelper(a, b))
+  valid.push(...findValidRelationsNoHelper(a, b));
 
   // Then check helper-based relations
-  if (checkSum(a, b, h).valid) valid.push('SUM')
-  if (checkDiff(a, b, h).valid) valid.push('DIFF')
-  if (checkProduct(a, b, h).valid) valid.push('PRODUCT')
-  if (checkRatio(a, b, h).valid) valid.push('RATIO')
+  if (checkSum(a, b, h).valid) valid.push("SUM");
+  if (checkDiff(a, b, h).valid) valid.push("DIFF");
+  if (checkProduct(a, b, h).valid) valid.push("PRODUCT");
+  if (checkRatio(a, b, h).valid) valid.push("RATIO");
 
-  return valid
+  return valid;
 }
 
 /**
  * Check if ANY relation holds between mover and target (no helper).
  * Returns the first valid relation or null.
  */
-export function findAnyValidRelation(a: number, b: number): RelationCheckResult | null {
-  const relations = findValidRelationsNoHelper(a, b)
+export function findAnyValidRelation(
+  a: number,
+  b: number,
+): RelationCheckResult | null {
+  const relations = findValidRelationsNoHelper(a, b);
   if (relations.length > 0) {
-    return checkRelation(relations[0], a, b)
+    return checkRelation(relations[0], a, b);
   }
-  return null
+  return null;
 }
 
 /**
@@ -281,18 +305,18 @@ export function findAnyValidRelation(a: number, b: number): RelationCheckResult 
 export function findAnyValidRelationWithHelper(
   a: number,
   b: number,
-  h: number
+  h: number,
 ): RelationCheckResult | null {
-  const relations = findValidRelationsWithHelper(a, b, h)
+  const relations = findValidRelationsWithHelper(a, b, h);
   if (relations.length > 0) {
-    return checkRelation(relations[0], a, b, h)
+    return checkRelation(relations[0], a, b, h);
   }
-  return null
+  return null;
 }
 
 /**
  * Format a BigInt value for display (commas for readability).
  */
 export function formatValue(value: number): string {
-  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }

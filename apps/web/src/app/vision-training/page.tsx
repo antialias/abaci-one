@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation'
+import { redirect } from "next/navigation";
 
 /**
  * Vision Training Root Page
@@ -7,5 +7,5 @@ import { redirect } from 'next/navigation'
  * The actual pages are under /vision-training/[model]/...
  */
 export default function VisionTrainingPage() {
-  redirect('/vision-training/boundary-detector')
+  redirect("/vision-training/boundary-detector");
 }

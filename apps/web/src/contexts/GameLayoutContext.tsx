@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from "react";
 
 /**
  * Context to control game layout behavior.
@@ -13,20 +13,27 @@ import { createContext, useContext, type ReactNode } from 'react'
  * - 'viewport' (default): height: 100vh, calculate nav padding
  * - 'container': height: 100%, no nav padding (parent handles positioning)
  */
-type GameLayoutMode = 'viewport' | 'container'
+type GameLayoutMode = "viewport" | "container";
 
-const GameLayoutContext = createContext<GameLayoutMode>('viewport')
+const GameLayoutContext = createContext<GameLayoutMode>("viewport");
 
 interface GameLayoutProviderProps {
-  children: ReactNode
+  children: ReactNode;
   /** Layout mode: 'viewport' for arcade, 'container' for practice game breaks */
-  mode: GameLayoutMode
+  mode: GameLayoutMode;
 }
 
-export function GameLayoutProvider({ children, mode }: GameLayoutProviderProps) {
-  return <GameLayoutContext.Provider value={mode}>{children}</GameLayoutContext.Provider>
+export function GameLayoutProvider({
+  children,
+  mode,
+}: GameLayoutProviderProps) {
+  return (
+    <GameLayoutContext.Provider value={mode}>
+      {children}
+    </GameLayoutContext.Provider>
+  );
 }
 
 export function useGameLayoutMode(): GameLayoutMode {
-  return useContext(GameLayoutContext)
+  return useContext(GameLayoutContext);
 }

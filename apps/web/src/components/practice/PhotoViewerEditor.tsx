@@ -1,99 +1,111 @@
-'use client'
+"use client";
 
-import type { ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BoundingBoxOverlay,
   DebugContentModal,
   EditableProblemRow,
   ProblemReviewFlow,
   type ProblemCorrection,
-} from '@/components/worksheet-parsing'
-import type { ReviewProgress } from '@/lib/worksheet-parsing'
-import { Z_INDEX } from '@/constants/zIndex'
-import { useVisualDebug } from '@/contexts/VisualDebugContext'
-import { useWorksheetParsingContext } from '@/contexts/WorksheetParsingContext'
-import type { ModelConfig, WorksheetParsingResult } from '@/lib/worksheet-parsing'
-import { cropImageWithCanvas } from '@/lib/worksheet-parsing'
-import { css } from '../../../styled-system/css'
-import { DocumentAdjuster } from './DocumentAdjuster'
-import { LLMDebugPanel } from './LLMDebugPanel'
-import { ReparseHintsModal } from './ReparseHintsModal'
-import { ReviewToolbar } from './ReviewToolbar'
-import { useDocumentDetection } from './useDocumentDetection'
+} from "@/components/worksheet-parsing";
+import type { ReviewProgress } from "@/lib/worksheet-parsing";
+import { Z_INDEX } from "@/constants/zIndex";
+import { useVisualDebug } from "@/contexts/VisualDebugContext";
+import { useWorksheetParsingContext } from "@/contexts/WorksheetParsingContext";
+import type {
+  ModelConfig,
+  WorksheetParsingResult,
+} from "@/lib/worksheet-parsing";
+import { cropImageWithCanvas } from "@/lib/worksheet-parsing";
+import { css } from "../../../styled-system/css";
+import { DocumentAdjuster } from "./DocumentAdjuster";
+import { LLMDebugPanel } from "./LLMDebugPanel";
+import { ReparseHintsModal } from "./ReparseHintsModal";
+import { ReviewToolbar } from "./ReviewToolbar";
+import { useDocumentDetection } from "./useDocumentDetection";
 
 /** LLM metadata for debugging */
 export interface LLMMetadata {
-  provider: string | null
-  model: string | null
-  promptUsed: string | null
-  rawResponse: string | null
-  jsonSchema: string | null
-  imageSource: string | null
-  attempts: number | null
+  provider: string | null;
+  model: string | null;
+  promptUsed: string | null;
+  rawResponse: string | null;
+  jsonSchema: string | null;
+  imageSource: string | null;
+  attempts: number | null;
   usage: {
-    promptTokens: number | null
-    completionTokens: number | null
-    totalTokens: number | null
-  }
+    promptTokens: number | null;
+    completionTokens: number | null;
+    totalTokens: number | null;
+  };
 }
 
 export interface PhotoViewerEditorPhoto {
-  id: string
-  url: string
-  originalUrl: string | null
-  corners: Array<{ x: number; y: number }> | null
-  rotation: 0 | 90 | 180 | 270
+  id: string;
+  url: string;
+  originalUrl: string | null;
+  corners: Array<{ x: number; y: number }> | null;
+  rotation: 0 | 90 | 180 | 270;
   /** Parsing status for this photo */
-  parsingStatus?: 'pending' | 'processing' | 'needs_review' | 'approved' | 'failed' | null
+  parsingStatus?:
+    | "pending"
+    | "processing"
+    | "needs_review"
+    | "approved"
+    | "failed"
+    | null;
   /** Number of problems found (if parsed) */
-  problemCount?: number
+  problemCount?: number;
   /** Whether a session was created from this photo */
-  sessionCreated?: boolean
+  sessionCreated?: boolean;
   /** Full parsing result for review mode */
-  rawParsingResult?: WorksheetParsingResult | null
+  rawParsingResult?: WorksheetParsingResult | null;
   /** LLM metadata for debugging */
-  llm?: LLMMetadata | null
+  llm?: LLMMetadata | null;
   /** Review progress for resumable review flow */
-  reviewProgress?: ReviewProgress | null
+  reviewProgress?: ReviewProgress | null;
 }
 
 export interface PhotoViewerEditorProps {
   /** Array of photos to display */
-  photos: PhotoViewerEditorPhoto[]
+  photos: PhotoViewerEditorPhoto[];
   /** Index of the initially selected photo */
-  initialIndex: number
+  initialIndex: number;
   /** Initial mode - 'view' shows photo, 'edit' shows crop UI, 'review' shows parsed problems */
-  initialMode: 'view' | 'edit' | 'review'
+  initialMode: "view" | "edit" | "review";
   /** Whether the viewer is open */
-  isOpen: boolean
+  isOpen: boolean;
   /** Callback when viewer should close */
-  onClose: () => void
+  onClose: () => void;
   /** Callback when photo is edited (re-cropped) */
   onEditConfirm: (
     photoId: string,
     croppedFile: File,
     corners: Array<{ x: number; y: number }>,
-    rotation: 0 | 90 | 180 | 270
-  ) => Promise<void>
+    rotation: 0 | 90 | 180 | 270,
+  ) => Promise<void>;
   /** Available model configurations for parsing */
-  modelConfigs?: ModelConfig[]
+  modelConfigs?: ModelConfig[];
   /** Callback to approve parsed worksheet and create session */
-  onApprove?: (photoId: string) => void
+  onApprove?: (photoId: string) => void;
   /** ID of photo currently being approved (null if none) */
-  approvingPhotoId?: string | null
+  approvingPhotoId?: string | null;
   /** Callback to submit corrections to parsed problems */
-  onSubmitCorrection?: (photoId: string, correction: ProblemCorrection) => Promise<void>
+  onSubmitCorrection?: (
+    photoId: string,
+    correction: ProblemCorrection,
+  ) => Promise<void>;
   /** Problem number currently being saved (null if none) */
-  savingProblemNumber?: number | null
+  savingProblemNumber?: number | null;
   /** Callback to cancel parsing in progress */
-  onCancelParsing?: (photoId: string) => void
+  onCancelParsing?: (photoId: string) => void;
   /** Callback when a single problem is approved in focus review mode */
-  onApproveProblem?: (photoId: string, problemIndex: number) => Promise<void>
+  onApproveProblem?: (photoId: string, problemIndex: number) => Promise<void>;
   /** Callback when a single problem is flagged in focus review mode */
-  onFlagProblem?: (photoId: string, problemIndex: number) => Promise<void>
+  onFlagProblem?: (photoId: string, problemIndex: number) => Promise<void>;
   /** Callback when focus review is complete */
-  onFocusReviewComplete?: (photoId: string) => void
+  onFocusReviewComplete?: (photoId: string) => void;
 }
 
 /**
@@ -122,45 +134,53 @@ export function PhotoViewerEditor({
   onFlagProblem,
   onFocusReviewComplete,
 }: PhotoViewerEditorProps): ReactNode {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex)
-  const [mode, setMode] = useState<'view' | 'edit' | 'review'>(initialMode)
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [mode, setMode] = useState<"view" | "edit" | "review">(initialMode);
   // Review sub-mode: 'list' shows all problems in a list, 'focus' shows one problem at a time
-  const [reviewSubMode, setReviewSubMode] = useState<'list' | 'focus'>('list')
-  const [selectedProblemIndex, setSelectedProblemIndex] = useState<number | null>(null)
-  const [isLoadingOriginal, setIsLoadingOriginal] = useState(false)
-  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false)
-  const { isVisualDebugEnabled } = useVisualDebug()
-  const modelDropdownRef = useRef<HTMLDivElement>(null)
-  const reviewImageRef = useRef<HTMLImageElement>(null)
+  const [reviewSubMode, setReviewSubMode] = useState<"list" | "focus">("list");
+  const [selectedProblemIndex, setSelectedProblemIndex] = useState<
+    number | null
+  >(null);
+  const [isLoadingOriginal, setIsLoadingOriginal] = useState(false);
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const { isVisualDebugEnabled } = useVisualDebug();
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const reviewImageRef = useRef<HTMLImageElement>(null);
   const [editState, setEditState] = useState<{
-    sourceCanvas: HTMLCanvasElement
-    corners: Array<{ x: number; y: number }>
-    rotation: 0 | 90 | 180 | 270
-  } | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
+    sourceCanvas: HTMLCanvasElement;
+    corners: Array<{ x: number; y: number }>;
+    rotation: 0 | 90 | 180 | 270;
+  } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   // Re-parse hints modal state
-  const [showReparseModal, setShowReparseModal] = useState(false)
+  const [showReparseModal, setShowReparseModal] = useState(false);
   // Selection for selective re-parsing (no mode toggle needed - always selectable)
-  const [selectedForReparse, setSelectedForReparse] = useState<Set<number>>(new Set())
+  const [selectedForReparse, setSelectedForReparse] = useState<Set<number>>(
+    new Set(),
+  );
   // Adjusted bounding boxes for selected problems (overrides original when re-parsing)
   const [adjustedBoxes, setAdjustedBoxes] = useState<
     Map<number, { x: number; y: number; width: number; height: number }>
-  >(new Map())
+  >(new Map());
   // Pre-flight confirmation for re-parse
-  const [showReparsePreview, setShowReparsePreview] = useState(false)
+  const [showReparsePreview, setShowReparsePreview] = useState(false);
   // Cropped image previews for re-parse confirmation (keyed by problem index)
-  const [croppedPreviews, setCroppedPreviews] = useState<Map<number, string>>(new Map())
+  const [croppedPreviews, setCroppedPreviews] = useState<Map<number, string>>(
+    new Map(),
+  );
   // Thumbnails for all problems in the list (keyed by problem index)
-  const [problemThumbnails, setProblemThumbnails] = useState<Map<number, string>>(new Map())
+  const [problemThumbnails, setProblemThumbnails] = useState<
+    Map<number, string>
+  >(new Map());
   // Flag to prevent auto-reload after saving (which clears editState)
-  const [editCompleted, setEditCompleted] = useState(false)
+  const [editCompleted, setEditCompleted] = useState(false);
   // Debug content modal state
   const [debugModal, setDebugModal] = useState<{
-    isOpen: boolean
-    title: string
-    content: string
-    contentType: 'text' | 'json' | 'markdown'
-  }>({ isOpen: false, title: '', content: '', contentType: 'text' })
+    isOpen: boolean;
+    title: string;
+    content: string;
+    contentType: "text" | "json" | "markdown";
+  }>({ isOpen: false, title: "", content: "", contentType: "text" });
 
   // OpenCV is lazy-loaded only when actually needed (when entering edit mode)
   const {
@@ -168,22 +188,23 @@ export function PhotoViewerEditor({
     detectQuadsInImage,
     loadImageToCanvas,
     cv: opencvRef,
-  } = useDocumentDetection()
+  } = useDocumentDetection();
 
   // Use the worksheet parsing context (required)
-  const parsingContext = useWorksheetParsingContext()
+  const parsingContext = useWorksheetParsingContext();
 
   // Derive streaming state from context
-  const streamingState = parsingContext.state.streaming
+  const streamingState = parsingContext.state.streaming;
   const isInitialParsing =
-    streamingState?.streamType === 'initial' &&
-    (streamingState.status === 'connecting' ||
-      streamingState.status === 'reasoning' ||
-      streamingState.status === 'generating')
+    streamingState?.streamType === "initial" &&
+    (streamingState.status === "connecting" ||
+      streamingState.status === "reasoning" ||
+      streamingState.status === "generating");
   const isReparsing =
-    streamingState?.streamType === 'reparse' &&
-    (streamingState.status === 'connecting' || streamingState.status === 'processing')
-  const activeAttachmentId = parsingContext.state.activeAttachmentId
+    streamingState?.streamType === "reparse" &&
+    (streamingState.status === "connecting" ||
+      streamingState.status === "processing");
+  const activeAttachmentId = parsingContext.state.activeAttachmentId;
 
   // Handlers using context directly
   const handleParse = useCallback(
@@ -194,542 +215,553 @@ export function PhotoViewerEditor({
       preservedBoundingBoxes?: Record<
         number,
         { x: number; y: number; width: number; height: number }
-      >
+      >,
     ) => {
       parsingContext.startParse({
         attachmentId: photoId,
         modelConfigId,
         additionalContext,
         preservedBoundingBoxes,
-      })
+      });
     },
-    [parsingContext]
-  )
+    [parsingContext],
+  );
 
   const handleCancelStreaming = useCallback(() => {
-    parsingContext.cancel()
-  }, [parsingContext])
+    parsingContext.cancel();
+  }, [parsingContext]);
 
   const handleCancelStreamingReparse = useCallback(() => {
-    parsingContext.cancel()
-  }, [parsingContext])
+    parsingContext.cancel();
+  }, [parsingContext]);
 
   const handleApprove = useCallback(
     (photoId: string) => {
-      parsingContext.approve(photoId)
+      parsingContext.approve(photoId);
     },
-    [parsingContext]
-  )
+    [parsingContext],
+  );
 
   const handleSubmitCorrection = useCallback(
     async (photoId: string, correction: ProblemCorrection) => {
-      await parsingContext.submitCorrection(photoId, [correction])
+      await parsingContext.submitCorrection(photoId, [correction]);
     },
-    [parsingContext]
-  )
+    [parsingContext],
+  );
 
   const executeReparseSelected = useCallback(
     async (
       photoId: string,
       problemIndices: number[],
       boundingBoxes: Array<{
-        x: number
-        y: number
-        width: number
-        height: number
+        x: number;
+        y: number;
+        width: number;
+        height: number;
       }>,
-      additionalContext?: string
+      additionalContext?: string,
     ) => {
       await parsingContext.startReparse({
         attachmentId: photoId,
         problemIndices,
         boundingBoxes,
         additionalContext,
-      })
+      });
     },
-    [parsingContext]
-  )
+    [parsingContext],
+  );
 
   // Reset state when opening
   useEffect(() => {
     if (isOpen) {
-      setCurrentIndex(initialIndex)
-      setMode(initialMode)
-      setEditState(null)
-      setEditCompleted(false)
+      setCurrentIndex(initialIndex);
+      setMode(initialMode);
+      setEditState(null);
+      setEditCompleted(false);
     }
-  }, [isOpen, initialIndex, initialMode])
+  }, [isOpen, initialIndex, initialMode]);
 
   // Auto-load original for edit mode on open
   // Don't auto-load if edit was completed (user clicked Done) - prevents re-triggering edit mode
   useEffect(() => {
-    if (isOpen && initialMode === 'edit' && !editState && !editCompleted) {
-      loadOriginalForEditing()
+    if (isOpen && initialMode === "edit" && !editState && !editCompleted) {
+      loadOriginalForEditing();
     }
-  }, [isOpen, initialMode, editState, editCompleted])
+  }, [isOpen, initialMode, editState, editCompleted]);
 
-  const currentPhoto = photos[currentIndex]
-  const hasMultiple = photos.length > 1
+  const currentPhoto = photos[currentIndex];
+  const hasMultiple = photos.length > 1;
 
   // Navigate to previous photo (view mode only)
   const goToPrevious = useCallback(() => {
-    if (mode === 'view') {
-      setCurrentIndex((prev) => (prev > 0 ? prev - 1 : photos.length - 1))
+    if (mode === "view") {
+      setCurrentIndex((prev) => (prev > 0 ? prev - 1 : photos.length - 1));
     }
-  }, [mode, photos.length])
+  }, [mode, photos.length]);
 
   // Navigate to next photo (view mode only)
   const goToNext = useCallback(() => {
-    if (mode === 'view') {
-      setCurrentIndex((prev) => (prev < photos.length - 1 ? prev + 1 : 0))
+    if (mode === "view") {
+      setCurrentIndex((prev) => (prev < photos.length - 1 ? prev + 1 : 0));
     }
-  }, [mode, photos.length])
+  }, [mode, photos.length]);
 
   // Load original image for editing
   const loadOriginalForEditing = useCallback(async () => {
-    if (!currentPhoto) return
+    if (!currentPhoto) return;
 
-    setIsLoadingOriginal(true)
+    setIsLoadingOriginal(true);
     try {
       // Fetch original image (falls back to cropped for legacy attachments)
-      const originalUrl = currentPhoto.originalUrl || currentPhoto.url
-      const response = await fetch(originalUrl)
-      if (!response.ok) throw new Error('Failed to load original image')
+      const originalUrl = currentPhoto.originalUrl || currentPhoto.url;
+      const response = await fetch(originalUrl);
+      if (!response.ok) throw new Error("Failed to load original image");
 
-      const blob = await response.blob()
-      const file = new File([blob], 'original.jpg', { type: blob.type })
+      const blob = await response.blob();
+      const file = new File([blob], "original.jpg", { type: blob.type });
 
       // Load image to canvas (doesn't require OpenCV)
-      const canvas = await loadImageToCanvas(file)
-      if (!canvas) throw new Error('Failed to load image to canvas')
+      const canvas = await loadImageToCanvas(file);
+      if (!canvas) throw new Error("Failed to load image to canvas");
 
       // Always load OpenCV - DocumentAdjuster needs it for perspective transform preview
-      await ensureOpenCVLoaded()
+      await ensureOpenCVLoaded();
 
       // Use saved corners if available, otherwise detect
-      let corners: Array<{ x: number; y: number }>
+      let corners: Array<{ x: number; y: number }>;
       if (currentPhoto.corners && currentPhoto.corners.length === 4) {
-        corners = currentPhoto.corners
+        corners = currentPhoto.corners;
       } else {
         // Detect quads (OpenCV already loaded above)
-        const result = detectQuadsInImage(canvas)
-        corners = result.corners
+        const result = detectQuadsInImage(canvas);
+        corners = result.corners;
       }
 
       // Use saved rotation if available
-      const rotation = currentPhoto.rotation || 0
+      const rotation = currentPhoto.rotation || 0;
 
-      setEditState({ sourceCanvas: canvas, corners, rotation })
-      setMode('edit')
+      setEditState({ sourceCanvas: canvas, corners, rotation });
+      setMode("edit");
     } catch (err) {
-      console.error('Failed to load original for editing:', err)
+      console.error("Failed to load original for editing:", err);
     } finally {
-      setIsLoadingOriginal(false)
+      setIsLoadingOriginal(false);
     }
-  }, [currentPhoto, loadImageToCanvas, ensureOpenCVLoaded, detectQuadsInImage])
+  }, [currentPhoto, loadImageToCanvas, ensureOpenCVLoaded, detectQuadsInImage]);
 
   // Handle entering edit mode
   const handleEnterEditMode = useCallback(() => {
     if (editState) {
       // Already loaded, just switch mode
-      setMode('edit')
+      setMode("edit");
     } else {
       // Need to load original
-      loadOriginalForEditing()
+      loadOriginalForEditing();
     }
-  }, [editState, loadOriginalForEditing])
+  }, [editState, loadOriginalForEditing]);
 
   // Handle edit confirm
   const handleEditConfirm = useCallback(
     async (
       croppedFile: File,
       corners: Array<{ x: number; y: number }>,
-      rotation: 0 | 90 | 180 | 270
+      rotation: 0 | 90 | 180 | 270,
     ) => {
-      if (!currentPhoto) return
+      if (!currentPhoto) return;
 
-      setIsSaving(true)
+      setIsSaving(true);
       try {
-        await onEditConfirm(currentPhoto.id, croppedFile, corners, rotation)
+        await onEditConfirm(currentPhoto.id, croppedFile, corners, rotation);
         // Mark edit as completed before clearing state to prevent auto-reload
-        setEditCompleted(true)
+        setEditCompleted(true);
         // After saving, clear edit state so it reloads with new data next time
-        setEditState(null)
+        setEditState(null);
 
         // If opened directly in edit mode, close the viewer entirely
         // Otherwise, return to view mode
-        if (initialMode === 'edit') {
-          onClose()
+        if (initialMode === "edit") {
+          onClose();
         } else {
-          setMode('view')
+          setMode("view");
         }
       } catch (err) {
-        console.error('Failed to save edit:', err)
+        console.error("Failed to save edit:", err);
       } finally {
-        setIsSaving(false)
+        setIsSaving(false);
       }
     },
-    [currentPhoto, onEditConfirm, initialMode, onClose]
-  )
+    [currentPhoto, onEditConfirm, initialMode, onClose],
+  );
 
   // Handle edit cancel - return to view mode, or close if opened directly in edit mode
   const handleEditCancel = useCallback(() => {
-    if (initialMode === 'edit') {
-      onClose()
+    if (initialMode === "edit") {
+      onClose();
     } else {
-      setMode('view')
+      setMode("view");
     }
-  }, [initialMode, onClose])
+  }, [initialMode, onClose]);
 
   // Toggle a problem for re-parsing
   const toggleProblemForReparse = useCallback((index: number) => {
     setSelectedForReparse((prev) => {
-      const next = new Set(prev)
+      const next = new Set(prev);
       if (next.has(index)) {
-        next.delete(index)
+        next.delete(index);
       } else {
-        next.add(index)
+        next.add(index);
       }
-      return next
-    })
-  }, [])
+      return next;
+    });
+  }, []);
 
   // Clear all selections
   const clearSelections = useCallback(() => {
-    setSelectedForReparse(new Set())
-    setAdjustedBoxes(new Map())
-  }, [])
+    setSelectedForReparse(new Set());
+    setAdjustedBoxes(new Map());
+  }, []);
 
   // Handle adjusting a bounding box
   const handleAdjustBox = useCallback(
-    (index: number, box: { x: number; y: number; width: number; height: number }) => {
+    (
+      index: number,
+      box: { x: number; y: number; width: number; height: number },
+    ) => {
       setAdjustedBoxes((prev) => {
-        const next = new Map(prev)
-        next.set(index, box)
-        return next
-      })
+        const next = new Map(prev);
+        next.set(index, box);
+        return next;
+      });
     },
-    []
-  )
+    [],
+  );
 
   // Show pre-flight confirmation for re-parse
   const handleReparseSelected = useCallback(() => {
-    if (!currentPhoto || selectedForReparse.size === 0) return
-    setShowReparsePreview(true)
-  }, [currentPhoto, selectedForReparse])
+    if (!currentPhoto || selectedForReparse.size === 0) return;
+    setShowReparsePreview(true);
+  }, [currentPhoto, selectedForReparse]);
 
   // Cancel pre-flight and go back to selection
   const cancelReparsePreview = useCallback(() => {
-    setShowReparsePreview(false)
-  }, [])
+    setShowReparsePreview(false);
+  }, []);
 
   // Confirm and execute re-parse
   const confirmReparseSelected = useCallback(async () => {
-    if (!currentPhoto || selectedForReparse.size === 0) return
+    if (!currentPhoto || selectedForReparse.size === 0) return;
 
-    const problems = currentPhoto.rawParsingResult?.problems ?? []
-    const indices = Array.from(selectedForReparse).sort((a, b) => a - b)
+    const problems = currentPhoto.rawParsingResult?.problems ?? [];
+    const indices = Array.from(selectedForReparse).sort((a, b) => a - b);
 
     // Use adjusted boxes if available, otherwise use original
     const boundingBoxes = indices
       .map((i) => {
-        const adjusted = adjustedBoxes.get(i)
-        if (adjusted) return adjusted
-        return problems[i]?.problemBoundingBox
+        const adjusted = adjustedBoxes.get(i);
+        if (adjusted) return adjusted;
+        return problems[i]?.problemBoundingBox;
       })
       .filter(Boolean) as Array<{
-      x: number
-      y: number
-      width: number
-      height: number
-    }>
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }>;
 
     if (boundingBoxes.length !== indices.length) {
-      console.error('Missing bounding boxes for some selected problems')
-      return
+      console.error("Missing bounding boxes for some selected problems");
+      return;
     }
 
     // Clear preview mode BEFORE starting the mutation to avoid showing two cancel buttons
     // (one for "cancel preview" and one for "cancel re-parse in progress")
-    setShowReparsePreview(false)
-    setSelectedForReparse(new Set())
-    setAdjustedBoxes(new Map())
+    setShowReparsePreview(false);
+    setSelectedForReparse(new Set());
+    setAdjustedBoxes(new Map());
 
-    await executeReparseSelected(currentPhoto.id, indices, boundingBoxes)
-  }, [currentPhoto, selectedForReparse, adjustedBoxes, executeReparseSelected])
+    await executeReparseSelected(currentPhoto.id, indices, boundingBoxes);
+  }, [currentPhoto, selectedForReparse, adjustedBoxes, executeReparseSelected]);
 
   // Bulk exclude selected problems
   const handleExcludeSelected = useCallback(async () => {
-    if (!currentPhoto || selectedForReparse.size === 0) return
+    if (!currentPhoto || selectedForReparse.size === 0) return;
 
-    const problems = currentPhoto.rawParsingResult?.problems ?? []
-    const indices = Array.from(selectedForReparse).sort((a, b) => a - b)
+    const problems = currentPhoto.rawParsingResult?.problems ?? [];
+    const indices = Array.from(selectedForReparse).sort((a, b) => a - b);
 
     // Submit exclude correction for each selected problem
     for (const index of indices) {
-      const problem = problems[index]
+      const problem = problems[index];
       if (problem && !problem.excluded) {
         await handleSubmitCorrection(currentPhoto.id, {
           problemNumber: problem.problemNumber,
           shouldExclude: true,
-        })
+        });
       }
     }
 
     // Clear selections after excluding
-    setSelectedForReparse(new Set())
-    setAdjustedBoxes(new Map())
-  }, [currentPhoto, selectedForReparse, handleSubmitCorrection])
+    setSelectedForReparse(new Set());
+    setAdjustedBoxes(new Map());
+  }, [currentPhoto, selectedForReparse, handleSubmitCorrection]);
 
   // Bulk restore selected problems
   const handleRestoreSelected = useCallback(async () => {
-    if (!currentPhoto || selectedForReparse.size === 0) return
+    if (!currentPhoto || selectedForReparse.size === 0) return;
 
-    const problems = currentPhoto.rawParsingResult?.problems ?? []
-    const indices = Array.from(selectedForReparse).sort((a, b) => a - b)
+    const problems = currentPhoto.rawParsingResult?.problems ?? [];
+    const indices = Array.from(selectedForReparse).sort((a, b) => a - b);
 
     // Submit restore correction for each selected excluded problem
     for (const index of indices) {
-      const problem = problems[index]
+      const problem = problems[index];
       if (problem?.excluded) {
         await handleSubmitCorrection(currentPhoto.id, {
           problemNumber: problem.problemNumber,
           shouldRestore: true,
-        })
+        });
       }
     }
 
     // Clear selections after restoring
-    setSelectedForReparse(new Set())
-    setAdjustedBoxes(new Map())
-  }, [currentPhoto, selectedForReparse, handleSubmitCorrection])
+    setSelectedForReparse(new Set());
+    setAdjustedBoxes(new Map());
+  }, [currentPhoto, selectedForReparse, handleSubmitCorrection]);
 
   // Count how many selected problems are excluded vs non-excluded
   const selectedExcludedCount = useMemo(() => {
-    if (!currentPhoto || selectedForReparse.size === 0) return { excluded: 0, nonExcluded: 0 }
+    if (!currentPhoto || selectedForReparse.size === 0)
+      return { excluded: 0, nonExcluded: 0 };
 
-    const problems = currentPhoto.rawParsingResult?.problems ?? []
-    let excluded = 0
-    let nonExcluded = 0
+    const problems = currentPhoto.rawParsingResult?.problems ?? [];
+    let excluded = 0;
+    let nonExcluded = 0;
 
     for (const index of selectedForReparse) {
-      const problem = problems[index]
+      const problem = problems[index];
       if (problem?.excluded) {
-        excluded++
+        excluded++;
       } else if (problem) {
-        nonExcluded++
+        nonExcluded++;
       }
     }
 
-    return { excluded, nonExcluded }
-  }, [currentPhoto, selectedForReparse])
+    return { excluded, nonExcluded };
+  }, [currentPhoto, selectedForReparse]);
 
   // Get bounding boxes for preview (memoized for rendering)
   const reparsePreviewData = useMemo(() => {
-    if (!currentPhoto || selectedForReparse.size === 0) return []
+    if (!currentPhoto || selectedForReparse.size === 0) return [];
 
-    const problems = currentPhoto.rawParsingResult?.problems ?? []
-    const indices = Array.from(selectedForReparse).sort((a, b) => a - b)
+    const problems = currentPhoto.rawParsingResult?.problems ?? [];
+    const indices = Array.from(selectedForReparse).sort((a, b) => a - b);
 
     return indices
       .map((i) => {
-        const problem = problems[i]
-        if (!problem) return null
-        const box = adjustedBoxes.get(i) ?? problem.problemBoundingBox
-        const isAdjusted = adjustedBoxes.has(i)
-        return { index: i, problem, box, isAdjusted }
+        const problem = problems[i];
+        if (!problem) return null;
+        const box = adjustedBoxes.get(i) ?? problem.problemBoundingBox;
+        const isAdjusted = adjustedBoxes.has(i);
+        return { index: i, problem, box, isAdjusted };
       })
       .filter(Boolean) as Array<{
-      index: number
-      problem: (typeof problems)[number]
-      box: { x: number; y: number; width: number; height: number }
-      isAdjusted: boolean
-    }>
-  }, [currentPhoto, selectedForReparse, adjustedBoxes])
+      index: number;
+      problem: (typeof problems)[number];
+      box: { x: number; y: number; width: number; height: number };
+      isAdjusted: boolean;
+    }>;
+  }, [currentPhoto, selectedForReparse, adjustedBoxes]);
 
   // Generate cropped previews when entering re-parse confirmation
   useEffect(() => {
-    if (!showReparsePreview || !currentPhoto || reparsePreviewData.length === 0) {
-      setCroppedPreviews(new Map())
-      return
+    if (
+      !showReparsePreview ||
+      !currentPhoto ||
+      reparsePreviewData.length === 0
+    ) {
+      setCroppedPreviews(new Map());
+      return;
     }
 
-    let cancelled = false
+    let cancelled = false;
 
     async function generatePreviews() {
-      const previews = new Map<number, string>()
+      const previews = new Map<number, string>();
 
       for (const { index, box } of reparsePreviewData) {
-        if (cancelled) break
+        if (cancelled) break;
         try {
-          const croppedUrl = await cropImageWithCanvas(currentPhoto!.url, box)
-          previews.set(index, croppedUrl)
+          const croppedUrl = await cropImageWithCanvas(currentPhoto!.url, box);
+          previews.set(index, croppedUrl);
           // Update state progressively so user sees previews appear
           if (!cancelled) {
-            setCroppedPreviews(new Map(previews))
+            setCroppedPreviews(new Map(previews));
           }
         } catch (err) {
-          console.error(`Failed to crop preview for problem ${index}:`, err)
+          console.error(`Failed to crop preview for problem ${index}:`, err);
         }
       }
     }
 
-    generatePreviews()
+    generatePreviews();
     return () => {
-      cancelled = true
-    }
-  }, [showReparsePreview, currentPhoto, reparsePreviewData])
+      cancelled = true;
+    };
+  }, [showReparsePreview, currentPhoto, reparsePreviewData]);
 
   // Track which photo we last generated thumbnails for
-  const lastThumbnailPhotoRef = useRef<string | null>(null)
+  const lastThumbnailPhotoRef = useRef<string | null>(null);
 
   // Generate thumbnails for all problems when photo changes
   useEffect(() => {
-    const problems = currentPhoto?.rawParsingResult?.problems
+    const problems = currentPhoto?.rawParsingResult?.problems;
     if (!currentPhoto || !problems || problems.length === 0) {
-      setProblemThumbnails(new Map())
-      lastThumbnailPhotoRef.current = null
-      return
+      setProblemThumbnails(new Map());
+      lastThumbnailPhotoRef.current = null;
+      return;
     }
 
     // Only regenerate all if the photo changed
     if (lastThumbnailPhotoRef.current === currentPhoto.id) {
-      return
+      return;
     }
-    lastThumbnailPhotoRef.current = currentPhoto.id
+    lastThumbnailPhotoRef.current = currentPhoto.id;
 
-    let cancelled = false
+    let cancelled = false;
 
     async function generateAllThumbnails() {
-      const thumbnails = new Map<number, string>()
+      const thumbnails = new Map<number, string>();
 
       for (let i = 0; i < problems!.length; i++) {
-        if (cancelled) break
-        const problem = problems![i]
-        const box = problem.problemBoundingBox
+        if (cancelled) break;
+        const problem = problems![i];
+        const box = problem.problemBoundingBox;
         try {
-          const croppedUrl = await cropImageWithCanvas(currentPhoto!.url, box)
-          thumbnails.set(i, croppedUrl)
+          const croppedUrl = await cropImageWithCanvas(currentPhoto!.url, box);
+          thumbnails.set(i, croppedUrl);
           // Update state progressively
           if (!cancelled) {
-            setProblemThumbnails(new Map(thumbnails))
+            setProblemThumbnails(new Map(thumbnails));
           }
         } catch (err) {
-          console.error(`Failed to generate thumbnail for problem ${i}:`, err)
+          console.error(`Failed to generate thumbnail for problem ${i}:`, err);
         }
       }
     }
 
-    generateAllThumbnails()
+    generateAllThumbnails();
     return () => {
-      cancelled = true
-    }
-  }, [currentPhoto])
+      cancelled = true;
+    };
+  }, [currentPhoto]);
 
   // Track which adjusted boxes we've already regenerated thumbnails for
-  const lastAdjustedBoxesRef = useRef<Map<number, string>>(new Map())
+  const lastAdjustedBoxesRef = useRef<Map<number, string>>(new Map());
 
   // Regenerate only the specific thumbnail when a box is adjusted
   useEffect(() => {
-    if (!currentPhoto) return
+    if (!currentPhoto) return;
 
     // Find which indices were newly adjusted or changed
-    const indicesToUpdate: number[] = []
+    const indicesToUpdate: number[] = [];
     for (const [index, box] of adjustedBoxes) {
-      const boxKey = JSON.stringify(box)
+      const boxKey = JSON.stringify(box);
       if (lastAdjustedBoxesRef.current.get(index) !== boxKey) {
-        indicesToUpdate.push(index)
-        lastAdjustedBoxesRef.current.set(index, boxKey)
+        indicesToUpdate.push(index);
+        lastAdjustedBoxesRef.current.set(index, boxKey);
       }
     }
 
-    if (indicesToUpdate.length === 0) return
+    if (indicesToUpdate.length === 0) return;
 
-    let cancelled = false
+    let cancelled = false;
 
     async function updateAdjustedThumbnails() {
       for (const index of indicesToUpdate) {
-        if (cancelled) break
-        const box = adjustedBoxes.get(index)
-        if (!box) continue
+        if (cancelled) break;
+        const box = adjustedBoxes.get(index);
+        if (!box) continue;
         try {
-          const croppedUrl = await cropImageWithCanvas(currentPhoto!.url, box)
+          const croppedUrl = await cropImageWithCanvas(currentPhoto!.url, box);
           if (!cancelled) {
             setProblemThumbnails((prev) => {
-              const next = new Map(prev)
-              next.set(index, croppedUrl)
-              return next
-            })
+              const next = new Map(prev);
+              next.set(index, croppedUrl);
+              return next;
+            });
           }
         } catch (err) {
-          console.error(`Failed to update thumbnail for problem ${index}:`, err)
+          console.error(
+            `Failed to update thumbnail for problem ${index}:`,
+            err,
+          );
         }
       }
     }
 
-    updateAdjustedThumbnails()
+    updateAdjustedThumbnails();
     return () => {
-      cancelled = true
-    }
-  }, [currentPhoto, adjustedBoxes])
+      cancelled = true;
+    };
+  }, [currentPhoto, adjustedBoxes]);
 
   // Keyboard navigation
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     function handleKeyDown(e: KeyboardEvent) {
-      if (mode === 'edit') {
+      if (mode === "edit") {
         // In edit mode, Escape cancels - close if opened in edit mode, otherwise go to view
-        if (e.key === 'Escape') {
-          if (initialMode === 'edit') {
-            onClose()
+        if (e.key === "Escape") {
+          if (initialMode === "edit") {
+            onClose();
           } else {
-            setMode('view')
+            setMode("view");
           }
         }
-        return
+        return;
       }
 
-      if (mode === 'review') {
+      if (mode === "review") {
         // In review mode, Escape goes back to view mode (or closes if opened in review mode)
-        if (e.key === 'Escape') {
-          if (initialMode === 'review') {
-            onClose()
+        if (e.key === "Escape") {
+          if (initialMode === "review") {
+            onClose();
           } else {
-            setMode('view')
-            setSelectedProblemIndex(null)
+            setMode("view");
+            setSelectedProblemIndex(null);
           }
         }
-        return
+        return;
       }
 
       // View mode keyboard shortcuts
       switch (e.key) {
-        case 'Escape':
-          onClose()
-          break
-        case 'ArrowLeft':
-          goToPrevious()
-          break
-        case 'ArrowRight':
-          goToNext()
-          break
-        case 'e':
-        case 'E':
-          handleEnterEditMode()
-          break
-        case 'r':
-        case 'R':
+        case "Escape":
+          onClose();
+          break;
+        case "ArrowLeft":
+          goToPrevious();
+          break;
+        case "ArrowRight":
+          goToNext();
+          break;
+        case "e":
+        case "E":
+          handleEnterEditMode();
+          break;
+        case "r":
+        case "R":
           // Enter review mode if the current photo has parsing results
           if (currentPhoto?.rawParsingResult) {
-            setMode('review')
+            setMode("review");
           }
-          break
+          break;
       }
     }
 
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [
     isOpen,
     mode,
@@ -739,64 +771,68 @@ export function PhotoViewerEditor({
     goToNext,
     handleEnterEditMode,
     currentPhoto,
-  ])
+  ]);
 
   // Close model dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
-        setIsModelDropdownOpen(false)
+      if (
+        modelDropdownRef.current &&
+        !modelDropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsModelDropdownOpen(false);
       }
     }
     if (isModelDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [isModelDropdownOpen])
+  }, [isModelDropdownOpen]);
 
   // Prevent body scroll when open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = "hidden";
       return () => {
-        document.body.style.overflow = ''
-      }
+        document.body.style.overflow = "";
+      };
     }
-  }, [isOpen])
+  }, [isOpen]);
 
-  if (!isOpen || photos.length === 0) return null
+  if (!isOpen || photos.length === 0) return null;
 
   // Edit mode loading - show loading screen while preparing editor
-  if (mode === 'edit' && (!editState || !opencvRef || isLoadingOriginal)) {
+  if (mode === "edit" && (!editState || !opencvRef || isLoadingOriginal)) {
     return (
       <div
         data-component="photo-viewer-editor"
         data-mode="edit-loading"
         className={css({
-          position: 'fixed',
+          position: "fixed",
           inset: 0,
           zIndex: Z_INDEX.MODAL,
-          backgroundColor: 'rgba(0, 0, 0, 0.9)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          fontSize: 'lg',
+          backgroundColor: "rgba(0, 0, 0, 0.9)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "white",
+          fontSize: "lg",
         })}
       >
         Loading editor...
       </div>
-    )
+    );
   }
 
   // Edit mode - show DocumentAdjuster
-  if (mode === 'edit' && editState && opencvRef) {
+  if (mode === "edit" && editState && opencvRef) {
     return (
       <div
         data-component="photo-viewer-editor"
         data-mode="edit"
         className={css({
-          position: 'fixed',
+          position: "fixed",
           inset: 0,
           zIndex: Z_INDEX.MODAL,
         })}
@@ -813,40 +849,40 @@ export function PhotoViewerEditor({
         {isSaving && (
           <div
             className={css({
-              position: 'absolute',
+              position: "absolute",
               inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bg: 'rgba(0, 0, 0, 0.5)',
-              color: 'white',
-              fontSize: 'xl',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bg: "rgba(0, 0, 0, 0.5)",
+              color: "white",
+              fontSize: "xl",
             })}
           >
             Saving...
           </div>
         )}
       </div>
-    )
+    );
   }
 
   // Review mode - split-view with image + bounding boxes and problem list
-  if (mode === 'review' && currentPhoto?.rawParsingResult) {
-    const parsingResult = currentPhoto.rawParsingResult
-    const problems = parsingResult.problems ?? []
-    const llm = currentPhoto.llm
+  if (mode === "review" && currentPhoto?.rawParsingResult) {
+    const parsingResult = currentPhoto.rawParsingResult;
+    const problems = parsingResult.problems ?? [];
+    const llm = currentPhoto.llm;
 
     return (
       <div
         data-component="photo-viewer-editor"
         data-mode="review"
         className={css({
-          position: 'fixed',
+          position: "fixed",
           inset: 0,
           zIndex: Z_INDEX.MODAL,
-          backgroundColor: 'gray.900',
-          display: 'flex',
-          flexDirection: 'column',
+          backgroundColor: "gray.900",
+          display: "flex",
+          flexDirection: "column",
         })}
       >
         {/* Top toolbar */}
@@ -864,27 +900,27 @@ export function PhotoViewerEditor({
           isApproving={approvingPhotoId === currentPhoto.id}
           canApprove={true}
           onBack={() => {
-            setMode('view')
-            setSelectedProblemIndex(null)
+            setMode("view");
+            setSelectedProblemIndex(null);
           }}
           onReparseClick={() => {
             if (showReparsePreview) {
-              confirmReparseSelected()
+              confirmReparseSelected();
             } else if (selectedForReparse.size > 0) {
-              handleReparseSelected()
+              handleReparseSelected();
             } else {
-              setShowReparseModal(true)
+              setShowReparseModal(true);
             }
           }}
           onCancelReparsePreview={cancelReparsePreview}
           onCancelParsing={() => {
             if (onCancelParsing && currentPhoto) {
-              onCancelParsing(currentPhoto.id)
+              onCancelParsing(currentPhoto.id);
             }
           }}
           onApprove={() => {
             if (currentPhoto) {
-              handleApprove(currentPhoto.id)
+              handleApprove(currentPhoto.id);
             }
           }}
           onClose={onClose}
@@ -895,20 +931,20 @@ export function PhotoViewerEditor({
           data-element="review-content"
           className={css({
             flex: 1,
-            display: 'flex',
-            overflow: 'hidden',
+            display: "flex",
+            overflow: "hidden",
           })}
         >
-          {reviewSubMode === 'focus' ? (
+          {reviewSubMode === "focus" ? (
             /* Focus mode - one problem at a time with ProblemReviewFlow */
             <div
               data-element="focus-review-container"
               className={css({
                 flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
+                display: "flex",
+                flexDirection: "column",
                 padding: 4,
-                overflow: 'auto',
+                overflow: "auto",
               })}
             >
               <ProblemReviewFlow
@@ -917,25 +953,25 @@ export function PhotoViewerEditor({
                 reviewProgress={currentPhoto.reviewProgress ?? null}
                 onApproveProblem={async (problemIndex) => {
                   if (onApproveProblem && currentPhoto) {
-                    await onApproveProblem(currentPhoto.id, problemIndex)
+                    await onApproveProblem(currentPhoto.id, problemIndex);
                   }
                 }}
                 onCorrectProblem={async (problemIndex, correction) => {
                   if (currentPhoto) {
-                    await handleSubmitCorrection(currentPhoto.id, correction)
+                    await handleSubmitCorrection(currentPhoto.id, correction);
                   }
                 }}
                 onFlagProblem={async (problemIndex) => {
                   if (onFlagProblem && currentPhoto) {
-                    await onFlagProblem(currentPhoto.id, problemIndex)
+                    await onFlagProblem(currentPhoto.id, problemIndex);
                   }
                 }}
                 onReviewComplete={() => {
                   if (onFocusReviewComplete && currentPhoto) {
-                    onFocusReviewComplete(currentPhoto.id)
+                    onFocusReviewComplete(currentPhoto.id);
                   }
                 }}
-                onClose={() => setReviewSubMode('list')}
+                onClose={() => setReviewSubMode("list")}
                 isDark={true}
               />
             </div>
@@ -947,21 +983,21 @@ export function PhotoViewerEditor({
                 data-element="review-image-panel"
                 className={css({
                   flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   padding: 4,
-                  backgroundColor: 'gray.950',
-                  overflow: 'hidden',
-                  position: 'relative',
+                  backgroundColor: "gray.950",
+                  overflow: "hidden",
+                  position: "relative",
                 })}
               >
                 <div
                   data-element="image-container"
                   className={css({
-                    position: 'relative',
-                    maxWidth: '100%',
-                    maxHeight: '100%',
+                    position: "relative",
+                    maxWidth: "100%",
+                    maxHeight: "100%",
                   })}
                 >
                   {/* biome-ignore lint/performance/noImgElement: API-served images */}
@@ -970,10 +1006,10 @@ export function PhotoViewerEditor({
                     src={currentPhoto.url}
                     alt="Worksheet"
                     className={css({
-                      maxWidth: '100%',
-                      maxHeight: 'calc(100vh - 150px)',
-                      objectFit: 'contain',
-                      borderRadius: 'lg',
+                      maxWidth: "100%",
+                      maxHeight: "calc(100vh - 150px)",
+                      objectFit: "contain",
+                      borderRadius: "lg",
                     })}
                   />
                   {/* Bounding box overlay for parsed problems */}
@@ -995,14 +1031,14 @@ export function PhotoViewerEditor({
               <div
                 data-element="review-sidebar"
                 className={css({
-                  width: '400px',
+                  width: "400px",
                   flexShrink: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderLeft: '1px solid',
-                  borderColor: 'gray.700',
-                  backgroundColor: 'gray.800',
-                  overflow: 'hidden',
+                  display: "flex",
+                  flexDirection: "column",
+                  borderLeft: "1px solid",
+                  borderColor: "gray.700",
+                  backgroundColor: "gray.800",
+                  overflow: "hidden",
                 })}
               >
                 {/* Problem list */}
@@ -1010,9 +1046,9 @@ export function PhotoViewerEditor({
                   data-element="problem-list"
                   className={css({
                     flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'auto',
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "auto",
                     padding: 3,
                     minHeight: 0,
                   })}
@@ -1020,11 +1056,11 @@ export function PhotoViewerEditor({
                   {/* Header with selection mode toggle */}
                   <h3
                     className={css({
-                      fontSize: 'sm',
-                      fontWeight: 'semibold',
-                      color: 'gray.400',
-                      textTransform: 'uppercase',
-                      letterSpacing: 'wide',
+                      fontSize: "sm",
+                      fontWeight: "semibold",
+                      color: "gray.400",
+                      textTransform: "uppercase",
+                      letterSpacing: "wide",
                       marginBottom: 3,
                     })}
                   >
@@ -1036,8 +1072,8 @@ export function PhotoViewerEditor({
                     <div
                       data-element="streaming-reparse-progress"
                       className={css({
-                        display: 'flex',
-                        flexDirection: 'column',
+                        display: "flex",
+                        flexDirection: "column",
                         gap: 3,
                         flex: 1,
                         minHeight: 0,
@@ -1046,19 +1082,19 @@ export function PhotoViewerEditor({
                       {/* Progress header */}
                       <div
                         className={css({
-                          display: 'flex',
-                          alignItems: 'center',
+                          display: "flex",
+                          alignItems: "center",
                           gap: 2,
                           padding: 3,
-                          backgroundColor: 'blue.900',
-                          borderRadius: 'lg',
-                          border: '2px solid token(colors.blue.600)',
+                          backgroundColor: "blue.900",
+                          borderRadius: "lg",
+                          border: "2px solid token(colors.blue.600)",
                         })}
                       >
                         <span
                           className={css({
-                            fontSize: 'lg',
-                            animation: 'spin 1s linear infinite',
+                            fontSize: "lg",
+                            animation: "spin 1s linear infinite",
                           })}
                         >
                           ⏳
@@ -1066,17 +1102,17 @@ export function PhotoViewerEditor({
                         <div>
                           <div
                             className={css({
-                              fontWeight: 'semibold',
-                              color: 'blue.200',
-                              fontSize: 'sm',
+                              fontWeight: "semibold",
+                              color: "blue.200",
+                              fontSize: "sm",
                             })}
                           >
                             Re-parsing Problems
                           </div>
                           <div
                             className={css({
-                              fontSize: 'xs',
-                              color: 'blue.300',
+                              fontSize: "xs",
+                              color: "blue.300",
                             })}
                           >
                             {streamingState.progressMessage ||
@@ -1088,17 +1124,17 @@ export function PhotoViewerEditor({
                           type="button"
                           onClick={handleCancelStreamingReparse}
                           className={css({
-                            marginLeft: 'auto',
-                            padding: '4px 12px',
-                            fontSize: 'xs',
-                            fontWeight: 'medium',
-                            color: 'blue.300',
-                            backgroundColor: 'transparent',
-                            border: '1px solid token(colors.blue.500)',
-                            borderRadius: 'md',
-                            cursor: 'pointer',
+                            marginLeft: "auto",
+                            padding: "4px 12px",
+                            fontSize: "xs",
+                            fontWeight: "medium",
+                            color: "blue.300",
+                            backgroundColor: "transparent",
+                            border: "1px solid token(colors.blue.500)",
+                            borderRadius: "md",
+                            cursor: "pointer",
                             _hover: {
-                              backgroundColor: 'blue.800',
+                              backgroundColor: "blue.800",
                             },
                           })}
                         >
@@ -1109,25 +1145,24 @@ export function PhotoViewerEditor({
                       {/* Progress bar */}
                       <div
                         className={css({
-                          height: '4px',
-                          backgroundColor: 'gray.700',
-                          borderRadius: 'full',
-                          overflow: 'hidden',
+                          height: "4px",
+                          backgroundColor: "gray.700",
+                          borderRadius: "full",
+                          overflow: "hidden",
                         })}
                       >
                         <div
                           className={css({
-                            height: '100%',
-                            backgroundColor: 'blue.500',
-                            transition: 'width 0.3s ease',
+                            height: "100%",
+                            backgroundColor: "blue.500",
+                            transition: "width 0.3s ease",
                           })}
                           style={{
                             width: `${
                               (streamingState.totalProblems ?? 0) > 0
-                                ? (
-                                    (streamingState.currentProblemIndex ?? 0) /
-                                      (streamingState.totalProblems ?? 1)
-                                  ) * 100
+                                ? ((streamingState.currentProblemIndex ?? 0) /
+                                    (streamingState.totalProblems ?? 1)) *
+                                  100
                                 : 0
                             }%`,
                           }}
@@ -1140,30 +1175,30 @@ export function PhotoViewerEditor({
                           className={css({
                             flex: 1,
                             minHeight: 0,
-                            overflowY: 'auto',
+                            overflowY: "auto",
                             padding: 3,
-                            backgroundColor: 'gray.800',
-                            borderRadius: 'md',
-                            border: '1px solid token(colors.gray.700)',
+                            backgroundColor: "gray.800",
+                            borderRadius: "md",
+                            border: "1px solid token(colors.gray.700)",
                           })}
                         >
                           <div
                             className={css({
-                              fontSize: 'xs',
-                              color: 'gray.500',
+                              fontSize: "xs",
+                              color: "gray.500",
                               marginBottom: 2,
-                              fontWeight: 'medium',
+                              fontWeight: "medium",
                             })}
                           >
                             AI Reasoning:
                           </div>
                           <pre
                             className={css({
-                              fontSize: 'xs',
-                              color: 'gray.400',
-                              whiteSpace: 'pre-wrap',
-                              wordBreak: 'break-word',
-                              fontFamily: 'monospace',
+                              fontSize: "xs",
+                              color: "gray.400",
+                              whiteSpace: "pre-wrap",
+                              wordBreak: "break-word",
+                              fontFamily: "monospace",
                             })}
                           >
                             {streamingState.reasoningText}
@@ -1175,14 +1210,14 @@ export function PhotoViewerEditor({
                       {(streamingState.completedIndices?.length ?? 0) > 0 && (
                         <div
                           className={css({
-                            fontSize: 'xs',
-                            color: 'gray.500',
+                            fontSize: "xs",
+                            color: "gray.500",
                           })}
                         >
-                          Completed:{' '}
+                          Completed:{" "}
                           {(streamingState.completedIndices ?? [])
                             .map((i) => `#${i + 1}`)
-                            .join(', ')}
+                            .join(", ")}
                         </div>
                       )}
                     </div>
@@ -1191,8 +1226,8 @@ export function PhotoViewerEditor({
                     <div
                       data-element="reparse-preflight"
                       className={css({
-                        display: 'flex',
-                        flexDirection: 'column',
+                        display: "flex",
+                        flexDirection: "column",
                         gap: 3,
                         flex: 1,
                         minHeight: 0,
@@ -1201,30 +1236,30 @@ export function PhotoViewerEditor({
                       {/* Pre-flight header */}
                       <div
                         className={css({
-                          display: 'flex',
-                          alignItems: 'center',
+                          display: "flex",
+                          alignItems: "center",
                           gap: 2,
                           padding: 3,
-                          backgroundColor: 'orange.900',
-                          borderRadius: 'lg',
-                          border: '2px solid token(colors.orange.600)',
+                          backgroundColor: "orange.900",
+                          borderRadius: "lg",
+                          border: "2px solid token(colors.orange.600)",
                         })}
                       >
-                        <span className={css({ fontSize: 'lg' })}>⚠️</span>
+                        <span className={css({ fontSize: "lg" })}>⚠️</span>
                         <div>
                           <div
                             className={css({
-                              fontWeight: 'semibold',
-                              color: 'orange.200',
-                              fontSize: 'sm',
+                              fontWeight: "semibold",
+                              color: "orange.200",
+                              fontSize: "sm",
                             })}
                           >
                             Confirm Re-parse
                           </div>
                           <div
                             className={css({
-                              fontSize: 'xs',
-                              color: 'orange.300',
+                              fontSize: "xs",
+                              color: "orange.300",
                             })}
                           >
                             Review the cropped regions below before proceeding
@@ -1235,133 +1270,140 @@ export function PhotoViewerEditor({
                       {/* Cropped region previews */}
                       <div
                         className={css({
-                          display: 'flex',
-                          flexDirection: 'column',
+                          display: "flex",
+                          flexDirection: "column",
                           gap: 2,
                           flex: 1,
-                          overflowY: 'auto',
+                          overflowY: "auto",
                           minHeight: 0,
                         })}
                       >
-                        {reparsePreviewData.map(({ index, problem, box, isAdjusted }) => (
-                          <div
-                            key={index}
-                            className={css({
-                              display: 'flex',
-                              gap: 3,
-                              padding: 2,
-                              backgroundColor: 'gray.800',
-                              borderRadius: 'md',
-                              border: '1px solid token(colors.gray.700)',
-                            })}
-                          >
-                            {/* Cropped image preview - exact same crop as sent to LLM */}
+                        {reparsePreviewData.map(
+                          ({ index, problem, box, isAdjusted }) => (
                             <div
+                              key={index}
                               className={css({
-                                position: 'relative',
-                                minWidth: '80px',
-                                maxWidth: '200px',
-                                backgroundColor: 'gray.900',
-                                borderRadius: 'sm',
-                                overflow: 'hidden',
-                                flexShrink: 0,
+                                display: "flex",
+                                gap: 3,
+                                padding: 2,
+                                backgroundColor: "gray.800",
+                                borderRadius: "md",
+                                border: "1px solid token(colors.gray.700)",
                               })}
                             >
-                              {croppedPreviews.get(index) ? (
-                                /* biome-ignore lint/performance/noImgElement: Dynamic preview images from canvas */
-                                <img
-                                  src={croppedPreviews.get(index)}
-                                  alt={`Problem ${index + 1} cropped region`}
-                                  className={css({
-                                    display: 'block',
-                                    width: '100%',
-                                    height: 'auto',
-                                  })}
-                                />
-                              ) : (
-                                <div
-                                  className={css({
-                                    width: '120px',
-                                    height: '80px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'gray.500',
-                                    fontSize: 'xs',
-                                  })}
-                                >
-                                  Loading...
-                                </div>
-                              )}
-                              {isAdjusted && (
-                                <div
-                                  className={css({
-                                    position: 'absolute',
-                                    top: 1,
-                                    right: 1,
-                                    padding: '2px 4px',
-                                    backgroundColor: 'orange.600',
-                                    borderRadius: 'sm',
-                                    fontSize: '10px',
-                                    color: 'white',
-                                    fontWeight: 'bold',
-                                  })}
-                                >
-                                  ✎ Adjusted
-                                </div>
-                              )}
-                            </div>
+                              {/* Cropped image preview - exact same crop as sent to LLM */}
+                              <div
+                                className={css({
+                                  position: "relative",
+                                  minWidth: "80px",
+                                  maxWidth: "200px",
+                                  backgroundColor: "gray.900",
+                                  borderRadius: "sm",
+                                  overflow: "hidden",
+                                  flexShrink: 0,
+                                })}
+                              >
+                                {croppedPreviews.get(index) ? (
+                                  /* biome-ignore lint/performance/noImgElement: Dynamic preview images from canvas */
+                                  <img
+                                    src={croppedPreviews.get(index)}
+                                    alt={`Problem ${index + 1} cropped region`}
+                                    className={css({
+                                      display: "block",
+                                      width: "100%",
+                                      height: "auto",
+                                    })}
+                                  />
+                                ) : (
+                                  <div
+                                    className={css({
+                                      width: "120px",
+                                      height: "80px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      color: "gray.500",
+                                      fontSize: "xs",
+                                    })}
+                                  >
+                                    Loading...
+                                  </div>
+                                )}
+                                {isAdjusted && (
+                                  <div
+                                    className={css({
+                                      position: "absolute",
+                                      top: 1,
+                                      right: 1,
+                                      padding: "2px 4px",
+                                      backgroundColor: "orange.600",
+                                      borderRadius: "sm",
+                                      fontSize: "10px",
+                                      color: "white",
+                                      fontWeight: "bold",
+                                    })}
+                                  >
+                                    ✎ Adjusted
+                                  </div>
+                                )}
+                              </div>
 
-                            {/* Problem info */}
-                            <div className={css({ flex: 1, minWidth: 0 })}>
-                              <div
-                                className={css({
-                                  fontWeight: 'medium',
-                                  color: 'gray.200',
-                                  fontSize: 'sm',
-                                  marginBottom: 1,
-                                })}
-                              >
-                                Problem #{index + 1}
-                              </div>
-                              <div
-                                className={css({
-                                  fontSize: 'xs',
-                                  color: 'gray.400',
-                                })}
-                              >
-                                {problem.terms
-                                  .map((t, i) =>
-                                    i === 0 ? t : t >= 0 ? ` + ${t}` : ` − ${Math.abs(t)}`
-                                  )
-                                  .join('')}{' '}
-                                = {problem.studentAnswer ?? '?'}
-                              </div>
-                              <div
-                                className={css({
-                                  fontSize: 'xs',
-                                  color: 'gray.500',
-                                  marginTop: 1,
-                                })}
-                              >
-                                Region: {(box.x * 100).toFixed(0)}%, {(box.y * 100).toFixed(0)}% →{' '}
-                                {((box.x + box.width) * 100).toFixed(0)}%,{' '}
-                                {((box.y + box.height) * 100).toFixed(0)}%
+                              {/* Problem info */}
+                              <div className={css({ flex: 1, minWidth: 0 })}>
+                                <div
+                                  className={css({
+                                    fontWeight: "medium",
+                                    color: "gray.200",
+                                    fontSize: "sm",
+                                    marginBottom: 1,
+                                  })}
+                                >
+                                  Problem #{index + 1}
+                                </div>
+                                <div
+                                  className={css({
+                                    fontSize: "xs",
+                                    color: "gray.400",
+                                  })}
+                                >
+                                  {problem.terms
+                                    .map((t, i) =>
+                                      i === 0
+                                        ? t
+                                        : t >= 0
+                                          ? ` + ${t}`
+                                          : ` − ${Math.abs(t)}`,
+                                    )
+                                    .join("")}{" "}
+                                  = {problem.studentAnswer ?? "?"}
+                                </div>
+                                <div
+                                  className={css({
+                                    fontSize: "xs",
+                                    color: "gray.500",
+                                    marginTop: 1,
+                                  })}
+                                >
+                                  Region: {(box.x * 100).toFixed(0)}%,{" "}
+                                  {(box.y * 100).toFixed(0)}% →{" "}
+                                  {((box.x + box.width) * 100).toFixed(0)}%,{" "}
+                                  {((box.y + box.height) * 100).toFixed(0)}%
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ),
+                        )}
                       </div>
                     </div>
                   ) : problems.length === 0 ? (
-                    <div className={css({ color: 'gray.500', fontSize: 'sm' })}>
+                    <div className={css({ color: "gray.500", fontSize: "sm" })}>
                       No problems extracted from this worksheet.
                     </div>
                   ) : (
                     <div
                       className={css({
-                        display: 'flex',
-                        flexDirection: 'column',
+                        display: "flex",
+                        flexDirection: "column",
                         gap: 2,
                       })}
                     >
@@ -1372,14 +1414,21 @@ export function PhotoViewerEditor({
                           index={index}
                           isSelected={selectedProblemIndex === index}
                           onSelect={() =>
-                            setSelectedProblemIndex(selectedProblemIndex === index ? null : index)
+                            setSelectedProblemIndex(
+                              selectedProblemIndex === index ? null : index,
+                            )
                           }
                           onSubmitCorrection={(correction) => {
                             if (currentPhoto) {
-                              handleSubmitCorrection(currentPhoto.id, correction)
+                              handleSubmitCorrection(
+                                currentPhoto.id,
+                                correction,
+                              );
                             }
                           }}
-                          isSaving={savingProblemNumber === problem.problemNumber}
+                          isSaving={
+                            savingProblemNumber === problem.problemNumber
+                          }
                           isDark={true}
                           hasSelections={selectedForReparse.size > 0}
                           isCheckedForReparse={selectedForReparse.has(index)}
@@ -1396,42 +1445,44 @@ export function PhotoViewerEditor({
                   <div
                     data-element="selection-toolbar"
                     className={css({
-                      display: 'flex',
-                      flexDirection: 'column',
+                      display: "flex",
+                      flexDirection: "column",
                       gap: 2,
-                      padding: '8px 12px',
-                      borderTop: '1px solid',
-                      borderColor: 'gray.700',
-                      backgroundColor: 'gray.850',
+                      padding: "8px 12px",
+                      borderTop: "1px solid",
+                      borderColor: "gray.700",
+                      backgroundColor: "gray.850",
                       flexShrink: 0,
                     })}
                   >
                     <div
                       className={css({
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
                       })}
                     >
-                      <span className={css({ fontSize: 'sm', color: 'gray.400' })}>
+                      <span
+                        className={css({ fontSize: "sm", color: "gray.400" })}
+                      >
                         {selectedForReparse.size} problem
-                        {selectedForReparse.size === 1 ? '' : 's'} selected
+                        {selectedForReparse.size === 1 ? "" : "s"} selected
                       </span>
                       <button
                         type="button"
                         data-action="clear-selection"
                         onClick={clearSelections}
                         className={css({
-                          padding: '4px 12px',
-                          fontSize: 'sm',
-                          color: 'gray.400',
-                          backgroundColor: 'transparent',
-                          border: 'none',
-                          borderRadius: 'md',
-                          cursor: 'pointer',
+                          padding: "4px 12px",
+                          fontSize: "sm",
+                          color: "gray.400",
+                          backgroundColor: "transparent",
+                          border: "none",
+                          borderRadius: "md",
+                          cursor: "pointer",
                           _hover: {
-                            backgroundColor: 'gray.700',
-                            color: 'gray.300',
+                            backgroundColor: "gray.700",
+                            color: "gray.300",
                           },
                         })}
                       >
@@ -1441,7 +1492,7 @@ export function PhotoViewerEditor({
                     {/* Bulk action buttons */}
                     <div
                       className={css({
-                        display: 'flex',
+                        display: "flex",
                         gap: 2,
                       })}
                     >
@@ -1453,16 +1504,16 @@ export function PhotoViewerEditor({
                           onClick={handleExcludeSelected}
                           className={css({
                             flex: 1,
-                            padding: '6px 12px',
-                            fontSize: 'sm',
-                            fontWeight: 'medium',
-                            color: 'red.300',
-                            backgroundColor: 'red.900/30',
-                            border: '1px solid token(colors.red.700)',
-                            borderRadius: 'md',
-                            cursor: 'pointer',
+                            padding: "6px 12px",
+                            fontSize: "sm",
+                            fontWeight: "medium",
+                            color: "red.300",
+                            backgroundColor: "red.900/30",
+                            border: "1px solid token(colors.red.700)",
+                            borderRadius: "md",
+                            cursor: "pointer",
                             _hover: {
-                              backgroundColor: 'red.900/50',
+                              backgroundColor: "red.900/50",
                             },
                           })}
                         >
@@ -1477,16 +1528,16 @@ export function PhotoViewerEditor({
                           onClick={handleRestoreSelected}
                           className={css({
                             flex: 1,
-                            padding: '6px 12px',
-                            fontSize: 'sm',
-                            fontWeight: 'medium',
-                            color: 'green.300',
-                            backgroundColor: 'green.900/30',
-                            border: '1px solid token(colors.green.700)',
-                            borderRadius: 'md',
-                            cursor: 'pointer',
+                            padding: "6px 12px",
+                            fontSize: "sm",
+                            fontWeight: "medium",
+                            color: "green.300",
+                            backgroundColor: "green.900/30",
+                            border: "1px solid token(colors.green.700)",
+                            borderRadius: "md",
+                            cursor: "pointer",
                             _hover: {
-                              backgroundColor: 'green.900/50',
+                              backgroundColor: "green.900/50",
                             },
                           })}
                         >
@@ -1520,12 +1571,12 @@ export function PhotoViewerEditor({
         <div
           data-element="review-footer"
           className={css({
-            textAlign: 'center',
+            textAlign: "center",
             padding: 2,
-            fontSize: 'xs',
-            color: 'gray.600',
-            borderTop: '1px solid',
-            borderColor: 'gray.800',
+            fontSize: "xs",
+            color: "gray.600",
+            borderTop: "1px solid",
+            borderColor: "gray.800",
           })}
         >
           Click a problem to highlight it on the image • Esc to go back
@@ -1548,15 +1599,19 @@ export function PhotoViewerEditor({
             if (currentPhoto) {
               // Pass adjusted bounding boxes if any exist
               const preserved =
-                adjustedBoxes.size > 0 ? Object.fromEntries(adjustedBoxes.entries()) : undefined
-              handleParse(currentPhoto.id, undefined, hints, preserved)
-              setShowReparseModal(false)
+                adjustedBoxes.size > 0
+                  ? Object.fromEntries(adjustedBoxes.entries())
+                  : undefined;
+              handleParse(currentPhoto.id, undefined, hints, preserved);
+              setShowReparseModal(false);
             }
           }}
-          isProcessing={activeAttachmentId === currentPhoto.id && isInitialParsing}
+          isProcessing={
+            activeAttachmentId === currentPhoto.id && isInitialParsing
+          }
         />
       </div>
-    )
+    );
   }
 
   // View mode - show lightbox-style viewer
@@ -1565,15 +1620,15 @@ export function PhotoViewerEditor({
       data-component="photo-viewer-editor"
       data-mode="view"
       className={css({
-        position: 'fixed',
+        position: "fixed",
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         zIndex: Z_INDEX.MODAL,
-        padding: '1rem',
+        padding: "1rem",
       })}
       onClick={onClose}
     >
@@ -1583,23 +1638,23 @@ export function PhotoViewerEditor({
         data-action="close-viewer"
         onClick={onClose}
         className={css({
-          position: 'absolute',
-          top: '1rem',
-          right: '1rem',
-          width: '44px',
-          height: '44px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '2rem',
-          color: 'white',
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          border: 'none',
-          borderRadius: '50%',
-          cursor: 'pointer',
-          transition: 'background-color 0.2s',
+          position: "absolute",
+          top: "1rem",
+          right: "1rem",
+          width: "44px",
+          height: "44px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "2rem",
+          color: "white",
+          backgroundColor: "rgba(255, 255, 255, 0.1)",
+          border: "none",
+          borderRadius: "50%",
+          cursor: "pointer",
+          transition: "background-color 0.2s",
           _hover: {
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
           },
         })}
         aria-label="Close"
@@ -1611,10 +1666,10 @@ export function PhotoViewerEditor({
       <div
         data-element="viewer-toolbar"
         className={css({
-          position: 'absolute',
-          top: '1rem',
-          left: '1rem',
-          display: 'flex',
+          position: "absolute",
+          top: "1rem",
+          left: "1rem",
+          display: "flex",
           gap: 2,
         })}
         onClick={(e) => e.stopPropagation()}
@@ -1628,29 +1683,29 @@ export function PhotoViewerEditor({
           className={css({
             px: 4,
             py: 2,
-            display: 'flex',
-            alignItems: 'center',
+            display: "flex",
+            alignItems: "center",
             gap: 2,
-            fontSize: 'sm',
-            fontWeight: 'medium',
-            color: 'white',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            border: 'none',
-            borderRadius: 'lg',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s',
+            fontSize: "sm",
+            fontWeight: "medium",
+            color: "white",
+            backgroundColor: "rgba(255, 255, 255, 0.1)",
+            border: "none",
+            borderRadius: "lg",
+            cursor: "pointer",
+            transition: "background-color 0.2s",
             _hover: {
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              backgroundColor: "rgba(255, 255, 255, 0.2)",
             },
             _disabled: {
               opacity: 0.5,
-              cursor: 'not-allowed',
+              cursor: "not-allowed",
             },
           })}
           aria-label="Edit photo"
         >
           {isLoadingOriginal ? (
-            'Loading...'
+            "Loading..."
           ) : (
             <>
               <span>✏️</span>
@@ -1660,73 +1715,82 @@ export function PhotoViewerEditor({
         </button>
 
         {/* Parse button - split button with model selection dropdown */}
-        {(!currentPhoto.parsingStatus || currentPhoto.parsingStatus === 'failed') &&
+        {(!currentPhoto.parsingStatus ||
+          currentPhoto.parsingStatus === "failed") &&
           !currentPhoto.sessionCreated && (
             <div
               ref={modelDropdownRef}
               data-element="parse-split-button"
-              className={css({ position: 'relative', display: 'flex' })}
+              className={css({ position: "relative", display: "flex" })}
             >
               {/* Main parse button */}
               <button
                 type="button"
                 data-action="parse-worksheet"
                 onClick={() => {
-                  setIsModelDropdownOpen(false)
+                  setIsModelDropdownOpen(false);
                   // Pass adjusted bounding boxes if any exist
                   const preserved =
-                    adjustedBoxes.size > 0 ? Object.fromEntries(adjustedBoxes.entries()) : undefined
-                  handleParse(currentPhoto.id, undefined, undefined, preserved)
+                    adjustedBoxes.size > 0
+                      ? Object.fromEntries(adjustedBoxes.entries())
+                      : undefined;
+                  handleParse(currentPhoto.id, undefined, undefined, preserved);
                 }}
                 disabled={isInitialParsing}
                 className={css({
                   px: 4,
                   py: 2,
-                  display: 'flex',
-                  alignItems: 'center',
+                  display: "flex",
+                  alignItems: "center",
                   gap: 2,
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'white',
+                  fontSize: "sm",
+                  fontWeight: "medium",
+                  color: "white",
                   backgroundColor:
-                    currentPhoto.parsingStatus === 'failed' ? 'orange.500' : 'blue.500',
-                  border: 'none',
-                  borderRadius: modelConfigs.length > 0 ? '8px 0 0 8px' : 'lg',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
+                    currentPhoto.parsingStatus === "failed"
+                      ? "orange.500"
+                      : "blue.500",
+                  border: "none",
+                  borderRadius: modelConfigs.length > 0 ? "8px 0 0 8px" : "lg",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s",
                   _hover: {
                     backgroundColor:
-                      currentPhoto.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
+                      currentPhoto.parsingStatus === "failed"
+                        ? "orange.600"
+                        : "blue.600",
                   },
                   _disabled: {
-                    backgroundColor: 'gray.500',
-                    cursor: 'wait',
+                    backgroundColor: "gray.500",
+                    cursor: "wait",
                   },
                 })}
                 aria-label={
-                  currentPhoto.parsingStatus === 'failed' ? 'Retry parsing' : 'Parse worksheet'
+                  currentPhoto.parsingStatus === "failed"
+                    ? "Retry parsing"
+                    : "Parse worksheet"
                 }
               >
                 {isInitialParsing ? (
                   <>
                     <span
                       className={css({
-                        animation: 'spin 1s linear infinite',
+                        animation: "spin 1s linear infinite",
                       })}
                     >
                       ⏳
                     </span>
                     <span>
-                      {streamingState?.status === 'connecting'
-                        ? 'Connecting...'
-                        : streamingState?.status === 'reasoning'
-                          ? 'Thinking...'
-                          : streamingState?.status === 'generating'
-                            ? 'Extracting...'
-                            : 'Analyzing...'}
+                      {streamingState?.status === "connecting"
+                        ? "Connecting..."
+                        : streamingState?.status === "reasoning"
+                          ? "Thinking..."
+                          : streamingState?.status === "generating"
+                            ? "Extracting..."
+                            : "Analyzing..."}
                     </span>
                   </>
-                ) : currentPhoto.parsingStatus === 'failed' ? (
+                ) : currentPhoto.parsingStatus === "failed" ? (
                   <>
                     <span>🔄</span>
                     <span>Retry Parse</span>
@@ -1750,25 +1814,29 @@ export function PhotoViewerEditor({
                     className={css({
                       px: 2,
                       py: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 'sm',
-                      color: 'white',
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "sm",
+                      color: "white",
                       backgroundColor:
-                        currentPhoto.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
-                      borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
-                      border: 'none',
-                      borderRadius: '0 8px 8px 0',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s',
+                        currentPhoto.parsingStatus === "failed"
+                          ? "orange.600"
+                          : "blue.600",
+                      borderLeft: "1px solid rgba(255, 255, 255, 0.2)",
+                      border: "none",
+                      borderRadius: "0 8px 8px 0",
+                      cursor: "pointer",
+                      transition: "background-color 0.2s",
                       _hover: {
                         backgroundColor:
-                          currentPhoto.parsingStatus === 'failed' ? 'orange.700' : 'blue.700',
+                          currentPhoto.parsingStatus === "failed"
+                            ? "orange.700"
+                            : "blue.700",
                       },
                       _disabled: {
-                        backgroundColor: 'gray.500',
-                        cursor: 'wait',
+                        backgroundColor: "gray.500",
+                        cursor: "wait",
                       },
                     })}
                     aria-label="Select model"
@@ -1776,8 +1844,10 @@ export function PhotoViewerEditor({
                   >
                     <span
                       className={css({
-                        transform: isModelDropdownOpen ? 'rotate(180deg)' : 'none',
-                        transition: 'transform 0.2s',
+                        transform: isModelDropdownOpen
+                          ? "rotate(180deg)"
+                          : "none",
+                        transition: "transform 0.2s",
                       })}
                     >
                       ▾
@@ -1789,17 +1859,17 @@ export function PhotoViewerEditor({
                     <div
                       data-element="model-dropdown"
                       className={css({
-                        position: 'absolute',
-                        top: '100%',
+                        position: "absolute",
+                        top: "100%",
                         left: 0,
                         marginTop: 1,
-                        minWidth: '280px',
-                        backgroundColor: 'gray.800',
-                        borderRadius: 'lg',
-                        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
-                        border: '1px solid',
-                        borderColor: 'gray.700',
-                        overflow: 'hidden',
+                        minWidth: "280px",
+                        backgroundColor: "gray.800",
+                        borderRadius: "lg",
+                        boxShadow: "0 10px 40px rgba(0, 0, 0, 0.5)",
+                        border: "1px solid",
+                        borderColor: "gray.700",
+                        overflow: "hidden",
                         zIndex: 10,
                       })}
                     >
@@ -1807,13 +1877,13 @@ export function PhotoViewerEditor({
                         className={css({
                           px: 3,
                           py: 2,
-                          fontSize: 'xs',
-                          fontWeight: 'semibold',
-                          color: 'gray.400',
-                          textTransform: 'uppercase',
-                          letterSpacing: 'wide',
-                          borderBottom: '1px solid',
-                          borderColor: 'gray.700',
+                          fontSize: "xs",
+                          fontWeight: "semibold",
+                          color: "gray.400",
+                          textTransform: "uppercase",
+                          letterSpacing: "wide",
+                          borderBottom: "1px solid",
+                          borderColor: "gray.700",
                         })}
                       >
                         Select Model
@@ -1824,42 +1894,47 @@ export function PhotoViewerEditor({
                           type="button"
                           data-action={`parse-with-model-${config.id}`}
                           onClick={() => {
-                            setIsModelDropdownOpen(false)
+                            setIsModelDropdownOpen(false);
                             // Pass adjusted bounding boxes if any exist
                             const preserved =
                               adjustedBoxes.size > 0
                                 ? Object.fromEntries(adjustedBoxes.entries())
-                                : undefined
-                            handleParse(currentPhoto.id, config.id, undefined, preserved)
+                                : undefined;
+                            handleParse(
+                              currentPhoto.id,
+                              config.id,
+                              undefined,
+                              preserved,
+                            );
                           }}
                           className={css({
-                            width: '100%',
+                            width: "100%",
                             px: 3,
                             py: 3,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'flex-start',
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "flex-start",
                             gap: 1,
-                            textAlign: 'left',
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.1s',
-                            _hover: { backgroundColor: 'gray.700' },
+                            textAlign: "left",
+                            backgroundColor: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            transition: "background-color 0.1s",
+                            _hover: { backgroundColor: "gray.700" },
                           })}
                         >
                           <div
                             className={css({
-                              display: 'flex',
-                              alignItems: 'center',
+                              display: "flex",
+                              alignItems: "center",
                               gap: 2,
-                              width: '100%',
+                              width: "100%",
                             })}
                           >
                             <span
                               className={css({
-                                color: 'white',
-                                fontWeight: 'medium',
+                                color: "white",
+                                fontWeight: "medium",
                               })}
                             >
                               {config.name}
@@ -1869,10 +1944,10 @@ export function PhotoViewerEditor({
                                 className={css({
                                   px: 2,
                                   py: 0.5,
-                                  fontSize: 'xs',
-                                  backgroundColor: 'blue.600',
-                                  color: 'white',
-                                  borderRadius: 'md',
+                                  fontSize: "xs",
+                                  backgroundColor: "blue.600",
+                                  color: "white",
+                                  borderRadius: "md",
                                 })}
                               >
                                 Default
@@ -1881,8 +1956,8 @@ export function PhotoViewerEditor({
                           </div>
                           <span
                             className={css({
-                              fontSize: 'xs',
-                              color: 'gray.400',
+                              fontSize: "xs",
+                              color: "gray.400",
                             })}
                           >
                             {config.description}
@@ -1901,72 +1976,72 @@ export function PhotoViewerEditor({
           <div
             data-element="streaming-parse-progress"
             className={css({
-              position: 'absolute',
-              bottom: '80px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              maxWidth: '400px',
-              width: '90%',
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              borderRadius: 'lg',
+              position: "absolute",
+              bottom: "80px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              maxWidth: "400px",
+              width: "90%",
+              backgroundColor: "rgba(0, 0, 0, 0.9)",
+              borderRadius: "lg",
               padding: 3,
-              border: '1px solid token(colors.blue.600)',
-              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+              border: "1px solid token(colors.blue.600)",
+              boxShadow: "0 10px 40px rgba(0, 0, 0, 0.5)",
               zIndex: Z_INDEX.MODAL + 1,
             })}
           >
             {/* Header with status and cancel */}
             <div
               className={css({
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
                 marginBottom: 2,
               })}
             >
               <div
                 className={css({
-                  display: 'flex',
-                  alignItems: 'center',
+                  display: "flex",
+                  alignItems: "center",
                   gap: 2,
                 })}
               >
                 <span
                   className={css({
-                    animation: 'spin 1s linear infinite',
+                    animation: "spin 1s linear infinite",
                   })}
                 >
                   ⏳
                 </span>
                 <span
                   className={css({
-                    fontSize: 'sm',
-                    fontWeight: 'semibold',
-                    color: 'blue.300',
+                    fontSize: "sm",
+                    fontWeight: "semibold",
+                    color: "blue.300",
                   })}
                 >
-                  {streamingState.status === 'connecting'
-                    ? 'Connecting to AI...'
-                    : streamingState.status === 'reasoning'
-                      ? 'AI is analyzing worksheet...'
-                      : 'Extracting problems...'}
+                  {streamingState.status === "connecting"
+                    ? "Connecting to AI..."
+                    : streamingState.status === "reasoning"
+                      ? "AI is analyzing worksheet..."
+                      : "Extracting problems..."}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={handleCancelStreaming}
                 className={css({
-                  padding: '4px 12px',
-                  fontSize: 'xs',
-                  fontWeight: 'medium',
-                  color: 'gray.400',
-                  backgroundColor: 'transparent',
-                  border: '1px solid token(colors.gray.600)',
-                  borderRadius: 'md',
-                  cursor: 'pointer',
+                  padding: "4px 12px",
+                  fontSize: "xs",
+                  fontWeight: "medium",
+                  color: "gray.400",
+                  backgroundColor: "transparent",
+                  border: "1px solid token(colors.gray.600)",
+                  borderRadius: "md",
+                  cursor: "pointer",
                   _hover: {
-                    backgroundColor: 'gray.700',
-                    color: 'white',
+                    backgroundColor: "gray.700",
+                    color: "white",
                   },
                 })}
               >
@@ -1978,15 +2053,15 @@ export function PhotoViewerEditor({
             {streamingState.reasoningText && (
               <div
                 className={css({
-                  maxHeight: '120px',
-                  overflowY: 'auto',
+                  maxHeight: "120px",
+                  overflowY: "auto",
                   padding: 2,
-                  backgroundColor: 'gray.800',
-                  borderRadius: 'md',
-                  fontSize: 'xs',
-                  color: 'gray.400',
-                  whiteSpace: 'pre-wrap',
-                  fontFamily: 'monospace',
+                  backgroundColor: "gray.800",
+                  borderRadius: "md",
+                  fontSize: "xs",
+                  color: "gray.400",
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "monospace",
                 })}
               >
                 {streamingState.reasoningText}
@@ -1998,84 +2073,90 @@ export function PhotoViewerEditor({
               <div
                 className={css({
                   marginTop: 2,
-                  fontSize: 'xs',
-                  color: 'green.400',
+                  fontSize: "xs",
+                  color: "green.400",
                 })}
               >
-                Found {streamingState.completedProblems?.length ?? 0} problems...
+                Found {streamingState.completedProblems?.length ?? 0}{" "}
+                problems...
               </div>
             )}
           </div>
         )}
 
         {/* Parsing status badge - don't show for 'failed' since retry button is shown instead */}
-        {currentPhoto.parsingStatus && currentPhoto.parsingStatus !== 'failed' && (
-          <div
-            data-element="parsing-status-badge"
-            className={css({
-              px: 4,
-              py: 2,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              borderRadius: 'lg',
-              backgroundColor:
-                currentPhoto.parsingStatus === 'processing'
-                  ? 'blue.500'
-                  : currentPhoto.parsingStatus === 'needs_review'
-                    ? 'yellow.500'
-                    : currentPhoto.parsingStatus === 'approved'
-                      ? 'green.500'
-                      : 'gray.500',
-              color: currentPhoto.parsingStatus === 'needs_review' ? 'yellow.900' : 'white',
-            })}
-          >
-            {currentPhoto.parsingStatus === 'processing' && '⏳'}
-            {currentPhoto.parsingStatus === 'needs_review' && '⚠️'}
-            {currentPhoto.parsingStatus === 'approved' && '✓'}
-            {currentPhoto.parsingStatus === 'processing'
-              ? 'Analyzing...'
-              : currentPhoto.parsingStatus === 'needs_review'
-                ? `${currentPhoto.problemCount ?? '?'} problems (needs review)`
-                : currentPhoto.parsingStatus === 'approved'
-                  ? `${currentPhoto.problemCount ?? '?'} problems`
-                  : currentPhoto.parsingStatus}
-            {/* Cancel button for processing state */}
-            {currentPhoto.parsingStatus === 'processing' && onCancelParsing && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onCancelParsing(currentPhoto.id)
-                }}
-                className={css({
-                  marginLeft: '0.5rem',
-                  padding: '0.25rem',
-                  borderRadius: 'full',
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  color: 'white',
-                  fontSize: '0.75rem',
-                  lineHeight: '1',
-                  cursor: 'pointer',
-                  border: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '20px',
-                  height: '20px',
-                  _hover: {
-                    backgroundColor: 'rgba(255,255,255,0.4)',
-                  },
-                })}
-                title="Cancel parsing"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        )}
+        {currentPhoto.parsingStatus &&
+          currentPhoto.parsingStatus !== "failed" && (
+            <div
+              data-element="parsing-status-badge"
+              className={css({
+                px: 4,
+                py: 2,
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                fontSize: "sm",
+                fontWeight: "medium",
+                borderRadius: "lg",
+                backgroundColor:
+                  currentPhoto.parsingStatus === "processing"
+                    ? "blue.500"
+                    : currentPhoto.parsingStatus === "needs_review"
+                      ? "yellow.500"
+                      : currentPhoto.parsingStatus === "approved"
+                        ? "green.500"
+                        : "gray.500",
+                color:
+                  currentPhoto.parsingStatus === "needs_review"
+                    ? "yellow.900"
+                    : "white",
+              })}
+            >
+              {currentPhoto.parsingStatus === "processing" && "⏳"}
+              {currentPhoto.parsingStatus === "needs_review" && "⚠️"}
+              {currentPhoto.parsingStatus === "approved" && "✓"}
+              {currentPhoto.parsingStatus === "processing"
+                ? "Analyzing..."
+                : currentPhoto.parsingStatus === "needs_review"
+                  ? `${currentPhoto.problemCount ?? "?"} problems (needs review)`
+                  : currentPhoto.parsingStatus === "approved"
+                    ? `${currentPhoto.problemCount ?? "?"} problems`
+                    : currentPhoto.parsingStatus}
+              {/* Cancel button for processing state */}
+              {currentPhoto.parsingStatus === "processing" &&
+                onCancelParsing && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCancelParsing(currentPhoto.id);
+                    }}
+                    className={css({
+                      marginLeft: "0.5rem",
+                      padding: "0.25rem",
+                      borderRadius: "full",
+                      backgroundColor: "rgba(255,255,255,0.2)",
+                      color: "white",
+                      fontSize: "0.75rem",
+                      lineHeight: "1",
+                      cursor: "pointer",
+                      border: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "20px",
+                      height: "20px",
+                      _hover: {
+                        backgroundColor: "rgba(255,255,255,0.4)",
+                      },
+                    })}
+                    title="Cancel parsing"
+                  >
+                    ✕
+                  </button>
+                )}
+            </div>
+          )}
 
         {/* Session created badge */}
         {currentPhoto.sessionCreated && (
@@ -2084,14 +2165,14 @@ export function PhotoViewerEditor({
             className={css({
               px: 4,
               py: 2,
-              display: 'flex',
-              alignItems: 'center',
+              display: "flex",
+              alignItems: "center",
               gap: 2,
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              borderRadius: 'lg',
-              backgroundColor: 'green.600',
-              color: 'white',
+              fontSize: "sm",
+              fontWeight: "medium",
+              borderRadius: "lg",
+              backgroundColor: "green.600",
+              color: "white",
             })}
           >
             ✓ Session Created
@@ -2103,29 +2184,31 @@ export function PhotoViewerEditor({
           <button
             type="button"
             data-action="enter-review-mode"
-            onClick={() => setMode('review')}
+            onClick={() => setMode("review")}
             className={css({
               px: 4,
               py: 2,
-              display: 'flex',
-              alignItems: 'center',
+              display: "flex",
+              alignItems: "center",
               gap: 2,
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              color: 'white',
-              backgroundColor: 'purple.500',
-              border: 'none',
-              borderRadius: 'lg',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
+              fontSize: "sm",
+              fontWeight: "medium",
+              color: "white",
+              backgroundColor: "purple.500",
+              border: "none",
+              borderRadius: "lg",
+              cursor: "pointer",
+              transition: "background-color 0.2s",
               _hover: {
-                backgroundColor: 'purple.600',
+                backgroundColor: "purple.600",
               },
             })}
             aria-label="Review parsed problems"
           >
             <span>📋</span>
-            <span>Review ({currentPhoto.rawParsingResult.problems?.length ?? 0})</span>
+            <span>
+              Review ({currentPhoto.rawParsingResult.problems?.length ?? 0})
+            </span>
           </button>
         )}
       </div>
@@ -2136,28 +2219,28 @@ export function PhotoViewerEditor({
           type="button"
           data-action="previous-photo"
           onClick={(e) => {
-            e.stopPropagation()
-            goToPrevious()
+            e.stopPropagation();
+            goToPrevious();
           }}
           className={css({
-            position: 'absolute',
-            left: '1rem',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: '48px',
-            height: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.5rem',
-            color: 'white',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            border: 'none',
-            borderRadius: '50%',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s',
+            position: "absolute",
+            left: "1rem",
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: "48px",
+            height: "48px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "1.5rem",
+            color: "white",
+            backgroundColor: "rgba(255, 255, 255, 0.1)",
+            border: "none",
+            borderRadius: "50%",
+            cursor: "pointer",
+            transition: "background-color 0.2s",
             _hover: {
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              backgroundColor: "rgba(255, 255, 255, 0.2)",
             },
           })}
           aria-label="Previous photo"
@@ -2170,12 +2253,12 @@ export function PhotoViewerEditor({
       <div
         className={css({
           flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          maxWidth: '100%',
-          maxHeight: 'calc(100vh - 120px)',
-          padding: '0 60px',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          maxWidth: "100%",
+          maxHeight: "calc(100vh - 120px)",
+          padding: "0 60px",
         })}
         onClick={(e) => e.stopPropagation()}
       >
@@ -2184,11 +2267,11 @@ export function PhotoViewerEditor({
           src={currentPhoto.url}
           alt={`Attachment ${currentIndex + 1}`}
           className={css({
-            maxWidth: '100%',
-            maxHeight: '100%',
-            objectFit: 'contain',
-            borderRadius: '8px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+            maxWidth: "100%",
+            maxHeight: "100%",
+            objectFit: "contain",
+            borderRadius: "8px",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.5)",
           })}
         />
       </div>
@@ -2199,28 +2282,28 @@ export function PhotoViewerEditor({
           type="button"
           data-action="next-photo"
           onClick={(e) => {
-            e.stopPropagation()
-            goToNext()
+            e.stopPropagation();
+            goToNext();
           }}
           className={css({
-            position: 'absolute',
-            right: '1rem',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: '48px',
-            height: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.5rem',
-            color: 'white',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            border: 'none',
-            borderRadius: '50%',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s',
+            position: "absolute",
+            right: "1rem",
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: "48px",
+            height: "48px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "1.5rem",
+            color: "white",
+            backgroundColor: "rgba(255, 255, 255, 0.1)",
+            border: "none",
+            borderRadius: "50%",
+            cursor: "pointer",
+            transition: "background-color 0.2s",
             _hover: {
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              backgroundColor: "rgba(255, 255, 255, 0.2)",
             },
           })}
           aria-label="Next photo"
@@ -2233,13 +2316,13 @@ export function PhotoViewerEditor({
       <div
         data-element="viewer-footer"
         className={css({
-          position: 'absolute',
-          bottom: '1.5rem',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
+          position: "absolute",
+          bottom: "1.5rem",
+          left: "50%",
+          transform: "translateX(-50%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
           gap: 2,
         })}
       >
@@ -2247,12 +2330,12 @@ export function PhotoViewerEditor({
           <div
             data-element="photo-counter"
             className={css({
-              padding: '0.5rem 1rem',
-              backgroundColor: 'rgba(0, 0, 0, 0.6)',
-              borderRadius: '20px',
-              color: 'white',
-              fontSize: '0.875rem',
-              fontWeight: '500',
+              padding: "0.5rem 1rem",
+              backgroundColor: "rgba(0, 0, 0, 0.6)",
+              borderRadius: "20px",
+              color: "white",
+              fontSize: "0.875rem",
+              fontWeight: "500",
             })}
           >
             {currentIndex + 1} / {photos.length}
@@ -2261,16 +2344,16 @@ export function PhotoViewerEditor({
         <div
           data-element="keyboard-hint"
           className={css({
-            color: 'gray.500',
-            fontSize: 'xs',
+            color: "gray.500",
+            fontSize: "xs",
           })}
         >
-          Press E to edit{currentPhoto.rawParsingResult ? ' • R to review' : ''} • Arrow keys to
-          navigate • Esc to close
+          Press E to edit{currentPhoto.rawParsingResult ? " • R to review" : ""}{" "}
+          • Arrow keys to navigate • Esc to close
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default PhotoViewerEditor
+export default PhotoViewerEditor;

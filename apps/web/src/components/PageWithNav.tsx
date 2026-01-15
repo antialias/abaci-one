@@ -1,63 +1,72 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import type React from 'react'
-import { useContext } from 'react'
-import { AppNavBar } from './AppNavBar'
-import type { RosterWarning } from './nav/GameContextNav'
-import type { PlayerBadge } from './nav/types'
-import { PreviewModeContext } from '@/contexts/PreviewModeContext'
+import dynamic from "next/dynamic";
+import type React from "react";
+import { useContext } from "react";
+import { AppNavBar } from "./AppNavBar";
+import type { RosterWarning } from "./nav/GameContextNav";
+import type { PlayerBadge } from "./nav/types";
+import { PreviewModeContext } from "@/contexts/PreviewModeContext";
 
 // Lazy load GameContextNav - it pulls in game mode hooks and arcade room components
 // Only loaded when navTitle is provided (arcade games, not practice pages)
-const GameContextNav = dynamic(() => import('./nav/GameContextNav').then((m) => m.GameContextNav), {
-  ssr: false,
-})
+const GameContextNav = dynamic(
+  () => import("./nav/GameContextNav").then((m) => m.GameContextNav),
+  {
+    ssr: false,
+  },
+);
 
 // Lazy load dialogs and notifications - these are rarely visible initially
 const PlayerConfigDialog = dynamic(
-  () => import('./nav/PlayerConfigDialog').then((m) => m.PlayerConfigDialog),
-  { ssr: false }
-)
+  () => import("./nav/PlayerConfigDialog").then((m) => m.PlayerConfigDialog),
+  { ssr: false },
+);
 const ModerationNotifications = dynamic(
-  () => import('./nav/ModerationNotifications').then((m) => m.ModerationNotifications),
-  { ssr: false }
-)
+  () =>
+    import("./nav/ModerationNotifications").then(
+      (m) => m.ModerationNotifications,
+    ),
+  { ssr: false },
+);
 
 // Lazy load the game nav content component - this contains the hooks
 // that pull in GameModeContext and useRoomData (100KB+ of arcade dependencies)
-const GameNavContent = dynamic(() => import('./nav/GameNavContent').then((m) => m.GameNavContent), {
-  ssr: false,
-})
+const GameNavContent = dynamic(
+  () => import("./nav/GameNavContent").then((m) => m.GameNavContent),
+  {
+    ssr: false,
+  },
+);
 
 interface PageWithNavProps {
-  navTitle?: string
-  navEmoji?: string
-  gameName?: 'matching' | 'memory-quiz' | 'complement-race' // Internal game name for API
-  emphasizePlayerSelection?: boolean
-  disableFullscreenSelection?: boolean // Disable "Select Your Champions" overlay
-  onExitSession?: () => void
-  onSetup?: () => void
-  onNewGame?: () => void
-  children: React.ReactNode
+  navTitle?: string;
+  navEmoji?: string;
+  gameName?: "matching" | "memory-quiz" | "complement-race"; // Internal game name for API
+  emphasizePlayerSelection?: boolean;
+  disableFullscreenSelection?: boolean; // Disable "Select Your Champions" overlay
+  onExitSession?: () => void;
+  onSetup?: () => void;
+  onNewGame?: () => void;
+  children: React.ReactNode;
   // Game state for turn indicator
-  currentPlayerId?: string
-  playerScores?: Record<string, number>
-  playerStreaks?: Record<string, number>
-  playerBadges?: Record<string, PlayerBadge>
+  currentPlayerId?: string;
+  playerScores?: Record<string, number>;
+  playerStreaks?: Record<string, number>;
+  playerBadges?: Record<string, PlayerBadge>;
   // Game-specific roster warnings
-  rosterWarning?: RosterWarning
+  rosterWarning?: RosterWarning;
   // Side assignments (for 2-player games like Rithmomachia)
-  whitePlayerId?: string | null
-  blackPlayerId?: string | null
-  onAssignWhitePlayer?: (playerId: string | null) => void
-  onAssignBlackPlayer?: (playerId: string | null) => void
+  whitePlayerId?: string | null;
+  blackPlayerId?: string | null;
+  onAssignWhitePlayer?: (playerId: string | null) => void;
+  onAssignBlackPlayer?: (playerId: string | null) => void;
   // Game phase (for showing spectating vs assign)
-  gamePhase?: 'setup' | 'playing' | 'results'
+  gamePhase?: "setup" | "playing" | "results";
   // Custom mode display (overrides player-count-based mode)
-  customModeLabel?: string
-  customModeEmoji?: string
-  customModeColor?: string
+  customModeLabel?: string;
+  customModeEmoji?: string;
+  customModeColor?: string;
 }
 
 /**
@@ -95,9 +104,9 @@ export function PageWithNav({
   customModeColor,
 }: PageWithNavProps) {
   // In preview mode, render just the children without navigation
-  const previewMode = useContext(PreviewModeContext)
+  const previewMode = useContext(PreviewModeContext);
   if (previewMode?.isPreview) {
-    return <>{children}</>
+    return <>{children}</>;
   }
 
   // For game pages (with navTitle), render the full GameNavContent
@@ -129,7 +138,7 @@ export function PageWithNav({
       >
         {children}
       </GameNavContent>
-    )
+    );
   }
 
   // For non-game pages, render just the AppNavBar without game features
@@ -139,5 +148,5 @@ export function PageWithNav({
       <AppNavBar navSlot={null} />
       {children}
     </>
-  )
+  );
 }

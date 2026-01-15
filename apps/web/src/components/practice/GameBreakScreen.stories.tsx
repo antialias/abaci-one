@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import type { Meta, StoryObj } from '@storybook/react'
-import { css } from '../../../styled-system/css'
+import type { Meta, StoryObj } from "@storybook/react";
+import { css } from "../../../styled-system/css";
 
 /**
  * Stories for GameBreakScreen game selection and playing phases.
@@ -22,38 +22,38 @@ import { css } from '../../../styled-system/css'
 
 // Meta configuration
 const meta: Meta = {
-  title: 'Practice/GameBreakScreen',
+  title: "Practice/GameBreakScreen",
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
   },
-  tags: ['autodocs'],
-}
+  tags: ["autodocs"],
+};
 
-export default meta
+export default meta;
 
-type Story = StoryObj
+type Story = StoryObj;
 
 const mockStudent = {
-  id: 'student-sonia',
-  name: 'Sonia',
-  emoji: '🌟',
-  color: '#a855f7',
-}
+  id: "student-sonia",
+  name: "Sonia",
+  emoji: "🌟",
+  color: "#a855f7",
+};
 
 const mockGames = [
-  { name: 'matching', displayName: 'Matching', icon: '🎴' },
-  { name: 'complement-race', displayName: 'Complement Race', icon: '🏎️' },
-  { name: 'memory-quiz', displayName: 'Memory Quiz', icon: '🧠' },
-]
+  { name: "matching", displayName: "Matching", icon: "🎴" },
+  { name: "complement-race", displayName: "Complement Race", icon: "🏎️" },
+  { name: "memory-quiz", displayName: "Memory Quiz", icon: "🧠" },
+];
 
 interface GameSelectionScreenProps {
-  student: typeof mockStudent
-  phase: 'initializing' | 'selecting'
-  remainingMs: number
-  maxDurationMs: number
-  isDark?: boolean
-  onSelectGame?: (gameName: string) => void
-  onSkip?: () => void
+  student: typeof mockStudent;
+  phase: "initializing" | "selecting";
+  remainingMs: number;
+  maxDurationMs: number;
+  isDark?: boolean;
+  onSelectGame?: (gameName: string) => void;
+  onSkip?: () => void;
 }
 
 /**
@@ -68,70 +68,70 @@ function GameSelectionScreen({
   onSelectGame,
   onSkip,
 }: GameSelectionScreenProps) {
-  const remainingMinutes = Math.floor(remainingMs / 60000)
-  const remainingSeconds = Math.floor((remainingMs % 60000) / 1000)
-  const percentRemaining = (remainingMs / maxDurationMs) * 100
+  const remainingMinutes = Math.floor(remainingMs / 60000);
+  const remainingSeconds = Math.floor((remainingMs % 60000) / 1000);
+  const percentRemaining = (remainingMs / maxDurationMs) * 100;
 
   return (
     <div
       data-component="game-break-screen"
       data-phase={phase}
       className={css({
-        position: 'fixed',
+        position: "fixed",
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.95)' : 'rgba(0, 0, 0, 0.85)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
+        backgroundColor: isDark ? "rgba(0, 0, 0, 0.95)" : "rgba(0, 0, 0, 0.85)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         zIndex: 1000,
-        padding: '1.5rem',
+        padding: "1.5rem",
       })}
     >
       <div
         data-element="game-break-content"
         className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '1.5rem',
-          padding: '2rem',
-          maxWidth: '480px',
-          width: '100%',
-          backgroundColor: isDark ? 'gray.800' : 'white',
-          borderRadius: '24px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "1.5rem",
+          padding: "2rem",
+          maxWidth: "480px",
+          width: "100%",
+          backgroundColor: isDark ? "gray.800" : "white",
+          borderRadius: "24px",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.4)",
         })}
       >
         <div
           data-element="header"
           className={css({
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            width: '100%',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
           })}
         >
           <div
             data-element="student-badge"
             className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
             })}
           >
             <span
               className={css({
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.5rem',
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "1.5rem",
               })}
               style={{ backgroundColor: student.color }}
             >
@@ -139,9 +139,9 @@ function GameSelectionScreen({
             </span>
             <span
               className={css({
-                fontWeight: '600',
-                fontSize: '1rem',
-                color: isDark ? 'gray.200' : 'gray.700',
+                fontWeight: "600",
+                fontSize: "1rem",
+                color: isDark ? "gray.200" : "gray.700",
               })}
             >
               {student.name}
@@ -151,80 +151,83 @@ function GameSelectionScreen({
           <div
             data-element="timer"
             className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.375rem 0.75rem',
-              borderRadius: '8px',
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.375rem 0.75rem",
+              borderRadius: "8px",
             })}
             style={{
               backgroundColor:
                 percentRemaining > 30
                   ? isDark
-                    ? 'rgba(34, 197, 94, 0.2)'
-                    : 'rgba(34, 197, 94, 0.1)'
+                    ? "rgba(34, 197, 94, 0.2)"
+                    : "rgba(34, 197, 94, 0.1)"
                   : isDark
-                    ? 'rgba(234, 179, 8, 0.2)'
-                    : 'rgba(234, 179, 8, 0.1)',
+                    ? "rgba(234, 179, 8, 0.2)"
+                    : "rgba(234, 179, 8, 0.1)",
             }}
           >
-            <span className={css({ fontSize: '1rem' })}>⏱️</span>
+            <span className={css({ fontSize: "1rem" })}>⏱️</span>
             <span
               className={css({
-                fontFamily: 'var(--font-mono, monospace)',
-                fontWeight: '600',
-                fontSize: '1rem',
+                fontFamily: "var(--font-mono, monospace)",
+                fontWeight: "600",
+                fontSize: "1rem",
               })}
               style={{
                 color:
                   percentRemaining > 30
                     ? isDark
-                      ? '#86efac'
-                      : '#16a34a'
+                      ? "#86efac"
+                      : "#16a34a"
                     : isDark
-                      ? '#fde047'
-                      : '#ca8a04',
+                      ? "#fde047"
+                      : "#ca8a04",
               }}
             >
-              {remainingMinutes}:{remainingSeconds.toString().padStart(2, '0')}
+              {remainingMinutes}:{remainingSeconds.toString().padStart(2, "0")}
             </span>
           </div>
         </div>
 
-        <div data-element="title-section" className={css({ textAlign: 'center' })}>
+        <div
+          data-element="title-section"
+          className={css({ textAlign: "center" })}
+        >
           <h2
             className={css({
-              fontSize: '1.75rem',
-              fontWeight: 'bold',
-              color: isDark ? 'gray.100' : 'gray.800',
-              marginBottom: '0.25rem',
+              fontSize: "1.75rem",
+              fontWeight: "bold",
+              color: isDark ? "gray.100" : "gray.800",
+              marginBottom: "0.25rem",
             })}
           >
             🎮 Game Break!
           </h2>
           <p
             className={css({
-              fontSize: '1rem',
-              color: isDark ? 'gray.400' : 'gray.600',
+              fontSize: "1rem",
+              color: isDark ? "gray.400" : "gray.600",
             })}
           >
-            {phase === 'initializing' ? 'Setting up...' : 'Pick a game to play'}
+            {phase === "initializing" ? "Setting up..." : "Pick a game to play"}
           </p>
         </div>
 
-        {phase === 'initializing' && (
+        {phase === "initializing" && (
           <div
             className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '2rem',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "2rem",
             })}
           >
             <span
               className={css({
-                fontSize: '1rem',
-                color: isDark ? 'gray.400' : 'gray.500',
+                fontSize: "1rem",
+                color: isDark ? "gray.400" : "gray.500",
               })}
             >
               Creating game room...
@@ -232,14 +235,14 @@ function GameSelectionScreen({
           </div>
         )}
 
-        {phase === 'selecting' && (
+        {phase === "selecting" && (
           <div
             data-element="game-grid"
             className={css({
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '0.75rem',
-              width: '100%',
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "0.75rem",
+              width: "100%",
             })}
           >
             {mockGames.map((game) => (
@@ -249,31 +252,35 @@ function GameSelectionScreen({
                 data-game={game.name}
                 onClick={() => onSelectGame?.(game.name)}
                 className={css({
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '1rem',
-                  borderRadius: '12px',
-                  border: '2px solid',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  padding: "1rem",
+                  borderRadius: "12px",
+                  border: "2px solid",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
                   _hover: {
-                    transform: 'translateY(-2px)',
+                    transform: "translateY(-2px)",
                   },
                 })}
                 style={{
-                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                  borderColor: isDark
+                    ? "rgba(255,255,255,0.1)"
+                    : "rgba(0,0,0,0.08)",
+                  backgroundColor: isDark
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.02)",
                 }}
               >
-                <span className={css({ fontSize: '2rem' })}>{game.icon}</span>
+                <span className={css({ fontSize: "2rem" })}>{game.icon}</span>
                 <span
                   className={css({
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    color: isDark ? 'gray.300' : 'gray.600',
-                    textAlign: 'center',
+                    fontSize: "0.75rem",
+                    fontWeight: "600",
+                    color: isDark ? "gray.300" : "gray.600",
+                    textAlign: "center",
                   })}
                 >
                   {game.displayName}
@@ -288,17 +295,17 @@ function GameSelectionScreen({
           data-action="skip-break"
           onClick={onSkip}
           className={css({
-            padding: '0.75rem 1.5rem',
-            fontSize: '1rem',
-            fontWeight: '600',
-            color: isDark ? 'gray.300' : 'gray.600',
-            backgroundColor: isDark ? 'gray.700' : 'gray.200',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
+            padding: "0.75rem 1.5rem",
+            fontSize: "1rem",
+            fontWeight: "600",
+            color: isDark ? "gray.300" : "gray.600",
+            backgroundColor: isDark ? "gray.700" : "gray.200",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            transition: "all 0.15s ease",
             _hover: {
-              backgroundColor: isDark ? 'gray.600' : 'gray.300',
+              backgroundColor: isDark ? "gray.600" : "gray.300",
             },
           })}
         >
@@ -306,7 +313,7 @@ function GameSelectionScreen({
         </button>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -319,60 +326,61 @@ function MockGameContent({ isDark = false }: { isDark?: boolean }) {
       data-component="game-break-screen"
       data-phase="playing"
       className={css({
-        width: '100%',
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: isDark ? 'gray.800' : 'white',
-        gap: '1rem',
+        width: "100%",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: isDark ? "gray.800" : "white",
+        gap: "1rem",
       })}
     >
-      <div className={css({ fontSize: '4rem' })}>🎮</div>
+      <div className={css({ fontSize: "4rem" })}>🎮</div>
       <div
         className={css({
-          fontSize: '1.5rem',
-          fontWeight: 'bold',
-          color: isDark ? 'gray.200' : 'gray.700',
+          fontSize: "1.5rem",
+          fontWeight: "bold",
+          color: isDark ? "gray.200" : "gray.700",
         })}
       >
         Game Content Area
       </div>
       <div
         className={css({
-          fontSize: '0.875rem',
-          color: isDark ? 'gray.400' : 'gray.500',
-          textAlign: 'center',
-          maxWidth: '300px',
+          fontSize: "0.875rem",
+          color: isDark ? "gray.400" : "gray.500",
+          textAlign: "center",
+          maxWidth: "300px",
         })}
       >
-        The game break timer is displayed in PracticeSubNav (the sub-navigation bar above).
+        The game break timer is displayed in PracticeSubNav (the sub-navigation
+        bar above).
       </div>
       <div
         className={css({
-          marginTop: '1rem',
-          padding: '0.75rem 1rem',
-          backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
-          borderRadius: '8px',
-          fontSize: '0.75rem',
-          color: isDark ? 'blue.200' : 'blue.700',
+          marginTop: "1rem",
+          padding: "0.75rem 1rem",
+          backgroundColor: isDark ? "blue.900/50" : "blue.50",
+          borderRadius: "8px",
+          fontSize: "0.75rem",
+          color: isDark ? "blue.200" : "blue.700",
         })}
       >
         See &quot;Practice/PracticeSubNav&quot; stories for timer UI
       </div>
     </div>
-  )
+  );
 }
 
-const maxDurationMs = 5 * 60 * 1000 // 5 minutes
+const maxDurationMs = 5 * 60 * 1000; // 5 minutes
 
 // =============================================================================
 // Game Selection Phase Stories
 // =============================================================================
 
 export const InitializingPhase: Story = {
-  name: 'Phase: Initializing',
+  name: "Phase: Initializing",
   render: () => (
     <GameSelectionScreen
       student={mockStudent}
@@ -381,10 +389,10 @@ export const InitializingPhase: Story = {
       maxDurationMs={maxDurationMs}
     />
   ),
-}
+};
 
 export const SelectingPhase: Story = {
-  name: 'Phase: Selecting Game',
+  name: "Phase: Selecting Game",
   render: () => (
     <GameSelectionScreen
       student={mockStudent}
@@ -394,10 +402,10 @@ export const SelectingPhase: Story = {
       onSelectGame={(name) => alert(`Selected: ${name}`)}
     />
   ),
-}
+};
 
 export const SelectingPhaseHalfTime: Story = {
-  name: 'Phase: Selecting (50% Time)',
+  name: "Phase: Selecting (50% Time)",
   render: () => (
     <GameSelectionScreen
       student={mockStudent}
@@ -406,10 +414,10 @@ export const SelectingPhaseHalfTime: Story = {
       maxDurationMs={maxDurationMs}
     />
   ),
-}
+};
 
 export const SelectingPhaseLowTime: Story = {
-  name: 'Phase: Selecting (20% Time - Red)',
+  name: "Phase: Selecting (20% Time - Red)",
   render: () => (
     <GameSelectionScreen
       student={mockStudent}
@@ -418,28 +426,28 @@ export const SelectingPhaseLowTime: Story = {
       maxDurationMs={maxDurationMs}
     />
   ),
-}
+};
 
 // =============================================================================
 // Playing Phase Stories
 // =============================================================================
 
 export const PlayingPhase: Story = {
-  name: 'Phase: Playing (Game Content)',
+  name: "Phase: Playing (Game Content)",
   render: () => <MockGameContent />,
-}
+};
 
 export const PlayingPhaseDark: Story = {
-  name: 'Phase: Playing (Dark Mode)',
+  name: "Phase: Playing (Dark Mode)",
   render: () => <MockGameContent isDark />,
-}
+};
 
 // =============================================================================
 // Dark Mode Selection Stories
 // =============================================================================
 
 export const DarkModeInitializing: Story = {
-  name: 'Dark Mode: Initializing',
+  name: "Dark Mode: Initializing",
   render: () => (
     <GameSelectionScreen
       student={mockStudent}
@@ -449,10 +457,10 @@ export const DarkModeInitializing: Story = {
       isDark
     />
   ),
-}
+};
 
 export const DarkModeSelecting: Story = {
-  name: 'Dark Mode: Selecting',
+  name: "Dark Mode: Selecting",
   render: () => (
     <GameSelectionScreen
       student={mockStudent}
@@ -462,42 +470,42 @@ export const DarkModeSelecting: Story = {
       isDark
     />
   ),
-}
+};
 
 // =============================================================================
 // Different Students
 // =============================================================================
 
 export const DifferentStudent: Story = {
-  name: 'Different Student (Marcus)',
+  name: "Different Student (Marcus)",
   render: () => (
     <GameSelectionScreen
       student={{
-        id: 'student-marcus',
-        name: 'Marcus',
-        emoji: '🚀',
-        color: '#3b82f6',
+        id: "student-marcus",
+        name: "Marcus",
+        emoji: "🚀",
+        color: "#3b82f6",
       }}
       phase="selecting"
       remainingMs={maxDurationMs * 0.8}
       maxDurationMs={maxDurationMs}
     />
   ),
-}
+};
 
 export const LongStudentName: Story = {
-  name: 'Long Student Name',
+  name: "Long Student Name",
   render: () => (
     <GameSelectionScreen
       student={{
-        id: 'student-alexandra',
-        name: 'Alexandra Katherine',
-        emoji: '🌺',
-        color: '#ec4899',
+        id: "student-alexandra",
+        name: "Alexandra Katherine",
+        emoji: "🌺",
+        color: "#ec4899",
       }}
       phase="selecting"
       remainingMs={maxDurationMs * 0.9}
       maxDurationMs={maxDurationMs}
     />
   ),
-}
+};

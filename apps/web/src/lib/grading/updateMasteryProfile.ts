@@ -1,9 +1,9 @@
-import { randomUUID } from 'crypto'
-import { and, eq } from 'drizzle-orm'
-import { db } from '@/db'
-import { worksheetMastery } from '@/db/schema'
-import { SINGLE_CARRY_PATH } from '@/app/create/worksheets/progressionPath'
-import type { GradingResult } from '@/lib/ai/gradeWorksheet'
+import { randomUUID } from "crypto";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { worksheetMastery } from "@/db/schema";
+import { SINGLE_CARRY_PATH } from "@/app/create/worksheets/progressionPath";
+import type { GradingResult } from "@/lib/ai/gradeWorksheet";
 
 /**
  * Update user's mastery profile based on worksheet grading results
@@ -16,36 +16,42 @@ import type { GradingResult } from '@/lib/ai/gradeWorksheet'
  */
 export async function updateMasteryFromGrading(
   userId: string,
-  gradingResult: GradingResult
+  gradingResult: GradingResult,
 ): Promise<{ mastered: boolean; stepId: string }> {
-  const { suggestedStepId, accuracy, totalProblems, correctCount } = gradingResult
+  const { suggestedStepId, accuracy, totalProblems, correctCount } =
+    gradingResult;
 
   // Find the step configuration
-  const step = SINGLE_CARRY_PATH.find((s) => s.id === suggestedStepId)
+  const step = SINGLE_CARRY_PATH.find((s) => s.id === suggestedStepId);
   if (!step) {
-    console.warn(`Step ${suggestedStepId} not found in progression path`)
-    return { mastered: false, stepId: suggestedStepId }
+    console.warn(`Step ${suggestedStepId} not found in progression path`);
+    return { mastered: false, stepId: suggestedStepId };
   }
 
-  const now = new Date()
+  const now = new Date();
 
   // Look up existing mastery record
   const [existing] = await db
     .select()
     .from(worksheetMastery)
-    .where(and(eq(worksheetMastery.userId, userId), eq(worksheetMastery.skillId, suggestedStepId)))
-    .limit(1)
+    .where(
+      and(
+        eq(worksheetMastery.userId, userId),
+        eq(worksheetMastery.skillId, suggestedStepId),
+      ),
+    )
+    .limit(1);
 
   if (existing) {
     // Update existing record
-    const newTotalAttempts = existing.totalAttempts + totalProblems
-    const newCorrectAttempts = existing.correctAttempts + correctCount
-    const overallAccuracy = newCorrectAttempts / newTotalAttempts
+    const newTotalAttempts = existing.totalAttempts + totalProblems;
+    const newCorrectAttempts = existing.correctAttempts + correctCount;
+    const overallAccuracy = newCorrectAttempts / newTotalAttempts;
 
     // Check if mastery threshold is met
-    const meetsThreshold = overallAccuracy >= step.masteryThreshold
-    const meetsMinimum = newTotalAttempts >= step.minimumAttempts
-    const isMastered = meetsThreshold && meetsMinimum
+    const meetsThreshold = overallAccuracy >= step.masteryThreshold;
+    const meetsMinimum = newTotalAttempts >= step.minimumAttempts;
+    const isMastered = meetsThreshold && meetsMinimum;
 
     await db
       .update(worksheetMastery)
@@ -55,18 +61,19 @@ export async function updateMasteryFromGrading(
         lastAccuracy: accuracy,
         lastPracticedAt: now,
         isMastered: isMastered ? 1 : 0,
-        masteredAt: isMastered && !existing.isMastered ? now : existing.masteredAt,
+        masteredAt:
+          isMastered && !existing.isMastered ? now : existing.masteredAt,
         updatedAt: now,
       })
-      .where(eq(worksheetMastery.id, existing.id))
+      .where(eq(worksheetMastery.id, existing.id));
 
-    return { mastered: isMastered, stepId: suggestedStepId }
+    return { mastered: isMastered, stepId: suggestedStepId };
   } else {
     // Create new record
-    const overallAccuracy = correctCount / totalProblems
-    const meetsThreshold = overallAccuracy >= step.masteryThreshold
-    const meetsMinimum = totalProblems >= step.minimumAttempts
-    const isMastered = meetsThreshold && meetsMinimum
+    const overallAccuracy = correctCount / totalProblems;
+    const meetsThreshold = overallAccuracy >= step.masteryThreshold;
+    const meetsMinimum = totalProblems >= step.minimumAttempts;
+    const isMastered = meetsThreshold && meetsMinimum;
 
     await db.insert(worksheetMastery).values({
       id: randomUUID(),
@@ -81,9 +88,9 @@ export async function updateMasteryFromGrading(
       masteredAt: isMastered ? now : null,
       createdAt: now,
       updatedAt: now,
-    })
+    });
 
-    return { mastered: isMastered, stepId: suggestedStepId }
+    return { mastered: isMastered, stepId: suggestedStepId };
   }
 }
 
@@ -96,10 +103,10 @@ export async function getMasteryProgress(userId: string) {
   const masteryRecords = await db
     .select()
     .from(worksheetMastery)
-    .where(eq(worksheetMastery.userId, userId))
+    .where(eq(worksheetMastery.userId, userId));
 
   return SINGLE_CARRY_PATH.map((step) => {
-    const record = masteryRecords.find((r) => r.skillId === step.id)
+    const record = masteryRecords.find((r) => r.skillId === step.id);
 
     return {
       stepId: step.id,
@@ -111,6 +118,6 @@ export async function getMasteryProgress(userId: string) {
       lastAccuracy: record?.lastAccuracy || null,
       masteredAt: record?.masteredAt || null,
       lastPracticedAt: record?.lastPracticedAt || null,
-    }
-  })
+    };
+  });
 }

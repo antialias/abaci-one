@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { GeneratedProblem } from '@/db/schema/session-plans'
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { GeneratedProblem } from "@/db/schema/session-plans";
 
 // =============================================================================
 // Types
@@ -14,11 +14,11 @@ import type { GeneratedProblem } from '@/db/schema/session-plans'
  */
 export interface ProblemContext {
   /** The problem being solved */
-  problem: GeneratedProblem
+  problem: GeneratedProblem;
   /** Index in the current part (original slot index for redos) */
-  slotIndex: number
+  slotIndex: number;
   /** Part index in the session */
-  partIndex: number
+  partIndex: number;
 }
 
 /**
@@ -27,23 +27,23 @@ export interface ProblemContext {
  */
 export interface AttemptInput {
   /** The problem being solved */
-  problem: GeneratedProblem
+  problem: GeneratedProblem;
   /** Index in the current part */
-  slotIndex: number
+  slotIndex: number;
   /** Part index in the session */
-  partIndex: number
+  partIndex: number;
   /** When the attempt started */
-  startTime: number
+  startTime: number;
   /** Accumulated time spent paused (ms) - subtract from elapsed time for actual response time */
-  accumulatedPauseMs: number
+  accumulatedPauseMs: number;
   /** User's current answer input */
-  userAnswer: string
+  userAnswer: string;
   /** Number of times user used backspace or had digits rejected */
-  correctionCount: number
+  correctionCount: number;
   /** Whether manual submit is required (exceeded auto-submit threshold) */
-  manualSubmitRequired: boolean
+  manualSubmitRequired: boolean;
   /** Rejected digit to show as red X (null = no rejection) */
-  rejectedDigit: string | null
+  rejectedDigit: string | null;
 }
 
 /**
@@ -51,23 +51,23 @@ export interface AttemptInput {
  */
 export interface HelpContext {
   /** Index of the term being helped with */
-  termIndex: number
+  termIndex: number;
   /** Current running total before this term */
-  currentValue: number
+  currentValue: number;
   /** Target value after adding this term */
-  targetValue: number
+  targetValue: number;
   /** The term being added */
-  term: number
+  term: number;
 }
 
 /**
  * Snapshot of an attempt that's animating out during transition
  */
 export interface OutgoingAttempt {
-  key: string
-  problem: GeneratedProblem
-  userAnswer: string
-  result: 'correct' | 'incorrect'
+  key: string;
+  problem: GeneratedProblem;
+  userAnswer: string;
+  result: "correct" | "incorrect";
 }
 
 /**
@@ -76,37 +76,37 @@ export interface OutgoingAttempt {
  */
 export interface DisambiguationContext {
   /** Index of the matched prefix sum */
-  matchedPrefixIndex: number
+  matchedPrefixIndex: number;
   /** Term index to show help for if they want it */
-  helpTermIndex: number
+  helpTermIndex: number;
   /** When the disambiguation timer started */
-  timerStartedAt: number
+  timerStartedAt: number;
 }
 
 /**
  * Non-paused phases (used for resumePhase type)
  */
 export type ActivePhase =
-  | { phase: 'loading' }
-  | { phase: 'inputting'; attempt: AttemptInput }
+  | { phase: "loading" }
+  | { phase: "inputting"; attempt: AttemptInput }
   | {
-      phase: 'awaitingDisambiguation'
-      attempt: AttemptInput
-      disambiguationContext: DisambiguationContext
+      phase: "awaitingDisambiguation";
+      attempt: AttemptInput;
+      disambiguationContext: DisambiguationContext;
     }
-  | { phase: 'helpMode'; attempt: AttemptInput; helpContext: HelpContext }
-  | { phase: 'submitting'; attempt: AttemptInput }
+  | { phase: "helpMode"; attempt: AttemptInput; helpContext: HelpContext }
+  | { phase: "submitting"; attempt: AttemptInput }
   | {
-      phase: 'showingFeedback'
-      attempt: AttemptInput
-      result: 'correct' | 'incorrect'
+      phase: "showingFeedback";
+      attempt: AttemptInput;
+      result: "correct" | "incorrect";
     }
   | {
-      phase: 'transitioning'
-      outgoing: OutgoingAttempt
-      incoming: AttemptInput
+      phase: "transitioning";
+      outgoing: OutgoingAttempt;
+      incoming: AttemptInput;
     }
-  | { phase: 'complete' }
+  | { phase: "complete" };
 
 /**
  * Discriminated union representing all possible interaction phases.
@@ -116,17 +116,17 @@ export type InteractionPhase =
   | ActivePhase
   // Session paused - remembers what phase to return to
   | {
-      phase: 'paused'
-      resumePhase: ActivePhase
+      phase: "paused";
+      resumePhase: ActivePhase;
       /** When the pause started (used to calculate pause duration on resume) */
-      pauseStartedAt: number
-    }
+      pauseStartedAt: number;
+    };
 
 /** Threshold for correction count before requiring manual submit */
-export const MANUAL_SUBMIT_THRESHOLD = 2
+export const MANUAL_SUBMIT_THRESHOLD = 2;
 
 /** Time to wait before auto-triggering help in ambiguous cases (ms) */
-export const AMBIGUOUS_HELP_DELAY_MS = 4000
+export const AMBIGUOUS_HELP_DELAY_MS = 4000;
 
 // =============================================================================
 // Helper Functions
@@ -136,7 +136,7 @@ export const AMBIGUOUS_HELP_DELAY_MS = 4000
  * Gets the active (non-paused) phase, unwrapping if paused.
  */
 export function getActivePhase(phase: InteractionPhase): ActivePhase {
-  return phase.phase === 'paused' ? phase.resumePhase : phase
+  return phase.phase === "paused" ? phase.resumePhase : phase;
 }
 
 /**
@@ -145,19 +145,19 @@ export function getActivePhase(phase: InteractionPhase): ActivePhase {
  */
 export function transformActivePhase(
   phase: InteractionPhase,
-  transform: (active: ActivePhase) => ActivePhase | null
+  transform: (active: ActivePhase) => ActivePhase | null,
 ): InteractionPhase {
-  if (phase.phase === 'paused') {
-    const newResumePhase = transform(phase.resumePhase)
-    if (newResumePhase === null) return phase
+  if (phase.phase === "paused") {
+    const newResumePhase = transform(phase.resumePhase);
+    if (newResumePhase === null) return phase;
     return {
-      phase: 'paused',
+      phase: "paused",
       resumePhase: newResumePhase,
       pauseStartedAt: phase.pauseStartedAt,
-    }
+    };
   }
-  const newPhase = transform(phase)
-  return newPhase === null ? phase : newPhase
+  const newPhase = transform(phase);
+  return newPhase === null ? phase : newPhase;
 }
 
 /**
@@ -166,7 +166,7 @@ export function transformActivePhase(
 export function createAttemptInput(
   problem: GeneratedProblem,
   slotIndex: number,
-  partIndex: number
+  partIndex: number,
 ): AttemptInput {
   return {
     problem,
@@ -174,11 +174,11 @@ export function createAttemptInput(
     partIndex,
     startTime: Date.now(),
     accumulatedPauseMs: 0,
-    userAnswer: '',
+    userAnswer: "",
     correctionCount: 0,
     manualSubmitRequired: false,
     rejectedDigit: null,
-  }
+  };
 }
 
 /**
@@ -186,13 +186,13 @@ export function createAttemptInput(
  * prefixSums[i] = sum of terms[0..i] (inclusive)
  */
 export function computePrefixSums(terms: number[]): number[] {
-  const sums: number[] = []
-  let total = 0
+  const sums: number[] = [];
+  let total = 0;
   for (const term of terms) {
-    total += term
-    sums.push(total)
+    total += term;
+    sums.push(total);
   }
-  return sums
+  return sums;
 }
 
 /**
@@ -206,32 +206,32 @@ export function computePrefixSums(terms: number[]): number[] {
 export function isDigitConsistent(
   currentAnswer: string,
   digit: string,
-  prefixSums: number[]
+  prefixSums: number[],
 ): boolean {
-  const newAnswer = currentAnswer + digit
+  const newAnswer = currentAnswer + digit;
 
   // Allow leading zeros as disambiguation (e.g., "0" or "03" for 3)
   // Strip leading zeros to get the numeric prefix we're building toward
-  const strippedAnswer = newAnswer.replace(/^0+/, '') || '0'
+  const strippedAnswer = newAnswer.replace(/^0+/, "") || "0";
 
   // If the result is just zeros, allow it (user is typing leading zeros)
-  if (strippedAnswer === '0' && newAnswer.length > 0) {
+  if (strippedAnswer === "0" && newAnswer.length > 0) {
     // Allow typing zeros as long as we haven't exceeded max answer length
-    const maxLength = Math.max(...prefixSums.map((s) => s.toString().length))
-    return newAnswer.length <= maxLength
+    const maxLength = Math.max(...prefixSums.map((s) => s.toString().length));
+    return newAnswer.length <= maxLength;
   }
 
-  const newAnswerNum = parseInt(strippedAnswer, 10)
-  if (Number.isNaN(newAnswerNum)) return false
+  const newAnswerNum = parseInt(strippedAnswer, 10);
+  if (Number.isNaN(newAnswerNum)) return false;
 
   for (const sum of prefixSums) {
-    const sumStr = sum.toString()
+    const sumStr = sum.toString();
     // Check if stripped answer is a prefix of any sum
     if (sumStr.startsWith(strippedAnswer)) {
-      return true
+      return true;
     }
   }
-  return false
+  return false;
 }
 
 /**
@@ -239,11 +239,11 @@ export function isDigitConsistent(
  */
 export interface PrefixMatchResult {
   /** Index of matched prefix sum (-1 if none) */
-  matchedIndex: number
+  matchedIndex: number;
   /** Whether this is an ambiguous match (could be digit-prefix of final answer) */
-  isAmbiguous: boolean
+  isAmbiguous: boolean;
   /** The term index to show help for (matchedIndex + 1, since we help with the NEXT term) */
-  helpTermIndex: number
+  helpTermIndex: number;
 }
 
 /**
@@ -258,24 +258,24 @@ export interface PrefixMatchResult {
  */
 export function findMatchedPrefixIndex(
   userAnswer: string,
-  prefixSums: number[]
+  prefixSums: number[],
 ): PrefixMatchResult {
   const noMatch: PrefixMatchResult = {
     matchedIndex: -1,
     isAmbiguous: false,
     helpTermIndex: -1,
-  }
+  };
 
-  if (!userAnswer) return noMatch
+  if (!userAnswer) return noMatch;
 
   // Leading zeros indicate user is explicitly requesting help for that prefix sum
   // "03" means "I want help with prefix sum 3" - this is NOT ambiguous
-  const hasLeadingZero = userAnswer.startsWith('0') && userAnswer.length > 1
+  const hasLeadingZero = userAnswer.startsWith("0") && userAnswer.length > 1;
 
-  const answerNum = parseInt(userAnswer, 10)
-  if (Number.isNaN(answerNum)) return noMatch
+  const answerNum = parseInt(userAnswer, 10);
+  if (Number.isNaN(answerNum)) return noMatch;
 
-  const finalAnswer = prefixSums[prefixSums.length - 1]
+  const finalAnswer = prefixSums[prefixSums.length - 1];
 
   // Check if this is the final answer
   if (answerNum === finalAnswer) {
@@ -283,15 +283,15 @@ export function findMatchedPrefixIndex(
       matchedIndex: prefixSums.length - 1,
       isAmbiguous: false,
       helpTermIndex: -1,
-    }
+    };
   }
 
   // Check if user's input matches an intermediate prefix sum
   const matchedIndex = prefixSums.findIndex(
-    (sum, i) => i < prefixSums.length - 1 && sum === answerNum
-  )
+    (sum, i) => i < prefixSums.length - 1 && sum === answerNum,
+  );
 
-  if (matchedIndex === -1) return noMatch
+  if (matchedIndex === -1) return noMatch;
 
   // If they used leading zeros, they're explicitly requesting help - NOT ambiguous
   // "03" clearly means "help me with prefix sum 3"
@@ -300,34 +300,39 @@ export function findMatchedPrefixIndex(
       matchedIndex,
       isAmbiguous: false, // Leading zero removes ambiguity - they want help
       helpTermIndex: matchedIndex + 1,
-    }
+    };
   }
 
   // Check if user's input could be a digit-prefix of ANY later prefix sum
   // For example, with prefix sums [2, 3, 33, 43, 44]:
   // - "3" matches prefix sum at index 1, but could also be first digit of 33 or 43
   // - So "3" is ambiguous
-  const couldBeLaterPrefixPrefix = prefixSums.slice(matchedIndex + 1).some((laterSum) => {
-    const laterSumStr = laterSum.toString()
-    return laterSumStr.startsWith(userAnswer)
-  })
+  const couldBeLaterPrefixPrefix = prefixSums
+    .slice(matchedIndex + 1)
+    .some((laterSum) => {
+      const laterSumStr = laterSum.toString();
+      return laterSumStr.startsWith(userAnswer);
+    });
 
   return {
     matchedIndex,
     isAmbiguous: couldBeLaterPrefixPrefix,
     helpTermIndex: matchedIndex + 1, // Help with the NEXT term after the matched sum
-  }
+  };
 }
 
 /**
  * Computes help context for a given term index
  */
-export function computeHelpContext(terms: number[], termIndex: number): HelpContext {
-  const sums = computePrefixSums(terms)
-  const currentValue = termIndex === 0 ? 0 : sums[termIndex - 1]
-  const targetValue = sums[termIndex]
-  const term = terms[termIndex]
-  return { termIndex, currentValue, targetValue, term }
+export function computeHelpContext(
+  terms: number[],
+  termIndex: number,
+): HelpContext {
+  const sums = computePrefixSums(terms);
+  const currentValue = termIndex === 0 ? 0 : sums[termIndex - 1];
+  const targetValue = sums[termIndex];
+  const term = terms[termIndex];
+  return { termIndex, currentValue, targetValue, term };
 }
 
 // =============================================================================
@@ -335,9 +340,9 @@ export function computeHelpContext(terms: number[], termIndex: number): HelpCont
 // =============================================================================
 
 export interface InitialProblemData {
-  problem: GeneratedProblem
-  slotIndex: number
-  partIndex: number
+  problem: GeneratedProblem;
+  slotIndex: number;
+  partIndex: number;
 }
 
 /**
@@ -346,113 +351,120 @@ export interface InitialProblemData {
  * not just when references change.
  */
 export interface ActiveProblem {
-  problem: GeneratedProblem
-  slotIndex: number
-  partIndex: number
+  problem: GeneratedProblem;
+  slotIndex: number;
+  partIndex: number;
   /** Stable identifier for this problem instance - changes when the problem changes */
-  key: string
+  key: string;
 }
 
 export interface UseInteractionPhaseOptions {
   /** Initial problem to hydrate with (for SSR) */
-  initialProblem?: InitialProblemData
+  initialProblem?: InitialProblemData;
   /**
    * Active problem context - derived from redoState + session plan.
    * When the key changes, the hook automatically loads the new problem.
    * This is the single source of truth for which problem is being worked on.
    */
-  activeProblem?: ActiveProblem | null
+  activeProblem?: ActiveProblem | null;
   /** Called when auto-submit threshold is exceeded */
-  onManualSubmitRequired?: () => void
+  onManualSubmitRequired?: () => void;
 }
 
 export interface UseInteractionPhaseReturn {
   // Current phase
-  phase: InteractionPhase
+  phase: InteractionPhase;
 
   // Extracted state from phase (single source of truth)
   /** Current attempt being worked on (null in loading/complete phases) */
-  attempt: AttemptInput | null
+  attempt: AttemptInput | null;
   /** Help context when in helpMode (null otherwise) */
-  helpContext: HelpContext | null
+  helpContext: HelpContext | null;
   /** Outgoing attempt during transition animation (null otherwise) */
-  outgoingAttempt: OutgoingAttempt | null
+  outgoingAttempt: OutgoingAttempt | null;
 
   // Derived predicates for UI
   /** Can we accept keyboard/keypad input? */
-  canAcceptInput: boolean
+  canAcceptInput: boolean;
   /** Should the problem display show as completed? */
-  showAsCompleted: boolean
+  showAsCompleted: boolean;
   /** Should the help overlay be shown? */
-  showHelpOverlay: boolean
+  showHelpOverlay: boolean;
   /** Should the input area (keypad/submit) be shown? */
-  showInputArea: boolean
+  showInputArea: boolean;
   /** Should the feedback message be shown? */
-  showFeedback: boolean
+  showFeedback: boolean;
   /** Is the input box focused? */
-  inputIsFocused: boolean
+  inputIsFocused: boolean;
   /** Are we currently in the transitioning phase? */
-  isTransitioning: boolean
+  isTransitioning: boolean;
   /** Are we currently paused? */
-  isPaused: boolean
+  isPaused: boolean;
   /** Are we currently submitting? */
-  isSubmitting: boolean
+  isSubmitting: boolean;
 
   // Computed values (only valid when attempt exists)
   /** Prefix sums for current problem */
-  prefixSums: number[]
+  prefixSums: number[];
   /** Full prefix match result with ambiguity info */
-  prefixMatch: PrefixMatchResult
+  prefixMatch: PrefixMatchResult;
   /** Matched prefix index (-1 if none) - shorthand for prefixMatch.matchedIndex */
-  matchedPrefixIndex: number
+  matchedPrefixIndex: number;
   /** Can the submit button be pressed? */
-  canSubmit: boolean
+  canSubmit: boolean;
   /** Should auto-submit trigger? */
-  shouldAutoSubmit: boolean
+  shouldAutoSubmit: boolean;
 
   // Ambiguous prefix state
   /** Term index to show "need help?" prompt for (-1 if not in awaitingDisambiguation phase) */
-  ambiguousHelpTermIndex: number
+  ambiguousHelpTermIndex: number;
 
   // Actions
   /** Load a new problem (loading → inputting) */
-  loadProblem: (problem: GeneratedProblem, slotIndex: number, partIndex: number) => void
+  loadProblem: (
+    problem: GeneratedProblem,
+    slotIndex: number,
+    partIndex: number,
+  ) => void;
   /** Handle digit input */
-  handleDigit: (digit: string) => void
+  handleDigit: (digit: string) => void;
   /** Handle backspace */
-  handleBackspace: () => void
+  handleBackspace: () => void;
   /** Enter help mode (inputting → helpMode) */
-  enterHelpMode: (termIndex: number) => void
+  enterHelpMode: (termIndex: number) => void;
   /** Exit help mode (helpMode → inputting) */
-  exitHelpMode: () => void
+  exitHelpMode: () => void;
   /** Clear the current answer (used after help overlay transition completes) */
-  clearAnswer: () => void
+  clearAnswer: () => void;
   /** Set the answer to a specific value (used when showing target reached value) */
-  setAnswer: (value: string) => void
+  setAnswer: (value: string) => void;
   /** Submit answer (inputting/helpMode → submitting) */
-  startSubmit: () => void
+  startSubmit: () => void;
   /** Handle submit result (submitting → showingFeedback) */
-  completeSubmit: (result: 'correct' | 'incorrect') => void
+  completeSubmit: (result: "correct" | "incorrect") => void;
   /** Start transition to next problem (showingFeedback → transitioning) */
-  startTransition: (nextProblem: GeneratedProblem, nextSlotIndex: number) => void
+  startTransition: (
+    nextProblem: GeneratedProblem,
+    nextSlotIndex: number,
+  ) => void;
   /** Complete transition (transitioning → inputting) */
-  completeTransition: () => void
+  completeTransition: () => void;
   /** Clear to loading state */
-  clearToLoading: () => void
+  clearToLoading: () => void;
   /** Mark session as complete */
-  markComplete: () => void
+  markComplete: () => void;
   /** Pause session (* → paused) */
-  pause: () => void
+  pause: () => void;
   /** Resume session (paused → resumePhase) */
-  resume: () => void
+  resume: () => void;
   /** Is the session complete? */
-  isComplete: boolean
+  isComplete: boolean;
 }
 
 export function useInteractionPhase(
-  options: UseInteractionPhaseOptions = {}
+  options: UseInteractionPhaseOptions = {},
 ): UseInteractionPhaseReturn {
-  const { initialProblem, activeProblem, onManualSubmitRequired } = options
+  const { initialProblem, activeProblem, onManualSubmitRequired } = options;
 
   // Initialize state with problem if provided (for SSR hydration)
   const [phase, setPhase] = useState<InteractionPhase>(() => {
@@ -460,12 +472,12 @@ export function useInteractionPhase(
       const attempt = createAttemptInput(
         initialProblem.problem,
         initialProblem.slotIndex,
-        initialProblem.partIndex
-      )
-      return { phase: 'inputting', attempt }
+        initialProblem.partIndex,
+      );
+      return { phase: "inputting", attempt };
     }
-    return { phase: 'loading' }
-  })
+    return { phase: "loading" };
+  });
 
   // ==========================================================================
   // Derived State
@@ -474,178 +486,183 @@ export function useInteractionPhase(
   // Extract attempt from phase if available
   const attempt = useMemo((): AttemptInput | null => {
     switch (phase.phase) {
-      case 'inputting':
-      case 'awaitingDisambiguation':
-      case 'helpMode':
-      case 'submitting':
-      case 'showingFeedback':
-        return phase.attempt
-      case 'transitioning':
-        return phase.incoming
-      case 'paused': {
+      case "inputting":
+      case "awaitingDisambiguation":
+      case "helpMode":
+      case "submitting":
+      case "showingFeedback":
+        return phase.attempt;
+      case "transitioning":
+        return phase.incoming;
+      case "paused": {
         // Recurse into resumePhase
-        const inner = phase.resumePhase
+        const inner = phase.resumePhase;
         if (
-          inner.phase === 'inputting' ||
-          inner.phase === 'awaitingDisambiguation' ||
-          inner.phase === 'helpMode' ||
-          inner.phase === 'submitting' ||
-          inner.phase === 'showingFeedback'
+          inner.phase === "inputting" ||
+          inner.phase === "awaitingDisambiguation" ||
+          inner.phase === "helpMode" ||
+          inner.phase === "submitting" ||
+          inner.phase === "showingFeedback"
         ) {
-          return inner.attempt
+          return inner.attempt;
         }
-        if (inner.phase === 'transitioning') {
-          return inner.incoming
+        if (inner.phase === "transitioning") {
+          return inner.incoming;
         }
-        return null
+        return null;
       }
       default:
-        return null
+        return null;
     }
-  }, [phase])
+  }, [phase]);
 
   const prefixSums = useMemo(() => {
-    if (!attempt) return []
-    return computePrefixSums(attempt.problem.terms)
-  }, [attempt])
+    if (!attempt) return [];
+    return computePrefixSums(attempt.problem.terms);
+  }, [attempt]);
 
   const prefixMatch = useMemo((): PrefixMatchResult => {
-    if (!attempt) return { matchedIndex: -1, isAmbiguous: false, helpTermIndex: -1 }
-    return findMatchedPrefixIndex(attempt.userAnswer, prefixSums)
-  }, [attempt, prefixSums])
+    if (!attempt)
+      return { matchedIndex: -1, isAmbiguous: false, helpTermIndex: -1 };
+    return findMatchedPrefixIndex(attempt.userAnswer, prefixSums);
+  }, [attempt, prefixSums]);
 
   // Convenience shorthand - most callers only need the index
-  const matchedPrefixIndex = prefixMatch.matchedIndex
+  const matchedPrefixIndex = prefixMatch.matchedIndex;
 
   // ==========================================================================
   // Disambiguation Timer (managed via phase state)
   // ==========================================================================
 
   // Timer ref for the disambiguation timeout
-  const disambiguationTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const disambiguationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Manage disambiguation timer based on phase
   useEffect(() => {
     // Clear any existing timer
     if (disambiguationTimerRef.current) {
-      clearTimeout(disambiguationTimerRef.current)
-      disambiguationTimerRef.current = null
+      clearTimeout(disambiguationTimerRef.current);
+      disambiguationTimerRef.current = null;
     }
 
     // Only run timer when in awaitingDisambiguation phase
-    if (phase.phase !== 'awaitingDisambiguation') return
+    if (phase.phase !== "awaitingDisambiguation") return;
 
-    const ctx = phase.disambiguationContext
-    const elapsed = Date.now() - ctx.timerStartedAt
+    const ctx = phase.disambiguationContext;
+    const elapsed = Date.now() - ctx.timerStartedAt;
 
     if (elapsed >= AMBIGUOUS_HELP_DELAY_MS) {
       // Timer already elapsed - transition to help mode immediately
       // Keep userAnswer during transition so it shows in answer boxes while fading out
-      const helpContext = computeHelpContext(phase.attempt.problem.terms, ctx.helpTermIndex)
+      const helpContext = computeHelpContext(
+        phase.attempt.problem.terms,
+        ctx.helpTermIndex,
+      );
       setPhase({
-        phase: 'helpMode',
-        attempt: { ...phase.attempt, userAnswer: '' },
+        phase: "helpMode",
+        attempt: { ...phase.attempt, userAnswer: "" },
         helpContext,
-      })
+      });
     } else {
       // Set timer for remaining time
-      const remaining = AMBIGUOUS_HELP_DELAY_MS - elapsed
+      const remaining = AMBIGUOUS_HELP_DELAY_MS - elapsed;
       disambiguationTimerRef.current = setTimeout(() => {
         setPhase((prev) => {
-          if (prev.phase !== 'awaitingDisambiguation') return prev
+          if (prev.phase !== "awaitingDisambiguation") return prev;
           const helpContext = computeHelpContext(
             prev.attempt.problem.terms,
-            prev.disambiguationContext.helpTermIndex
-          )
+            prev.disambiguationContext.helpTermIndex,
+          );
           return {
-            phase: 'helpMode',
-            attempt: { ...prev.attempt, userAnswer: '' },
+            phase: "helpMode",
+            attempt: { ...prev.attempt, userAnswer: "" },
             helpContext,
-          }
-        })
-      }, remaining)
+          };
+        });
+      }, remaining);
     }
 
     return () => {
       if (disambiguationTimerRef.current) {
-        clearTimeout(disambiguationTimerRef.current)
+        clearTimeout(disambiguationTimerRef.current);
       }
-    }
-  }, [phase])
+    };
+  }, [phase]);
 
   // Derive which term to show "need help?" prompt for from the phase
   // Returns -1 when not in awaitingDisambiguation phase
   const ambiguousHelpTermIndex = useMemo(() => {
-    if (phase.phase !== 'awaitingDisambiguation') return -1
-    return phase.disambiguationContext.helpTermIndex
-  }, [phase])
+    if (phase.phase !== "awaitingDisambiguation") return -1;
+    return phase.disambiguationContext.helpTermIndex;
+  }, [phase]);
 
   const canSubmit = useMemo(() => {
-    if (!attempt || !attempt.userAnswer) return false
-    const answerNum = parseInt(attempt.userAnswer, 10)
-    return !Number.isNaN(answerNum)
-  }, [attempt])
+    if (!attempt || !attempt.userAnswer) return false;
+    const answerNum = parseInt(attempt.userAnswer, 10);
+    return !Number.isNaN(answerNum);
+  }, [attempt]);
 
   const shouldAutoSubmit = useMemo(() => {
     // Don't auto-submit in awaitingDisambiguation - the input might be a prefix sum
-    if (phase.phase !== 'inputting' && phase.phase !== 'helpMode') return false
-    if (!attempt || !attempt.userAnswer) return false
-    if (attempt.correctionCount > MANUAL_SUBMIT_THRESHOLD) return false
+    if (phase.phase !== "inputting" && phase.phase !== "helpMode") return false;
+    if (!attempt || !attempt.userAnswer) return false;
+    if (attempt.correctionCount > MANUAL_SUBMIT_THRESHOLD) return false;
 
-    const answerNum = parseInt(attempt.userAnswer, 10)
-    if (Number.isNaN(answerNum)) return false
+    const answerNum = parseInt(attempt.userAnswer, 10);
+    if (Number.isNaN(answerNum)) return false;
 
-    return answerNum === attempt.problem.answer
-  }, [phase.phase, attempt])
+    return answerNum === attempt.problem.answer;
+  }, [phase.phase, attempt]);
 
   // UI predicates
   const canAcceptInput =
-    phase.phase === 'inputting' ||
-    phase.phase === 'awaitingDisambiguation' ||
-    phase.phase === 'helpMode'
+    phase.phase === "inputting" ||
+    phase.phase === "awaitingDisambiguation" ||
+    phase.phase === "helpMode";
 
-  const showAsCompleted = phase.phase === 'showingFeedback'
+  const showAsCompleted = phase.phase === "showingFeedback";
 
-  const showHelpOverlay = phase.phase === 'helpMode'
+  const showHelpOverlay = phase.phase === "helpMode";
 
   const showInputArea =
-    phase.phase === 'inputting' ||
-    phase.phase === 'awaitingDisambiguation' ||
-    phase.phase === 'helpMode' ||
-    phase.phase === 'submitting'
+    phase.phase === "inputting" ||
+    phase.phase === "awaitingDisambiguation" ||
+    phase.phase === "helpMode" ||
+    phase.phase === "submitting";
 
-  const showFeedback = phase.phase === 'showingFeedback' && phase.result === 'incorrect'
+  const showFeedback =
+    phase.phase === "showingFeedback" && phase.result === "incorrect";
 
   const inputIsFocused =
-    phase.phase === 'inputting' ||
-    phase.phase === 'awaitingDisambiguation' ||
-    phase.phase === 'helpMode'
+    phase.phase === "inputting" ||
+    phase.phase === "awaitingDisambiguation" ||
+    phase.phase === "helpMode";
 
-  const isTransitioning = phase.phase === 'transitioning'
+  const isTransitioning = phase.phase === "transitioning";
 
-  const isPaused = phase.phase === 'paused'
+  const isPaused = phase.phase === "paused";
 
-  const isSubmitting = phase.phase === 'submitting'
+  const isSubmitting = phase.phase === "submitting";
 
   // Extract helpContext from phase
   const helpContext = useMemo((): HelpContext | null => {
-    if (phase.phase === 'helpMode') {
-      return phase.helpContext
+    if (phase.phase === "helpMode") {
+      return phase.helpContext;
     }
     // Also check paused phase
-    if (phase.phase === 'paused' && phase.resumePhase.phase === 'helpMode') {
-      return phase.resumePhase.helpContext
+    if (phase.phase === "paused" && phase.resumePhase.phase === "helpMode") {
+      return phase.resumePhase.helpContext;
     }
-    return null
-  }, [phase])
+    return null;
+  }, [phase]);
 
   // Extract outgoingAttempt from phase (only during transitions)
   const outgoingAttempt = useMemo((): OutgoingAttempt | null => {
-    if (phase.phase === 'transitioning') {
-      return phase.outgoing
+    if (phase.phase === "transitioning") {
+      return phase.outgoing;
     }
-    return null
-  }, [phase])
+    return null;
+  }, [phase]);
 
   // ==========================================================================
   // Actions
@@ -653,11 +670,11 @@ export function useInteractionPhase(
 
   const loadProblem = useCallback(
     (problem: GeneratedProblem, slotIndex: number, partIndex: number) => {
-      const newAttempt = createAttemptInput(problem, slotIndex, partIndex)
-      setPhase({ phase: 'inputting', attempt: newAttempt })
+      const newAttempt = createAttemptInput(problem, slotIndex, partIndex);
+      setPhase({ phase: "inputting", attempt: newAttempt });
     },
-    []
-  )
+    [],
+  );
 
   // ==========================================================================
   // React to activeProblem changes (single source of truth)
@@ -665,118 +682,125 @@ export function useInteractionPhase(
   // This effect handles two cases:
   // 1. activeProblem.key changes (redo mode, direct navigation, session plan advances)
   // 2. Phase becomes 'loading' (need to reload current problem after incorrect answer or part transition)
-  const prevActiveProblemKeyRef = useRef<string | null>(null)
-  const hasMountedRef = useRef(false)
+  const prevActiveProblemKeyRef = useRef<string | null>(null);
+  const hasMountedRef = useRef(false);
 
   useEffect(() => {
     // Skip on initial mount - let initialProblem handle hydration
     if (!hasMountedRef.current) {
-      hasMountedRef.current = true
+      hasMountedRef.current = true;
       // Initialize the ref with current key
-      prevActiveProblemKeyRef.current = activeProblem?.key ?? null
-      console.log('[useInteractionPhase] Initial mount, key:', activeProblem?.key)
-      return
+      prevActiveProblemKeyRef.current = activeProblem?.key ?? null;
+      console.log(
+        "[useInteractionPhase] Initial mount, key:",
+        activeProblem?.key,
+      );
+      return;
     }
 
     // If no active problem, nothing to do
     if (!activeProblem) {
       console.log(
-        '[useInteractionPhase] No active problem - cannot load. Current phase:',
-        phase.phase
-      )
-      prevActiveProblemKeyRef.current = null
-      return
+        "[useInteractionPhase] No active problem - cannot load. Current phase:",
+        phase.phase,
+      );
+      prevActiveProblemKeyRef.current = null;
+      return;
     }
 
-    const prevKey = prevActiveProblemKeyRef.current
-    const currentKey = activeProblem.key
-    const keyChanged = prevKey !== currentKey
+    const prevKey = prevActiveProblemKeyRef.current;
+    const currentKey = activeProblem.key;
+    const keyChanged = prevKey !== currentKey;
 
-    console.log('[useInteractionPhase] Effect running:', {
+    console.log("[useInteractionPhase] Effect running:", {
       prevKey,
       currentKey,
       keyChanged,
       currentPhase: phase.phase,
-    })
+    });
 
     // Case 1: Phase is 'loading' - need to load the problem
     // This happens after incorrect answers or when returning from part transitions
-    if (phase.phase === 'loading') {
-      console.log('[useInteractionPhase] Phase is loading - loading problem:', {
+    if (phase.phase === "loading") {
+      console.log("[useInteractionPhase] Phase is loading - loading problem:", {
         problemAnswer: activeProblem.problem.answer,
         slotIndex: activeProblem.slotIndex,
         partIndex: activeProblem.partIndex,
         key: activeProblem.key,
-      })
+      });
       const newAttempt = createAttemptInput(
         activeProblem.problem,
         activeProblem.slotIndex,
-        activeProblem.partIndex
-      )
-      setPhase({ phase: 'inputting', attempt: newAttempt })
-      prevActiveProblemKeyRef.current = currentKey
-      console.log('[useInteractionPhase] Successfully loaded problem, phase now inputting')
-      return
+        activeProblem.partIndex,
+      );
+      setPhase({ phase: "inputting", attempt: newAttempt });
+      prevActiveProblemKeyRef.current = currentKey;
+      console.log(
+        "[useInteractionPhase] Successfully loaded problem, phase now inputting",
+      );
+      return;
     }
 
     // Case 2: Key changed - handle redo mode or session advancement
     if (keyChanged) {
-      console.log('[useInteractionPhase] Key changed:', {
+      console.log("[useInteractionPhase] Key changed:", {
         prevKey,
         currentKey,
-      })
+      });
 
       // CRITICAL: Don't interrupt normal progression flow
       // If we're in showingFeedback, submitting, or transitioning, the normal flow
       // (startTransition → completeTransition) handles advancing to the next problem.
       const isInProgressionFlow =
-        phase.phase === 'showingFeedback' ||
-        phase.phase === 'submitting' ||
-        phase.phase === 'transitioning'
+        phase.phase === "showingFeedback" ||
+        phase.phase === "submitting" ||
+        phase.phase === "transitioning";
 
       if (isInProgressionFlow) {
-        console.log('[useInteractionPhase] Key changed but in progression flow, deferring')
+        console.log(
+          "[useInteractionPhase] Key changed but in progression flow, deferring",
+        );
         // Still update the ref so we track the change
-        prevActiveProblemKeyRef.current = currentKey
-        return
+        prevActiveProblemKeyRef.current = currentKey;
+        return;
       }
 
       // Key changed and we're not in progression flow - load the new problem immediately
-      console.log('[useInteractionPhase] Loading new problem from key change')
+      console.log("[useInteractionPhase] Loading new problem from key change");
       const newAttempt = createAttemptInput(
         activeProblem.problem,
         activeProblem.slotIndex,
-        activeProblem.partIndex
-      )
-      setPhase({ phase: 'inputting', attempt: newAttempt })
-      prevActiveProblemKeyRef.current = currentKey
+        activeProblem.partIndex,
+      );
+      setPhase({ phase: "inputting", attempt: newAttempt });
+      prevActiveProblemKeyRef.current = currentKey;
     }
-  }, [activeProblem, phase.phase])
+  }, [activeProblem, phase.phase]);
 
   const handleDigit = useCallback(
     (digit: string) => {
       setPhase((prev) => {
         // Accept input in inputting, awaitingDisambiguation, or helpMode
         if (
-          prev.phase !== 'inputting' &&
-          prev.phase !== 'awaitingDisambiguation' &&
-          prev.phase !== 'helpMode'
+          prev.phase !== "inputting" &&
+          prev.phase !== "awaitingDisambiguation" &&
+          prev.phase !== "helpMode"
         ) {
-          return prev
+          return prev;
         }
 
         // If in help mode, exit help mode and start fresh with the new digit
-        if (prev.phase === 'helpMode') {
+        if (prev.phase === "helpMode") {
           const freshAttempt = {
             ...prev.attempt,
             userAnswer: digit,
             rejectedDigit: null,
-          }
-          return { phase: 'inputting', attempt: freshAttempt }
+          };
+          return { phase: "inputting", attempt: freshAttempt };
         }
 
-        const attempt = prev.attempt
-        const sums = computePrefixSums(attempt.problem.terms)
+        const attempt = prev.attempt;
+        const sums = computePrefixSums(attempt.problem.terms);
 
         // Once manual submit is required, accept any digit without validation
         if (attempt.manualSubmitRequired) {
@@ -784,8 +808,8 @@ export function useInteractionPhase(
             ...attempt,
             userAnswer: attempt.userAnswer + digit,
             rejectedDigit: null,
-          }
-          return { phase: 'inputting', attempt: updatedAttempt }
+          };
+          return { phase: "inputting", attempt: updatedAttempt };
         }
 
         if (isDigitConsistent(attempt.userAnswer, digit, sums)) {
@@ -793,22 +817,25 @@ export function useInteractionPhase(
             ...attempt,
             userAnswer: attempt.userAnswer + digit,
             rejectedDigit: null,
-          }
+          };
 
           // Check if the new answer creates an ambiguous prefix match
-          const newPrefixMatch = findMatchedPrefixIndex(updatedAttempt.userAnswer, sums)
+          const newPrefixMatch = findMatchedPrefixIndex(
+            updatedAttempt.userAnswer,
+            sums,
+          );
 
           if (newPrefixMatch.isAmbiguous && newPrefixMatch.helpTermIndex >= 0) {
             // Ambiguous match - transition to awaitingDisambiguation
             return {
-              phase: 'awaitingDisambiguation',
+              phase: "awaitingDisambiguation",
               attempt: updatedAttempt,
               disambiguationContext: {
                 matchedPrefixIndex: newPrefixMatch.matchedIndex,
                 helpTermIndex: newPrefixMatch.helpTermIndex,
                 timerStartedAt: Date.now(),
               },
-            }
+            };
           } else if (
             !newPrefixMatch.isAmbiguous &&
             newPrefixMatch.matchedIndex >= 0 &&
@@ -819,276 +846,294 @@ export function useInteractionPhase(
             // Keep userAnswer during transition so it shows in answer boxes while fading out
             const helpContext = computeHelpContext(
               attempt.problem.terms,
-              newPrefixMatch.helpTermIndex
-            )
+              newPrefixMatch.helpTermIndex,
+            );
             return {
-              phase: 'helpMode',
-              attempt: { ...updatedAttempt, userAnswer: '' },
+              phase: "helpMode",
+              attempt: { ...updatedAttempt, userAnswer: "" },
               helpContext,
-            }
+            };
           } else {
             // No special prefix match - stay in inputting (or return to it from awaitingDisambiguation)
-            return { phase: 'inputting', attempt: updatedAttempt }
+            return { phase: "inputting", attempt: updatedAttempt };
           }
         } else {
           // Reject the digit
-          const newCorrectionCount = attempt.correctionCount + 1
+          const newCorrectionCount = attempt.correctionCount + 1;
           const nowRequiresManualSubmit =
-            newCorrectionCount > MANUAL_SUBMIT_THRESHOLD && !attempt.manualSubmitRequired
+            newCorrectionCount > MANUAL_SUBMIT_THRESHOLD &&
+            !attempt.manualSubmitRequired;
 
           if (nowRequiresManualSubmit) {
-            setTimeout(() => onManualSubmitRequired?.(), 0)
+            setTimeout(() => onManualSubmitRequired?.(), 0);
           }
 
           const updatedAttempt = {
             ...attempt,
             rejectedDigit: digit,
             correctionCount: newCorrectionCount,
-            manualSubmitRequired: attempt.manualSubmitRequired || nowRequiresManualSubmit,
-          }
+            manualSubmitRequired:
+              attempt.manualSubmitRequired || nowRequiresManualSubmit,
+          };
 
           // Keep the same phase type but update attempt
-          if (prev.phase === 'awaitingDisambiguation') {
-            return { ...prev, attempt: updatedAttempt }
+          if (prev.phase === "awaitingDisambiguation") {
+            return { ...prev, attempt: updatedAttempt };
           }
-          return { ...prev, attempt: updatedAttempt }
+          return { ...prev, attempt: updatedAttempt };
         }
-      })
+      });
 
       // Clear rejected digit after animation
       setTimeout(() => {
         setPhase((prev) => {
           if (
-            prev.phase !== 'inputting' &&
-            prev.phase !== 'awaitingDisambiguation' &&
-            prev.phase !== 'helpMode'
+            prev.phase !== "inputting" &&
+            prev.phase !== "awaitingDisambiguation" &&
+            prev.phase !== "helpMode"
           ) {
-            return prev
+            return prev;
           }
-          return { ...prev, attempt: { ...prev.attempt, rejectedDigit: null } }
-        })
-      }, 300)
+          return { ...prev, attempt: { ...prev.attempt, rejectedDigit: null } };
+        });
+      }, 300);
     },
-    [onManualSubmitRequired]
-  )
+    [onManualSubmitRequired],
+  );
 
   const handleBackspace = useCallback(() => {
     setPhase((prev) => {
       if (
-        prev.phase !== 'inputting' &&
-        prev.phase !== 'awaitingDisambiguation' &&
-        prev.phase !== 'helpMode'
+        prev.phase !== "inputting" &&
+        prev.phase !== "awaitingDisambiguation" &&
+        prev.phase !== "helpMode"
       ) {
-        return prev
+        return prev;
       }
 
-      const attempt = prev.attempt
-      if (attempt.userAnswer.length === 0) return prev
+      const attempt = prev.attempt;
+      if (attempt.userAnswer.length === 0) return prev;
 
-      const newCorrectionCount = attempt.correctionCount + 1
+      const newCorrectionCount = attempt.correctionCount + 1;
       const nowRequiresManualSubmit =
-        newCorrectionCount > MANUAL_SUBMIT_THRESHOLD && !attempt.manualSubmitRequired
+        newCorrectionCount > MANUAL_SUBMIT_THRESHOLD &&
+        !attempt.manualSubmitRequired;
 
       if (nowRequiresManualSubmit) {
-        setTimeout(() => onManualSubmitRequired?.(), 0)
+        setTimeout(() => onManualSubmitRequired?.(), 0);
       }
 
       const updatedAttempt = {
         ...attempt,
         userAnswer: attempt.userAnswer.slice(0, -1),
         correctionCount: newCorrectionCount,
-        manualSubmitRequired: attempt.manualSubmitRequired || nowRequiresManualSubmit,
-      }
+        manualSubmitRequired:
+          attempt.manualSubmitRequired || nowRequiresManualSubmit,
+      };
 
       // After backspace, always return to inputting phase (no longer ambiguous)
-      return { phase: 'inputting', attempt: updatedAttempt }
-    })
-  }, [onManualSubmitRequired])
+      return { phase: "inputting", attempt: updatedAttempt };
+    });
+  }, [onManualSubmitRequired]);
 
   const enterHelpMode = useCallback((termIndex: number) => {
     setPhase((prev) => {
       // Allow entering help mode from inputting, awaitingDisambiguation, or helpMode (to navigate to a different term)
       if (
-        prev.phase !== 'inputting' &&
-        prev.phase !== 'awaitingDisambiguation' &&
-        prev.phase !== 'helpMode'
+        prev.phase !== "inputting" &&
+        prev.phase !== "awaitingDisambiguation" &&
+        prev.phase !== "helpMode"
       ) {
-        return prev
+        return prev;
       }
 
       // Keep userAnswer during transition so it shows in answer boxes while fading out
-      const helpContext = computeHelpContext(prev.attempt.problem.terms, termIndex)
+      const helpContext = computeHelpContext(
+        prev.attempt.problem.terms,
+        termIndex,
+      );
       return {
-        phase: 'helpMode',
-        attempt: { ...prev.attempt, userAnswer: '' },
+        phase: "helpMode",
+        attempt: { ...prev.attempt, userAnswer: "" },
         helpContext,
-      }
-    })
-  }, [])
+      };
+    });
+  }, []);
 
   const exitHelpMode = useCallback(() => {
     setPhase((prev) => {
-      if (prev.phase === 'helpMode') {
-        const updatedAttempt = { ...prev.attempt, userAnswer: '' }
-        return { phase: 'inputting', attempt: updatedAttempt }
+      if (prev.phase === "helpMode") {
+        const updatedAttempt = { ...prev.attempt, userAnswer: "" };
+        return { phase: "inputting", attempt: updatedAttempt };
       }
-      if (prev.phase === 'inputting') {
-        const updatedAttempt = { ...prev.attempt, userAnswer: '' }
-        return { phase: 'inputting', attempt: updatedAttempt }
+      if (prev.phase === "inputting") {
+        const updatedAttempt = { ...prev.attempt, userAnswer: "" };
+        return { phase: "inputting", attempt: updatedAttempt };
       }
-      return prev
-    })
-  }, [])
+      return prev;
+    });
+  }, []);
 
   const clearAnswer = useCallback(() => {
     setPhase((prev) => {
-      if (prev.phase !== 'helpMode') return prev
-      const updatedAttempt = { ...prev.attempt, userAnswer: '' }
+      if (prev.phase !== "helpMode") return prev;
+      const updatedAttempt = { ...prev.attempt, userAnswer: "" };
       return {
-        phase: 'helpMode',
+        phase: "helpMode",
         attempt: updatedAttempt,
         helpContext: prev.helpContext,
-      }
-    })
-  }, [])
+      };
+    });
+  }, []);
 
   const setAnswer = useCallback((value: string) => {
     setPhase((prev) => {
-      if (prev.phase !== 'helpMode' && prev.phase !== 'inputting') return prev
-      const updatedAttempt = { ...prev.attempt, userAnswer: value }
-      if (prev.phase === 'helpMode') {
+      if (prev.phase !== "helpMode" && prev.phase !== "inputting") return prev;
+      const updatedAttempt = { ...prev.attempt, userAnswer: value };
+      if (prev.phase === "helpMode") {
         return {
-          phase: 'helpMode',
+          phase: "helpMode",
           attempt: updatedAttempt,
           helpContext: prev.helpContext,
-        }
+        };
       }
-      return { phase: 'inputting', attempt: updatedAttempt }
-    })
-  }, [])
+      return { phase: "inputting", attempt: updatedAttempt };
+    });
+  }, []);
 
   const startSubmit = useCallback(() => {
     setPhase((prev) => {
       // Allow submitting from inputting, awaitingDisambiguation, or helpMode
       if (
-        prev.phase !== 'inputting' &&
-        prev.phase !== 'awaitingDisambiguation' &&
-        prev.phase !== 'helpMode'
+        prev.phase !== "inputting" &&
+        prev.phase !== "awaitingDisambiguation" &&
+        prev.phase !== "helpMode"
       ) {
-        return prev
+        return prev;
       }
-      return { phase: 'submitting', attempt: prev.attempt }
-    })
-  }, [])
+      return { phase: "submitting", attempt: prev.attempt };
+    });
+  }, []);
 
-  const completeSubmit = useCallback((result: 'correct' | 'incorrect') => {
+  const completeSubmit = useCallback((result: "correct" | "incorrect") => {
     setPhase((prev) =>
       transformActivePhase(prev, (active) => {
-        if (active.phase !== 'submitting') return null
-        return { phase: 'showingFeedback', attempt: active.attempt, result }
-      })
-    )
-  }, [])
+        if (active.phase !== "submitting") return null;
+        return { phase: "showingFeedback", attempt: active.attempt, result };
+      }),
+    );
+  }, []);
 
-  const startTransition = useCallback((nextProblem: GeneratedProblem, nextSlotIndex: number) => {
-    setPhase((prev) => {
-      if (prev.phase !== 'showingFeedback') return prev
+  const startTransition = useCallback(
+    (nextProblem: GeneratedProblem, nextSlotIndex: number) => {
+      setPhase((prev) => {
+        if (prev.phase !== "showingFeedback") return prev;
 
-      const outgoing: OutgoingAttempt = {
-        key: `${prev.attempt.partIndex}-${prev.attempt.slotIndex}`,
-        problem: prev.attempt.problem,
-        userAnswer: prev.attempt.userAnswer,
-        result: prev.result,
-      }
+        const outgoing: OutgoingAttempt = {
+          key: `${prev.attempt.partIndex}-${prev.attempt.slotIndex}`,
+          problem: prev.attempt.problem,
+          userAnswer: prev.attempt.userAnswer,
+          result: prev.result,
+        };
 
-      const incoming = createAttemptInput(nextProblem, nextSlotIndex, prev.attempt.partIndex)
+        const incoming = createAttemptInput(
+          nextProblem,
+          nextSlotIndex,
+          prev.attempt.partIndex,
+        );
 
-      return { phase: 'transitioning', outgoing, incoming }
-    })
-  }, [])
+        return { phase: "transitioning", outgoing, incoming };
+      });
+    },
+    [],
+  );
 
   const completeTransition = useCallback(() => {
     setPhase((prev) =>
       transformActivePhase(prev, (active) => {
-        if (active.phase !== 'transitioning') return null
-        return { phase: 'inputting', attempt: active.incoming }
-      })
-    )
-  }, [])
+        if (active.phase !== "transitioning") return null;
+        return { phase: "inputting", attempt: active.incoming };
+      }),
+    );
+  }, []);
 
   const clearToLoading = useCallback(() => {
-    setPhase({ phase: 'loading' })
-  }, [])
+    setPhase({ phase: "loading" });
+  }, []);
 
   const markComplete = useCallback(() => {
-    setPhase({ phase: 'complete' })
-  }, [])
+    setPhase({ phase: "complete" });
+  }, []);
 
   const pause = useCallback(() => {
     setPhase((prev) => {
-      if (prev.phase === 'paused' || prev.phase === 'loading' || prev.phase === 'complete')
-        return prev
-      return { phase: 'paused', resumePhase: prev, pauseStartedAt: Date.now() }
-    })
-  }, [])
+      if (
+        prev.phase === "paused" ||
+        prev.phase === "loading" ||
+        prev.phase === "complete"
+      )
+        return prev;
+      return { phase: "paused", resumePhase: prev, pauseStartedAt: Date.now() };
+    });
+  }, []);
 
   const resume = useCallback(() => {
     setPhase((prev) => {
-      if (prev.phase !== 'paused') return prev
+      if (prev.phase !== "paused") return prev;
 
       // Calculate how long we were paused
-      const pauseDuration = Date.now() - prev.pauseStartedAt
+      const pauseDuration = Date.now() - prev.pauseStartedAt;
 
       // Helper to add pause duration to an attempt
       const addPauseDuration = (attempt: AttemptInput): AttemptInput => ({
         ...attempt,
         accumulatedPauseMs: attempt.accumulatedPauseMs + pauseDuration,
-      })
+      });
 
       // Update the attempt inside the resume phase to track accumulated pause time
-      const resumePhase = prev.resumePhase
+      const resumePhase = prev.resumePhase;
       switch (resumePhase.phase) {
-        case 'inputting':
+        case "inputting":
           return {
             ...resumePhase,
             attempt: addPauseDuration(resumePhase.attempt),
-          }
-        case 'awaitingDisambiguation':
+          };
+        case "awaitingDisambiguation":
           return {
             ...resumePhase,
             attempt: addPauseDuration(resumePhase.attempt),
-          }
-        case 'helpMode':
+          };
+        case "helpMode":
           return {
             ...resumePhase,
             attempt: addPauseDuration(resumePhase.attempt),
-          }
-        case 'submitting':
+          };
+        case "submitting":
           return {
             ...resumePhase,
             attempt: addPauseDuration(resumePhase.attempt),
-          }
-        case 'showingFeedback':
+          };
+        case "showingFeedback":
           return {
             ...resumePhase,
             attempt: addPauseDuration(resumePhase.attempt),
-          }
-        case 'transitioning':
+          };
+        case "transitioning":
           // Update both outgoing (for accuracy of recorded time) and incoming
           return {
             ...resumePhase,
             incoming: addPauseDuration(resumePhase.incoming),
-          }
-        case 'loading':
-        case 'complete':
+          };
+        case "loading":
+        case "complete":
           // No attempt to update
-          return resumePhase
+          return resumePhase;
       }
-    })
-  }, [])
+    });
+  }, []);
 
   // Is the session complete?
-  const isComplete = phase.phase === 'complete'
+  const isComplete = phase.phase === "complete";
 
   return {
     phase,
@@ -1126,5 +1171,5 @@ export function useInteractionPhase(
     pause,
     resume,
     isComplete,
-  }
+  };
 }

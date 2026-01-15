@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
-import { AbacusStatic } from '@soroban/abacus-react'
-import type { Meta, StoryObj } from '@storybook/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
-import { MyAbacusProvider, useMyAbacus } from '@/contexts/MyAbacusContext'
-import { ThemeProvider } from '@/contexts/ThemeContext'
+import { AbacusStatic } from "@soroban/abacus-react";
+import type { Meta, StoryObj } from "@storybook/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { MyAbacusProvider, useMyAbacus } from "@/contexts/MyAbacusContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import type {
   GeneratedProblem,
   ProblemSlot,
@@ -14,16 +14,16 @@ import type {
   SessionPlan,
   SessionSummary,
   SlotResult,
-} from '@/db/schema/session-plans'
-import { createBasicSkillSet } from '@/types/tutorial'
+} from "@/db/schema/session-plans";
+import { createBasicSkillSet } from "@/types/tutorial";
 import {
   analyzeRequiredSkills,
   type ProblemConstraints as GeneratorConstraints,
   generateSingleProblem,
-} from '@/utils/problemGenerator'
-import { css } from '../../../styled-system/css'
-import { MyAbacus } from '../MyAbacus'
-import { ActiveSession, type StudentInfo } from './ActiveSession'
+} from "@/utils/problemGenerator";
+import { css } from "../../../styled-system/css";
+import { MyAbacus } from "../MyAbacus";
+import { ActiveSession, type StudentInfo } from "./ActiveSession";
 
 /**
  * Stories showing the actual MyAbacus docked into practice sessions.
@@ -31,14 +31,14 @@ import { ActiveSession, type StudentInfo } from './ActiveSession'
  * the actual user experience for debugging layout issues.
  */
 const meta: Meta = {
-  title: 'Practice/MyAbacus Docked on Practice',
+  title: "Practice/MyAbacus Docked on Practice",
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
   },
-}
+};
 
-export default meta
-type Story = StoryObj
+export default meta;
+type Story = StoryObj;
 
 // ============================================================================
 // HELPERS - Same as ActiveSession.stories.tsx
@@ -46,175 +46,190 @@ type Story = StoryObj
 
 function createMockStudent(name: string): StudentInfo {
   const students: Record<string, StudentInfo> = {
-    Sonia: { id: 'student-sonia', name: 'Sonia', emoji: '🌟', color: 'purple' },
+    Sonia: { id: "student-sonia", name: "Sonia", emoji: "🌟", color: "purple" },
     Marcus: {
-      id: 'student-marcus',
-      name: 'Marcus',
-      emoji: '🚀',
-      color: 'blue',
+      id: "student-marcus",
+      name: "Marcus",
+      emoji: "🚀",
+      color: "blue",
     },
-    Luna: { id: 'student-luna', name: 'Luna', emoji: '🌙', color: 'indigo' },
-  }
+    Luna: { id: "student-luna", name: "Luna", emoji: "🌙", color: "indigo" },
+  };
   return (
     students[name] ?? {
       id: `student-${name.toLowerCase()}`,
       name,
-      emoji: '🎓',
-      color: 'gray',
+      emoji: "🎓",
+      color: "gray",
     }
-  )
+  );
 }
 
 function generateProblemWithSkills(
-  skillLevel: 'basic' | 'fiveComplements' | 'tenComplements'
+  skillLevel: "basic" | "fiveComplements" | "tenComplements",
 ): GeneratedProblem {
-  const baseSkills = createBasicSkillSet()
-  baseSkills.basic.directAddition = true
-  baseSkills.basic.heavenBead = true
-  baseSkills.basic.simpleCombinations = true
+  const baseSkills = createBasicSkillSet();
+  baseSkills.basic.directAddition = true;
+  baseSkills.basic.heavenBead = true;
+  baseSkills.basic.simpleCombinations = true;
 
-  if (skillLevel === 'fiveComplements' || skillLevel === 'tenComplements') {
-    baseSkills.fiveComplements['4=5-1'] = true
-    baseSkills.fiveComplements['3=5-2'] = true
+  if (skillLevel === "fiveComplements" || skillLevel === "tenComplements") {
+    baseSkills.fiveComplements["4=5-1"] = true;
+    baseSkills.fiveComplements["3=5-2"] = true;
   }
 
-  if (skillLevel === 'tenComplements') {
-    baseSkills.tenComplements['9=10-1'] = true
-    baseSkills.tenComplements['8=10-2'] = true
+  if (skillLevel === "tenComplements") {
+    baseSkills.tenComplements["9=10-1"] = true;
+    baseSkills.tenComplements["8=10-2"] = true;
   }
 
   const constraints: GeneratorConstraints = {
-    numberRange: { min: 1, max: skillLevel === 'tenComplements' ? 99 : 9 },
+    numberRange: { min: 1, max: skillLevel === "tenComplements" ? 99 : 9 },
     maxTerms: 4,
     problemCount: 1,
-  }
+  };
 
-  const problem = generateSingleProblem(constraints, baseSkills)
+  const problem = generateSingleProblem(constraints, baseSkills);
   if (problem) {
     return {
       terms: problem.terms,
       answer: problem.answer,
       skillsRequired: problem.skillsUsed,
-    }
+    };
   }
 
-  const terms = [3, 4, 2]
+  const terms = [3, 4, 2];
   return {
     terms,
     answer: terms.reduce((a, b) => a + b, 0),
     skillsRequired: analyzeRequiredSkills(terms, 9),
-  }
+  };
 }
 
 function createMockSlotsWithProblems(
   count: number,
-  skillLevel: 'basic' | 'fiveComplements' | 'tenComplements',
-  purposes: Array<'focus' | 'reinforce' | 'review' | 'challenge'> = ['focus', 'reinforce', 'review']
+  skillLevel: "basic" | "fiveComplements" | "tenComplements",
+  purposes: Array<"focus" | "reinforce" | "review" | "challenge"> = [
+    "focus",
+    "reinforce",
+    "review",
+  ],
 ): ProblemSlot[] {
   return Array.from({ length: count }, (_, i) => {
-    const allowedSkills: ProblemSlot['constraints']['allowedSkills'] = {
+    const allowedSkills: ProblemSlot["constraints"]["allowedSkills"] = {
       basic: { directAddition: true, heavenBead: true },
-      ...(skillLevel !== 'basic' && {
-        fiveComplements: { '4=5-1': true, '3=5-2': true },
+      ...(skillLevel !== "basic" && {
+        fiveComplements: { "4=5-1": true, "3=5-2": true },
       }),
-      ...(skillLevel === 'tenComplements' && {
-        tenComplements: { '9=10-1': true, '8=10-2': true },
+      ...(skillLevel === "tenComplements" && {
+        tenComplements: { "9=10-1": true, "8=10-2": true },
       }),
-    } as ProblemSlot['constraints']['allowedSkills']
+    } as ProblemSlot["constraints"]["allowedSkills"];
 
     return {
       index: i,
       purpose: purposes[i % purposes.length],
       constraints: {
         allowedSkills,
-        digitRange: { min: 1, max: skillLevel === 'tenComplements' ? 2 : 1 },
+        digitRange: { min: 1, max: skillLevel === "tenComplements" ? 2 : 1 },
         termCount: { min: 3, max: 4 },
       },
       problem: generateProblemWithSkills(skillLevel),
-    }
-  })
+    };
+  });
 }
 
 function createMockSessionPlan(config: {
-  totalProblems?: number
-  skillLevel?: 'basic' | 'fiveComplements' | 'tenComplements'
-  currentPartIndex?: number
-  currentSlotIndex?: number
-  sessionHealth?: SessionHealth | null
+  totalProblems?: number;
+  skillLevel?: "basic" | "fiveComplements" | "tenComplements";
+  currentPartIndex?: number;
+  currentSlotIndex?: number;
+  sessionHealth?: SessionHealth | null;
 }): SessionPlan {
-  const totalProblems = config.totalProblems || 15
-  const skillLevel = config.skillLevel || 'basic'
+  const totalProblems = config.totalProblems || 15;
+  const skillLevel = config.skillLevel || "basic";
 
-  const part1Count = Math.round(totalProblems * 0.5)
-  const part2Count = Math.round(totalProblems * 0.3)
-  const part3Count = totalProblems - part1Count - part2Count
+  const part1Count = Math.round(totalProblems * 0.5);
+  const part2Count = Math.round(totalProblems * 0.3);
+  const part3Count = totalProblems - part1Count - part2Count;
 
   const parts: SessionPart[] = [
     {
       partNumber: 1,
-      type: 'abacus',
-      format: 'vertical',
+      type: "abacus",
+      format: "vertical",
       useAbacus: true,
-      slots: createMockSlotsWithProblems(part1Count, skillLevel, ['focus', 'focus', 'reinforce']),
+      slots: createMockSlotsWithProblems(part1Count, skillLevel, [
+        "focus",
+        "focus",
+        "reinforce",
+      ]),
       estimatedMinutes: 5,
     },
     {
       partNumber: 2,
-      type: 'visualization',
-      format: 'vertical',
+      type: "visualization",
+      format: "vertical",
       useAbacus: false,
-      slots: createMockSlotsWithProblems(part2Count, skillLevel, ['focus', 'reinforce', 'review']),
+      slots: createMockSlotsWithProblems(part2Count, skillLevel, [
+        "focus",
+        "reinforce",
+        "review",
+      ]),
       estimatedMinutes: 3,
     },
     {
       partNumber: 3,
-      type: 'linear',
-      format: 'linear',
+      type: "linear",
+      format: "linear",
       useAbacus: false,
-      slots: createMockSlotsWithProblems(part3Count, skillLevel, ['review', 'challenge']),
+      slots: createMockSlotsWithProblems(part3Count, skillLevel, [
+        "review",
+        "challenge",
+      ]),
       estimatedMinutes: 2,
     },
-  ]
+  ];
 
   const summary: SessionSummary = {
     focusDescription:
-      skillLevel === 'tenComplements'
-        ? 'Ten Complements'
-        : skillLevel === 'fiveComplements'
-          ? 'Five Complements'
-          : 'Basic Addition',
+      skillLevel === "tenComplements"
+        ? "Ten Complements"
+        : skillLevel === "fiveComplements"
+          ? "Five Complements"
+          : "Basic Addition",
     totalProblemCount: totalProblems,
     estimatedMinutes: 10,
     parts: parts.map((p) => ({
       partNumber: p.partNumber,
       type: p.type,
       description:
-        p.type === 'abacus'
-          ? 'Use Abacus'
-          : p.type === 'visualization'
-            ? 'Mental Math (Visualization)'
-            : 'Mental Math (Linear)',
+        p.type === "abacus"
+          ? "Use Abacus"
+          : p.type === "visualization"
+            ? "Mental Math (Visualization)"
+            : "Mental Math (Linear)",
       problemCount: p.slots.length,
       estimatedMinutes: p.estimatedMinutes,
     })),
-  }
+  };
 
   return {
-    id: 'plan-active-123',
-    playerId: 'player-1',
+    id: "plan-active-123",
+    playerId: "player-1",
     targetDurationMinutes: 10,
     estimatedProblemCount: totalProblems,
     avgTimePerProblemSeconds: 40,
     gameBreakSettings: {
       enabled: false,
       maxDurationMinutes: 5,
-      selectionMode: 'kid-chooses',
+      selectionMode: "kid-chooses",
       selectedGame: null,
     },
     parts,
     summary,
-    masteredSkillIds: ['basic.+1', 'basic.+2', 'basic.+3'],
-    status: 'in_progress',
+    masteredSkillIds: ["basic.+1", "basic.+2", "basic.+3"],
+    status: "in_progress",
     currentPartIndex: config.currentPartIndex ?? 0,
     currentSlotIndex: config.currentSlotIndex ?? 0,
     sessionHealth: config.sessionHealth ?? null,
@@ -229,20 +244,20 @@ function createMockSessionPlan(config: {
     pausedBy: null,
     pauseReason: null,
     retryState: null,
-  }
+  };
 }
 
 const defaultHandlers = {
-  onAnswer: async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>) => {
-    console.log('Answer recorded:', result)
+  onAnswer: async (result: Omit<SlotResult, "timestamp" | "partNumber">) => {
+    console.log("Answer recorded:", result);
   },
   onEndEarly: (reason?: string) => {
-    console.log(`Session ended early: ${reason || 'No reason given'}`)
+    console.log(`Session ended early: ${reason || "No reason given"}`);
   },
-  onPause: () => console.log('Session paused'),
-  onResume: () => console.log('Session resumed'),
-  onComplete: () => console.log('Session completed!'),
-}
+  onPause: () => console.log("Session paused"),
+  onResume: () => console.log("Session resumed"),
+  onComplete: () => console.log("Session completed!"),
+};
 
 // ============================================================================
 // AUTO-DOCK WRAPPER
@@ -253,20 +268,20 @@ const defaultHandlers = {
  * This simulates the user clicking to dock the abacus.
  */
 function AutoDockTrigger() {
-  const { dock, isDockedByUser, dockInto } = useMyAbacus()
+  const { dock, isDockedByUser, dockInto } = useMyAbacus();
 
   useEffect(() => {
     // Auto-dock when dock becomes visible and we're not already docked
     if (dock?.isVisible && !isDockedByUser) {
       // Small delay to let the dock register properly
       const timer = setTimeout(() => {
-        dockInto()
-      }, 100)
-      return () => clearTimeout(timer)
+        dockInto();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [dock?.isVisible, isDockedByUser, dockInto])
+  }, [dock?.isVisible, isDockedByUser, dockInto]);
 
-  return null
+  return null;
 }
 
 /**
@@ -282,7 +297,7 @@ function StoryProviders({ children }: { children: React.ReactNode }) {
         <MyAbacus />
       </MyAbacusProvider>
     </ThemeProvider>
-  )
+  );
 }
 
 /**
@@ -292,14 +307,14 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={css({
-        backgroundColor: 'gray.100',
-        minHeight: '100vh',
-        padding: '1rem',
+        backgroundColor: "gray.100",
+        minHeight: "100vh",
+        padding: "1rem",
       })}
     >
       {children}
     </div>
-  )
+  );
 }
 
 // ============================================================================
@@ -318,17 +333,17 @@ export const Part1AbacusWithDockedAbacus: Story = {
       <PageWrapper>
         <ActiveSession
           plan={createMockSessionPlan({
-            skillLevel: 'basic',
+            skillLevel: "basic",
             currentPartIndex: 0,
             currentSlotIndex: 0,
           })}
-          student={createMockStudent('Sonia')}
+          student={createMockStudent("Sonia")}
           {...defaultHandlers}
         />
       </PageWrapper>
     </StoryProviders>
   ),
-}
+};
 
 /**
  * Real ActiveSession - Part 2 (Visualization mode, no abacus dock)
@@ -342,17 +357,17 @@ export const Part2VisualizationNoDock: Story = {
       <PageWrapper>
         <ActiveSession
           plan={createMockSessionPlan({
-            skillLevel: 'fiveComplements',
+            skillLevel: "fiveComplements",
             currentPartIndex: 1,
             currentSlotIndex: 0,
           })}
-          student={createMockStudent('Marcus')}
+          student={createMockStudent("Marcus")}
           {...defaultHandlers}
         />
       </PageWrapper>
     </StoryProviders>
   ),
-}
+};
 
 /**
  * Real ActiveSession with larger numbers (requires more columns)
@@ -363,17 +378,17 @@ export const LargerNumbersWithDock: Story = {
       <PageWrapper>
         <ActiveSession
           plan={createMockSessionPlan({
-            skillLevel: 'tenComplements',
+            skillLevel: "tenComplements",
             currentPartIndex: 0,
             currentSlotIndex: 0,
           })}
-          student={createMockStudent('Luna')}
+          student={createMockStudent("Luna")}
           {...defaultHandlers}
         />
       </PageWrapper>
     </StoryProviders>
   ),
-}
+};
 
 /**
  * Mid-session with health indicators
@@ -384,24 +399,24 @@ export const MidSessionWithHealth: Story = {
       <PageWrapper>
         <ActiveSession
           plan={createMockSessionPlan({
-            skillLevel: 'basic',
+            skillLevel: "basic",
             currentPartIndex: 0,
             currentSlotIndex: 4,
             sessionHealth: {
-              overall: 'good',
+              overall: "good",
               accuracy: 0.85,
               pacePercent: 110,
               currentStreak: 4,
               avgResponseTimeMs: 3500,
             },
           })}
-          student={createMockStudent('Sonia')}
+          student={createMockStudent("Sonia")}
           {...defaultHandlers}
         />
       </PageWrapper>
     </StoryProviders>
   ),
-}
+};
 
 /**
  * Session showing struggling state
@@ -412,24 +427,24 @@ export const StrugglingSession: Story = {
       <PageWrapper>
         <ActiveSession
           plan={createMockSessionPlan({
-            skillLevel: 'tenComplements',
+            skillLevel: "tenComplements",
             currentPartIndex: 0,
             currentSlotIndex: 5,
             sessionHealth: {
-              overall: 'struggling',
+              overall: "struggling",
               accuracy: 0.45,
               pacePercent: 65,
               currentStreak: -3,
               avgResponseTimeMs: 8500,
             },
           })}
-          student={createMockStudent('Luna')}
+          student={createMockStudent("Luna")}
           {...defaultHandlers}
         />
       </PageWrapper>
     </StoryProviders>
   ),
-}
+};
 
 // ============================================================================
 // INTERACTIVE DEMO
@@ -442,75 +457,75 @@ function InteractiveDemo() {
   const [plan, setPlan] = useState(() =>
     createMockSessionPlan({
       totalProblems: 6,
-      skillLevel: 'basic',
+      skillLevel: "basic",
       sessionHealth: {
-        overall: 'good',
+        overall: "good",
         accuracy: 1,
         pacePercent: 100,
         currentStreak: 0,
         avgResponseTimeMs: 0,
       },
-    })
-  )
-  const [results, setResults] = useState<SlotResult[]>([])
+    }),
+  );
+  const [results, setResults] = useState<SlotResult[]>([]);
 
   const handleAnswer = useCallback(
-    async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>) => {
+    async (result: Omit<SlotResult, "timestamp" | "partNumber">) => {
       const fullResult: SlotResult = {
         ...result,
         partNumber: (plan.currentPartIndex + 1) as 1 | 2 | 3,
         timestamp: new Date(),
         hadHelp: result.hadHelp ?? false,
         incorrectAttempts: result.incorrectAttempts ?? 0,
-        helpTrigger: result.helpTrigger ?? 'none',
-      }
-      setResults((prev) => [...prev, fullResult])
+        helpTrigger: result.helpTrigger ?? "none",
+      };
+      setResults((prev) => [...prev, fullResult]);
 
       setPlan((prev) => {
-        const currentPart = prev.parts[prev.currentPartIndex]
-        const nextSlotIndex = prev.currentSlotIndex + 1
+        const currentPart = prev.parts[prev.currentPartIndex];
+        const nextSlotIndex = prev.currentSlotIndex + 1;
 
         if (nextSlotIndex >= currentPart.slots.length) {
           return {
             ...prev,
             currentPartIndex: prev.currentPartIndex + 1,
             currentSlotIndex: 0,
-          }
+          };
         }
 
         return {
           ...prev,
           currentSlotIndex: nextSlotIndex,
-        }
-      })
+        };
+      });
     },
-    [plan.currentPartIndex]
-  )
+    [plan.currentPartIndex],
+  );
 
   const handleComplete = useCallback(() => {
     alert(
-      `Session complete! Results: ${results.filter((r) => r.isCorrect).length}/${results.length} correct`
-    )
-  }, [results])
+      `Session complete! Results: ${results.filter((r) => r.isCorrect).length}/${results.length} correct`,
+    );
+  }, [results]);
 
   return (
     <StoryProviders>
       <PageWrapper>
         <ActiveSession
           plan={plan}
-          student={createMockStudent('Sonia')}
+          student={createMockStudent("Sonia")}
           onAnswer={handleAnswer}
           onEndEarly={(reason) => console.log(`Ended: ${reason}`)}
           onComplete={handleComplete}
         />
       </PageWrapper>
     </StoryProviders>
-  )
+  );
 }
 
 export const Interactive: Story = {
   render: () => <InteractiveDemo />,
-}
+};
 
 // ============================================================================
 // COMPARISON: WITH AND WITHOUT DOCK
@@ -522,50 +537,50 @@ export const Interactive: Story = {
  * Shows how the layout differs between abacus mode and visualization mode.
  */
 function ComparisonDemo() {
-  const [activeTab, setActiveTab] = useState<'part1' | 'part2'>('part1')
+  const [activeTab, setActiveTab] = useState<"part1" | "part2">("part1");
 
   return (
     <StoryProviders>
-      <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
+      <div className={css({ minHeight: "100vh", bg: "gray.50" })}>
         {/* Tab selector */}
         <div
           className={css({
-            display: 'flex',
-            gap: '0.5rem',
-            p: '1rem',
-            bg: 'white',
-            borderBottom: '1px solid',
-            borderColor: 'gray.200',
+            display: "flex",
+            gap: "0.5rem",
+            p: "1rem",
+            bg: "white",
+            borderBottom: "1px solid",
+            borderColor: "gray.200",
           })}
         >
           <button
             type="button"
-            onClick={() => setActiveTab('part1')}
+            onClick={() => setActiveTab("part1")}
             className={css({
-              px: '1rem',
-              py: '0.5rem',
-              borderRadius: 'md',
-              border: 'none',
-              bg: activeTab === 'part1' ? 'blue.500' : 'gray.200',
-              color: activeTab === 'part1' ? 'white' : 'gray.700',
-              fontWeight: '500',
-              cursor: 'pointer',
+              px: "1rem",
+              py: "0.5rem",
+              borderRadius: "md",
+              border: "none",
+              bg: activeTab === "part1" ? "blue.500" : "gray.200",
+              color: activeTab === "part1" ? "white" : "gray.700",
+              fontWeight: "500",
+              cursor: "pointer",
             })}
           >
             Part 1: Abacus Mode (with dock)
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('part2')}
+            onClick={() => setActiveTab("part2")}
             className={css({
-              px: '1rem',
-              py: '0.5rem',
-              borderRadius: 'md',
-              border: 'none',
-              bg: activeTab === 'part2' ? 'blue.500' : 'gray.200',
-              color: activeTab === 'part2' ? 'white' : 'gray.700',
-              fontWeight: '500',
-              cursor: 'pointer',
+              px: "1rem",
+              py: "0.5rem",
+              borderRadius: "md",
+              border: "none",
+              bg: activeTab === "part2" ? "blue.500" : "gray.200",
+              color: activeTab === "part2" ? "white" : "gray.700",
+              fontWeight: "500",
+              cursor: "pointer",
             })}
           >
             Part 2: Visualization Mode (no dock)
@@ -574,36 +589,36 @@ function ComparisonDemo() {
 
         {/* Content */}
         <PageWrapper>
-          {activeTab === 'part1' ? (
+          {activeTab === "part1" ? (
             <ActiveSession
               plan={createMockSessionPlan({
-                skillLevel: 'basic',
+                skillLevel: "basic",
                 currentPartIndex: 0,
                 currentSlotIndex: 0,
               })}
-              student={createMockStudent('Sonia')}
+              student={createMockStudent("Sonia")}
               {...defaultHandlers}
             />
           ) : (
             <ActiveSession
               plan={createMockSessionPlan({
-                skillLevel: 'fiveComplements',
+                skillLevel: "fiveComplements",
                 currentPartIndex: 1,
                 currentSlotIndex: 0,
               })}
-              student={createMockStudent('Marcus')}
+              student={createMockStudent("Marcus")}
               {...defaultHandlers}
             />
           )}
         </PageWrapper>
       </div>
     </StoryProviders>
-  )
+  );
 }
 
 export const Comparison: Story = {
   render: () => <ComparisonDemo />,
-}
+};
 
 // ============================================================================
 // VISION MODE STORIES - Using Real Components
@@ -613,8 +628,8 @@ export const Comparison: Story = {
  * Creates a proper CalibrationGrid structure for storybook testing
  */
 function createFakeCalibrationGrid(columns: number) {
-  const width = 320
-  const height = 400
+  const width = 320;
+  const height = 400;
   return {
     roi: { x: 0, y: 0, width, height },
     corners: {
@@ -624,9 +639,12 @@ function createFakeCalibrationGrid(columns: number) {
       bottomRight: { x: width, y: height },
     },
     columnCount: columns,
-    columnDividers: Array.from({ length: columns - 1 }, (_, i) => (i + 1) / columns),
+    columnDividers: Array.from(
+      { length: columns - 1 },
+      (_, i) => (i + 1) / columns,
+    ),
     rotation: 0,
-  }
+  };
 }
 
 /**
@@ -638,51 +656,52 @@ function createFakeCalibrationGrid(columns: number) {
  */
 function VisionConfigSetup({
   children,
-  cameraSource = 'local',
+  cameraSource = "local",
   columnCount = 2,
 }: {
-  children: React.ReactNode
-  cameraSource?: 'local' | 'phone'
-  columnCount?: number
+  children: React.ReactNode;
+  cameraSource?: "local" | "phone";
+  columnCount?: number;
 }) {
   // Track if we've set up config this render cycle
-  const setupDoneRef = useRef(false)
+  const setupDoneRef = useRef(false);
 
   // Build config - only set remoteCameraSessionId for phone source
   // to avoid triggering socket connection attempts for local camera stories
   const buildConfig = useCallback(
     () => ({
       enabled: true,
-      cameraDeviceId: cameraSource === 'local' ? 'fake-storybook-camera' : null,
+      cameraDeviceId: cameraSource === "local" ? "fake-storybook-camera" : null,
       calibration: createFakeCalibrationGrid(columnCount),
       // Only set remote session for phone source - prevents socket errors in local camera stories
-      remoteCameraSessionId: cameraSource === 'phone' ? 'fake-storybook-session' : null,
+      remoteCameraSessionId:
+        cameraSource === "phone" ? "fake-storybook-session" : null,
       activeCameraSource: cameraSource,
     }),
-    [cameraSource, columnCount]
-  )
+    [cameraSource, columnCount],
+  );
 
   // Set up localStorage SYNCHRONOUSLY before children render
   // This ensures MyAbacusProvider sees the config when it mounts
   if (!setupDoneRef.current) {
-    localStorage.setItem('abacus-vision-config', JSON.stringify(buildConfig()))
-    setupDoneRef.current = true
+    localStorage.setItem("abacus-vision-config", JSON.stringify(buildConfig()));
+    setupDoneRef.current = true;
   }
 
   // Clean up on unmount
   useEffect(() => {
     return () => {
-      localStorage.removeItem('abacus-vision-config')
-      setupDoneRef.current = false
-    }
-  }, [])
+      localStorage.removeItem("abacus-vision-config");
+      setupDoneRef.current = false;
+    };
+  }, []);
 
   // Re-apply config if props change
   useEffect(() => {
-    localStorage.setItem('abacus-vision-config', JSON.stringify(buildConfig()))
-  }, [buildConfig])
+    localStorage.setItem("abacus-vision-config", JSON.stringify(buildConfig()));
+  }, [buildConfig]);
 
-  return <>{children}</>
+  return <>{children}</>;
 }
 
 /**
@@ -691,12 +710,12 @@ function VisionConfigSetup({
  */
 function VisionStoryProviders({
   children,
-  cameraSource = 'local',
+  cameraSource = "local",
   columnCount = 2,
 }: {
-  children: React.ReactNode
-  cameraSource?: 'local' | 'phone'
-  columnCount?: number
+  children: React.ReactNode;
+  cameraSource?: "local" | "phone";
+  columnCount?: number;
 }) {
   return (
     <VisionConfigSetup cameraSource={cameraSource} columnCount={columnCount}>
@@ -708,7 +727,7 @@ function VisionStoryProviders({
         </MyAbacusProvider>
       </ThemeProvider>
     </VisionConfigSetup>
-  )
+  );
 }
 
 /**
@@ -724,17 +743,17 @@ export const VisionLocalCamera: Story = {
       <PageWrapper>
         <ActiveSession
           plan={createMockSessionPlan({
-            skillLevel: 'basic',
+            skillLevel: "basic",
             currentPartIndex: 0,
             currentSlotIndex: 0,
           })}
-          student={createMockStudent('Vision Test')}
+          student={createMockStudent("Vision Test")}
           {...defaultHandlers}
         />
       </PageWrapper>
     </VisionStoryProviders>
   ),
-}
+};
 
 /**
  * Vision mode with real components - Phone camera
@@ -748,17 +767,17 @@ export const VisionPhoneCamera: Story = {
       <PageWrapper>
         <ActiveSession
           plan={createMockSessionPlan({
-            skillLevel: 'basic',
+            skillLevel: "basic",
             currentPartIndex: 0,
             currentSlotIndex: 0,
           })}
-          student={createMockStudent('Vision Test')}
+          student={createMockStudent("Vision Test")}
           {...defaultHandlers}
         />
       </PageWrapper>
     </VisionStoryProviders>
   ),
-}
+};
 
 /**
  * Vision mode - Larger numbers requiring more columns
@@ -769,17 +788,17 @@ export const VisionLargerNumbers: Story = {
       <PageWrapper>
         <ActiveSession
           plan={createMockSessionPlan({
-            skillLevel: 'tenComplements',
+            skillLevel: "tenComplements",
             currentPartIndex: 0,
             currentSlotIndex: 0,
           })}
-          student={createMockStudent('Vision Test')}
+          student={createMockStudent("Vision Test")}
           {...defaultHandlers}
         />
       </PageWrapper>
     </VisionStoryProviders>
   ),
-}
+};
 
 // ============================================================================
 // VISION MIRROR MODE - With Fake Video Stream from AbacusStatic
@@ -792,21 +811,21 @@ export const VisionLargerNumbers: Story = {
  */
 function useAbacusStreamFactory(
   value: number,
-  columns: number
+  columns: number,
 ): (() => Promise<MediaStream>) | null {
-  const [ready, setReady] = useState(false)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const imgRef = useRef<HTMLImageElement | null>(null)
-  const animationRef = useRef<number | null>(null)
-  const activeStreamsRef = useRef<MediaStream[]>([])
+  const [ready, setReady] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const animationRef = useRef<number | null>(null);
+  const activeStreamsRef = useRef<MediaStream[]>([]);
 
   useEffect(() => {
     // Create off-screen canvas
-    const canvas = document.createElement('canvas')
-    canvas.width = 320
-    canvas.height = 400
-    canvasRef.current = canvas
-    const ctx = canvas.getContext('2d')!
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 400;
+    canvasRef.current = canvas;
+    const ctx = canvas.getContext("2d")!;
 
     // Render AbacusStatic to SVG string
     const svgString = renderToStaticMarkup(
@@ -816,65 +835,68 @@ function useAbacusStreamFactory(
         scaleFactor={1}
         colorScheme="place-value"
         showNumbers={true}
-      />
-    )
+      />,
+    );
 
     // Create Image from SVG blob
-    const blob = new Blob([svgString], { type: 'image/svg+xml' })
-    const url = URL.createObjectURL(blob)
-    const img = new Image()
+    const blob = new Blob([svgString], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
 
     img.onload = () => {
-      URL.revokeObjectURL(url)
-      imgRef.current = img
+      URL.revokeObjectURL(url);
+      imgRef.current = img;
 
       // Fill with dark background (like a camera view)
-      ctx.fillStyle = '#1a1a2e'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.fillStyle = "#1a1a2e";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Draw abacus centered
-      const scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9
-      const x = (canvas.width - img.width * scale) / 2
-      const y = (canvas.height - img.height * scale) / 2
-      ctx.drawImage(img, x, y, img.width * scale, img.height * scale)
+      const scale =
+        Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+      const x = (canvas.width - img.width * scale) / 2;
+      const y = (canvas.height - img.height * scale) / 2;
+      ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
 
       // Keep drawing to maintain streams (some browsers need this)
       const drawLoop = () => {
-        ctx.fillStyle = '#1a1a2e'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(img, x, y, img.width * scale, img.height * scale)
-        animationRef.current = requestAnimationFrame(drawLoop)
-      }
-      drawLoop()
+        ctx.fillStyle = "#1a1a2e";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        animationRef.current = requestAnimationFrame(drawLoop);
+      };
+      drawLoop();
 
-      setReady(true)
-    }
+      setReady(true);
+    };
 
-    img.src = url
+    img.src = url;
 
     return () => {
       if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
+        cancelAnimationFrame(animationRef.current);
       }
       // Stop all streams we created
-      activeStreamsRef.current.forEach((s) => s.getTracks().forEach((t) => t.stop()))
-      activeStreamsRef.current = []
-    }
-  }, [value, columns])
+      activeStreamsRef.current.forEach((s) =>
+        s.getTracks().forEach((t) => t.stop()),
+      );
+      activeStreamsRef.current = [];
+    };
+  }, [value, columns]);
 
   // Return a factory function that creates new streams on demand
   const createStream = useCallback(async (): Promise<MediaStream> => {
     if (!canvasRef.current) {
-      throw new Error('Canvas not ready')
+      throw new Error("Canvas not ready");
     }
     // Create a fresh MediaStream from the canvas
-    const newStream = canvasRef.current.captureStream(30)
-    activeStreamsRef.current.push(newStream)
-    console.log('[Storybook] Created new fake AbacusStatic video stream')
-    return newStream
-  }, [])
+    const newStream = canvasRef.current.captureStream(30);
+    activeStreamsRef.current.push(newStream);
+    console.log("[Storybook] Created new fake AbacusStatic video stream");
+    return newStream;
+  }, []);
 
-  return ready ? createStream : null
+  return ready ? createStream : null;
 }
 
 /**
@@ -889,55 +911,57 @@ function FakeVisionCameraSetup({
   abacusValue,
   abacusColumns,
 }: {
-  children: React.ReactNode
-  abacusValue: number
-  abacusColumns: number
+  children: React.ReactNode;
+  abacusValue: number;
+  abacusColumns: number;
 }) {
-  const createStream = useAbacusStreamFactory(abacusValue, abacusColumns)
-  const [ready, setReady] = useState(false)
-  const originalGetUserMediaRef = useRef<typeof navigator.mediaDevices.getUserMedia | null>(null)
+  const createStream = useAbacusStreamFactory(abacusValue, abacusColumns);
+  const [ready, setReady] = useState(false);
+  const originalGetUserMediaRef = useRef<
+    typeof navigator.mediaDevices.getUserMedia | null
+  >(null);
 
   useEffect(() => {
-    if (!createStream) return
+    if (!createStream) return;
 
     // Save original and mock getUserMedia
     originalGetUserMediaRef.current = navigator.mediaDevices.getUserMedia.bind(
-      navigator.mediaDevices
-    )
+      navigator.mediaDevices,
+    );
 
     // Mock returns a NEW stream each time (important for tab switching)
     navigator.mediaDevices.getUserMedia = async () => {
-      return createStream()
-    }
+      return createStream();
+    };
 
-    setReady(true)
+    setReady(true);
 
     return () => {
       // Restore original
       if (originalGetUserMediaRef.current) {
-        navigator.mediaDevices.getUserMedia = originalGetUserMediaRef.current
+        navigator.mediaDevices.getUserMedia = originalGetUserMediaRef.current;
       }
-    }
-  }, [createStream])
+    };
+  }, [createStream]);
 
   if (!ready) {
     return (
       <div
         className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          bg: 'gray.100',
-          color: 'gray.600',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          bg: "gray.100",
+          color: "gray.600",
         })}
       >
         Setting up fake camera...
       </div>
-    )
+    );
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }
 
 /**
@@ -949,12 +973,15 @@ function VisionMirrorProviders({
   abacusValue,
   abacusColumns,
 }: {
-  children: React.ReactNode
-  abacusValue: number
-  abacusColumns: number
+  children: React.ReactNode;
+  abacusValue: number;
+  abacusColumns: number;
 }) {
   return (
-    <FakeVisionCameraSetup abacusValue={abacusValue} abacusColumns={abacusColumns}>
+    <FakeVisionCameraSetup
+      abacusValue={abacusValue}
+      abacusColumns={abacusColumns}
+    >
       <VisionConfigSetup cameraSource="local" columnCount={abacusColumns}>
         <ThemeProvider>
           <MyAbacusProvider>
@@ -965,7 +992,7 @@ function VisionMirrorProviders({
         </ThemeProvider>
       </VisionConfigSetup>
     </FakeVisionCameraSetup>
-  )
+  );
 }
 
 /**
@@ -982,67 +1009,78 @@ function VisionMirrorProviders({
  * you may need to manually verify the layout in the real app.
  */
 function VisionMirrorDemo() {
-  const [abacusValue] = useState(45)
-  const [abacusColumns] = useState(2)
+  const [abacusValue] = useState(45);
+  const [abacusColumns] = useState(2);
 
   return (
-    <VisionMirrorProviders abacusValue={abacusValue} abacusColumns={abacusColumns}>
+    <VisionMirrorProviders
+      abacusValue={abacusValue}
+      abacusColumns={abacusColumns}
+    >
       <PageWrapper>
-        <div className={css({ mb: 4, p: 3, bg: 'blue.50', borderRadius: 'lg' })}>
-          <p className={css({ fontSize: 'sm', color: 'blue.700' })}>
-            <strong>Vision Mirror Test:</strong> The dock should show a fake video feed rendering
-            AbacusStatic (value: {abacusValue}). If ML detection works on this synthetic feed, click
-            the 🧮 toggle to enter mirror mode with PIP.
+        <div
+          className={css({ mb: 4, p: 3, bg: "blue.50", borderRadius: "lg" })}
+        >
+          <p className={css({ fontSize: "sm", color: "blue.700" })}>
+            <strong>Vision Mirror Test:</strong> The dock should show a fake
+            video feed rendering AbacusStatic (value: {abacusValue}). If ML
+            detection works on this synthetic feed, click the 🧮 toggle to enter
+            mirror mode with PIP.
           </p>
         </div>
         <ActiveSession
           plan={createMockSessionPlan({
-            skillLevel: 'basic',
+            skillLevel: "basic",
             currentPartIndex: 0,
             currentSlotIndex: 0,
           })}
-          student={createMockStudent('Mirror Test')}
+          student={createMockStudent("Mirror Test")}
           {...defaultHandlers}
         />
       </PageWrapper>
     </VisionMirrorProviders>
-  )
+  );
 }
 
 export const VisionMirrorWithFakeCamera: Story = {
   render: () => <VisionMirrorDemo />,
-}
+};
 
 /**
  * Vision Mirror Mode with larger numbers (3 columns)
  */
 function VisionMirrorLargeDemo() {
-  const [abacusValue] = useState(247)
-  const [abacusColumns] = useState(3)
+  const [abacusValue] = useState(247);
+  const [abacusColumns] = useState(3);
 
   return (
-    <VisionMirrorProviders abacusValue={abacusValue} abacusColumns={abacusColumns}>
+    <VisionMirrorProviders
+      abacusValue={abacusValue}
+      abacusColumns={abacusColumns}
+    >
       <PageWrapper>
-        <div className={css({ mb: 4, p: 3, bg: 'blue.50', borderRadius: 'lg' })}>
-          <p className={css({ fontSize: 'sm', color: 'blue.700' })}>
-            <strong>Vision Mirror Test (Large):</strong> Fake video showing AbacusStatic with value{' '}
-            {abacusValue} ({abacusColumns} columns).
+        <div
+          className={css({ mb: 4, p: 3, bg: "blue.50", borderRadius: "lg" })}
+        >
+          <p className={css({ fontSize: "sm", color: "blue.700" })}>
+            <strong>Vision Mirror Test (Large):</strong> Fake video showing
+            AbacusStatic with value {abacusValue} ({abacusColumns} columns).
           </p>
         </div>
         <ActiveSession
           plan={createMockSessionPlan({
-            skillLevel: 'tenComplements',
+            skillLevel: "tenComplements",
             currentPartIndex: 0,
             currentSlotIndex: 0,
           })}
-          student={createMockStudent('Large Mirror Test')}
+          student={createMockStudent("Large Mirror Test")}
           {...defaultHandlers}
         />
       </PageWrapper>
     </VisionMirrorProviders>
-  )
+  );
 }
 
 export const VisionMirrorLargeNumbers: Story = {
   render: () => <VisionMirrorLargeDemo />,
-}
+};

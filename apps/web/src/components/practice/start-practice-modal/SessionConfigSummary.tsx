@@ -1,12 +1,15 @@
-'use client'
+"use client";
 
-import { useTheme } from '@/contexts/ThemeContext'
-import { css } from '../../../../styled-system/css'
-import { useStartPracticeModal, PART_TYPES } from '../StartPracticeModalContext'
+import { useTheme } from "@/contexts/ThemeContext";
+import { css } from "../../../../styled-system/css";
+import {
+  useStartPracticeModal,
+  PART_TYPES,
+} from "../StartPracticeModalContext";
 
 export function SessionConfigSummary() {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const {
     durationMinutes,
     estimatedProblems,
@@ -17,17 +20,17 @@ export function SessionConfigSummary() {
     gameBreakEnabled,
     gameBreakMinutes,
     showGameBreakSettings,
-  } = useStartPracticeModal()
+  } = useStartPracticeModal();
 
   return (
     <div
       data-section="config-summary"
       className={css({
-        overflow: 'hidden',
-        transition: 'all 0.3s ease',
+        overflow: "hidden",
+        transition: "all 0.3s ease",
       })}
       style={{
-        maxHeight: isExpanded ? '0px' : '140px',
+        maxHeight: isExpanded ? "0px" : "140px",
         opacity: isExpanded ? 0 : 1,
       }}
     >
@@ -36,36 +39,41 @@ export function SessionConfigSummary() {
         data-action="expand-config"
         onClick={() => setIsExpanded(true)}
         className={css({
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.75rem',
-          background: 'none',
-          border: 'none',
-          padding: '1rem',
-          cursor: 'pointer',
-          transition: 'background-color 0.15s ease',
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "0.75rem",
+          background: "none",
+          border: "none",
+          padding: "1rem",
+          cursor: "pointer",
+          transition: "background-color 0.15s ease",
           _hover: {
-            backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.03)"
+              : "rgba(0,0,0,0.02)",
           },
-          '@media (max-width: 480px), (max-height: 700px)': {
-            padding: '0.75rem',
-            gap: '0.5rem',
+          "@media (max-width: 480px), (max-height: 700px)": {
+            padding: "0.75rem",
+            gap: "0.5rem",
           },
         })}
       >
         {/* Duration */}
-        <div data-element="duration-summary" className={css({ textAlign: 'center' })}>
+        <div
+          data-element="duration-summary"
+          className={css({ textAlign: "center" })}
+        >
           <div
             data-value="duration-minutes"
             className={css({
-              fontSize: '1.5rem',
-              fontWeight: 'bold',
-              color: isDark ? 'blue.300' : 'blue.600',
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+              color: isDark ? "blue.300" : "blue.600",
               lineHeight: 1,
-              '@media (max-width: 480px), (max-height: 700px)': {
-                fontSize: '1.25rem',
+              "@media (max-width: 480px), (max-height: 700px)": {
+                fontSize: "1.25rem",
               },
             })}
           >
@@ -74,9 +82,9 @@ export function SessionConfigSummary() {
           <div
             data-label="duration"
             className={css({
-              fontSize: '0.6875rem',
-              color: isDark ? 'gray.500' : 'gray.500',
-              marginTop: '0.125rem',
+              fontSize: "0.6875rem",
+              color: isDark ? "gray.500" : "gray.500",
+              marginTop: "0.125rem",
             })}
           >
             min
@@ -85,24 +93,27 @@ export function SessionConfigSummary() {
 
         <div
           className={css({
-            fontSize: '0.875rem',
-            color: isDark ? 'gray.600' : 'gray.300',
+            fontSize: "0.875rem",
+            color: isDark ? "gray.600" : "gray.300",
           })}
         >
           •
         </div>
 
         {/* Problems */}
-        <div data-element="problems-summary" className={css({ textAlign: 'center' })}>
+        <div
+          data-element="problems-summary"
+          className={css({ textAlign: "center" })}
+        >
           <div
             data-value="problems-count"
             className={css({
-              fontSize: '1.5rem',
-              fontWeight: 'bold',
-              color: isDark ? 'green.300' : 'green.600',
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+              color: isDark ? "green.300" : "green.600",
               lineHeight: 1,
-              '@media (max-width: 480px), (max-height: 700px)': {
-                fontSize: '1.25rem',
+              "@media (max-width: 480px), (max-height: 700px)": {
+                fontSize: "1.25rem",
               },
             })}
           >
@@ -111,11 +122,11 @@ export function SessionConfigSummary() {
           <div
             data-label="problems"
             className={css({
-              fontSize: '0.6875rem',
-              color: isDark ? 'gray.500' : 'gray.500',
-              marginTop: '0.125rem',
-              '@media (max-width: 480px), (max-height: 700px)': {
-                fontSize: '0.625rem',
+              fontSize: "0.6875rem",
+              color: isDark ? "gray.500" : "gray.500",
+              marginTop: "0.125rem",
+              "@media (max-width: 480px), (max-height: 700px)": {
+                fontSize: "0.625rem",
               },
             })}
           >
@@ -125,10 +136,10 @@ export function SessionConfigSummary() {
 
         <div
           className={css({
-            fontSize: '0.875rem',
-            color: isDark ? 'gray.600' : 'gray.300',
-            '@media (max-width: 480px), (max-height: 700px)': {
-              fontSize: '0.75rem',
+            fontSize: "0.875rem",
+            color: isDark ? "gray.600" : "gray.300",
+            "@media (max-width: 480px), (max-height: 700px)": {
+              fontSize: "0.75rem",
             },
           })}
         >
@@ -139,54 +150,56 @@ export function SessionConfigSummary() {
         <div
           data-element="modes-summary"
           className={css({
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            '@media (max-width: 480px), (max-height: 700px)': {
-              gap: '0.375rem',
+            display: "flex",
+            justifyContent: "center",
+            gap: "0.5rem",
+            "@media (max-width: 480px), (max-height: 700px)": {
+              gap: "0.375rem",
             },
           })}
         >
-          {PART_TYPES.filter((p) => p.enabled && enabledParts[p.type]).map(({ type, emoji }) => (
-            <div
-              key={type}
-              data-mode={type}
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0',
-              })}
-            >
-              <span
-                data-element="mode-icon"
+          {PART_TYPES.filter((p) => p.enabled && enabledParts[p.type]).map(
+            ({ type, emoji }) => (
+              <div
+                key={type}
+                data-mode={type}
                 className={css({
-                  fontSize: '1.25rem',
-                  lineHeight: 1,
-                  '@media (max-width: 480px), (max-height: 700px)': {
-                    fontSize: '1rem',
-                  },
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "0",
                 })}
               >
-                {emoji}
-              </span>
-              <span
-                data-element="mode-count"
-                className={css({
-                  fontSize: '0.6875rem',
-                  fontWeight: '600',
-                  lineHeight: 1,
-                  marginTop: '0.125rem',
-                  '@media (max-width: 480px), (max-height: 700px)': {
-                    fontSize: '0.625rem',
-                  },
-                })}
-                style={{ color: isDark ? '#22c55e' : '#16a34a' }}
-              >
-                {problemsPerType[type]}
-              </span>
-            </div>
-          ))}
+                <span
+                  data-element="mode-icon"
+                  className={css({
+                    fontSize: "1.25rem",
+                    lineHeight: 1,
+                    "@media (max-width: 480px), (max-height: 700px)": {
+                      fontSize: "1rem",
+                    },
+                  })}
+                >
+                  {emoji}
+                </span>
+                <span
+                  data-element="mode-count"
+                  className={css({
+                    fontSize: "0.6875rem",
+                    fontWeight: "600",
+                    lineHeight: 1,
+                    marginTop: "0.125rem",
+                    "@media (max-width: 480px), (max-height: 700px)": {
+                      fontSize: "0.625rem",
+                    },
+                  })}
+                  style={{ color: isDark ? "#22c55e" : "#16a34a" }}
+                >
+                  {problemsPerType[type]}
+                </span>
+              </div>
+            ),
+          )}
         </div>
 
         {/* Game break indicator (only when breaks are possible) */}
@@ -194,10 +207,10 @@ export function SessionConfigSummary() {
           <>
             <div
               className={css({
-                fontSize: '0.875rem',
-                color: isDark ? 'gray.600' : 'gray.300',
-                '@media (max-width: 480px), (max-height: 700px)': {
-                  fontSize: '0.75rem',
+                fontSize: "0.875rem",
+                color: isDark ? "gray.600" : "gray.300",
+                "@media (max-width: 480px), (max-height: 700px)": {
+                  fontSize: "0.75rem",
                 },
               })}
             >
@@ -207,24 +220,24 @@ export function SessionConfigSummary() {
               data-element="game-break-summary"
               data-enabled={gameBreakEnabled}
               className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0',
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "0",
               })}
             >
               <span
                 data-element="game-break-icon"
                 className={css({
-                  fontSize: '1.25rem',
+                  fontSize: "1.25rem",
                   lineHeight: 1,
-                  '@media (max-width: 480px), (max-height: 700px)': {
-                    fontSize: '1rem',
+                  "@media (max-width: 480px), (max-height: 700px)": {
+                    fontSize: "1rem",
                   },
                 })}
                 style={{
                   opacity: gameBreakEnabled ? 1 : 0.35,
-                  filter: gameBreakEnabled ? 'none' : 'grayscale(100%)',
+                  filter: gameBreakEnabled ? "none" : "grayscale(100%)",
                 }}
               >
                 🎮
@@ -232,25 +245,25 @@ export function SessionConfigSummary() {
               <span
                 data-element="game-break-status"
                 className={css({
-                  fontSize: '0.6875rem',
-                  fontWeight: '600',
+                  fontSize: "0.6875rem",
+                  fontWeight: "600",
                   lineHeight: 1,
-                  marginTop: '0.125rem',
-                  '@media (max-width: 480px), (max-height: 700px)': {
-                    fontSize: '0.625rem',
+                  marginTop: "0.125rem",
+                  "@media (max-width: 480px), (max-height: 700px)": {
+                    fontSize: "0.625rem",
                   },
                 })}
                 style={{
                   color: gameBreakEnabled
                     ? isDark
-                      ? '#fbbf24'
-                      : '#d97706'
+                      ? "#fbbf24"
+                      : "#d97706"
                     : isDark
-                      ? '#6b7280'
-                      : '#9ca3af',
+                      ? "#6b7280"
+                      : "#9ca3af",
                 }}
               >
-                {gameBreakEnabled ? `${gameBreakMinutes}m` : 'off'}
+                {gameBreakEnabled ? `${gameBreakMinutes}m` : "off"}
               </span>
             </div>
           </>
@@ -260,12 +273,12 @@ export function SessionConfigSummary() {
         <div
           data-element="expand-indicator"
           className={css({
-            marginLeft: '0.25rem',
-            fontSize: '0.625rem',
-            color: isDark ? 'gray.500' : 'gray.400',
-            '@media (max-width: 480px), (max-height: 700px)': {
-              fontSize: '0.5rem',
-              marginLeft: '0.125rem',
+            marginLeft: "0.25rem",
+            fontSize: "0.625rem",
+            color: isDark ? "gray.500" : "gray.400",
+            "@media (max-width: 480px), (max-height: 700px)": {
+              fontSize: "0.5rem",
+              marginLeft: "0.125rem",
             },
           })}
         >
@@ -273,5 +286,5 @@ export function SessionConfigSummary() {
         </div>
       </button>
     </div>
-  )
+  );
 }

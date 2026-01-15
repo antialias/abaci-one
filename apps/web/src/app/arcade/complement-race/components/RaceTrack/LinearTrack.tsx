@@ -1,16 +1,16 @@
-'use client'
+"use client";
 
-import { useGameMode } from '@/contexts/GameModeContext'
-import { useUserProfile } from '@/contexts/UserProfileContext'
-import { useComplementRace } from '@/arcade-games/complement-race/Provider'
-import type { AIRacer } from '../../lib/gameTypes'
-import { SpeechBubble } from '../AISystem/SpeechBubble'
+import { useGameMode } from "@/contexts/GameModeContext";
+import { useUserProfile } from "@/contexts/UserProfileContext";
+import { useComplementRace } from "@/arcade-games/complement-race/Provider";
+import type { AIRacer } from "../../lib/gameTypes";
+import { SpeechBubble } from "../AISystem/SpeechBubble";
 
 interface LinearTrackProps {
-  playerProgress: number
-  aiRacers: AIRacer[]
-  raceGoal: number
-  showFinishLine?: boolean
+  playerProgress: number;
+  aiRacers: AIRacer[];
+  raceGoal: number;
+  showFinishLine?: boolean;
 }
 
 export function LinearTrack({
@@ -19,73 +19,75 @@ export function LinearTrack({
   raceGoal,
   showFinishLine = true,
 }: LinearTrackProps) {
-  const { state, dispatch } = useComplementRace()
-  const { players, activePlayers } = useGameMode()
-  const { profile: _profile } = useUserProfile()
+  const { state, dispatch } = useComplementRace();
+  const { players, activePlayers } = useGameMode();
+  const { profile: _profile } = useUserProfile();
 
   // Get the current user's active local players (consistent with navbar pattern)
   const activeLocalPlayers = Array.from(activePlayers)
     .map((id) => players.get(id))
-    .filter((p): p is NonNullable<typeof p> => p !== undefined && p.isLocal !== false)
-  const playerEmoji = activeLocalPlayers[0]?.emoji ?? '👤'
+    .filter(
+      (p): p is NonNullable<typeof p> => p !== undefined && p.isLocal !== false,
+    );
+  const playerEmoji = activeLocalPlayers[0]?.emoji ?? "👤";
 
   // Position calculation: leftPercent = Math.min(98, (progress / raceGoal) * 96 + 2)
   // 2% minimum (start), 98% maximum (near finish), 96% range for race
   const getPosition = (progress: number) => {
-    return Math.min(98, (progress / raceGoal) * 96 + 2)
-  }
+    return Math.min(98, (progress / raceGoal) * 96 + 2);
+  };
 
-  const playerPosition = getPosition(playerProgress)
+  const playerPosition = getPosition(playerProgress);
 
   return (
     <div
       data-component="linear-track"
       style={{
-        position: 'relative',
-        width: '100%',
-        height: '200px',
+        position: "relative",
+        width: "100%",
+        height: "200px",
         background:
-          'linear-gradient(to bottom, #87ceeb 0%, #e0f2fe 50%, #90ee90 50%, #d4f1d4 100%)',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        marginTop: '20px',
+          "linear-gradient(to bottom, #87ceeb 0%, #e0f2fe 50%, #90ee90 50%, #d4f1d4 100%)",
+        borderRadius: "12px",
+        overflow: "hidden",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        marginTop: "20px",
       }}
     >
       {/* Track lines */}
       <div
         style={{
-          position: 'absolute',
-          top: '50%',
+          position: "absolute",
+          top: "50%",
           left: 0,
           right: 0,
-          height: '2px',
-          background: 'rgba(0, 0, 0, 0.1)',
-          transform: 'translateY(-50%)',
+          height: "2px",
+          background: "rgba(0, 0, 0, 0.1)",
+          transform: "translateY(-50%)",
         }}
       />
 
       <div
         style={{
-          position: 'absolute',
-          top: '40%',
+          position: "absolute",
+          top: "40%",
           left: 0,
           right: 0,
-          height: '1px',
-          background: 'rgba(0, 0, 0, 0.05)',
-          transform: 'translateY(-50%)',
+          height: "1px",
+          background: "rgba(0, 0, 0, 0.05)",
+          transform: "translateY(-50%)",
         }}
       />
 
       <div
         style={{
-          position: 'absolute',
-          top: '60%',
+          position: "absolute",
+          top: "60%",
           left: 0,
           right: 0,
-          height: '1px',
-          background: 'rgba(0, 0, 0, 0.05)',
-          transform: 'translateY(-50%)',
+          height: "1px",
+          background: "rgba(0, 0, 0, 0.05)",
+          transform: "translateY(-50%)",
         }}
       />
 
@@ -93,14 +95,14 @@ export function LinearTrack({
       {showFinishLine && (
         <div
           style={{
-            position: 'absolute',
-            right: '2%',
+            position: "absolute",
+            right: "2%",
             top: 0,
             bottom: 0,
-            width: '4px',
+            width: "4px",
             background:
-              'repeating-linear-gradient(0deg, black 0px, black 10px, white 10px, white 20px)',
-            boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
+              "repeating-linear-gradient(0deg, black 0px, black 10px, white 10px, white 20px)",
+            boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)",
           }}
         />
       )}
@@ -108,13 +110,13 @@ export function LinearTrack({
       {/* Player racer */}
       <div
         style={{
-          position: 'absolute',
+          position: "absolute",
           left: `${playerPosition}%`,
-          top: '50%',
-          transform: 'translate(-50%, -50%) scaleX(-1)',
-          fontSize: '32px',
-          transition: 'left 0.3s ease-out',
-          filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))',
+          top: "50%",
+          transform: "translate(-50%, -50%) scaleX(-1)",
+          fontSize: "32px",
+          transition: "left 0.3s ease-out",
+          filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))",
           zIndex: 10,
         }}
       >
@@ -123,20 +125,20 @@ export function LinearTrack({
 
       {/* AI racers */}
       {aiRacers.map((racer, index) => {
-        const aiPosition = getPosition(racer.position)
-        const activeBubble = state.activeSpeechBubbles.get(racer.id)
+        const aiPosition = getPosition(racer.position);
+        const activeBubble = state.activeSpeechBubbles.get(racer.id);
 
         return (
           <div
             key={racer.id}
             style={{
-              position: 'absolute',
+              position: "absolute",
               left: `${aiPosition}%`,
               top: `${35 + index * 15}%`,
-              transform: 'translate(-50%, -50%) scaleX(-1)',
-              fontSize: '28px',
-              transition: 'left 0.2s linear',
-              filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))',
+              transform: "translate(-50%, -50%) scaleX(-1)",
+              fontSize: "28px",
+              transition: "left 0.2s linear",
+              filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))",
               zIndex: 5,
             }}
           >
@@ -144,40 +146,42 @@ export function LinearTrack({
             {activeBubble && (
               <div
                 style={{
-                  position: 'absolute',
-                  bottom: '100%', // Position above the AI racer
-                  left: '50%',
-                  transform: 'translate(-50%, -15px) scaleX(-1)', // Offset 15px above, counter-flip bubble
+                  position: "absolute",
+                  bottom: "100%", // Position above the AI racer
+                  left: "50%",
+                  transform: "translate(-50%, -15px) scaleX(-1)", // Offset 15px above, counter-flip bubble
                   zIndex: 20, // Above player (10) and AI racers (5)
                 }}
               >
                 <SpeechBubble
                   message={activeBubble}
-                  onHide={() => dispatch({ type: 'CLEAR_AI_COMMENT', racerId: racer.id })}
+                  onHide={() =>
+                    dispatch({ type: "CLEAR_AI_COMMENT", racerId: racer.id })
+                  }
                 />
               </div>
             )}
           </div>
-        )
+        );
       })}
 
       {/* Progress indicator */}
       <div
         style={{
-          position: 'absolute',
-          bottom: '10px',
-          left: '10px',
-          background: 'rgba(255, 255, 255, 0.9)',
-          padding: '6px 12px',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          color: '#1f2937',
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+          position: "absolute",
+          bottom: "10px",
+          left: "10px",
+          background: "rgba(255, 255, 255, 0.9)",
+          padding: "6px 12px",
+          borderRadius: "8px",
+          fontSize: "14px",
+          fontWeight: "bold",
+          color: "#1f2937",
+          boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)",
         }}
       >
         {playerProgress} / {raceGoal}
       </div>
     </div>
-  )
+  );
 }

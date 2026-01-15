@@ -1,23 +1,23 @@
-'use client'
+"use client";
 
-import type { ReactNode } from 'react'
-import { useMemo, useCallback, useEffect, useRef } from 'react'
-import { GameModeProvider, type RoomData } from '@/contexts/GameModeContext'
-import type { Player as DBPlayer } from '@/db/schema/players'
-import { useViewerId } from '@/hooks/useViewerId'
-import { useArcadeSocket } from '@/hooks/useArcadeSocket'
+import type { ReactNode } from "react";
+import { useMemo, useCallback, useEffect, useRef } from "react";
+import { GameModeProvider, type RoomData } from "@/contexts/GameModeContext";
+import type { Player as DBPlayer } from "@/db/schema/players";
+import { useViewerId } from "@/hooks/useViewerId";
+import { useArcadeSocket } from "@/hooks/useArcadeSocket";
 
 interface StudentInfo {
-  id: string
-  name: string
-  emoji: string
-  color: string
+  id: string;
+  name: string;
+  emoji: string;
+  color: string;
 }
 
 interface PracticeGameModeProviderProps {
-  student: StudentInfo
-  roomData: RoomData | null
-  children: ReactNode
+  student: StudentInfo;
+  roomData: RoomData | null;
+  children: ReactNode;
   /**
    * Callback fired when the game transitions to 'results' phase.
    *
@@ -33,7 +33,7 @@ interface PracticeGameModeProviderProps {
    * @param gameState The final game state when transitioning to 'results'
    * @see docs in .claude/ARCADE_ROOM_ARCHITECTURE.md for the full protocol
    */
-  onGameComplete?: (gameState: Record<string, unknown>) => void
+  onGameComplete?: (gameState: Record<string, unknown>) => void;
 }
 
 /**
@@ -54,53 +54,56 @@ export function PracticeGameModeProvider({
   children,
   onGameComplete,
 }: PracticeGameModeProviderProps) {
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useViewerId();
 
   // Track previous game phase to detect transitions
-  const previousPhaseRef = useRef<string | null>(null)
-  const hasNotifiedCompletionRef = useRef(false)
-  const onGameCompleteRef = useRef(onGameComplete)
-  onGameCompleteRef.current = onGameComplete
+  const previousPhaseRef = useRef<string | null>(null);
+  const hasNotifiedCompletionRef = useRef(false);
+  const onGameCompleteRef = useRef(onGameComplete);
+  onGameCompleteRef.current = onGameComplete;
 
   // Listen for game state changes to detect completion
   // Note: We listen to BOTH session-state (initial join) and move-accepted (during gameplay)
   // because session-state is only sent on join, while move-accepted contains state updates
-  const handleStateUpdate = useCallback((gameState: { gamePhase?: string } | null) => {
-    const currentPhase = gameState?.gamePhase ?? null
+  const handleStateUpdate = useCallback(
+    (gameState: { gamePhase?: string } | null) => {
+      const currentPhase = gameState?.gamePhase ?? null;
 
-    // Detect transition TO 'results' phase (not already in results)
-    if (
-      currentPhase === 'results' &&
-      previousPhaseRef.current !== 'results' &&
-      !hasNotifiedCompletionRef.current
-    ) {
-      hasNotifiedCompletionRef.current = true
-      // Pass the full game state so caller can generate results report
-      onGameCompleteRef.current?.(gameState as Record<string, unknown>)
-    }
+      // Detect transition TO 'results' phase (not already in results)
+      if (
+        currentPhase === "results" &&
+        previousPhaseRef.current !== "results" &&
+        !hasNotifiedCompletionRef.current
+      ) {
+        hasNotifiedCompletionRef.current = true;
+        // Pass the full game state so caller can generate results report
+        onGameCompleteRef.current?.(gameState as Record<string, unknown>);
+      }
 
-    previousPhaseRef.current = currentPhase
-  }, [])
+      previousPhaseRef.current = currentPhase;
+    },
+    [],
+  );
 
   const handleSessionState = useCallback(
     (data: { gameState: unknown }) => {
-      handleStateUpdate(data.gameState as { gamePhase?: string } | null)
+      handleStateUpdate(data.gameState as { gamePhase?: string } | null);
     },
-    [handleStateUpdate]
-  )
+    [handleStateUpdate],
+  );
 
   const handleMoveAccepted = useCallback(
     (data: { gameState: unknown }) => {
-      handleStateUpdate(data.gameState as { gamePhase?: string } | null)
+      handleStateUpdate(data.gameState as { gamePhase?: string } | null);
     },
-    [handleStateUpdate]
-  )
+    [handleStateUpdate],
+  );
 
   // Reset completion tracking when roomData changes (new game session)
   useEffect(() => {
-    hasNotifiedCompletionRef.current = false
-    previousPhaseRef.current = null
-  }, [roomData?.id])
+    hasNotifiedCompletionRef.current = false;
+    previousPhaseRef.current = null;
+  }, [roomData?.id]);
 
   // Connect to arcade socket to listen for game state updates
   const { joinSession, socket } = useArcadeSocket({
@@ -108,23 +111,23 @@ export function PracticeGameModeProvider({
     onMoveAccepted: handleMoveAccepted,
     // Suppress error toasts - we don't want arcade errors during practice
     suppressErrorToasts: true,
-  })
+  });
 
   // Join the arcade session to receive state updates
   // The game's Provider also joins, but we need our socket to join too
   // to receive the session-state events for game completion detection
   useEffect(() => {
     if (viewerId && roomData?.id && socket) {
-      joinSession(viewerId, roomData.id)
+      joinSession(viewerId, roomData.id);
     }
-  }, [viewerId, roomData?.id, socket, joinSession])
+  }, [viewerId, roomData?.id, socket, joinSession]);
 
   // Create a fake DBPlayer from the practice student
   const dbPlayers: DBPlayer[] = useMemo(
     () => [
       {
         id: student.id,
-        userId: viewerId ?? 'practice-user',
+        userId: viewerId ?? "practice-user",
         name: student.name,
         emoji: student.emoji,
         color: student.color,
@@ -136,8 +139,8 @@ export function PracticeGameModeProvider({
         familyCode: null,
       },
     ],
-    [student, viewerId]
-  )
+    [student, viewerId],
+  );
 
   // Inject the fake player into roomData.memberPlayers
   // This is necessary because getRoomActivePlayers() queries the DB,
@@ -145,10 +148,10 @@ export function PracticeGameModeProvider({
   // Use viewerId if available, or a fallback key for practice mode
   // (this handles the race condition where viewerId is still loading)
   const enrichedRoomData: RoomData | null = useMemo(() => {
-    if (!roomData) return roomData
+    if (!roomData) return roomData;
 
     // Use viewerId or fallback to ensure student is always in memberPlayers
-    const memberKey = viewerId ?? 'practice-user'
+    const memberKey = viewerId ?? "practice-user";
 
     return {
       ...roomData,
@@ -163,14 +166,14 @@ export function PracticeGameModeProvider({
           },
         ],
       },
-    }
-  }, [roomData, viewerId, student])
+    };
+  }, [roomData, viewerId, student]);
 
   // No-op mutations - we don't want to modify player data during game breaks
-  const createPlayer = useCallback(() => {}, [])
-  const updatePlayerMutation = useCallback(() => {}, [])
-  const deletePlayer = useCallback(() => {}, [])
-  const notifyRoomOfPlayerUpdate = useCallback(() => {}, [])
+  const createPlayer = useCallback(() => {}, []);
+  const updatePlayerMutation = useCallback(() => {}, []);
+  const deletePlayer = useCallback(() => {}, []);
+  const notifyRoomOfPlayerUpdate = useCallback(() => {}, []);
 
   return (
     <GameModeProvider
@@ -185,5 +188,5 @@ export function PracticeGameModeProvider({
     >
       {children}
     </GameModeProvider>
-  )
+  );
 }

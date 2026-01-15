@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 /**
  * ProgressiveHighlightOverlay - SVG overlay showing completed problem boxes
@@ -10,14 +10,14 @@
  * parent container.
  */
 
-import { css } from '../../../styled-system/css'
-import type { CompletedProblem } from '@/hooks/useWorksheetParsing'
+import { css } from "../../../styled-system/css";
+import type { CompletedProblem } from "@/hooks/useWorksheetParsing";
 
 export interface ProgressiveHighlightOverlayProps {
   /** Problems that have been completed (with bounding boxes) */
-  completedProblems: CompletedProblem[]
+  completedProblems: CompletedProblem[];
   /** Animation delay per problem (staggered appearance) */
-  staggerDelay?: number
+  staggerDelay?: number;
 }
 
 export function ProgressiveHighlightOverlay({
@@ -25,37 +25,37 @@ export function ProgressiveHighlightOverlay({
   staggerDelay = 50,
 }: ProgressiveHighlightOverlayProps) {
   if (completedProblems.length === 0) {
-    return null
+    return null;
   }
 
   return (
     <svg
       data-component="progressive-highlight-overlay"
       className={css({
-        position: 'absolute',
+        position: "absolute",
         inset: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
         zIndex: 5,
       })}
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
     >
       {completedProblems.map((problem, index) => {
-        const { x, y, width, height } = problem.problemBoundingBox
+        const { x, y, width, height } = problem.problemBoundingBox;
 
         // Convert normalized (0-1) to viewBox (0-100)
-        const boxX = x * 100
-        const boxY = y * 100
-        const boxWidth = width * 100
-        const boxHeight = height * 100
+        const boxX = x * 100;
+        const boxY = y * 100;
+        const boxWidth = width * 100;
+        const boxHeight = height * 100;
 
         return (
           <g
             key={`problem-${problem.problemNumber}`}
             style={{
-              animation: 'problemAppear 0.3s ease-out forwards',
+              animation: "problemAppear 0.3s ease-out forwards",
               animationDelay: `${index * staggerDelay}ms`,
               opacity: 0,
             }}
@@ -73,7 +73,12 @@ export function ProgressiveHighlightOverlay({
               ry={0.5}
             />
             {/* Checkmark in corner */}
-            <circle cx={boxX + boxWidth - 2} cy={boxY + 2} r={2} fill="rgba(34, 197, 94, 1)" />
+            <circle
+              cx={boxX + boxWidth - 2}
+              cy={boxY + 2}
+              r={2}
+              fill="rgba(34, 197, 94, 1)"
+            />
             <path
               d={`M ${boxX + boxWidth - 3} ${boxY + 2} l 0.7 0.7 l 1.3 -1.5`}
               stroke="white"
@@ -83,10 +88,10 @@ export function ProgressiveHighlightOverlay({
               strokeLinejoin="round"
             />
           </g>
-        )
+        );
       })}
     </svg>
-  )
+  );
 }
 
 /**
@@ -97,31 +102,31 @@ export function ProgressiveHighlightOverlayCompact({
   staggerDelay = 50,
 }: ProgressiveHighlightOverlayProps) {
   if (completedProblems.length === 0) {
-    return null
+    return null;
   }
 
   return (
     <svg
       data-component="progressive-highlight-overlay-compact"
       className={css({
-        position: 'absolute',
+        position: "absolute",
         inset: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
         zIndex: 5,
       })}
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
     >
       {completedProblems.map((problem, index) => {
-        const { x, y, width, height } = problem.problemBoundingBox
+        const { x, y, width, height } = problem.problemBoundingBox;
 
         // Convert normalized (0-1) to viewBox (0-100)
-        const boxX = x * 100
-        const boxY = y * 100
-        const boxWidth = width * 100
-        const boxHeight = height * 100
+        const boxX = x * 100;
+        const boxY = y * 100;
+        const boxWidth = width * 100;
+        const boxHeight = height * 100;
 
         return (
           <rect
@@ -136,13 +141,13 @@ export function ProgressiveHighlightOverlayCompact({
             rx={0.3}
             ry={0.3}
             style={{
-              animation: 'problemAppear 0.3s ease-out forwards',
+              animation: "problemAppear 0.3s ease-out forwards",
               animationDelay: `${index * staggerDelay}ms`,
               opacity: 0,
             }}
           />
-        )
+        );
       })}
     </svg>
-  )
+  );
 }

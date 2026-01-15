@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { css } from '../../../../../../styled-system/css'
-import { CardCarousel } from './CardCarousel'
-import { StepProgress } from './StepProgress'
+import { css } from "../../../../../../styled-system/css";
+import { CardCarousel } from "./CardCarousel";
+import { StepProgress } from "./StepProgress";
 import {
   CARDS,
   type PhaseDefinition,
@@ -17,58 +17,63 @@ import {
   type DatasetInfo,
   type LoadingProgress,
   type TrainingResult,
-} from './types'
+} from "./types";
 
 interface PhaseSectionProps {
-  phase: PhaseDefinition
-  phaseIndex: number
-  status: PhaseStatus
-  currentCardIndex: number
-  onGoToCard: (phaseIndex: number, cardIndex: number) => void
+  phase: PhaseDefinition;
+  phaseIndex: number;
+  status: PhaseStatus;
+  currentCardIndex: number;
+  onGoToCard: (phaseIndex: number, cardIndex: number) => void;
   // Model type (from URL)
-  modelType: ModelType
+  modelType: ModelType;
   // Data
-  samples: SamplesData | null
-  samplesLoading: boolean
-  hardwareInfo: HardwareInfo | null
-  hardwareLoading: boolean
-  fetchHardware: () => void
-  preflightInfo: PreflightInfo | null
-  preflightLoading: boolean
-  fetchPreflight: () => void
-  config: TrainingConfig
-  setConfig: (config: TrainingConfig | ((prev: TrainingConfig) => TrainingConfig)) => void
-  isGpu: boolean
+  samples: SamplesData | null;
+  samplesLoading: boolean;
+  hardwareInfo: HardwareInfo | null;
+  hardwareLoading: boolean;
+  fetchHardware: () => void;
+  preflightInfo: PreflightInfo | null;
+  preflightLoading: boolean;
+  fetchPreflight: () => void;
+  config: TrainingConfig;
+  setConfig: (
+    config: TrainingConfig | ((prev: TrainingConfig) => TrainingConfig),
+  ) => void;
+  isGpu: boolean;
   // Training
-  serverPhase: ServerPhase
-  statusMessage: string
-  currentEpoch: EpochData | null
-  epochHistory: EpochData[]
-  bestAccuracy: number
-  bestPixelError: number | null
-  datasetInfo: DatasetInfo | null
-  loadingProgress: LoadingProgress | null
-  result: TrainingResult | null
-  error: string | null
+  serverPhase: ServerPhase;
+  statusMessage: string;
+  currentEpoch: EpochData | null;
+  epochHistory: EpochData[];
+  bestAccuracy: number;
+  bestPixelError: number | null;
+  datasetInfo: DatasetInfo | null;
+  loadingProgress: LoadingProgress | null;
+  result: TrainingResult | null;
+  error: string | null;
   // Summaries
-  getCardSummary: (cardId: string) => { label: string; value: string } | null
+  getCardSummary: (cardId: string) => { label: string; value: string } | null;
   // Actions
-  onProgress: () => void
-  onStartTraining: () => void
-  onCancel: () => void
-  onStopAndSave?: () => void
-  onTrainAgain: () => void
-  onRerunTraining?: () => void
-  onSyncComplete?: () => void
-  onDataWarningAcknowledged?: () => void
-  canStartTraining: boolean
+  onProgress: () => void;
+  onStartTraining: () => void;
+  onCancel: () => void;
+  onStopAndSave?: () => void;
+  onTrainAgain: () => void;
+  onRerunTraining?: () => void;
+  onSyncComplete?: () => void;
+  onDataWarningAcknowledged?: () => void;
+  canStartTraining: boolean;
 }
 
-const STATUS_STYLES: Record<PhaseStatus, { borderColor: string; bg: string; opacity: number }> = {
-  done: { borderColor: 'green.600', bg: 'gray.850', opacity: 1 },
-  current: { borderColor: 'blue.500', bg: 'gray.800', opacity: 1 },
-  upcoming: { borderColor: 'gray.700', bg: 'gray.850', opacity: 0.6 },
-}
+const STATUS_STYLES: Record<
+  PhaseStatus,
+  { borderColor: string; bg: string; opacity: number }
+> = {
+  done: { borderColor: "green.600", bg: "gray.850", opacity: 1 },
+  current: { borderColor: "blue.500", bg: "gray.800", opacity: 1 },
+  upcoming: { borderColor: "gray.700", bg: "gray.850", opacity: 0.6 },
+};
 
 export function PhaseSection({
   phase,
@@ -109,56 +114,61 @@ export function PhaseSection({
   onDataWarningAcknowledged,
   canStartTraining,
 }: PhaseSectionProps) {
-  const styles = STATUS_STYLES[status]
+  const styles = STATUS_STYLES[status];
 
   return (
     <div
       data-element={`phase-${phase.id}`}
       data-status={status}
       className={css({
-        borderLeft: '3px solid',
+        borderLeft: "3px solid",
         borderColor: styles.borderColor,
         bg: styles.bg,
-        borderRadius: 'lg',
-        overflow: 'hidden',
+        borderRadius: "lg",
+        overflow: "hidden",
         opacity: styles.opacity,
-        transition: 'all 0.3s ease',
+        transition: "all 0.3s ease",
       })}
     >
       {/* Phase Header */}
       <div
         className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
           p: 3,
-          borderBottom: status === 'current' ? '1px solid' : 'none',
-          borderColor: 'gray.700',
+          borderBottom: status === "current" ? "1px solid" : "none",
+          borderColor: "gray.700",
         })}
       >
-        <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+        <div className={css({ display: "flex", alignItems: "center", gap: 2 })}>
           {/* Status indicator */}
           <div
             className={css({
-              width: '20px',
-              height: '20px',
-              borderRadius: 'full',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 'xs',
-              fontWeight: 'bold',
-              bg: status === 'done' ? 'green.600' : status === 'current' ? 'blue.600' : 'gray.600',
-              color: 'white',
+              width: "20px",
+              height: "20px",
+              borderRadius: "full",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "xs",
+              fontWeight: "bold",
+              bg:
+                status === "done"
+                  ? "green.600"
+                  : status === "current"
+                    ? "blue.600"
+                    : "gray.600",
+              color: "white",
             })}
           >
-            {status === 'done' ? '✓' : status === 'current' ? '●' : '○'}
+            {status === "done" ? "✓" : status === "current" ? "●" : "○"}
           </div>
           <span
             className={css({
-              fontWeight: 'semibold',
-              fontSize: 'sm',
-              color: status === 'current' ? 'gray.100' : 'gray.400',
+              fontWeight: "semibold",
+              fontSize: "sm",
+              color: status === "current" ? "gray.100" : "gray.400",
             })}
           >
             {phase.title}
@@ -168,20 +178,34 @@ export function PhaseSection({
         {/* Status badge */}
         <span
           className={css({
-            fontSize: 'xs',
+            fontSize: "xs",
             px: 2,
             py: 0.5,
-            borderRadius: 'full',
-            bg: status === 'done' ? 'green.800' : status === 'current' ? 'blue.800' : 'gray.700',
-            color: status === 'done' ? 'green.300' : status === 'current' ? 'blue.300' : 'gray.500',
+            borderRadius: "full",
+            bg:
+              status === "done"
+                ? "green.800"
+                : status === "current"
+                  ? "blue.800"
+                  : "gray.700",
+            color:
+              status === "done"
+                ? "green.300"
+                : status === "current"
+                  ? "blue.300"
+                  : "gray.500",
           })}
         >
-          {status === 'done' ? 'Complete' : status === 'current' ? 'In Progress' : 'Upcoming'}
+          {status === "done"
+            ? "Complete"
+            : status === "current"
+              ? "In Progress"
+              : "Upcoming"}
         </span>
       </div>
 
       {/* Phase Content */}
-      {status === 'current' ? (
+      {status === "current" ? (
         <div className={css({ p: 4 })}>
           {/* Card Carousel - for current phase */}
           <CardCarousel
@@ -238,18 +262,18 @@ export function PhaseSection({
       ) : (
         /* Collapsed summary for done/upcoming */
         <div className={css({ px: 4, py: 2 })}>
-          {status === 'done' ? (
+          {status === "done" ? (
             <div
               className={css({
-                display: 'flex',
+                display: "flex",
                 gap: 3,
-                flexWrap: 'wrap',
-                cursor: 'pointer',
+                flexWrap: "wrap",
+                cursor: "pointer",
               })}
               onClick={() => onGoToCard(phaseIndex, phase.cards.length - 1)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  onGoToCard(phaseIndex, phase.cards.length - 1)
+                if (e.key === "Enter" || e.key === " ") {
+                  onGoToCard(phaseIndex, phase.cards.length - 1);
                 }
               }}
               role="button"
@@ -257,68 +281,72 @@ export function PhaseSection({
               title={`Go back to ${phase.title}`}
             >
               {phase.cards.map((cardId, cardIndex) => {
-                const summary = getCardSummary(cardId)
-                const cardDef = CARDS[cardId]
+                const summary = getCardSummary(cardId);
+                const cardDef = CARDS[cardId];
                 return (
                   <div
                     key={cardId}
                     onClick={(e) => {
-                      e.stopPropagation()
-                      onGoToCard(phaseIndex, cardIndex)
+                      e.stopPropagation();
+                      onGoToCard(phaseIndex, cardIndex);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.stopPropagation()
-                        onGoToCard(phaseIndex, cardIndex)
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                        onGoToCard(phaseIndex, cardIndex);
                       }
                     }}
                     role="button"
                     tabIndex={0}
                     title={`Go back to ${cardDef.title}`}
                     className={css({
-                      display: 'flex',
-                      alignItems: 'center',
+                      display: "flex",
+                      alignItems: "center",
                       gap: 1.5,
                       px: 2,
                       py: 1,
-                      bg: 'gray.800',
-                      borderRadius: 'md',
-                      fontSize: 'xs',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
+                      bg: "gray.800",
+                      borderRadius: "md",
+                      fontSize: "xs",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
                       _hover: {
-                        bg: 'gray.700',
-                        transform: 'scale(1.02)',
+                        bg: "gray.700",
+                        transform: "scale(1.02)",
                       },
                     })}
                   >
                     <span>{cardDef.icon}</span>
-                    <span className={css({ color: 'gray.400' })}>{cardDef.title}:</span>
+                    <span className={css({ color: "gray.400" })}>
+                      {cardDef.title}:
+                    </span>
                     <span
                       className={css({
-                        color: 'green.400',
-                        fontWeight: 'medium',
+                        color: "green.400",
+                        fontWeight: "medium",
                       })}
                     >
-                      {summary?.value || '✓'}
+                      {summary?.value || "✓"}
                     </span>
                   </div>
-                )
+                );
               })}
             </div>
           ) : (
             <div
               className={css({
-                fontSize: 'xs',
-                color: 'gray.500',
-                fontStyle: 'italic',
+                fontSize: "xs",
+                color: "gray.500",
+                fontStyle: "italic",
               })}
             >
-              {phase.id === 'results' ? 'Waiting for training to complete...' : 'Waiting...'}
+              {phase.id === "results"
+                ? "Waiting for training to complete..."
+                : "Waiting..."}
             </div>
           )}
         </div>
       )}
     </div>
-  )
+  );
 }
