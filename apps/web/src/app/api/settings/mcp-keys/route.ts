@@ -85,6 +85,9 @@ export async function POST(request: NextRequest) {
     console.error('[MCP-KEYS] Error creating MCP API key:', error)
     // Return more specific error for debugging
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ error: 'Failed to create API key', details: errorMessage }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to create API key', details: errorMessage },
+      { status: 500 }
+    )
   }
 }
