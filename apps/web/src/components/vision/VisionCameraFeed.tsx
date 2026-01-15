@@ -73,6 +73,9 @@ export function VisionCameraFeed({
   // Initialize opencvReady synchronously if already loaded (avoids flash on remount)
   const [opencvReady, setOpencvReady] = useState(() => isOpenCVReady())
 
+  // Track when canvas is mounted (refs don't trigger re-renders, so we need state)
+  const [canvasMounted, setCanvasMounted] = useState(false)
+
   // Track container and video dimensions for CalibrationQuadEditor
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 })
   const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 })
@@ -118,9 +121,11 @@ export function VisionCameraFeed({
   }, [externalVideoRef, videoStream])
 
   // Combined ref callback for rectified canvas - sets internal ref AND calls external callback
+  // Also updates canvasMounted state to trigger effect re-run
   const handleRectifiedCanvasRef = useCallback(
     (el: HTMLCanvasElement | null) => {
       rectifiedCanvasRef.current = el
+      setCanvasMounted(el !== null)
       if (externalCanvasRef) {
         externalCanvasRef(el)
       }
@@ -178,8 +183,9 @@ export function VisionCameraFeed({
   }, [videoStream, onVideoReady])
 
   // Rectified view processing loop
+  // NOTE: canvasMounted in deps ensures this re-runs when canvas becomes available after mount
   useEffect(() => {
-    if (!showRectifiedView || !calibration || !opencvReady) {
+    if (!showRectifiedView || !calibration || !opencvReady || !canvasMounted) {
       return
     }
 
@@ -209,7 +215,7 @@ export function VisionCameraFeed({
         animationFrameRef.current = null
       }
     }
-  }, [showRectifiedView, calibration, opencvReady])
+  }, [showRectifiedView, calibration, opencvReady, canvasMounted])
 
   // Draw column dividers on rectified view
   const drawRectifiedOverlay = useCallback(() => {
@@ -249,7 +255,7 @@ export function VisionCameraFeed({
 
   // Draw overlay after each rectification frame
   useEffect(() => {
-    if (!showRectifiedView || !calibration || !opencvReady) return
+    if (!showRectifiedView || !calibration || !opencvReady || !canvasMounted) return
 
     // Set up a loop to draw overlay after rectification
     let running = true
@@ -267,7 +273,7 @@ export function VisionCameraFeed({
       running = false
       clearTimeout(timeoutId)
     }
-  }, [showRectifiedView, calibration, opencvReady, drawRectifiedOverlay])
+  }, [showRectifiedView, calibration, opencvReady, canvasMounted, drawRectifiedOverlay])
 
   if (!videoStream) {
     return (
