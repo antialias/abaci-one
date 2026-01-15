@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, useDragControls } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAbacusVision } from '@/hooks/useAbacusVision'
@@ -549,14 +549,19 @@ export function AbacusVisionBridge({
     [vision]
   )
 
-  // Determine if any calibration is active (disable drag during calibration)
+  // Determine if any calibration is active
   const isCalibrating = vision.isCalibrating || remoteIsCalibrating
+
+  // Drag controls allow dragging from header even during calibration
+  const dragControls = useDragControls()
 
   return (
     <motion.div
       ref={containerRef}
       data-component="abacus-vision-bridge"
-      drag={!isCalibrating}
+      drag
+      dragControls={dragControls}
+      dragListener={false}
       dragMomentum={false}
       dragElastic={0.1}
       // Keep modal within parent container bounds
@@ -564,26 +569,30 @@ export function AbacusVisionBridge({
       className={css({
         display: 'flex',
         flexDirection: 'column',
-        gap: 3,
+        gap: 2,
         p: 3,
         bg: 'gray.900',
         borderRadius: 'xl',
         maxWidth: '400px',
         width: '100%',
-        // Constrain height to fit on most screens (leaving room for buttons)
-        maxHeight: 'calc(100vh - 120px)',
-        overflow: 'hidden',
-        cursor: isCalibrating ? 'default' : 'grab',
-        _active: { cursor: isCalibrating ? 'default' : 'grabbing' },
+        // Constrain height to fit on small screens (leaving room for buttons)
+        // Using dvh for mobile-friendly dynamic viewport, with vh fallback
+        maxHeight: 'calc(100dvh - 140px)',
+        overflow: 'auto',
       })}
     >
       {/* Header */}
+      {/* Header - drag handle for repositioning modal */}
       <div
         data-element="header"
+        onPointerDown={(e) => dragControls.start(e)}
         className={css({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          cursor: 'grab',
+          touchAction: 'none',
+          _active: { cursor: 'grabbing' },
         })}
       >
         <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
@@ -633,10 +642,13 @@ export function AbacusVisionBridge({
         data-element="camera-feed-container"
         className={css({
           position: 'relative',
-          // Constrain aspect ratio to prevent modal from getting too tall
+          // Fixed aspect ratio container - content inside uses object-fit: contain
           aspectRatio: '4/3',
-          maxHeight: '50vh',
+          // Reduced max height for better small screen support
+          maxHeight: 'min(40vh, 300px)',
           borderRadius: 'lg',
+          overflow: 'hidden',
+          bg: 'gray.800',
         })}
       >
         {cameraSource === 'local' ? (
@@ -801,19 +813,20 @@ export function AbacusVisionBridge({
           <div
             data-element="phone-camera-feed"
             className={css({
-              position: 'relative',
-              width: '100%',
-              height: '100%',
+              position: 'absolute',
+              inset: 0,
               bg: 'gray.800',
               borderRadius: 'lg',
               userSelect: 'none',
+              overflow: 'hidden',
             })}
           >
             {!hasCheckedPersistence ? (
               /* Still checking localStorage for persisted session - show loading state */
               <div
                 className={css({
-                  aspectRatio: '4/3',
+                  position: 'absolute',
+                  inset: 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -827,42 +840,45 @@ export function AbacusVisionBridge({
               /* Show QR code to connect phone */
               <div
                 className={css({
+                  position: 'absolute',
+                  inset: 0,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  p: 6,
+                  p: 4,
                 })}
               >
-                <RemoteCameraQRCode onSessionCreated={handleRemoteSessionCreated} size={180} />
+                <RemoteCameraQRCode onSessionCreated={handleRemoteSessionCreated} size={150} />
                 <p
                   className={css({
                     color: 'gray.400',
-                    fontSize: 'sm',
+                    fontSize: 'xs',
                     textAlign: 'center',
-                    mt: 3,
+                    mt: 2,
                   })}
                 >
                   Scan with your phone to use it as a camera
                 </p>
               </div>
             ) : !remoteIsPhoneConnected ? (
-              /* Waiting for phone - 4:3 aspect ratio to match camera feed */
+              /* Waiting for phone - fills container */
               <div
                 className={css({
-                  aspectRatio: '4/3',
+                  position: 'absolute',
+                  inset: 0,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 3,
+                  gap: 2,
                   p: 4,
                 })}
               >
                 <RemoteCameraQRCode
                   onSessionCreated={handleRemoteSessionCreated}
                   existingSessionId={remoteCameraSessionId}
-                  size={150}
+                  size={120}
                 />
                 <div
                   className={css({
@@ -904,15 +920,26 @@ export function AbacusVisionBridge({
               </div>
             ) : (
               /* Show camera frames */
-              <div ref={remoteFeedContainerRef} className={css({ position: 'relative' })}>
+              <div
+                ref={remoteFeedContainerRef}
+                className={css({
+                  position: 'relative',
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                })}
+              >
                 {remoteLatestFrame ? (
                   <img
                     ref={remoteImageRef}
                     src={`data:image/jpeg;base64,${remoteLatestFrame.imageData}`}
                     alt="Remote camera view"
                     className={css({
-                      width: '100%',
-                      height: 'auto',
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain',
                       display: 'block',
                     })}
                   />
@@ -920,7 +947,7 @@ export function AbacusVisionBridge({
                   <div
                     className={css({
                       width: '100%',
-                      aspectRatio: '2/1',
+                      height: '100%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1150,7 +1177,6 @@ export function AbacusVisionBridge({
         className={css({
           bg: 'gray.800',
           borderRadius: 'md',
-          overflow: 'hidden',
         })}
       >
         {/* Collapsible header - shows summary */}
@@ -1447,8 +1473,7 @@ export function AbacusVisionBridge({
             display: 'flex',
             flexDirection: 'column',
             gap: 2,
-            mt: 2,
-            pt: 3,
+            pt: 2,
             borderTop: '1px solid',
             borderColor: 'gray.700',
           })}
@@ -1460,11 +1485,12 @@ export function AbacusVisionBridge({
             disabled={!isVisionSetupComplete}
             className={css({
               px: 4,
-              py: 3,
+              py: 2.5,
               bg: !isVisionSetupComplete ? 'gray.600' : isVisionEnabled ? 'red.600' : 'green.600',
               color: 'white',
               borderRadius: 'lg',
               fontWeight: 'semibold',
+              fontSize: 'sm',
               border: 'none',
               cursor: isVisionSetupComplete ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s',
@@ -1503,18 +1529,16 @@ export function AbacusVisionBridge({
             <div
               data-element="training-data-disclaimer"
               className={css({
-                mt: 2,
                 p: 2,
                 bg: 'blue.900/50',
                 borderRadius: 'md',
-                fontSize: 'xs',
+                fontSize: '10px',
                 color: 'blue.200',
-                lineHeight: 1.4,
+                lineHeight: 1.3,
               })}
             >
-              <strong>Training Data:</strong> When vision is enabled and you answer correctly,
-              abacus column images may be saved to help improve the bead detection model. No
-              personally identifiable information is collected with these images.
+              <strong>Training Data:</strong> Column images may be saved on correct answers to
+              improve bead detection. No personal data is collected.
             </div>
           )}
         </div>

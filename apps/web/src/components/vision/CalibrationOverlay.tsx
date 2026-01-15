@@ -394,7 +394,10 @@ export function CalibrationOverlay({
         <path
           d={quadPath}
           fill="transparent"
-          style={{ cursor: dragTarget === 'quad' ? 'grabbing' : 'grab' }}
+          style={{
+            cursor: dragTarget === 'quad' ? 'grabbing' : 'grab',
+            touchAction: 'none',
+          }}
           onPointerDown={(e) => handlePointerDown(e, 'quad')}
         />
 
@@ -420,7 +423,7 @@ export function CalibrationOverlay({
               y2={line.bottom.y}
               stroke="#facc15"
               strokeWidth="3"
-              style={{ cursor: 'ew-resize' }}
+              style={{ cursor: 'ew-resize', touchAction: 'none' }}
               onPointerDown={(e) => handlePointerDown(e, `divider-${i}`)}
             />
           )
@@ -474,6 +477,8 @@ export function CalibrationOverlay({
             borderRadius: 'full',
             cursor: 'move',
             transform: 'translate(-50%, -50%)',
+            // Prevent browser from treating touch drag as scroll
+            touchAction: 'none',
             _hover: {
               bg: 'green.300',
               transform: 'translate(-50%, -50%) scale(1.2)',
