@@ -14,7 +14,7 @@ curl -X POST http://localhost:3000/api/settings/mcp-keys \
   -d '{"name": "Claude Code"}'
 ```
 
-**Via UI:** (Coming soon) Settings → MCP API Keys → Generate
+**Via UI:** Go to `/settings/mcp-keys` → Enter a name → Click "Generate"
 
 ### 2. Configure Claude Code
 
