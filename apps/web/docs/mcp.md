@@ -202,6 +202,201 @@ Returns:
 - `close_to_mastery` - Developing, almost strong
 - `maintenance` - Strong but good to review
 
+---
+
+## Session Management Tools
+
+These tools allow you to create, control, and monitor practice sessions programmatically.
+
+### `start_practice_session`
+Create and optionally start a new practice session for a student.
+
+```json
+{
+  "name": "start_practice_session",
+  "arguments": {
+    "player_id": "abc123",
+    "duration_minutes": 10,
+    "auto_start": true,
+    "enabled_parts": {
+      "abacus": true,
+      "visualization": true,
+      "linear": false
+    },
+    "max_terms": 5,
+    "game_breaks": {
+      "enabled": true,
+      "max_minutes": 3,
+      "selection_mode": "kid-chooses"
+    }
+  }
+}
+```
+
+**Parameters:**
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `player_id` | Yes | - | Student player ID |
+| `duration_minutes` | Yes | - | Session length (5-60 minutes) |
+| `auto_start` | No | `false` | If true, immediately approve and start the session |
+| `enabled_parts.abacus` | No | `true` | Include physical abacus practice |
+| `enabled_parts.visualization` | No | `true` | Include mental math with visualization |
+| `enabled_parts.linear` | No | `true` | Include mental math with equations |
+| `max_terms` | No | `5` | Maximum terms per problem (3-12) |
+| `game_breaks.enabled` | No | `true` | Allow game breaks between parts |
+| `game_breaks.max_minutes` | No | `5` | Maximum game break duration |
+| `game_breaks.selection_mode` | No | `"kid-chooses"` | `"kid-chooses"` or `"auto-start"` |
+
+Returns:
+```json
+{
+  "sessionId": "clxyz123",
+  "status": "in_progress",
+  "practiceUrl": "https://abaci.one/practice/abc123",
+  "observeUrl": "https://abaci.one/practice/abc123/observe",
+  "summary": {
+    "totalProblemCount": 45,
+    "estimatedMinutes": 10,
+    "parts": [
+      { "partNumber": 1, "type": "abacus", "problemCount": 15, "estimatedMinutes": 3 },
+      { "partNumber": 2, "type": "visualization", "problemCount": 15, "estimatedMinutes": 3 },
+      { "partNumber": 3, "type": "linear", "problemCount": 15, "estimatedMinutes": 4 }
+    ]
+  }
+}
+```
+
+### `get_active_session`
+Get the current active practice session for a student, including URLs and progress.
+
+```json
+{
+  "name": "get_active_session",
+  "arguments": {
+    "player_id": "abc123"
+  }
+}
+```
+
+Returns (when session exists):
+```json
+{
+  "hasActiveSession": true,
+  "sessionId": "clxyz123",
+  "status": "in_progress",
+  "practiceUrl": "https://abaci.one/practice/abc123",
+  "observeUrl": "https://abaci.one/practice/abc123/observe",
+  "startedAt": 1736956200000,
+  "progress": {
+    "currentPart": 2,
+    "currentProblem": 8,
+    "totalProblems": 45,
+    "completedProblems": 23,
+    "accuracy": 91
+  }
+}
+```
+
+Returns (when no session):
+```json
+{
+  "hasActiveSession": false,
+  "lastSessionAt": 1736869800000
+}
+```
+
+### `control_session`
+Control an active session: approve, start, end early, or abandon.
+
+```json
+{
+  "name": "control_session",
+  "arguments": {
+    "player_id": "abc123",
+    "session_id": "clxyz123",
+    "action": "end_early"
+  }
+}
+```
+
+**Actions:**
+| Action | Description |
+|--------|-------------|
+| `approve` | Approve a draft session (makes it ready to start) |
+| `start` | Start an approved session |
+| `end_early` | End the session early and save progress |
+| `abandon` | Abandon the session without saving |
+
+Returns:
+```json
+{
+  "success": true,
+  "sessionId": "clxyz123",
+  "newStatus": "completed",
+  "message": "Session ended early"
+}
+```
+
+### `create_observation_link`
+Generate a shareable URL that allows anyone (without login) to observe a practice session in real-time.
+
+```json
+{
+  "name": "create_observation_link",
+  "arguments": {
+    "player_id": "abc123",
+    "session_id": "clxyz123",
+    "expires_in": "24h"
+  }
+}
+```
+
+**Parameters:**
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `player_id` | Yes | Student player ID |
+| `session_id` | Yes | Session plan ID |
+| `expires_in` | Yes | `"1h"` or `"24h"` |
+
+Returns:
+```json
+{
+  "token": "aB3cDeFgH2",
+  "url": "https://abaci.one/observe/aB3cDeFgH2",
+  "expiresAt": 1737042600000
+}
+```
+
+### `list_observation_links`
+List all active (non-expired, non-revoked) observation links for a session.
+
+```json
+{
+  "name": "list_observation_links",
+  "arguments": {
+    "player_id": "abc123",
+    "session_id": "clxyz123"
+  }
+}
+```
+
+Returns:
+```json
+{
+  "shares": [
+    {
+      "token": "aB3cDeFgH2",
+      "url": "https://abaci.one/observe/aB3cDeFgH2",
+      "expiresAt": 1737042600000,
+      "viewCount": 3,
+      "createdAt": 1736956200000
+    }
+  ]
+}
+```
+
+---
+
 ## API Key Management
 
 ### List Keys

@@ -21,7 +21,13 @@ import {
   getRecentErrors,
   getPracticeSessions,
   getRecommendedFocus,
+  startPracticeSession,
+  getActiveSession,
+  controlSession,
+  createObservationLink,
+  listObservationLinks,
 } from '@/lib/mcp/tools'
+import type { ShareDuration } from '@/lib/session-share'
 
 const MCP_PROTOCOL_VERSION = '2025-03-26'
 
@@ -227,6 +233,45 @@ async function executeTool(
 
     case 'get_recommended_focus':
       return getRecommendedFocus(playerId, (args.count as number) ?? 5)
+
+    // Session management tools
+    case 'start_practice_session':
+      return startPracticeSession(playerId, userId, {
+        durationMinutes: args.duration_minutes as number,
+        autoStart: args.auto_start as boolean | undefined,
+        enabledParts: args.enabled_parts as
+          | { abacus?: boolean; visualization?: boolean; linear?: boolean }
+          | undefined,
+        maxTerms: args.max_terms as number | undefined,
+        gameBreaks: args.game_breaks as
+          | {
+              enabled?: boolean
+              maxMinutes?: number
+              selectionMode?: 'auto-start' | 'kid-chooses'
+            }
+          | undefined,
+      })
+
+    case 'get_active_session':
+      return getActiveSession(playerId)
+
+    case 'control_session':
+      return controlSession(
+        playerId,
+        args.session_id as string,
+        args.action as 'approve' | 'start' | 'end_early' | 'abandon'
+      )
+
+    case 'create_observation_link':
+      return createObservationLink(
+        playerId,
+        args.session_id as string,
+        userId,
+        args.expires_in as ShareDuration
+      )
+
+    case 'list_observation_links':
+      return listObservationLinks(playerId, args.session_id as string)
 
     default:
       throw new Error(`Unknown tool: ${toolName}`)

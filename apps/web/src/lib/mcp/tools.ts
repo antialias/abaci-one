@@ -5,8 +5,24 @@
 import { eq, or, inArray, desc, and, gte } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { parentChild } from '@/db/schema'
+import type { GameBreakSettings } from '@/db/schema/session-plans'
 import { getAllSkillMastery, getRecentSessions } from '@/lib/curriculum/progress-manager'
-import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
+import {
+  getRecentSessionResults,
+  generateSessionPlan,
+  getActiveSessionPlan,
+  approveSessionPlan,
+  startSessionPlan,
+  completeSessionPlanEarly,
+  abandonSessionPlan,
+  type EnabledParts,
+} from '@/lib/curriculum/session-planner'
+import {
+  createSessionShare,
+  getActiveSharesForSession,
+  type ShareDuration,
+} from '@/lib/session-share'
+import { getShareUrl } from '@/lib/share/urls'
 
 // Tool definitions for MCP tools/list response
 export const MCP_TOOLS = [
@@ -123,6 +139,153 @@ export const MCP_TOOLS = [
         },
       },
       required: ['player_id'],
+    },
+  },
+  // Session management tools
+  {
+    name: 'start_practice_session',
+    description:
+      'Create and optionally start a new practice session for a student. Returns URLs for practice and observation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        player_id: {
+          type: 'string',
+          description: 'The student player ID',
+        },
+        duration_minutes: {
+          type: 'number',
+          description: 'Session duration in minutes (5-60)',
+        },
+        auto_start: {
+          type: 'boolean',
+          description:
+            'If true, immediately approve and start the session. If false (default), creates a draft that needs approval.',
+        },
+        enabled_parts: {
+          type: 'object',
+          description: 'Which practice parts to enable. Default: all enabled.',
+          properties: {
+            abacus: {
+              type: 'boolean',
+              description: 'Physical abacus practice (default: true)',
+            },
+            visualization: {
+              type: 'boolean',
+              description: 'Mental math with visualization (default: true)',
+            },
+            linear: {
+              type: 'boolean',
+              description: 'Mental math with equations (default: true)',
+            },
+          },
+        },
+        max_terms: {
+          type: 'number',
+          description: 'Maximum terms per problem (3-12, default: 5)',
+        },
+        game_breaks: {
+          type: 'object',
+          description: 'Game break settings between session parts',
+          properties: {
+            enabled: {
+              type: 'boolean',
+              description: 'Allow game breaks (default: true)',
+            },
+            max_minutes: {
+              type: 'number',
+              description: 'Maximum game break duration in minutes (default: 5)',
+            },
+            selection_mode: {
+              type: 'string',
+              enum: ['auto-start', 'kid-chooses'],
+              description: 'How game is selected (default: kid-chooses)',
+            },
+          },
+        },
+      },
+      required: ['player_id', 'duration_minutes'],
+    },
+  },
+  {
+    name: 'get_active_session',
+    description:
+      'Get the current active practice session for a student, including URLs for practice and observation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        player_id: {
+          type: 'string',
+          description: 'The student player ID',
+        },
+      },
+      required: ['player_id'],
+    },
+  },
+  {
+    name: 'control_session',
+    description:
+      'Control an active session: approve a draft, start an approved session, end early, or abandon.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        player_id: {
+          type: 'string',
+          description: 'The student player ID',
+        },
+        session_id: {
+          type: 'string',
+          description: 'The session plan ID',
+        },
+        action: {
+          type: 'string',
+          enum: ['approve', 'start', 'end_early', 'abandon'],
+          description: 'Action to perform on the session',
+        },
+      },
+      required: ['player_id', 'session_id', 'action'],
+    },
+  },
+  {
+    name: 'create_observation_link',
+    description:
+      'Generate a shareable URL that allows anyone (without login) to observe a practice session in real-time.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        player_id: {
+          type: 'string',
+          description: 'The student player ID',
+        },
+        session_id: {
+          type: 'string',
+          description: 'The session plan ID',
+        },
+        expires_in: {
+          type: 'string',
+          enum: ['1h', '24h'],
+          description: 'How long the link should be valid',
+        },
+      },
+      required: ['player_id', 'session_id', 'expires_in'],
+    },
+  },
+  {
+    name: 'list_observation_links',
+    description: 'List all active (non-expired, non-revoked) observation links for a session.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        player_id: {
+          type: 'string',
+          description: 'The student player ID',
+        },
+        session_id: {
+          type: 'string',
+          description: 'The session plan ID',
+        },
+      },
+      required: ['player_id', 'session_id'],
     },
   },
 ]
@@ -363,4 +526,240 @@ export async function getRecommendedFocus(playerId: string, count: number = 5) {
           ? 'close_to_mastery'
           : 'maintenance',
   }))
+}
+
+// ============================================================================
+// Session Management Tools
+// ============================================================================
+
+/**
+ * Get the base URL for generating practice/observation URLs
+ */
+function getBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL || 'https://abaci.one'
+}
+
+/**
+ * Build practice and observation URLs for a player
+ */
+function buildSessionUrls(playerId: string) {
+  const baseUrl = getBaseUrl()
+  return {
+    practiceUrl: `${baseUrl}/practice/${playerId}`,
+    observeUrl: `${baseUrl}/practice/${playerId}/observe`,
+  }
+}
+
+/**
+ * Start a new practice session for a student
+ */
+export async function startPracticeSession(
+  playerId: string,
+  userId: string,
+  options: {
+    durationMinutes: number
+    autoStart?: boolean
+    enabledParts?: {
+      abacus?: boolean
+      visualization?: boolean
+      linear?: boolean
+    }
+    maxTerms?: number
+    gameBreaks?: {
+      enabled?: boolean
+      maxMinutes?: number
+      selectionMode?: 'auto-start' | 'kid-chooses'
+    }
+  }
+) {
+  const { durationMinutes, autoStart = false, enabledParts, maxTerms, gameBreaks } = options
+
+  // Build enabled parts with defaults
+  const parts: EnabledParts = {
+    abacus: enabledParts?.abacus ?? true,
+    visualization: enabledParts?.visualization ?? true,
+    linear: enabledParts?.linear ?? true,
+  }
+
+  // Build game break settings
+  const gameBreakSettings: GameBreakSettings | undefined = gameBreaks
+    ? {
+        enabled: gameBreaks.enabled ?? true,
+        maxDurationMinutes: gameBreaks.maxMinutes ?? 5,
+        selectionMode: gameBreaks.selectionMode ?? 'kid-chooses',
+        selectedGame: null,
+        skipSetupPhase: true,
+      }
+    : undefined
+
+  // Generate session plan
+  let plan = await generateSessionPlan({
+    playerId,
+    durationMinutes,
+    enabledParts: parts,
+    gameBreakSettings,
+    ...(maxTerms && {
+      config: {
+        abacusTermCount: { min: 3, max: maxTerms },
+      },
+    }),
+  })
+
+  // If auto_start, approve and start the session
+  if (autoStart) {
+    plan = await approveSessionPlan(plan.id)
+    plan = await startSessionPlan(plan.id)
+  }
+
+  const urls = buildSessionUrls(playerId)
+
+  // Build summary from plan parts
+  const partSummaries = plan.parts.map((part) => ({
+    partNumber: part.partNumber,
+    type: part.type,
+    problemCount: part.slots.length,
+    estimatedMinutes: part.estimatedMinutes,
+  }))
+
+  const totalProblems = plan.parts.reduce((sum, part) => sum + part.slots.length, 0)
+  const totalMinutes = plan.parts.reduce((sum, part) => sum + part.estimatedMinutes, 0)
+
+  return {
+    sessionId: plan.id,
+    status: plan.status,
+    practiceUrl: urls.practiceUrl,
+    observeUrl: urls.observeUrl,
+    summary: {
+      totalProblemCount: totalProblems,
+      estimatedMinutes: Math.round(totalMinutes),
+      parts: partSummaries,
+    },
+  }
+}
+
+/**
+ * Get the active session for a student
+ */
+export async function getActiveSession(playerId: string) {
+  const plan = await getActiveSessionPlan(playerId)
+
+  if (!plan) {
+    // Get last completed session date
+    const recentSessions = await getRecentSessions(playerId, 1)
+    const lastSession = recentSessions[0]
+
+    return {
+      hasActiveSession: false,
+      lastSessionAt: lastSession?.completedAt?.getTime() ?? null,
+    }
+  }
+
+  const urls = buildSessionUrls(playerId)
+
+  // Calculate progress
+  const totalProblems = plan.parts.reduce((sum, part) => sum + part.slots.length, 0)
+  const completedProblems = plan.results.length
+  const correctAnswers = plan.results.filter((r) => r.isCorrect).length
+  const accuracy = completedProblems > 0 ? correctAnswers / completedProblems : 0
+
+  // Find current position
+  let currentPart = 1
+  let currentProblem = 1
+  for (const part of plan.parts) {
+    const partResults = plan.results.filter((r) => r.partNumber === part.partNumber)
+    if (partResults.length < part.slots.length) {
+      currentPart = part.partNumber
+      currentProblem = partResults.length + 1
+      break
+    }
+  }
+
+  return {
+    hasActiveSession: true,
+    sessionId: plan.id,
+    status: plan.status,
+    practiceUrl: urls.practiceUrl,
+    observeUrl: urls.observeUrl,
+    startedAt: plan.startedAt?.getTime() ?? null,
+    progress: {
+      currentPart,
+      currentProblem,
+      totalProblems,
+      completedProblems,
+      accuracy: Math.round(accuracy * 100),
+    },
+  }
+}
+
+/**
+ * Control an active session (approve, start, end, abandon)
+ */
+export async function controlSession(
+  playerId: string,
+  sessionId: string,
+  action: 'approve' | 'start' | 'end_early' | 'abandon'
+) {
+  let plan
+  let message: string
+
+  switch (action) {
+    case 'approve':
+      plan = await approveSessionPlan(sessionId)
+      message = 'Session approved and ready to start'
+      break
+    case 'start':
+      plan = await startSessionPlan(sessionId)
+      message = 'Session started'
+      break
+    case 'end_early':
+      plan = await completeSessionPlanEarly(sessionId, 'Ended via MCP')
+      message = 'Session ended early'
+      break
+    case 'abandon':
+      plan = await abandonSessionPlan(sessionId)
+      message = 'Session abandoned'
+      break
+  }
+
+  return {
+    success: true,
+    sessionId: plan.id,
+    newStatus: plan.status,
+    message,
+  }
+}
+
+/**
+ * Create a shareable observation link for a session
+ */
+export async function createObservationLink(
+  playerId: string,
+  sessionId: string,
+  userId: string,
+  expiresIn: ShareDuration
+) {
+  const share = await createSessionShare(sessionId, playerId, userId, expiresIn)
+
+  return {
+    token: share.id,
+    url: getShareUrl('observe', share.id),
+    expiresAt: share.expiresAt.getTime(),
+  }
+}
+
+/**
+ * List active observation links for a session
+ */
+export async function listObservationLinks(playerId: string, sessionId: string) {
+  const shares = await getActiveSharesForSession(sessionId)
+
+  return {
+    shares: shares.map((share) => ({
+      token: share.id,
+      url: getShareUrl('observe', share.id),
+      expiresAt: share.expiresAt.getTime(),
+      viewCount: share.viewCount,
+      createdAt: share.createdAt.getTime(),
+    })),
+  }
 }
