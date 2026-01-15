@@ -27,7 +27,7 @@ yq eval --yaml-fix-merge-anchor-to-spec '
     "services": {"blue": .services.blue},
     "networks": .networks
   }
-' docker-compose.yaml > docker-compose.blue.yaml
+' docker-compose.yaml | yq 'del(.services.blue.depends_on)' > docker-compose.blue.yaml
 
 echo "Generating docker-compose.green.yaml..."
 yq eval --yaml-fix-merge-anchor-to-spec '
@@ -37,7 +37,7 @@ yq eval --yaml-fix-merge-anchor-to-spec '
     "services": {"green": .services.green},
     "networks": .networks
   }
-' docker-compose.yaml > docker-compose.green.yaml
+' docker-compose.yaml | yq 'del(.services.green.depends_on)' > docker-compose.green.yaml
 
 echo "Done!"
 echo ""
