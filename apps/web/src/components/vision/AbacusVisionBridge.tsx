@@ -234,7 +234,6 @@ export function AbacusVisionBridge({
     height: number
   } | null>(null)
 
-  const [calibrationCorners, setCalibrationCorners] = useState<QuadCorners | null>(null)
   const [opencvReady, setOpencvReady] = useState(false)
 
   // Camera source selection
@@ -491,14 +490,12 @@ export function AbacusVisionBridge({
       )
 
       setRemoteEditingCorners(interpolatedCorners)
-      setCalibrationCorners(interpolatedCorners) // Update preview
 
       if (progress < 1) {
         animationId = requestAnimationFrame(animate)
       } else {
         // Animation complete - ensure we're exactly at the end position
         setRemoteEditingCorners(remoteRotationAnimation.endCorners)
-        setCalibrationCorners(remoteRotationAnimation.endCorners)
         setRemoteRotationAnimation(null)
         // Send rotated corners to phone for cropped preview
         remoteSendCalibrationRef.current(
@@ -737,11 +734,11 @@ export function AbacusVisionBridge({
     return () => resizeObserver.disconnect()
   }, [remoteIsCalibrating, remoteLatestFrame])
 
-  // Render preview when calibrating
+  // Render preview when calibrating (local camera only)
   useEffect(() => {
     if (
       !vision.isCalibrating ||
-      !calibrationCorners ||
+      !localEditingCorners ||
       !videoRef.current ||
       !previewCanvasRef.current
     ) {
@@ -759,7 +756,7 @@ export function AbacusVisionBridge({
       }
 
       if (opencvReady && isOpenCVReady()) {
-        rectifyQuadrilateral(video, calibrationCorners, canvas, {
+        rectifyQuadrilateral(video, localEditingCorners, canvas, {
           outputWidth: 200,
           outputHeight: 133,
         })
@@ -772,7 +769,7 @@ export function AbacusVisionBridge({
     return () => {
       running = false
     }
-  }, [vision.isCalibrating, calibrationCorners, opencvReady])
+  }, [vision.isCalibrating, localEditingCorners, opencvReady])
 
   // Handle video ready - get dimensions
   const handleVideoReady = useCallback(
@@ -894,14 +891,12 @@ export function AbacusVisionBridge({
       )
 
       setLocalEditingCorners(interpolatedCorners)
-      setCalibrationCorners(interpolatedCorners) // Update preview
 
       if (progress < 1) {
         animationId = requestAnimationFrame(animate)
       } else {
         // Animation complete - ensure we're exactly at the end position
         setLocalEditingCorners(localRotationAnimation.endCorners)
-        setCalibrationCorners(localRotationAnimation.endCorners)
         setLocalRotationAnimation(null)
       }
     }
@@ -1059,7 +1054,6 @@ export function AbacusVisionBridge({
                     columnDividers={localEditingDividers}
                     onCornersChange={(corners) => {
                       setLocalEditingCorners(corners)
-                      setCalibrationCorners(corners)
                     }}
                     onDividersChange={setLocalEditingDividers}
                   />
@@ -1373,7 +1367,6 @@ export function AbacusVisionBridge({
                       columnDividers={remoteEditingDividers}
                       onCornersChange={(corners) => {
                         setRemoteEditingCorners(corners)
-                        setCalibrationCorners(corners)
                         // Send preview calibration to phone so it can generate cropped preview
                         // preview=true keeps phone in raw mode while sending cropped previews
                         remoteSendCalibration(corners, columnCount, true)
