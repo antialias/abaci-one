@@ -3,10 +3,9 @@
 import type { ReactNode } from 'react'
 import { notFound } from 'next/navigation'
 import { css } from '../../../../styled-system/css'
-import { VisionTrainingNav } from '../components/VisionTrainingNav'
+import { PageWithNav } from '@/components/PageWithNav'
+import { VisionTrainingNavSlot } from '../components/VisionTrainingNavSlot'
 import { isValidModelType } from '../hooks/useModelType'
-
-const NAV_HEIGHT = 56
 
 interface VisionTrainingLayoutProps {
   children: ReactNode
@@ -19,12 +18,11 @@ interface VisionTrainingLayoutProps {
  * Layout wrapper for all vision training pages under /vision-training/[model]/.
  *
  * Provides:
- * - Fixed nav bar via VisionTrainingNav
- * - CSS custom property --nav-height for child pages to use
+ * - Minimal nav bar with hamburger menu via PageWithNav
+ * - Contextual nav content (model selector + tabs) via VisionTrainingNavSlot
  * - Model param validation (redirects to 404 if invalid)
  *
- * The --nav-height variable allows child pages with absolute/fixed positioning
- * to correctly offset their content below the nav bar.
+ * Uses the same PageWithNav + navSlot pattern as arcade pages for consistent UX.
  */
 export default function VisionTrainingLayout({ children, params }: VisionTrainingLayoutProps) {
   // Validate model param - show 404 for invalid models
@@ -33,28 +31,17 @@ export default function VisionTrainingLayout({ children, params }: VisionTrainin
   }
 
   return (
-    <div
-      data-component="vision-training-layout"
-      style={{ '--nav-height': `${NAV_HEIGHT}px` } as React.CSSProperties}
-      className={css({
-        minHeight: '100vh',
-        bg: 'gray.900',
-        color: 'gray.100',
-      })}
-    >
-      {/* Fixed nav - always at top */}
-      <VisionTrainingNav />
-
-      {/* Content area - pushed below nav via padding */}
-      <main
-        data-element="vision-content"
+    <PageWithNav navSlot={<VisionTrainingNavSlot />}>
+      <div
+        data-component="vision-training-layout"
         className={css({
           minHeight: '100vh',
+          bg: 'gray.900',
+          color: 'gray.100',
         })}
-        style={{ paddingTop: 'var(--nav-height)' }}
       >
-        {children}
-      </main>
-    </div>
+        <main data-element="vision-content">{children}</main>
+      </div>
+    </PageWithNav>
   )
 }

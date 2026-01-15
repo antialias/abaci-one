@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, type CSSProperties, type HTMLAttributes } from 'react'
-import { useMyAbacus, type DockConfig } from '@/contexts/MyAbacusContext'
+import { type CSSProperties, type HTMLAttributes, useEffect, useRef } from 'react'
+import { type DockConfig, useMyAbacus } from '@/contexts/MyAbacusContext'
 
 export interface AbacusDockProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
   /** Optional identifier for debugging */
@@ -22,6 +22,8 @@ export interface AbacusDockProps extends Omit<HTMLAttributes<HTMLDivElement>, 'c
   defaultValue?: number
   /** Callback when value changes (for controlled mode) */
   onValueChange?: (newValue: number) => void
+  /** Hide the undock button (default: false) */
+  hideUndock?: boolean
 }
 
 /**
@@ -55,13 +57,14 @@ export function AbacusDock({
   value,
   defaultValue,
   onValueChange,
+  hideUndock = false,
   style,
   ...divProps
 }: AbacusDockProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { registerDock, unregisterDock, updateDockVisibility } = useMyAbacus()
+  const { registerDock, unregisterDock, updateDockVisibility, updateDockConfig } = useMyAbacus()
 
-  // Register the dock
+  // Register the dock on mount, unregister on unmount
   useEffect(() => {
     const element = containerRef.current
     if (!element) return
@@ -77,6 +80,7 @@ export function AbacusDock({
       value,
       defaultValue,
       onValueChange,
+      hideUndock,
       isVisible: false, // Will be updated by IntersectionObserver
     }
 
@@ -85,6 +89,27 @@ export function AbacusDock({
     return () => {
       unregisterDock(element)
     }
+    // Only register/unregister on mount/unmount - config updates happen separately
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registerDock, unregisterDock])
+
+  // Update dock config when props change (without re-registering)
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+
+    updateDockConfig(element, {
+      id,
+      columns,
+      interactive,
+      showNumbers,
+      animated,
+      scaleFactor,
+      value,
+      defaultValue,
+      onValueChange,
+      hideUndock,
+    })
   }, [
     id,
     columns,
@@ -95,8 +120,8 @@ export function AbacusDock({
     value,
     defaultValue,
     onValueChange,
-    registerDock,
-    unregisterDock,
+    hideUndock,
+    updateDockConfig,
   ])
 
   // Track visibility with IntersectionObserver

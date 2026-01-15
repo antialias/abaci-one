@@ -2,7 +2,6 @@
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import React, { useContext, useMemo, useState } from 'react'
@@ -17,15 +16,8 @@ import { useVisualDebug } from '../contexts/VisualDebugContext'
 // Import HomeHeroContext for optional usage
 import type { Subtitle } from '../data/abaciOneSubtitles'
 import { getRandomSubtitle } from '../data/abaciOneSubtitles'
-import { LanguageSelector } from './LanguageSelector'
+import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 import { ThemeToggle } from './ThemeToggle'
-
-// Lazy load AbacusDisplayDropdown - it imports @soroban/abacus-react and multiple Radix components
-// Only loaded when user actually opens the settings menu
-const AbacusDisplayDropdown = dynamic(
-  () => import('./AbacusDisplayDropdown').then((m) => m.AbacusDisplayDropdown),
-  { ssr: false }
-)
 
 type HomeHeroContextValue = {
   subtitle: Subtitle
@@ -64,7 +56,6 @@ function MenuContent({
   toggleFullscreen,
   router,
   onNavigate,
-  handleNestedDropdownChange,
   isMobile,
   resolvedTheme,
 }: {
@@ -74,7 +65,6 @@ function MenuContent({
   toggleFullscreen: () => void
   router: any
   onNavigate?: () => void
-  handleNestedDropdownChange?: (isOpen: boolean) => void
   isMobile?: boolean
   resolvedTheme?: 'light' | 'dark'
 }) {
@@ -297,32 +287,73 @@ function MenuContent({
             )}
           </div>
 
-          {/* Column 2: Style + Language + Theme */}
+          {/* Column 2: Settings + Developer */}
           <div>
-            {/* Style Section */}
-            <div style={sectionHeaderStyle}>Abacus Style</div>
+            {/* Settings Link */}
+            <div style={sectionHeaderStyle}>Settings</div>
 
-            <div style={{ padding: '0 6px' }}>
-              <AbacusDisplayDropdown
-                isFullscreen={isFullscreen}
-                onOpenChange={handleNestedDropdownChange}
-              />
+            <Link
+              href="/settings"
+              onClick={
+                isMobile
+                  ? (e) => {
+                      e.preventDefault()
+                      handleLinkClick('/settings')
+                    }
+                  : undefined
+              }
+              style={linkStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDark
+                  ? 'rgba(139, 92, 246, 0.2)'
+                  : 'rgba(139, 92, 246, 0.1)'
+                e.currentTarget.style.color = isDark
+                  ? 'rgba(196, 181, 253, 1)'
+                  : 'rgba(109, 40, 217, 1)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = isDark
+                  ? 'rgba(209, 213, 219, 1)'
+                  : 'rgba(55, 65, 81, 1)'
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>⚙️</span>
+              <span>Preferences</span>
+            </Link>
+
+            {/* Theme Toggle - Quick Access */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: isMobile ? '10px' : '10px',
+                padding: isMobile ? '8px 12px' : '10px 14px',
+              }}
+            >
+              <ThemeToggle />
             </div>
 
-            <div style={separatorStyle} />
-
-            {/* Language Section */}
-            <div style={sectionHeaderStyle}>Language</div>
-
-            <LanguageSelector variant="dropdown-item" isFullscreen={isFullscreen} />
-
-            <div style={separatorStyle} />
-
-            {/* Theme Section */}
-            <div style={sectionHeaderStyle}>Theme</div>
-
-            <div style={{ padding: '0 6px' }}>
-              <ThemeToggle />
+            {/* Abacus Style - Quick Access */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: isMobile ? '10px' : '10px',
+                padding: isMobile ? '8px 12px' : '10px 14px',
+              }}
+            >
+              <span style={{ fontSize: isMobile ? '18px' : '16px' }}>🧮</span>
+              <span
+                style={{
+                  fontSize: isMobile ? '14px' : '14px',
+                  fontWeight: 500,
+                  color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
+                }}
+              >
+                Abacus Style
+              </span>
+              <AbacusDisplayDropdown />
             </div>
 
             {/* Developer Section - shown in dev or when ?debug=1 is used */}
@@ -330,6 +361,58 @@ function MenuContent({
               <>
                 <div style={separatorStyle} />
                 <div style={sectionHeaderStyle}>Developer</div>
+                <Link
+                  href="/debug"
+                  data-action="debug-hub-link"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleLinkClick('/debug')
+                  }}
+                  style={linkStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDark
+                      ? 'rgba(234, 179, 8, 0.2)'
+                      : 'rgba(234, 179, 8, 0.1)'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(253, 224, 71, 1)'
+                      : 'rgba(161, 98, 7, 1)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(209, 213, 219, 1)'
+                      : 'rgba(55, 65, 81, 1)'
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>🛠️</span>
+                  <span>Debug Hub</span>
+                </Link>
+                <Link
+                  href="/vision-training"
+                  data-action="vision-training-link"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleLinkClick('/vision-training')
+                  }}
+                  style={linkStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDark
+                      ? 'rgba(234, 179, 8, 0.2)'
+                      : 'rgba(234, 179, 8, 0.1)'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(253, 224, 71, 1)'
+                      : 'rgba(161, 98, 7, 1)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(209, 213, 219, 1)'
+                      : 'rgba(55, 65, 81, 1)'
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>👁️</span>
+                  <span>Vision Training</span>
+                </Link>
                 <div
                   data-setting="visual-debug"
                   onClick={() => {
@@ -424,37 +507,120 @@ function MenuContent({
 
           <DropdownMenu.Separator style={separatorStyle} />
 
-          {/* Style Section */}
-          <div style={sectionHeaderStyle}>Abacus Style</div>
+          {/* Settings Section */}
+          <div style={sectionHeaderStyle}>Settings</div>
 
-          <div style={{ padding: '0 6px' }}>
-            <AbacusDisplayDropdown
-              isFullscreen={isFullscreen}
-              onOpenChange={handleNestedDropdownChange}
-            />
+          <DropdownMenu.Item asChild>
+            <Link
+              href="/settings"
+              style={linkStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDark
+                  ? 'rgba(139, 92, 246, 0.2)'
+                  : 'rgba(139, 92, 246, 0.1)'
+                e.currentTarget.style.color = isDark
+                  ? 'rgba(196, 181, 253, 1)'
+                  : 'rgba(109, 40, 217, 1)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = isDark
+                  ? 'rgba(209, 213, 219, 1)'
+                  : 'rgba(55, 65, 81, 1)'
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>⚙️</span>
+              <span>Preferences</span>
+            </Link>
+          </DropdownMenu.Item>
+
+          {/* Theme Toggle - Quick Access */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 14px',
+            }}
+          >
+            <ThemeToggle />
           </div>
 
-          <DropdownMenu.Separator style={separatorStyle} />
-
-          {/* Language Section */}
-          <div style={sectionHeaderStyle}>Language</div>
-
-          <LanguageSelector variant="dropdown-item" isFullscreen={isFullscreen} />
-
-          <DropdownMenu.Separator style={separatorStyle} />
-
-          {/* Theme Section */}
-          <div style={sectionHeaderStyle}>Theme</div>
-
-          <DropdownMenu.Item onSelect={(e) => e.preventDefault()} style={{ padding: '0 6px' }}>
-            <ThemeToggle />
-          </DropdownMenu.Item>
+          {/* Abacus Style - Quick Access */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 14px',
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>🧮</span>
+            <span
+              style={{
+                fontSize: '14px',
+                fontWeight: 500,
+                color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
+              }}
+            >
+              Abacus Style
+            </span>
+            <AbacusDisplayDropdown />
+          </div>
 
           {/* Developer Section - shown in dev or when ?debug=1 is used */}
           {isDebugAllowed && (
             <>
               <DropdownMenu.Separator style={separatorStyle} />
               <div style={sectionHeaderStyle}>Developer</div>
+              <DropdownMenu.Item asChild>
+                <Link
+                  href="/debug"
+                  data-action="debug-hub-link"
+                  style={linkStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDark
+                      ? 'rgba(234, 179, 8, 0.2)'
+                      : 'rgba(234, 179, 8, 0.1)'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(253, 224, 71, 1)'
+                      : 'rgba(161, 98, 7, 1)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(209, 213, 219, 1)'
+                      : 'rgba(55, 65, 81, 1)'
+                  }}
+                >
+                  <span style={{ fontSize: '16px' }}>🛠️</span>
+                  <span>Debug Hub</span>
+                </Link>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item asChild>
+                <Link
+                  href="/vision-training"
+                  data-action="vision-training-link"
+                  style={linkStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDark
+                      ? 'rgba(234, 179, 8, 0.2)'
+                      : 'rgba(234, 179, 8, 0.1)'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(253, 224, 71, 1)'
+                      : 'rgba(161, 98, 7, 1)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(209, 213, 219, 1)'
+                      : 'rgba(55, 65, 81, 1)'
+                  }}
+                >
+                  <span style={{ fontSize: '16px' }}>👁️</span>
+                  <span>Vision Training</span>
+                </Link>
+              </DropdownMenu.Item>
               <DropdownMenu.Item
                 data-setting="visual-debug"
                 onSelect={toggleVisualDebug}
@@ -499,10 +665,8 @@ function HamburgerMenu({
   router: any
 }) {
   const [open, setOpen] = useState(false)
-  const [nestedDropdownOpen, setNestedDropdownOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const { resolvedTheme } = useTheme()
-  const { open: openDeploymentInfo } = useDeploymentInfo()
 
   // Detect mobile viewport - check the smaller dimension to catch landscape orientation
   React.useEffect(() => {
@@ -516,15 +680,8 @@ function HamburgerMenu({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Open on click OR if nested dropdown is open
-  const isOpen = open || nestedDropdownOpen
-
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen)
-  }
-
-  const handleNestedDropdownChange = (isNestedOpen: boolean) => {
-    setNestedDropdownOpen(isNestedOpen)
   }
 
   const handleClose = () => {
@@ -637,7 +794,6 @@ function HamburgerMenu({
                   toggleFullscreen={toggleFullscreen}
                   router={router}
                   onNavigate={handleClose}
-                  handleNestedDropdownChange={handleNestedDropdownChange}
                   isMobile={true}
                   resolvedTheme={resolvedTheme}
                 />
@@ -666,7 +822,7 @@ function HamburgerMenu({
 
   // Desktop dropdown menu
   return (
-    <DropdownMenu.Root open={isOpen} onOpenChange={handleOpenChange}>
+    <DropdownMenu.Root open={open} onOpenChange={handleOpenChange}>
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
@@ -747,7 +903,6 @@ function HamburgerMenu({
             pathname={pathname}
             toggleFullscreen={toggleFullscreen}
             router={router}
-            handleNestedDropdownChange={handleNestedDropdownChange}
             isMobile={false}
             resolvedTheme={resolvedTheme}
           />
@@ -884,6 +1039,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const isArcadePage = pathname?.startsWith('/arcade')
+  const isVisionTrainingPage = pathname?.startsWith('/vision-training')
   const isHomePage = pathname === '/'
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
   const { open: openDeploymentInfo } = useDeploymentInfo()
@@ -900,8 +1056,9 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const showBranding = !isHomePage || !homeHero || !homeHero.isHeroVisible
 
   // Auto-detect variant based on context
-  // Only arcade pages (not /games) should use minimal nav
-  const actualVariant = variant === 'full' && isArcadePage ? 'minimal' : variant
+  // Arcade and vision training pages use minimal nav with hamburger + centered content
+  const actualVariant =
+    variant === 'full' && (isArcadePage || isVisionTrainingPage) ? 'minimal' : variant
 
   // Mini nav for games/arcade (both fullscreen and non-fullscreen)
   if (actualVariant === 'minimal') {

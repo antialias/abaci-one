@@ -1,0 +1,922 @@
+'use client'
+
+import { useAbacusDisplay } from '@soroban/abacus-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Key, Languages, Palette, Settings as SettingsIcon } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { AbacusStylePanel } from '@/components/AbacusDisplayDropdown'
+import { AbacusDock } from '@/components/AbacusDock'
+import { LanguageSelector } from '@/components/LanguageSelector'
+import { PageWithNav } from '@/components/PageWithNav'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { useMyAbacus } from '@/contexts/MyAbacusContext'
+import { useTheme } from '@/contexts/ThemeContext'
+import { api } from '@/lib/queryClient'
+import { css } from '../../../styled-system/css'
+
+type TabId = 'general' | 'abacus' | 'mcp-keys'
+
+interface Tab {
+  id: TabId
+  label: string
+  icon: React.ReactNode
+}
+
+const TABS: Tab[] = [
+  { id: 'general', label: 'General', icon: <SettingsIcon size={16} /> },
+  { id: 'abacus', label: 'Abacus Style', icon: <Palette size={16} /> },
+  { id: 'mcp-keys', label: 'MCP Keys', icon: <Key size={16} /> },
+]
+
+/**
+ * User settings page for managing preferences across the app.
+ */
+export default function SettingsPage() {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const [activeTab, setActiveTab] = useState<TabId>('general')
+
+  return (
+    <PageWithNav>
+      <main
+        data-component="settings-page"
+        className={css({
+          minHeight: '100vh',
+          backgroundColor: isDark ? 'gray.900' : 'gray.50',
+          padding: '2rem',
+        })}
+      >
+        <div className={css({ maxWidth: '700px', margin: '0 auto' })}>
+          {/* Header */}
+          <header data-element="settings-header" className={css({ marginBottom: '1.5rem' })}>
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                marginBottom: '0.5rem',
+              })}
+            >
+              <SettingsIcon
+                size={28}
+                className={css({ color: isDark ? 'purple.400' : 'purple.600' })}
+              />
+              <h1
+                className={css({
+                  fontSize: '1.75rem',
+                  fontWeight: 'bold',
+                  color: isDark ? 'white' : 'gray.800',
+                })}
+              >
+                Settings
+              </h1>
+            </div>
+            <p
+              className={css({
+                color: isDark ? 'gray.400' : 'gray.600',
+              })}
+            >
+              Customize your Abaci One experience
+            </p>
+          </header>
+
+          {/* Tab Navigation */}
+          <div
+            data-element="tab-navigation"
+            className={css({
+              display: 'flex',
+              gap: '0.5rem',
+              marginBottom: '1.5rem',
+              borderBottom: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+              paddingBottom: '0',
+            })}
+          >
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                data-tab={tab.id}
+                data-active={activeTab === tab.id}
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  color:
+                    activeTab === tab.id
+                      ? isDark
+                        ? 'purple.400'
+                        : 'purple.600'
+                      : isDark
+                        ? 'gray.400'
+                        : 'gray.600',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  borderBottom: '2px solid',
+                  borderColor:
+                    activeTab === tab.id ? (isDark ? 'purple.400' : 'purple.600') : 'transparent',
+                  marginBottom: '-1px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  _hover: {
+                    color: isDark ? 'purple.300' : 'purple.700',
+                  },
+                })}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'general' && <GeneralTab isDark={isDark} />}
+          {activeTab === 'abacus' && <AbacusTab isDark={isDark} />}
+          {activeTab === 'mcp-keys' && <McpKeysTab isDark={isDark} />}
+        </div>
+      </main>
+    </PageWithNav>
+  )
+}
+
+/**
+ * General settings tab - Theme, Language
+ */
+function GeneralTab({ isDark }: { isDark: boolean }) {
+  return (
+    <div data-section="general-tab">
+      {/* Appearance Section */}
+      <section className={css({ marginBottom: '1.5rem' })}>
+        <SectionCard isDark={isDark}>
+          <SectionHeader icon={<Palette size={18} />} title="Appearance" isDark={isDark} />
+          <SettingRow
+            label="Theme"
+            description="Choose between light and dark mode"
+            isDark={isDark}
+            noBorder
+          >
+            <ThemeToggle />
+          </SettingRow>
+        </SectionCard>
+      </section>
+
+      {/* Language Section */}
+      <section className={css({ marginBottom: '1.5rem' })}>
+        <SectionCard isDark={isDark}>
+          <SectionHeader icon={<Languages size={18} />} title="Language" isDark={isDark} />
+          <SettingRow
+            label="Display Language"
+            description="Choose your preferred language"
+            isDark={isDark}
+            noBorder
+          >
+            <LanguageSelector variant="inline" />
+          </SettingRow>
+        </SectionCard>
+      </section>
+    </div>
+  )
+}
+
+/**
+ * Abacus Style tab - Full abacus customization
+ */
+function AbacusTab({ isDark }: { isDark: boolean }) {
+  const { requestDock, undock, dock } = useMyAbacus()
+  const { config } = useAbacusDisplay()
+
+  // Auto-dock when this tab mounts, auto-undock when it unmounts
+  useEffect(() => {
+    // Small delay to ensure dock is registered before requesting
+    const timer = setTimeout(() => {
+      requestDock()
+    }, 100)
+
+    return () => {
+      clearTimeout(timer)
+      undock()
+    }
+  }, [requestDock, undock])
+
+  return (
+    <div
+      data-section="abacus-tab"
+      className={css({
+        display: 'flex',
+        flexDirection: { base: 'column', lg: 'row' },
+        gap: '1.5rem',
+        alignItems: { base: 'stretch', lg: 'flex-start' },
+      })}
+    >
+      {/* Settings Panel - Primary content */}
+      <div className={css({ flex: 1, minWidth: 0 })}>
+        <SectionCard isDark={isDark}>
+          <div className={css({ padding: '1rem 0' })}>
+            <AbacusStylePanel isDark={isDark} showHeader={true} />
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* Live Preview - Sticky sidebar with AbacusDock */}
+      <div
+        className={css({
+          width: { base: '100%', lg: '220px' },
+          flexShrink: 0,
+          position: 'sticky',
+          top: '5rem',
+          alignSelf: 'flex-start',
+          order: { base: -1, lg: 0 },
+        })}
+      >
+        <div
+          data-element="abacus-preview"
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '0.75rem',
+            padding: '1rem',
+            backgroundColor: isDark ? 'gray.800' : 'white',
+            borderRadius: '12px',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+          })}
+        >
+          <span
+            className={css({
+              fontSize: '0.625rem',
+              fontWeight: '600',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              color: isDark ? 'gray.500' : 'gray.400',
+            })}
+          >
+            Preview
+          </span>
+          <AbacusDock
+            id="settings-preview"
+            columns={config.physicalAbacusColumns}
+            interactive
+            showNumbers={false}
+            hideUndock
+            className={css({
+              width: '180px',
+              height: '240px',
+            })}
+          />
+          {!dock && (
+            <p
+              className={css({
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.500' : 'gray.400',
+                textAlign: 'center',
+              })}
+            >
+              Abacus will dock here
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================
+// MCP Keys Tab - API Key Management
+// ============================================
+
+interface ApiKey {
+  id: string
+  name: string
+  keyPreview: string
+  createdAt: string
+  lastUsedAt: string | null
+  isRevoked: boolean
+}
+
+interface NewKeyResponse {
+  id: string
+  name: string
+  key: string
+  createdAt: string
+  message: string
+}
+
+async function fetchApiKeys(): Promise<{ keys: ApiKey[] }> {
+  const res = await api('settings/mcp-keys')
+  if (!res.ok) throw new Error('Failed to fetch API keys')
+  return res.json()
+}
+
+async function createApiKey(name: string): Promise<NewKeyResponse> {
+  const res = await api('settings/mcp-keys', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+  if (!res.ok) throw new Error('Failed to create API key')
+  return res.json()
+}
+
+async function revokeApiKey(keyId: string): Promise<void> {
+  const res = await api(`settings/mcp-keys/${keyId}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error('Failed to revoke API key')
+}
+
+function McpKeysTab({ isDark }: { isDark: boolean }) {
+  const queryClient = useQueryClient()
+
+  // Form state
+  const [newKeyName, setNewKeyName] = useState('')
+  const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  // Fetch existing keys
+  const { data, isLoading } = useQuery({
+    queryKey: ['mcp-api-keys'],
+    queryFn: fetchApiKeys,
+  })
+
+  // Create key mutation
+  const createMutation = useMutation({
+    mutationFn: createApiKey,
+    onSuccess: (data) => {
+      setNewlyCreatedKey(data.key)
+      setNewKeyName('')
+      queryClient.invalidateQueries({ queryKey: ['mcp-api-keys'] })
+    },
+  })
+
+  // Revoke key mutation
+  const revokeMutation = useMutation({
+    mutationFn: revokeApiKey,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mcp-api-keys'] })
+    },
+  })
+
+  const handleCreate = useCallback(() => {
+    if (newKeyName.trim()) {
+      createMutation.mutate(newKeyName.trim())
+    }
+  }, [newKeyName, createMutation])
+
+  const handleCopy = useCallback(async () => {
+    if (newlyCreatedKey) {
+      await navigator.clipboard.writeText(newlyCreatedKey)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }, [newlyCreatedKey])
+
+  const handleDismissNewKey = useCallback(() => {
+    setNewlyCreatedKey(null)
+    setCopied(false)
+  }, [])
+
+  const activeKeys = data?.keys.filter((k) => !k.isRevoked) ?? []
+  const revokedKeys = data?.keys.filter((k) => k.isRevoked) ?? []
+
+  return (
+    <div data-section="mcp-keys-tab">
+      {/* Description */}
+      <p
+        className={css({
+          color: isDark ? 'gray.400' : 'gray.600',
+          marginBottom: '1.5rem',
+          fontSize: '0.875rem',
+        })}
+      >
+        Manage API keys for external tools like Claude Code to access student skill data.
+      </p>
+
+      {/* Newly Created Key Banner */}
+      {newlyCreatedKey && (
+        <div
+          className={css({
+            backgroundColor: isDark ? 'green.900/50' : 'green.50',
+            border: '1px solid',
+            borderColor: isDark ? 'green.700' : 'green.200',
+            borderRadius: '12px',
+            padding: '1.5rem',
+            marginBottom: '1.5rem',
+          })}
+        >
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: '1rem',
+            })}
+          >
+            <h3
+              className={css({
+                fontWeight: '600',
+                color: isDark ? 'green.300' : 'green.800',
+              })}
+            >
+              API Key Created
+            </h3>
+            <button
+              type="button"
+              onClick={handleDismissNewKey}
+              className={css({
+                color: isDark ? 'gray.400' : 'gray.500',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1.25rem',
+                lineHeight: 1,
+              })}
+            >
+              ×
+            </button>
+          </div>
+          <p
+            className={css({
+              fontSize: '0.875rem',
+              color: isDark ? 'green.200' : 'green.700',
+              marginBottom: '0.75rem',
+            })}
+          >
+            Copy this key now - it won't be shown again!
+          </p>
+          <div
+            className={css({
+              display: 'flex',
+              gap: '0.5rem',
+              alignItems: 'center',
+            })}
+          >
+            <code
+              className={css({
+                flex: 1,
+                backgroundColor: isDark ? 'gray.800' : 'white',
+                padding: '0.75rem',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                fontFamily: 'monospace',
+                color: isDark ? 'gray.200' : 'gray.800',
+                overflowX: 'auto',
+                whiteSpace: 'nowrap',
+              })}
+            >
+              {newlyCreatedKey}
+            </code>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className={css({
+                padding: '0.75rem 1rem',
+                backgroundColor: copied ? 'green.500' : 'blue.500',
+                color: 'white',
+                borderRadius: '6px',
+                border: 'none',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                _hover: { backgroundColor: copied ? 'green.600' : 'blue.600' },
+              })}
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Key Card */}
+      <SectionCard isDark={isDark}>
+        <h2
+          className={css({
+            fontWeight: '600',
+            color: isDark ? 'white' : 'gray.800',
+            padding: '1rem 0',
+            borderBottom: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+          })}
+        >
+          Generate New Key
+        </h2>
+        <div
+          className={css({
+            display: 'flex',
+            gap: '0.75rem',
+            padding: '1rem 0',
+          })}
+        >
+          <input
+            type="text"
+            placeholder="Key name (e.g., Claude Code)"
+            value={newKeyName}
+            onChange={(e) => setNewKeyName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+            className={css({
+              flex: 1,
+              padding: '0.75rem',
+              borderRadius: '6px',
+              border: '1px solid',
+              borderColor: isDark ? 'gray.600' : 'gray.300',
+              backgroundColor: isDark ? 'gray.700' : 'white',
+              color: isDark ? 'white' : 'gray.800',
+              _placeholder: { color: isDark ? 'gray.500' : 'gray.400' },
+            })}
+          />
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={!newKeyName.trim() || createMutation.isPending}
+            className={css({
+              padding: '0.75rem 1.5rem',
+              backgroundColor: newKeyName.trim() ? 'blue.500' : isDark ? 'gray.700' : 'gray.300',
+              color: newKeyName.trim() ? 'white' : isDark ? 'gray.500' : 'gray.500',
+              borderRadius: '6px',
+              border: 'none',
+              fontWeight: '600',
+              cursor: newKeyName.trim() ? 'pointer' : 'not-allowed',
+              _hover: newKeyName.trim() ? { backgroundColor: 'blue.600' } : {},
+            })}
+          >
+            {createMutation.isPending ? 'Creating...' : 'Generate'}
+          </button>
+        </div>
+      </SectionCard>
+
+      {/* Active Keys List */}
+      <div className={css({ marginTop: '1.5rem' })}>
+        <SectionCard isDark={isDark}>
+          <h2
+            className={css({
+              fontWeight: '600',
+              color: isDark ? 'white' : 'gray.800',
+              padding: '1rem 0',
+              borderBottom: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+            })}
+          >
+            Active Keys
+          </h2>
+
+          <div className={css({ padding: '1rem 0' })}>
+            {isLoading ? (
+              <p className={css({ color: isDark ? 'gray.500' : 'gray.500' })}>Loading...</p>
+            ) : activeKeys.length === 0 ? (
+              <p
+                className={css({
+                  color: isDark ? 'gray.500' : 'gray.500',
+                  fontStyle: 'italic',
+                })}
+              >
+                No active API keys. Generate one above to get started.
+              </p>
+            ) : (
+              <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.75rem' })}>
+                {activeKeys.map((key) => (
+                  <KeyRow
+                    key={key.id}
+                    apiKey={key}
+                    isDark={isDark}
+                    onRevoke={() => revokeMutation.mutate(key.id)}
+                    isRevoking={revokeMutation.isPending}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* Revoked Keys (collapsed by default) */}
+      {revokedKeys.length > 0 && (
+        <details
+          className={css({
+            marginTop: '1.5rem',
+            backgroundColor: isDark ? 'gray.800/50' : 'gray.100',
+            borderRadius: '12px',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+            padding: '1rem 1.5rem',
+          })}
+        >
+          <summary
+            className={css({
+              fontWeight: '600',
+              color: isDark ? 'gray.400' : 'gray.600',
+              cursor: 'pointer',
+              _hover: { color: isDark ? 'gray.300' : 'gray.700' },
+            })}
+          >
+            Revoked Keys ({revokedKeys.length})
+          </summary>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              marginTop: '1rem',
+            })}
+          >
+            {revokedKeys.map((key) => (
+              <div
+                key={key.id}
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.5rem 0',
+                  opacity: 0.6,
+                })}
+              >
+                <div>
+                  <span
+                    className={css({
+                      color: isDark ? 'gray.400' : 'gray.600',
+                      textDecoration: 'line-through',
+                    })}
+                  >
+                    {key.name}
+                  </span>
+                  <span
+                    className={css({
+                      marginLeft: '0.5rem',
+                      fontSize: '0.75rem',
+                      color: isDark ? 'gray.500' : 'gray.500',
+                      fontFamily: 'monospace',
+                    })}
+                  >
+                    {key.keyPreview}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {/* Usage Instructions */}
+      <div
+        className={css({
+          marginTop: '1.5rem',
+          padding: '1rem',
+          backgroundColor: isDark ? 'gray.800/50' : 'blue.50',
+          borderRadius: '8px',
+          border: '1px solid',
+          borderColor: isDark ? 'gray.700' : 'blue.100',
+        })}
+      >
+        <h3
+          className={css({
+            fontWeight: '600',
+            color: isDark ? 'blue.300' : 'blue.800',
+            marginBottom: '0.5rem',
+          })}
+        >
+          Usage with Claude Code
+        </h3>
+        <p
+          className={css({
+            fontSize: '0.875rem',
+            color: isDark ? 'gray.300' : 'gray.700',
+            marginBottom: '0.75rem',
+          })}
+        >
+          Add this to your <code>.mcp.json</code>:
+        </p>
+        <pre
+          className={css({
+            backgroundColor: isDark ? 'gray.900' : 'white',
+            padding: '1rem',
+            borderRadius: '6px',
+            fontSize: '0.75rem',
+            fontFamily: 'monospace',
+            overflowX: 'auto',
+            color: isDark ? 'gray.200' : 'gray.800',
+          })}
+        >
+          {JSON.stringify(
+            {
+              mcpServers: {
+                abaci: {
+                  type: 'http',
+                  url: `${typeof window !== 'undefined' ? window.location.origin : 'https://abaci.one'}/api/mcp`,
+                  headers: {
+                    Authorization: 'Bearer YOUR_API_KEY',
+                  },
+                },
+              },
+            },
+            null,
+            2
+          )}
+        </pre>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Single API key row
+ */
+function KeyRow({
+  apiKey,
+  isDark,
+  onRevoke,
+  isRevoking,
+}: {
+  apiKey: ApiKey
+  isDark: boolean
+  onRevoke: () => void
+  isRevoking: boolean
+}) {
+  const [confirmRevoke, setConfirmRevoke] = useState(false)
+
+  const handleRevokeClick = useCallback(() => {
+    if (confirmRevoke) {
+      onRevoke()
+      setConfirmRevoke(false)
+    } else {
+      setConfirmRevoke(true)
+      setTimeout(() => setConfirmRevoke(false), 3000)
+    }
+  }, [confirmRevoke, onRevoke])
+
+  const createdDate = new Date(apiKey.createdAt).toLocaleDateString()
+  const lastUsed = apiKey.lastUsedAt ? new Date(apiKey.lastUsedAt).toLocaleDateString() : 'Never'
+
+  return (
+    <div
+      className={css({
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '0.75rem',
+        backgroundColor: isDark ? 'gray.700/50' : 'gray.50',
+        borderRadius: '8px',
+      })}
+    >
+      <div>
+        <div
+          className={css({
+            fontWeight: '600',
+            color: isDark ? 'white' : 'gray.800',
+          })}
+        >
+          {apiKey.name}
+        </div>
+        <div
+          className={css({
+            fontSize: '0.75rem',
+            color: isDark ? 'gray.400' : 'gray.500',
+            marginTop: '0.25rem',
+          })}
+        >
+          <span className={css({ fontFamily: 'monospace' })}>{apiKey.keyPreview}</span>
+          <span className={css({ marginLeft: '1rem' })}>Created: {createdDate}</span>
+          <span className={css({ marginLeft: '1rem' })}>Last used: {lastUsed}</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleRevokeClick}
+        disabled={isRevoking}
+        className={css({
+          padding: '0.5rem 1rem',
+          backgroundColor: confirmRevoke ? 'red.500' : 'transparent',
+          color: confirmRevoke ? 'white' : isDark ? 'red.400' : 'red.600',
+          borderRadius: '6px',
+          border: '1px solid',
+          borderColor: confirmRevoke ? 'red.500' : isDark ? 'red.400/50' : 'red.200',
+          cursor: 'pointer',
+          fontSize: '0.875rem',
+          _hover: {
+            backgroundColor: confirmRevoke ? 'red.600' : isDark ? 'red.900/30' : 'red.50',
+          },
+        })}
+      >
+        {isRevoking ? 'Revoking...' : confirmRevoke ? 'Confirm Revoke' : 'Revoke'}
+      </button>
+    </div>
+  )
+}
+
+// ============================================
+// Shared Components
+// ============================================
+
+/**
+ * Card wrapper for a section
+ */
+function SectionCard({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
+  return (
+    <div
+      className={css({
+        backgroundColor: isDark ? 'gray.800' : 'white',
+        borderRadius: '12px',
+        border: '1px solid',
+        borderColor: isDark ? 'gray.700' : 'gray.200',
+        padding: '0 1.5rem',
+      })}
+    >
+      {children}
+    </div>
+  )
+}
+
+/**
+ * Section header with icon
+ */
+function SectionHeader({
+  icon,
+  title,
+  isDark,
+}: {
+  icon: React.ReactNode
+  title: string
+  isDark: boolean
+}) {
+  return (
+    <div
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        padding: '1rem 0',
+        borderBottom: '1px solid',
+        borderColor: isDark ? 'gray.700' : 'gray.200',
+      })}
+    >
+      <span className={css({ color: isDark ? 'purple.400' : 'purple.600' })}>{icon}</span>
+      <h2
+        className={css({
+          fontSize: '0.875rem',
+          fontWeight: '600',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          color: isDark ? 'gray.400' : 'gray.500',
+        })}
+      >
+        {title}
+      </h2>
+    </div>
+  )
+}
+
+/**
+ * Individual setting row
+ */
+function SettingRow({
+  label,
+  description,
+  children,
+  isDark,
+  noBorder = false,
+}: {
+  label: string
+  description?: string
+  children: React.ReactNode
+  isDark: boolean
+  noBorder?: boolean
+}) {
+  return (
+    <div
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '1rem',
+        padding: '1rem 0',
+        borderBottom: noBorder ? 'none' : '1px solid',
+        borderColor: isDark ? 'gray.700' : 'gray.200',
+      })}
+    >
+      <div className={css({ flex: 1 })}>
+        <div
+          className={css({
+            fontWeight: '500',
+            color: isDark ? 'white' : 'gray.800',
+            marginBottom: description ? '0.25rem' : 0,
+          })}
+        >
+          {label}
+        </div>
+        {description && (
+          <div
+            className={css({
+              fontSize: '0.875rem',
+              color: isDark ? 'gray.400' : 'gray.600',
+            })}
+          >
+            {description}
+          </div>
+        )}
+      </div>
+      <div>{children}</div>
+    </div>
+  )
+}

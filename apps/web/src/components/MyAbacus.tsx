@@ -608,36 +608,38 @@ export function MyAbacus() {
                 {/* Left side: Vision indicator */}
                 <VisionIndicator size="small" position="inline" />
 
-                {/* Right side: Undock button */}
-                <button
-                  data-action="undock-abacus"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleUndockClick()
-                  }}
-                  title="Undock abacus"
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    w: '24px',
-                    h: '24px',
-                    bg: 'transparent',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    borderRadius: 'md',
-                    color: 'gray.400',
-                    fontSize: 'xs',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    _hover: {
-                      bg: 'blue.600',
-                      borderColor: 'blue.600',
-                      color: 'white',
-                    },
-                  })}
-                >
-                  ↗
-                </button>
+                {/* Right side: Undock button (hidden when dock.hideUndock is true) */}
+                {!dock.hideUndock && (
+                  <button
+                    data-action="undock-abacus"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleUndockClick()
+                    }}
+                    title="Undock abacus"
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      w: '24px',
+                      h: '24px',
+                      bg: 'transparent',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      borderRadius: 'md',
+                      color: 'gray.400',
+                      fontSize: 'xs',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      _hover: {
+                        bg: 'blue.600',
+                        borderColor: 'blue.600',
+                        color: 'white',
+                      },
+                    })}
+                  >
+                    ↗
+                  </button>
+                )}
               </div>
             )}
           </div>,

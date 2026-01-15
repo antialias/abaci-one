@@ -40,6 +40,8 @@ interface PageWithNavProps {
   onSetup?: () => void
   onNewGame?: () => void
   children: React.ReactNode
+  // Custom nav slot content (for non-game pages like vision-training)
+  navSlot?: React.ReactNode
   // Game state for turn indicator
   currentPlayerId?: string
   playerScores?: Record<string, number>
@@ -93,6 +95,7 @@ export function PageWithNav({
   customModeLabel,
   customModeEmoji,
   customModeColor,
+  navSlot,
 }: PageWithNavProps) {
   // In preview mode, render just the children without navigation
   const previewMode = useContext(PreviewModeContext)
@@ -134,9 +137,10 @@ export function PageWithNav({
 
   // For non-game pages, render just the AppNavBar without game features
   // This avoids loading GameModeContext, useRoomData, etc.
+  // Pass navSlot if provided (e.g., VisionTrainingNavSlot for vision-training pages)
   return (
     <>
-      <AppNavBar navSlot={null} />
+      <AppNavBar navSlot={navSlot ?? null} />
       {children}
     </>
   )

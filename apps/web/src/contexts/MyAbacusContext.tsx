@@ -10,9 +10,9 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { CalibrationGrid } from '@/types/vision'
 import type { ColumnImageData } from '@/lib/vision/trainingData'
 import { imageDataToBase64Png } from '@/lib/vision/trainingData'
+import type { CalibrationGrid } from '@/types/vision'
 
 /**
  * Camera source type for vision
@@ -119,6 +119,8 @@ export interface DockConfig {
   defaultValue?: number
   /** Callback when value changes (for controlled mode) */
   onValueChange?: (newValue: number) => void
+  /** Hide the undock button (default: false) */
+  hideUndock?: boolean
 }
 
 /**
@@ -195,6 +197,8 @@ interface MyAbacusContextValue {
   unregisterDock: (element: HTMLElement) => void
   /** Update dock visibility status */
   updateDockVisibility: (element: HTMLElement, isVisible: boolean) => void
+  /** Update dock configuration without re-registering */
+  updateDockConfig: (element: HTMLElement, config: Partial<Omit<DockConfig, 'element'>>) => void
   /** Whether the abacus is currently docked (user chose to dock it) */
   isDockedByUser: boolean
   /** Dock the abacus into the current dock */
@@ -279,6 +283,12 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   const [pendingDockRequest, setPendingDockRequest] = useState(false)
   const [abacusValue, setAbacusValue] = useState(0)
 
+  // Ref to track dock existence for stable requestDock callback
+  const dockRef = useRef<DockConfig | null>(null)
+  useEffect(() => {
+    dockRef.current = dock
+  }, [dock])
+
   // Vision state
   const [visionConfig, setVisionConfig] = useState<VisionConfig>(DEFAULT_VISION_CONFIG)
   const [isVisionSetupOpen, setIsVisionSetupOpen] = useState(false)
@@ -319,6 +329,18 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  const updateDockConfig = useCallback(
+    (element: HTMLElement, config: Partial<Omit<DockConfig, 'element'>>) => {
+      setDock((current) => {
+        if (current?.element === element) {
+          return { ...current, ...config }
+        }
+        return current
+      })
+    },
+    []
+  )
+
   const dockInto = useCallback(() => {
     if (dock) {
       setIsDockedByUser(true)
@@ -351,11 +373,12 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // Request to dock with animation (triggers MyAbacus to animate into dock)
+  // Uses ref to avoid recreating callback when dock config changes
   const requestDock = useCallback(() => {
-    if (dock) {
+    if (dockRef.current) {
       setPendingDockRequest(true)
     }
-  }, [dock])
+  }, [])
 
   // Clear the pending dock request after MyAbacus handles it
   const clearDockRequest = useCallback(() => {
@@ -538,6 +561,7 @@ export function MyAbacusProvider({ children }: { children: React.ReactNode }) {
         registerDock,
         unregisterDock,
         updateDockVisibility,
+        updateDockConfig,
         isDockedByUser,
         dockInto,
         undock,
