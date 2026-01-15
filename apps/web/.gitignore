@@ -51,6 +51,7 @@ styled-system
 
 # generated
 src/generated/build-info.json
+public/openapi.json
 
 # biome
 .biome
