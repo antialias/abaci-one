@@ -8,7 +8,13 @@ export default defineConfig({
   include: ['./src/**/*.{js,jsx,ts,tsx}', './pages/**/*.{js,jsx,ts,tsx}'],
 
   // Files to exclude
-  exclude: [],
+  exclude: [
+    // Storybook files don't need Panda extraction
+    './src/**/*.stories.tsx',
+    './src/**/*.stories.ts',
+    // Keyboard config has special {bksp} and {enter} patterns that confuse the parser
+    './src/components/practice/numericKeypadConfig.ts',
+  ],
 
   // The output directory for your css system
   outdir: 'styled-system',

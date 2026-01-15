@@ -1,0 +1,162 @@
+/* NumericKeypad styles for react-simple-keyboard
+ * Uses CSS custom properties for theming (dark/light mode)
+ * These properties are set dynamically via style attribute on containers
+ */
+
+/* Layout switching based on orientation */
+.keypad-portrait-container {
+  display: block;
+}
+
+.keypad-landscape-container {
+  display: none;
+}
+
+/* Only show landscape keypad on small screens (phones) */
+@media (orientation: landscape) and (max-height: 500px) {
+  .keypad-portrait-container {
+    display: none;
+  }
+
+  .keypad-landscape-container {
+    display: block;
+  }
+}
+
+/* On larger landscape screens, keep portrait bar at bottom */
+@media (orientation: landscape) and (min-height: 501px) {
+  .keypad-portrait-container {
+    display: block;
+  }
+
+  .keypad-landscape-container {
+    display: none;
+  }
+}
+
+/* Portrait keyboard styles */
+.keypad-portrait {
+  width: 100%;
+}
+
+.keypad-portrait .simple-keyboard {
+  background: var(--keypad-bg);
+  padding: 4px 2px;
+  border-radius: 0;
+  width: 100%;
+  max-width: none;
+}
+
+.keypad-portrait .hg-row {
+  display: flex;
+  margin: 0;
+}
+
+.keypad-portrait .hg-button {
+  height: 40px;
+  flex: 1;
+  margin: 0 1px;
+  border-radius: 6px;
+  background: var(--keypad-btn-bg);
+  color: var(--keypad-btn-color);
+  border: 1px solid var(--keypad-btn-border);
+  font-size: 18px;
+  font-weight: 600;
+  box-shadow: var(--keypad-btn-shadow);
+}
+
+.keypad-portrait .hg-button:active {
+  background: #3b82f6;
+  color: white;
+  box-shadow: none;
+  transform: translateY(2px);
+}
+
+/* Backspace button - portrait */
+.keypad-portrait .hg-button[data-skbtn="\7Bbksp\7D"] {
+  background: var(--keypad-bksp-bg);
+  color: var(--keypad-bksp-color);
+  border-color: var(--keypad-bksp-border);
+}
+
+.keypad-portrait .hg-button[data-skbtn="\7Bbksp\7D"]:active {
+  background: #dc2626;
+  color: white;
+}
+
+/* Enter button - portrait */
+.keypad-portrait .hg-button[data-skbtn="\7Benter\7D"] {
+  background: var(--keypad-enter-bg);
+  color: var(--keypad-enter-color);
+  border-color: var(--keypad-enter-border);
+}
+
+.keypad-portrait .hg-button[data-skbtn="\7Benter\7D"]:active {
+  background: #16a34a;
+  color: white;
+}
+
+/* Landscape keyboard styles */
+.keypad-landscape .simple-keyboard {
+  background: var(--keypad-bg);
+  padding: 4px;
+  border-radius: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.keypad-landscape .hg-rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.keypad-landscape .hg-row {
+  display: flex;
+  flex: 1;
+  margin: 0;
+}
+
+.keypad-landscape .hg-button {
+  flex: 1;
+  margin: 2px;
+  border-radius: 6px;
+  background: var(--keypad-btn-bg);
+  color: var(--keypad-btn-color);
+  border: 1px solid var(--keypad-btn-border);
+  font-size: 18px;
+  font-weight: 600;
+  box-shadow: var(--keypad-btn-shadow);
+}
+
+.keypad-landscape .hg-button:active {
+  background: #3b82f6;
+  color: white;
+  box-shadow: none;
+  transform: translateY(2px);
+}
+
+/* Backspace button - landscape */
+.keypad-landscape .hg-button[data-skbtn="\7Bbksp\7D"] {
+  background: var(--keypad-bksp-bg);
+  color: var(--keypad-bksp-color);
+  border-color: var(--keypad-bksp-border);
+}
+
+.keypad-landscape .hg-button[data-skbtn="\7Bbksp\7D"]:active {
+  background: #dc2626;
+  color: white;
+}
+
+/* Enter button - landscape */
+.keypad-landscape .hg-button[data-skbtn="\7Benter\7D"] {
+  background: var(--keypad-enter-bg);
+  color: var(--keypad-enter-color);
+  border-color: var(--keypad-enter-border);
+}
+
+.keypad-landscape .hg-button[data-skbtn="\7Benter\7D"]:active {
+  background: #16a34a;
+  color: white;
+}

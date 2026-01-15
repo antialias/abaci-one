@@ -117,7 +117,7 @@ export function McpKeysClient() {
           {/* Header */}
           <header className={css({ marginBottom: '2rem' })}>
             <Link
-              href="/practice"
+              href="/settings"
               className={css({
                 fontSize: '0.875rem',
                 color: isDark ? 'blue.400' : 'blue.600',
@@ -127,7 +127,7 @@ export function McpKeysClient() {
                 display: 'inline-block',
               })}
             >
-              ← Back to Practice
+              ← Back to Settings
             </Link>
             <h1
               className={css({

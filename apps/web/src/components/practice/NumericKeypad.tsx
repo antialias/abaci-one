@@ -1,11 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import Keyboard from 'react-simple-keyboard'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import 'react-simple-keyboard/build/css/index.css'
+import './NumericKeypad.css'
 import { css } from '../../../styled-system/css'
+import {
+  BKSP_KEY,
+  ENTER_KEY,
+  getLandscapeLayout,
+  getPortraitLayout,
+  keypadDisplay,
+} from './numericKeypadConfig'
 
 // Height of the portrait keypad (button height + padding)
 const PORTRAIT_KEYPAD_HEIGHT = 48
@@ -28,160 +36,22 @@ interface NumericKeypadProps {
 }
 
 /**
- * Generate CSS for portrait keyboard (single row at bottom)
+ * Get CSS custom properties for keyboard theming
  */
-function getPortraitStyles(isDark: boolean): string {
-  return `
-    .keypad-portrait-container {
-      display: block;
-    }
-    .keypad-landscape-container {
-      display: none;
-    }
-    /* Only show landscape keypad on small screens (phones) */
-    @media (orientation: landscape) and (max-height: 500px) {
-      .keypad-portrait-container {
-        display: none;
-      }
-      .keypad-landscape-container {
-        display: block;
-      }
-      /* Push main content away from landscape keypad */
-      body {
-        padding-right: 100px !important;
-      }
-      /* Also handle common layout containers */
-      nav, header, [data-component="active-session"] {
-        margin-right: 100px;
-      }
-    }
-    /* On larger landscape screens, keep portrait bar at bottom */
-    @media (orientation: landscape) and (min-height: 501px) {
-      .keypad-portrait-container {
-        display: block;
-      }
-      .keypad-landscape-container {
-        display: none;
-      }
-    }
-    /* Add bottom padding for portrait keypad */
-    @media (orientation: portrait) {
-      body {
-        padding-bottom: 48px !important;
-      }
-    }
-    .keypad-portrait {
-      width: 100%;
-    }
-    .keypad-portrait .simple-keyboard {
-      background: ${isDark ? '#1a1a1a' : '#f5f5f5'};
-      padding: 4px 2px;
-      border-radius: 0;
-      width: 100%;
-      max-width: none;
-    }
-    .keypad-portrait .hg-row {
-      display: flex;
-      margin: 0;
-    }
-    .keypad-portrait .hg-button {
-      height: 40px;
-      flex: 1;
-      margin: 0 1px;
-      border-radius: 6px;
-      background: ${isDark ? '#374151' : '#ffffff'};
-      color: ${isDark ? '#f3f4f6' : '#1f2937'};
-      border: 1px solid ${isDark ? '#4b5563' : '#d1d5db'};
-      font-size: 18px;
-      font-weight: 600;
-      box-shadow: ${isDark ? '0 2px 0 #1f2937' : '0 2px 0 #9ca3af'};
-    }
-    .keypad-portrait .hg-button:active {
-      background: #3b82f6;
-      color: white;
-      box-shadow: none;
-      transform: translateY(2px);
-    }
-    .keypad-portrait .hg-button[data-skbtn="{bksp}"] {
-      background: ${isDark ? '#7f1d1d' : '#fee2e2'};
-      color: ${isDark ? '#fca5a5' : '#dc2626'};
-      border-color: ${isDark ? '#991b1b' : '#fecaca'};
-    }
-    .keypad-portrait .hg-button[data-skbtn="{bksp}"]:active {
-      background: #dc2626;
-      color: white;
-    }
-    .keypad-portrait .hg-button[data-skbtn="{enter}"] {
-      background: ${isDark ? '#14532d' : '#dcfce7'};
-      color: ${isDark ? '#86efac' : '#16a34a'};
-      border-color: ${isDark ? '#166534' : '#bbf7d0'};
-    }
-    .keypad-portrait .hg-button[data-skbtn="{enter}"]:active {
-      background: #16a34a;
-      color: white;
-    }
-  `
-}
-
-/**
- * Generate CSS for landscape keyboard (two columns on right)
- */
-function getLandscapeStyles(isDark: boolean): string {
-  return `
-    .keypad-landscape .simple-keyboard {
-      background: ${isDark ? '#1a1a1a' : '#f5f5f5'};
-      padding: 4px;
-      border-radius: 0;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-    .keypad-landscape .hg-rows {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-    }
-    .keypad-landscape .hg-row {
-      display: flex;
-      flex: 1;
-      margin: 0;
-    }
-    .keypad-landscape .hg-button {
-      flex: 1;
-      margin: 2px;
-      border-radius: 6px;
-      background: ${isDark ? '#374151' : '#ffffff'};
-      color: ${isDark ? '#f3f4f6' : '#1f2937'};
-      border: 1px solid ${isDark ? '#4b5563' : '#d1d5db'};
-      font-size: 18px;
-      font-weight: 600;
-      box-shadow: ${isDark ? '0 2px 0 #1f2937' : '0 2px 0 #9ca3af'};
-    }
-    .keypad-landscape .hg-button:active {
-      background: #3b82f6;
-      color: white;
-      box-shadow: none;
-      transform: translateY(2px);
-    }
-    .keypad-landscape .hg-button[data-skbtn="{bksp}"] {
-      background: ${isDark ? '#7f1d1d' : '#fee2e2'};
-      color: ${isDark ? '#fca5a5' : '#dc2626'};
-      border-color: ${isDark ? '#991b1b' : '#fecaca'};
-    }
-    .keypad-landscape .hg-button[data-skbtn="{bksp}"]:active {
-      background: #dc2626;
-      color: white;
-    }
-    .keypad-landscape .hg-button[data-skbtn="{enter}"] {
-      background: ${isDark ? '#14532d' : '#dcfce7'};
-      color: ${isDark ? '#86efac' : '#16a34a'};
-      border-color: ${isDark ? '#166534' : '#bbf7d0'};
-    }
-    .keypad-landscape .hg-button[data-skbtn="{enter}"]:active {
-      background: #16a34a;
-      color: white;
-    }
-  `
+function getKeypadCssVars(isDark: boolean): React.CSSProperties {
+  return {
+    '--keypad-bg': isDark ? '#1a1a1a' : '#f5f5f5',
+    '--keypad-btn-bg': isDark ? '#374151' : '#ffffff',
+    '--keypad-btn-color': isDark ? '#f3f4f6' : '#1f2937',
+    '--keypad-btn-border': isDark ? '#4b5563' : '#d1d5db',
+    '--keypad-btn-shadow': isDark ? '0 2px 0 #1f2937' : '0 2px 0 #9ca3af',
+    '--keypad-bksp-bg': isDark ? '#7f1d1d' : '#fee2e2',
+    '--keypad-bksp-color': isDark ? '#fca5a5' : '#dc2626',
+    '--keypad-bksp-border': isDark ? '#991b1b' : '#fecaca',
+    '--keypad-enter-bg': isDark ? '#14532d' : '#dcfce7',
+    '--keypad-enter-color': isDark ? '#86efac' : '#16a34a',
+    '--keypad-enter-border': isDark ? '#166534' : '#bbf7d0',
+  } as React.CSSProperties
 }
 
 /**
@@ -218,32 +88,17 @@ export function NumericKeypad({
     }
   }, [setBottomOffset, setRightOffset])
 
-  // Portrait layout: single row (no empty spacer - buttons flex to fill)
-  const portraitLayout = {
-    default: showSubmitButton
-      ? ['1 2 3 4 5 6 7 8 9 0 {bksp} {enter}']
-      : ['1 2 3 4 5 6 7 8 9 0 {bksp}'],
-  }
-
-  // Landscape layout: 6 rows, 2 columns (backspace spans full width when no submit)
-  const landscapeLayout = {
-    default: showSubmitButton
-      ? ['1 6', '2 7', '3 8', '4 9', '5 0', '{bksp} {enter}']
-      : ['1 6', '2 7', '3 8', '4 9', '5 0', '{bksp}'],
-  }
-
-  const display = {
-    '{bksp}': '⌫',
-    '{enter}': '✓',
-  }
+  // Get keyboard layouts from config
+  const portraitLayout = getPortraitLayout(showSubmitButton)
+  const landscapeLayout = getLandscapeLayout(showSubmitButton)
 
   const handleKeyPress = useCallback(
     (button: string) => {
       if (disabled) return
 
-      if (button === '{bksp}') {
+      if (button === BKSP_KEY) {
         onBackspace()
-      } else if (button === '{enter}') {
+      } else if (button === ENTER_KEY) {
         onSubmit()
       } else if (/^[0-9]$/.test(button)) {
         onDigit(button)
@@ -252,15 +107,16 @@ export function NumericKeypad({
     [disabled, onDigit, onBackspace, onSubmit]
   )
 
+  // Memoize CSS variables to avoid re-creating object on every render
+  const cssVars = useMemo(() => getKeypadCssVars(isDark), [isDark])
+
   return (
     <>
-      <style>{getPortraitStyles(isDark)}</style>
-      <style>{getLandscapeStyles(isDark)}</style>
-
       {/* Portrait mode: single row fixed to bottom */}
       <div
         data-component="numeric-keypad"
         data-layout="portrait"
+        style={cssVars}
         className={`keypad-portrait-container ${css({
           position: 'fixed',
           bottom: 0,
@@ -277,7 +133,7 @@ export function NumericKeypad({
           <Keyboard
             keyboardRef={(r) => (portraitKeyboardRef.current = r)}
             layout={portraitLayout}
-            display={display}
+            display={keypadDisplay}
             onKeyPress={handleKeyPress}
             theme="hg-theme-default simple-keyboard"
             physicalKeyboardHighlight={false}
@@ -293,6 +149,7 @@ export function NumericKeypad({
       <div
         data-component="numeric-keypad"
         data-layout="landscape"
+        style={cssVars}
         className={`keypad-landscape-container ${css({
           position: 'fixed',
           top: 0,
@@ -310,7 +167,7 @@ export function NumericKeypad({
           <Keyboard
             keyboardRef={(r) => (landscapeKeyboardRef.current = r)}
             layout={landscapeLayout}
-            display={display}
+            display={keypadDisplay}
             onKeyPress={handleKeyPress}
             theme="hg-theme-default simple-keyboard"
             physicalKeyboardHighlight={false}

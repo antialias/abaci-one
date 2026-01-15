@@ -1,8 +1,27 @@
-import { Clock, GitBranch, GitCommit, Package, Server } from 'lucide-react'
+'use client'
+
+import {
+  Activity,
+  CheckCircle,
+  Clock,
+  Database,
+  GitBranch,
+  GitCommit,
+  Package,
+  Server,
+  XCircle,
+  Wifi,
+  AlertCircle,
+} from 'lucide-react'
 import type React from 'react'
-import buildInfo from '@/generated/build-info.json'
 import { css } from '../../styled-system/css'
 import { hstack, vstack } from '../../styled-system/patterns'
+import {
+  useDeploymentInfo,
+  type BuildInfoResponse,
+  type HealthResponse,
+} from '@/hooks/useDeploymentInfo'
+import buildInfoStatic from '@/generated/build-info.json'
 
 function formatTimestamp(timestamp: number) {
   const date = new Date(timestamp)
@@ -39,73 +58,314 @@ function getTimeAgo(timestamp: number) {
   return 'just now'
 }
 
-export function DeploymentInfoContent() {
+/** Status badge component */
+function StatusBadge({
+  status,
+  dataElement,
+}: {
+  status: 'healthy' | 'unhealthy' | 'loading' | 'error'
+  dataElement?: string
+}) {
+  const colors = {
+    healthy: {
+      bg: { base: 'green.100', _dark: 'green.900' },
+      color: { base: 'green.700', _dark: 'green.300' },
+    },
+    unhealthy: {
+      bg: { base: 'red.100', _dark: 'red.900' },
+      color: { base: 'red.700', _dark: 'red.300' },
+    },
+    loading: {
+      bg: { base: 'yellow.100', _dark: 'yellow.900' },
+      color: { base: 'yellow.700', _dark: 'yellow.300' },
+    },
+    error: {
+      bg: { base: 'red.100', _dark: 'red.900' },
+      color: { base: 'red.700', _dark: 'red.300' },
+    },
+  }
+
+  const icons = {
+    healthy: <CheckCircle size={14} />,
+    unhealthy: <XCircle size={14} />,
+    loading: <Activity size={14} className={css({ animation: 'pulse 1s infinite' })} />,
+    error: <AlertCircle size={14} />,
+  }
+
+  const labels = {
+    healthy: 'Healthy',
+    unhealthy: 'Unhealthy',
+    loading: 'Checking...',
+    error: 'Error',
+  }
+
   return (
-    <div className={vstack({ alignItems: 'stretch', gap: '4' })}>
-      <InfoRow icon={<Package size={18} />} label="Version" value={buildInfo.version} />
+    <span
+      data-element={dataElement}
+      className={css({
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '1',
+        fontFamily: 'mono',
+        fontSize: 'xs',
+        fontWeight: 'medium',
+        padding: '1 2',
+        borderRadius: 'full',
+        bg: colors[status].bg,
+        color: colors[status].color,
+      })}
+    >
+      {icons[status]}
+      {labels[status]}
+    </span>
+  )
+}
+
+/** Skeleton loader for async content */
+function Skeleton({ width = '100px' }: { width?: string }) {
+  return (
+    <span
+      className={css({
+        display: 'inline-block',
+        width,
+        height: '1em',
+        borderRadius: 'sm',
+        bg: 'bg.muted',
+        animation: 'pulse 1.5s ease-in-out infinite',
+      })}
+    />
+  )
+}
+
+/** Section header component */
+function SectionHeader({
+  icon,
+  title,
+  dataElement,
+}: {
+  icon: React.ReactNode
+  title: string
+  dataElement?: string
+}) {
+  return (
+    <div
+      data-element={dataElement}
+      className={hstack({
+        gap: '2',
+        paddingY: '2',
+        marginTop: '2',
+        borderTop: '1px solid',
+        borderColor: 'border.default',
+        color: 'text.secondary',
+      })}
+    >
+      {icon}
+      <span
+        className={css({
+          fontWeight: 'semibold',
+          fontSize: 'sm',
+          textTransform: 'uppercase',
+          letterSpacing: 'wide',
+        })}
+      >
+        {title}
+      </span>
+    </div>
+  )
+}
+
+/** Info row component */
+function InfoRow({
+  icon,
+  label,
+  value,
+  dataElement,
+}: {
+  icon?: React.ReactNode
+  label: string
+  value: React.ReactNode
+  dataElement?: string
+}) {
+  return (
+    <div
+      data-element={dataElement ? `row-${dataElement}` : undefined}
+      className={hstack({
+        justifyContent: 'space-between',
+        gap: '4',
+        paddingY: '2',
+        borderBottom: '1px solid',
+        borderColor: 'border.muted',
+      })}
+    >
+      <div
+        data-element={dataElement ? `label-${dataElement}` : undefined}
+        className={hstack({ gap: '2', color: 'text.secondary' })}
+      >
+        {icon}
+        <span className={css({ fontWeight: 'medium', fontSize: 'sm' })}>{label}</span>
+      </div>
+      <div
+        data-element={dataElement ? `value-${dataElement}` : undefined}
+        className={css({ textAlign: 'right', flex: '1', color: 'text.primary' })}
+      >
+        {value}
+      </div>
+    </div>
+  )
+}
+
+/** Code/mono text badge */
+function CodeBadge({
+  children,
+  variant = 'default',
+  dataElement,
+}: {
+  children: React.ReactNode
+  variant?: 'default' | 'success' | 'warning' | 'error'
+  dataElement?: string
+}) {
+  const variants = {
+    default: { bg: 'bg.subtle', color: 'text.primary' },
+    success: {
+      bg: { base: 'green.100', _dark: 'green.900' },
+      color: { base: 'green.700', _dark: 'green.300' },
+    },
+    warning: {
+      bg: { base: 'yellow.100', _dark: 'yellow.900' },
+      color: { base: 'yellow.700', _dark: 'yellow.300' },
+    },
+    error: {
+      bg: { base: 'red.100', _dark: 'red.900' },
+      color: { base: 'red.700', _dark: 'red.300' },
+    },
+  }
+
+  return (
+    <span
+      data-element={dataElement}
+      className={css({
+        fontFamily: 'mono',
+        fontSize: 'sm',
+        padding: '1 2',
+        borderRadius: 'sm',
+        bg: variants[variant].bg,
+        color: variants[variant].color,
+      })}
+    >
+      {children}
+    </span>
+  )
+}
+
+export interface DeploymentInfoContentProps {
+  /** Override build info for testing/stories */
+  buildInfoOverride?: BuildInfoResponse
+  /** Override health data for testing/stories */
+  healthOverride?: HealthResponse
+  /** Force loading state for testing/stories */
+  forceLoading?: boolean
+  /** Force health error for testing/stories */
+  forceHealthError?: boolean
+}
+
+export function DeploymentInfoContent({
+  buildInfoOverride,
+  healthOverride,
+  forceLoading = false,
+  forceHealthError = false,
+}: DeploymentInfoContentProps = {}) {
+  const {
+    buildInfo: fetchedBuildInfo,
+    health: fetchedHealth,
+    isLoadingHealth,
+    healthError,
+  } = useDeploymentInfo()
+
+  // Use overrides if provided, otherwise use fetched data
+  const buildInfo = buildInfoOverride ?? fetchedBuildInfo
+  const health = forceHealthError ? undefined : (healthOverride ?? fetchedHealth)
+  // Only show loading if forceLoading is true OR (no healthOverride, not forcing error, and hook is loading)
+  const showHealthLoading =
+    forceLoading || (!healthOverride && !forceHealthError && isLoadingHealth)
+  const showHealthError = forceHealthError || (!healthOverride && !!healthError)
+
+  // Fall back to static build info for basic fields
+  const version = buildInfo?.version ?? buildInfoStatic.version
+  const buildTimestamp = buildInfo?.buildTimestamp ?? buildInfoStatic.buildTimestamp
+  const git = buildInfo?.git ?? buildInfoStatic.git
+  const environment = buildInfo?.environment ?? buildInfoStatic.environment
+  const nodeVersion = buildInfo?.nodeVersion ?? buildInfoStatic.nodeVersion
+
+  return (
+    <div data-component="deployment-info" className={vstack({ alignItems: 'stretch', gap: '1' })}>
+      {/* Build Info Section */}
+      <InfoRow
+        dataElement="version"
+        icon={<Package size={16} />}
+        label="Version"
+        value={<CodeBadge dataElement="version-value">{version}</CodeBadge>}
+      />
 
       <InfoRow
-        icon={<Clock size={18} />}
+        dataElement="build-time"
+        icon={<Clock size={16} />}
         label="Build Time"
         value={
-          <div className={vstack({ alignItems: 'flex-start', gap: '1' })}>
-            <span>{formatTimestamp(buildInfo.buildTimestamp)}</span>
-            <span className={css({ fontSize: 'sm', color: 'gray.600' })}>
-              {getTimeAgo(buildInfo.buildTimestamp)}
+          <div className={vstack({ alignItems: 'flex-end', gap: '0' })}>
+            <span
+              data-element="build-time-ago"
+              className={css({ fontSize: 'sm', color: 'text.primary' })}
+            >
+              {getTimeAgo(buildTimestamp)}
+            </span>
+            <span
+              data-element="build-timestamp"
+              className={css({ fontSize: 'xs', color: 'text.muted' })}
+            >
+              {formatTimestamp(buildTimestamp)}
             </span>
           </div>
         }
       />
 
-      {buildInfo.git.branch && (
+      {git.branch && (
         <InfoRow
-          icon={<GitBranch size={18} />}
+          dataElement="branch"
+          icon={<GitBranch size={16} />}
           label="Branch"
           value={
-            <span
-              className={css({
-                fontFamily: 'mono',
-                fontSize: 'sm',
-                backgroundColor: 'gray.100',
-                padding: '1 2',
-                borderRadius: 'sm',
-              })}
-            >
-              {buildInfo.git.branch}
-              {buildInfo.git.isDirty && (
-                <span className={css({ color: 'orange.600', marginLeft: '2' })}>(dirty)</span>
+            <CodeBadge dataElement="branch-value">
+              {git.branch}
+              {git.isDirty && (
+                <span
+                  data-element="dirty-indicator"
+                  className={css({
+                    color: { base: 'orange.600', _dark: 'orange.400' },
+                    marginLeft: '1',
+                  })}
+                >
+                  (dirty)
+                </span>
               )}
-            </span>
+            </CodeBadge>
           }
         />
       )}
 
-      {buildInfo.git.commitShort && (
+      {git.commitShort && (
         <InfoRow
-          icon={<GitCommit size={18} />}
+          dataElement="commit"
+          icon={<GitCommit size={16} />}
           label="Commit"
           value={
-            <div className={vstack({ alignItems: 'flex-start', gap: '1' })}>
-              <span
-                className={css({
-                  fontFamily: 'mono',
-                  fontSize: 'sm',
-                  backgroundColor: 'gray.100',
-                  padding: '1 2',
-                  borderRadius: 'sm',
-                })}
-              >
-                {buildInfo.git.commitShort}
-              </span>
-              {buildInfo.git.commit && (
+            <div className={vstack({ alignItems: 'flex-end', gap: '0' })}>
+              <CodeBadge dataElement="commit-short">{git.commitShort}</CodeBadge>
+              {git.commit && (
                 <span
-                  className={css({
-                    fontFamily: 'mono',
-                    fontSize: 'xs',
-                    color: 'gray.500',
-                  })}
+                  data-element="commit-full"
+                  className={css({ fontFamily: 'mono', fontSize: 'xs', color: 'text.muted' })}
                 >
-                  {buildInfo.git.commit}
+                  {git.commit}
                 </span>
               )}
             </div>
@@ -113,84 +373,160 @@ export function DeploymentInfoContent() {
         />
       )}
 
-      {buildInfo.git.tag && (
-        <InfoRow
-          icon={<Package size={18} />}
-          label="Tag"
-          value={
-            <span
-              className={css({
-                fontFamily: 'mono',
-                fontSize: 'sm',
-                backgroundColor: 'blue.100',
-                color: 'blue.700',
-                padding: '1 2',
-                borderRadius: 'sm',
-              })}
-            >
-              {buildInfo.git.tag}
-            </span>
-          }
-        />
-      )}
-
       <InfoRow
-        icon={<Server size={18} />}
+        dataElement="environment"
+        icon={<Server size={16} />}
         label="Environment"
         value={
-          <span
-            className={css({
-              fontFamily: 'mono',
-              fontSize: 'sm',
-              backgroundColor: buildInfo.environment === 'production' ? 'green.100' : 'yellow.100',
-              color: buildInfo.environment === 'production' ? 'green.700' : 'yellow.700',
-              padding: '1 2',
-              borderRadius: 'sm',
-            })}
+          <CodeBadge
+            dataElement="environment-value"
+            variant={environment === 'production' ? 'success' : 'warning'}
           >
-            {buildInfo.environment}
-          </span>
+            {environment}
+          </CodeBadge>
         }
       />
 
-      {buildInfo.buildNumber && <InfoRow label="Build Number" value={buildInfo.buildNumber} />}
+      {/* Instance Section */}
+      {buildInfo?.instance && (
+        <>
+          <SectionHeader
+            icon={<Server size={14} />}
+            title="Instance"
+            dataElement="section-instance"
+          />
+
+          <InfoRow
+            dataElement="hostname"
+            label="Hostname"
+            value={
+              <CodeBadge dataElement="hostname-value">{buildInfo.instance.hostname}</CodeBadge>
+            }
+          />
+
+          {buildInfo.instance.containerId && buildInfo.instance.containerId !== 'unknown' && (
+            <InfoRow
+              dataElement="container-id"
+              label="Container"
+              value={
+                <CodeBadge dataElement="container-id-value">
+                  {buildInfo.instance.containerId.slice(0, 12)}
+                </CodeBadge>
+              }
+            />
+          )}
+
+          <InfoRow
+            dataElement="socketio-adapter"
+            icon={<Wifi size={16} />}
+            label="Socket.IO"
+            value={
+              <CodeBadge
+                dataElement="socketio-adapter-value"
+                variant={buildInfo.socketio?.adapter === 'redis' ? 'success' : 'warning'}
+              >
+                {buildInfo.socketio?.adapter ?? 'memory'}
+              </CodeBadge>
+            }
+          />
+
+          <InfoRow
+            dataElement="redis-status"
+            icon={<Database size={16} />}
+            label="Redis"
+            value={
+              buildInfo.redis ? (
+                <CodeBadge
+                  dataElement="redis-status-value"
+                  variant={
+                    buildInfo.redis.connected
+                      ? 'success'
+                      : buildInfo.redis.configured
+                        ? 'error'
+                        : 'warning'
+                  }
+                >
+                  {buildInfo.redis.connected
+                    ? 'Connected'
+                    : buildInfo.redis.configured
+                      ? 'Disconnected'
+                      : 'Not configured'}
+                </CodeBadge>
+              ) : (
+                <Skeleton width="80px" />
+              )
+            }
+          />
+        </>
+      )}
+
+      {/* Health Section */}
+      <SectionHeader icon={<Activity size={14} />} title="Health" dataElement="section-health" />
 
       <InfoRow
-        label="Node Version"
+        dataElement="health-status"
+        label="Status"
         value={
-          <span className={css({ fontFamily: 'mono', fontSize: 'sm' })}>
-            {buildInfo.nodeVersion}
+          showHealthLoading ? (
+            <StatusBadge status="loading" dataElement="health-status-value" />
+          ) : showHealthError ? (
+            <StatusBadge status="error" dataElement="health-status-value" />
+          ) : (
+            <StatusBadge
+              status={health?.status === 'healthy' ? 'healthy' : 'unhealthy'}
+              dataElement="health-status-value"
+            />
+          )
+        }
+      />
+
+      <InfoRow
+        dataElement="database-health"
+        icon={<Database size={16} />}
+        label="Database"
+        value={
+          showHealthLoading ? (
+            <Skeleton width="100px" />
+          ) : showHealthError ? (
+            <CodeBadge dataElement="database-health-value" variant="error">
+              Check failed
+            </CodeBadge>
+          ) : health?.checks?.database ? (
+            <span className={hstack({ gap: '2' })}>
+              <CodeBadge
+                dataElement="database-health-value"
+                variant={health.checks.database.status === 'ok' ? 'success' : 'error'}
+              >
+                {health.checks.database.status === 'ok' ? 'OK' : 'Error'}
+              </CodeBadge>
+              {health.checks.database.latencyMs !== undefined && (
+                <span
+                  data-element="database-latency"
+                  className={css({ fontSize: 'xs', color: 'text.muted' })}
+                >
+                  {health.checks.database.latencyMs}ms
+                </span>
+              )}
+            </span>
+          ) : (
+            <Skeleton width="80px" />
+          )
+        }
+      />
+
+      {/* Footer */}
+      <InfoRow
+        dataElement="node-version"
+        label="Node"
+        value={
+          <span
+            data-element="node-version-value"
+            className={css({ fontFamily: 'mono', fontSize: 'sm', color: 'text.muted' })}
+          >
+            {nodeVersion}
           </span>
         }
       />
-    </div>
-  )
-}
-
-function InfoRow({
-  icon,
-  label,
-  value,
-}: {
-  icon?: React.ReactNode
-  label: string
-  value: React.ReactNode
-}) {
-  return (
-    <div
-      className={hstack({
-        justifyContent: 'space-between',
-        gap: '4',
-        paddingY: '2',
-        borderBottom: '1px solid',
-        borderColor: 'gray.100',
-      })}
-    >
-      <div className={hstack({ gap: '2', color: 'gray.700' })}>
-        {icon}
-        <span className={css({ fontWeight: 'medium' })}>{label}</span>
-      </div>
-      <div className={css({ textAlign: 'right', flex: '1' })}>{value}</div>
     </div>
   )
 }

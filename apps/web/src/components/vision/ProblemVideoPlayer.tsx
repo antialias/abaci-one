@@ -972,8 +972,8 @@ export function ProblemVideoPlayer({
         </div>
       )}
 
-      {/* Error/status state */}
-      {!isLoading && error && (
+      {/* Error/status state - don't show if noRecordingExists since that state is more specific */}
+      {!isLoading && error && !noRecordingExists && (
         <div
           data-element="error-state"
           className={css({

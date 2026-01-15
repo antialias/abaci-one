@@ -251,7 +251,14 @@ export default function RemoteCameraPage() {
       setUsingDesktopCalibration(false)
       setCalibration(null)
     }
-  }, [desktopCalibration, desktopColumnCount, frameMode, isSending, updateCalibration, usingDesktopCalibration])
+  }, [
+    desktopCalibration,
+    desktopColumnCount,
+    frameMode,
+    isSending,
+    updateCalibration,
+    usingDesktopCalibration,
+  ])
 
   // Auto-detect markers (always runs unless using desktop calibration)
   useEffect(() => {
@@ -350,7 +357,9 @@ export default function RemoteCameraPage() {
             const now = performance.now()
             if (now - lastPreviewCaptureRef.current >= PREVIEW_CAPTURE_INTERVAL_MS) {
               lastPreviewCaptureRef.current = now
-              console.log('[PHONE] No markers but desktop has calibration - sending cropped preview')
+              console.log(
+                '[PHONE] No markers but desktop has calibration - sending cropped preview'
+              )
               captureAndSendCroppedPreviewFrame(video, desktopCalibration)
             }
           }

@@ -48,7 +48,7 @@ x-traefik-labels: &traefik-labels
   traefik.http.routers.abaci-http.entrypoints: web
   traefik.http.routers.abaci-http.middlewares: redirect-https@docker
   traefik.http.services.abaci.loadbalancer.server.port: "3000"
-  traefik.http.services.abaci.loadbalancer.healthcheck.path: /
+  traefik.http.services.abaci.loadbalancer.healthcheck.path: /api/health
   traefik.http.services.abaci.loadbalancer.healthcheck.interval: 10s
   # Sticky sessions required for Socket.IO and remote camera sessions
   # Without this, desktop and phone may hit different instances

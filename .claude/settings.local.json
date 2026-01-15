@@ -662,7 +662,12 @@
       "Bash(./generate-compose.sh)",
       "WebFetch(domain:docs.docker.com)",
       "Bash(./deploy.sh:*)",
-      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards status apps/web/src/app/api/health/)"
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards status apps/web/src/app/api/health/)",
+      "Bash(yq:*)",
+      "Bash(dig:*)",
+      "WebFetch(domain:ts-rest.com)",
+      "Bash(npx next-openapi-gen init)",
+      "Bash(npx next-openapi-gen:*)"
     ],
     "deny": [],
     "ask": []

@@ -1375,7 +1375,6 @@ export function AbacusVisionBridge({
                     />
                   )}
 
-
                 {/* Detection status indicator */}
                 {!remoteIsCalibrating && (
                   <div
