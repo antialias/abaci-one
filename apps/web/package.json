@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && concurrently \"node server.js\" \"npx @pandacss/dev --watch\"",
+    "dev": "npx @pandacss/dev --clean && tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && concurrently \"node server.js\" \"npx @pandacss/dev --watch --poll\"",
     "build": "node scripts/generate-build-info.js && npx tsx scripts/generateAllDayIcons.tsx && npx @pandacss/dev && tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && npm run build:seed-script && next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "npx @biomejs/biome lint . && npx eslint .",
@@ -32,7 +32,6 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@flatten-js/core": "^1.6.8",
     "@number-flow/react": "^0.5.10",
-    "@pandacss/dev": "^0.20.0",
     "@paralleldrive/cuid2": "^2.2.2",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-checkbox": "^1.0.4",
@@ -123,6 +122,7 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.1.1",
+    "@pandacss/dev": "^1.8.1",
     "@playwright/test": "^1.55.1",
     "@storybook/addon-docs": "^9.1.7",
     "@storybook/addon-onboarding": "^9.1.7",
