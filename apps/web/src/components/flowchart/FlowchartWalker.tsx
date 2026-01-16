@@ -281,10 +281,10 @@ export function FlowchartWalker({
           expected: result?.expected ?? value,
           userAnswer: value,
         })
-        // Auto-advance quickly after correct answer
+        // Auto-advance after short delay
         setTimeout(() => {
           advanceToNext(undefined, value as ProblemValue, true)
-        }, 400)
+        }, 1000)
       } else {
         // Wrong answer
         setWrongAttempts((prev) => prev + 1)
@@ -300,9 +300,6 @@ export function FlowchartWalker({
     [flowchart, state, advanceToNext]
   )
 
-  const handleCheckpointRetry = useCallback(() => {
-    setPhase({ type: 'awaitingCheckpoint' })
-  }, [])
 
   const handleChecklistToggle = useCallback(
     (index: number) => {
@@ -440,36 +437,38 @@ export function FlowchartWalker({
             )
           }
 
-          const feedbackValues = formatFeedback()
+          // Show checkpoint ready for retry with passive feedback message
+          const feedbackMessage = isTwoNumbers
+            ? 'Not quite - check the denominators and try again'
+            : `Not quite (you entered ${phase.userAnswer}) - try again`
 
           return (
-            <div data-testid="checkpoint-wrong-feedback" className={vstack({ gap: '4' })}>
+            <div data-testid="checkpoint-wrong-feedback" className={vstack({ gap: '3' })}>
+              {/* Passive feedback message */}
+              <div
+                className={css({
+                  padding: '2 3',
+                  borderRadius: 'md',
+                  backgroundColor: { base: 'orange.100', _dark: 'orange.900' },
+                  color: { base: 'orange.800', _dark: 'orange.200' },
+                  fontSize: 'sm',
+                  textAlign: 'center',
+                })}
+              >
+                {feedbackMessage}
+                {showHint && (
+                  <span className={css({ display: 'block', marginTop: '1', fontWeight: 'medium' })}>
+                    {getHintText()}
+                  </span>
+                )}
+              </div>
+              {/* Checkpoint ready for immediate retry - no feedback prop so inputs are fresh */}
               <FlowchartCheckpoint
                 prompt={checkpointDef.prompt}
                 inputType={checkpointDef.inputType}
                 inputLabels={checkpointDef.inputLabels}
                 onSubmit={handleCheckpointSubmit}
-                feedback={{
-                  correct: false,
-                  expected: feedbackValues.expected,
-                  userAnswer: feedbackValues.userAnswer,
-                }}
-                hint={getHintText()}
               />
-              <button
-                data-testid="checkpoint-retry-button"
-                onClick={handleCheckpointRetry}
-                className={css({
-                  padding: '2 4',
-                  fontSize: 'md',
-                  borderRadius: 'md',
-                  backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
-                  color: { base: 'gray.800', _dark: 'gray.200' },
-                  cursor: 'pointer',
-                })}
-              >
-                Try again
-              </button>
             </div>
           )
         }
