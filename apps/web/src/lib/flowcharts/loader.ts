@@ -313,9 +313,20 @@ export function validateCheckpoint(
       }
 
       const tolerance = def.tolerance ?? 0
-      const correct =
+      const orderMatters = def.orderMatters !== false // default true
+
+      // Check if input matches expected (in order)
+      const matchesInOrder =
         Math.abs(expected1 - userInput[0]) <= tolerance &&
         Math.abs(expected2 - userInput[1]) <= tolerance
+
+      // If order doesn't matter, also check reversed
+      const matchesReversed =
+        !orderMatters &&
+        Math.abs(expected1 - userInput[1]) <= tolerance &&
+        Math.abs(expected2 - userInput[0]) <= tolerance
+
+      const correct = matchesInOrder || matchesReversed
 
       return { correct, expected: expectedArray }
     }

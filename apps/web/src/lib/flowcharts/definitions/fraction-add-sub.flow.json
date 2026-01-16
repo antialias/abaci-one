@@ -206,8 +206,9 @@
       "type": "checkpoint",
       "prompt": "What are the two bottom numbers (denominators)?",
       "inputType": "two-numbers",
-      "inputLabels": ["Left", "Right"],
-      "expected": ["leftDenom", "rightDenom"]
+      "inputLabels": ["First", "Second"],
+      "expected": ["leftDenom", "rightDenom"],
+      "orderMatters": false
     },
     "STEP1": {
       "type": "decision",

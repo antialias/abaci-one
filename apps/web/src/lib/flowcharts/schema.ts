@@ -174,6 +174,8 @@ export interface CheckpointNode extends BaseNode {
   expected: string | [string, string]
   /** Labels for two-numbers inputs (defaults to ["First", "Second"]) */
   inputLabels?: [string, string]
+  /** For two-numbers: whether order matters (default: true). Set to false if either order is acceptable. */
+  orderMatters?: boolean
   /** Optional state update when checkpoint is passed */
   stateUpdate?: Record<string, string>
   /** Optional tolerance for numeric comparisons (for decimals) */
