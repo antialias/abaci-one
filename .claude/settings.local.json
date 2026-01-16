@@ -667,7 +667,9 @@
       "Bash(dig:*)",
       "WebFetch(domain:ts-rest.com)",
       "Bash(npx next-openapi-gen init)",
-      "Bash(npx next-openapi-gen:*)"
+      "Bash(npx next-openapi-gen:*)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(jq:*)"
     ],
     "deny": [],
     "ask": []

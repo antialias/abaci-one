@@ -440,8 +440,8 @@ export function FlowchartWalker({
         </div>
       </div>
 
-      {/* Working problem display */}
-      {state.workingProblem && (
+      {/* Working problem ledger */}
+      {state.workingProblemHistory.length > 0 && (
         <div
           className={css({
             padding: '4',
@@ -451,7 +451,7 @@ export function FlowchartWalker({
             borderColor: { base: 'blue.200', _dark: 'blue.700' },
           })}
         >
-          <div className={vstack({ gap: '3', alignItems: 'center' })}>
+          <div className={vstack({ gap: '3', alignItems: 'stretch' })}>
             <span
               className={css({
                 fontSize: 'xs',
@@ -459,36 +459,76 @@ export function FlowchartWalker({
                 color: { base: 'blue.600', _dark: 'blue.300' },
                 textTransform: 'uppercase',
                 letterSpacing: 'wide',
+                textAlign: 'center',
               })}
             >
-              Working Problem
+              Your Work
             </span>
-            <div className={css({ color: { base: 'blue.900', _dark: 'blue.100' } })}>
-              <MathDisplay expression={state.workingProblem} size="xl" />
-            </div>
-            {/* Show step history as breadcrumbs */}
-            {state.workingProblemHistory.length > 1 && (
-              <div
-                className={vstack({
-                  gap: '1',
-                  alignItems: 'center',
-                  marginTop: '2',
-                })}
-              >
-                {state.workingProblemHistory.slice(0, -1).map((step, idx) => (
-                  <span
+
+            {/* Ledger entries */}
+            <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
+              {state.workingProblemHistory.map((step, idx) => {
+                const isLatest = idx === state.workingProblemHistory.length - 1
+                const nodeTitle = flowchart.nodes[step.nodeId]?.content?.title
+
+                return (
+                  <div
                     key={idx}
                     className={css({
-                      fontSize: 'xs',
-                      color: { base: 'blue.500', _dark: 'blue.400' },
-                      opacity: 0.7,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3',
+                      padding: '2 3',
+                      borderRadius: 'lg',
+                      backgroundColor: isLatest
+                        ? { base: 'blue.100', _dark: 'blue.800' }
+                        : { base: 'transparent', _dark: 'transparent' },
+                      border: isLatest ? '2px solid' : '1px solid',
+                      borderColor: isLatest
+                        ? { base: 'blue.400', _dark: 'blue.500' }
+                        : { base: 'blue.200', _dark: 'blue.700' },
+                      opacity: isLatest ? 1 : 0.7,
                     })}
                   >
-                    {step.label}: <MathDisplay expression={step.value} size="sm" />
-                  </span>
-                ))}
-              </div>
-            )}
+                    {/* Step number */}
+                    <span
+                      className={css({
+                        fontSize: 'xs',
+                        fontWeight: 'bold',
+                        color: { base: 'blue.500', _dark: 'blue.400' },
+                        minWidth: '1.5rem',
+                        textAlign: 'center',
+                      })}
+                    >
+                      {idx + 1}
+                    </span>
+
+                    {/* Math expression */}
+                    <div
+                      className={css({
+                        flex: 1,
+                        color: { base: 'blue.900', _dark: 'blue.100' },
+                      })}
+                    >
+                      <MathDisplay expression={step.value} size={isLatest ? 'lg' : 'md'} />
+                    </div>
+
+                    {/* Step label / what happened */}
+                    <span
+                      className={css({
+                        fontSize: 'xs',
+                        color: { base: 'blue.600', _dark: 'blue.400' },
+                        textAlign: 'right',
+                        maxWidth: '120px',
+                      })}
+                      title={nodeTitle ? `From: ${nodeTitle}` : undefined}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
