@@ -1,0 +1,27 @@
+version: "3.8"
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: abaci-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - webgateway
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    labels:
+      docker-compose-watcher.watch: "1"
+      docker-compose-watcher.dir: /volume1/homes/antialias/projects/abaci.one
+      docker-compose-watcher.file: docker-compose.redis.yaml
+
+volumes:
+  redis-data:
+
+networks:
+  webgateway:
+    external: true
