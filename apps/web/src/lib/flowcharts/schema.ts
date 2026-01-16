@@ -57,12 +57,24 @@ export interface DynamicField extends BaseField {
 
 export type Field = IntegerField | NumberField | ChoiceField | MixedNumberField | DynamicField
 
+/** An example problem that can be pre-loaded */
+export interface ProblemExample {
+  /** Display name for the example (e.g., "No regrouping") */
+  name: string
+  /** Description of the path this covers */
+  description?: string
+  /** Values to populate the form with */
+  values: Record<string, ProblemValue>
+}
+
 /** Problem input schema definition */
 export interface ProblemInputSchema {
   schema: string
   fields: Field[]
   /** Optional expression that must evaluate to true for input to be valid */
   validation?: string
+  /** Pre-defined example problems that cover different paths */
+  examples?: ProblemExample[]
 }
 
 // =============================================================================
@@ -143,6 +155,8 @@ export interface DecisionOption {
   value: string
   /** Next node if this option is selected */
   next: string
+  /** Human-readable label for path descriptors (e.g., "Undo +", "Same denom") */
+  pathLabel?: string
 }
 
 /**
@@ -190,6 +204,63 @@ export type FlowchartNode =
   | TerminalNode
 
 // =============================================================================
+// Generation Configuration
+// =============================================================================
+
+/**
+ * Preferred values for a field during generation.
+ * Can be an array of specific values or a range configuration.
+ */
+export type PreferredValues = number[] | string[] | {
+  range: [number, number]
+  step?: number
+}
+
+/**
+ * Configuration for constraint-guided example generation.
+ * This allows the flowchart to express how to generate pedagogically
+ * appropriate problems without schema-specific code in the engine.
+ */
+export interface GenerationConfig {
+  /**
+   * The "target" field - typically the answer we're solving for.
+   * Generated first with nice values, then other fields are derived/generated.
+   * Should reference a variable name from the variables section.
+   */
+  target?: string
+
+  /**
+   * Fields that are computed from other fields rather than generated randomly.
+   * Maps field name to expression that computes it.
+   * Example: { "equals": "coefficient * answer + constant" }
+   */
+  derived?: Record<string, string>
+
+  /**
+   * Preferred values for fields - pedagogically nice numbers.
+   * The engine will bias generation toward these values.
+   */
+  preferred?: Record<string, PreferredValues>
+}
+
+/**
+ * Teacher/flowchart-defined constraints that generated problems must satisfy.
+ * Each constraint is an expression that must evaluate to true.
+ */
+export type GenerationConstraints = Record<string, string>
+
+/**
+ * Configuration for how to display the problem.
+ */
+export interface DisplayConfig {
+  /**
+   * Expression that evaluates to the problem display string.
+   * Example: "coefficient + 'x ' + operation + ' ' + constant + ' = ' + equals"
+   */
+  problem?: string
+}
+
+// =============================================================================
 // Flowchart Definition
 // =============================================================================
 
@@ -221,6 +292,24 @@ export interface FlowchartDefinition {
    * When defined, displays an evolving problem representation as the user progresses.
    */
   workingProblem?: WorkingProblemConfig
+
+  /**
+   * Optional: Configuration for constraint-guided example generation.
+   * Defines how to generate pedagogically appropriate problems.
+   */
+  generation?: GenerationConfig
+
+  /**
+   * Optional: Constraints that generated problems must satisfy.
+   * Each key is a constraint name, value is an expression that must be true.
+   * Example: { "positiveAnswer": "answer > 0", "integerAnswer": "floor(answer) == answer" }
+   */
+  constraints?: GenerationConstraints
+
+  /**
+   * Optional: Configuration for how to display the problem.
+   */
+  display?: DisplayConfig
 }
 
 // =============================================================================

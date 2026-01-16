@@ -157,6 +157,7 @@ export default function FlowchartPage() {
             schema={state.flowchart.definition.problemInput}
             onSubmit={handleProblemSubmit}
             title="Enter your problem"
+            flowchart={state.flowchart}
           />
         )}
 

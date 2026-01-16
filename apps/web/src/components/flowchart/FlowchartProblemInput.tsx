@@ -1,34 +1,135 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import type {
   ProblemInputSchema,
   Field,
   ProblemValue,
   MixedNumberValue,
+  ExecutableFlowchart,
 } from '@/lib/flowcharts/schema'
-import { evaluate, createEmptyContext } from '@/lib/flowcharts/evaluator'
+import { evaluate } from '@/lib/flowcharts/evaluator'
+import {
+  generateDiverseExamples,
+  analyzeFlowchart,
+  type GeneratedExample,
+  type FlowchartAnalysis,
+  type GenerationConstraints,
+  DEFAULT_CONSTRAINTS,
+} from '@/lib/flowcharts/loader'
+import { InteractiveDice } from '@/components/ui/InteractiveDice'
+import { TeacherConfigPanel } from './TeacherConfigPanel'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
+import { MathDisplay } from './MathDisplay'
 
 interface FlowchartProblemInputProps {
   schema: ProblemInputSchema
   onSubmit: (values: Record<string, ProblemValue>) => void
   title?: string
+  /** The loaded flowchart (used to calculate path complexity for examples) */
+  flowchart?: ExecutableFlowchart
 }
 
 /**
  * Dynamic problem input form based on schema definition.
  * Renders appropriate input fields based on field types.
  */
-export function FlowchartProblemInput({ schema, onSubmit, title }: FlowchartProblemInputProps) {
+export function FlowchartProblemInput({ schema, onSubmit, title, flowchart }: FlowchartProblemInputProps) {
   const [values, setValues] = useState<Record<string, ProblemValue>>(() =>
     initializeValues(schema.fields)
   )
   const [error, setError] = useState<string | null>(null)
+  const [selectedExampleIdx, setSelectedExampleIdx] = useState<number | null>(null)
+  // Teacher-configurable constraints for problem generation
+  const [constraints, setConstraints] = useState<GenerationConstraints>(DEFAULT_CONSTRAINTS)
+  // Displayed examples - updated when dice roll completes
+  const [displayedExamples, setDisplayedExamples] = useState<GeneratedExample[]>([])
+  // Pending examples - pre-computed during drag, shown on roll complete
+  const pendingExamplesRef = useRef<GeneratedExample[] | null>(null)
+
+  // Analyze flowchart structure (paths, complexity, etc.)
+  const analysis = useMemo(() => {
+    if (!flowchart) return null
+    try {
+      return analyzeFlowchart(flowchart)
+    } catch (e) {
+      console.error('Error analyzing flowchart:', e)
+      return null
+    }
+  }, [flowchart])
+
+  // Generate initial examples on first render (re-generates when constraints change)
+  const initialExamples = useMemo(() => {
+    if (!flowchart) return []
+    try {
+      return generateDiverseExamples(flowchart, 6, constraints)
+    } catch (e) {
+      console.error('Error generating examples:', e)
+      return []
+    }
+  }, [flowchart, constraints])
+
+  // Set initial examples on first render
+  const generatedExamples = displayedExamples.length > 0 ? displayedExamples : initialExamples
+
+  // Calculate coverage: how many unique paths are represented in current examples
+  const pathsCovered = useMemo(() => {
+    const uniquePaths = new Set(generatedExamples.map(ex => ex.pathSignature))
+    return uniquePaths.size
+  }, [generatedExamples])
+
+  // Precompute new examples when user starts dragging the dice
+  const handleDragStart = useCallback(() => {
+    if (!flowchart) return
+    try {
+      // Compute new examples during drag - user won't notice the computation
+      pendingExamplesRef.current = generateDiverseExamples(flowchart, 6, constraints)
+    } catch (e) {
+      console.error('Error pre-generating examples:', e)
+    }
+  }, [flowchart, constraints])
+
+  // Show new examples after the dice roll animation completes
+  const handleRollComplete = useCallback(() => {
+    // If we have pre-computed examples from drag, use them
+    if (pendingExamplesRef.current) {
+      setDisplayedExamples(pendingExamplesRef.current)
+      pendingExamplesRef.current = null
+    } else if (flowchart) {
+      // Click-only roll - compute now (animation masked the compute time)
+      try {
+        setDisplayedExamples(generateDiverseExamples(flowchart, 6, constraints))
+      } catch (e) {
+        console.error('Error generating examples:', e)
+      }
+    }
+    setSelectedExampleIdx(null)
+  }, [flowchart, constraints])
+
+  // Handler for dice roll - we don't update examples here anymore
+  // (examples update on completion via handleRollComplete)
+  const handleRoll = useCallback(() => {
+    // The actual example update happens in handleRollComplete
+    // This is called immediately when rolled - could add a spinning indicator here
+  }, [])
 
   const handleChange = useCallback((name: string, value: ProblemValue) => {
     setValues((prev) => ({ ...prev, [name]: value }))
+    setError(null)
+    setSelectedExampleIdx(null) // Clear example selection when user manually changes
+  }, [])
+
+  // Handle constraint changes - regenerate examples with new constraints
+  const handleConstraintsChange = useCallback((newConstraints: GenerationConstraints) => {
+    setConstraints(newConstraints)
+    setDisplayedExamples([]) // Clear displayed examples so they regenerate with new constraints
+    setSelectedExampleIdx(null)
+  }, [])
+
+  const handleExampleSelect = useCallback((example: GeneratedExample, idx: number) => {
+    setValues(example.values)
+    setSelectedExampleIdx(idx)
     setError(null)
   }, [])
 
@@ -67,6 +168,7 @@ export function FlowchartProblemInput({ schema, onSubmit, title }: FlowchartProb
 
   return (
     <div
+      data-testid="flowchart-problem-input"
       className={vstack({
         gap: '6',
         padding: '6',
@@ -79,6 +181,13 @@ export function FlowchartProblemInput({ schema, onSubmit, title }: FlowchartProb
         margin: '0 auto',
       })}
     >
+      {/* Teacher configuration panel */}
+      <TeacherConfigPanel
+        constraints={constraints}
+        onConstraintsChange={handleConstraintsChange}
+        defaultCollapsed={true}
+      />
+
       {title && (
         <h2
           className={css({
@@ -99,8 +208,126 @@ export function FlowchartProblemInput({ schema, onSubmit, title }: FlowchartProb
           textAlign: 'center',
         })}
       >
-        Enter your problem to get started
+        {generatedExamples.length > 0 ? 'Choose an example or enter your own' : 'Enter your problem to get started'}
       </p>
+
+      {/* Monte Carlo generated example problem buttons */}
+      {generatedExamples.length > 0 && (
+        <div data-testid="examples-section" className={vstack({ gap: '2', alignItems: 'stretch' })}>
+          <div className={vstack({ gap: '1', alignItems: 'center' })}>
+            <div className={hstack({ gap: '2', justifyContent: 'center', alignItems: 'center' })}>
+              <span
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: 'medium',
+                  color: { base: 'gray.500', _dark: 'gray.400' },
+                  textTransform: 'uppercase',
+                  letterSpacing: 'wide',
+                })}
+              >
+                Try These
+              </span>
+              <InteractiveDice
+              onRoll={handleRoll}
+              onDragStart={handleDragStart}
+              onRollComplete={handleRollComplete}
+              size={18}
+              title="Roll for new examples"
+              className={css({
+                padding: '1',
+                borderRadius: 'md',
+                backgroundColor: 'transparent',
+                border: 'none',
+                transition: 'background 0.2s',
+                _hover: {
+                  backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+                },
+              })}
+            />
+            </div>
+            {/* Coverage stats */}
+            {analysis && (
+              <span
+                className={css({
+                  fontSize: '2xs',
+                  color: { base: 'gray.400', _dark: 'gray.500' },
+                })}
+                title={`${analysis.stats.totalPaths} unique paths, ${analysis.stats.minDecisions}-${analysis.stats.maxDecisions} decisions, ${analysis.stats.minCheckpoints}-${analysis.stats.maxCheckpoints} checkpoints`}
+              >
+                {pathsCovered}/{analysis.stats.totalPaths} paths • {analysis.stats.minPathLength}-{analysis.stats.maxPathLength} steps
+              </span>
+            )}
+          </div>
+          <div
+            className={css({
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '2',
+              justifyContent: 'center',
+            })}
+          >
+            {generatedExamples.map((example, idx) => {
+              const { complexity } = example
+              return (
+                <button
+                  key={`${example.pathSignature}-${idx}`}
+                  data-testid={`example-button-${idx}`}
+                  data-path-signature={example.pathSignature}
+                  data-complexity-path={complexity.pathLength}
+                  data-complexity-decisions={complexity.decisions}
+                  data-complexity-checkpoints={complexity.checkpoints}
+                  onClick={() => handleExampleSelect(example, idx)}
+                  title={`Path: ${complexity.pathLength} steps, ${complexity.decisions} decisions, ${complexity.checkpoints} checkpoints`}
+                  className={css({
+                    padding: '2 3',
+                    borderRadius: 'lg',
+                    border: '2px solid',
+                    borderColor: selectedExampleIdx === idx
+                      ? { base: 'blue.500', _dark: 'blue.400' }
+                      : { base: 'gray.200', _dark: 'gray.600' },
+                    backgroundColor: selectedExampleIdx === idx
+                      ? { base: 'blue.50', _dark: 'blue.900' }
+                      : { base: 'white', _dark: 'gray.800' },
+                    color: selectedExampleIdx === idx
+                      ? { base: 'blue.700', _dark: 'blue.200' }
+                      : { base: 'gray.700', _dark: 'gray.300' },
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    _hover: {
+                      borderColor: { base: 'blue.400', _dark: 'blue.500' },
+                      backgroundColor: { base: 'blue.50', _dark: 'blue.900/50' },
+                    },
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '1',
+                  })}
+                >
+                  <MathDisplay
+                    expression={formatExampleDisplay(schema.schema, example.values)}
+                    size="sm"
+                  />
+                  <div
+                    data-testid="path-descriptor"
+                    data-path-descriptor={example.pathDescriptor}
+                    data-path-length={complexity.pathLength}
+                    data-decisions={complexity.decisions}
+                    data-checkpoints={complexity.checkpoints}
+                    className={css({
+                      fontSize: '2xs',
+                      color: { base: 'gray.500', _dark: 'gray.400' },
+                      fontWeight: 'medium',
+                    })}
+                    title={`${complexity.pathLength} steps, ${complexity.decisions} decisions, ${complexity.checkpoints} checkpoints`}
+                  >
+                    {example.pathDescriptor}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Render fields based on schema */}
       {schema.schema === 'two-digit-subtraction' ? (
@@ -128,6 +355,7 @@ export function FlowchartProblemInput({ schema, onSubmit, title }: FlowchartProb
 
       {/* Submit button */}
       <button
+        data-testid="start-button"
         onClick={handleSubmit}
         className={css({
           width: '100%',
@@ -575,6 +803,44 @@ function renderFieldInput(
 // =============================================================================
 // Helpers
 // =============================================================================
+
+/**
+ * Format example values into a readable problem expression based on schema type
+ */
+function formatExampleDisplay(schema: string, values: Record<string, ProblemValue>): string {
+  switch (schema) {
+    case 'two-digit-subtraction':
+      return `${values.minuend} − ${values.subtrahend}`
+
+    case 'linear-equation': {
+      const coef = values.coefficient as number
+      const op = values.operation as string
+      const constant = values.constant as number
+      const equals = values.equals as number
+      if (constant === 0) {
+        return `${coef}x = ${equals}`
+      }
+      return `${coef}x ${op} ${constant} = ${equals}`
+    }
+
+    case 'two-fractions-with-op': {
+      const lw = values.leftWhole as number
+      const ln = values.leftNum as number
+      const ld = values.leftDenom as number
+      const op = values.op as string
+      const rw = values.rightWhole as number
+      const rn = values.rightNum as number
+      const rd = values.rightDenom as number
+
+      const left = lw > 0 ? `${lw} ${ln}/${ld}` : `${ln}/${ld}`
+      const right = rw > 0 ? `${rw} ${rn}/${rd}` : `${rn}/${rd}`
+      return `${left} ${op} ${right}`
+    }
+
+    default:
+      return JSON.stringify(values)
+  }
+}
 
 function initializeValues(fields: Field[]): Record<string, ProblemValue> {
   const values: Record<string, ProblemValue> = {}

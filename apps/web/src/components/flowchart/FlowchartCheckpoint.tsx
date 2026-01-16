@@ -51,9 +51,16 @@ export function FlowchartCheckpoint({
   }
 
   return (
-    <div className={vstack({ gap: '4', alignItems: 'center' })}>
+    <div
+      data-testid="checkpoint-container"
+      data-input-type={inputType}
+      data-has-feedback={!!feedback}
+      data-feedback-correct={feedback?.correct}
+      className={vstack({ gap: '4', alignItems: 'center' })}
+    >
       {/* Prompt */}
       <p
+        data-testid="checkpoint-prompt"
         className={css({
           fontSize: 'lg',
           fontWeight: 'medium',
@@ -65,8 +72,9 @@ export function FlowchartCheckpoint({
       </p>
 
       {/* Input and button */}
-      <div className={hstack({ gap: '3' })}>
+      <div data-testid="checkpoint-input-row" className={hstack({ gap: '3' })}>
         <input
+          data-testid="checkpoint-input"
           type={inputType === 'number' ? 'number' : 'text'}
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -104,6 +112,7 @@ export function FlowchartCheckpoint({
           })}
         />
         <button
+          data-testid="checkpoint-check-button"
           onClick={handleSubmit}
           disabled={disabled || !value.trim()}
           className={css({
@@ -131,6 +140,10 @@ export function FlowchartCheckpoint({
       {/* Feedback */}
       {feedback && (
         <div
+          data-testid="checkpoint-feedback"
+          data-feedback-correct={feedback.correct}
+          data-expected={feedback.expected}
+          data-user-answer={feedback.userAnswer}
           className={css({
             padding: '3 4',
             borderRadius: 'md',
@@ -158,6 +171,7 @@ export function FlowchartCheckpoint({
       {/* Hint */}
       {hint && (
         <div
+          data-testid="checkpoint-hint"
           className={css({
             padding: '3 4',
             borderRadius: 'md',

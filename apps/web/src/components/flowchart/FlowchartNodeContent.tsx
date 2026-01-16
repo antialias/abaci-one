@@ -16,9 +16,16 @@ interface FlowchartNodeContentProps {
  */
 export function FlowchartNodeContent({ content, compact = false }: FlowchartNodeContentProps) {
   return (
-    <div className={vstack({ gap: compact ? '2' : '3', alignItems: 'stretch' })}>
+    <div
+      data-testid="node-content"
+      data-has-warning={!!content.warning}
+      data-has-example={!!content.example}
+      data-has-checklist={!!content.checklist?.length}
+      className={vstack({ gap: compact ? '2' : '3', alignItems: 'stretch' })}
+    >
       {/* Title */}
       <h3
+        data-testid="node-content-title"
         className={css({
           fontSize: compact ? 'lg' : 'xl',
           fontWeight: 'bold',
@@ -31,6 +38,8 @@ export function FlowchartNodeContent({ content, compact = false }: FlowchartNode
       {/* Body */}
       {content.body.length > 0 && (
         <div
+          data-testid="node-content-body"
+          data-line-count={content.body.length}
           className={css({
             fontSize: compact ? 'sm' : 'md',
             color: { base: 'gray.700', _dark: 'gray.300' },
@@ -48,6 +57,7 @@ export function FlowchartNodeContent({ content, compact = false }: FlowchartNode
       {/* Warning */}
       {content.warning && (
         <div
+          data-testid="node-content-warning"
           className={css({
             padding: '3',
             backgroundColor: { base: 'orange.100', _dark: 'orange.900' },
@@ -65,6 +75,7 @@ export function FlowchartNodeContent({ content, compact = false }: FlowchartNode
       {/* Example */}
       {content.example && (
         <div
+          data-testid="node-content-example"
           className={css({
             padding: '3',
             backgroundColor: { base: 'blue.50', _dark: 'blue.900' },
@@ -82,6 +93,8 @@ export function FlowchartNodeContent({ content, compact = false }: FlowchartNode
       {/* Checklist */}
       {content.checklist && content.checklist.length > 0 && (
         <ul
+          data-testid="node-content-checklist"
+          data-item-count={content.checklist.length}
           className={css({
             listStyle: 'none',
             padding: '3',
@@ -92,6 +105,7 @@ export function FlowchartNodeContent({ content, compact = false }: FlowchartNode
           {content.checklist.map((item, i) => (
             <li
               key={i}
+              data-testid={`checklist-item-${i}`}
               className={css({
                 fontSize: 'sm',
                 color: { base: 'green.800', _dark: 'green.200' },

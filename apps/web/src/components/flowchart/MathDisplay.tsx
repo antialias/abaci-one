@@ -1,7 +1,6 @@
 'use client'
 
 import { css } from '../../../styled-system/css'
-import { hstack } from '../../../styled-system/patterns'
 
 interface MathDisplayProps {
   /** Math expression string to render (e.g., "3 2/9 − 1 1/2" or "2x = 12") */
@@ -11,8 +10,10 @@ interface MathDisplayProps {
 }
 
 /**
- * Renders math expressions with proper fraction formatting.
- * Parses strings like "3 2/9 − 1 1/2" and renders fractions stacked.
+ * Renders math expressions using native MathML.
+ * Parses strings like "3 2/9 − 1 1/2" and renders proper semantic math.
+ *
+ * Browser support: 94%+ (Chrome 109+, Firefox, Safari 10+, Edge 109+)
  */
 export function MathDisplay({ expression, size = 'lg' }: MathDisplayProps) {
   const fontSize = {
@@ -26,19 +27,22 @@ export function MathDisplay({ expression, size = 'lg' }: MathDisplayProps) {
   const tokens = parseExpression(expression)
 
   return (
-    <span
-      className={hstack({
-        gap: '2',
+    <math
+      data-testid="math-display"
+      data-expression={expression}
+      data-size={size}
+      data-token-count={tokens.length}
+      className={css({
+        display: 'inline-flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        flexWrap: 'wrap',
+        verticalAlign: 'middle',
       })}
       style={{ fontSize }}
     >
-      {tokens.map((token, idx) => (
-        <span key={idx}>{renderToken(token)}</span>
-      ))}
-    </span>
+      <mrow>
+        {tokens.map((token, idx) => renderToken(token, idx))}
+      </mrow>
+    </math>
   )
 }
 
@@ -117,110 +121,45 @@ function parseExpression(expr: string): Token[] {
   return tokens
 }
 
-function renderToken(token: Token): React.ReactNode {
+function renderToken(token: Token, key: number): React.ReactNode {
   switch (token.type) {
     case 'number':
-      return (
-        <span className={css({ fontWeight: 'bold' })}>{token.value}</span>
-      )
+      return <mn key={key}>{token.value}</mn>
 
     case 'fraction':
       return (
-        <span
-          className={css({
-            display: 'inline-flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            verticalAlign: 'middle',
-            lineHeight: 1.1,
-          })}
-        >
-          <span className={css({ fontWeight: 'bold' })}>{token.numerator}</span>
-          <span
-            className={css({
-              width: '100%',
-              height: '2px',
-              backgroundColor: 'currentColor',
-              margin: '1px 0',
-            })}
-          />
-          <span className={css({ fontWeight: 'bold' })}>{token.denominator}</span>
-        </span>
+        <mfrac key={key}>
+          <mn>{token.numerator}</mn>
+          <mn>{token.denominator}</mn>
+        </mfrac>
       )
 
     case 'mixed':
       return (
-        <span className={hstack({ gap: '1', alignItems: 'center' })}>
-          <span className={css({ fontWeight: 'bold' })}>{token.whole}</span>
-          <span
-            className={css({
-              display: 'inline-flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              verticalAlign: 'middle',
-              lineHeight: 1.1,
-              fontSize: '0.85em',
-            })}
-          >
-            <span className={css({ fontWeight: 'bold' })}>{token.numerator}</span>
-            <span
-              className={css({
-                width: '100%',
-                height: '2px',
-                backgroundColor: 'currentColor',
-                margin: '1px 0',
-              })}
-            />
-            <span className={css({ fontWeight: 'bold' })}>{token.denominator}</span>
-          </span>
-        </span>
+        <mrow key={key}>
+          <mn>{token.whole}</mn>
+          <mfrac>
+            <mn>{token.numerator}</mn>
+            <mn>{token.denominator}</mn>
+          </mfrac>
+        </mrow>
       )
 
     case 'operator':
-      return (
-        <span
-          className={css({
-            fontWeight: 'normal',
-            padding: '0 0.25em',
-            opacity: 0.8,
-          })}
-        >
-          {token.value}
-        </span>
-      )
+      return <mo key={key}>{token.value}</mo>
 
     case 'variable':
-      return (
-        <span
-          className={css({
-            fontWeight: 'bold',
-            fontStyle: 'italic',
-            color: 'purple.600',
-          })}
-        >
-          {token.name}
-        </span>
-      )
+      return <mi key={key}>{token.name}</mi>
 
     case 'term':
       return (
-        <span className={css({ display: 'inline-flex', alignItems: 'baseline' })}>
-          <span className={css({ fontWeight: 'bold' })}>{token.coefficient}</span>
-          <span
-            className={css({
-              fontWeight: 'bold',
-              fontStyle: 'italic',
-              color: 'purple.600',
-            })}
-          >
-            {token.variable}
-          </span>
-        </span>
+        <mrow key={key}>
+          <mn>{token.coefficient}</mn>
+          <mi>{token.variable}</mi>
+        </mrow>
       )
 
     case 'text':
-      return (
-        <span className={css({ fontWeight: 'bold' })}>{token.value}</span>
-      )
+      return <mtext key={key}>{token.value}</mtext>
   }
 }

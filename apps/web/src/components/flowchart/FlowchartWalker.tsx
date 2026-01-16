@@ -227,6 +227,7 @@ export function FlowchartWalker({
       case 'instruction':
         return (
           <button
+            data-testid="instruction-advance-button"
             onClick={handleInstructionAdvance}
             className={css({
               padding: '4 8',
@@ -280,6 +281,7 @@ export function FlowchartWalker({
           if (phase.correct) {
             return (
               <div
+                data-testid="checkpoint-correct-feedback"
                 className={css({
                   padding: '4',
                   backgroundColor: { base: 'green.100', _dark: 'green.800' },
@@ -296,7 +298,7 @@ export function FlowchartWalker({
           }
 
           return (
-            <div className={vstack({ gap: '4' })}>
+            <div data-testid="checkpoint-wrong-feedback" className={vstack({ gap: '4' })}>
               <FlowchartCheckpoint
                 prompt={checkpointDef.prompt}
                 inputType={checkpointDef.inputType}
@@ -309,6 +311,7 @@ export function FlowchartWalker({
                 hint={showHint ? `Hint: The answer is ${phase.expected}` : undefined}
               />
               <button
+                data-testid="checkpoint-retry-button"
                 onClick={handleCheckpointRetry}
                 className={css({
                   padding: '2 4',
@@ -339,6 +342,7 @@ export function FlowchartWalker({
         setTimeout(() => advanceToNext(), 500)
         return (
           <div
+            data-testid="milestone-display"
             className={css({
               fontSize: '4xl',
               textAlign: 'center',
@@ -363,6 +367,8 @@ export function FlowchartWalker({
   if (phase.type === 'complete') {
     return (
       <div
+        data-testid="completion-screen"
+        data-mistakes={state.mistakes}
         className={vstack({
           gap: '6',
           padding: '8',
@@ -371,7 +377,7 @@ export function FlowchartWalker({
           minHeight: '400px',
         })}
       >
-        <div className={css({ fontSize: '6xl' })}>🎉</div>
+        <div data-testid="celebration-emoji" className={css({ fontSize: '6xl' })}>🎉</div>
         <h2
           className={css({
             fontSize: '2xl',
@@ -391,6 +397,7 @@ export function FlowchartWalker({
         </p>
         {onRestart && (
           <button
+            data-testid="restart-button"
             onClick={onRestart}
             className={css({
               padding: '3 6',
@@ -411,9 +418,14 @@ export function FlowchartWalker({
   }
 
   return (
-    <div className={vstack({ gap: '6', padding: '4', alignItems: 'stretch' })}>
+    <div
+      data-testid="flowchart-walker"
+      data-current-node={state.currentNode}
+      data-phase={phase.type}
+      className={vstack({ gap: '6', padding: '4', alignItems: 'stretch' })}
+    >
       {/* Problem display header */}
-      <div className={hstack({ justifyContent: 'center', fontSize: 'sm' })}>
+      <div data-testid="problem-header" className={hstack({ justifyContent: 'center', fontSize: 'sm' })}>
         <span className={css({ color: { base: 'gray.500', _dark: 'gray.500' } })}>
           {problemDisplay}
         </span>
@@ -425,6 +437,8 @@ export function FlowchartWalker({
       {/* Working problem ledger */}
       {state.workingProblemHistory.length > 0 && (
         <div
+          data-testid="working-problem-ledger"
+          data-step-count={state.workingProblemHistory.length}
           className={css({
             padding: '4',
             backgroundColor: { base: 'blue.50', _dark: 'blue.900' },
@@ -456,6 +470,10 @@ export function FlowchartWalker({
                 return (
                   <div
                     key={idx}
+                    data-testid={`ledger-step-${idx}`}
+                    data-step-index={idx}
+                    data-is-latest={isLatest}
+                    data-node-id={step.nodeId}
                     className={css({
                       display: 'flex',
                       alignItems: 'center',
@@ -517,6 +535,8 @@ export function FlowchartWalker({
 
       {/* Node content */}
       <div
+        data-testid="node-content-container"
+        data-node-type={currentNode?.definition.type}
         className={css({
           padding: '6',
           backgroundColor: { base: 'white', _dark: 'gray.800' },
@@ -531,6 +551,7 @@ export function FlowchartWalker({
 
       {/* Interaction area */}
       <div
+        data-testid="interaction-area"
         className={css({
           padding: '4',
           display: 'flex',

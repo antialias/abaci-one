@@ -31,31 +31,32 @@ export function parseNodeContent(raw: string): ParsedNodeContent {
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
 
-  const lines = decoded.split(/<br\s*\/?>/i)
-
   let title = ''
   const body: string[] = []
   let example: string | undefined
   let warning: string | undefined
   const checklist: string[] = []
 
+  // First, try to extract title from <b>...</b> tags (may span multiple lines via <br/>)
+  // This handles cases like <b>Title Line 1<br/>Title Line 2</b>
+  const boldMatch = decoded.match(/<b>([\s\S]*?)<\/b>/)
+  if (boldMatch) {
+    // Replace <br/> with spaces in the title to make it single line
+    title = stripHtml(boldMatch[1].replace(/<br\s*\/?>/gi, ' '))
+  }
+
+  // Remove the bold section from content before splitting for body processing
+  const contentWithoutTitle = boldMatch
+    ? decoded.replace(/<b>[\s\S]*?<\/b>/, '')
+    : decoded
+
+  const lines = contentWithoutTitle.split(/<br\s*\/?>/i)
+
   let inExample = false
 
   for (const line of lines) {
     const trimmed = line.trim()
     if (!trimmed) continue
-
-    // Extract title from <b>...</b>
-    const boldMatch = trimmed.match(/<b>([^<]+)<\/b>/)
-    if (boldMatch && !title) {
-      title = stripHtml(boldMatch[1])
-      // If there's more content after the title on the same line, add to body
-      const afterBold = trimmed.replace(/<b>[^<]+<\/b>/, '').trim()
-      if (afterBold && !afterBold.match(/^─+$/)) {
-        body.push(stripHtml(afterBold))
-      }
-      continue
-    }
 
     // Skip divider lines
     if (trimmed.match(/^─+$/)) {
@@ -92,7 +93,8 @@ export function parseNodeContent(raw: string): ParsedNodeContent {
   }
 
   return {
-    title: title || stripHtml(raw.split(/<br/i)[0]),
+    // If no <b>...</b> title was found, use the first line as the title
+    title: title || stripHtml(decoded.split(/<br/i)[0]),
     body,
     example,
     warning,

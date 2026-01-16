@@ -3,13 +3,38 @@
   "title": "Subtraction with Regrouping",
   "mermaidFile": "subtraction-regrouping-flowchart.mmd",
 
+  "generation": {
+    "preferred": {
+      "minuend": { "range": [30, 89], "step": 1 },
+      "subtrahend": { "range": [11, 49], "step": 1 }
+    }
+  },
+
+  "constraints": {
+    "positiveAnswer": "minuend > subtrahend",
+    "meaningfulDifference": "minuend - subtrahend >= 5",
+    "notTooEasy": "minuend - subtrahend <= minuend - 10"
+  },
+
   "problemInput": {
     "schema": "two-digit-subtraction",
     "fields": [
       { "name": "minuend", "type": "integer", "min": 10, "max": 99, "label": "Top number" },
       { "name": "subtrahend", "type": "integer", "min": 10, "max": 99, "label": "Bottom number" }
     ],
-    "validation": "minuend > subtrahend"
+    "validation": "minuend > subtrahend",
+    "examples": [
+      {
+        "name": "No regrouping",
+        "description": "Top ones digit is bigger - no borrowing needed",
+        "values": { "minuend": 57, "subtrahend": 23 }
+      },
+      {
+        "name": "With regrouping",
+        "description": "Top ones digit is smaller - need to borrow",
+        "values": { "minuend": 52, "subtrahend": 37 }
+      }
+    ]
   },
 
   "variables": {
@@ -38,8 +63,8 @@
       "type": "decision",
       "correctAnswer": "!needsBorrow",
       "options": [
-        { "label": "YES", "value": "yes", "next": "HAPPY" },
-        { "label": "NO", "value": "no", "next": "SAD" }
+        { "label": "YES", "value": "yes", "next": "HAPPY", "pathLabel": "No regroup" },
+        { "label": "NO", "value": "no", "next": "SAD", "pathLabel": "Regroup" }
       ]
     },
     "HAPPY": {

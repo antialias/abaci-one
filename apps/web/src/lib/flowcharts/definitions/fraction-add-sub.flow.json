@@ -3,6 +3,26 @@
   "title": "Fraction Addition & Subtraction",
   "mermaidFile": "fraction-flowchart.mmd",
 
+  "generation": {
+    "preferred": {
+      "leftWhole": [0, 1, 2, 3, 4, 5],
+      "leftNum": [1, 2, 3, 4, 5],
+      "leftDenom": [2, 3, 4, 5, 6, 8, 10, 12],
+      "rightWhole": [0, 1, 2, 3, 4],
+      "rightNum": [1, 2, 3, 4, 5],
+      "rightDenom": [2, 3, 4, 5, 6, 8, 10, 12]
+    }
+  },
+
+  "constraints": {
+    "properLeftFraction": "leftNum < leftDenom",
+    "properRightFraction": "rightNum < rightDenom",
+    "positiveResult": "op == '+' || (leftWhole + leftNum / leftDenom) >= (rightWhole + rightNum / rightDenom)",
+    "notIdentical": "leftWhole != rightWhole || leftNum != rightNum || leftDenom != rightDenom",
+    "meaningfulSubtraction": "op == '+' || (leftWhole + leftNum / leftDenom) - (rightWhole + rightNum / rightDenom) >= 0.25",
+    "nonTrivialNumerators": "leftNum > 0 && rightNum > 0"
+  },
+
   "problemInput": {
     "schema": "two-fractions-with-op",
     "fields": [
@@ -14,7 +34,59 @@
       { "name": "rightNum", "type": "integer", "min": 0, "max": 99, "label": "Right numerator" },
       { "name": "rightDenom", "type": "integer", "min": 1, "max": 99, "label": "Right denominator" }
     ],
-    "validation": "leftDenom > 0 && rightDenom > 0"
+    "validation": "leftDenom > 0 && rightDenom > 0",
+    "examples": [
+      {
+        "name": "Same denom + add (simple)",
+        "description": "Denominators match, no whole numbers",
+        "values": { "leftWhole": 0, "leftNum": 1, "leftDenom": 4, "op": "+", "rightWhole": 0, "rightNum": 2, "rightDenom": 4 }
+      },
+      {
+        "name": "Same denom + add (mixed)",
+        "description": "Denominators match, with whole numbers",
+        "values": { "leftWhole": 2, "leftNum": 1, "leftDenom": 5, "op": "+", "rightWhole": 1, "rightNum": 2, "rightDenom": 5 }
+      },
+      {
+        "name": "Same denom + sub (no borrow)",
+        "description": "Denominators match, top fraction bigger",
+        "values": { "leftWhole": 3, "leftNum": 3, "leftDenom": 4, "op": "−", "rightWhole": 1, "rightNum": 1, "rightDenom": 4 }
+      },
+      {
+        "name": "Same denom + sub (borrow)",
+        "description": "Denominators match, need to borrow",
+        "values": { "leftWhole": 3, "leftNum": 1, "leftDenom": 4, "op": "−", "rightWhole": 1, "rightNum": 3, "rightDenom": 4 }
+      },
+      {
+        "name": "One divides + add (simple)",
+        "description": "4 divides 8, no whole numbers",
+        "values": { "leftWhole": 0, "leftNum": 1, "leftDenom": 4, "op": "+", "rightWhole": 0, "rightNum": 3, "rightDenom": 8 }
+      },
+      {
+        "name": "One divides + add (mixed)",
+        "description": "4 divides 8, with whole numbers",
+        "values": { "leftWhole": 2, "leftNum": 1, "leftDenom": 4, "op": "+", "rightWhole": 1, "rightNum": 3, "rightDenom": 8 }
+      },
+      {
+        "name": "One divides + sub (borrow)",
+        "description": "3 divides 6, need to borrow",
+        "values": { "leftWhole": 3, "leftNum": 1, "leftDenom": 6, "op": "−", "rightWhole": 1, "rightNum": 2, "rightDenom": 3 }
+      },
+      {
+        "name": "LCD + add (simple)",
+        "description": "Find LCD=12, no whole numbers",
+        "values": { "leftWhole": 0, "leftNum": 1, "leftDenom": 3, "op": "+", "rightWhole": 0, "rightNum": 1, "rightDenom": 4 }
+      },
+      {
+        "name": "LCD + add (mixed)",
+        "description": "Find LCD=12, with whole numbers",
+        "values": { "leftWhole": 2, "leftNum": 2, "leftDenom": 3, "op": "+", "rightWhole": 1, "rightNum": 3, "rightDenom": 4 }
+      },
+      {
+        "name": "LCD + sub (borrow)",
+        "description": "Find LCD=12 and borrow",
+        "values": { "leftWhole": 4, "leftNum": 1, "leftDenom": 3, "op": "−", "rightWhole": 2, "rightNum": 3, "rightDenom": 4 }
+      }
+    ]
   },
 
   "variables": {
@@ -44,8 +116,8 @@
       "type": "decision",
       "correctAnswer": "sameBottom",
       "options": [
-        { "label": "YES ✓", "value": "yes", "next": "READY1" },
-        { "label": "NO", "value": "no", "next": "STEP2" }
+        { "label": "YES ✓", "value": "yes", "next": "READY1", "pathLabel": "Same" },
+        { "label": "NO", "value": "no", "next": "STEP2", "pathLabel": "Diff" }
       ]
     },
     "READY1": {
@@ -56,8 +128,8 @@
       "type": "decision",
       "correctAnswer": "oneDividesOther",
       "options": [
-        { "label": "YES", "value": "yes", "next": "CONV1A" },
-        { "label": "NO", "value": "no", "next": "STEP3" }
+        { "label": "YES", "value": "yes", "next": "CONV1A", "pathLabel": "Divides" },
+        { "label": "NO", "value": "no", "next": "STEP3", "pathLabel": "LCD" }
       ]
     },
     "CONV1A": {
@@ -112,8 +184,8 @@
       "type": "decision",
       "correctAnswer": "!isSubtraction",
       "options": [
-        { "label": "➕ Adding", "value": "add", "next": "GOSTEP4" },
-        { "label": "➖ Subtracting", "value": "sub", "next": "BORROWCHECK" }
+        { "label": "➕ Adding", "value": "add", "next": "GOSTEP4", "pathLabel": "+" },
+        { "label": "➖ Subtracting", "value": "sub", "next": "BORROWCHECK", "pathLabel": "−" }
       ]
     },
     "GOSTEP4": {
@@ -124,8 +196,8 @@
       "type": "decision",
       "correctAnswer": "!needsBorrow",
       "options": [
-        { "label": "YES ✓ (big enough)", "value": "yes", "next": "GOSTEP4B" },
-        { "label": "😱 NO! (need borrow)", "value": "no", "next": "BORROW" }
+        { "label": "YES ✓ (big enough)", "value": "yes", "next": "GOSTEP4B", "pathLabel": "no borrow" },
+        { "label": "😱 NO! (need borrow)", "value": "no", "next": "BORROW", "pathLabel": "borrow" }
       ]
     },
     "GOSTEP4B": {

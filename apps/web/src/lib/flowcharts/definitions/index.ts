@@ -174,7 +174,7 @@ export const FLOWCHARTS: Record<
   { definition: FlowchartDefinition; mermaid: string; meta: FlowchartMeta }
 > = {
   'subtraction-regrouping': {
-    definition: subtractionDefinition as FlowchartDefinition,
+    definition: subtractionDefinition as unknown as FlowchartDefinition,
     mermaid: SUBTRACTION_MERMAID,
     meta: {
       id: 'subtraction-regrouping',

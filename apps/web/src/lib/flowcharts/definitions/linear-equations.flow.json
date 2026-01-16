@@ -3,6 +3,29 @@
   "title": "Solving Linear Equations",
   "mermaidFile": "linear-equations-flowchart.mmd",
 
+  "generation": {
+    "target": "answer",
+    "derived": {
+      "coefficient": "constant == 0 ? 2 + (answer % 5) : 1",
+      "equals": "constant == 0 ? coefficient * answer : (operation == '+' ? answer + constant : answer - constant)"
+    },
+    "preferred": {
+      "answer": [2, 3, 4, 5, 6, 7, 8, 9, 10],
+      "constant": [0, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    }
+  },
+
+  "constraints": {
+    "positiveAnswer": "answer > 0",
+    "integerAnswer": "floor(answer) == answer",
+    "oneStep": "(constant == 0) != (coefficient == 1)",
+    "positiveEquals": "equals > 0"
+  },
+
+  "display": {
+    "problem": "coefficient == 1 ? 'x ' + operation + ' ' + constant + ' = ' + equals : coefficient + 'x = ' + equals"
+  },
+
   "problemInput": {
     "schema": "linear-equation",
     "fields": [
@@ -11,7 +34,24 @@
       { "name": "constant", "type": "integer", "min": 0, "max": 99, "label": "Constant" },
       { "name": "equals", "type": "integer", "min": 0, "max": 99, "label": "Equals" }
     ],
-    "validation": "coefficient > 0"
+    "validation": "coefficient > 0",
+    "examples": [
+      {
+        "name": "Addition constant",
+        "description": "2x + 4 = 10 → subtract to isolate x term",
+        "values": { "coefficient": 2, "operation": "+", "constant": 4, "equals": 10 }
+      },
+      {
+        "name": "Subtraction constant",
+        "description": "3x − 6 = 9 → add to isolate x term",
+        "values": { "coefficient": 3, "operation": "−", "constant": 6, "equals": 9 }
+      },
+      {
+        "name": "No constant",
+        "description": "4x = 20 → just divide both sides",
+        "values": { "coefficient": 4, "operation": "+", "constant": 0, "equals": 20 }
+      }
+    ]
   },
 
   "variables": {
@@ -40,8 +80,8 @@
       "type": "decision",
       "correctAnswer": "constant != 0",
       "options": [
-        { "label": "ADDED ON (+/−)", "value": "add", "next": "STUCK_ADD" },
-        { "label": "MULTIPLIED IN (×/÷)", "value": "mul", "next": "STUCK_MUL" }
+        { "label": "ADDED ON (+/−)", "value": "add", "next": "STUCK_ADD", "pathLabel": "Undo +" },
+        { "label": "MULTIPLIED IN (×/÷)", "value": "mul", "next": "STUCK_MUL", "pathLabel": "÷" }
       ]
     },
     "STUCK_ADD": {

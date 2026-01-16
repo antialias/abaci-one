@@ -61,6 +61,10 @@ export function FlowchartDecision({
 
   return (
     <RadioGroup.Root
+      data-testid="decision-radio-group"
+      data-option-count={options.length}
+      data-is-shaking={isShaking}
+      data-showing-feedback={showFeedback}
       value={selectedValue}
       onValueChange={handleSelect}
       className={cx(
@@ -68,13 +72,17 @@ export function FlowchartDecision({
         isShaking ? 'shake-animation' : ''
       )}
     >
-      {options.map((option) => {
+      {options.map((option, idx) => {
         const isCorrect = showFeedback && correctAnswer === option.value
         const isWrong = showFeedback && wrongAnswer === option.value
 
         return (
           <RadioGroup.Item
             key={option.value}
+            data-testid={`decision-option-${idx}`}
+            data-option-value={option.value}
+            data-is-correct={isCorrect}
+            data-is-wrong={isWrong}
             value={option.value}
             disabled={showFeedback}
             className={css({
@@ -267,6 +275,7 @@ interface WrongAnswerFeedbackProps {
 export function FlowchartWrongAnswerFeedback({ message }: WrongAnswerFeedbackProps) {
   return (
     <div
+      data-testid="wrong-answer-feedback"
       className={css({
         padding: '3 4',
         backgroundColor: { base: 'amber.100', _dark: 'amber.900' },
