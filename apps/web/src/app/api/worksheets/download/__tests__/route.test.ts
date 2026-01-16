@@ -183,6 +183,8 @@ describe('Worksheet Download API', () => {
 
     expect(response.status).toBe(200)
     // Special characters should be replaced with hyphens
-    expect(response.headers.get('Content-Disposition')).toContain('worksheet-Test-Worksheet-With-Special-Chars.pdf')
+    expect(response.headers.get('Content-Disposition')).toContain(
+      'worksheet-Test-Worksheet-With-Special-Chars.pdf'
+    )
   })
 })

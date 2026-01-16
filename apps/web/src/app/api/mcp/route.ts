@@ -219,7 +219,11 @@ async function executeTool(
   args: Record<string, unknown>
 ): Promise<unknown> {
   // Worksheet tools don't require player access
-  const worksheetToolNames = ['generate_worksheet', 'get_worksheet_info', 'list_difficulty_profiles']
+  const worksheetToolNames = [
+    'generate_worksheet',
+    'get_worksheet_info',
+    'list_difficulty_profiles',
+  ]
   if (worksheetToolNames.includes(toolName)) {
     return executeWorksheetTool(toolName, args)
   }

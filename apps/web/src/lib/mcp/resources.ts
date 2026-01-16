@@ -56,8 +56,7 @@ const RESOURCE_REGISTRY: McpResource[] = [
   {
     uri: 'docs://worksheet/operators',
     name: 'Operators (Addition/Subtraction/Mixed)',
-    description:
-      'Difference between operators, pedagogical sequence, and scaffolding differences',
+    description: 'Difference between operators, pedagogical sequence, and scaffolding differences',
     mimeType: 'text/markdown',
   },
 ]

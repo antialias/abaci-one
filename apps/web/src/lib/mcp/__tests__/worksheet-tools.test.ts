@@ -51,11 +51,7 @@ vi.mock('@/lib/generateShareId', () => {
 import { db } from '@/db'
 import { worksheetShares } from '@/db/schema'
 import { generateShareId, isValidShareId } from '@/lib/generateShareId'
-import {
-  generateWorksheet,
-  getWorksheetInfo,
-  listDifficultyProfiles,
-} from '../tools'
+import { generateWorksheet, getWorksheetInfo, listDifficultyProfiles } from '../tools'
 import {
   DIFFICULTY_PROFILES,
   DIFFICULTY_PROGRESSION,
