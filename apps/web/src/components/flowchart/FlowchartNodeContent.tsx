@@ -2,19 +2,29 @@
 
 import type { ParsedNodeContent } from '@/lib/flowcharts/schema'
 import { css } from '../../../styled-system/css'
-import { vstack } from '../../../styled-system/patterns'
+import { vstack, hstack } from '../../../styled-system/patterns'
 
 interface FlowchartNodeContentProps {
   content: ParsedNodeContent
   /** Whether to show in compact mode */
   compact?: boolean
+  /** For interactive checklists: which items are checked (by index) */
+  checkedItems?: Set<number>
+  /** Callback when a checklist item is toggled */
+  onChecklistToggle?: (index: number) => void
 }
 
 /**
  * Renders parsed node content with proper formatting.
  * Handles title, body, examples, warnings, and checklists.
  */
-export function FlowchartNodeContent({ content, compact = false }: FlowchartNodeContentProps) {
+export function FlowchartNodeContent({
+  content,
+  compact = false,
+  checkedItems,
+  onChecklistToggle,
+}: FlowchartNodeContentProps) {
+  const isInteractiveChecklist = checkedItems !== undefined && onChecklistToggle !== undefined
   return (
     <div
       data-testid="node-content"
@@ -92,30 +102,81 @@ export function FlowchartNodeContent({ content, compact = false }: FlowchartNode
 
       {/* Checklist */}
       {content.checklist && content.checklist.length > 0 && (
-        <ul
+        <div
           data-testid="node-content-checklist"
           data-item-count={content.checklist.length}
+          data-interactive={isInteractiveChecklist}
           className={css({
-            listStyle: 'none',
             padding: '3',
             backgroundColor: { base: 'green.50', _dark: 'green.900' },
             borderRadius: 'md',
           })}
         >
-          {content.checklist.map((item, i) => (
-            <li
-              key={i}
-              data-testid={`checklist-item-${i}`}
-              className={css({
-                fontSize: 'sm',
-                color: { base: 'green.800', _dark: 'green.200' },
-                marginBottom: '1',
-              })}
-            >
-              {item}
-            </li>
-          ))}
-        </ul>
+          {content.checklist.map((item, i) => {
+            // Strip the ☐ or ☑ prefix from the item text (we'll use real checkboxes)
+            const itemText = item.replace(/^[☐☑]\s*/, '')
+            const isChecked = checkedItems?.has(i) ?? false
+
+            return isInteractiveChecklist ? (
+              <label
+                key={i}
+                data-testid={`checklist-item-${i}`}
+                data-checked={isChecked}
+                className={hstack({
+                  gap: '3',
+                  cursor: 'pointer',
+                  padding: '2',
+                  marginBottom: '1',
+                  borderRadius: 'md',
+                  transition: 'all 0.15s ease-out',
+                  backgroundColor: isChecked
+                    ? { base: 'green.200', _dark: 'green.800' }
+                    : 'transparent',
+                  _hover: {
+                    backgroundColor: isChecked
+                      ? { base: 'green.200', _dark: 'green.800' }
+                      : { base: 'green.100', _dark: 'green.800/50' },
+                  },
+                })}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => onChecklistToggle?.(i)}
+                  className={css({
+                    width: '20px',
+                    height: '20px',
+                    accentColor: 'green',
+                    cursor: 'pointer',
+                  })}
+                />
+                <span
+                  className={css({
+                    fontSize: 'sm',
+                    color: { base: 'green.800', _dark: 'green.200' },
+                    textDecoration: isChecked ? 'line-through' : 'none',
+                    opacity: isChecked ? 0.8 : 1,
+                  })}
+                >
+                  {itemText}
+                </span>
+              </label>
+            ) : (
+              <div
+                key={i}
+                data-testid={`checklist-item-${i}`}
+                className={css({
+                  fontSize: 'sm',
+                  color: { base: 'green.800', _dark: 'green.200' },
+                  marginBottom: '1',
+                  paddingLeft: '2',
+                })}
+              >
+                {item}
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )

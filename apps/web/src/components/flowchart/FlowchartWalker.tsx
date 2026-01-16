@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import type {
   ExecutableFlowchart,
   FlowchartState,
@@ -84,12 +84,26 @@ export function FlowchartWalker({
   const [wrongDecision, setWrongDecision] = useState<WrongDecisionState | null>(null)
   // History stack for back navigation (stores full state snapshots)
   const [stateHistory, setStateHistory] = useState<FlowchartState[]>([])
+  // Track checked checklist items for the current node
+  const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set())
 
   // Current node
   const currentNode = useMemo(
     () => flowchart.nodes[state.currentNode],
     [flowchart.nodes, state.currentNode]
   )
+
+  // Check if current node has an interactive checklist
+  const currentChecklist = currentNode?.content?.checklist
+  const hasInteractiveChecklist =
+    currentNode?.definition.type === 'instruction' &&
+    currentChecklist &&
+    currentChecklist.length > 0
+
+  // Reset checked items when node changes
+  useEffect(() => {
+    setCheckedItems(new Set())
+  }, [state.currentNode])
 
   // Problem display
   const problemDisplay = formatProblemDisplay(flowchart, state.problem)
@@ -290,6 +304,31 @@ export function FlowchartWalker({
     setPhase({ type: 'awaitingCheckpoint' })
   }, [])
 
+  const handleChecklistToggle = useCallback(
+    (index: number) => {
+      setCheckedItems((prev) => {
+        const next = new Set(prev)
+        if (next.has(index)) {
+          next.delete(index)
+        } else {
+          next.add(index)
+        }
+
+        // Check if all items are now checked - if so, auto-advance
+        const totalItems = currentChecklist?.length ?? 0
+        if (next.size === totalItems && totalItems > 0) {
+          // Small delay so the user sees the final checkbox check
+          setTimeout(() => {
+            advanceToNext()
+          }, 300)
+        }
+
+        return next
+      })
+    },
+    [currentChecklist, advanceToNext]
+  )
+
   // =============================================================================
   // Determine what to show based on node type and phase
   // =============================================================================
@@ -301,6 +340,10 @@ export function FlowchartWalker({
 
     switch (def.type) {
       case 'instruction':
+        // If there's an interactive checklist, don't show the button - checking all items advances
+        if (hasInteractiveChecklist) {
+          return null
+        }
         return (
           <button
             data-testid="instruction-advance-button"
@@ -717,7 +760,13 @@ export function FlowchartWalker({
           borderColor: { base: 'gray.200', _dark: 'gray.700' },
         })}
       >
-        {currentNode && <FlowchartNodeContent content={currentNode.content} />}
+        {currentNode && (
+          <FlowchartNodeContent
+            content={currentNode.content}
+            checkedItems={hasInteractiveChecklist ? checkedItems : undefined}
+            onChecklistToggle={hasInteractiveChecklist ? handleChecklistToggle : undefined}
+          />
+        )}
       </div>
 
       {/* Interaction area */}
