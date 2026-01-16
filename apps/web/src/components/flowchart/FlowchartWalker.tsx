@@ -19,12 +19,12 @@ import {
   isTerminal,
   formatProblemDisplay,
 } from '@/lib/flowcharts/loader'
-import { getPhaseIndex, getTotalPhases } from '@/lib/flowcharts/parser'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 import { FlowchartNodeContent } from './FlowchartNodeContent'
 import { FlowchartDecision, FlowchartWrongAnswerFeedback } from './FlowchartDecision'
 import { FlowchartCheckpoint } from './FlowchartCheckpoint'
+import { FlowchartPhaseRail } from './FlowchartPhaseRail'
 import { MathDisplay } from './MathDisplay'
 
 // =============================================================================
@@ -77,10 +77,6 @@ export function FlowchartWalker({
     () => flowchart.nodes[state.currentNode],
     [flowchart.nodes, state.currentNode]
   )
-
-  // Progress info
-  const currentPhase = getPhaseIndex(flowchart.mermaid, state.currentNode)
-  const totalPhases = getTotalPhases(flowchart.mermaid)
 
   // Problem display
   const problemDisplay = formatProblemDisplay(flowchart, state.problem)
@@ -410,35 +406,15 @@ export function FlowchartWalker({
 
   return (
     <div className={vstack({ gap: '6', padding: '4', alignItems: 'stretch' })}>
-      {/* Progress bar */}
-      <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
-        <div className={hstack({ justifyContent: 'space-between', fontSize: 'sm' })}>
-          <span className={css({ color: { base: 'gray.600', _dark: 'gray.400' } })}>
-            Phase {currentPhase} of {totalPhases}
-          </span>
-          <span className={css({ color: { base: 'gray.500', _dark: 'gray.500' } })}>
-            {problemDisplay}
-          </span>
-        </div>
-        <div
-          className={css({
-            height: '8px',
-            backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
-            borderRadius: 'full',
-            overflow: 'hidden',
-          })}
-        >
-          <div
-            className={css({
-              height: '100%',
-              backgroundColor: { base: 'green.500', _dark: 'green.400' },
-              borderRadius: 'full',
-              transition: 'width 0.3s ease',
-            })}
-            style={{ width: `${(currentPhase / totalPhases) * 100}%` }}
-          />
-        </div>
+      {/* Problem display header */}
+      <div className={hstack({ justifyContent: 'center', fontSize: 'sm' })}>
+        <span className={css({ color: { base: 'gray.500', _dark: 'gray.500' } })}>
+          {problemDisplay}
+        </span>
       </div>
+
+      {/* Phase rail with flowchart navigation */}
+      <FlowchartPhaseRail flowchart={flowchart} state={state} />
 
       {/* Working problem ledger */}
       {state.workingProblemHistory.length > 0 && (
