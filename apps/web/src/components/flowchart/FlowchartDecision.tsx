@@ -4,10 +4,15 @@ import { useState, useEffect } from 'react'
 import * as RadioGroup from '@radix-ui/react-radio-group'
 import type { DecisionOption } from '@/lib/flowcharts/schema'
 import { css, cx } from '../../../styled-system/css'
-import { hstack } from '../../../styled-system/patterns'
+import { hstack, vstack } from '../../../styled-system/patterns'
+
+interface DecisionOptionWithPath extends DecisionOption {
+  /** Where this option leads (next node title) */
+  leadsTo?: string
+}
 
 interface FlowchartDecisionProps {
-  options: DecisionOption[]
+  options: DecisionOptionWithPath[]
   onSelect: (value: string) => void
   /** Wrong answer value to highlight and shake briefly */
   wrongAnswer?: string
@@ -17,8 +22,7 @@ interface FlowchartDecisionProps {
 
 /**
  * Decision node UI using Radix RadioGroup for accessibility.
- * When a wrong answer is given, it shakes briefly and shows
- * the correct answer, then resets for another try.
+ * Each option card shows where it leads in the flowchart.
  */
 export function FlowchartDecision({
   options,
@@ -60,7 +64,7 @@ export function FlowchartDecision({
       value={selectedValue}
       onValueChange={handleSelect}
       className={cx(
-        hstack({ gap: '4', justifyContent: 'center', flexWrap: 'wrap' }),
+        hstack({ gap: '4', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'stretch' }),
         isShaking ? 'shake-animation' : ''
       )}
     >
@@ -76,42 +80,32 @@ export function FlowchartDecision({
             className={css({
               all: 'unset',
               boxSizing: 'border-box',
-              padding: '4 6',
-              fontSize: 'lg',
-              fontWeight: 'semibold',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '0',
               borderRadius: 'xl',
               border: '3px solid',
               cursor: showFeedback ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s',
-              minWidth: '140px',
-              textAlign: 'center',
+              minWidth: '160px',
+              maxWidth: '200px',
+              flex: '1',
               position: 'relative',
               overflow: 'hidden',
 
               // Base styles based on state
-              backgroundColor: isCorrect
-                ? { base: 'green.100', _dark: 'green.800' }
-                : isWrong
-                  ? { base: 'red.100', _dark: 'red.800' }
-                  : { base: 'white', _dark: 'gray.800' },
               borderColor: isCorrect
                 ? { base: 'green.500', _dark: 'green.400' }
                 : isWrong
                   ? { base: 'red.500', _dark: 'red.400' }
                   : { base: 'gray.300', _dark: 'gray.600' },
-              color: isCorrect
-                ? { base: 'green.800', _dark: 'green.200' }
-                : isWrong
-                  ? { base: 'red.800', _dark: 'red.200' }
-                  : { base: 'gray.800', _dark: 'gray.200' },
 
               // Hover
               _hover: showFeedback
                 ? {}
                 : {
-                    backgroundColor: { base: 'blue.50', _dark: 'blue.900' },
                     borderColor: { base: 'blue.500', _dark: 'blue.400' },
-                    transform: 'scale(1.03)',
+                    transform: 'scale(1.02)',
                     boxShadow: 'lg',
                   },
 
@@ -126,61 +120,120 @@ export function FlowchartDecision({
               _active: showFeedback
                 ? {}
                 : {
-                    transform: 'scale(0.97)',
+                    transform: 'scale(0.98)',
                   },
 
               // Selected (checked)
               '&[data-state="checked"]': {
-                backgroundColor: { base: 'blue.100', _dark: 'blue.800' },
                 borderColor: { base: 'blue.500', _dark: 'blue.400' },
-                color: { base: 'blue.800', _dark: 'blue.200' },
               },
             })}
           >
-            {/* Correct/wrong indicator */}
-            {isCorrect && (
-              <span
+            {/* Choice label header */}
+            <div
+              className={css({
+                padding: '3 4',
+                fontSize: 'lg',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                backgroundColor: isCorrect
+                  ? { base: 'green.100', _dark: 'green.800' }
+                  : isWrong
+                    ? { base: 'red.100', _dark: 'red.800' }
+                    : { base: 'gray.100', _dark: 'gray.700' },
+                color: isCorrect
+                  ? { base: 'green.800', _dark: 'green.200' }
+                  : isWrong
+                    ? { base: 'red.800', _dark: 'red.200' }
+                    : { base: 'gray.800', _dark: 'gray.200' },
+                borderBottom: '1px solid',
+                borderColor: isCorrect
+                  ? { base: 'green.300', _dark: 'green.600' }
+                  : isWrong
+                    ? { base: 'red.300', _dark: 'red.600' }
+                    : { base: 'gray.200', _dark: 'gray.600' },
+              })}
+            >
+              {/* Correct/wrong indicator */}
+              {isCorrect && (
+                <span
+                  className={css({
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    width: '24px',
+                    height: '24px',
+                    backgroundColor: 'green.500',
+                    borderRadius: 'full',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 'sm',
+                    color: 'white',
+                    fontWeight: 'bold',
+                  })}
+                >
+                  ✓
+                </span>
+              )}
+              {isWrong && (
+                <span
+                  className={css({
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    width: '24px',
+                    height: '24px',
+                    backgroundColor: 'red.500',
+                    borderRadius: 'full',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 'sm',
+                    color: 'white',
+                    fontWeight: 'bold',
+                  })}
+                >
+                  ✗
+                </span>
+              )}
+              {option.label}
+            </div>
+
+            {/* Path preview - where this leads */}
+            {option.leadsTo && (
+              <div
                 className={css({
-                  position: 'absolute',
-                  top: '-2px',
-                  right: '-2px',
-                  width: '24px',
-                  height: '24px',
-                  backgroundColor: 'green.500',
-                  borderRadius: 'full',
+                  padding: '2 3',
+                  backgroundColor: { base: 'white', _dark: 'gray.800' },
+                  flex: '1',
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 'sm',
-                  color: 'white',
-                  fontWeight: 'bold',
+                  gap: '1',
                 })}
               >
-                ✓
-              </span>
+                <span
+                  className={css({
+                    fontSize: 'lg',
+                    color: { base: 'gray.400', _dark: 'gray.500' },
+                  })}
+                >
+                  ↓
+                </span>
+                <span
+                  className={css({
+                    fontSize: 'xs',
+                    color: { base: 'gray.600', _dark: 'gray.400' },
+                    textAlign: 'center',
+                    lineHeight: 'tight',
+                  })}
+                >
+                  {option.leadsTo}
+                </span>
+              </div>
             )}
-            {isWrong && (
-              <span
-                className={css({
-                  position: 'absolute',
-                  top: '-2px',
-                  right: '-2px',
-                  width: '24px',
-                  height: '24px',
-                  backgroundColor: 'red.500',
-                  borderRadius: 'full',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 'sm',
-                  color: 'white',
-                  fontWeight: 'bold',
-                })}
-              >
-                ✗
-              </span>
-            )}
-            {option.label}
           </RadioGroup.Item>
         )
       })}

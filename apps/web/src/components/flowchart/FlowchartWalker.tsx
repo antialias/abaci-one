@@ -250,16 +250,27 @@ export function FlowchartWalker({
           </button>
         )
 
-      case 'decision':
+      case 'decision': {
+        // Add path preview info to each option
+        const decisionDef = def as DecisionNode
+        const optionsWithPaths = decisionDef.options.map((opt) => {
+          const nextNode = flowchart.nodes[opt.next]
+          return {
+            ...opt,
+            leadsTo: nextNode?.content?.title || opt.next,
+          }
+        })
+
         return (
           <FlowchartDecision
             key={`decision-${wrongDecision?.attempt ?? 0}`}
-            options={(def as DecisionNode).options}
+            options={optionsWithPaths}
             onSelect={handleDecisionSelect}
             wrongAnswer={wrongDecision?.value}
             correctAnswer={wrongDecision?.correctValue}
           />
         )
+      }
 
       case 'checkpoint': {
         const checkpointDef = def as CheckpointNode

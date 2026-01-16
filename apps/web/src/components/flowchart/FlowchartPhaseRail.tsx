@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { ExecutableFlowchart, FlowchartState, DecisionNode } from '@/lib/flowcharts/schema'
+import type { ExecutableFlowchart, FlowchartState } from '@/lib/flowcharts/schema'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
 
@@ -63,26 +63,6 @@ export function FlowchartPhaseRail({ flowchart, state }: FlowchartPhaseRailProps
 
     return path
   }, [flowchart.nodes, state.history, state.currentNode])
-
-  // Get decision options for current node if it's a decision
-  const decisionOptions = useMemo(() => {
-    const currentNode = flowchart.nodes[state.currentNode]
-    if (!currentNode || currentNode.definition.type !== 'decision') return null
-
-    const def = currentNode.definition as DecisionNode
-    return def.options.map((opt) => {
-      // Find where this option leads
-      const nextNodeId = opt.next
-      const nextNode = flowchart.nodes[nextNodeId]
-      const nextTitle = nextNode?.content?.title || nextNodeId
-
-      return {
-        label: opt.label,
-        value: opt.value,
-        leadsTo: nextTitle,
-      }
-    })
-  }, [flowchart.nodes, state.currentNode])
 
   // Find which phase the current node is in
   const currentPhaseIndex = useMemo(() => {
@@ -296,59 +276,6 @@ export function FlowchartPhaseRail({ flowchart, state }: FlowchartPhaseRailProps
               </div>
             </div>
 
-            {/* Decision options (if current node is a decision) */}
-            {decisionOptions && (
-              <div className={vstack({ gap: '1', alignItems: 'flex-start' })}>
-                <span
-                  className={css({
-                    fontSize: '2xs',
-                    fontWeight: 'medium',
-                    color: { base: 'gray.500', _dark: 'gray.400' },
-                    textTransform: 'uppercase',
-                    letterSpacing: 'wide',
-                  })}
-                >
-                  Choose
-                </span>
-                <div
-                  className={css({
-                    display: 'flex',
-                    gap: '3',
-                    flexWrap: 'wrap',
-                  })}
-                >
-                  {decisionOptions.map((opt) => (
-                    <div
-                      key={opt.value}
-                      className={css({
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '1',
-                        fontSize: 'xs',
-                        color: { base: 'gray.600', _dark: 'gray.300' },
-                      })}
-                    >
-                      <span
-                        className={css({
-                          padding: '0.5 1.5',
-                          borderRadius: 'sm',
-                          backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
-                          fontWeight: 'medium',
-                        })}
-                      >
-                        {opt.label}
-                      </span>
-                      <span className={css({ color: { base: 'gray.400', _dark: 'gray.500' } })}>
-                        →
-                      </span>
-                      <span className={css({ fontStyle: 'italic', opacity: 0.8 })}>
-                        {opt.leadsTo.length > 20 ? opt.leadsTo.slice(0, 18) + '…' : opt.leadsTo}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
