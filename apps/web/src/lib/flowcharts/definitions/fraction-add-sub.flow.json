@@ -192,7 +192,16 @@
     "leftNewNum": { "init": "leftNum * (lcd / leftDenom)" },
     "rightNewNum": { "init": "rightNum * (lcd / rightDenom)" },
     "isSubtraction": { "init": "op == '−'" },
-    "needsBorrow": { "init": "op == '−' && leftNewNum < rightNewNum" }
+    "needsBorrow": { "init": "op == '−' && leftNewNum < rightNewNum" },
+
+    "rawResultNum": {
+      "init": "op == '+' ? (leftNewNum + rightNewNum) : (needsBorrow ? (leftNewNum + lcd - rightNewNum) : (leftNewNum - rightNewNum))"
+    },
+    "resultGcd": { "init": "gcd(rawResultNum, lcd)" },
+    "needsSimplify": { "init": "resultGcd > 1" },
+    "simplifiedNum": { "init": "rawResultNum / resultGcd" },
+    "simplifiedDenom": { "init": "lcd / resultGcd" },
+    "isImproper": { "init": "simplifiedNum >= simplifiedDenom" }
   },
 
   "workingProblem": {
@@ -332,9 +341,10 @@
     },
     "SIMPLIFY_Q": {
       "type": "decision",
+      "correctAnswer": "needsSimplify",
       "options": [
-        { "label": "NO ✓ (can't simplify)", "value": "no", "next": "IMPROPER_Q" },
-        { "label": "YES (can simplify)", "value": "yes", "next": "SIMPLIFY_HOW" }
+        { "label": "NO ✓ (can't simplify)", "value": "no", "next": "IMPROPER_Q", "pathLabel": "no simp", "gridLabel": "" },
+        { "label": "YES (can simplify)", "value": "yes", "next": "SIMPLIFY_HOW", "pathLabel": "simplify", "gridLabel": "Simplify" }
       ]
     },
     "SIMPLIFY_HOW": {
@@ -343,9 +353,10 @@
     },
     "IMPROPER_Q": {
       "type": "decision",
+      "correctAnswer": "isImproper",
       "options": [
-        { "label": "NO ✓ (proper fraction)", "value": "no", "next": "CHECK3" },
-        { "label": "YES (improper)", "value": "yes", "next": "MIXED_HOW" }
+        { "label": "NO ✓ (proper fraction)", "value": "no", "next": "CHECK3", "pathLabel": "proper", "gridLabel": "" },
+        { "label": "YES (improper)", "value": "yes", "next": "MIXED_HOW", "pathLabel": "→mixed", "gridLabel": "Convert to mixed" }
       ]
     },
     "MIXED_HOW": {
