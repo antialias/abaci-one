@@ -224,7 +224,7 @@
       "correctAnswer": "sameBottom",
       "options": [
         { "label": "YES ✓", "value": "yes", "next": "READY1", "pathLabel": "Same", "gridLabel": "Same denominators" },
-        { "label": "NO", "value": "no", "next": "STEP2", "pathLabel": "Diff", "gridLabel": "" }
+        { "label": "NO", "value": "no", "next": "STEP2", "pathLabel": "Diff", "gridLabel": "Different denominators" }
       ]
     },
     "READY1": {
@@ -292,7 +292,7 @@
       "correctAnswer": "!isSubtraction",
       "options": [
         { "label": "➕ Adding", "value": "add", "next": "GOSTEP4", "pathLabel": "+", "gridLabel": "Add" },
-        { "label": "➖ Subtracting", "value": "sub", "next": "BORROWCHECK", "pathLabel": "−", "gridLabel": "" }
+        { "label": "➖ Subtracting", "value": "sub", "next": "BORROWCHECK", "pathLabel": "−", "gridLabel": "Subtract" }
       ]
     },
     "GOSTEP4": {
@@ -343,7 +343,7 @@
       "type": "decision",
       "correctAnswer": "needsSimplify",
       "options": [
-        { "label": "NO ✓ (can't simplify)", "value": "no", "next": "IMPROPER_Q", "pathLabel": "no simp", "gridLabel": "" },
+        { "label": "NO ✓ (can't simplify)", "value": "no", "next": "IMPROPER_Q", "pathLabel": "no simp", "gridLabel": "No simplifying" },
         { "label": "YES (can simplify)", "value": "yes", "next": "SIMPLIFY_HOW", "pathLabel": "simplify", "gridLabel": "Simplify" }
       ]
     },
@@ -355,7 +355,7 @@
       "type": "decision",
       "correctAnswer": "isImproper",
       "options": [
-        { "label": "NO ✓ (proper fraction)", "value": "no", "next": "CHECK3", "pathLabel": "proper", "gridLabel": "" },
+        { "label": "NO ✓ (proper fraction)", "value": "no", "next": "CHECK3", "pathLabel": "proper", "gridLabel": "Proper fraction" },
         { "label": "YES (improper)", "value": "yes", "next": "MIXED_HOW", "pathLabel": "→mixed", "gridLabel": "Convert to mixed" }
       ]
     },
