@@ -529,7 +529,15 @@ export function InteractiveDice({
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [isFlying, diceOrigin.x, diceOrigin.y, targetFaceRotation.rotateX, targetFaceRotation.rotateY, size, onRollComplete])
+  }, [
+    isFlying,
+    diceOrigin.x,
+    diceOrigin.y,
+    targetFaceRotation.rotateX,
+    targetFaceRotation.rotateY,
+    size,
+    onRollComplete,
+  ])
 
   // Cleanup timeout on unmount
   useEffect(() => {

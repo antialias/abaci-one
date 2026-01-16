@@ -10,6 +10,20 @@ interface MathDisplayProps {
 }
 
 /**
+ * Math font stack optimized for MathML rendering.
+ * STIX Two Math is the gold standard for web math typography.
+ * Fallbacks include system math fonts and common alternatives.
+ */
+const mathFontFamily = [
+  '"STIX Two Math"',
+  '"Cambria Math"',
+  '"Latin Modern Math"',
+  '"XITS Math"',
+  'math',
+  'serif',
+].join(', ')
+
+/**
  * Renders math expressions using native MathML.
  * Parses strings like "3 2/9 − 1 1/2" and renders proper semantic math.
  *
@@ -17,10 +31,10 @@ interface MathDisplayProps {
  */
 export function MathDisplay({ expression, size = 'lg' }: MathDisplayProps) {
   const fontSize = {
-    sm: '1rem',
-    md: '1.25rem',
-    lg: '1.5rem',
-    xl: '2rem',
+    sm: '1.25rem',
+    md: '1.5rem',
+    lg: '1.75rem',
+    xl: '2.25rem',
   }[size]
 
   // Parse the expression into tokens
@@ -37,11 +51,9 @@ export function MathDisplay({ expression, size = 'lg' }: MathDisplayProps) {
         alignItems: 'center',
         verticalAlign: 'middle',
       })}
-      style={{ fontSize }}
+      style={{ fontSize, fontFamily: mathFontFamily }}
     >
-      <mrow>
-        {tokens.map((token, idx) => renderToken(token, idx))}
-      </mrow>
+      <mrow>{tokens.map((token, idx) => renderToken(token, idx))}</mrow>
     </math>
   )
 }

@@ -884,6 +884,490 @@ export interface GeneratedExample {
   pathDescriptor: string
 }
 
+/**
+ * Grid dimensions inferred from flowchart decision structure
+ */
+export interface GridDimensions {
+  /** Row display labels (kid-friendly, from gridLabel or pathLabel) */
+  rows: string[]
+  /** Column display labels (kid-friendly, from gridLabel or pathLabel) */
+  cols: string[]
+  /** Row matching keys (from pathLabel, for cellMap lookups) */
+  rowKeys: string[]
+  /** Column matching keys (from pathLabel, for cellMap lookups) */
+  colKeys: string[]
+  /** Map from pathDescriptor to [rowIndex, colIndex] */
+  cellMap: Map<string, [number, number]>
+}
+
+/**
+ * Infer grid dimensions by analyzing decision node structure.
+ *
+ * Algorithm:
+ * 1. Find all decision nodes with pathLabel options
+ * 2. Determine which decisions appear on ALL paths (independent) vs some paths (dependent)
+ * 3. Independent decisions form the primary dimensions
+ * 4. Dependent decisions refine their parent dimension's values
+ * 5. Combine into row/column labels
+ */
+export function inferGridDimensions(
+  flowchart: ExecutableFlowchart,
+  paths: FlowchartPath[]
+): GridDimensions | null {
+  if (paths.length === 0) return null
+
+  // Step 1: Find all decision nodes with pathLabel and track their appearances
+  const decisionAppearances = new Map<string, {
+    nodeId: string
+    optionLabels: Map<string, string>  // optionValue -> pathLabel
+    optionGridLabels: Map<string, string>  // optionValue -> gridLabel (kid-friendly)
+    pathCount: number  // how many paths include this decision
+    pathsWithOption: Map<string, Set<number>>  // optionValue -> set of path indices
+  }>()
+
+  // Analyze each path
+  for (let pathIdx = 0; pathIdx < paths.length; pathIdx++) {
+    const path = paths[pathIdx]
+
+    for (let i = 0; i < path.nodeIds.length - 1; i++) {
+      const nodeId = path.nodeIds[i]
+      const nextNodeId = path.nodeIds[i + 1]
+      const node = flowchart.nodes[nodeId]
+
+      if (node?.definition.type === 'decision') {
+        const decision = node.definition as DecisionNode
+        const option = decision.options.find(o => o.next === nextNodeId)
+
+        if (option?.pathLabel) {
+          let info = decisionAppearances.get(nodeId)
+          if (!info) {
+            info = {
+              nodeId,
+              optionLabels: new Map(),
+              optionGridLabels: new Map(),
+              pathCount: 0,
+              pathsWithOption: new Map(),
+            }
+            decisionAppearances.set(nodeId, info)
+          }
+
+          info.optionLabels.set(option.value, option.pathLabel)
+          // Store gridLabel if provided, for kid-friendly display (check undefined, not truthy, to allow empty string)
+          if (option.gridLabel !== undefined) {
+            info.optionGridLabels.set(option.value, option.gridLabel)
+          }
+          info.pathCount++
+
+          let pathSet = info.pathsWithOption.get(option.value)
+          if (!pathSet) {
+            pathSet = new Set()
+            info.pathsWithOption.set(option.value, pathSet)
+          }
+          pathSet.add(pathIdx)
+        }
+      }
+    }
+  }
+
+  // Step 2: Classify decisions as independent (appear on all paths) or dependent
+  const totalPaths = paths.length
+  const independentDecisions: string[] = []
+  const dependentDecisions: string[] = []
+
+  for (const [nodeId, info] of decisionAppearances) {
+    if (info.pathCount === totalPaths) {
+      independentDecisions.push(nodeId)
+    } else {
+      dependentDecisions.push(nodeId)
+    }
+  }
+
+  // Step 3: Order independent decisions by when they appear in paths (earlier = dimension 1)
+  const avgPosition = (nodeId: string): number => {
+    let sum = 0
+    let count = 0
+    for (const path of paths) {
+      const idx = path.nodeIds.indexOf(nodeId)
+      if (idx !== -1) {
+        sum += idx
+        count++
+      }
+    }
+    return count > 0 ? sum / count : Infinity
+  }
+
+  independentDecisions.sort((a, b) => avgPosition(a) - avgPosition(b))
+
+  // Handle different cases based on number of independent decisions
+  if (independentDecisions.length === 0) {
+    return inferGridFromDescriptors(flowchart, paths)
+  }
+
+  const dim1NodeId = independentDecisions[0]
+  const dim1Info = decisionAppearances.get(dim1NodeId)!
+
+  // 1D case: only one independent decision
+  if (independentDecisions.length === 1) {
+    return buildOneDimensionalGrid(flowchart, paths, dim1NodeId, dim1Info, dependentDecisions, decisionAppearances)
+  }
+
+  // 2D case: two independent decisions
+  const dim2NodeId = independentDecisions[1]
+  const dim2Info = decisionAppearances.get(dim2NodeId)!
+
+  // Step 4: Build dimension values, incorporating dependent decisions as refinements
+  // Returns both display labels (gridLabel) and matching keys (pathLabel)
+  const buildDimensionValues = (
+    primaryNodeId: string,
+    primaryInfo: typeof dim1Info
+  ): { displays: string[]; keys: string[] } => {
+    const displays: string[] = []
+    const keys: string[] = []
+
+    for (const [optionValue, pathLabel] of primaryInfo.optionLabels) {
+      // Use gridLabel if explicitly set (even if empty string), otherwise fall back to pathLabel
+      const hasExplicitGridLabel = primaryInfo.optionGridLabels.has(optionValue)
+      const gridLabel = hasExplicitGridLabel
+        ? (primaryInfo.optionGridLabels.get(optionValue) ?? '')
+        : pathLabel
+      const pathsForOption = primaryInfo.pathsWithOption.get(optionValue)!
+
+      // Check if any dependent decision refines this option
+      let refinementDisplays: string[] = []
+      let refinementKeys: string[] = []
+      for (const depNodeId of dependentDecisions) {
+        const depInfo = decisionAppearances.get(depNodeId)!
+
+        // Check if this dependent decision appears on paths where primary chose this option
+        const depPathIndices = new Set<number>()
+        for (const pathSet of depInfo.pathsWithOption.values()) {
+          for (const idx of pathSet) depPathIndices.add(idx)
+        }
+
+        const overlap = [...pathsForOption].filter(idx => depPathIndices.has(idx))
+        if (overlap.length > 0 && overlap.length === depInfo.pathCount) {
+          // This dependent decision refines this option
+          for (const [depOptValue, depPathLabel] of depInfo.optionLabels) {
+            // Use gridLabel if explicitly set (even if empty), otherwise fall back to pathLabel
+            const hasDepGridLabel = depInfo.optionGridLabels.has(depOptValue)
+            const depGridLabel = hasDepGridLabel
+              ? (depInfo.optionGridLabels.get(depOptValue) ?? '')
+              : depPathLabel
+            refinementDisplays.push(depGridLabel)
+            refinementKeys.push(depPathLabel)
+          }
+        }
+      }
+
+      if (refinementDisplays.length > 0) {
+        // Combine primary label with each refinement (trim to handle empty gridLabel)
+        for (let i = 0; i < refinementDisplays.length; i++) {
+          displays.push(`${gridLabel} ${refinementDisplays[i]}`.trim())
+          keys.push(`${pathLabel} ${refinementKeys[i]}`)
+        }
+      } else {
+        displays.push(gridLabel)
+        keys.push(pathLabel)
+      }
+    }
+
+    return { displays, keys }
+  }
+
+  const dim1 = buildDimensionValues(dim1NodeId, dim1Info)
+  const dim2 = buildDimensionValues(dim2NodeId, dim2Info)
+
+  // Step 5: Sort dimensions by average path complexity (simpler first)
+  // Sort as tuples to keep displays and keys in sync
+  const getAvgComplexity = (keyValue: string, isRow: boolean): number => {
+    let totalDecisions = 0
+    let count = 0
+    for (const path of paths) {
+      const descriptor = generatePathDescriptorFromPath(flowchart, path)
+      const matches = isRow
+        ? descriptor.startsWith(keyValue) || descriptor.startsWith(keyValue + ' ')
+        : descriptor.endsWith(keyValue) || descriptor.endsWith(' ' + keyValue)
+      if (matches) {
+        totalDecisions += path.decisions
+        count++
+      }
+    }
+    return count > 0 ? totalDecisions / count : Infinity
+  }
+
+  // Sort by complexity, with "no X" variants before "X" variants (pedagogically simpler)
+  const hasNegation = (s: string) => s.includes('no ') || s.includes('No ')
+
+  // Create tuples of [display, key] and sort together
+  const rowTuples: [string, string][] = dim1.displays.map((d, i) => [d, dim1.keys[i]])
+  const colTuples: [string, string][] = dim2.displays.map((d, i) => [d, dim2.keys[i]])
+
+  rowTuples.sort((a, b) => {
+    const complexityDiff = getAvgComplexity(a[1], true) - getAvgComplexity(b[1], true)
+    if (Math.abs(complexityDiff) > 0.1) return complexityDiff
+    // "no borrow" before "borrow" - negated forms are simpler
+    if (hasNegation(a[1]) && !hasNegation(b[1])) return -1
+    if (!hasNegation(a[1]) && hasNegation(b[1])) return 1
+    return a[1].localeCompare(b[1])
+  })
+  colTuples.sort((a, b) => {
+    const complexityDiff = getAvgComplexity(a[1], false) - getAvgComplexity(b[1], false)
+    if (Math.abs(complexityDiff) > 0.1) return complexityDiff
+    // "no borrow" before "borrow" - negated forms are simpler
+    if (hasNegation(a[1]) && !hasNegation(b[1])) return -1
+    if (!hasNegation(a[1]) && hasNegation(b[1])) return 1
+    return a[1].localeCompare(b[1])
+  })
+
+  // Extract sorted arrays
+  const rows = rowTuples.map(t => t[0])
+  const rowKeys = rowTuples.map(t => t[1])
+  const cols = colTuples.map(t => t[0])
+  const colKeys = colTuples.map(t => t[1])
+
+  // Step 6: Build cell map from actual path descriptors (use keys for matching)
+  const cellMap = new Map<string, [number, number]>()
+
+  for (const path of paths) {
+    // Get the path descriptor (uses pathLabel, same as keys)
+    const descriptor = generatePathDescriptorFromPath(flowchart, path)
+
+    // Find which row and column this descriptor belongs to (match against keys)
+    const rowIdx = rowKeys.findIndex(k => descriptor.startsWith(k) || descriptor.includes(k))
+    const colIdx = colKeys.findIndex(k => descriptor.endsWith(k) || descriptor.includes(k))
+
+    if (rowIdx !== -1 && colIdx !== -1) {
+      cellMap.set(descriptor, [rowIdx, colIdx])
+    }
+  }
+
+  // Validate: every unique descriptor should have a cell
+  const uniqueDescriptors = new Set(paths.map(p => generatePathDescriptorFromPath(flowchart, p)))
+  if (cellMap.size < uniqueDescriptors.size) {
+    // Some descriptors didn't map - fall back
+    return inferGridFromDescriptors(flowchart, paths)
+  }
+
+  return { rows, cols, rowKeys, colKeys, cellMap }
+}
+
+/**
+ * Build a 1D grid when there's only one independent decision.
+ * Returns a grid with groups (rows) but no columns.
+ */
+function buildOneDimensionalGrid(
+  flowchart: ExecutableFlowchart,
+  paths: FlowchartPath[],
+  dimNodeId: string,
+  dimInfo: {
+    nodeId: string
+    optionLabels: Map<string, string>
+    optionGridLabels: Map<string, string>
+    pathCount: number
+    pathsWithOption: Map<string, Set<number>>
+  },
+  dependentDecisions: string[],
+  decisionAppearances: Map<string, typeof dimInfo>
+): GridDimensions {
+  // Build dimension values with refinements (both display and key)
+  const groupTuples: [string, string][] = [] // [display, key]
+
+  for (const [optionValue, pathLabel] of dimInfo.optionLabels) {
+    // Use gridLabel if explicitly set (even if empty string), otherwise fall back to pathLabel
+    const hasExplicitGridLabel = dimInfo.optionGridLabels.has(optionValue)
+    const gridLabel = hasExplicitGridLabel
+      ? (dimInfo.optionGridLabels.get(optionValue) ?? '')
+      : pathLabel
+    const pathsForOption = dimInfo.pathsWithOption.get(optionValue)!
+
+    // Check for refinements from dependent decisions
+    let refinementTuples: [string, string][] = [] // [display, key]
+    for (const depNodeId of dependentDecisions) {
+      const depInfo = decisionAppearances.get(depNodeId)!
+
+      const depPathIndices = new Set<number>()
+      for (const pathSet of depInfo.pathsWithOption.values()) {
+        for (const idx of pathSet) depPathIndices.add(idx)
+      }
+
+      const overlap = [...pathsForOption].filter(idx => depPathIndices.has(idx))
+      if (overlap.length > 0 && overlap.length === depInfo.pathCount) {
+        for (const [depOptValue, depPathLabel] of depInfo.optionLabels) {
+          // Use gridLabel if explicitly set (even if empty), otherwise fall back to pathLabel
+          const hasDepGridLabel = depInfo.optionGridLabels.has(depOptValue)
+          const depGridLabel = hasDepGridLabel
+            ? (depInfo.optionGridLabels.get(depOptValue) ?? '')
+            : depPathLabel
+          refinementTuples.push([depGridLabel, depPathLabel])
+        }
+      }
+    }
+
+    if (refinementTuples.length > 0) {
+      // Combine primary label with each refinement (trim to handle empty gridLabel)
+      for (const [refDisplay, refKey] of refinementTuples) {
+        groupTuples.push([`${gridLabel} ${refDisplay}`.trim(), `${pathLabel} ${refKey}`])
+      }
+    } else {
+      groupTuples.push([gridLabel, pathLabel])
+    }
+  }
+
+  // Sort by complexity (simpler first) - sort as tuples to keep display/key in sync
+  const hasNegation = (s: string) => s.includes('no ') || s.includes('No ')
+  const getAvgComplexity = (keyValue: string): number => {
+    let totalDecisions = 0
+    let count = 0
+    for (const path of paths) {
+      const descriptor = generatePathDescriptorFromPath(flowchart, path)
+      if (descriptor === keyValue || descriptor.startsWith(keyValue + ' ') || descriptor.endsWith(' ' + keyValue)) {
+        totalDecisions += path.decisions
+        count++
+      }
+    }
+    return count > 0 ? totalDecisions / count : Infinity
+  }
+
+  groupTuples.sort((a, b) => {
+    const complexityDiff = getAvgComplexity(a[1]) - getAvgComplexity(b[1])
+    if (Math.abs(complexityDiff) > 0.1) return complexityDiff
+    if (hasNegation(a[1]) && !hasNegation(b[1])) return -1
+    if (!hasNegation(a[1]) && hasNegation(b[1])) return 1
+    return a[1].localeCompare(b[1])
+  })
+
+  // Extract sorted arrays
+  const rows = groupTuples.map(t => t[0])
+  const rowKeys = groupTuples.map(t => t[1])
+
+  // Build cell map - for 1D, column is always 0 (use keys for matching)
+  const cellMap = new Map<string, [number, number]>()
+  for (const path of paths) {
+    const descriptor = generatePathDescriptorFromPath(flowchart, path)
+    const groupIdx = rowKeys.findIndex(k => descriptor === k || descriptor.startsWith(k + ' ') || descriptor.endsWith(' ' + k) || descriptor.includes(k))
+    if (groupIdx !== -1) {
+      cellMap.set(descriptor, [groupIdx, 0])
+    }
+  }
+
+  // For 1D, cols is empty array to indicate single dimension
+  return { rows, cols: [], rowKeys, colKeys: [], cellMap }
+}
+
+/**
+ * Generate path descriptor from a path object (without running the problem)
+ */
+function generatePathDescriptorFromPath(
+  flowchart: ExecutableFlowchart,
+  path: FlowchartPath
+): string {
+  const labels: string[] = []
+
+  for (let i = 0; i < path.nodeIds.length - 1; i++) {
+    const nodeId = path.nodeIds[i]
+    const nextNodeId = path.nodeIds[i + 1]
+    const node = flowchart.nodes[nodeId]
+
+    if (node?.definition.type === 'decision') {
+      const decision = node.definition as DecisionNode
+      const option = decision.options.find(o => o.next === nextNodeId)
+      if (option?.pathLabel) {
+        labels.push(option.pathLabel)
+      }
+    }
+  }
+
+  return labels.join(' ')
+}
+
+/**
+ * Fallback: infer grid by analyzing the descriptor strings directly
+ */
+function inferGridFromDescriptors(
+  flowchart: ExecutableFlowchart,
+  paths: FlowchartPath[]
+): GridDimensions | null {
+  // Get all unique descriptors
+  const descriptors = [...new Set(paths.map(p => generatePathDescriptorFromPath(flowchart, p)))]
+
+  if (descriptors.length < 2) return null
+
+  // Try to find a natural split point by looking at common prefixes
+  const prefixGroups = new Map<string, Set<string>>()
+
+  for (const desc of descriptors) {
+    const words = desc.split(' ')
+    // Try different prefix lengths
+    for (let len = 1; len < words.length; len++) {
+      const prefix = words.slice(0, len).join(' ')
+      const suffix = words.slice(len).join(' ')
+      if (!prefixGroups.has(prefix)) {
+        prefixGroups.set(prefix, new Set())
+      }
+      prefixGroups.get(prefix)!.add(suffix)
+    }
+  }
+
+  // Find prefixes that have multiple distinct suffixes and cover all descriptors
+  let bestSplit: { rows: string[]; cols: string[] } | null = null
+  let bestScore = 0
+
+  for (const [prefix, suffixes] of prefixGroups) {
+    if (suffixes.size >= 2) {
+      // Check how many descriptors this prefix covers
+      const covered = descriptors.filter(d => d.startsWith(prefix + ' ') || d === prefix)
+      const score = covered.length * suffixes.size
+
+      if (score > bestScore) {
+        // Find all prefixes at this "level"
+        const prefixLen = prefix.split(' ').length
+        const allPrefixes = new Set<string>()
+        const allSuffixes = new Set<string>()
+
+        for (const desc of descriptors) {
+          const words = desc.split(' ')
+          if (words.length > prefixLen) {
+            allPrefixes.add(words.slice(0, prefixLen).join(' '))
+            allSuffixes.add(words.slice(prefixLen).join(' '))
+          } else {
+            allPrefixes.add(desc)
+            allSuffixes.add('')
+          }
+        }
+
+        if (allPrefixes.size >= 2 && allSuffixes.size >= 2) {
+          bestSplit = {
+            rows: [...allPrefixes],
+            cols: [...allSuffixes].filter(s => s !== ''),
+          }
+          bestScore = score
+        }
+      }
+    }
+  }
+
+  if (!bestSplit || bestSplit.cols.length === 0) return null
+
+  // Build cell map
+  const cellMap = new Map<string, [number, number]>()
+  for (const desc of descriptors) {
+    const rowIdx = bestSplit.rows.findIndex(r => desc.startsWith(r))
+    const colIdx = bestSplit.cols.findIndex(c => desc.endsWith(c))
+    if (rowIdx !== -1 && colIdx !== -1) {
+      cellMap.set(desc, [rowIdx, colIdx])
+    }
+  }
+
+  // For fallback, keys are the same as displays (no gridLabel available)
+  return {
+    rows: bestSplit.rows,
+    cols: bestSplit.cols,
+    rowKeys: bestSplit.rows,
+    colKeys: bestSplit.cols,
+    cellMap
+  }
+}
+
 // =============================================================================
 // Constraint-Guided Generation System
 // =============================================================================
@@ -994,12 +1478,29 @@ function applyFieldFilters(
 }
 
 /**
- * Shuffle an array in place (Fisher-Yates).
+ * Create a seeded random number generator using mulberry32 algorithm.
+ * Returns a function that produces deterministic random numbers [0, 1).
  */
-function shuffle<T>(array: T[]): T[] {
+export function createSeededRandom(seed: number): () => number {
+  let state = seed
+  return function () {
+    state |= 0
+    state = (state + 0x6d2b79f5) | 0
+    let t = Math.imul(state ^ (state >>> 15), 1 | state)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * Shuffle an array in place (Fisher-Yates).
+ * @param array - Array to shuffle
+ * @param random - Optional random function (defaults to Math.random)
+ */
+function shuffle<T>(array: T[], random: () => number = Math.random): T[] {
   const result = [...array]
   for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = Math.floor(random() * (i + 1))
     ;[result[i], result[j]] = [result[j], result[i]]
   }
   return result
@@ -1824,7 +2325,8 @@ export function generateDiverseExamples(
     const targetSignature = targetPath.nodeIds.join('→')
 
     // Try multiple times to generate a valid problem for this path
-    for (let attempt = 0; attempt < 20; attempt++) {
+    // Higher count needed for paths with computed constraints (like needsBorrow)
+    for (let attempt = 0; attempt < 100; attempt++) {
       // Use new constraint-guided generation if flowchart has generation config
       // Otherwise fall back to legacy smart generation
       const values = hasGenerationConfig
@@ -1843,10 +2345,10 @@ export function generateDiverseExamples(
         // Verify the generated problem actually takes the target path
         const complexity = calculatePathComplexity(flowchart, values)
         const actualSignature = complexity.path.join('→')
+        const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path, values)
 
         // Record this example under its actual path (might differ from target)
         seenPaths.add(actualSignature)
-        const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path, values)
         const example: GeneratedExample = {
           values,
           complexity,
@@ -1935,11 +2437,21 @@ export function generateDiverseExamples(
     }
   }
 
-  // Phase 3: Select best examples from each path group
+  // Phase 3: Group examples by pathDescriptor (pedagogical category)
+  // This ensures we cover different learning scenarios, not just different node paths
+  const descriptorGroups = new Map<string, GeneratedExample[]>()
+  for (const [, examples] of pathGroups) {
+    for (const ex of examples) {
+      const existing = descriptorGroups.get(ex.pathDescriptor) || []
+      existing.push(ex)
+      descriptorGroups.set(ex.pathDescriptor, existing)
+    }
+  }
+
   const results: GeneratedExample[] = []
 
-  // Sort path groups by complexity (simpler first for learning progression)
-  const sortedGroups = [...pathGroups.entries()].sort((a, b) => {
+  // Sort descriptor groups by complexity (simpler first for learning progression)
+  const sortedGroups = [...descriptorGroups.entries()].sort((a, b) => {
     // Primary sort: total complexity (decisions + checkpoints)
     const aComplexity = a[1][0].complexity.decisions + a[1][0].complexity.checkpoints
     const bComplexity = b[1][0].complexity.decisions + b[1][0].complexity.checkpoints
@@ -1948,7 +2460,7 @@ export function generateDiverseExamples(
     return a[1][0].complexity.pathLength - b[1][0].complexity.pathLength
   })
 
-  // Take one "nice" example from each unique path
+  // Take one "nice" example from each unique descriptor (pedagogical category)
   for (const [, examples] of sortedGroups) {
     if (results.length >= count) break
 
@@ -1997,7 +2509,7 @@ export function generateDiverseExamples(
           sum > 20 &&
           !results.some(
             (r) =>
-              r.pathSignature === ex.pathSignature &&
+              r.pathDescriptor === ex.pathDescriptor &&
               JSON.stringify(r.values) === JSON.stringify(ex.values)
           )
         )

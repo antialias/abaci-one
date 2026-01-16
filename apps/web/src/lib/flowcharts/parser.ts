@@ -46,9 +46,7 @@ export function parseNodeContent(raw: string): ParsedNodeContent {
   }
 
   // Remove the bold section from content before splitting for body processing
-  const contentWithoutTitle = boldMatch
-    ? decoded.replace(/<b>[\s\S]*?<\/b>/, '')
-    : decoded
+  const contentWithoutTitle = boldMatch ? decoded.replace(/<b>[\s\S]*?<\/b>/, '') : decoded
 
   const lines = contentWithoutTitle.split(/<br\s*\/?>/i)
 

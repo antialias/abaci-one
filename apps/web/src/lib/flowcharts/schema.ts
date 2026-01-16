@@ -155,8 +155,10 @@ export interface DecisionOption {
   value: string
   /** Next node if this option is selected */
   next: string
-  /** Human-readable label for path descriptors (e.g., "Undo +", "Same denom") */
+  /** Short label for path descriptors (e.g., "Same", "+"). Used in concatenated paths like "Same +" */
   pathLabel?: string
+  /** Kid-friendly label for grid headers (e.g., "Same denominators", "Addition"). Falls back to pathLabel if not provided */
+  gridLabel?: string
 }
 
 /**
@@ -211,10 +213,13 @@ export type FlowchartNode =
  * Preferred values for a field during generation.
  * Can be an array of specific values or a range configuration.
  */
-export type PreferredValues = number[] | string[] | {
-  range: [number, number]
-  step?: number
-}
+export type PreferredValues =
+  | number[]
+  | string[]
+  | {
+      range: [number, number]
+      step?: number
+    }
 
 /**
  * Configuration for constraint-guided example generation.

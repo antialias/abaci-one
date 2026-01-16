@@ -100,7 +100,9 @@ export function TeacherConfigPanel({
             id="positive-answers"
             label="Positive answers only"
             description="Generated problems will always have non-negative results"
-            checked={constraints.positiveAnswersOnly ?? DEFAULT_CONSTRAINTS.positiveAnswersOnly ?? true}
+            checked={
+              constraints.positiveAnswersOnly ?? DEFAULT_CONSTRAINTS.positiveAnswersOnly ?? true
+            }
             onCheckedChange={() => handleToggle('positiveAnswersOnly')}
           />
         </div>

@@ -669,7 +669,11 @@
       "Bash(npx next-openapi-gen init)",
       "Bash(npx next-openapi-gen:*)",
       "WebFetch(domain:api.github.com)",
-      "Bash(jq:*)"
+      "Bash(jq:*)",
+      "WebFetch(domain:global.download.synology.com)",
+      "Bash(go version:*)",
+      "Bash(go install:*)",
+      "Bash(~/go/bin/syno-vm:*)"
     ],
     "deny": [],
     "ask": []

@@ -513,7 +513,9 @@ export function FlowchartPhaseRail({
                                 lineHeight: 'tight',
                               })}
                             >
-                              {opt.leadsTo.length > 25 ? opt.leadsTo.slice(0, 23) + '…' : opt.leadsTo}
+                              {opt.leadsTo.length > 25
+                                ? opt.leadsTo.slice(0, 23) + '…'
+                                : opt.leadsTo}
                             </div>
                           </button>
                         </div>

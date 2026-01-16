@@ -88,15 +88,17 @@ export function parseConstraintExpression(expression: string): ParseResult {
   // Handle simple boolean literals
   if (original === 'true' || original === 'false') {
     return {
-      constraints: [{
-        type: 'boolean',
-        left: original,
-        op: '==',
-        right: 'true',
-        rightIsLiteral: true,
-        literalValue: original === 'true',
-        original,
-      }],
+      constraints: [
+        {
+          type: 'boolean',
+          left: original,
+          op: '==',
+          right: 'true',
+          rightIsLiteral: true,
+          literalValue: original === 'true',
+          original,
+        },
+      ],
       fullyParsed: true,
       original,
     }
@@ -277,8 +279,10 @@ function parseLiteral(value: string): number | string | boolean | undefined {
   }
 
   // String literal (quoted)
-  if ((trimmed.startsWith("'") && trimmed.endsWith("'")) ||
-      (trimmed.startsWith('"') && trimmed.endsWith('"'))) {
+  if (
+    (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+    (trimmed.startsWith('"') && trimmed.endsWith('"'))
+  ) {
     return trimmed.slice(1, -1)
   }
 
@@ -327,7 +331,19 @@ function extractFieldsFromExpression(expr: string): string[] {
 
   for (const match of matches) {
     // Filter out keywords and function names
-    const keywords = ['true', 'false', 'null', 'undefined', 'floor', 'ceil', 'abs', 'min', 'max', 'lcm', 'gcd']
+    const keywords = [
+      'true',
+      'false',
+      'null',
+      'undefined',
+      'floor',
+      'ceil',
+      'abs',
+      'min',
+      'max',
+      'lcm',
+      'gcd',
+    ]
     if (!keywords.includes(match)) {
       fields.push(match)
     }

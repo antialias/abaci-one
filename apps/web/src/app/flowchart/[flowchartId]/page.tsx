@@ -72,7 +72,7 @@ export default function FlowchartPage() {
   return (
     <div className={vstack({ gap: '4', padding: '4', minHeight: '100vh' })}>
       {/* Header */}
-      <header className={hstack({ width: '100%', justifyContent: 'space-between' })}>
+      <header className={hstack({ width: '100%', justifyContent: 'flex-start' })}>
         <Link
           href="/flowchart"
           className={css({
@@ -84,17 +84,6 @@ export default function FlowchartPage() {
         >
           ← Back to flowcharts
         </Link>
-        {state.type !== 'loading' && state.type !== 'error' && (
-          <h1
-            className={css({
-              fontSize: 'lg',
-              fontWeight: 'semibold',
-              color: { base: 'gray.800', _dark: 'gray.200' },
-            })}
-          >
-            {state.flowchart.definition.title}
-          </h1>
-        )}
       </header>
 
       {/* Main content */}
@@ -156,7 +145,6 @@ export default function FlowchartPage() {
           <FlowchartProblemInput
             schema={state.flowchart.definition.problemInput}
             onSubmit={handleProblemSubmit}
-            title="Enter your problem"
             flowchart={state.flowchart}
           />
         )}

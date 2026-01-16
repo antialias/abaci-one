@@ -29,7 +29,14 @@
   "problemInput": {
     "schema": "linear-equation",
     "fields": [
-      { "name": "coefficient", "type": "integer", "min": 1, "max": 20, "label": "Coefficient of x", "default": 1 },
+      {
+        "name": "coefficient",
+        "type": "integer",
+        "min": 1,
+        "max": 20,
+        "label": "Coefficient of x",
+        "default": 1
+      },
       { "name": "operation", "type": "choice", "options": ["+", "−"], "label": "Operation" },
       { "name": "constant", "type": "integer", "min": 0, "max": 99, "label": "Constant" },
       { "name": "equals", "type": "integer", "min": 0, "max": 99, "label": "Equals" }
@@ -80,8 +87,8 @@
       "type": "decision",
       "correctAnswer": "constant != 0",
       "options": [
-        { "label": "ADDED ON (+/−)", "value": "add", "next": "STUCK_ADD", "pathLabel": "Undo +" },
-        { "label": "MULTIPLIED IN (×/÷)", "value": "mul", "next": "STUCK_MUL", "pathLabel": "÷" }
+        { "label": "ADDED ON (+/−)", "value": "add", "next": "STUCK_ADD", "pathLabel": "Undo +", "gridLabel": "Undo addition/subtraction" },
+        { "label": "MULTIPLIED IN (×/÷)", "value": "mul", "next": "STUCK_MUL", "pathLabel": "÷", "gridLabel": "Undo multiplication" }
       ]
     },
     "STUCK_ADD": {

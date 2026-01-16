@@ -63,8 +63,8 @@
       "type": "decision",
       "correctAnswer": "!needsBorrow",
       "options": [
-        { "label": "YES", "value": "yes", "next": "HAPPY", "pathLabel": "No regroup" },
-        { "label": "NO", "value": "no", "next": "SAD", "pathLabel": "Regroup" }
+        { "label": "YES", "value": "yes", "next": "HAPPY", "pathLabel": "No regroup", "gridLabel": "No regrouping needed" },
+        { "label": "NO", "value": "no", "next": "SAD", "pathLabel": "Regroup", "gridLabel": "Needs regrouping" }
       ]
     },
     "HAPPY": {

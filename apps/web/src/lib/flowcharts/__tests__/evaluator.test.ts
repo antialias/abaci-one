@@ -346,9 +346,15 @@ describe('evaluator - flowchart expressions', () => {
   })
 
   it('evaluates validation: minuend > subtrahend', () => {
-    expect(evaluate('minuend > subtrahend', makeContext({ minuend: 52, subtrahend: 37 }))).toBe(true)
-    expect(evaluate('minuend > subtrahend', makeContext({ minuend: 37, subtrahend: 52 }))).toBe(false)
-    expect(evaluate('minuend > subtrahend', makeContext({ minuend: 50, subtrahend: 50 }))).toBe(false)
+    expect(evaluate('minuend > subtrahend', makeContext({ minuend: 52, subtrahend: 37 }))).toBe(
+      true
+    )
+    expect(evaluate('minuend > subtrahend', makeContext({ minuend: 37, subtrahend: 52 }))).toBe(
+      false
+    )
+    expect(evaluate('minuend > subtrahend', makeContext({ minuend: 50, subtrahend: 50 }))).toBe(
+      false
+    )
   })
 
   it('evaluates checkpoint expected values', () => {
@@ -371,10 +377,14 @@ describe('evaluator - flowchart expressions', () => {
     expect(evaluate('topOnes + 10', ctx)).toBe(12)
 
     // Ones digit of answer with borrowing
-    expect(evaluate('needsBorrow ? (topOnes + 10 - bottomOnes) : (topOnes - bottomOnes)', ctx)).toBe(5)
+    expect(
+      evaluate('needsBorrow ? (topOnes + 10 - bottomOnes) : (topOnes - bottomOnes)', ctx)
+    ).toBe(5)
 
     // Tens digit of answer with borrowing
-    expect(evaluate('needsBorrow ? (topTens - 1 - bottomTens) : (topTens - bottomTens)', ctx)).toBe(1)
+    expect(evaluate('needsBorrow ? (topTens - 1 - bottomTens) : (topTens - bottomTens)', ctx)).toBe(
+      1
+    )
   })
 
   it('evaluates fraction LCD expressions', () => {
@@ -390,6 +400,8 @@ describe('evaluator - flowchart expressions', () => {
     expect(evaluate('lcm(left.denom, right.denom)', ctx)).toBe(12)
 
     // Check if one denom divides the other
-    expect(evaluate('left.denom % right.denom == 0 || right.denom % left.denom == 0', ctx)).toBe(false)
+    expect(evaluate('left.denom % right.denom == 0 || right.denom % left.denom == 0', ctx)).toBe(
+      false
+    )
   })
 })
