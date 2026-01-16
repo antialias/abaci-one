@@ -281,10 +281,10 @@ export function FlowchartWalker({
           expected: result?.expected ?? value,
           userAnswer: value,
         })
-        // Auto-advance after short delay
+        // Auto-advance quickly after correct answer
         setTimeout(() => {
           advanceToNext(undefined, value as ProblemValue, true)
-        }, 1000)
+        }, 400)
       } else {
         // Wrong answer
         setWrongAttempts((prev) => prev + 1)
