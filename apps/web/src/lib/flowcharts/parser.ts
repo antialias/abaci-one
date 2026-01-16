@@ -51,6 +51,7 @@ export function parseNodeContent(raw: string): ParsedNodeContent {
   const lines = contentWithoutTitle.split(/<br\s*\/?>/i)
 
   let inExample = false
+  let inChecklist = false
 
   for (const line of lines) {
     const trimmed = line.trim()
@@ -64,19 +65,33 @@ export function parseNodeContent(raw: string): ParsedNodeContent {
     // Check for example marker (📝 emoji or italic)
     if (trimmed.includes('📝') || trimmed.includes('<i>')) {
       inExample = true
+      inChecklist = false
     }
 
     // Check for warning marker
     if (trimmed.includes('⚠️')) {
       warning = stripHtml(trimmed)
+      inChecklist = false
       continue
     }
 
     // Check for checklist items
     if (trimmed.includes('☐') || trimmed.includes('☑')) {
       checklist.push(stripHtml(trimmed))
+      inChecklist = true
       continue
     }
+
+    // Check if this is a continuation line (indented line after a checklist item)
+    // Original line starts with whitespace and we're in a checklist context
+    if (inChecklist && line.match(/^\s/) && checklist.length > 0) {
+      // Append to the last checklist item
+      checklist[checklist.length - 1] += ' ' + stripHtml(trimmed)
+      continue
+    }
+
+    // If we hit a non-indented line, we're no longer in checklist continuation mode
+    inChecklist = false
 
     // Add to example or body
     if (inExample) {
