@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import type {
   ExecutableFlowchart,
   FlowchartState,
@@ -86,6 +86,10 @@ export function FlowchartWalker({
   const [stateHistory, setStateHistory] = useState<FlowchartState[]>([])
   // Track checked checklist items for the current node
   const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set())
+  // Track browser history depth for this walker session
+  const historyDepthRef = useRef(0)
+  // Flag to prevent double-handling when we programmatically go back
+  const isNavigatingBackRef = useRef(false)
 
   // Current node
   const currentNode = useMemo(
@@ -104,6 +108,36 @@ export function FlowchartWalker({
   useEffect(() => {
     setCheckedItems(new Set())
   }, [state.currentNode])
+
+  // Browser history integration - allow back button to go to previous step
+  useEffect(() => {
+    const handlePopState = () => {
+      // If we have history to go back to, go back
+      if (historyDepthRef.current > 0 && stateHistory.length > 0) {
+        historyDepthRef.current--
+        isNavigatingBackRef.current = true
+
+        const previousState = stateHistory[stateHistory.length - 1]
+        setStateHistory((prev) => prev.slice(0, -1))
+        setState(previousState)
+        setPhase({ type: 'showingNode' })
+        setWrongAttempts(0)
+        setWrongDecision(null)
+        setCheckedItems(new Set())
+
+        isNavigatingBackRef.current = false
+      } else if (historyDepthRef.current === 0) {
+        // At the beginning - let browser handle it (go to problem selection)
+        // Push a dummy state to prevent actually navigating away, then call onChangeProblem
+        if (onChangeProblem) {
+          onChangeProblem()
+        }
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [stateHistory, onChangeProblem])
 
   // Problem display
   const problemDisplay = formatProblemDisplay(flowchart, state.problem)
@@ -135,6 +169,10 @@ export function FlowchartWalker({
       // Save current state to history before advancing
       setStateHistory((prev) => [...prev, state])
 
+      // Push browser history entry so back button works
+      historyDepthRef.current++
+      window.history.pushState({ flowchartStep: historyDepthRef.current }, '')
+
       // Apply working problem update if configured (before advancing)
       let stateWithWorkingProblem = state
       if (correct !== false) {
@@ -163,20 +201,16 @@ export function FlowchartWalker({
     [flowchart, state, currentNode, onComplete]
   )
 
-  // Go back to the previous step
+  // Go back to the previous step (uses browser history so back button stays in sync)
   const goBack = useCallback(() => {
-    if (stateHistory.length === 0) {
+    if (stateHistory.length === 0 || historyDepthRef.current === 0) {
       // No history - go back to problem selection
       onChangeProblem?.()
       return
     }
 
-    const previousState = stateHistory[stateHistory.length - 1]
-    setStateHistory((prev) => prev.slice(0, -1))
-    setState(previousState)
-    setPhase({ type: 'showingNode' })
-    setWrongAttempts(0)
-    setWrongDecision(null)
+    // Use browser's back to trigger popstate, which handles the state update
+    window.history.back()
   }, [stateHistory, onChangeProblem])
 
   // Navigate to a specific step in the working problem history
