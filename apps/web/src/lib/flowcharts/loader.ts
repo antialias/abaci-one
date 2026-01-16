@@ -1400,6 +1400,220 @@ function inferGridFromDescriptors(
   }
 }
 
+/**
+ * Infer grid dimensions dynamically from a set of examples.
+ * Unlike inferGridDimensions (which uses all possible paths), this function
+ * analyzes which dimensions actually VARY within the given examples and
+ * uses the top 2 varying dimensions as grid axes.
+ *
+ * This is useful when filtering by difficulty tier - the grid adapts to show
+ * the dimensions that are most meaningful for that tier.
+ */
+export function inferGridDimensionsFromExamples(
+  flowchart: ExecutableFlowchart,
+  examples: GeneratedExample[]
+): GridDimensions | null {
+  if (examples.length === 0) return null
+
+  // Step 1: Extract decision choices from each example's pathSignature
+  // pathSignature is "NODE1→NODE2→NODE3→..." - we trace through to find decisions
+  const exampleDecisions: Array<Map<string, { pathLabel: string; gridLabel?: string }>> = []
+
+  for (const example of examples) {
+    const nodeIds = example.pathSignature.split('→')
+    const decisions = new Map<string, { pathLabel: string; gridLabel?: string }>()
+
+    for (let i = 0; i < nodeIds.length - 1; i++) {
+      const nodeId = nodeIds[i]
+      const nextNodeId = nodeIds[i + 1]
+      const node = flowchart.nodes[nodeId]
+
+      if (node?.definition.type === 'decision') {
+        const decision = node.definition as DecisionNode
+        const option = decision.options.find(o => o.next === nextNodeId)
+        if (option?.pathLabel) {
+          decisions.set(nodeId, {
+            pathLabel: option.pathLabel,
+            gridLabel: option.gridLabel,
+          })
+        }
+      }
+    }
+
+    exampleDecisions.push(decisions)
+  }
+
+  // Step 2: Count unique values per decision node
+  const decisionVariation = new Map<string, {
+    uniqueValues: Set<string>
+    pathLabels: Map<string, string>  // value -> pathLabel
+    gridLabels: Map<string, string | undefined>  // value -> gridLabel
+  }>()
+
+  for (const decisions of exampleDecisions) {
+    for (const [nodeId, { pathLabel, gridLabel }] of decisions) {
+      let info = decisionVariation.get(nodeId)
+      if (!info) {
+        info = {
+          uniqueValues: new Set(),
+          pathLabels: new Map(),
+          gridLabels: new Map(),
+        }
+        decisionVariation.set(nodeId, info)
+      }
+      info.uniqueValues.add(pathLabel)
+      info.pathLabels.set(pathLabel, pathLabel)
+      info.gridLabels.set(pathLabel, gridLabel)
+    }
+  }
+
+  // Step 3: Rank decisions by variation (number of unique values)
+  const rankedDecisions = [...decisionVariation.entries()]
+    .filter(([, info]) => info.uniqueValues.size >= 2) // Only decisions with variation
+    .sort((a, b) => {
+      // Primary: more unique values = more important
+      const diff = b[1].uniqueValues.size - a[1].uniqueValues.size
+      if (diff !== 0) return diff
+      // Secondary: more examples that hit this decision
+      const aCount = exampleDecisions.filter(d => d.has(a[0])).length
+      const bCount = exampleDecisions.filter(d => d.has(b[0])).length
+      return bCount - aCount
+    })
+
+  if (rankedDecisions.length === 0) {
+    // No varying dimensions - fall back to single cell or descriptor-based
+    return inferGridFromDescriptorsFromExamples(examples)
+  }
+
+  // Step 4: Build grid from top 1 or 2 dimensions
+  const dim1NodeId = rankedDecisions[0][0]
+  const dim1Info = rankedDecisions[0][1]
+
+  if (rankedDecisions.length === 1) {
+    // 1D grid
+    const rows: string[] = []
+    const rowKeys: string[] = []
+
+    for (const pathLabel of dim1Info.uniqueValues) {
+      const gridLabel = dim1Info.gridLabels.get(pathLabel)
+      rows.push(gridLabel !== undefined ? gridLabel : pathLabel)
+      rowKeys.push(pathLabel)
+    }
+
+    // Build cell map
+    const cellMap = new Map<string, [number, number]>()
+    for (const example of examples) {
+      const rowIdx = rowKeys.findIndex(k =>
+        example.pathDescriptor === k ||
+        example.pathDescriptor.startsWith(k + ' ') ||
+        example.pathDescriptor.includes(' ' + k + ' ') ||
+        example.pathDescriptor.endsWith(' ' + k)
+      )
+      if (rowIdx !== -1) {
+        cellMap.set(example.pathDescriptor, [rowIdx, 0])
+      }
+    }
+
+    return { rows, cols: [], rowKeys, colKeys: [], cellMap }
+  }
+
+  // 2D grid
+  const dim2NodeId = rankedDecisions[1][0]
+  const dim2Info = rankedDecisions[1][1]
+
+  // Determine which dimension appears first in paths (use as rows)
+  let dim1First = true
+  for (const decisions of exampleDecisions) {
+    const keys = [...decisions.keys()]
+    const idx1 = keys.indexOf(dim1NodeId)
+    const idx2 = keys.indexOf(dim2NodeId)
+    if (idx1 !== -1 && idx2 !== -1) {
+      dim1First = idx1 < idx2
+      break
+    }
+  }
+
+  const rowInfo = dim1First ? dim1Info : dim2Info
+  const colInfo = dim1First ? dim2Info : dim1Info
+
+  const rows: string[] = []
+  const rowKeys: string[] = []
+  const cols: string[] = []
+  const colKeys: string[] = []
+
+  for (const pathLabel of rowInfo.uniqueValues) {
+    const gridLabel = rowInfo.gridLabels.get(pathLabel)
+    rows.push(gridLabel !== undefined ? gridLabel : pathLabel)
+    rowKeys.push(pathLabel)
+  }
+
+  for (const pathLabel of colInfo.uniqueValues) {
+    const gridLabel = colInfo.gridLabels.get(pathLabel)
+    cols.push(gridLabel !== undefined ? gridLabel : pathLabel)
+    colKeys.push(pathLabel)
+  }
+
+  // Build cell map
+  const cellMap = new Map<string, [number, number]>()
+  for (const example of examples) {
+    // Find row - which rowKey appears in the descriptor?
+    const rowIdx = rowKeys.findIndex(k =>
+      example.pathDescriptor === k ||
+      example.pathDescriptor.startsWith(k + ' ') ||
+      example.pathDescriptor.includes(' ' + k + ' ') ||
+      example.pathDescriptor.endsWith(' ' + k)
+    )
+
+    // Find col - which colKey appears in the descriptor?
+    const colIdx = colKeys.findIndex(k =>
+      example.pathDescriptor === k ||
+      example.pathDescriptor.startsWith(k + ' ') ||
+      example.pathDescriptor.includes(' ' + k + ' ') ||
+      example.pathDescriptor.endsWith(' ' + k)
+    )
+
+    if (rowIdx !== -1 && colIdx !== -1) {
+      cellMap.set(example.pathDescriptor, [rowIdx, colIdx])
+    }
+  }
+
+  return { rows, cols, rowKeys, colKeys, cellMap }
+}
+
+/**
+ * Fallback: infer grid from pathDescriptor strings when no varying decisions found
+ */
+function inferGridFromDescriptorsFromExamples(
+  examples: GeneratedExample[]
+): GridDimensions | null {
+  const descriptors = [...new Set(examples.map(ex => ex.pathDescriptor))]
+
+  if (descriptors.length < 2) {
+    // Single cell - all examples in one group
+    const cellMap = new Map<string, [number, number]>()
+    for (const ex of examples) {
+      cellMap.set(ex.pathDescriptor, [0, 0])
+    }
+    return {
+      rows: [descriptors[0] || 'All'],
+      cols: [],
+      rowKeys: [descriptors[0] || 'All'],
+      colKeys: [],
+      cellMap
+    }
+  }
+
+  // Simple 1D grid with each descriptor as a row
+  const rows = descriptors
+  const rowKeys = descriptors
+  const cellMap = new Map<string, [number, number]>()
+  for (let i = 0; i < descriptors.length; i++) {
+    cellMap.set(descriptors[i], [i, 0])
+  }
+
+  return { rows, cols: [], rowKeys, colKeys: [], cellMap }
+}
+
 // =============================================================================
 // Constraint-Guided Generation System
 // =============================================================================

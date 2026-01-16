@@ -13,6 +13,7 @@ import {
   generateDiverseExamples,
   analyzeFlowchart,
   inferGridDimensions,
+  inferGridDimensionsFromExamples,
   calculatePathComplexity,
   type GeneratedExample,
   type GenerationConstraints,
@@ -24,6 +25,9 @@ import { TeacherConfigPanel } from './TeacherConfigPanel'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 import { MathDisplay } from './MathDisplay'
+
+/** Difficulty tier for filtering examples */
+type DifficultyTier = 'easy' | 'medium' | 'hard' | 'all'
 
 interface FlowchartProblemInputProps {
   schema: ProblemInputSchema
@@ -58,6 +62,8 @@ export function FlowchartProblemInput({
     example: GeneratedExample
     buttonRect: DOMRect
   } | null>(null)
+  // Selected difficulty tier for filtering examples
+  const [selectedTier, setSelectedTier] = useState<DifficultyTier>('all')
   // Ref to the container for positioning the popover
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -79,8 +85,8 @@ export function FlowchartProblemInput({
     }
   }, [flowchart])
 
-  // Infer grid dimensions from flowchart decision structure
-  const gridDimensions = useMemo(() => {
+  // Infer grid dimensions from flowchart decision structure (for "All" view)
+  const baseGridDimensions = useMemo(() => {
     if (!flowchart || !analysis) return null
     try {
       return inferGridDimensions(flowchart, analysis.paths)
@@ -148,6 +154,54 @@ export function FlowchartProblemInput({
     if (normalized < 0.67) return 2
     return 3
   }
+
+  // Get difficulty tier for an example (matches the tier selection)
+  const getDifficultyTier = (example: GeneratedExample): 'easy' | 'medium' | 'hard' => {
+    const level = getDifficultyLevel(example)
+    switch (level) {
+      case 1:
+        return 'easy'
+      case 2:
+        return 'medium'
+      case 3:
+        return 'hard'
+    }
+  }
+
+  // Filter examples by selected tier
+  const filteredExamples = useMemo(() => {
+    if (selectedTier === 'all') return generatedExamples
+    return generatedExamples.filter((ex) => getDifficultyTier(ex) === selectedTier)
+  }, [generatedExamples, selectedTier, difficultyRange])
+
+  // Count examples by tier for display
+  const tierCounts = useMemo(() => {
+    const counts = { easy: 0, medium: 0, hard: 0 }
+    for (const ex of generatedExamples) {
+      counts[getDifficultyTier(ex)]++
+    }
+    return counts
+  }, [generatedExamples, difficultyRange])
+
+  // Dynamic grid dimensions based on filtered examples
+  // When a tier is selected, use the dimensions that actually vary within that tier
+  const gridDimensions = useMemo(() => {
+    if (!flowchart) return null
+
+    // For "All" view, use the base grid dimensions (from all paths)
+    if (selectedTier === 'all') {
+      return baseGridDimensions
+    }
+
+    // For tier-filtered views, dynamically infer dimensions from filtered examples
+    try {
+      return inferGridDimensionsFromExamples(flowchart, filteredExamples)
+    } catch (e) {
+      console.error('Error inferring dynamic grid dimensions:', e)
+      // Fall back to base dimensions if dynamic inference fails
+      return baseGridDimensions
+    }
+  }, [flowchart, selectedTier, filteredExamples, baseGridDimensions])
 
   // Get border color based on difficulty
   const getDifficultyBorderColor = (level: 1 | 2 | 3) => {
@@ -462,8 +516,111 @@ export function FlowchartProblemInput({
         </h2>
       )}
 
-      {/* Examples Section */}
+      {/* Difficulty Tier Selection */}
       {generatedExamples.length > 0 && (
+        <div
+          data-testid="tier-selection"
+          className={hstack({
+            gap: '1',
+            justifyContent: 'center',
+            padding: '1',
+            backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+            borderRadius: 'lg',
+          })}
+        >
+          <button
+            data-tier="all"
+            data-selected={selectedTier === 'all'}
+            onClick={() => setSelectedTier('all')}
+            className={css({
+              padding: '1.5 3',
+              fontSize: 'sm',
+              fontWeight: selectedTier === 'all' ? 'bold' : 'medium',
+              borderRadius: 'md',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              backgroundColor: selectedTier === 'all' ? { base: 'white', _dark: 'gray.600' } : 'transparent',
+              color: selectedTier === 'all' ? { base: 'gray.900', _dark: 'white' } : { base: 'gray.500', _dark: 'gray.400' },
+              boxShadow: selectedTier === 'all' ? 'sm' : 'none',
+              _hover: {
+                backgroundColor: selectedTier === 'all' ? { base: 'white', _dark: 'gray.600' } : { base: 'gray.200', _dark: 'gray.600' },
+              },
+            })}
+          >
+            All ({generatedExamples.length})
+          </button>
+          <button
+            data-tier="easy"
+            data-selected={selectedTier === 'easy'}
+            onClick={() => setSelectedTier('easy')}
+            className={css({
+              padding: '1.5 3',
+              fontSize: 'sm',
+              fontWeight: selectedTier === 'easy' ? 'bold' : 'medium',
+              borderRadius: 'md',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              backgroundColor: selectedTier === 'easy' ? { base: 'green.100', _dark: 'green.800' } : 'transparent',
+              color: selectedTier === 'easy' ? { base: 'green.700', _dark: 'green.200' } : { base: 'gray.500', _dark: 'gray.400' },
+              boxShadow: selectedTier === 'easy' ? 'sm' : 'none',
+              _hover: {
+                backgroundColor: selectedTier === 'easy' ? { base: 'green.100', _dark: 'green.800' } : { base: 'gray.200', _dark: 'gray.600' },
+              },
+            })}
+          >
+            Easy ({tierCounts.easy})
+          </button>
+          <button
+            data-tier="medium"
+            data-selected={selectedTier === 'medium'}
+            onClick={() => setSelectedTier('medium')}
+            className={css({
+              padding: '1.5 3',
+              fontSize: 'sm',
+              fontWeight: selectedTier === 'medium' ? 'bold' : 'medium',
+              borderRadius: 'md',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              backgroundColor: selectedTier === 'medium' ? { base: 'orange.100', _dark: 'orange.800' } : 'transparent',
+              color: selectedTier === 'medium' ? { base: 'orange.700', _dark: 'orange.200' } : { base: 'gray.500', _dark: 'gray.400' },
+              boxShadow: selectedTier === 'medium' ? 'sm' : 'none',
+              _hover: {
+                backgroundColor: selectedTier === 'medium' ? { base: 'orange.100', _dark: 'orange.800' } : { base: 'gray.200', _dark: 'gray.600' },
+              },
+            })}
+          >
+            Medium ({tierCounts.medium})
+          </button>
+          <button
+            data-tier="hard"
+            data-selected={selectedTier === 'hard'}
+            onClick={() => setSelectedTier('hard')}
+            className={css({
+              padding: '1.5 3',
+              fontSize: 'sm',
+              fontWeight: selectedTier === 'hard' ? 'bold' : 'medium',
+              borderRadius: 'md',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              backgroundColor: selectedTier === 'hard' ? { base: 'red.100', _dark: 'red.800' } : 'transparent',
+              color: selectedTier === 'hard' ? { base: 'red.700', _dark: 'red.200' } : { base: 'gray.500', _dark: 'gray.400' },
+              boxShadow: selectedTier === 'hard' ? 'sm' : 'none',
+              _hover: {
+                backgroundColor: selectedTier === 'hard' ? { base: 'red.100', _dark: 'red.800' } : { base: 'gray.200', _dark: 'gray.600' },
+              },
+            })}
+          >
+            Hard ({tierCounts.hard})
+          </button>
+        </div>
+      )}
+
+      {/* Examples Section */}
+      {filteredExamples.length > 0 ? (
         <div data-testid="examples-section" className={vstack({ gap: '3', alignItems: 'stretch' })}>
           {/* Example grid - 1D or 2D layout based on grid dimensions */}
           {gridDimensions && gridDimensions.cols.length > 0 ? (
@@ -529,7 +686,7 @@ export function FlowchartProblemInput({
                 // Cells for this row
                 ...gridDimensions.cols.map((col, colIdx) => {
                   // Find example that matches this cell
-                  const example = generatedExamples.find((ex) => {
+                  const example = filteredExamples.find((ex) => {
                     const cell = gridDimensions.cellMap.get(ex.pathDescriptor)
                     return cell && cell[0] === rowIdx && cell[1] === colIdx
                   })
@@ -657,7 +814,7 @@ export function FlowchartProblemInput({
             >
               {gridDimensions.rows.map((group, groupIdx) => {
                 // Find example(s) for this group
-                const groupExamples = generatedExamples.filter((ex) => {
+                const groupExamples = filteredExamples.filter((ex) => {
                   const cell = gridDimensions.cellMap.get(ex.pathDescriptor)
                   return cell && cell[0] === groupIdx
                 })
@@ -781,7 +938,7 @@ export function FlowchartProblemInput({
             /* Fallback: flat 3-column grid when no grid dimensions */
             <div
               data-grid-type="flat"
-              data-count={generatedExamples.length}
+              data-count={filteredExamples.length}
               className={css({
                 display: 'grid',
                 gridTemplateColumns: 'repeat(3, 1fr)',
@@ -789,7 +946,7 @@ export function FlowchartProblemInput({
                 width: '100%',
               })}
             >
-              {generatedExamples.map((example, idx) => (
+              {filteredExamples.map((example, idx) => (
                 <button
                   key={`${example.pathSignature}-${idx}`}
                   data-testid={`example-button-${idx}`}
@@ -891,7 +1048,20 @@ export function FlowchartProblemInput({
             </div>
           )}
         </div>
-      )}
+      ) : generatedExamples.length > 0 && selectedTier !== 'all' ? (
+        /* No examples in selected tier */
+        <div
+          data-testid="no-tier-examples"
+          className={css({
+            padding: '4',
+            textAlign: 'center',
+            color: { base: 'gray.500', _dark: 'gray.400' },
+            fontSize: 'sm',
+          })}
+        >
+          No {selectedTier} examples available. Try selecting a different difficulty level.
+        </div>
+      ) : null}
 
       {/* Edit Popover - shows when editing an example */}
       {editingExample && containerRef.current && (
