@@ -89,7 +89,7 @@ flowchart TB
 
     subgraph PHASE2["<b>2. ⚠️ DO YOU NEED TO BORROW?</b>"]
         direction LR
-        REMIND["⚠️ <b>BOTTOMS MUST MATCH FIRST!</b>"]
+        REMIND["<b>⚠️ BOTTOMS MUST MATCH FIRST!</b>"]
         REMIND --> ADDSUB{"<b>ADDING OR<br/>SUBTRACTING?</b>"}
         ADDSUB -->|"➕ Adding"| GOSTEP4(("😎"))
         ADDSUB -->|"➖ Subtracting"| BORROWCHECK{"<b>COMPARE TOPS</b><br/>───────────<br/>Is the LEFT top<br/>≥ the RIGHT top?"}
@@ -145,7 +145,7 @@ flowchart TB
         ONE --> MAKEONE["<b>💡 HOW TO MAKE ONE</b><br/>─────────────────────<br/>DIVIDE it away!"]
         MAKEZ --> EX_ADD["<b>📝 EXAMPLE</b>"]
         MAKEONE --> EX_MUL["<b>📝 EXAMPLE</b>"]
-        EX_ADD --> REMIND["⚠️ <b>BOTH SIDES!</b>"]
+        EX_ADD --> REMIND["<b>⚠️ BOTH SIDES!</b>"]
         EX_MUL --> REMIND
         REMIND --> CHECK2["<b>✅ IS x FREE?</b>"]
     end
