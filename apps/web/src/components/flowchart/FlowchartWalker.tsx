@@ -22,7 +22,7 @@ import {
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 import { FlowchartNodeContent } from './FlowchartNodeContent'
-import { FlowchartDecision, FlowchartWrongAnswerFeedback } from './FlowchartDecision'
+import { FlowchartDecision } from './FlowchartDecision'
 import { FlowchartCheckpoint } from './FlowchartCheckpoint'
 import { FlowchartPhaseRail } from './FlowchartPhaseRail'
 import { MathDisplay } from './MathDisplay'
@@ -34,7 +34,6 @@ import { MathDisplay } from './MathDisplay'
 type WalkerPhase =
   | { type: 'showingNode' }
   | { type: 'awaitingDecision' }
-  | { type: 'decisionFeedback'; correct: boolean; userChoice: string }
   | { type: 'awaitingCheckpoint' }
   | {
       type: 'checkpointFeedback'
@@ -43,6 +42,13 @@ type WalkerPhase =
       userAnswer: ProblemValue
     }
   | { type: 'complete' }
+
+/** Track wrong decision for feedback (includes attempt counter to re-trigger animations) */
+interface WrongDecisionState {
+  value: string
+  correctValue: string
+  attempt: number
+}
 
 interface FlowchartWalkerProps {
   flowchart: ExecutableFlowchart
@@ -71,6 +77,7 @@ export function FlowchartWalker({
   const [state, setState] = useState<FlowchartState>(() => initializeState(flowchart, problemInput))
   const [phase, setPhase] = useState<WalkerPhase>({ type: 'showingNode' })
   const [wrongAttempts, setWrongAttempts] = useState(0)
+  const [wrongDecision, setWrongDecision] = useState<WrongDecisionState | null>(null)
 
   // Current node
   const currentNode = useMemo(
@@ -141,20 +148,34 @@ export function FlowchartWalker({
 
       if (correct === null || correct === true) {
         // No validation defined or correct answer
+        setWrongDecision(null)
         advanceToNext(value, value, true)
       } else {
-        // Wrong answer
+        // Wrong answer - find correct value for feedback
+        const node = flowchart.nodes[state.currentNode]
+        const def = node?.definition
+        let correctValue = ''
+        if (def?.type === 'decision') {
+          for (const opt of def.options) {
+            if (isDecisionCorrect(flowchart, state, state.currentNode, opt.value) === true) {
+              correctValue = opt.value
+              break
+            }
+          }
+        }
+
         setWrongAttempts((prev) => prev + 1)
         setState((prev) => ({ ...prev, mistakes: prev.mistakes + 1 }))
-        setPhase({ type: 'decisionFeedback', correct: false, userChoice: value })
+        // Set wrongDecision with incremented attempt to re-trigger animation
+        setWrongDecision((prev) => ({
+          value,
+          correctValue,
+          attempt: (prev?.attempt ?? 0) + 1,
+        }))
       }
     },
     [flowchart, state, advanceToNext]
   )
-
-  const handleDecisionRetry = useCallback(() => {
-    setPhase({ type: 'awaitingDecision' })
-  }, [])
 
   const handleCheckpointSubmit = useCallback(
     (value: number | string) => {
@@ -230,39 +251,13 @@ export function FlowchartWalker({
         )
 
       case 'decision':
-        if (phase.type === 'decisionFeedback' && !phase.correct) {
-          // Find the correct option for highlighting
-          const decisionDef = def as DecisionNode
-          // Determine which option is correct by checking each one
-          let correctValue = decisionDef.options[0]?.value ?? ''
-          for (const opt of decisionDef.options) {
-            if (isDecisionCorrect(flowchart, state, state.currentNode, opt.value) === true) {
-              correctValue = opt.value
-              break
-            }
-          }
-
-          return (
-            <div className={vstack({ gap: '4' })}>
-              <FlowchartDecision
-                options={decisionDef.options}
-                onSelect={() => {}}
-                disabled
-                highlightCorrect={correctValue}
-                highlightWrong={phase.userChoice}
-              />
-              <FlowchartWrongAnswerFeedback
-                message="Let's check that again..."
-                onRetry={handleDecisionRetry}
-              />
-            </div>
-          )
-        }
-
         return (
           <FlowchartDecision
+            key={`decision-${wrongDecision?.attempt ?? 0}`}
             options={(def as DecisionNode).options}
             onSelect={handleDecisionSelect}
+            wrongAnswer={wrongDecision?.value}
+            correctAnswer={wrongDecision?.correctValue}
           />
         )
 
