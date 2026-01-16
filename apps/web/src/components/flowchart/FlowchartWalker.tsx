@@ -165,6 +165,51 @@ export function FlowchartWalker({
     setWrongDecision(null)
   }, [stateHistory, onChangeProblem])
 
+  // Navigate to a specific step in the working problem history
+  // Clicking on ledger entry i takes you to the state right after that entry was created
+  const navigateToStep = useCallback(
+    (targetIndex: number) => {
+      // If clicking the latest entry, do nothing
+      if (targetIndex >= state.workingProblemHistory.length - 1) {
+        return
+      }
+
+      // Find the state in history where workingProblemHistory.length === targetIndex + 1
+      // This is the state right after that entry was created, before any further advances
+      const targetHistoryIndex = stateHistory.findIndex(
+        (s) => s.workingProblemHistory.length === targetIndex + 1
+      )
+
+      if (targetHistoryIndex !== -1) {
+        // Found exact match - restore that state
+        const targetState = stateHistory[targetHistoryIndex]
+        setStateHistory((prev) => prev.slice(0, targetHistoryIndex))
+        setState(targetState)
+      } else {
+        // Fallback: find the first state with at least targetIndex + 1 entries
+        // and manually truncate the workingProblemHistory
+        const fallbackIndex = stateHistory.findIndex(
+          (s) => s.workingProblemHistory.length > targetIndex
+        )
+
+        if (fallbackIndex !== -1) {
+          const baseState = stateHistory[fallbackIndex]
+          const restoredState: FlowchartState = {
+            ...baseState,
+            workingProblemHistory: baseState.workingProblemHistory.slice(0, targetIndex + 1),
+          }
+          setStateHistory((prev) => prev.slice(0, fallbackIndex))
+          setState(restoredState)
+        }
+      }
+
+      setPhase({ type: 'showingNode' })
+      setWrongAttempts(0)
+      setWrongDecision(null)
+    },
+    [state.workingProblemHistory.length, stateHistory]
+  )
+
   // =============================================================================
   // Handlers
   // =============================================================================
@@ -576,7 +621,21 @@ export function FlowchartWalker({
                     data-testid={`ledger-step-${idx}`}
                     data-step-index={idx}
                     data-is-latest={isLatest}
+                    data-is-clickable={!isLatest}
                     data-node-id={step.nodeId}
+                    onClick={!isLatest ? () => navigateToStep(idx) : undefined}
+                    role={!isLatest ? 'button' : undefined}
+                    tabIndex={!isLatest ? 0 : undefined}
+                    onKeyDown={
+                      !isLatest
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              navigateToStep(idx)
+                            }
+                          }
+                        : undefined
+                    }
                     className={css({
                       display: 'flex',
                       alignItems: 'center',
@@ -591,6 +650,15 @@ export function FlowchartWalker({
                         ? { base: 'blue.400', _dark: 'blue.500' }
                         : { base: 'blue.200', _dark: 'blue.700' },
                       opacity: isLatest ? 1 : 0.7,
+                      cursor: isLatest ? 'default' : 'pointer',
+                      transition: 'all 0.15s ease-out',
+                      _hover: isLatest
+                        ? {}
+                        : {
+                            opacity: 1,
+                            backgroundColor: { base: 'blue.50', _dark: 'blue.900/50' },
+                            borderColor: { base: 'blue.300', _dark: 'blue.600' },
+                          },
                     })}
                   >
                     {/* Step number */}
