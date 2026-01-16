@@ -2663,24 +2663,41 @@ export function generateDiverseExamples(
     if (examples.length < 5) {
       // Find the path definition for this signature
       const targetPath = analysis.paths.find((p) => p.nodeIds.join('→') === pathSignature)
+      if (!targetPath) continue
 
-      for (let i = examples.length; i < 5 && targetPath; i++) {
+      // Try multiple attempts per additional example (complex paths may have low hit rate)
+      const attemptsPerExample = 50
+      let consecutiveFailures = 0
+
+      while (examples.length < 5 && consecutiveFailures < attemptsPerExample) {
         const values = hasGenerationConfig
           ? generateForPath(flowchart, targetPath, teacherConstraints)
           : generateSmartProblem(schemaType, targetPath)
 
-        if (!values) continue
-        if (!hasGenerationConfig && !isValidProblem(values, schema.validation)) continue
-        if (!hasGenerationConfig && !satisfiesConstraintsLegacy(values)) continue
+        if (!values) {
+          consecutiveFailures++
+          continue
+        }
+        if (!hasGenerationConfig && !isValidProblem(values, schema.validation)) {
+          consecutiveFailures++
+          continue
+        }
+        if (!hasGenerationConfig && !satisfiesConstraintsLegacy(values)) {
+          consecutiveFailures++
+          continue
+        }
 
         try {
           const complexity = calculatePathComplexity(flowchart, values)
           if (complexity.path.join('→') === pathSignature) {
             const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path, values)
             examples.push({ values, complexity, pathSignature, pathDescriptor })
+            consecutiveFailures = 0 // Reset on success
+          } else {
+            consecutiveFailures++
           }
         } catch {
-          // Skip
+          consecutiveFailures++
         }
       }
     }
