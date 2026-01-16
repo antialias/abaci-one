@@ -298,14 +298,12 @@ export function validateCheckpoint(
   if (!node || node.definition.type !== 'checkpoint') return null
 
   const def = node.definition
-  const context: EvalContext = {
-    ...createContextFromState(state),
-    input: userInput,
-  }
 
   try {
     // Handle two-numbers input type with array of expected expressions
     if (def.inputType === 'two-numbers' && Array.isArray(def.expected)) {
+      // For two-numbers, we don't use `input` in expressions - we validate against problem values
+      const context: EvalContext = createContextFromState(state)
       const expected1 = evaluate(def.expected[0], context) as number
       const expected2 = evaluate(def.expected[1], context) as number
       const expectedArray: [number, number] = [expected1, expected2]
@@ -323,6 +321,10 @@ export function validateCheckpoint(
     }
 
     // Original single-value validation
+    const context: EvalContext = {
+      ...createContextFromState(state),
+      input: userInput as ProblemValue,
+    }
     const expected = evaluate(def.expected as string, context)
     const tolerance = def.tolerance ?? 0
 

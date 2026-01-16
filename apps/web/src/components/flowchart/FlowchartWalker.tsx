@@ -617,10 +617,11 @@ export function FlowchartWalker({
         )}
 
         {/* Problem display */}
-        <div data-testid="problem-header" className={css({ fontSize: 'sm' })}>
-          <span className={css({ color: { base: 'gray.500', _dark: 'gray.500' } })}>
-            {problemDisplay}
-          </span>
+        <div
+          data-testid="problem-header"
+          className={css({ color: { base: 'gray.500', _dark: 'gray.500' } })}
+        >
+          <MathDisplay expression={problemDisplay} size="sm" />
         </div>
 
         {/* Change problem link (when not at start) */}
