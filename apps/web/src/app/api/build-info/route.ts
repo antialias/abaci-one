@@ -3,6 +3,10 @@ import { hostname } from 'os'
 import buildInfo from '@/generated/build-info.json'
 import { getRedisClient, isRedisAvailable } from '@/lib/redis'
 
+// Force dynamic evaluation - this route must not be statically cached
+// because it reads runtime environment variables and system state
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const redis = getRedisClient()
 

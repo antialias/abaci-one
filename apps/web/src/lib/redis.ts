@@ -21,13 +21,21 @@ let redisInitialized = false
  * Returns null if REDIS_URL is not set in environment.
  */
 export function getRedisClient(): Redis | null {
-  if (redisInitialized) {
+  const redisUrl = process.env.REDIS_URL
+
+  // If we've already initialized with a client, return it
+  if (redisInitialized && redisClient) {
     return redisClient
+  }
+
+  // If we initialized but got null AND REDIS_URL is still not set, return null
+  // But if REDIS_URL is NOW set (e.g., build-time vs runtime), try again
+  if (redisInitialized && !redisUrl) {
+    return null
   }
 
   redisInitialized = true
 
-  const redisUrl = process.env.REDIS_URL
   if (!redisUrl) {
     console.log('[Redis] REDIS_URL not set, using in-memory storage')
     return null
