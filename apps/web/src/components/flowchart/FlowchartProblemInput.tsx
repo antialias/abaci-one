@@ -308,6 +308,8 @@ export function FlowchartProblemInput({
 
   const handleTouchStart = useCallback(
     (example: GeneratedExample, e: React.TouchEvent) => {
+      // Prevent text selection on long press
+      e.preventDefault()
       longPressTriggeredRef.current = false
       longPressTargetRef.current = e.currentTarget as HTMLElement
       longPressTimerRef.current = setTimeout(() => {
@@ -581,6 +583,8 @@ export function FlowchartProblemInput({
                         backgroundColor: { base: 'white', _dark: 'gray.700/50' },
                         cursor: 'pointer',
                         transition: 'all 0.15s ease-out',
+                        userSelect: 'none',
+                        WebkitTouchCallout: 'none',
                         _hover: {
                           transform: 'translateY(-1px)',
                           '& [data-element="edit-badge"]': {
@@ -713,6 +717,8 @@ export function FlowchartProblemInput({
                             backgroundColor: { base: 'white', _dark: 'gray.700/50' },
                             cursor: 'pointer',
                             transition: 'all 0.15s ease-out',
+                            userSelect: 'none',
+                            WebkitTouchCallout: 'none',
                             _hover: {
                               transform: 'translateY(-1px)',
                               '& [data-element="edit-badge"]': {
@@ -810,6 +816,8 @@ export function FlowchartProblemInput({
                     backgroundColor: { base: 'white', _dark: 'gray.700/50' },
                     cursor: 'pointer',
                     transition: 'all 0.15s ease-out',
+                    userSelect: 'none',
+                    WebkitTouchCallout: 'none',
                     _hover: {
                       borderColor: { base: 'blue.400', _dark: 'blue.400' },
                       backgroundColor: { base: 'blue.50', _dark: 'blue.900/30' },
