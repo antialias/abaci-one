@@ -292,8 +292,8 @@ export function validateCheckpoint(
   flowchart: ExecutableFlowchart,
   state: FlowchartState,
   nodeId: string,
-  userInput: number | string
-): { correct: boolean; expected: ProblemValue } | null {
+  userInput: number | string | [number, number]
+): { correct: boolean; expected: ProblemValue | [number, number] } | null {
   const node = flowchart.nodes[nodeId]
   if (!node || node.definition.type !== 'checkpoint') return null
 
@@ -304,7 +304,26 @@ export function validateCheckpoint(
   }
 
   try {
-    const expected = evaluate(def.expected, context)
+    // Handle two-numbers input type with array of expected expressions
+    if (def.inputType === 'two-numbers' && Array.isArray(def.expected)) {
+      const expected1 = evaluate(def.expected[0], context) as number
+      const expected2 = evaluate(def.expected[1], context) as number
+      const expectedArray: [number, number] = [expected1, expected2]
+
+      if (!Array.isArray(userInput)) {
+        return { correct: false, expected: expectedArray }
+      }
+
+      const tolerance = def.tolerance ?? 0
+      const correct =
+        Math.abs(expected1 - userInput[0]) <= tolerance &&
+        Math.abs(expected2 - userInput[1]) <= tolerance
+
+      return { correct, expected: expectedArray }
+    }
+
+    // Original single-value validation
+    const expected = evaluate(def.expected as string, context)
     const tolerance = def.tolerance ?? 0
 
     let correct: boolean

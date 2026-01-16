@@ -72,7 +72,7 @@ const FRACTION_MERMAID = `%%{init: {'theme': 'base', 'themeVariables': { 'fontSi
 flowchart TB
     subgraph PHASE1["<b>1. 🔍 MAKE THE BOTTOMS MATCH</b>"]
         direction LR
-        STEP0["<b>👀 LOOK AT BOTTOMS</b><br/>───────────────<br/>Write down both<br/>bottom numbers:<br/>___ and ___"]
+        STEP0["<b>👀 LOOK AT BOTTOMS</b><br/>───────────────<br/>Find the bottom numbers<br/>(denominators) of both fractions<br/>and enter them below."]
         STEP0 --> STEP1{"<b>SAME?</b><br/>─────<br/>Are they the<br/>same number?"}
         STEP1 -->|"YES ✓"| READY1(("👍"))
         STEP1 -->|"NO"| STEP2{"<b>ONE FITS IN OTHER?</b><br/>─────────────<br/>Divide BIG bottom<br/>by SMALL bottom.<br/>Whole number?"}

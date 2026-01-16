@@ -38,8 +38,8 @@ type WalkerPhase =
   | {
       type: 'checkpointFeedback'
       correct: boolean
-      expected: ProblemValue
-      userAnswer: ProblemValue
+      expected: ProblemValue | [number, number]
+      userAnswer: ProblemValue | [number, number]
     }
   | { type: 'complete' }
 
@@ -268,12 +268,12 @@ export function FlowchartWalker({
   )
 
   const handleCheckpointSubmit = useCallback(
-    (value: number | string) => {
+    (value: number | string | [number, number]) => {
       const result = validateCheckpoint(flowchart, state, state.currentNode, value)
 
       if (result === null || result.correct) {
         // No validation or correct
-        const newState = applyStateUpdate(state, state.currentNode, flowchart, value)
+        const newState = applyStateUpdate(state, state.currentNode, flowchart, value as ProblemValue)
         setState(newState)
         setPhase({
           type: 'checkpointFeedback',
@@ -283,7 +283,7 @@ export function FlowchartWalker({
         })
         // Auto-advance after short delay
         setTimeout(() => {
-          advanceToNext(undefined, value, true)
+          advanceToNext(undefined, value as ProblemValue, true)
         }, 1000)
       } else {
         // Wrong answer
@@ -395,6 +395,30 @@ export function FlowchartWalker({
       case 'checkpoint': {
         const checkpointDef = def as CheckpointNode
         const showHint = wrongAttempts >= 2
+        const isTwoNumbers = checkpointDef.inputType === 'two-numbers'
+
+        // Format feedback values based on input type
+        const formatFeedback = () => {
+          if (isTwoNumbers) {
+            return {
+              expected: phase.type === 'checkpointFeedback' ? phase.expected as [number, number] : undefined,
+              userAnswer: phase.type === 'checkpointFeedback' ? phase.userAnswer as [number, number] : undefined,
+            }
+          }
+          return {
+            expected: phase.type === 'checkpointFeedback' ? String(phase.expected) : undefined,
+            userAnswer: phase.type === 'checkpointFeedback' ? String(phase.userAnswer) : undefined,
+          }
+        }
+
+        // Format hint text
+        const getHintText = () => {
+          if (!showHint || phase.type !== 'checkpointFeedback') return undefined
+          if (isTwoNumbers && Array.isArray(phase.expected)) {
+            return `Hint: The answers are ${phase.expected[0]} and ${phase.expected[1]}`
+          }
+          return `Hint: The answer is ${phase.expected}`
+        }
 
         if (phase.type === 'checkpointFeedback') {
           if (phase.correct) {
@@ -416,18 +440,21 @@ export function FlowchartWalker({
             )
           }
 
+          const feedbackValues = formatFeedback()
+
           return (
             <div data-testid="checkpoint-wrong-feedback" className={vstack({ gap: '4' })}>
               <FlowchartCheckpoint
                 prompt={checkpointDef.prompt}
                 inputType={checkpointDef.inputType}
+                inputLabels={checkpointDef.inputLabels}
                 onSubmit={handleCheckpointSubmit}
                 feedback={{
                   correct: false,
-                  expected: String(phase.expected),
-                  userAnswer: String(phase.userAnswer),
+                  expected: feedbackValues.expected,
+                  userAnswer: feedbackValues.userAnswer,
                 }}
-                hint={showHint ? `Hint: The answer is ${phase.expected}` : undefined}
+                hint={getHintText()}
               />
               <button
                 data-testid="checkpoint-retry-button"
@@ -451,6 +478,7 @@ export function FlowchartWalker({
           <FlowchartCheckpoint
             prompt={checkpointDef.prompt}
             inputType={checkpointDef.inputType}
+            inputLabels={checkpointDef.inputLabels}
             onSubmit={handleCheckpointSubmit}
           />
         )

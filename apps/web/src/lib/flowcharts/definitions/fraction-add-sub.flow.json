@@ -203,8 +203,11 @@
 
   "nodes": {
     "STEP0": {
-      "type": "instruction",
-      "advance": "tap"
+      "type": "checkpoint",
+      "prompt": "What are the two bottom numbers (denominators)?",
+      "inputType": "two-numbers",
+      "inputLabels": ["Left", "Right"],
+      "expected": ["leftDenom", "rightDenom"]
     },
     "STEP1": {
       "type": "decision",

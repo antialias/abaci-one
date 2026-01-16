@@ -169,9 +169,11 @@ export interface CheckpointNode extends BaseNode {
   /** Prompt text shown to user */
   prompt: string
   /** Type of input expected */
-  inputType: 'number' | 'text'
-  /** Expression that evaluates to the expected value */
-  expected: string
+  inputType: 'number' | 'text' | 'two-numbers'
+  /** Expression that evaluates to the expected value (or array of expressions for two-numbers) */
+  expected: string | [string, string]
+  /** Labels for two-numbers inputs (defaults to ["First", "Second"]) */
+  inputLabels?: [string, string]
   /** Optional state update when checkpoint is passed */
   stateUpdate?: Record<string, string>
   /** Optional tolerance for numeric comparisons (for decimals) */
