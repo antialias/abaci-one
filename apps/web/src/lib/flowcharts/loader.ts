@@ -1496,7 +1496,8 @@ export function inferGridDimensionsFromExamples(
 
     for (const pathLabel of dim1Info.uniqueValues) {
       const gridLabel = dim1Info.gridLabels.get(pathLabel)
-      rows.push(gridLabel !== undefined ? gridLabel : pathLabel)
+      // Use gridLabel if it's a non-empty string, otherwise fall back to pathLabel
+      rows.push(gridLabel ? gridLabel : pathLabel)
       rowKeys.push(pathLabel)
     }
 
@@ -1543,13 +1544,15 @@ export function inferGridDimensionsFromExamples(
 
   for (const pathLabel of rowInfo.uniqueValues) {
     const gridLabel = rowInfo.gridLabels.get(pathLabel)
-    rows.push(gridLabel !== undefined ? gridLabel : pathLabel)
+    // Use gridLabel if it's a non-empty string, otherwise fall back to pathLabel
+    rows.push(gridLabel ? gridLabel : pathLabel)
     rowKeys.push(pathLabel)
   }
 
   for (const pathLabel of colInfo.uniqueValues) {
     const gridLabel = colInfo.gridLabels.get(pathLabel)
-    cols.push(gridLabel !== undefined ? gridLabel : pathLabel)
+    // Use gridLabel if it's a non-empty string, otherwise fall back to pathLabel
+    cols.push(gridLabel ? gridLabel : pathLabel)
     colKeys.push(pathLabel)
   }
 
