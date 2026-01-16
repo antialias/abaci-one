@@ -26,19 +26,25 @@ services:
       traefik.http.routers.abaci.entrypoints: websecure
       traefik.http.routers.abaci.tls: "true"
       traefik.http.routers.abaci.tls.certresolver: myresolver
-      traefik.http.routers.abaci.middlewares: hsts@docker
+      # Chain middlewares: retry failed requests, then HSTS headers
+      traefik.http.routers.abaci.middlewares: retry@docker,hsts@docker
       traefik.http.routers.abaci.service: abaci
       traefik.http.routers.abaci-http.rule: "Host(`abaci.one`)"
       traefik.http.routers.abaci-http.entrypoints: web
       traefik.http.routers.abaci-http.middlewares: redirect-https@docker
       traefik.http.services.abaci.loadbalancer.server.port: "3000"
+      # Faster health checks for quicker failover during deployments
       traefik.http.services.abaci.loadbalancer.healthcheck.path: /api/health
-      traefik.http.services.abaci.loadbalancer.healthcheck.interval: 10s
-      # Sticky sessions required for Socket.IO and remote camera sessions
-      # Without this, desktop and phone may hit different instances
+      traefik.http.services.abaci.loadbalancer.healthcheck.interval: 3s
+      traefik.http.services.abaci.loadbalancer.healthcheck.timeout: 2s
+      # Sticky sessions for Socket.IO (Redis handles cross-instance state)
+      # If pinned server is unhealthy, Traefik will failover + retry middleware helps
       traefik.http.services.abaci.loadbalancer.sticky.cookie.name: server_id
       traefik.http.services.abaci.loadbalancer.sticky.cookie.secure: "true"
       traefik.http.services.abaci.loadbalancer.sticky.cookie.httpOnly: "true"
+      # Retry middleware: retry on another server if request fails (zero-downtime deploys)
+      traefik.http.middlewares.retry.retry.attempts: "3"
+      traefik.http.middlewares.retry.retry.initialinterval: 100ms
       traefik.http.middlewares.redirect-https.redirectscheme.scheme: https
       traefik.http.middlewares.redirect-https.redirectscheme.permanent: "true"
       traefik.http.middlewares.hsts.headers.stsSeconds: "63072000"
