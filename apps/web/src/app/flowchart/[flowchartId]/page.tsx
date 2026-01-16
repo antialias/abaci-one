@@ -167,6 +167,7 @@ export default function FlowchartPage() {
             problemInput={state.problemInput}
             onComplete={handleComplete}
             onRestart={handleRestart}
+            onChangeProblem={handleRestart}
           />
         )}
       </main>

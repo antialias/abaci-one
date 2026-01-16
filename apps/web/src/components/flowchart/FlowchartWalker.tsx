@@ -54,7 +54,10 @@ interface FlowchartWalkerProps {
   flowchart: ExecutableFlowchart
   problemInput: Record<string, ProblemValue>
   onComplete?: (state: FlowchartState) => void
+  /** Called when user wants to try a different problem (same flowchart) */
   onRestart?: () => void
+  /** Called when user wants to go back to problem selection */
+  onChangeProblem?: () => void
 }
 
 // =============================================================================
@@ -72,12 +75,15 @@ export function FlowchartWalker({
   problemInput,
   onComplete,
   onRestart,
+  onChangeProblem,
 }: FlowchartWalkerProps) {
   // Initialize state
   const [state, setState] = useState<FlowchartState>(() => initializeState(flowchart, problemInput))
   const [phase, setPhase] = useState<WalkerPhase>({ type: 'showingNode' })
   const [wrongAttempts, setWrongAttempts] = useState(0)
   const [wrongDecision, setWrongDecision] = useState<WrongDecisionState | null>(null)
+  // History stack for back navigation (stores full state snapshots)
+  const [stateHistory, setStateHistory] = useState<FlowchartState[]>([])
 
   // Current node
   const currentNode = useMemo(
@@ -112,16 +118,25 @@ export function FlowchartWalker({
             ? 'checkpoint'
             : 'advance'
 
+      // Save current state to history before advancing
+      setStateHistory((prev) => [...prev, state])
+
       // Apply working problem update if configured (before advancing)
       let stateWithWorkingProblem = state
       if (correct !== false) {
-        stateWithWorkingProblem = applyWorkingProblemUpdate(state, state.currentNode, flowchart, userInput)
+        stateWithWorkingProblem = applyWorkingProblemUpdate(
+          state,
+          state.currentNode,
+          flowchart,
+          userInput
+        )
       }
 
       const newState = advanceState(stateWithWorkingProblem, nextNodeId, action, userInput, correct)
       setState(newState)
       setPhase({ type: 'showingNode' })
       setWrongAttempts(0)
+      setWrongDecision(null)
 
       // Check if new node is terminal
       if (isTerminal(flowchart, nextNodeId)) {
@@ -133,6 +148,22 @@ export function FlowchartWalker({
     },
     [flowchart, state, currentNode, onComplete]
   )
+
+  // Go back to the previous step
+  const goBack = useCallback(() => {
+    if (stateHistory.length === 0) {
+      // No history - go back to problem selection
+      onChangeProblem?.()
+      return
+    }
+
+    const previousState = stateHistory[stateHistory.length - 1]
+    setStateHistory((prev) => prev.slice(0, -1))
+    setState(previousState)
+    setPhase({ type: 'showingNode' })
+    setWrongAttempts(0)
+    setWrongDecision(null)
+  }, [stateHistory, onChangeProblem])
 
   // =============================================================================
   // Handlers
@@ -377,7 +408,9 @@ export function FlowchartWalker({
           minHeight: '400px',
         })}
       >
-        <div data-testid="celebration-emoji" className={css({ fontSize: '6xl' })}>🎉</div>
+        <div data-testid="celebration-emoji" className={css({ fontSize: '6xl' })}>
+          🎉
+        </div>
         <h2
           className={css({
             fontSize: '2xl',
@@ -417,19 +450,89 @@ export function FlowchartWalker({
     )
   }
 
+  // Can go back if there's history OR if we can go to problem selection
+  const canGoBack = stateHistory.length > 0 || onChangeProblem
+
   return (
     <div
       data-testid="flowchart-walker"
       data-current-node={state.currentNode}
       data-phase={phase.type}
-      className={vstack({ gap: '6', padding: '4', alignItems: 'stretch' })}
+      className={vstack({ gap: '4', padding: '4', alignItems: 'stretch' })}
     >
-      {/* Problem display header */}
-      <div data-testid="problem-header" className={hstack({ justifyContent: 'center', fontSize: 'sm' })}>
-        <span className={css({ color: { base: 'gray.500', _dark: 'gray.500' } })}>
-          {problemDisplay}
-        </span>
-      </div>
+      {/* Navigation bar */}
+      <nav
+        data-testid="walker-nav"
+        className={hstack({
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingX: '2',
+        })}
+      >
+        {/* Back button */}
+        {canGoBack ? (
+          <button
+            data-testid="back-button"
+            onClick={goBack}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1',
+              padding: '2 3',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              color: { base: 'gray.600', _dark: 'gray.400' },
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: 'md',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              _hover: {
+                color: { base: 'gray.900', _dark: 'gray.200' },
+                backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+              },
+            })}
+          >
+            <span className={css({ fontSize: 'md' })}>←</span>
+            <span>{stateHistory.length === 0 ? 'Change Problem' : 'Back'}</span>
+          </button>
+        ) : (
+          <div />
+        )}
+
+        {/* Problem display */}
+        <div data-testid="problem-header" className={css({ fontSize: 'sm' })}>
+          <span className={css({ color: { base: 'gray.500', _dark: 'gray.500' } })}>
+            {problemDisplay}
+          </span>
+        </div>
+
+        {/* Change problem link (when not at start) */}
+        {stateHistory.length > 0 && onChangeProblem ? (
+          <button
+            data-testid="change-problem-button"
+            onClick={onChangeProblem}
+            className={css({
+              padding: '2 3',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              color: { base: 'blue.600', _dark: 'blue.400' },
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: 'md',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              _hover: {
+                backgroundColor: { base: 'blue.50', _dark: 'blue.900/30' },
+              },
+            })}
+          >
+            New Problem
+          </button>
+        ) : (
+          <div />
+        )}
+      </nav>
 
       {/* Phase rail with flowchart navigation */}
       <FlowchartPhaseRail flowchart={flowchart} state={state} />

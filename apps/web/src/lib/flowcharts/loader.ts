@@ -15,7 +15,6 @@ import type {
   InstructionNode,
   CheckpointNode,
   DecisionNode,
-  PreferredValues,
   Field,
 } from './schema'
 import { parseMermaidFile, parseNodeContent } from './parser'
@@ -502,11 +501,11 @@ export function calculatePathComplexity(
             const correct = evaluate(def.correctAnswer, context)
             // Find the correct option
             if (typeof correct === 'boolean') {
-              const yesOption = def.options.find(o =>
-                o.value === 'yes' || o.value.toLowerCase().includes('yes')
+              const yesOption = def.options.find(
+                (o) => o.value === 'yes' || o.value.toLowerCase().includes('yes')
               )
-              const noOption = def.options.find(o =>
-                o.value === 'no' || o.value.toLowerCase().includes('no')
+              const noOption = def.options.find(
+                (o) => o.value === 'no' || o.value.toLowerCase().includes('no')
               )
 
               if (correct && yesOption) {
@@ -519,7 +518,7 @@ export function calculatePathComplexity(
               }
             } else {
               // correctAnswer is a specific value
-              const option = def.options.find(o => o.value === String(correct))
+              const option = def.options.find((o) => o.value === String(correct))
               currentNodeId = option?.next ?? def.options[0]?.next
             }
           } catch {
@@ -533,10 +532,10 @@ export function calculatePathComplexity(
         break
       }
 
-      case 'checkpoint':
+      // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional fallthrough to share instruction logic
+      case 'checkpoint': {
         checkpoints++
-        // Fall through to get next node
-        // eslint-disable-next-line no-fallthrough
+      }
       case 'instruction': {
         if (def.next) {
           currentNodeId = def.next
@@ -545,7 +544,7 @@ export function calculatePathComplexity(
           if (edges && edges.length > 0) {
             currentNodeId = edges[0]
           } else {
-            const mermaidEdges = flowchart.mermaid.edges.filter(e => e.from === currentNodeId)
+            const mermaidEdges = flowchart.mermaid.edges.filter((e) => e.from === currentNodeId)
             currentNodeId = mermaidEdges[0]?.to
           }
         }
@@ -640,21 +639,23 @@ export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath
   interface DFSFrame {
     nodeId: string
     pathSoFar: string[]
-    visitedInPath: Set<string>  // Track visited nodes within THIS path to detect cycles
+    visitedInPath: Set<string> // Track visited nodes within THIS path to detect cycles
     constraints: PathConstraint[]
     decisions: number
     checkpoints: number
   }
 
   // DFS with explicit stack to avoid recursion limits
-  const stack: DFSFrame[] = [{
-    nodeId: entryNode,
-    pathSoFar: [],
-    visitedInPath: new Set(),
-    constraints: [],
-    decisions: 0,
-    checkpoints: 0,
-  }]
+  const stack: DFSFrame[] = [
+    {
+      nodeId: entryNode,
+      pathSoFar: [],
+      visitedInPath: new Set(),
+      constraints: [],
+      decisions: 0,
+      checkpoints: 0,
+    },
+  ]
 
   const MAX_PATHS = 50 // Safety limit
   const MAX_ITERATIONS = 10000 // Prevent infinite loops
@@ -692,14 +693,19 @@ export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath
 
       case 'decision': {
         // Branch into all options
-        for (const option of def.options) {
-          const isYesOption = option.value === 'yes' || option.value.toLowerCase().includes('yes')
-          const constraint: PathConstraint | undefined = def.correctAnswer ? {
-            nodeId,
-            expression: def.correctAnswer,
-            requiredOutcome: isYesOption,
-            optionValue: option.value,
-          } : undefined
+        for (let optIdx = 0; optIdx < def.options.length; optIdx++) {
+          const option = def.options[optIdx]
+          // Convention: first option (index 0) corresponds to correctAnswer being TRUE
+          // This is more reliable than checking for "yes" in the option value
+          const isFirstOption = optIdx === 0
+          const constraint: PathConstraint | undefined = def.correctAnswer
+            ? {
+                nodeId,
+                expression: def.correctAnswer,
+                requiredOutcome: isFirstOption,
+                optionValue: option.value,
+              }
+            : undefined
 
           stack.push({
             nodeId: option.next,
@@ -763,7 +769,7 @@ function getNextNodeForAnalysis(
   if (def.next) return def.next
   const edges = flowchart.definition.edges?.[nodeId]
   if (edges && edges.length > 0) return edges[0]
-  const mermaidEdges = flowchart.mermaid.edges.filter(e => e.from === nodeId)
+  const mermaidEdges = flowchart.mermaid.edges.filter((e) => e.from === nodeId)
   return mermaidEdges[0]?.to
 }
 
@@ -781,9 +787,15 @@ export function analyzeFlowchart(flowchart: ExecutableFlowchart): FlowchartAnaly
 
   for (const node of Object.values(flowchart.nodes)) {
     switch (node.definition.type) {
-      case 'decision': decisionNodes++; break
-      case 'checkpoint': checkpointNodes++; break
-      case 'terminal': terminalNodes++; break
+      case 'decision':
+        decisionNodes++
+        break
+      case 'checkpoint':
+        checkpointNodes++
+        break
+      case 'terminal':
+        terminalNodes++
+        break
     }
   }
 
@@ -799,9 +811,9 @@ export function analyzeFlowchart(flowchart: ExecutableFlowchart): FlowchartAnaly
   }
 
   // Path statistics
-  const pathLengths = paths.map(p => p.nodeIds.length)
-  const pathDecisions = paths.map(p => p.decisions)
-  const pathCheckpoints = paths.map(p => p.checkpoints)
+  const pathLengths = paths.map((p) => p.nodeIds.length)
+  const pathDecisions = paths.map((p) => p.decisions)
+  const pathCheckpoints = paths.map((p) => p.checkpoints)
 
   const stats = {
     totalNodes,
@@ -826,7 +838,7 @@ export function analyzeFlowchart(flowchart: ExecutableFlowchart): FlowchartAnaly
   // Add extra iterations for path probability skew (some paths are rare)
   const skewFactor = 3 // Assume some paths are 3x less likely
   // Also factor in the number of decision nodes (more decisions = more branching = need more samples)
-  const branchingFactor = Math.pow(2, Math.min(decisionNodes, 5))
+  const branchingFactor = 2 ** Math.min(decisionNodes, 5)
   const recommendedIterations = Math.max(
     50, // Minimum
     Math.ceil(couponCollectorExpected * skewFactor),
@@ -1015,7 +1027,7 @@ function generateFieldValue(
 
   // If we have preferred values, try those first (shuffled)
   if (preferred && preferred.length > 0) {
-    const validPreferred = preferred.filter(v => possibleValues.includes(v))
+    const validPreferred = preferred.filter((v) => possibleValues.includes(v))
     if (validPreferred.length > 0) {
       const shuffled = shuffle(validPreferred)
       return shuffled[0]
@@ -1130,8 +1142,8 @@ function generateForPath(
   // Determine field generation order
   // Target field first, then others, derived fields last
   const targetField = genConfig?.target
-  const independentFields = fields.filter(f =>
-    !derivedFieldNames.has(f.name) && f.name !== targetField
+  const independentFields = fields.filter(
+    (f) => !derivedFieldNames.has(f.name) && f.name !== targetField
   )
 
   // Generate values
@@ -1139,7 +1151,7 @@ function generateForPath(
 
   // Generate target field first (if configured)
   if (targetField) {
-    const targetFieldDef = fields.find(f => f.name === targetField)
+    const targetFieldDef = fields.find((f) => f.name === targetField)
     if (targetFieldDef) {
       // Target is a schema field - generate normally
       const filters = fieldFilters.get(targetField) || []
@@ -1186,6 +1198,12 @@ function generateForPath(
 
   // Validate flowchart constraints
   if (!validateFlowchartConstraints(values, flowchart)) {
+    return null
+  }
+
+  // Validate that generated values satisfy path constraints (e.g., needsBorrow)
+  // This is crucial for constraints involving computed variables
+  if (!satisfiesPathConstraints(flowchart, values, targetPath)) {
     return null
   }
 
@@ -1239,7 +1257,7 @@ function generatePathDescriptorGeneric(
     if (node?.definition.type === 'decision') {
       const decision = node.definition as DecisionNode
       // Find which option leads to the next node
-      const option = decision.options.find(o => o.next === nextNodeId)
+      const option = decision.options.find((o) => o.next === nextNodeId)
       if (option?.pathLabel) {
         labels.push(option.pathLabel)
       }
@@ -1307,9 +1325,8 @@ function hasPositiveAnswerLegacy(
       const constant = values.constant as number
       const equals = values.equals as number
 
-      const x = operation === '+'
-        ? (equals - constant) / coefficient
-        : (equals + constant) / coefficient
+      const x =
+        operation === '+' ? (equals - constant) / coefficient : (equals + constant) / coefficient
 
       return x > 0
     }
@@ -1368,18 +1385,18 @@ function generatePathDescriptorLegacy(
       parts.push(op === '+' ? 'Undo +' : 'Undo −')
     } else if (constant === 0 && coef !== 1) {
       // Multiplication only: 4x = 20
-      parts.push('÷' + coef)
+      parts.push(`÷${coef}`)
     } else if (constant !== 0 && coef !== 1) {
       // Two-step (shouldn't happen with current generation)
       parts.push(op === '+' ? '−const' : '+const')
-      parts.push('÷' + coef)
+      parts.push(`÷${coef}`)
     } else {
       // Trivial: x = c
       parts.push('x = ?')
     }
   } else {
     // Generic: count key decision outcomes
-    const decisionCount = path.filter(nodeId => {
+    const decisionCount = path.filter((nodeId) => {
       const node = flowchart.nodes[nodeId]
       return node?.definition.type === 'decision'
     }).length
@@ -1401,21 +1418,42 @@ const NICE_DENOMINATORS = [2, 3, 4, 5, 6, 8, 10, 12]
 
 /** Denominator pairs that divide evenly (one is multiple of other) */
 const DIVIDING_PAIRS: [number, number][] = [
-  [2, 4], [2, 6], [2, 8], [2, 10], [2, 12],
-  [3, 6], [3, 9], [3, 12],
-  [4, 8], [4, 12],
+  [2, 4],
+  [2, 6],
+  [2, 8],
+  [2, 10],
+  [2, 12],
+  [3, 6],
+  [3, 9],
+  [3, 12],
+  [4, 8],
+  [4, 12],
   [5, 10],
   [6, 12],
 ]
 
 /** Coprime denominator pairs (require finding LCD) */
 const COPRIME_PAIRS: [number, number][] = [
-  [2, 3], [2, 5], [2, 7], [2, 9],
-  [3, 4], [3, 5], [3, 7], [3, 8], [3, 10],
-  [4, 5], [4, 7], [4, 9],
-  [5, 6], [5, 7], [5, 8], [5, 9],
+  [2, 3],
+  [2, 5],
+  [2, 7],
+  [2, 9],
+  [3, 4],
+  [3, 5],
+  [3, 7],
+  [3, 8],
+  [3, 10],
+  [4, 5],
+  [4, 7],
+  [4, 9],
+  [5, 6],
+  [5, 7],
+  [5, 8],
+  [5, 9],
   [6, 7],
-  [7, 8], [7, 9], [7, 10],
+  [7, 8],
+  [7, 9],
+  [7, 10],
   [8, 9],
   [9, 10],
 ]
@@ -1444,7 +1482,7 @@ function generateFractionProblem(targetPath?: FlowchartPath): Record<string, Pro
   const wantBorrow = pathNodes.includes('BORROW')
 
   // Determine operation based on path (borrow only happens with subtraction)
-  const op = wantBorrow ? '−' : (Math.random() < 0.5 ? '+' : '−')
+  const op = wantBorrow ? '−' : Math.random() < 0.5 ? '+' : '−'
 
   let leftDenom: number
   let rightDenom: number
@@ -1457,17 +1495,17 @@ function generateFractionProblem(targetPath?: FlowchartPath): Record<string, Pro
     // One divides the other path
     const pair = pickRandom(DIVIDING_PAIRS)
     if (Math.random() < 0.5) {
-      [leftDenom, rightDenom] = pair
+      ;[leftDenom, rightDenom] = pair
     } else {
-      [rightDenom, leftDenom] = pair
+      ;[rightDenom, leftDenom] = pair
     }
   } else if (wantLCD) {
     // Need to find LCD (coprime denominators)
     const pair = pickRandom(COPRIME_PAIRS)
     if (Math.random() < 0.5) {
-      [leftDenom, rightDenom] = pair
+      ;[leftDenom, rightDenom] = pair
     } else {
-      [rightDenom, leftDenom] = pair
+      ;[rightDenom, leftDenom] = pair
     }
   } else {
     // Random path - pick any nice denominators
@@ -1481,7 +1519,7 @@ function generateFractionProblem(targetPath?: FlowchartPath): Record<string, Pro
 
   // Generate whole numbers (0-5 for reasonable problems, sometimes 0 for simple fractions)
   let leftWhole = Math.random() < 0.3 ? 0 : randomInt(1, 5)
-  let rightWhole = Math.random() < 0.3 ? 0 : randomInt(1, 5)
+  const rightWhole = Math.random() < 0.3 ? 0 : randomInt(1, 5)
 
   // If we want borrowing for subtraction, ensure left fraction < right fraction (after LCD conversion)
   if (wantBorrow && op === '−') {
@@ -1572,8 +1610,10 @@ function generateLinearEquationProblem(targetPath?: FlowchartPath): Record<strin
   const pathNodes = targetPath?.nodeIds || []
 
   // Determine which type of one-step problem to generate
-  const wantAdditionPath = pathNodes.includes('STUCK_ADD') || pathNodes.includes('ZERO') || pathNodes.includes('MAKEZ')
-  const wantMultiplicationPath = pathNodes.includes('STUCK_MUL') || pathNodes.includes('ONE') || pathNodes.includes('MAKEONE')
+  const wantAdditionPath =
+    pathNodes.includes('STUCK_ADD') || pathNodes.includes('ZERO') || pathNodes.includes('MAKEZ')
+  const wantMultiplicationPath =
+    pathNodes.includes('STUCK_MUL') || pathNodes.includes('ONE') || pathNodes.includes('MAKEONE')
 
   // Generate problems where x is a nice integer answer
   const x = randomInt(2, 12)
@@ -1648,9 +1688,16 @@ function lcm(a: number, b: number): number {
 /**
  * Generate a random problem based on the schema fields (fallback for unknown schemas)
  */
-export function generateRandomProblem(
-  schema: { fields: Array<{ name: string; type: string; min?: number; max?: number; options?: string[]; default?: ProblemValue }> }
-): Record<string, ProblemValue> {
+export function generateRandomProblem(schema: {
+  fields: Array<{
+    name: string
+    type: string
+    min?: number
+    max?: number
+    options?: string[]
+    default?: ProblemValue
+  }>
+}): Record<string, ProblemValue> {
   const values: Record<string, ProblemValue> = {}
 
   for (const field of schema.fields) {
@@ -1800,7 +1847,12 @@ export function generateDiverseExamples(
         // Record this example under its actual path (might differ from target)
         seenPaths.add(actualSignature)
         const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path, values)
-        const example: GeneratedExample = { values, complexity, pathSignature: actualSignature, pathDescriptor }
+        const example: GeneratedExample = {
+          values,
+          complexity,
+          pathSignature: actualSignature,
+          pathDescriptor,
+        }
 
         const existing = pathGroups.get(actualSignature) || []
         existing.push(example)
@@ -1815,8 +1867,8 @@ export function generateDiverseExamples(
   }
 
   // Phase 2: Monte Carlo for any paths we missed
-  const targetPaths = new Set(analysis.paths.map(p => p.nodeIds.join('→')))
-  const missingPaths = [...targetPaths].filter(p => !seenPaths.has(p))
+  const targetPaths = new Set(analysis.paths.map((p) => p.nodeIds.join('→')))
+  const missingPaths = [...targetPaths].filter((p) => !seenPaths.has(p))
 
   if (missingPaths.length > 0) {
     // Use Monte Carlo to try to hit missing paths
@@ -1859,7 +1911,7 @@ export function generateDiverseExamples(
   for (const [pathSignature, examples] of pathGroups) {
     if (examples.length < 5) {
       // Find the path definition for this signature
-      const targetPath = analysis.paths.find(p => p.nodeIds.join('→') === pathSignature)
+      const targetPath = analysis.paths.find((p) => p.nodeIds.join('→') === pathSignature)
 
       for (let i = examples.length; i < 5 && targetPath; i++) {
         const values = hasGenerationConfig
@@ -1887,15 +1939,14 @@ export function generateDiverseExamples(
   const results: GeneratedExample[] = []
 
   // Sort path groups by complexity (simpler first for learning progression)
-  const sortedGroups = [...pathGroups.entries()]
-    .sort((a, b) => {
-      // Primary sort: total complexity (decisions + checkpoints)
-      const aComplexity = a[1][0].complexity.decisions + a[1][0].complexity.checkpoints
-      const bComplexity = b[1][0].complexity.decisions + b[1][0].complexity.checkpoints
-      if (aComplexity !== bComplexity) return aComplexity - bComplexity
-      // Secondary sort: path length
-      return a[1][0].complexity.pathLength - b[1][0].complexity.pathLength
-    })
+  const sortedGroups = [...pathGroups.entries()].sort((a, b) => {
+    // Primary sort: total complexity (decisions + checkpoints)
+    const aComplexity = a[1][0].complexity.decisions + a[1][0].complexity.checkpoints
+    const bComplexity = b[1][0].complexity.decisions + b[1][0].complexity.checkpoints
+    if (aComplexity !== bComplexity) return aComplexity - bComplexity
+    // Secondary sort: path length
+    return a[1][0].complexity.pathLength - b[1][0].complexity.pathLength
+  })
 
   // Take one "nice" example from each unique path
   for (const [, examples] of sortedGroups) {
@@ -1903,7 +1954,7 @@ export function generateDiverseExamples(
 
     // Deduplicate by problem display (same values = same problem)
     const seen = new Set<string>()
-    const unique = examples.filter(ex => {
+    const unique = examples.filter((ex) => {
       const key = JSON.stringify(ex.values)
       if (seen.has(key)) return false
       seen.add(key)
@@ -1912,8 +1963,14 @@ export function generateDiverseExamples(
 
     // Sort by numeric sum (smaller = more readable)
     const sorted = unique.sort((a, b) => {
-      const aSum = Object.values(a.values).reduce<number>((s, v) => s + (typeof v === 'number' ? v : 0), 0)
-      const bSum = Object.values(b.values).reduce<number>((s, v) => s + (typeof v === 'number' ? v : 0), 0)
+      const aSum = Object.values(a.values).reduce<number>(
+        (s, v) => s + (typeof v === 'number' ? v : 0),
+        0
+      )
+      const bSum = Object.values(b.values).reduce<number>(
+        (s, v) => s + (typeof v === 'number' ? v : 0),
+        0
+      )
       return aSum - bSum
     })
 
@@ -1931,11 +1988,18 @@ export function generateDiverseExamples(
       if (results.length >= count) break
 
       // Find an example with larger numbers for variety
-      const larger = examples.find(ex => {
-        const sum = Object.values(ex.values).reduce<number>((s, v) => s + (typeof v === 'number' ? v : 0), 0)
-        return sum > 20 && !results.some(r =>
-          r.pathSignature === ex.pathSignature &&
-          JSON.stringify(r.values) === JSON.stringify(ex.values)
+      const larger = examples.find((ex) => {
+        const sum = Object.values(ex.values).reduce<number>(
+          (s, v) => s + (typeof v === 'number' ? v : 0),
+          0
+        )
+        return (
+          sum > 20 &&
+          !results.some(
+            (r) =>
+              r.pathSignature === ex.pathSignature &&
+              JSON.stringify(r.values) === JSON.stringify(ex.values)
+          )
         )
       })
 
@@ -2009,8 +2073,10 @@ export function formatProblemDisplay(
       const rightWhole = problem.rightWhole as number
       const rightNum = problem.rightNum as number
       const rightDenom = problem.rightDenom as number
-      const leftStr = leftWhole > 0 ? `${leftWhole} ${leftNum}/${leftDenom}` : `${leftNum}/${leftDenom}`
-      const rightStr = rightWhole > 0 ? `${rightWhole} ${rightNum}/${rightDenom}` : `${rightNum}/${rightDenom}`
+      const leftStr =
+        leftWhole > 0 ? `${leftWhole} ${leftNum}/${leftDenom}` : `${leftNum}/${leftDenom}`
+      const rightStr =
+        rightWhole > 0 ? `${rightWhole} ${rightNum}/${rightDenom}` : `${rightNum}/${rightDenom}`
       return `${leftStr} ${op} ${rightStr}`
     }
     default: {

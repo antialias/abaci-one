@@ -13,7 +13,6 @@ import {
   generateDiverseExamples,
   analyzeFlowchart,
   type GeneratedExample,
-  type FlowchartAnalysis,
   type GenerationConstraints,
   DEFAULT_CONSTRAINTS,
 } from '@/lib/flowcharts/loader'
@@ -35,12 +34,16 @@ interface FlowchartProblemInputProps {
  * Dynamic problem input form based on schema definition.
  * Renders appropriate input fields based on field types.
  */
-export function FlowchartProblemInput({ schema, onSubmit, title, flowchart }: FlowchartProblemInputProps) {
+export function FlowchartProblemInput({
+  schema,
+  onSubmit,
+  title,
+  flowchart,
+}: FlowchartProblemInputProps) {
   const [values, setValues] = useState<Record<string, ProblemValue>>(() =>
     initializeValues(schema.fields)
   )
   const [error, setError] = useState<string | null>(null)
-  const [selectedExampleIdx, setSelectedExampleIdx] = useState<number | null>(null)
   // Teacher-configurable constraints for problem generation
   const [constraints, setConstraints] = useState<GenerationConstraints>(DEFAULT_CONSTRAINTS)
   // Displayed examples - updated when dice roll completes
@@ -75,7 +78,7 @@ export function FlowchartProblemInput({ schema, onSubmit, title, flowchart }: Fl
 
   // Calculate coverage: how many unique paths are represented in current examples
   const pathsCovered = useMemo(() => {
-    const uniquePaths = new Set(generatedExamples.map(ex => ex.pathSignature))
+    const uniquePaths = new Set(generatedExamples.map((ex) => ex.pathSignature))
     return uniquePaths.size
   }, [generatedExamples])
 
@@ -104,7 +107,6 @@ export function FlowchartProblemInput({ schema, onSubmit, title, flowchart }: Fl
         console.error('Error generating examples:', e)
       }
     }
-    setSelectedExampleIdx(null)
   }, [flowchart, constraints])
 
   // Handler for dice roll - we don't update examples here anymore
@@ -117,21 +119,21 @@ export function FlowchartProblemInput({ schema, onSubmit, title, flowchart }: Fl
   const handleChange = useCallback((name: string, value: ProblemValue) => {
     setValues((prev) => ({ ...prev, [name]: value }))
     setError(null)
-    setSelectedExampleIdx(null) // Clear example selection when user manually changes
   }, [])
 
   // Handle constraint changes - regenerate examples with new constraints
   const handleConstraintsChange = useCallback((newConstraints: GenerationConstraints) => {
     setConstraints(newConstraints)
     setDisplayedExamples([]) // Clear displayed examples so they regenerate with new constraints
-    setSelectedExampleIdx(null)
   }, [])
 
-  const handleExampleSelect = useCallback((example: GeneratedExample, idx: number) => {
-    setValues(example.values)
-    setSelectedExampleIdx(idx)
-    setError(null)
-  }, [])
+  const handleExampleSelect = useCallback(
+    (example: GeneratedExample) => {
+      // Clicking an example immediately starts the flowchart with that problem
+      onSubmit(example.values)
+    },
+    [onSubmit]
+  )
 
   const handleSubmit = useCallback(() => {
     // Validate if validation expression is defined
@@ -158,7 +160,7 @@ export function FlowchartProblemInput({ schema, onSubmit, title, flowchart }: Fl
         }
       } catch (e) {
         console.error('Validation error:', e)
-        setError('Validation error: ' + (e as Error).message)
+        setError(`Validation error: ${(e as Error).message}`)
         return
       }
     }
@@ -201,69 +203,61 @@ export function FlowchartProblemInput({ schema, onSubmit, title, flowchart }: Fl
         </h2>
       )}
 
-      <p
-        className={css({
-          fontSize: 'sm',
-          color: { base: 'gray.600', _dark: 'gray.400' },
-          textAlign: 'center',
-        })}
-      >
-        {generatedExamples.length > 0 ? 'Choose an example or enter your own' : 'Enter your problem to get started'}
-      </p>
-
-      {/* Monte Carlo generated example problem buttons */}
+      {/* Quick Pick Section */}
       {generatedExamples.length > 0 && (
-        <div data-testid="examples-section" className={vstack({ gap: '2', alignItems: 'stretch' })}>
-          <div className={vstack({ gap: '1', alignItems: 'center' })}>
-            <div className={hstack({ gap: '2', justifyContent: 'center', alignItems: 'center' })}>
-              <span
-                className={css({
-                  fontSize: 'xs',
-                  fontWeight: 'medium',
-                  color: { base: 'gray.500', _dark: 'gray.400' },
-                  textTransform: 'uppercase',
-                  letterSpacing: 'wide',
-                })}
-              >
-                Try These
-              </span>
-              <InteractiveDice
-              onRoll={handleRoll}
-              onDragStart={handleDragStart}
-              onRollComplete={handleRollComplete}
-              size={18}
-              title="Roll for new examples"
+        <div data-testid="examples-section" className={vstack({ gap: '3', alignItems: 'stretch' })}>
+          {/* Section header */}
+          <div
+            className={hstack({ gap: '2', justifyContent: 'space-between', alignItems: 'center' })}
+          >
+            <span
               className={css({
-                padding: '1',
-                borderRadius: 'md',
-                backgroundColor: 'transparent',
-                border: 'none',
-                transition: 'background 0.2s',
-                _hover: {
-                  backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
-                },
+                fontSize: 'sm',
+                fontWeight: 'semibold',
+                color: { base: 'gray.700', _dark: 'gray.200' },
               })}
-            />
-            </div>
-            {/* Coverage stats */}
-            {analysis && (
-              <span
+            >
+              Quick Pick
+            </span>
+            <div className={hstack({ gap: '2', alignItems: 'center' })}>
+              {analysis && (
+                <span
+                  className={css({
+                    fontSize: '2xs',
+                    color: { base: 'gray.400', _dark: 'gray.500' },
+                  })}
+                  title={`${analysis.stats.totalPaths} unique paths`}
+                >
+                  {pathsCovered}/{analysis.stats.totalPaths} paths
+                </span>
+              )}
+              <InteractiveDice
+                onRoll={handleRoll}
+                onDragStart={handleDragStart}
+                onRollComplete={handleRollComplete}
+                size={16}
+                title="Roll for new examples"
                 className={css({
-                  fontSize: '2xs',
-                  color: { base: 'gray.400', _dark: 'gray.500' },
+                  padding: '1',
+                  borderRadius: 'md',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  transition: 'background 0.2s',
+                  _hover: {
+                    backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+                  },
                 })}
-                title={`${analysis.stats.totalPaths} unique paths, ${analysis.stats.minDecisions}-${analysis.stats.maxDecisions} decisions, ${analysis.stats.minCheckpoints}-${analysis.stats.maxCheckpoints} checkpoints`}
-              >
-                {pathsCovered}/{analysis.stats.totalPaths} paths • {analysis.stats.minPathLength}-{analysis.stats.maxPathLength} steps
-              </span>
-            )}
+              />
+            </div>
           </div>
+
+          {/* Example grid */}
           <div
             className={css({
-              display: 'flex',
-              flexWrap: 'wrap',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '2',
-              justifyContent: 'center',
+              width: '100%',
             })}
           >
             {generatedExamples.map((example, idx) => {
@@ -273,52 +267,48 @@ export function FlowchartProblemInput({ schema, onSubmit, title, flowchart }: Fl
                   key={`${example.pathSignature}-${idx}`}
                   data-testid={`example-button-${idx}`}
                   data-path-signature={example.pathSignature}
-                  data-complexity-path={complexity.pathLength}
-                  data-complexity-decisions={complexity.decisions}
-                  data-complexity-checkpoints={complexity.checkpoints}
-                  onClick={() => handleExampleSelect(example, idx)}
-                  title={`Path: ${complexity.pathLength} steps, ${complexity.decisions} decisions, ${complexity.checkpoints} checkpoints`}
+                  onClick={() => handleExampleSelect(example)}
+                  title={`${example.pathDescriptor} • ${complexity.pathLength} steps`}
                   className={css({
-                    padding: '2 3',
+                    padding: '3',
                     borderRadius: 'lg',
                     border: '2px solid',
-                    borderColor: selectedExampleIdx === idx
-                      ? { base: 'blue.500', _dark: 'blue.400' }
-                      : { base: 'gray.200', _dark: 'gray.600' },
-                    backgroundColor: selectedExampleIdx === idx
-                      ? { base: 'blue.50', _dark: 'blue.900' }
-                      : { base: 'white', _dark: 'gray.800' },
-                    color: selectedExampleIdx === idx
-                      ? { base: 'blue.700', _dark: 'blue.200' }
-                      : { base: 'gray.700', _dark: 'gray.300' },
+                    borderColor: { base: 'gray.200', _dark: 'gray.600' },
+                    backgroundColor: { base: 'white', _dark: 'gray.700/50' },
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
+                    transition: 'all 0.15s ease-out',
                     _hover: {
-                      borderColor: { base: 'blue.400', _dark: 'blue.500' },
-                      backgroundColor: { base: 'blue.50', _dark: 'blue.900/50' },
+                      borderColor: { base: 'blue.400', _dark: 'blue.400' },
+                      backgroundColor: { base: 'blue.50', _dark: 'blue.900/30' },
+                      transform: 'translateY(-1px)',
+                    },
+                    _active: {
+                      transform: 'scale(0.97)',
+                      backgroundColor: { base: 'blue.100', _dark: 'blue.900/50' },
                     },
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     gap: '1',
+                    minHeight: '70px',
                   })}
                 >
-                  <MathDisplay
-                    expression={formatExampleDisplay(schema.schema, example.values)}
-                    size="sm"
-                  />
+                  <div className={css({ color: { base: 'gray.900', _dark: 'white' } })}>
+                    <MathDisplay
+                      expression={formatExampleDisplay(schema.schema, example.values)}
+                      size="sm"
+                    />
+                  </div>
                   <div
-                    data-testid="path-descriptor"
-                    data-path-descriptor={example.pathDescriptor}
-                    data-path-length={complexity.pathLength}
-                    data-decisions={complexity.decisions}
-                    data-checkpoints={complexity.checkpoints}
                     className={css({
                       fontSize: '2xs',
-                      color: { base: 'gray.500', _dark: 'gray.400' },
-                      fontWeight: 'medium',
+                      color: { base: 'gray.400', _dark: 'gray.500' },
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: '100%',
                     })}
-                    title={`${complexity.pathLength} steps, ${complexity.decisions} decisions, ${complexity.checkpoints} checkpoints`}
                   >
                     {example.pathDescriptor}
                   </div>
@@ -329,51 +319,111 @@ export function FlowchartProblemInput({ schema, onSubmit, title, flowchart }: Fl
         </div>
       )}
 
-      {/* Render fields based on schema */}
-      {schema.schema === 'two-digit-subtraction' ? (
-        <TwoDigitSubtractionInput values={values} onChange={handleChange} />
-      ) : schema.schema === 'two-fractions-with-op' ? (
-        <TwoFractionsInput values={values} onChange={handleChange} />
-      ) : schema.schema === 'linear-equation' ? (
-        <LinearEquationInput values={values} onChange={handleChange} />
-      ) : (
-        <GenericFieldsInput fields={schema.fields} values={values} onChange={handleChange} />
+      {/* Divider */}
+      {generatedExamples.length > 0 && (
+        <div className={hstack({ gap: '3', alignItems: 'center', width: '100%' })}>
+          <div
+            className={css({
+              flex: 1,
+              height: '1px',
+              backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+            })}
+          />
+          <span
+            className={css({
+              fontSize: 'xs',
+              color: { base: 'gray.400', _dark: 'gray.500' },
+              textTransform: 'uppercase',
+              letterSpacing: 'wide',
+            })}
+          >
+            or
+          </span>
+          <div
+            className={css({
+              flex: 1,
+              height: '1px',
+              backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+            })}
+          />
+        </div>
       )}
 
-      {/* Error message */}
-      {error && (
-        <p
-          className={css({
-            color: { base: 'red.600', _dark: 'red.400' },
-            fontSize: 'sm',
-            textAlign: 'center',
-          })}
-        >
-          {error}
-        </p>
-      )}
-
-      {/* Submit button */}
-      <button
-        data-testid="start-button"
-        onClick={handleSubmit}
+      {/* Custom Problem Section */}
+      <div
         className={css({
-          width: '100%',
-          padding: '3',
-          fontSize: 'lg',
-          fontWeight: 'semibold',
-          borderRadius: 'lg',
-          backgroundColor: { base: 'blue.500', _dark: 'blue.600' },
-          color: 'white',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          _hover: {
-            backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
-          },
+          padding: '4',
+          borderRadius: 'xl',
+          border: '2px solid',
+          borderColor: { base: 'gray.200', _dark: 'gray.600' },
+          backgroundColor: { base: 'gray.50', _dark: 'gray.700/30' },
         })}
       >
-        Start
-      </button>
+        <div className={vstack({ gap: '4', alignItems: 'stretch' })}>
+          {/* Section header */}
+          <div className={hstack({ gap: '2', justifyContent: 'center', alignItems: 'center' })}>
+            <span className={css({ fontSize: 'lg' })}>✏️</span>
+            <span
+              className={css({
+                fontSize: 'sm',
+                fontWeight: 'semibold',
+                color: { base: 'gray.700', _dark: 'gray.200' },
+              })}
+            >
+              Make Your Own
+            </span>
+          </div>
+
+          {/* Input fields */}
+          {schema.schema === 'two-digit-subtraction' ? (
+            <TwoDigitSubtractionInput values={values} onChange={handleChange} />
+          ) : schema.schema === 'two-fractions-with-op' ? (
+            <TwoFractionsInput values={values} onChange={handleChange} />
+          ) : schema.schema === 'linear-equation' ? (
+            <LinearEquationInput values={values} onChange={handleChange} />
+          ) : (
+            <GenericFieldsInput fields={schema.fields} values={values} onChange={handleChange} />
+          )}
+
+          {/* Error message */}
+          {error && (
+            <p
+              className={css({
+                color: { base: 'red.600', _dark: 'red.400' },
+                fontSize: 'sm',
+                textAlign: 'center',
+              })}
+            >
+              {error}
+            </p>
+          )}
+
+          {/* Submit button */}
+          <button
+            data-testid="start-button"
+            onClick={handleSubmit}
+            className={css({
+              width: '100%',
+              padding: '3',
+              fontSize: 'md',
+              fontWeight: 'semibold',
+              borderRadius: 'lg',
+              backgroundColor: { base: 'blue.500', _dark: 'blue.600' },
+              color: 'white',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              _hover: {
+                backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
+              },
+              _active: {
+                transform: 'scale(0.98)',
+              },
+            })}
+          >
+            Start
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -399,7 +449,9 @@ function TwoDigitSubtractionInput({ values, onChange }: TwoDigitSubtractionInput
         min={10}
         max={99}
         value={values.minuend === 0 ? '' : (values.minuend as number)}
-        onChange={(e) => onChange('minuend', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+        onChange={(e) =>
+          onChange('minuend', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+        }
         placeholder="e.g. 52"
         className={css({
           width: '100px',
@@ -431,7 +483,9 @@ function TwoDigitSubtractionInput({ values, onChange }: TwoDigitSubtractionInput
           min={10}
           max={99}
           value={values.subtrahend === 0 ? '' : (values.subtrahend as number)}
-          onChange={(e) => onChange('subtrahend', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+          onChange={(e) =>
+            onChange('subtrahend', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+          }
           placeholder="e.g. 37"
           className={css({
             width: '100px',
@@ -485,14 +539,23 @@ function TwoFractionsInput({ values, onChange }: TwoDigitSubtractionInputProps) 
   })
 
   return (
-    <div className={hstack({ gap: '4', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' })}>
+    <div
+      className={hstack({
+        gap: '4',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexWrap: 'wrap',
+      })}
+    >
       {/* Left fraction */}
       <div className={hstack({ gap: '2', alignItems: 'center' })}>
         <input
           type="number"
           min={0}
           value={values.leftWhole === 0 ? '' : (values.leftWhole as number)}
-          onChange={(e) => onChange('leftWhole', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+          onChange={(e) =>
+            onChange('leftWhole', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+          }
           placeholder="0"
           className={inputStyle}
         />
@@ -501,7 +564,9 @@ function TwoFractionsInput({ values, onChange }: TwoDigitSubtractionInputProps) 
             type="number"
             min={0}
             value={values.leftNum === 0 ? '' : (values.leftNum as number)}
-            onChange={(e) => onChange('leftNum', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+            onChange={(e) =>
+              onChange('leftNum', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+            }
             placeholder="1"
             className={inputStyle}
           />
@@ -510,7 +575,9 @@ function TwoFractionsInput({ values, onChange }: TwoDigitSubtractionInputProps) 
             type="number"
             min={1}
             value={values.leftDenom === 0 ? '' : (values.leftDenom as number)}
-            onChange={(e) => onChange('leftDenom', e.target.value === '' ? 1 : parseInt(e.target.value, 10))}
+            onChange={(e) =>
+              onChange('leftDenom', e.target.value === '' ? 1 : parseInt(e.target.value, 10))
+            }
             placeholder="4"
             className={inputStyle}
           />
@@ -542,7 +609,9 @@ function TwoFractionsInput({ values, onChange }: TwoDigitSubtractionInputProps) 
           type="number"
           min={0}
           value={values.rightWhole === 0 ? '' : (values.rightWhole as number)}
-          onChange={(e) => onChange('rightWhole', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+          onChange={(e) =>
+            onChange('rightWhole', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+          }
           placeholder="0"
           className={inputStyle}
         />
@@ -551,7 +620,9 @@ function TwoFractionsInput({ values, onChange }: TwoDigitSubtractionInputProps) 
             type="number"
             min={0}
             value={values.rightNum === 0 ? '' : (values.rightNum as number)}
-            onChange={(e) => onChange('rightNum', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+            onChange={(e) =>
+              onChange('rightNum', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+            }
             placeholder="2"
             className={inputStyle}
           />
@@ -560,7 +631,9 @@ function TwoFractionsInput({ values, onChange }: TwoDigitSubtractionInputProps) 
             type="number"
             min={1}
             value={values.rightDenom === 0 ? '' : (values.rightDenom as number)}
-            onChange={(e) => onChange('rightDenom', e.target.value === '' ? 1 : parseInt(e.target.value, 10))}
+            onChange={(e) =>
+              onChange('rightDenom', e.target.value === '' ? 1 : parseInt(e.target.value, 10))
+            }
             placeholder="3"
             className={inputStyle}
           />
@@ -594,13 +667,22 @@ function LinearEquationInput({ values, onChange }: TwoDigitSubtractionInputProps
   })
 
   return (
-    <div className={hstack({ gap: '2', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' })}>
+    <div
+      className={hstack({
+        gap: '2',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexWrap: 'wrap',
+      })}
+    >
       {/* Coefficient */}
       <input
         type="number"
         min={1}
         value={values.coefficient === 0 ? '' : (values.coefficient as number)}
-        onChange={(e) => onChange('coefficient', e.target.value === '' ? 1 : parseInt(e.target.value, 10))}
+        onChange={(e) =>
+          onChange('coefficient', e.target.value === '' ? 1 : parseInt(e.target.value, 10))
+        }
         placeholder="3"
         className={inputStyle}
       />
@@ -630,7 +712,9 @@ function LinearEquationInput({ values, onChange }: TwoDigitSubtractionInputProps
         type="number"
         min={0}
         value={values.constant === 0 ? '' : (values.constant as number)}
-        onChange={(e) => onChange('constant', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+        onChange={(e) =>
+          onChange('constant', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+        }
         placeholder="5"
         className={inputStyle}
       />
@@ -642,7 +726,9 @@ function LinearEquationInput({ values, onChange }: TwoDigitSubtractionInputProps
         type="number"
         min={0}
         value={values.equals === 0 ? '' : (values.equals as number)}
-        onChange={(e) => onChange('equals', e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+        onChange={(e) =>
+          onChange('equals', e.target.value === '' ? 0 : parseInt(e.target.value, 10))
+        }
         placeholder="17"
         className={inputStyle}
       />
@@ -741,7 +827,7 @@ function renderFieldInput(
             type="number"
             min={0}
             value={mn.whole || ''}
-            onChange={(e) => onChange({ ...mn, whole: parseInt(e.target.value) || 0 })}
+            onChange={(e) => onChange({ ...mn, whole: parseInt(e.target.value, 10) || 0 })}
             placeholder="0"
             className={css({
               width: '60px',
@@ -757,7 +843,7 @@ function renderFieldInput(
               type="number"
               min={0}
               value={mn.num || ''}
-              onChange={(e) => onChange({ ...mn, num: parseInt(e.target.value) || 0 })}
+              onChange={(e) => onChange({ ...mn, num: parseInt(e.target.value, 10) || 0 })}
               placeholder="0"
               className={css({
                 width: '50px',
@@ -779,7 +865,7 @@ function renderFieldInput(
               type="number"
               min={1}
               value={mn.denom || ''}
-              onChange={(e) => onChange({ ...mn, denom: parseInt(e.target.value) || 1 })}
+              onChange={(e) => onChange({ ...mn, denom: parseInt(e.target.value, 10) || 1 })}
               placeholder="1"
               className={css({
                 width: '50px',
