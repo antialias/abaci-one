@@ -321,6 +321,7 @@ async function executeWorksheetTool(
   toolName: string,
   args: Record<string, unknown>
 ): Promise<unknown> {
+  console.log(`[MCP] executeWorksheetTool: ${toolName}`, JSON.stringify(args, null, 2))
   switch (toolName) {
     case 'generate_worksheet':
       return generateWorksheet({
