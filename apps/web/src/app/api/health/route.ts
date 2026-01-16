@@ -7,20 +7,26 @@
  * - Database connection is working
  * - All critical services are initialized
  *
+ * Status levels:
+ * - healthy (200): All services operational
+ * - degraded (200): Core services work, but some features limited (e.g., Redis down)
+ * - unhealthy (503): Cannot serve traffic (e.g., database down)
+ *
  * Used by:
  * - Red-black deployment scripts to verify new containers are ready
  * - Docker healthcheck for container orchestration
- * - Load balancers to determine if traffic should be routed
+ * - Load balancers to determine if traffic should be routed (Traefik)
  */
 
 import { NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { db } from '@/db'
+import { getRedisClient, isRedisAvailable } from '@/lib/redis'
 
 export const dynamic = 'force-dynamic'
 
 interface HealthCheckResult {
-  status: 'healthy' | 'unhealthy'
+  status: 'healthy' | 'degraded' | 'unhealthy'
   timestamp: string
   checks: {
     database: {
@@ -28,13 +34,19 @@ interface HealthCheckResult {
       latencyMs?: number
       error?: string
     }
+    redis?: {
+      status: 'ok' | 'error' | 'not_configured'
+      latencyMs?: number
+      error?: string
+      /** Features affected when Redis is down */
+      affectedFeatures?: string[]
+    }
   }
   version?: string
   commit?: string
 }
 
 export async function GET(): Promise<NextResponse<HealthCheckResult>> {
-  const startTime = Date.now()
   const result: HealthCheckResult = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -43,7 +55,7 @@ export async function GET(): Promise<NextResponse<HealthCheckResult>> {
     },
   }
 
-  // Check database connectivity
+  // Check database connectivity (critical - app cannot function without it)
   try {
     const dbStart = Date.now()
     await db.run(sql`SELECT 1`)
@@ -56,6 +68,46 @@ export async function GET(): Promise<NextResponse<HealthCheckResult>> {
     }
   }
 
+  // Check Redis connectivity (non-critical - app works without it but with reduced functionality)
+  const redisClient = getRedisClient()
+  if (!redisClient) {
+    // Redis not configured - this is fine in development
+    result.checks.redis = {
+      status: 'not_configured',
+      affectedFeatures: ['cross-instance sessions', 'remote camera sync'],
+    }
+    // Only mark as degraded in production where Redis is expected
+    if (process.env.REDIS_URL) {
+      result.status = result.status === 'healthy' ? 'degraded' : result.status
+    }
+  } else if (!isRedisAvailable()) {
+    // Redis configured but not connected
+    result.checks.redis = {
+      status: 'error',
+      error: `Connection status: ${redisClient.status}`,
+      affectedFeatures: ['cross-instance sessions', 'remote camera sync', 'Socket.IO scaling'],
+    }
+    // Degrade status (but don't mark unhealthy - app can still serve traffic)
+    result.status = result.status === 'healthy' ? 'degraded' : result.status
+  } else {
+    // Redis connected - verify with a ping
+    try {
+      const redisStart = Date.now()
+      await redisClient.ping()
+      result.checks.redis = {
+        status: 'ok',
+        latencyMs: Date.now() - redisStart,
+      }
+    } catch (error) {
+      result.checks.redis = {
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Redis ping failed',
+        affectedFeatures: ['cross-instance sessions', 'remote camera sync', 'Socket.IO scaling'],
+      }
+      result.status = result.status === 'healthy' ? 'degraded' : result.status
+    }
+  }
+
   // Add version info from environment (set during Docker build)
   if (process.env.GIT_COMMIT) {
     result.commit = process.env.GIT_COMMIT
@@ -64,6 +116,7 @@ export async function GET(): Promise<NextResponse<HealthCheckResult>> {
     result.version = process.env.npm_package_version
   }
 
-  const statusCode = result.status === 'healthy' ? 200 : 503
+  // Return 200 for healthy/degraded (can still serve traffic), 503 for unhealthy
+  const statusCode = result.status === 'unhealthy' ? 503 : 200
   return NextResponse.json(result, { status: statusCode })
 }
