@@ -1,0 +1,139 @@
+{
+  "id": "subtraction-regrouping",
+  "title": "Subtraction with Regrouping",
+  "mermaidFile": "subtraction-regrouping-flowchart.mmd",
+
+  "problemInput": {
+    "schema": "two-digit-subtraction",
+    "fields": [
+      { "name": "minuend", "type": "integer", "min": 10, "max": 99, "label": "Top number" },
+      { "name": "subtrahend", "type": "integer", "min": 10, "max": 99, "label": "Bottom number" }
+    ],
+    "validation": "minuend > subtrahend"
+  },
+
+  "variables": {
+    "topOnes": { "init": "minuend % 10" },
+    "bottomOnes": { "init": "subtrahend % 10" },
+    "topTens": { "init": "floor(minuend / 10)" },
+    "bottomTens": { "init": "floor(subtrahend / 10)" },
+    "needsBorrow": { "init": "topOnes < bottomOnes" },
+    "answer": { "init": "minuend - subtrahend" },
+    "onesAnswer": { "init": "needsBorrow ? (topOnes + 10 - bottomOnes) : (topOnes - bottomOnes)" },
+    "tensAnswer": { "init": "needsBorrow ? (topTens - 1 - bottomTens) : (topTens - bottomTens)" }
+  },
+
+  "workingProblem": {
+    "initial": "minuend + ' − ' + subtrahend + ' = ?'"
+  },
+
+  "entryNode": "START",
+
+  "nodes": {
+    "START": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "COMPARE": {
+      "type": "decision",
+      "correctAnswer": "!needsBorrow",
+      "options": [
+        { "label": "YES", "value": "yes", "next": "HAPPY" },
+        { "label": "NO", "value": "no", "next": "SAD" }
+      ]
+    },
+    "HAPPY": {
+      "type": "milestone",
+      "next": "CHECK1"
+    },
+    "SAD": {
+      "type": "milestone",
+      "next": "CHECK1B"
+    },
+    "CHECK1": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "NEEDIT"
+    },
+    "CHECK1B": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "NEEDIT"
+    },
+    "NEEDIT": {
+      "type": "decision",
+      "correctAnswer": "!needsBorrow",
+      "options": [
+        { "label": "YES (big enough)", "value": "yes", "next": "SKIP" },
+        { "label": "NO (need borrow)", "value": "no", "next": "TENS" }
+      ]
+    },
+    "SKIP": {
+      "type": "milestone",
+      "next": "CHECK2"
+    },
+    "TENS": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "TAKEONE": {
+      "type": "checkpoint",
+      "prompt": "What's the new tens digit after borrowing?",
+      "inputType": "number",
+      "expected": "topTens - 1",
+      "workingProblemUpdate": {
+        "result": "(topTens - 1) + '|' + (topOnes + 10) + ' − ' + subtrahend + ' = ?'",
+        "label": "Borrowed from tens"
+      }
+    },
+    "BREAK": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "ADDTEN": {
+      "type": "checkpoint",
+      "prompt": "What's the new ones digit after adding 10?",
+      "inputType": "number",
+      "expected": "topOnes + 10"
+    },
+    "CHECK2": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "DOONES": {
+      "type": "checkpoint",
+      "prompt": "What's the ones digit of your answer?",
+      "inputType": "number",
+      "expected": "needsBorrow ? (topOnes + 10 - bottomOnes) : (topOnes - bottomOnes)",
+      "workingProblemUpdate": {
+        "result": "minuend + ' − ' + subtrahend + ' = ?' + onesAnswer",
+        "label": "Found ones digit"
+      }
+    },
+    "DOTENS": {
+      "type": "checkpoint",
+      "prompt": "What's the tens digit of your answer?",
+      "inputType": "number",
+      "expected": "needsBorrow ? (topTens - 1 - bottomTens) : (topTens - bottomTens)",
+      "workingProblemUpdate": {
+        "result": "minuend + ' − ' + subtrahend + ' = ' + answer",
+        "label": "Complete!"
+      }
+    },
+    "DONE": {
+      "type": "terminal",
+      "celebration": true
+    }
+  },
+
+  "edges": {
+    "START": ["COMPARE"],
+    "TENS": ["TAKEONE"],
+    "TAKEONE": ["BREAK"],
+    "BREAK": ["ADDTEN"],
+    "ADDTEN": ["CHECK2"],
+    "CHECK2": ["DOONES"],
+    "DOONES": ["DOTENS"],
+    "DOTENS": ["DONE"]
+  }
+}

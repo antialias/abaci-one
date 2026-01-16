@@ -198,6 +198,7 @@ function MenuContent({
             {renderNavLink('/', '🧮', 'Home')}
             {renderNavLink('/create', '✏️', 'Create')}
             {renderNavLink('/practice', '📚', 'Practice')}
+            {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
             {renderNavLink('/games', '🎮', 'Games')}
             {renderNavLink('/guide', '📖', 'Guide')}
             {renderNavLink('/blog', '📝', 'Blog')}
@@ -450,6 +451,7 @@ function MenuContent({
           {renderNavLink('/', '🧮', 'Home')}
           {renderNavLink('/create', '✏️', 'Create')}
           {renderNavLink('/practice', '📚', 'Practice')}
+          {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
           {renderNavLink('/games', '🎮', 'Games')}
           {renderNavLink('/guide', '📖', 'Guide')}
           {renderNavLink('/blog', '📝', 'Blog')}

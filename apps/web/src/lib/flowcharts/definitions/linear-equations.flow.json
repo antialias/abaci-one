@@ -1,0 +1,159 @@
+{
+  "id": "linear-equations",
+  "title": "Solving Linear Equations",
+  "mermaidFile": "linear-equations-flowchart.mmd",
+
+  "problemInput": {
+    "schema": "linear-equation",
+    "fields": [
+      { "name": "coefficient", "type": "integer", "min": 1, "max": 20, "label": "Coefficient of x", "default": 1 },
+      { "name": "operation", "type": "choice", "options": ["+", "−"], "label": "Operation" },
+      { "name": "constant", "type": "integer", "min": 0, "max": 99, "label": "Constant" },
+      { "name": "equals", "type": "integer", "min": 0, "max": 99, "label": "Equals" }
+    ],
+    "validation": "coefficient > 0"
+  },
+
+  "variables": {
+    "isAddition": { "init": "operation == '+'" },
+    "isMultiplied": { "init": "coefficient > 1" },
+    "afterConstant": { "init": "isAddition ? (equals - constant) : (equals + constant)" },
+    "answer": { "init": "afterConstant / coefficient" }
+  },
+
+  "workingProblem": {
+    "initial": "coefficient + 'x ' + operation + ' ' + constant + ' = ' + equals"
+  },
+
+  "entryNode": "INTRO",
+
+  "nodes": {
+    "INTRO": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "BALANCE": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "FIND_OP": {
+      "type": "decision",
+      "correctAnswer": "constant != 0",
+      "options": [
+        { "label": "ADDED ON (+/−)", "value": "add", "next": "STUCK_ADD" },
+        { "label": "MULTIPLIED IN (×/÷)", "value": "mul", "next": "STUCK_MUL" }
+      ]
+    },
+    "STUCK_ADD": {
+      "type": "milestone",
+      "next": "CHECK1"
+    },
+    "STUCK_MUL": {
+      "type": "milestone",
+      "next": "CHECK1"
+    },
+    "CHECK1": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "GOAL": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "HOWSTUCK": {
+      "type": "decision",
+      "correctAnswer": "constant != 0",
+      "options": [
+        { "label": "Added or Subtracted", "value": "add", "next": "ZERO" },
+        { "label": "Multiplied or Divided", "value": "mul", "next": "ONE" }
+      ]
+    },
+    "ZERO": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "ONE": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "MAKEZ": {
+      "type": "checkpoint",
+      "prompt": "What do you do to both sides? (Use negative for subtract)",
+      "inputType": "number",
+      "expected": "isAddition ? (0 - constant) : constant",
+      "workingProblemUpdate": {
+        "result": "coefficient + 'x = ' + afterConstant",
+        "label": "Remove the constant"
+      }
+    },
+    "MAKEONE": {
+      "type": "checkpoint",
+      "prompt": "What do you divide both sides by?",
+      "inputType": "number",
+      "expected": "coefficient",
+      "workingProblemUpdate": {
+        "result": "'x = ' + answer",
+        "label": "Divide by coefficient"
+      }
+    },
+    "EX_ADD": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "EX_MUL": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "REMIND": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "CHECK2": {
+      "type": "checkpoint",
+      "prompt": "What is x?",
+      "inputType": "number",
+      "expected": "answer",
+      "workingProblemUpdate": {
+        "result": "'x = ' + answer",
+        "label": "Solution found!"
+      }
+    },
+    "PLUG": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "MATCH": {
+      "type": "decision",
+      "correctAnswer": "true",
+      "options": [
+        { "label": "YES ✓", "value": "yes", "next": "DONE" },
+        { "label": "NO 😕", "value": "no", "next": "RETRY" }
+      ]
+    },
+    "DONE": {
+      "type": "terminal",
+      "celebration": true
+    },
+    "RETRY": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "GOAL"
+    }
+  },
+
+  "edges": {
+    "INTRO": ["BALANCE"],
+    "BALANCE": ["FIND_OP"],
+    "CHECK1": ["GOAL"],
+    "GOAL": ["HOWSTUCK"],
+    "ZERO": ["MAKEZ"],
+    "ONE": ["MAKEONE"],
+    "MAKEZ": ["EX_ADD"],
+    "MAKEONE": ["EX_MUL"],
+    "EX_ADD": ["REMIND"],
+    "EX_MUL": ["REMIND"],
+    "REMIND": ["CHECK2"],
+    "CHECK2": ["PLUG"],
+    "PLUG": ["MATCH"]
+  }
+}

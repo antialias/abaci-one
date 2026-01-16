@@ -1,0 +1,522 @@
+'use client'
+
+import { useState, useCallback, useMemo } from 'react'
+import type {
+  ExecutableFlowchart,
+  FlowchartState,
+  ProblemValue,
+  DecisionNode,
+  CheckpointNode,
+} from '@/lib/flowcharts/schema'
+import {
+  initializeState,
+  getNextNode,
+  isDecisionCorrect,
+  validateCheckpoint,
+  applyStateUpdate,
+  applyWorkingProblemUpdate,
+  advanceState,
+  isTerminal,
+  formatProblemDisplay,
+} from '@/lib/flowcharts/loader'
+import { getPhaseIndex, getTotalPhases } from '@/lib/flowcharts/parser'
+import { css } from '../../../styled-system/css'
+import { vstack, hstack } from '../../../styled-system/patterns'
+import { FlowchartNodeContent } from './FlowchartNodeContent'
+import { FlowchartDecision, FlowchartWrongAnswerFeedback } from './FlowchartDecision'
+import { FlowchartCheckpoint } from './FlowchartCheckpoint'
+import { MathDisplay } from './MathDisplay'
+
+// =============================================================================
+// Types
+// =============================================================================
+
+type WalkerPhase =
+  | { type: 'showingNode' }
+  | { type: 'awaitingDecision' }
+  | { type: 'decisionFeedback'; correct: boolean; userChoice: string }
+  | { type: 'awaitingCheckpoint' }
+  | {
+      type: 'checkpointFeedback'
+      correct: boolean
+      expected: ProblemValue
+      userAnswer: ProblemValue
+    }
+  | { type: 'complete' }
+
+interface FlowchartWalkerProps {
+  flowchart: ExecutableFlowchart
+  problemInput: Record<string, ProblemValue>
+  onComplete?: (state: FlowchartState) => void
+  onRestart?: () => void
+}
+
+// =============================================================================
+// Component
+// =============================================================================
+
+/**
+ * FlowchartWalker - Main component for walking through a flowchart step by step.
+ *
+ * Manages state, navigation, and validation as the user progresses through
+ * instruction, decision, and checkpoint nodes.
+ */
+export function FlowchartWalker({
+  flowchart,
+  problemInput,
+  onComplete,
+  onRestart,
+}: FlowchartWalkerProps) {
+  // Initialize state
+  const [state, setState] = useState<FlowchartState>(() => initializeState(flowchart, problemInput))
+  const [phase, setPhase] = useState<WalkerPhase>({ type: 'showingNode' })
+  const [wrongAttempts, setWrongAttempts] = useState(0)
+
+  // Current node
+  const currentNode = useMemo(
+    () => flowchart.nodes[state.currentNode],
+    [flowchart.nodes, state.currentNode]
+  )
+
+  // Progress info
+  const currentPhase = getPhaseIndex(flowchart.mermaid, state.currentNode)
+  const totalPhases = getTotalPhases(flowchart.mermaid)
+
+  // Problem display
+  const problemDisplay = formatProblemDisplay(flowchart, state.problem)
+
+  // =============================================================================
+  // Navigation
+  // =============================================================================
+
+  const advanceToNext = useCallback(
+    (userChoice?: string, userInput?: ProblemValue, correct?: boolean) => {
+      const nextNodeId = getNextNode(flowchart, state, userChoice)
+
+      if (!nextNodeId) {
+        // No next node - might be terminal
+        if (isTerminal(flowchart, state.currentNode)) {
+          setPhase({ type: 'complete' })
+          onComplete?.(state)
+        }
+        return
+      }
+
+      const action =
+        currentNode?.definition.type === 'decision'
+          ? 'decision'
+          : currentNode?.definition.type === 'checkpoint'
+            ? 'checkpoint'
+            : 'advance'
+
+      // Apply working problem update if configured (before advancing)
+      let stateWithWorkingProblem = state
+      if (correct !== false) {
+        stateWithWorkingProblem = applyWorkingProblemUpdate(state, state.currentNode, flowchart, userInput)
+      }
+
+      const newState = advanceState(stateWithWorkingProblem, nextNodeId, action, userInput, correct)
+      setState(newState)
+      setPhase({ type: 'showingNode' })
+      setWrongAttempts(0)
+
+      // Check if new node is terminal
+      if (isTerminal(flowchart, nextNodeId)) {
+        setTimeout(() => {
+          setPhase({ type: 'complete' })
+          onComplete?.(newState)
+        }, 500)
+      }
+    },
+    [flowchart, state, currentNode, onComplete]
+  )
+
+  // =============================================================================
+  // Handlers
+  // =============================================================================
+
+  const handleInstructionAdvance = useCallback(() => {
+    advanceToNext()
+  }, [advanceToNext])
+
+  const handleDecisionSelect = useCallback(
+    (value: string) => {
+      const correct = isDecisionCorrect(flowchart, state, state.currentNode, value)
+
+      if (correct === null || correct === true) {
+        // No validation defined or correct answer
+        advanceToNext(value, value, true)
+      } else {
+        // Wrong answer
+        setWrongAttempts((prev) => prev + 1)
+        setState((prev) => ({ ...prev, mistakes: prev.mistakes + 1 }))
+        setPhase({ type: 'decisionFeedback', correct: false, userChoice: value })
+      }
+    },
+    [flowchart, state, advanceToNext]
+  )
+
+  const handleDecisionRetry = useCallback(() => {
+    setPhase({ type: 'awaitingDecision' })
+  }, [])
+
+  const handleCheckpointSubmit = useCallback(
+    (value: number | string) => {
+      const result = validateCheckpoint(flowchart, state, state.currentNode, value)
+
+      if (result === null || result.correct) {
+        // No validation or correct
+        const newState = applyStateUpdate(state, state.currentNode, flowchart, value)
+        setState(newState)
+        setPhase({
+          type: 'checkpointFeedback',
+          correct: true,
+          expected: result?.expected ?? value,
+          userAnswer: value,
+        })
+        // Auto-advance after short delay
+        setTimeout(() => {
+          advanceToNext(undefined, value, true)
+        }, 1000)
+      } else {
+        // Wrong answer
+        setWrongAttempts((prev) => prev + 1)
+        setState((prev) => ({ ...prev, mistakes: prev.mistakes + 1 }))
+        setPhase({
+          type: 'checkpointFeedback',
+          correct: false,
+          expected: result.expected,
+          userAnswer: value,
+        })
+      }
+    },
+    [flowchart, state, advanceToNext]
+  )
+
+  const handleCheckpointRetry = useCallback(() => {
+    setPhase({ type: 'awaitingCheckpoint' })
+  }, [])
+
+  // =============================================================================
+  // Determine what to show based on node type and phase
+  // =============================================================================
+
+  const renderNodeInteraction = () => {
+    if (!currentNode) return null
+
+    const def = currentNode.definition
+
+    switch (def.type) {
+      case 'instruction':
+        return (
+          <button
+            onClick={handleInstructionAdvance}
+            className={css({
+              padding: '4 8',
+              fontSize: 'lg',
+              fontWeight: 'semibold',
+              borderRadius: 'lg',
+              backgroundColor: { base: 'green.500', _dark: 'green.600' },
+              color: 'white',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              _hover: {
+                backgroundColor: { base: 'green.600', _dark: 'green.500' },
+                transform: 'scale(1.02)',
+              },
+              _active: {
+                transform: 'scale(0.98)',
+              },
+            })}
+          >
+            I did it!
+          </button>
+        )
+
+      case 'decision':
+        if (phase.type === 'decisionFeedback' && !phase.correct) {
+          // Find the correct option for highlighting
+          const decisionDef = def as DecisionNode
+          // Determine which option is correct by checking each one
+          let correctValue = decisionDef.options[0]?.value ?? ''
+          for (const opt of decisionDef.options) {
+            if (isDecisionCorrect(flowchart, state, state.currentNode, opt.value) === true) {
+              correctValue = opt.value
+              break
+            }
+          }
+
+          return (
+            <div className={vstack({ gap: '4' })}>
+              <FlowchartDecision
+                options={decisionDef.options}
+                onSelect={() => {}}
+                disabled
+                highlightCorrect={correctValue}
+                highlightWrong={phase.userChoice}
+              />
+              <FlowchartWrongAnswerFeedback
+                message="Let's check that again..."
+                onRetry={handleDecisionRetry}
+              />
+            </div>
+          )
+        }
+
+        return (
+          <FlowchartDecision
+            options={(def as DecisionNode).options}
+            onSelect={handleDecisionSelect}
+          />
+        )
+
+      case 'checkpoint': {
+        const checkpointDef = def as CheckpointNode
+        const showHint = wrongAttempts >= 2
+
+        if (phase.type === 'checkpointFeedback') {
+          if (phase.correct) {
+            return (
+              <div
+                className={css({
+                  padding: '4',
+                  backgroundColor: { base: 'green.100', _dark: 'green.800' },
+                  borderRadius: 'lg',
+                  color: { base: 'green.800', _dark: 'green.200' },
+                  fontSize: 'lg',
+                  fontWeight: 'semibold',
+                  textAlign: 'center',
+                })}
+              >
+                Correct! Moving on...
+              </div>
+            )
+          }
+
+          return (
+            <div className={vstack({ gap: '4' })}>
+              <FlowchartCheckpoint
+                prompt={checkpointDef.prompt}
+                inputType={checkpointDef.inputType}
+                onSubmit={handleCheckpointSubmit}
+                feedback={{
+                  correct: false,
+                  expected: String(phase.expected),
+                  userAnswer: String(phase.userAnswer),
+                }}
+                hint={showHint ? `Hint: The answer is ${phase.expected}` : undefined}
+              />
+              <button
+                onClick={handleCheckpointRetry}
+                className={css({
+                  padding: '2 4',
+                  fontSize: 'md',
+                  borderRadius: 'md',
+                  backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                  color: { base: 'gray.800', _dark: 'gray.200' },
+                  cursor: 'pointer',
+                })}
+              >
+                Try again
+              </button>
+            </div>
+          )
+        }
+
+        return (
+          <FlowchartCheckpoint
+            prompt={checkpointDef.prompt}
+            inputType={checkpointDef.inputType}
+            onSubmit={handleCheckpointSubmit}
+          />
+        )
+      }
+
+      case 'milestone':
+        // Auto-advance milestones
+        setTimeout(() => advanceToNext(), 500)
+        return (
+          <div
+            className={css({
+              fontSize: '4xl',
+              textAlign: 'center',
+            })}
+          >
+            {currentNode.content.title}
+          </div>
+        )
+
+      case 'terminal':
+        return null // Handled by complete phase
+
+      default:
+        return null
+    }
+  }
+
+  // =============================================================================
+  // Render
+  // =============================================================================
+
+  if (phase.type === 'complete') {
+    return (
+      <div
+        className={vstack({
+          gap: '6',
+          padding: '8',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '400px',
+        })}
+      >
+        <div className={css({ fontSize: '6xl' })}>🎉</div>
+        <h2
+          className={css({
+            fontSize: '2xl',
+            fontWeight: 'bold',
+            color: { base: 'green.700', _dark: 'green.300' },
+          })}
+        >
+          Great job!
+        </h2>
+        <p className={css({ color: { base: 'gray.600', _dark: 'gray.400' } })}>
+          You completed the problem: {problemDisplay}
+        </p>
+        <p className={css({ color: { base: 'gray.500', _dark: 'gray.500' }, fontSize: 'sm' })}>
+          {state.mistakes === 0
+            ? 'Perfect - no mistakes!'
+            : `Finished with ${state.mistakes} mistake${state.mistakes === 1 ? '' : 's'}`}
+        </p>
+        {onRestart && (
+          <button
+            onClick={onRestart}
+            className={css({
+              padding: '3 6',
+              fontSize: 'lg',
+              fontWeight: 'semibold',
+              borderRadius: 'lg',
+              backgroundColor: { base: 'blue.500', _dark: 'blue.600' },
+              color: 'white',
+              cursor: 'pointer',
+              marginTop: '4',
+            })}
+          >
+            Try another problem
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className={vstack({ gap: '6', padding: '4', alignItems: 'stretch' })}>
+      {/* Progress bar */}
+      <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
+        <div className={hstack({ justifyContent: 'space-between', fontSize: 'sm' })}>
+          <span className={css({ color: { base: 'gray.600', _dark: 'gray.400' } })}>
+            Phase {currentPhase} of {totalPhases}
+          </span>
+          <span className={css({ color: { base: 'gray.500', _dark: 'gray.500' } })}>
+            {problemDisplay}
+          </span>
+        </div>
+        <div
+          className={css({
+            height: '8px',
+            backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+            borderRadius: 'full',
+            overflow: 'hidden',
+          })}
+        >
+          <div
+            className={css({
+              height: '100%',
+              backgroundColor: { base: 'green.500', _dark: 'green.400' },
+              borderRadius: 'full',
+              transition: 'width 0.3s ease',
+            })}
+            style={{ width: `${(currentPhase / totalPhases) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Working problem display */}
+      {state.workingProblem && (
+        <div
+          className={css({
+            padding: '4',
+            backgroundColor: { base: 'blue.50', _dark: 'blue.900' },
+            borderRadius: 'xl',
+            border: '2px solid',
+            borderColor: { base: 'blue.200', _dark: 'blue.700' },
+          })}
+        >
+          <div className={vstack({ gap: '3', alignItems: 'center' })}>
+            <span
+              className={css({
+                fontSize: 'xs',
+                fontWeight: 'medium',
+                color: { base: 'blue.600', _dark: 'blue.300' },
+                textTransform: 'uppercase',
+                letterSpacing: 'wide',
+              })}
+            >
+              Working Problem
+            </span>
+            <div className={css({ color: { base: 'blue.900', _dark: 'blue.100' } })}>
+              <MathDisplay expression={state.workingProblem} size="xl" />
+            </div>
+            {/* Show step history as breadcrumbs */}
+            {state.workingProblemHistory.length > 1 && (
+              <div
+                className={vstack({
+                  gap: '1',
+                  alignItems: 'center',
+                  marginTop: '2',
+                })}
+              >
+                {state.workingProblemHistory.slice(0, -1).map((step, idx) => (
+                  <span
+                    key={idx}
+                    className={css({
+                      fontSize: 'xs',
+                      color: { base: 'blue.500', _dark: 'blue.400' },
+                      opacity: 0.7,
+                    })}
+                  >
+                    {step.label}: <MathDisplay expression={step.value} size="sm" />
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Node content */}
+      <div
+        className={css({
+          padding: '6',
+          backgroundColor: { base: 'white', _dark: 'gray.800' },
+          borderRadius: 'xl',
+          boxShadow: 'lg',
+          border: '1px solid',
+          borderColor: { base: 'gray.200', _dark: 'gray.700' },
+        })}
+      >
+        {currentNode && <FlowchartNodeContent content={currentNode.content} />}
+      </div>
+
+      {/* Interaction area */}
+      <div
+        className={css({
+          padding: '4',
+          display: 'flex',
+          justifyContent: 'center',
+        })}
+      >
+        {renderNodeInteraction()}
+      </div>
+    </div>
+  )
+}

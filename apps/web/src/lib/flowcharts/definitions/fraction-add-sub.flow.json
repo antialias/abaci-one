@@ -1,0 +1,205 @@
+{
+  "id": "fraction-add-sub",
+  "title": "Fraction Addition & Subtraction",
+  "mermaidFile": "fraction-flowchart.mmd",
+
+  "problemInput": {
+    "schema": "two-fractions-with-op",
+    "fields": [
+      { "name": "leftWhole", "type": "integer", "min": 0, "max": 99, "label": "Left whole", "default": 0 },
+      { "name": "leftNum", "type": "integer", "min": 0, "max": 99, "label": "Left numerator" },
+      { "name": "leftDenom", "type": "integer", "min": 1, "max": 99, "label": "Left denominator" },
+      { "name": "op", "type": "choice", "options": ["+", "−"], "label": "Operation" },
+      { "name": "rightWhole", "type": "integer", "min": 0, "max": 99, "label": "Right whole", "default": 0 },
+      { "name": "rightNum", "type": "integer", "min": 0, "max": 99, "label": "Right numerator" },
+      { "name": "rightDenom", "type": "integer", "min": 1, "max": 99, "label": "Right denominator" }
+    ],
+    "validation": "leftDenom > 0 && rightDenom > 0"
+  },
+
+  "variables": {
+    "lcd": { "init": "lcm(leftDenom, rightDenom)" },
+    "sameBottom": { "init": "leftDenom == rightDenom" },
+    "oneDividesOther": { "init": "leftDenom % rightDenom == 0 || rightDenom % leftDenom == 0" },
+    "leftMultiplier": { "init": "lcd / leftDenom" },
+    "rightMultiplier": { "init": "lcd / rightDenom" },
+    "leftNewNum": { "init": "leftNum * (lcd / leftDenom)" },
+    "rightNewNum": { "init": "rightNum * (lcd / rightDenom)" },
+    "isSubtraction": { "init": "op == '−'" },
+    "needsBorrow": { "init": "op == '−' && leftNewNum < rightNewNum" }
+  },
+
+  "workingProblem": {
+    "initial": "(leftWhole > 0 ? (leftWhole + ' ') : '') + leftNum + '/' + leftDenom + ' ' + op + ' ' + (rightWhole > 0 ? (rightWhole + ' ') : '') + rightNum + '/' + rightDenom"
+  },
+
+  "entryNode": "STEP0",
+
+  "nodes": {
+    "STEP0": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "STEP1": {
+      "type": "decision",
+      "correctAnswer": "sameBottom",
+      "options": [
+        { "label": "YES ✓", "value": "yes", "next": "READY1" },
+        { "label": "NO", "value": "no", "next": "STEP2" }
+      ]
+    },
+    "READY1": {
+      "type": "milestone",
+      "next": "CHECK1"
+    },
+    "STEP2": {
+      "type": "decision",
+      "correctAnswer": "oneDividesOther",
+      "options": [
+        { "label": "YES", "value": "yes", "next": "CONV1A" },
+        { "label": "NO", "value": "no", "next": "STEP3" }
+      ]
+    },
+    "CONV1A": {
+      "type": "checkpoint",
+      "prompt": "What's the multiplier for the smaller denominator?",
+      "inputType": "number",
+      "expected": "max(leftDenom, rightDenom) / min(leftDenom, rightDenom)",
+      "workingProblemUpdate": {
+        "result": "(leftWhole > 0 ? (leftWhole + ' ') : '') + leftNewNum + '/' + lcd + ' ' + op + ' ' + (rightWhole > 0 ? (rightWhole + ' ') : '') + rightNewNum + '/' + lcd",
+        "label": "Converted to common denominator"
+      }
+    },
+    "CONV1B": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "CONV1C": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "READY2": {
+      "type": "milestone",
+      "next": "CHECK1"
+    },
+    "STEP3": {
+      "type": "checkpoint",
+      "prompt": "What's the LCD (common denominator)?",
+      "inputType": "number",
+      "expected": "lcd",
+      "workingProblemUpdate": {
+        "result": "(leftWhole > 0 ? (leftWhole + ' ') : '') + leftNewNum + '/' + lcd + ' ' + op + ' ' + (rightWhole > 0 ? (rightWhole + ' ') : '') + rightNewNum + '/' + lcd",
+        "label": "Found common denominator"
+      }
+    },
+    "STEP3B": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "READY3": {
+      "type": "milestone",
+      "next": "CHECK1"
+    },
+    "CHECK1": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "REMIND": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "ADDSUB": {
+      "type": "decision",
+      "correctAnswer": "!isSubtraction",
+      "options": [
+        { "label": "➕ Adding", "value": "add", "next": "GOSTEP4" },
+        { "label": "➖ Subtracting", "value": "sub", "next": "BORROWCHECK" }
+      ]
+    },
+    "GOSTEP4": {
+      "type": "milestone",
+      "next": "CHECK2"
+    },
+    "BORROWCHECK": {
+      "type": "decision",
+      "correctAnswer": "!needsBorrow",
+      "options": [
+        { "label": "YES ✓ (big enough)", "value": "yes", "next": "GOSTEP4B" },
+        { "label": "😱 NO! (need borrow)", "value": "no", "next": "BORROW" }
+      ]
+    },
+    "GOSTEP4B": {
+      "type": "milestone",
+      "next": "CHECK2"
+    },
+    "BORROW": {
+      "type": "checkpoint",
+      "prompt": "After borrowing, what's the new top number?",
+      "inputType": "number",
+      "expected": "leftNewNum + lcd",
+      "workingProblemUpdate": {
+        "result": "(leftWhole > 1 ? ((leftWhole - 1) + ' ') : '') + (leftNewNum + lcd) + '/' + lcd + ' ' + op + ' ' + (rightWhole > 0 ? (rightWhole + ' ') : '') + rightNewNum + '/' + lcd",
+        "label": "Borrowed 1 from whole"
+      }
+    },
+    "GOSTEP4C": {
+      "type": "milestone",
+      "next": "CHECK2"
+    },
+    "CHECK2": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "STEP4": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "SIMPLIFY_Q": {
+      "type": "decision",
+      "options": [
+        { "label": "NO ✓ (can't simplify)", "value": "no", "next": "IMPROPER_Q" },
+        { "label": "YES (can simplify)", "value": "yes", "next": "SIMPLIFY_HOW" }
+      ]
+    },
+    "SIMPLIFY_HOW": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "IMPROPER_Q": {
+      "type": "decision",
+      "options": [
+        { "label": "NO ✓ (proper fraction)", "value": "no", "next": "CHECK3" },
+        { "label": "YES (improper)", "value": "yes", "next": "MIXED_HOW" }
+      ]
+    },
+    "MIXED_HOW": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "CHECK3": {
+      "type": "instruction",
+      "advance": "tap"
+    },
+    "DONE": {
+      "type": "terminal",
+      "celebration": true
+    }
+  },
+
+  "edges": {
+    "STEP0": ["STEP1"],
+    "CONV1A": ["CONV1B"],
+    "CONV1B": ["CONV1C"],
+    "CONV1C": ["READY2"],
+    "STEP3": ["STEP3B"],
+    "STEP3B": ["READY3"],
+    "CHECK1": ["REMIND"],
+    "REMIND": ["ADDSUB"],
+    "BORROW": ["GOSTEP4C"],
+    "CHECK2": ["STEP4"],
+    "STEP4": ["SIMPLIFY_Q"],
+    "SIMPLIFY_HOW": ["IMPROPER_Q"],
+    "MIXED_HOW": ["CHECK3"],
+    "CHECK3": ["DONE"]
+  }
+}

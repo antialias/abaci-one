@@ -1,0 +1,56 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '18px', 'primaryColor': '#e3f2fd', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#90caf9', 'lineColor': '#444444'}, 'flowchart': {'curve': 'basis', 'nodeSpacing': 30, 'rankSpacing': 50, 'padding': 20}}}%%
+flowchart TB
+    subgraph PHASE1["<b>1. 👀 LOOK</b>"]
+        direction LR
+        START["🔢<br/>───<br/>Look at the<br/><b>ONES</b><br/>───<br/>👉 Right side"]
+        START --> COMPARE{"<b>TOP</b><br/>bigger?<br/>───<br/>🔝 ≥ 🔽 ?"}
+        COMPARE -->|"✓ YES"| HAPPY(("😊"))
+        COMPARE -->|"✗ NO"| SAD(("😢"))
+        HAPPY --> CHECK1["✅<br/>───<br/>Top is BIG<br/>Go subtract!"]
+        SAD --> CHECK1B["⚠️<br/>───<br/>Top is SMALL<br/>Need to BORROW"]
+    end
+
+    subgraph PHASE2["<b>2. 🏦 BORROW</b>"]
+        direction LR
+        NEEDIT{"😊 or 😢?<br/>───<br/>Was TOP<br/>big enough?"}
+        NEEDIT -->|"😊 YES"| SKIP(("👍"))
+        NEEDIT -->|"😢 NO"| TENS["👈 <b>TENS</b><br/>───<br/>Go LEFT<br/>one spot<br/>───<br/>🔟🔟🔟"]
+        TENS --> TAKEONE["<b>TAKE 1</b><br/>───<br/>Cross out<br/>Write 1 LESS<br/>───<br/>❌🔟 → ✏️"]
+        TAKEONE --> BREAK["✂️ <b>BREAK IT!</b><br/>───<br/>1 ten =<br/>10 ones!<br/>───<br/>🔟 → ⚫⚫⚫⚫⚫<br/>      ⚫⚫⚫⚫⚫"]
+        BREAK --> ADDTEN["<b>+10</b> ONES<br/>───<br/>Add 10 to<br/>TOP number<br/>───<br/>3 → <b>13</b>"]
+        ADDTEN --> CHECK2["✅<br/>───<br/>Now TOP<br/>is BIG!"]
+        SKIP --> CHECK2
+    end
+
+    subgraph PHASE3["<b>3. ➖ SUBTRACT</b>"]
+        direction LR
+        DOONES["<b>ONES</b> 👉<br/>───<br/>TOP − BOTTOM<br/>───<br/>Write answer"]
+        DOONES --> DOTENS["<b>TENS</b> 👈<br/>───<br/>TOP − BOTTOM<br/>───<br/>Write answer"]
+        DOTENS --> DONE(["🎉 DONE!"])
+    end
+
+    PHASE1 --> PHASE2
+    PHASE2 --> PHASE3
+
+    style PHASE1 fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style PHASE2 fill:#fff8e1,stroke:#f9a825,stroke-width:3px
+    style PHASE3 fill:#e8f5e9,stroke:#388e3c,stroke-width:3px
+
+    style START fill:#bbdefb,stroke:#1976d2
+    style COMPARE fill:#fffde7,stroke:#fbc02d,stroke-width:2px
+    style HAPPY fill:#81c784,stroke:#388e3c
+    style SAD fill:#ffcdd2,stroke:#d32f2f
+    style CHECK1 fill:#a5d6a7,stroke:#388e3c
+    style CHECK1B fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px
+
+    style NEEDIT fill:#fffde7,stroke:#fbc02d,stroke-width:2px
+    style SKIP fill:#81c784,stroke:#388e3c
+    style TENS fill:#bbdefb,stroke:#1976d2
+    style TAKEONE fill:#e1bee7,stroke:#8e24aa
+    style BREAK fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style ADDTEN fill:#e1bee7,stroke:#8e24aa
+    style CHECK2 fill:#a5d6a7,stroke:#388e3c
+
+    style DOONES fill:#a5d6a7,stroke:#388e3c
+    style DOTENS fill:#a5d6a7,stroke:#388e3c
+    style DONE fill:#66bb6a,stroke:#2e7d32,stroke-width:2px
