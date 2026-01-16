@@ -82,7 +82,7 @@ flowchart TB
         CONV1C --> READY2(("👍"))
         STEP2 -->|"NO"| STEP3["<b>CROSS MULTIPLY BOTTOMS</b><br/>──────────────────<br/>New bottom = left × right"]
         STEP3 --> STEP3B["<b>CONVERT BOTH FRACTIONS</b><br/>────────────────────<br/>For EACH fraction:<br/>What × old bottom = LCD?"] --> READY3(("👍"))
-        READY1 --> CHECK1["<b>✅ READY CHECK</b><br/>──────────────<br/>☐ Both bottoms are<br/>   the SAME number"]
+        READY1 --> CHECK1["<b>✅ READY CHECK</b><br/>──────────────<br/>☐ Both bottoms are<br/>   the SAME number<br/>☐ I wrote the fractions down"]
         READY2 --> CHECK1
         READY3 --> CHECK1
     end
