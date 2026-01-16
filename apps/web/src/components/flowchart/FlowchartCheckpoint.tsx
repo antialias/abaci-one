@@ -38,16 +38,29 @@ export function FlowchartCheckpoint({
   const [value2, setValue2] = useState('')
   const input2Ref = useRef<HTMLInputElement>(null)
 
-  // Focus first input on mount
+  // Auto-submit for two-numbers when both values are filled
   useEffect(() => {
-    // Small delay to ensure DOM is ready
-    const timeout = setTimeout(() => {
-      if (inputType === 'two-numbers') {
-        // Focus handled by autoFocus on first input
-      }
-    }, 50)
-    return () => clearTimeout(timeout)
-  }, [inputType])
+    if (inputType !== 'two-numbers' || disabled || feedback) return
+
+    const num1 = parseFloat(value1)
+    const num2 = parseFloat(value2)
+
+    // Only auto-submit if both are valid integers (denominators should be whole numbers)
+    if (
+      value1.trim() &&
+      value2.trim() &&
+      !isNaN(num1) &&
+      !isNaN(num2) &&
+      Number.isInteger(num1) &&
+      Number.isInteger(num2)
+    ) {
+      // Small delay so the user sees what they typed
+      const timeout = setTimeout(() => {
+        onSubmit([num1, num2])
+      }, 150)
+      return () => clearTimeout(timeout)
+    }
+  }, [value1, value2, inputType, disabled, feedback, onSubmit])
 
   const handleSubmit = () => {
     if (inputType === 'two-numbers') {
@@ -214,31 +227,7 @@ export function FlowchartCheckpoint({
               />
             </div>
           </div>
-
-          <button
-            data-testid="checkpoint-check-button"
-            onClick={handleSubmit}
-            disabled={disabled || !canSubmit}
-            className={css({
-              padding: '3 5',
-              fontSize: 'lg',
-              fontWeight: 'semibold',
-              borderRadius: 'lg',
-              backgroundColor: { base: 'blue.500', _dark: 'blue.600' },
-              color: 'white',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              _hover: {
-                backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
-              },
-              _disabled: {
-                opacity: 0.5,
-                cursor: 'not-allowed',
-              },
-            })}
-          >
-            Check
-          </button>
+          {/* No Check button - auto-submits when both values are entered */}
         </div>
       ) : (
         /* Original single input */
