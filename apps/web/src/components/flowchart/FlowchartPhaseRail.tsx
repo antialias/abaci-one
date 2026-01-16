@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { ExecutableFlowchart, FlowchartState } from '@/lib/flowcharts/schema'
+import type { ExecutableFlowchart, FlowchartState, DecisionNode } from '@/lib/flowcharts/schema'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
 
@@ -10,25 +10,79 @@ interface FlowchartPhaseRailProps {
   state: FlowchartState
 }
 
+interface PathNode {
+  nodeId: string
+  title: string
+  choice?: string // For decision nodes, which choice was made
+  isCurrent: boolean
+}
+
 /**
  * Horizontal phase rail showing all phases with current phase expanded.
- *
- * - All phases visible as cards in a horizontal rail
- * - Current phase is wider and highlighted
- * - Dots represent nodes within each phase
- * - Current phase expands below with node progression
+ * Shows path taken with ellipsis if more than 2 previous nodes.
  */
 export function FlowchartPhaseRail({ flowchart, state }: FlowchartPhaseRailProps) {
   const phases = flowchart.mermaid.phases
 
-  // Get set of visited node IDs from history
-  const visitedNodes = useMemo(() => {
-    const visited = new Set<string>()
+  // Build the path taken through the flowchart
+  const pathTaken = useMemo((): PathNode[] => {
+    const path: PathNode[] = []
+
+    // Add nodes from history
     for (const entry of state.history) {
-      visited.add(entry.node)
+      const node = flowchart.nodes[entry.node]
+      if (!node) continue
+
+      const title = node.content?.title || entry.node
+
+      // For decision nodes, include the choice made
+      let choice: string | undefined
+      if (node.definition.type === 'decision' && entry.userInput) {
+        const def = node.definition as DecisionNode
+        const option = def.options.find((o) => o.value === entry.userInput)
+        choice = option?.label || String(entry.userInput)
+      }
+
+      path.push({
+        nodeId: entry.node,
+        title,
+        choice,
+        isCurrent: false,
+      })
     }
-    return visited
-  }, [state.history])
+
+    // Add current node
+    const currentNode = flowchart.nodes[state.currentNode]
+    if (currentNode) {
+      path.push({
+        nodeId: state.currentNode,
+        title: currentNode.content?.title || state.currentNode,
+        isCurrent: true,
+      })
+    }
+
+    return path
+  }, [flowchart.nodes, state.history, state.currentNode])
+
+  // Get decision options for current node if it's a decision
+  const decisionOptions = useMemo(() => {
+    const currentNode = flowchart.nodes[state.currentNode]
+    if (!currentNode || currentNode.definition.type !== 'decision') return null
+
+    const def = currentNode.definition as DecisionNode
+    return def.options.map((opt) => {
+      // Find where this option leads
+      const nextNodeId = opt.next
+      const nextNode = flowchart.nodes[nextNodeId]
+      const nextTitle = nextNode?.content?.title || nextNodeId
+
+      return {
+        label: opt.label,
+        value: opt.value,
+        leadsTo: nextTitle,
+      }
+    })
+  }, [flowchart.nodes, state.currentNode])
 
   // Find which phase the current node is in
   const currentPhaseIndex = useMemo(() => {
@@ -40,23 +94,28 @@ export function FlowchartPhaseRail({ flowchart, state }: FlowchartPhaseRailProps
     return -1
   }, [phases, state.currentNode])
 
-  // Determine phase status: completed, current, or future
+  // Determine phase status
   const getPhaseStatus = (phaseIndex: number): 'completed' | 'current' | 'future' => {
     if (phaseIndex < currentPhaseIndex) return 'completed'
     if (phaseIndex === currentPhaseIndex) return 'current'
     return 'future'
   }
 
-  // Get node status within a phase
-  const getNodeStatus = (nodeId: string): 'completed' | 'current' | 'future' => {
-    if (nodeId === state.currentNode) return 'current'
-    if (visitedNodes.has(nodeId)) return 'completed'
-    return 'future'
-  }
-
   if (phases.length === 0) return null
 
   const currentPhase = phases[currentPhaseIndex]
+
+  // Build display path with ellipsis logic
+  const displayPath = useMemo(() => {
+    if (pathTaken.length <= 3) {
+      return { showEllipsis: false, nodes: pathTaken }
+    }
+    // Show ellipsis + last 2 visited + current
+    return {
+      showEllipsis: true,
+      nodes: pathTaken.slice(-3), // last 2 + current
+    }
+  }, [pathTaken])
 
   return (
     <div className={vstack({ gap: '3', alignItems: 'stretch' })}>
@@ -79,9 +138,9 @@ export function FlowchartPhaseRail({ flowchart, state }: FlowchartPhaseRailProps
               key={phase.id}
               className={css({
                 flex: isCurrent ? '2 0 auto' : '1 0 auto',
-                minWidth: isCurrent ? '180px' : '80px',
-                maxWidth: isCurrent ? '280px' : '120px',
-                padding: '2 3',
+                minWidth: isCurrent ? '160px' : '60px',
+                maxWidth: isCurrent ? '240px' : '100px',
+                padding: '2',
                 borderRadius: 'lg',
                 border: '2px solid',
                 borderColor: isCurrent
@@ -128,137 +187,168 @@ export function FlowchartPhaseRail({ flowchart, state }: FlowchartPhaseRailProps
                     {phase.title}
                   </span>
                 </div>
-
-                {/* Node dots */}
-                <div className={hstack({ gap: '1', justifyContent: 'center', flexWrap: 'wrap' })}>
-                  {phase.nodes.map((nodeId) => {
-                    const nodeStatus = getNodeStatus(nodeId)
-                    return (
-                      <span
-                        key={nodeId}
-                        className={css({
-                          width: nodeStatus === 'current' ? '10px' : '6px',
-                          height: nodeStatus === 'current' ? '10px' : '6px',
-                          borderRadius: 'full',
-                          backgroundColor:
-                            nodeStatus === 'current'
-                              ? { base: 'blue.500', _dark: 'blue.400' }
-                              : nodeStatus === 'completed'
-                                ? { base: 'green.500', _dark: 'green.400' }
-                                : { base: 'gray.300', _dark: 'gray.600' },
-                          transition: 'all 0.2s ease',
-                          boxShadow: nodeStatus === 'current' ? '0 0 0 2px white, 0 0 0 4px var(--colors-blue-400)' : 'none',
-                        })}
-                        title={flowchart.nodes[nodeId]?.content?.title || nodeId}
-                      />
-                    )
-                  })}
-                </div>
               </div>
             </div>
           )
         })}
       </div>
 
-      {/* Expanded current phase */}
+      {/* Expanded current phase - Path taken */}
       {currentPhase && (
         <div
           className={css({
             padding: '3',
-            backgroundColor: { base: 'blue.50', _dark: 'blue.900/50' },
+            backgroundColor: { base: 'gray.50', _dark: 'gray.800' },
             borderRadius: 'lg',
             border: '1px solid',
-            borderColor: { base: 'blue.200', _dark: 'blue.800' },
+            borderColor: { base: 'gray.200', _dark: 'gray.700' },
           })}
         >
-          <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
-            {/* Phase title */}
-            <div
-              className={css({
-                fontSize: 'sm',
-                fontWeight: 'semibold',
-                color: { base: 'blue.700', _dark: 'blue.200' },
-                textAlign: 'center',
-              })}
-            >
-              {currentPhase.title}
-            </div>
-
-            {/* Node progression */}
-            <div
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '1',
-                flexWrap: 'wrap',
-                padding: '2',
-              })}
-            >
-              {currentPhase.nodes.map((nodeId, idx) => {
-                const nodeStatus = getNodeStatus(nodeId)
-                const node = flowchart.nodes[nodeId]
-                const nodeTitle = node?.content?.title || nodeId
-                const isLast = idx === currentPhase.nodes.length - 1
-
-                return (
-                  <div key={nodeId} className={hstack({ gap: '1', alignItems: 'center' })}>
-                    {/* Node pill */}
-                    <div
+          <div className={vstack({ gap: '3', alignItems: 'stretch' })}>
+            {/* Path taken */}
+            <div className={vstack({ gap: '1', alignItems: 'flex-start' })}>
+              <span
+                className={css({
+                  fontSize: '2xs',
+                  fontWeight: 'medium',
+                  color: { base: 'gray.500', _dark: 'gray.400' },
+                  textTransform: 'uppercase',
+                  letterSpacing: 'wide',
+                })}
+              >
+                Path
+              </span>
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2',
+                  flexWrap: 'wrap',
+                })}
+              >
+                {displayPath.showEllipsis && (
+                  <>
+                    <span
+                      className={css({
+                        fontSize: 'sm',
+                        color: { base: 'gray.400', _dark: 'gray.500' },
+                      })}
+                    >
+                      •••
+                    </span>
+                    <span
+                      className={css({
+                        fontSize: 'sm',
+                        color: { base: 'gray.400', _dark: 'gray.500' },
+                      })}
+                    >
+                      →
+                    </span>
+                  </>
+                )}
+                {displayPath.nodes.map((node, idx) => (
+                  <div key={node.nodeId} className={hstack({ gap: '2', alignItems: 'center' })}>
+                    <span
                       className={css({
                         padding: '1 2',
                         borderRadius: 'md',
                         fontSize: 'xs',
-                        fontWeight: nodeStatus === 'current' ? 'bold' : 'medium',
-                        backgroundColor:
-                          nodeStatus === 'current'
-                            ? { base: 'blue.500', _dark: 'blue.500' }
-                            : nodeStatus === 'completed'
-                              ? { base: 'green.100', _dark: 'green.800' }
-                              : { base: 'gray.100', _dark: 'gray.700' },
-                        color:
-                          nodeStatus === 'current'
-                            ? 'white'
-                            : nodeStatus === 'completed'
-                              ? { base: 'green.700', _dark: 'green.200' }
-                              : { base: 'gray.500', _dark: 'gray.400' },
-                        border: nodeStatus === 'current' ? '2px solid' : '1px solid',
-                        borderColor:
-                          nodeStatus === 'current'
-                            ? { base: 'blue.600', _dark: 'blue.400' }
-                            : nodeStatus === 'completed'
-                              ? { base: 'green.300', _dark: 'green.600' }
-                              : { base: 'gray.200', _dark: 'gray.600' },
-                        maxWidth: '100px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
+                        fontWeight: node.isCurrent ? 'bold' : 'medium',
+                        backgroundColor: node.isCurrent
+                          ? { base: 'blue.100', _dark: 'blue.800' }
+                          : { base: 'green.100', _dark: 'green.800' },
+                        color: node.isCurrent
+                          ? { base: 'blue.700', _dark: 'blue.200' }
+                          : { base: 'green.700', _dark: 'green.200' },
+                        border: '1px solid',
+                        borderColor: node.isCurrent
+                          ? { base: 'blue.300', _dark: 'blue.600' }
+                          : { base: 'green.300', _dark: 'green.600' },
                         whiteSpace: 'nowrap',
-                        boxShadow: nodeStatus === 'current' ? 'md' : 'none',
-                        transform: nodeStatus === 'current' ? 'scale(1.05)' : 'none',
-                        transition: 'all 0.2s ease',
                       })}
-                      title={nodeTitle}
                     >
-                      {nodeStatus === 'completed' && '✓ '}
-                      {nodeStatus === 'current' && '→ '}
-                      {nodeTitle.length > 12 ? nodeTitle.slice(0, 10) + '…' : nodeTitle}
-                    </div>
-
-                    {/* Arrow to next node */}
-                    {!isLast && (
+                      {node.isCurrent ? '📍 ' : '✓ '}
+                      {node.title.length > 15 ? node.title.slice(0, 13) + '…' : node.title}
+                      {node.choice && (
+                        <span
+                          className={css({
+                            marginLeft: '1',
+                            opacity: 0.8,
+                            fontWeight: 'normal',
+                          })}
+                        >
+                          ({node.choice.length > 8 ? node.choice.slice(0, 6) + '…' : node.choice})
+                        </span>
+                      )}
+                    </span>
+                    {idx < displayPath.nodes.length - 1 && (
                       <span
                         className={css({
+                          fontSize: 'sm',
                           color: { base: 'gray.400', _dark: 'gray.500' },
-                          fontSize: 'xs',
                         })}
                       >
                         →
                       </span>
                     )}
                   </div>
-                )
-              })}
+                ))}
+              </div>
             </div>
+
+            {/* Decision options (if current node is a decision) */}
+            {decisionOptions && (
+              <div className={vstack({ gap: '1', alignItems: 'flex-start' })}>
+                <span
+                  className={css({
+                    fontSize: '2xs',
+                    fontWeight: 'medium',
+                    color: { base: 'gray.500', _dark: 'gray.400' },
+                    textTransform: 'uppercase',
+                    letterSpacing: 'wide',
+                  })}
+                >
+                  Choose
+                </span>
+                <div
+                  className={css({
+                    display: 'flex',
+                    gap: '3',
+                    flexWrap: 'wrap',
+                  })}
+                >
+                  {decisionOptions.map((opt) => (
+                    <div
+                      key={opt.value}
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1',
+                        fontSize: 'xs',
+                        color: { base: 'gray.600', _dark: 'gray.300' },
+                      })}
+                    >
+                      <span
+                        className={css({
+                          padding: '0.5 1.5',
+                          borderRadius: 'sm',
+                          backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                          fontWeight: 'medium',
+                        })}
+                      >
+                        {opt.label}
+                      </span>
+                      <span className={css({ color: { base: 'gray.400', _dark: 'gray.500' } })}>
+                        →
+                      </span>
+                      <span className={css({ fontStyle: 'italic', opacity: 0.8 })}>
+                        {opt.leadsTo.length > 20 ? opt.leadsTo.slice(0, 18) + '…' : opt.leadsTo}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
