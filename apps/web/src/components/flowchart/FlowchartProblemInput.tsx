@@ -662,12 +662,15 @@ export function FlowchartProblemInput({
                       fontSize: 'sm',
                       fontWeight: 'semibold',
                       borderRadius: 'lg',
-                      border: 'none',
+                      border: '1px solid',
+                      borderColor: selectedTier === 'easy'
+                        ? { base: 'emerald.200', _dark: 'emerald.700' }
+                        : { base: 'gray.300', _dark: 'gray.600' },
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       backgroundColor: selectedTier === 'easy'
                         ? { base: 'white', _dark: 'gray.600' }
-                        : 'transparent',
+                        : { base: 'white/50', _dark: 'gray.800/50' },
                       color: selectedTier === 'easy'
                         ? { base: 'emerald.600', _dark: 'emerald.300' }
                         : { base: 'gray.600', _dark: 'gray.300' },
@@ -675,8 +678,9 @@ export function FlowchartProblemInput({
                         ? { base: 'sm', _dark: 'md' }
                         : 'none',
                       _hover: selectedTier !== 'easy' ? {
+                        borderColor: { base: 'emerald.300', _dark: 'emerald.600' },
                         color: { base: 'emerald.600', _dark: 'emerald.300' },
-                        backgroundColor: { base: 'white/50', _dark: 'gray.600/50' },
+                        backgroundColor: { base: 'white', _dark: 'gray.700' },
                       } : {},
                     })}
                   >
@@ -693,12 +697,15 @@ export function FlowchartProblemInput({
                       fontSize: 'sm',
                       fontWeight: 'semibold',
                       borderRadius: 'lg',
-                      border: 'none',
+                      border: '1px solid',
+                      borderColor: selectedTier === 'medium'
+                        ? { base: 'amber.200', _dark: 'amber.700' }
+                        : { base: 'gray.300', _dark: 'gray.600' },
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       backgroundColor: selectedTier === 'medium'
                         ? { base: 'white', _dark: 'gray.600' }
-                        : 'transparent',
+                        : { base: 'white/50', _dark: 'gray.800/50' },
                       color: selectedTier === 'medium'
                         ? { base: 'amber.600', _dark: 'amber.300' }
                         : { base: 'gray.600', _dark: 'gray.300' },
@@ -706,8 +713,9 @@ export function FlowchartProblemInput({
                         ? { base: 'sm', _dark: 'md' }
                         : 'none',
                       _hover: selectedTier !== 'medium' ? {
+                        borderColor: { base: 'amber.300', _dark: 'amber.600' },
                         color: { base: 'amber.600', _dark: 'amber.300' },
-                        backgroundColor: { base: 'white/50', _dark: 'gray.600/50' },
+                        backgroundColor: { base: 'white', _dark: 'gray.700' },
                       } : {},
                     })}
                   >
@@ -724,12 +732,15 @@ export function FlowchartProblemInput({
                       fontSize: 'sm',
                       fontWeight: 'semibold',
                       borderRadius: 'lg',
-                      border: 'none',
+                      border: '1px solid',
+                      borderColor: selectedTier === 'hard'
+                        ? { base: 'rose.200', _dark: 'rose.700' }
+                        : { base: 'gray.300', _dark: 'gray.600' },
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       backgroundColor: selectedTier === 'hard'
                         ? { base: 'white', _dark: 'gray.600' }
-                        : 'transparent',
+                        : { base: 'white/50', _dark: 'gray.800/50' },
                       color: selectedTier === 'hard'
                         ? { base: 'rose.600', _dark: 'rose.300' }
                         : { base: 'gray.600', _dark: 'gray.300' },
@@ -737,8 +748,9 @@ export function FlowchartProblemInput({
                         ? { base: 'sm', _dark: 'md' }
                         : 'none',
                       _hover: selectedTier !== 'hard' ? {
+                        borderColor: { base: 'rose.300', _dark: 'rose.600' },
                         color: { base: 'rose.600', _dark: 'rose.300' },
-                        backgroundColor: { base: 'white/50', _dark: 'gray.600/50' },
+                        backgroundColor: { base: 'white', _dark: 'gray.700' },
                       } : {},
                     })}
                   >
