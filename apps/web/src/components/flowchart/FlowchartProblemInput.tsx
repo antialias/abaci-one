@@ -658,30 +658,28 @@ export function FlowchartProblemInput({
                     data-selected={selectedTier === 'easy'}
                     onClick={() => setSelectedTier(selectedTier === 'easy' ? 'all' : 'easy')}
                     className={css({
-                      padding: '2 4',
+                      paddingX: '4',
+                      paddingY: '2',
                       fontSize: 'sm',
                       fontWeight: 'semibold',
                       borderRadius: 'lg',
                       border: '1px solid',
                       borderColor: selectedTier === 'easy'
-                        ? { base: 'emerald.200', _dark: 'emerald.700' }
-                        : { base: 'gray.300', _dark: 'gray.600' },
+                        ? { base: 'emerald.400', _dark: 'emerald.500' }
+                        : { base: 'gray.300', _dark: 'gray.500' },
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       backgroundColor: selectedTier === 'easy'
                         ? { base: 'white', _dark: 'gray.600' }
-                        : { base: 'white/50', _dark: 'gray.800/50' },
+                        : { base: 'gray.100', _dark: 'gray.800' },
                       color: selectedTier === 'easy'
                         ? { base: 'emerald.600', _dark: 'emerald.300' }
                         : { base: 'gray.600', _dark: 'gray.300' },
-                      boxShadow: selectedTier === 'easy'
-                        ? { base: 'sm', _dark: 'md' }
-                        : 'none',
-                      _hover: selectedTier !== 'easy' ? {
-                        borderColor: { base: 'emerald.300', _dark: 'emerald.600' },
+                      boxShadow: selectedTier === 'easy' ? 'sm' : 'none',
+                      _hover: {
+                        borderColor: { base: 'emerald.400', _dark: 'emerald.500' },
                         color: { base: 'emerald.600', _dark: 'emerald.300' },
-                        backgroundColor: { base: 'white', _dark: 'gray.700' },
-                      } : {},
+                      },
                     })}
                   >
                     {tierLabels.easy}
@@ -693,30 +691,28 @@ export function FlowchartProblemInput({
                     data-selected={selectedTier === 'medium'}
                     onClick={() => setSelectedTier(selectedTier === 'medium' ? 'all' : 'medium')}
                     className={css({
-                      padding: '2 4',
+                      paddingX: '4',
+                      paddingY: '2',
                       fontSize: 'sm',
                       fontWeight: 'semibold',
                       borderRadius: 'lg',
                       border: '1px solid',
                       borderColor: selectedTier === 'medium'
-                        ? { base: 'amber.200', _dark: 'amber.700' }
-                        : { base: 'gray.300', _dark: 'gray.600' },
+                        ? { base: 'amber.400', _dark: 'amber.500' }
+                        : { base: 'gray.300', _dark: 'gray.500' },
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       backgroundColor: selectedTier === 'medium'
                         ? { base: 'white', _dark: 'gray.600' }
-                        : { base: 'white/50', _dark: 'gray.800/50' },
+                        : { base: 'gray.100', _dark: 'gray.800' },
                       color: selectedTier === 'medium'
                         ? { base: 'amber.600', _dark: 'amber.300' }
                         : { base: 'gray.600', _dark: 'gray.300' },
-                      boxShadow: selectedTier === 'medium'
-                        ? { base: 'sm', _dark: 'md' }
-                        : 'none',
-                      _hover: selectedTier !== 'medium' ? {
-                        borderColor: { base: 'amber.300', _dark: 'amber.600' },
+                      boxShadow: selectedTier === 'medium' ? 'sm' : 'none',
+                      _hover: {
+                        borderColor: { base: 'amber.400', _dark: 'amber.500' },
                         color: { base: 'amber.600', _dark: 'amber.300' },
-                        backgroundColor: { base: 'white', _dark: 'gray.700' },
-                      } : {},
+                      },
                     })}
                   >
                     {tierLabels.medium}
@@ -728,30 +724,28 @@ export function FlowchartProblemInput({
                     data-selected={selectedTier === 'hard'}
                     onClick={() => setSelectedTier(selectedTier === 'hard' ? 'all' : 'hard')}
                     className={css({
-                      padding: '2 4',
+                      paddingX: '4',
+                      paddingY: '2',
                       fontSize: 'sm',
                       fontWeight: 'semibold',
                       borderRadius: 'lg',
                       border: '1px solid',
                       borderColor: selectedTier === 'hard'
-                        ? { base: 'rose.200', _dark: 'rose.700' }
-                        : { base: 'gray.300', _dark: 'gray.600' },
+                        ? { base: 'rose.400', _dark: 'rose.500' }
+                        : { base: 'gray.300', _dark: 'gray.500' },
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       backgroundColor: selectedTier === 'hard'
                         ? { base: 'white', _dark: 'gray.600' }
-                        : { base: 'white/50', _dark: 'gray.800/50' },
+                        : { base: 'gray.100', _dark: 'gray.800' },
                       color: selectedTier === 'hard'
                         ? { base: 'rose.600', _dark: 'rose.300' }
                         : { base: 'gray.600', _dark: 'gray.300' },
-                      boxShadow: selectedTier === 'hard'
-                        ? { base: 'sm', _dark: 'md' }
-                        : 'none',
-                      _hover: selectedTier !== 'hard' ? {
-                        borderColor: { base: 'rose.300', _dark: 'rose.600' },
+                      boxShadow: selectedTier === 'hard' ? 'sm' : 'none',
+                      _hover: {
+                        borderColor: { base: 'rose.400', _dark: 'rose.500' },
                         color: { base: 'rose.600', _dark: 'rose.300' },
-                        backgroundColor: { base: 'white', _dark: 'gray.700' },
-                      } : {},
+                      },
                     })}
                   >
                     {tierLabels.hard}
