@@ -44,12 +44,7 @@ export async function runBenchmark(
     warmupRuns?: number
   } = {}
 ): Promise<{ sync: BenchmarkResult; parallel: BenchmarkResult; speedup: number }> {
-  const {
-    runs = 5,
-    count = 100,
-    constraints = DEFAULT_CONSTRAINTS,
-    warmupRuns = 1,
-  } = options
+  const { runs = 5, count = 100, constraints = DEFAULT_CONSTRAINTS, warmupRuns = 1 } = options
 
   console.log(`\n🎲 Example Generation Benchmark`)
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
@@ -78,7 +73,9 @@ export async function runBenchmark(
   }
 
   // Benchmark parallel version
-  console.log(`\n📊 Testing PARALLEL (${Math.min(navigator.hardwareConcurrency - 1, 6)} workers)...`)
+  console.log(
+    `\n📊 Testing PARALLEL (${Math.min(navigator.hardwareConcurrency - 1, 6)} workers)...`
+  )
   const parallelTimes: number[] = []
   for (let i = 0; i < runs; i++) {
     const start = performance.now()
@@ -138,7 +135,10 @@ export async function quickBenchmark(flowchart: ExecutableFlowchart): Promise<nu
 
 // Export for use in browser console
 if (typeof window !== 'undefined') {
-  const w = window as Window & { runExampleBenchmark?: typeof runBenchmark; quickExampleBenchmark?: typeof quickBenchmark }
+  const w = window as Window & {
+    runExampleBenchmark?: typeof runBenchmark
+    quickExampleBenchmark?: typeof quickBenchmark
+  }
   w.runExampleBenchmark = runBenchmark
   w.quickExampleBenchmark = quickBenchmark
 }

@@ -12,9 +12,8 @@ import type { WorkerResponse } from './example-generator.worker'
 
 // Number of parallel workers to use
 // navigator.hardwareConcurrency gives logical cores; we use fewer to leave headroom
-const WORKER_COUNT = typeof navigator !== 'undefined'
-  ? Math.max(2, Math.min(navigator.hardwareConcurrency - 1, 6))
-  : 4
+const WORKER_COUNT =
+  typeof navigator !== 'undefined' ? Math.max(2, Math.min(navigator.hardwareConcurrency - 1, 6)) : 4
 
 interface WorkerState {
   worker: Worker

@@ -52,11 +52,7 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
       self.postMessage(response)
     } else if (data.type === 'generate-partial') {
       // Partial generation mode - only process assigned paths
-      const examples = generateExamplesForPaths(
-        data.flowchart,
-        data.pathIndices,
-        data.constraints
-      )
+      const examples = generateExamplesForPaths(data.flowchart, data.pathIndices, data.constraints)
       const response: GenerateExamplesResponse = { type: 'result', examples }
       self.postMessage(response)
     }

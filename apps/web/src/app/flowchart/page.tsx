@@ -69,9 +69,12 @@ export default function FlowchartPickerPage() {
   }, [modalState])
 
   // Open modal by updating URL (adds to browser history)
-  const handleCardClick = useCallback((flowchartId: string) => {
-    router.push(`/flowchart?select=${flowchartId}`, { scroll: false })
-  }, [router])
+  const handleCardClick = useCallback(
+    (flowchartId: string) => {
+      router.push(`/flowchart?select=${flowchartId}`, { scroll: false })
+    },
+    [router]
+  )
 
   const handleProblemSubmit = useCallback(
     (values: Record<string, ProblemValue>) => {
@@ -202,7 +205,12 @@ export default function FlowchartPickerPage() {
       </footer>
 
       {/* Modal for problem selection - state driven by URL query param */}
-      <Dialog.Root open={isModalOpen} onOpenChange={(open) => { if (!open) handleClose() }}>
+      <Dialog.Root
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          if (!open) handleClose()
+        }}
+      >
         <Dialog.Portal>
           <Dialog.Overlay
             className={css({

@@ -102,13 +102,13 @@
 }
 
 /* Backspace button - portrait */
-.kid-keypad-portrait .hg-button[data-skbtn='\7Bbksp\7D'] {
+.kid-keypad-portrait .hg-button[data-skbtn="\7Bbksp\7D"] {
   background: var(--kid-keypad-bksp-bg);
   color: var(--kid-keypad-bksp-color);
   border-color: var(--kid-keypad-bksp-border);
 }
 
-.kid-keypad-portrait .hg-button[data-skbtn='\7Bbksp\7D']:active {
+.kid-keypad-portrait .hg-button[data-skbtn="\7Bbksp\7D"]:active {
   background: #dc2626;
   color: white;
 }
@@ -156,13 +156,13 @@
 }
 
 /* Backspace button - landscape */
-.kid-keypad-landscape .hg-button[data-skbtn='\7Bbksp\7D'] {
+.kid-keypad-landscape .hg-button[data-skbtn="\7Bbksp\7D"] {
   background: var(--kid-keypad-bksp-bg);
   color: var(--kid-keypad-bksp-color);
   border-color: var(--kid-keypad-bksp-border);
 }
 
-.kid-keypad-landscape .hg-button[data-skbtn='\7Bbksp\7D']:active {
+.kid-keypad-landscape .hg-button[data-skbtn="\7Bbksp\7D"]:active {
   background: #dc2626;
   color: white;
 }
@@ -214,13 +214,13 @@
 }
 
 /* Backspace button - inline */
-.kid-keypad-inline .hg-button[data-skbtn='\7Bbksp\7D'] {
+.kid-keypad-inline .hg-button[data-skbtn="\7Bbksp\7D"] {
   background: var(--kid-keypad-bksp-bg);
   color: var(--kid-keypad-bksp-color);
   border-color: var(--kid-keypad-bksp-border);
 }
 
-.kid-keypad-inline .hg-button[data-skbtn='\7Bbksp\7D']:active {
+.kid-keypad-inline .hg-button[data-skbtn="\7Bbksp\7D"]:active {
   background: #dc2626;
   color: white;
 }

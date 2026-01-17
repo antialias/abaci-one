@@ -117,38 +117,41 @@ export function useKidNumberInput({
   }, [])
 
   // Add a digit
-  const addDigit = useCallback((digit: string) => {
-    if (disabledRef.current) return
-    if (!/^[0-9]$/.test(digit)) return
+  const addDigit = useCallback(
+    (digit: string) => {
+      if (disabledRef.current) return
+      if (!/^[0-9]$/.test(digit)) return
 
-    setValue(prev => {
-      // Don't add if already at max length
-      if (prev.length >= effectiveMaxDigits) return prev
+      setValue((prev) => {
+        // Don't add if already at max length
+        if (prev.length >= effectiveMaxDigits) return prev
 
-      const newValue = prev + digit
-      const newStartTime = startTime ?? Date.now()
+        const newValue = prev + digit
+        const newStartTime = startTime ?? Date.now()
 
-      // Update start time if this is the first digit
-      if (!startTime) {
-        setStartTime(newStartTime)
-      }
+        // Update start time if this is the first digit
+        if (!startTime) {
+          setStartTime(newStartTime)
+        }
 
-      // Check if we should validate
-      if (newValue.length >= effectiveMaxDigits) {
-        // Use setTimeout to allow the state to update first
-        setTimeout(() => {
-          validateAndSubmit(newValue, newStartTime)
-        }, 50)
-      }
+        // Check if we should validate
+        if (newValue.length >= effectiveMaxDigits) {
+          // Use setTimeout to allow the state to update first
+          setTimeout(() => {
+            validateAndSubmit(newValue, newStartTime)
+          }, 50)
+        }
 
-      return newValue
-    })
-  }, [effectiveMaxDigits, startTime, validateAndSubmit])
+        return newValue
+      })
+    },
+    [effectiveMaxDigits, startTime, validateAndSubmit]
+  )
 
   // Remove last digit
   const backspace = useCallback(() => {
     if (disabledRef.current) return
-    setValue(prev => prev.slice(0, -1))
+    setValue((prev) => prev.slice(0, -1))
   }, [])
 
   // Clear all input

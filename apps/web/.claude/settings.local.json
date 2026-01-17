@@ -71,7 +71,8 @@
       "Bash(pnpm why:*)",
       "Bash(npm view:*)",
       "Bash(pnpm install:*)",
-      "Bash(git ls-files:*)"
+      "Bash(git ls-files:*)",
+      "Bash(pnpm panda codegen:*)"
     ],
     "deny": [],
     "ask": []

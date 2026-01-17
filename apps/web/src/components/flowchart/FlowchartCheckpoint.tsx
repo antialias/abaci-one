@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
+import { KidNumberInput, type FeedbackState } from '@/components/ui/KidNumberInput'
 
 interface FlowchartCheckpointProps {
   prompt: string
@@ -36,7 +37,131 @@ export function FlowchartCheckpoint({
   const [value, setValue] = useState('')
   const [value1, setValue1] = useState('')
   const [value2, setValue2] = useState('')
+  const [focusedInput, setFocusedInput] = useState<0 | 1>(0)
   const input2Ref = useRef<HTMLInputElement>(null)
+
+  // Handlers for single number input (KidNumberInput)
+  const handleDigit = useCallback(
+    (digit: string) => {
+      if (disabled || feedback) return
+      setValue((prev) => prev + digit)
+    },
+    [disabled, feedback]
+  )
+
+  const handleBackspace = useCallback(() => {
+    if (disabled || feedback) return
+    setValue((prev) => prev.slice(0, -1))
+  }, [disabled, feedback])
+
+  // Handlers for two-numbers input (first input)
+  const handleDigit1 = useCallback(
+    (digit: string) => {
+      if (disabled || feedback) return
+      setValue1((prev) => prev + digit)
+    },
+    [disabled, feedback]
+  )
+
+  const handleBackspace1 = useCallback(() => {
+    if (disabled || feedback) return
+    setValue1((prev) => prev.slice(0, -1))
+  }, [disabled, feedback])
+
+  // Handlers for two-numbers input (second input)
+  const handleDigit2 = useCallback(
+    (digit: string) => {
+      if (disabled || feedback) return
+      setValue2((prev) => prev + digit)
+    },
+    [disabled, feedback]
+  )
+
+  const handleBackspace2 = useCallback(() => {
+    if (disabled || feedback) return
+    setValue2((prev) => prev.slice(0, -1))
+  }, [disabled, feedback])
+
+  // Submit handler (must be defined before useEffect that uses it)
+  const handleSubmit = useCallback(() => {
+    if (inputType === 'two-numbers') {
+      if (!value1.trim() || !value2.trim()) return
+      const num1 = parseFloat(value1)
+      const num2 = parseFloat(value2)
+      if (!isNaN(num1) && !isNaN(num2)) {
+        onSubmit([num1, num2])
+      }
+    } else if (inputType === 'number') {
+      if (!value.trim()) return
+      const num = parseFloat(value)
+      if (!isNaN(num)) {
+        onSubmit(num)
+      }
+    } else {
+      if (!value.trim()) return
+      onSubmit(value)
+    }
+  }, [inputType, value, value1, value2, onSubmit])
+
+  // Global keyboard handler for physical keyboard support (number inputs)
+  useEffect(() => {
+    if (inputType === 'text') return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (disabled || feedback) return
+
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault()
+        if (inputType === 'number') {
+          handleDigit(e.key)
+        } else if (inputType === 'two-numbers') {
+          if (focusedInput === 0) {
+            handleDigit1(e.key)
+          } else {
+            handleDigit2(e.key)
+          }
+        }
+      } else if (e.key === 'Backspace') {
+        e.preventDefault()
+        if (inputType === 'number') {
+          handleBackspace()
+        } else if (inputType === 'two-numbers') {
+          if (focusedInput === 0) {
+            handleBackspace1()
+          } else {
+            handleBackspace2()
+          }
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        if (inputType === 'two-numbers' && focusedInput === 0 && value1.trim()) {
+          // Move to second input on Enter
+          setFocusedInput(1)
+        } else {
+          handleSubmit()
+        }
+      } else if (e.key === 'Tab' && inputType === 'two-numbers') {
+        e.preventDefault()
+        setFocusedInput((prev) => (prev === 0 ? 1 : 0))
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [
+    inputType,
+    disabled,
+    feedback,
+    focusedInput,
+    value1,
+    handleDigit,
+    handleBackspace,
+    handleDigit1,
+    handleBackspace1,
+    handleDigit2,
+    handleBackspace2,
+    handleSubmit,
+  ])
 
   // Auto-submit for two-numbers when both values are filled
   useEffect(() => {
@@ -62,26 +187,6 @@ export function FlowchartCheckpoint({
     }
   }, [value1, value2, inputType, disabled, feedback, onSubmit])
 
-  const handleSubmit = () => {
-    if (inputType === 'two-numbers') {
-      if (!value1.trim() || !value2.trim()) return
-      const num1 = parseFloat(value1)
-      const num2 = parseFloat(value2)
-      if (!isNaN(num1) && !isNaN(num2)) {
-        onSubmit([num1, num2])
-      }
-    } else if (inputType === 'number') {
-      if (!value.trim()) return
-      const num = parseFloat(value)
-      if (!isNaN(num)) {
-        onSubmit(num)
-      }
-    } else {
-      if (!value.trim()) return
-      onSubmit(value)
-    }
-  }
-
   const handleKeyDown = (e: React.KeyboardEvent, isFirstOfTwo?: boolean) => {
     if (e.key === 'Enter') {
       if (isFirstOfTwo && input2Ref.current) {
@@ -93,8 +198,7 @@ export function FlowchartCheckpoint({
     }
   }
 
-  const canSubmit =
-    inputType === 'two-numbers' ? value1.trim() && value2.trim() : value.trim()
+  const canSubmit = inputType === 'two-numbers' ? value1.trim() && value2.trim() : value.trim()
 
   // Check which inputs are wrong for two-numbers feedback
   const getTwoNumbersFeedback = () => {
@@ -168,10 +272,19 @@ export function FlowchartCheckpoint({
 
       {/* Input area */}
       {inputType === 'two-numbers' ? (
-        <div data-testid="checkpoint-two-numbers-row" className={vstack({ gap: '3' })}>
-          <div className={hstack({ gap: '4', alignItems: 'center' })}>
+        <div data-testid="checkpoint-two-numbers-row" className={vstack({ gap: '4' })}>
+          {/* Two KidNumberInput displays (without keypads) */}
+          <div className={hstack({ gap: '4', alignItems: 'flex-start' })}>
             {/* First input with label */}
-            <div className={vstack({ gap: '1', alignItems: 'center' })}>
+            <div
+              data-testid="checkpoint-input-1-wrapper"
+              onClick={() => setFocusedInput(0)}
+              className={vstack({
+                gap: '1',
+                alignItems: 'center',
+                cursor: 'pointer',
+              })}
+            >
               <label
                 className={css({
                   fontSize: 'sm',
@@ -181,16 +294,25 @@ export function FlowchartCheckpoint({
               >
                 {inputLabels[0]}
               </label>
-              <input
-                data-testid="checkpoint-input-1"
-                type="number"
-                value={value1}
-                onChange={(e) => setValue1(e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, true)}
-                disabled={disabled}
-                autoFocus
-                className={inputStyle(feedback ? twoNumFeedback.first : null)}
-              />
+              <div
+                className={css({
+                  outline: focusedInput === 0 ? '3px solid' : 'none',
+                  outlineColor: { base: 'blue.400', _dark: 'blue.500' },
+                  outlineOffset: '2px',
+                  borderRadius: 'xl',
+                })}
+              >
+                <KidNumberInput
+                  value={value1}
+                  onDigit={handleDigit1}
+                  onBackspace={handleBackspace1}
+                  disabled={disabled || !!feedback}
+                  feedback={feedback ? (twoNumFeedback.first ? 'correct' : 'incorrect') : 'none'}
+                  showKeypad={false}
+                  displaySize="md"
+                  placeholder="?"
+                />
+              </div>
             </div>
 
             <span
@@ -198,14 +320,22 @@ export function FlowchartCheckpoint({
                 fontSize: '2xl',
                 fontWeight: 'bold',
                 color: { base: 'gray.400', _dark: 'gray.500' },
-                marginTop: '6', // Align with inputs (below labels)
+                marginTop: '8', // Align with inputs (below labels)
               })}
             >
               and
             </span>
 
             {/* Second input with label */}
-            <div className={vstack({ gap: '1', alignItems: 'center' })}>
+            <div
+              data-testid="checkpoint-input-2-wrapper"
+              onClick={() => setFocusedInput(1)}
+              className={vstack({
+                gap: '1',
+                alignItems: 'center',
+                cursor: 'pointer',
+              })}
+            >
               <label
                 className={css({
                   fontSize: 'sm',
@@ -215,26 +345,97 @@ export function FlowchartCheckpoint({
               >
                 {inputLabels[1]}
               </label>
-              <input
-                ref={input2Ref}
-                data-testid="checkpoint-input-2"
-                type="number"
-                value={value2}
-                onChange={(e) => setValue2(e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, false)}
-                disabled={disabled}
-                className={inputStyle(feedback ? twoNumFeedback.second : null)}
-              />
+              <div
+                className={css({
+                  outline: focusedInput === 1 ? '3px solid' : 'none',
+                  outlineColor: { base: 'blue.400', _dark: 'blue.500' },
+                  outlineOffset: '2px',
+                  borderRadius: 'xl',
+                })}
+              >
+                <KidNumberInput
+                  value={value2}
+                  onDigit={handleDigit2}
+                  onBackspace={handleBackspace2}
+                  disabled={disabled || !!feedback}
+                  feedback={feedback ? (twoNumFeedback.second ? 'correct' : 'incorrect') : 'none'}
+                  showKeypad={false}
+                  displaySize="md"
+                  placeholder="?"
+                />
+              </div>
             </div>
           </div>
-          {/* No Check button - auto-submits when both values are entered */}
+
+          {/* Shared inline keypad for two-numbers */}
+          <div className={css({ width: '100%', maxWidth: '320px' })}>
+            <KidNumberInput
+              value=""
+              onDigit={focusedInput === 0 ? handleDigit1 : handleDigit2}
+              onBackspace={focusedInput === 0 ? handleBackspace1 : handleBackspace2}
+              disabled={disabled || !!feedback}
+              showKeypad={true}
+              keypadMode="inline"
+              displaySize="sm"
+              placeholder=""
+            />
+          </div>
+        </div>
+      ) : inputType === 'number' ? (
+        /* Number input with KidNumberInput */
+        <div
+          data-testid="checkpoint-input-row"
+          className={vstack({ gap: '4', alignItems: 'center' })}
+        >
+          <KidNumberInput
+            value={value}
+            onDigit={handleDigit}
+            onBackspace={handleBackspace}
+            disabled={disabled || !!feedback}
+            feedback={feedback ? (feedback.correct ? 'correct' : 'incorrect') : 'none'}
+            showKeypad={true}
+            keypadMode="inline"
+            displaySize="lg"
+            placeholder="?"
+          />
+          <button
+            data-testid="checkpoint-check-button"
+            onClick={handleSubmit}
+            disabled={disabled || !value.trim()}
+            className={css({
+              padding: '4 8',
+              fontSize: 'xl',
+              fontWeight: 'bold',
+              borderRadius: 'xl',
+              backgroundColor: { base: 'blue.500', _dark: 'blue.600' },
+              color: 'white',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              _hover: {
+                backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
+                transform: 'scale(1.02)',
+              },
+              _active: {
+                transform: 'scale(0.98)',
+              },
+              _disabled: {
+                opacity: 0.5,
+                cursor: 'not-allowed',
+                _hover: {
+                  transform: 'none',
+                },
+              },
+            })}
+          >
+            Check
+          </button>
         </div>
       ) : (
-        /* Original single input */
+        /* Text input - keep native input */
         <div data-testid="checkpoint-input-row" className={hstack({ gap: '3' })}>
           <input
             data-testid="checkpoint-input"
-            type={inputType === 'number' ? 'number' : 'text'}
+            type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e)}
@@ -303,14 +504,10 @@ export function FlowchartCheckpoint({
           data-testid="checkpoint-feedback"
           data-feedback-correct={feedback.correct}
           data-expected={
-            Array.isArray(feedback.expected)
-              ? feedback.expected.join(',')
-              : feedback.expected
+            Array.isArray(feedback.expected) ? feedback.expected.join(',') : feedback.expected
           }
           data-user-answer={
-            Array.isArray(feedback.userAnswer)
-              ? feedback.userAnswer.join(',')
-              : feedback.userAnswer
+            Array.isArray(feedback.userAnswer) ? feedback.userAnswer.join(',') : feedback.userAnswer
           }
           className={css({
             padding: '3 4',
@@ -331,16 +528,10 @@ export function FlowchartCheckpoint({
             <span>
               Not quite.
               {!twoNumFeedback.first && (
-                <>
-                  {' '}
-                  First should be {(feedback.expected as [number, number])[0]}.
-                </>
+                <> First should be {(feedback.expected as [number, number])[0]}.</>
               )}
               {!twoNumFeedback.second && (
-                <>
-                  {' '}
-                  Second should be {(feedback.expected as [number, number])[1]}.
-                </>
+                <> Second should be {(feedback.expected as [number, number])[1]}.</>
               )}
             </span>
           ) : (

@@ -949,13 +949,16 @@ export function inferGridDimensions(
   if (paths.length === 0) return null
 
   // Step 1: Find all decision nodes with pathLabel and track their appearances
-  const decisionAppearances = new Map<string, {
-    nodeId: string
-    optionLabels: Map<string, string>  // optionValue -> pathLabel
-    optionGridLabels: Map<string, string>  // optionValue -> gridLabel (kid-friendly)
-    pathCount: number  // how many paths include this decision
-    pathsWithOption: Map<string, Set<number>>  // optionValue -> set of path indices
-  }>()
+  const decisionAppearances = new Map<
+    string,
+    {
+      nodeId: string
+      optionLabels: Map<string, string> // optionValue -> pathLabel
+      optionGridLabels: Map<string, string> // optionValue -> gridLabel (kid-friendly)
+      pathCount: number // how many paths include this decision
+      pathsWithOption: Map<string, Set<number>> // optionValue -> set of path indices
+    }
+  >()
 
   // Analyze each path
   for (let pathIdx = 0; pathIdx < paths.length; pathIdx++) {
@@ -968,7 +971,7 @@ export function inferGridDimensions(
 
       if (node?.definition.type === 'decision') {
         const decision = node.definition as DecisionNode
-        const option = decision.options.find(o => o.next === nextNodeId)
+        const option = decision.options.find((o) => o.next === nextNodeId)
 
         if (option?.pathLabel) {
           let info = decisionAppearances.get(nodeId)
@@ -1040,7 +1043,14 @@ export function inferGridDimensions(
 
   // 1D case: only one independent decision
   if (independentDecisions.length === 1) {
-    return buildOneDimensionalGrid(flowchart, paths, dim1NodeId, dim1Info, dependentDecisions, decisionAppearances)
+    return buildOneDimensionalGrid(
+      flowchart,
+      paths,
+      dim1NodeId,
+      dim1Info,
+      dependentDecisions,
+      decisionAppearances
+    )
   }
 
   // 2D case: two independent decisions
@@ -1076,7 +1086,7 @@ export function inferGridDimensions(
           for (const idx of pathSet) depPathIndices.add(idx)
         }
 
-        const overlap = [...pathsForOption].filter(idx => depPathIndices.has(idx))
+        const overlap = [...pathsForOption].filter((idx) => depPathIndices.has(idx))
         if (overlap.length > 0 && overlap.length === depInfo.pathCount) {
           // This dependent decision refines this option
           for (const [depOptValue, depPathLabel] of depInfo.optionLabels) {
@@ -1152,10 +1162,10 @@ export function inferGridDimensions(
   })
 
   // Extract sorted arrays
-  const rows = rowTuples.map(t => t[0])
-  const rowKeys = rowTuples.map(t => t[1])
-  const cols = colTuples.map(t => t[0])
-  const colKeys = colTuples.map(t => t[1])
+  const rows = rowTuples.map((t) => t[0])
+  const rowKeys = rowTuples.map((t) => t[1])
+  const cols = colTuples.map((t) => t[0])
+  const colKeys = colTuples.map((t) => t[1])
 
   // Step 6: Build cell map from actual path descriptors (use keys for matching)
   const cellMap = new Map<string, [number, number]>()
@@ -1165,8 +1175,8 @@ export function inferGridDimensions(
     const descriptor = generatePathDescriptorFromPath(flowchart, path)
 
     // Find which row and column this descriptor belongs to (match against keys)
-    const rowIdx = rowKeys.findIndex(k => descriptor.startsWith(k) || descriptor.includes(k))
-    const colIdx = colKeys.findIndex(k => descriptor.endsWith(k) || descriptor.includes(k))
+    const rowIdx = rowKeys.findIndex((k) => descriptor.startsWith(k) || descriptor.includes(k))
+    const colIdx = colKeys.findIndex((k) => descriptor.endsWith(k) || descriptor.includes(k))
 
     if (rowIdx !== -1 && colIdx !== -1) {
       cellMap.set(descriptor, [rowIdx, colIdx])
@@ -1174,7 +1184,7 @@ export function inferGridDimensions(
   }
 
   // Validate: every unique descriptor should have a cell
-  const uniqueDescriptors = new Set(paths.map(p => generatePathDescriptorFromPath(flowchart, p)))
+  const uniqueDescriptors = new Set(paths.map((p) => generatePathDescriptorFromPath(flowchart, p)))
   if (cellMap.size < uniqueDescriptors.size) {
     // Some descriptors didn't map - fall back
     return inferGridFromDescriptors(flowchart, paths)
@@ -1222,7 +1232,7 @@ function buildOneDimensionalGrid(
         for (const idx of pathSet) depPathIndices.add(idx)
       }
 
-      const overlap = [...pathsForOption].filter(idx => depPathIndices.has(idx))
+      const overlap = [...pathsForOption].filter((idx) => depPathIndices.has(idx))
       if (overlap.length > 0 && overlap.length === depInfo.pathCount) {
         for (const [depOptValue, depPathLabel] of depInfo.optionLabels) {
           // Use gridLabel if explicitly set (even if empty), otherwise fall back to pathLabel
@@ -1252,7 +1262,11 @@ function buildOneDimensionalGrid(
     let count = 0
     for (const path of paths) {
       const descriptor = generatePathDescriptorFromPath(flowchart, path)
-      if (descriptor === keyValue || descriptor.startsWith(keyValue + ' ') || descriptor.endsWith(' ' + keyValue)) {
+      if (
+        descriptor === keyValue ||
+        descriptor.startsWith(keyValue + ' ') ||
+        descriptor.endsWith(' ' + keyValue)
+      ) {
         totalDecisions += path.decisions
         count++
       }
@@ -1269,14 +1283,20 @@ function buildOneDimensionalGrid(
   })
 
   // Extract sorted arrays
-  const rows = groupTuples.map(t => t[0])
-  const rowKeys = groupTuples.map(t => t[1])
+  const rows = groupTuples.map((t) => t[0])
+  const rowKeys = groupTuples.map((t) => t[1])
 
   // Build cell map - for 1D, column is always 0 (use keys for matching)
   const cellMap = new Map<string, [number, number]>()
   for (const path of paths) {
     const descriptor = generatePathDescriptorFromPath(flowchart, path)
-    const groupIdx = rowKeys.findIndex(k => descriptor === k || descriptor.startsWith(k + ' ') || descriptor.endsWith(' ' + k) || descriptor.includes(k))
+    const groupIdx = rowKeys.findIndex(
+      (k) =>
+        descriptor === k ||
+        descriptor.startsWith(k + ' ') ||
+        descriptor.endsWith(' ' + k) ||
+        descriptor.includes(k)
+    )
     if (groupIdx !== -1) {
       cellMap.set(descriptor, [groupIdx, 0])
     }
@@ -1302,7 +1322,7 @@ function generatePathDescriptorFromPath(
 
     if (node?.definition.type === 'decision') {
       const decision = node.definition as DecisionNode
-      const option = decision.options.find(o => o.next === nextNodeId)
+      const option = decision.options.find((o) => o.next === nextNodeId)
       if (option?.pathLabel) {
         labels.push(option.pathLabel)
       }
@@ -1320,7 +1340,7 @@ function inferGridFromDescriptors(
   paths: FlowchartPath[]
 ): GridDimensions | null {
   // Get all unique descriptors
-  const descriptors = [...new Set(paths.map(p => generatePathDescriptorFromPath(flowchart, p)))]
+  const descriptors = [...new Set(paths.map((p) => generatePathDescriptorFromPath(flowchart, p)))]
 
   if (descriptors.length < 2) return null
 
@@ -1347,7 +1367,7 @@ function inferGridFromDescriptors(
   for (const [prefix, suffixes] of prefixGroups) {
     if (suffixes.size >= 2) {
       // Check how many descriptors this prefix covers
-      const covered = descriptors.filter(d => d.startsWith(prefix + ' ') || d === prefix)
+      const covered = descriptors.filter((d) => d.startsWith(prefix + ' ') || d === prefix)
       const score = covered.length * suffixes.size
 
       if (score > bestScore) {
@@ -1370,7 +1390,7 @@ function inferGridFromDescriptors(
         if (allPrefixes.size >= 2 && allSuffixes.size >= 2) {
           bestSplit = {
             rows: [...allPrefixes],
-            cols: [...allSuffixes].filter(s => s !== ''),
+            cols: [...allSuffixes].filter((s) => s !== ''),
           }
           bestScore = score
         }
@@ -1383,8 +1403,8 @@ function inferGridFromDescriptors(
   // Build cell map
   const cellMap = new Map<string, [number, number]>()
   for (const desc of descriptors) {
-    const rowIdx = bestSplit.rows.findIndex(r => desc.startsWith(r))
-    const colIdx = bestSplit.cols.findIndex(c => desc.endsWith(c))
+    const rowIdx = bestSplit.rows.findIndex((r) => desc.startsWith(r))
+    const colIdx = bestSplit.cols.findIndex((c) => desc.endsWith(c))
     if (rowIdx !== -1 && colIdx !== -1) {
       cellMap.set(desc, [rowIdx, colIdx])
     }
@@ -1396,7 +1416,7 @@ function inferGridFromDescriptors(
     cols: bestSplit.cols,
     rowKeys: bestSplit.rows,
     colKeys: bestSplit.cols,
-    cellMap
+    cellMap,
   }
 }
 
@@ -1430,7 +1450,7 @@ export function inferGridDimensionsFromExamples(
 
       if (node?.definition.type === 'decision') {
         const decision = node.definition as DecisionNode
-        const option = decision.options.find(o => o.next === nextNodeId)
+        const option = decision.options.find((o) => o.next === nextNodeId)
         if (option?.pathLabel) {
           decisions.set(nodeId, {
             pathLabel: option.pathLabel,
@@ -1444,11 +1464,14 @@ export function inferGridDimensionsFromExamples(
   }
 
   // Step 2: Count unique values per decision node
-  const decisionVariation = new Map<string, {
-    uniqueValues: Set<string>
-    pathLabels: Map<string, string>  // value -> pathLabel
-    gridLabels: Map<string, string | undefined>  // value -> gridLabel
-  }>()
+  const decisionVariation = new Map<
+    string,
+    {
+      uniqueValues: Set<string>
+      pathLabels: Map<string, string> // value -> pathLabel
+      gridLabels: Map<string, string | undefined> // value -> gridLabel
+    }
+  >()
 
   for (const decisions of exampleDecisions) {
     for (const [nodeId, { pathLabel, gridLabel }] of decisions) {
@@ -1475,8 +1498,8 @@ export function inferGridDimensionsFromExamples(
       const diff = b[1].uniqueValues.size - a[1].uniqueValues.size
       if (diff !== 0) return diff
       // Secondary: more examples that hit this decision
-      const aCount = exampleDecisions.filter(d => d.has(a[0])).length
-      const bCount = exampleDecisions.filter(d => d.has(b[0])).length
+      const aCount = exampleDecisions.filter((d) => d.has(a[0])).length
+      const bCount = exampleDecisions.filter((d) => d.has(b[0])).length
       return bCount - aCount
     })
 
@@ -1504,11 +1527,12 @@ export function inferGridDimensionsFromExamples(
     // Build cell map
     const cellMap = new Map<string, [number, number]>()
     for (const example of examples) {
-      const rowIdx = rowKeys.findIndex(k =>
-        example.pathDescriptor === k ||
-        example.pathDescriptor.startsWith(k + ' ') ||
-        example.pathDescriptor.includes(' ' + k + ' ') ||
-        example.pathDescriptor.endsWith(' ' + k)
+      const rowIdx = rowKeys.findIndex(
+        (k) =>
+          example.pathDescriptor === k ||
+          example.pathDescriptor.startsWith(k + ' ') ||
+          example.pathDescriptor.includes(' ' + k + ' ') ||
+          example.pathDescriptor.endsWith(' ' + k)
       )
       if (rowIdx !== -1) {
         cellMap.set(example.pathDescriptor, [rowIdx, 0])
@@ -1560,19 +1584,21 @@ export function inferGridDimensionsFromExamples(
   const cellMap = new Map<string, [number, number]>()
   for (const example of examples) {
     // Find row - which rowKey appears in the descriptor?
-    const rowIdx = rowKeys.findIndex(k =>
-      example.pathDescriptor === k ||
-      example.pathDescriptor.startsWith(k + ' ') ||
-      example.pathDescriptor.includes(' ' + k + ' ') ||
-      example.pathDescriptor.endsWith(' ' + k)
+    const rowIdx = rowKeys.findIndex(
+      (k) =>
+        example.pathDescriptor === k ||
+        example.pathDescriptor.startsWith(k + ' ') ||
+        example.pathDescriptor.includes(' ' + k + ' ') ||
+        example.pathDescriptor.endsWith(' ' + k)
     )
 
     // Find col - which colKey appears in the descriptor?
-    const colIdx = colKeys.findIndex(k =>
-      example.pathDescriptor === k ||
-      example.pathDescriptor.startsWith(k + ' ') ||
-      example.pathDescriptor.includes(' ' + k + ' ') ||
-      example.pathDescriptor.endsWith(' ' + k)
+    const colIdx = colKeys.findIndex(
+      (k) =>
+        example.pathDescriptor === k ||
+        example.pathDescriptor.startsWith(k + ' ') ||
+        example.pathDescriptor.includes(' ' + k + ' ') ||
+        example.pathDescriptor.endsWith(' ' + k)
     )
 
     if (rowIdx !== -1 && colIdx !== -1) {
@@ -1595,8 +1621,8 @@ export function inferGridDimensionsFromExamples(
     rowsPerCol.get(colIdx)!.add(rowIdx)
   }
 
-  const maxColsPerRow = Math.max(...[...colsPerRow.values()].map(s => s.size), 0)
-  const maxRowsPerCol = Math.max(...[...rowsPerCol.values()].map(s => s.size), 0)
+  const maxColsPerRow = Math.max(...[...colsPerRow.values()].map((s) => s.size), 0)
+  const maxRowsPerCol = Math.max(...[...rowsPerCol.values()].map((s) => s.size), 0)
 
   // If no row spans >1 column AND no column spans >1 row, collapse to 1D
   if (maxColsPerRow <= 1 && maxRowsPerCol <= 1) {
@@ -1627,7 +1653,13 @@ export function inferGridDimensionsFromExamples(
       idx++
     }
 
-    return { rows: combinedRows, cols: [], rowKeys: combinedRowKeys, colKeys: [], cellMap: combinedCellMap }
+    return {
+      rows: combinedRows,
+      cols: [],
+      rowKeys: combinedRowKeys,
+      colKeys: [],
+      cellMap: combinedCellMap,
+    }
   }
 
   return { rows, cols, rowKeys, colKeys, cellMap }
@@ -1636,10 +1668,8 @@ export function inferGridDimensionsFromExamples(
 /**
  * Fallback: infer grid from pathDescriptor strings when no varying decisions found
  */
-function inferGridFromDescriptorsFromExamples(
-  examples: GeneratedExample[]
-): GridDimensions | null {
-  const descriptors = [...new Set(examples.map(ex => ex.pathDescriptor))]
+function inferGridFromDescriptorsFromExamples(examples: GeneratedExample[]): GridDimensions | null {
+  const descriptors = [...new Set(examples.map((ex) => ex.pathDescriptor))]
 
   if (descriptors.length < 2) {
     // Single cell - all examples in one group
@@ -1652,7 +1682,7 @@ function inferGridFromDescriptorsFromExamples(
       cols: [],
       rowKeys: [descriptors[0] || 'All'],
       colKeys: [],
-      cellMap
+      cellMap,
     }
   }
 
@@ -2729,7 +2759,10 @@ export function generateDiverseExamples(
       const maxConsecutiveFailures = 100
       let consecutiveFailures = 0
 
-      while (examples.length < targetExamplesPerPath && consecutiveFailures < maxConsecutiveFailures) {
+      while (
+        examples.length < targetExamplesPerPath &&
+        consecutiveFailures < maxConsecutiveFailures
+      ) {
         const values = hasGenerationConfig
           ? generateForPath(flowchart, targetPath, teacherConstraints)
           : generateSmartProblem(schemaType, targetPath)

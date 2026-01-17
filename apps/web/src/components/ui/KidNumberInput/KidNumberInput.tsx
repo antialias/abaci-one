@@ -192,99 +192,99 @@ export function KidNumberInput({
       {/* On-screen keypad */}
       {showKeypad &&
         (keypadMode === 'fixed' ? (
-            <>
-              {/* Portrait mode: single row fixed to bottom */}
-              <div
-                data-element="keypad-portrait"
-                style={cssVars}
-                className={`kid-keypad-portrait-container ${css({
-                  position: 'fixed',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  zIndex: 1000,
-                  opacity: disabled ? 0.5 : 1,
-                  pointerEvents: disabled ? 'none' : 'auto',
-                  borderTop: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.300',
-                })}`}
-              >
-                <div className="kid-keypad-portrait">
-                  <Keyboard
-                    keyboardRef={(r) => (portraitKeyboardRef.current = r)}
-                    layout={getPortraitLayout()}
-                    display={keypadDisplay}
-                    onKeyPress={handleKeyPress}
-                    theme="hg-theme-default simple-keyboard"
-                    physicalKeyboardHighlight={false}
-                    physicalKeyboardHighlightPress={false}
-                    disableButtonHold={true}
-                    stopMouseDownPropagation={true}
-                    stopMouseUpPropagation={true}
-                  />
-                </div>
-              </div>
-
-              {/* Landscape mode: two columns fixed to right side */}
-              <div
-                data-element="keypad-landscape"
-                style={cssVars}
-                className={`kid-keypad-landscape-container ${css({
-                  position: 'fixed',
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  width: '100px',
-                  zIndex: 1000,
-                  opacity: disabled ? 0.5 : 1,
-                  pointerEvents: disabled ? 'none' : 'auto',
-                  borderLeft: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.300',
-                })}`}
-              >
-                <div className="kid-keypad-landscape" style={{ height: '100%' }}>
-                  <Keyboard
-                    keyboardRef={(r) => (landscapeKeyboardRef.current = r)}
-                    layout={getLandscapeLayout()}
-                    display={keypadDisplay}
-                    onKeyPress={handleKeyPress}
-                    theme="hg-theme-default simple-keyboard"
-                    physicalKeyboardHighlight={false}
-                    physicalKeyboardHighlightPress={false}
-                    disableButtonHold={true}
-                    stopMouseDownPropagation={true}
-                    stopMouseUpPropagation={true}
-                  />
-                </div>
-              </div>
-            </>
-          ) : (
-            /* Inline mode: keypad renders in place */
+          <>
+            {/* Portrait mode: single row fixed to bottom */}
             <div
-              data-element="keypad-inline"
+              data-element="keypad-portrait"
               style={cssVars}
-              className={`kid-keypad-inline ${css({
+              className={`kid-keypad-portrait-container ${css({
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                zIndex: 1000,
                 opacity: disabled ? 0.5 : 1,
                 pointerEvents: disabled ? 'none' : 'auto',
-                width: '100%',
-                maxWidth: '400px',
+                borderTop: '1px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.300',
               })}`}
             >
-              <Keyboard
-                layout={{
-                  default: ['1 2 3', '4 5 6', '7 8 9', `${BKSP_KEY} 0`],
-                }}
-                display={keypadDisplay}
-                onKeyPress={handleKeyPress}
-                theme="hg-theme-default simple-keyboard"
-                physicalKeyboardHighlight={false}
-                physicalKeyboardHighlightPress={false}
-                disableButtonHold={true}
-                stopMouseDownPropagation={true}
-                stopMouseUpPropagation={true}
-              />
+              <div className="kid-keypad-portrait">
+                <Keyboard
+                  keyboardRef={(r) => (portraitKeyboardRef.current = r)}
+                  layout={getPortraitLayout()}
+                  display={keypadDisplay}
+                  onKeyPress={handleKeyPress}
+                  theme="hg-theme-default simple-keyboard"
+                  physicalKeyboardHighlight={false}
+                  physicalKeyboardHighlightPress={false}
+                  disableButtonHold={true}
+                  stopMouseDownPropagation={true}
+                  stopMouseUpPropagation={true}
+                />
+              </div>
             </div>
-          ))}
+
+            {/* Landscape mode: two columns fixed to right side */}
+            <div
+              data-element="keypad-landscape"
+              style={cssVars}
+              className={`kid-keypad-landscape-container ${css({
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: '100px',
+                zIndex: 1000,
+                opacity: disabled ? 0.5 : 1,
+                pointerEvents: disabled ? 'none' : 'auto',
+                borderLeft: '1px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.300',
+              })}`}
+            >
+              <div className="kid-keypad-landscape" style={{ height: '100%' }}>
+                <Keyboard
+                  keyboardRef={(r) => (landscapeKeyboardRef.current = r)}
+                  layout={getLandscapeLayout()}
+                  display={keypadDisplay}
+                  onKeyPress={handleKeyPress}
+                  theme="hg-theme-default simple-keyboard"
+                  physicalKeyboardHighlight={false}
+                  physicalKeyboardHighlightPress={false}
+                  disableButtonHold={true}
+                  stopMouseDownPropagation={true}
+                  stopMouseUpPropagation={true}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Inline mode: keypad renders in place */
+          <div
+            data-element="keypad-inline"
+            style={cssVars}
+            className={`kid-keypad-inline ${css({
+              opacity: disabled ? 0.5 : 1,
+              pointerEvents: disabled ? 'none' : 'auto',
+              width: '100%',
+              maxWidth: '400px',
+            })}`}
+          >
+            <Keyboard
+              layout={{
+                default: ['1 2 3', '4 5 6', '7 8 9', `${BKSP_KEY} 0`],
+              }}
+              display={keypadDisplay}
+              onKeyPress={handleKeyPress}
+              theme="hg-theme-default simple-keyboard"
+              physicalKeyboardHighlight={false}
+              physicalKeyboardHighlightPress={false}
+              disableButtonHold={true}
+              stopMouseDownPropagation={true}
+              stopMouseUpPropagation={true}
+            />
+          </div>
+        ))}
     </div>
   )
 }

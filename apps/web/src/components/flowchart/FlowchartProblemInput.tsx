@@ -413,15 +413,12 @@ export function FlowchartProblemInput({
   }, [])
 
   // Handle constraint changes - regenerate examples with new constraints
-  const handleConstraintsChange = useCallback(
-    (newConstraints: GenerationConstraints) => {
-      setConstraints(newConstraints)
-      // Reset the cache loading flag so new examples will be generated with new constraints
-      loadedFromCacheRef.current = false
-      setDisplayedExamples([])
-    },
-    []
-  )
+  const handleConstraintsChange = useCallback((newConstraints: GenerationConstraints) => {
+    setConstraints(newConstraints)
+    // Reset the cache loading flag so new examples will be generated with new constraints
+    loadedFromCacheRef.current = false
+    setDisplayedExamples([])
+  }, [])
 
   const handleExampleSelect = useCallback(
     (example: GeneratedExample) => {
@@ -461,26 +458,23 @@ export function FlowchartProblemInput({
   const longPressTriggeredRef = useRef(false)
   const longPressTargetRef = useRef<HTMLElement | null>(null)
 
-  const handleTouchStart = useCallback(
-    (example: GeneratedExample, e: React.TouchEvent) => {
-      // Prevent text selection on long press
-      e.preventDefault()
-      longPressTriggeredRef.current = false
-      longPressTargetRef.current = e.currentTarget as HTMLElement
-      longPressTimerRef.current = setTimeout(() => {
-        longPressTriggeredRef.current = true
-        // Create a synthetic event for positioning
-        const button = longPressTargetRef.current
-        if (button) {
-          const rect = button.getBoundingClientRect()
-          setValues(example.values as Record<string, ProblemValue>)
-          setEditingExample({ example, buttonRect: rect })
-          setError(null)
-        }
-      }, 500) // 500ms long press
-    },
-    []
-  )
+  const handleTouchStart = useCallback((example: GeneratedExample, e: React.TouchEvent) => {
+    // Prevent text selection on long press
+    e.preventDefault()
+    longPressTriggeredRef.current = false
+    longPressTargetRef.current = e.currentTarget as HTMLElement
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true
+      // Create a synthetic event for positioning
+      const button = longPressTargetRef.current
+      if (button) {
+        const rect = button.getBoundingClientRect()
+        setValues(example.values as Record<string, ProblemValue>)
+        setEditingExample({ example, buttonRect: rect })
+        setError(null)
+      }
+    }, 500) // 500ms long press
+  }, [])
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (longPressTimerRef.current) {
@@ -571,11 +565,7 @@ export function FlowchartProblemInput({
   const Wrapper = asModal ? Dialog.Content : 'div'
 
   return (
-    <Wrapper
-      ref={containerRef}
-      data-testid="flowchart-problem-input"
-      className={containerStyles}
-    >
+    <Wrapper ref={containerRef} data-testid="flowchart-problem-input" className={containerStyles}>
       {/* Cozy close corner - upper right (modal only) */}
       {asModal && (
         <div
@@ -710,156 +700,170 @@ export function FlowchartProblemInput({
       </div>
 
       {/* Title + Difficulty Filter */}
-      {flowchart && (() => {
-        const availableTiers = [
-          tierCounts.easy > 0 ? 'easy' : null,
-          tierCounts.medium > 0 ? 'medium' : null,
-          tierCounts.hard > 0 ? 'hard' : null,
-        ].filter(Boolean) as ('easy' | 'medium' | 'hard')[]
+      {flowchart &&
+        (() => {
+          const availableTiers = [
+            tierCounts.easy > 0 ? 'easy' : null,
+            tierCounts.medium > 0 ? 'medium' : null,
+            tierCounts.hard > 0 ? 'hard' : null,
+          ].filter(Boolean) as ('easy' | 'medium' | 'hard')[]
 
-        // Check if all tier labels are derived from grid dimensions (not default Easy/Medium/Hard)
-        // If so, tabs are redundant since the grid already shows that organization
-        const allLabelsFromGrid = availableTiers.every(
-          (tier) => tierLabels[tier] !== 'Easy' && tierLabels[tier] !== 'Medium' && tierLabels[tier] !== 'Hard'
-        )
+          // Check if all tier labels are derived from grid dimensions (not default Easy/Medium/Hard)
+          // If so, tabs are redundant since the grid already shows that organization
+          const allLabelsFromGrid = availableTiers.every(
+            (tier) =>
+              tierLabels[tier] !== 'Easy' &&
+              tierLabels[tier] !== 'Medium' &&
+              tierLabels[tier] !== 'Hard'
+          )
 
-        const showTabs = generatedExamples.length > 0 && availableTiers.length > 1 && !allLabelsFromGrid
+          const showTabs =
+            generatedExamples.length > 0 && availableTiers.length > 1 && !allLabelsFromGrid
 
-        return (
-          <div
-            data-testid="tier-selection"
-            className={vstack({ gap: '3', alignItems: 'center' })}
-          >
-            {/* Title */}
-            <h2
-              data-element="title"
-              className={css({
-                fontSize: 'xl',
-                fontWeight: 'bold',
-                color: { base: 'gray.800', _dark: 'gray.100' },
-                textAlign: 'center',
-                letterSpacing: '-0.01em',
-              })}
+          return (
+            <div
+              data-testid="tier-selection"
+              className={vstack({ gap: '3', alignItems: 'center' })}
             >
-              {flowchart.definition.title}
-            </h2>
-
-            {/* Segmented control for difficulty filter */}
-            {showTabs && (
-              <div
-                data-element="difficulty-filter"
+              {/* Title */}
+              <h2
+                data-element="title"
                 className={css({
-                  display: 'inline-flex',
-                  backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
-                  borderRadius: 'xl',
-                  padding: '1',
-                  gap: '1',
+                  fontSize: 'xl',
+                  fontWeight: 'bold',
+                  color: { base: 'gray.800', _dark: 'gray.100' },
+                  textAlign: 'center',
+                  letterSpacing: '-0.01em',
                 })}
               >
-                {tierCounts.easy > 0 && (
-                  <button
-                    data-tier="easy"
-                    data-selected={selectedTier === 'easy'}
-                    onClick={() => setSelectedTier(selectedTier === 'easy' ? 'all' : 'easy')}
-                    className={css({
-                      paddingX: '4',
-                      paddingY: '2',
-                      fontSize: 'sm',
-                      fontWeight: 'semibold',
-                      borderRadius: 'lg',
-                      border: '1px solid',
-                      borderColor: selectedTier === 'easy'
-                        ? { base: 'emerald.400', _dark: 'emerald.500' }
-                        : { base: 'gray.300', _dark: 'gray.500' },
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      backgroundColor: selectedTier === 'easy'
-                        ? { base: 'white', _dark: 'gray.600' }
-                        : { base: 'gray.100', _dark: 'gray.800' },
-                      color: selectedTier === 'easy'
-                        ? { base: 'emerald.600', _dark: 'emerald.300' }
-                        : { base: 'gray.600', _dark: 'gray.300' },
-                      boxShadow: selectedTier === 'easy' ? 'sm' : 'none',
-                      _hover: {
-                        borderColor: { base: 'emerald.400', _dark: 'emerald.500' },
-                        color: { base: 'emerald.600', _dark: 'emerald.300' },
-                      },
-                    })}
-                  >
-                    {tierLabels.easy}
-                  </button>
-                )}
-                {tierCounts.medium > 0 && (
-                  <button
-                    data-tier="medium"
-                    data-selected={selectedTier === 'medium'}
-                    onClick={() => setSelectedTier(selectedTier === 'medium' ? 'all' : 'medium')}
-                    className={css({
-                      paddingX: '4',
-                      paddingY: '2',
-                      fontSize: 'sm',
-                      fontWeight: 'semibold',
-                      borderRadius: 'lg',
-                      border: '1px solid',
-                      borderColor: selectedTier === 'medium'
-                        ? { base: 'amber.400', _dark: 'amber.500' }
-                        : { base: 'gray.300', _dark: 'gray.500' },
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      backgroundColor: selectedTier === 'medium'
-                        ? { base: 'white', _dark: 'gray.600' }
-                        : { base: 'gray.100', _dark: 'gray.800' },
-                      color: selectedTier === 'medium'
-                        ? { base: 'amber.600', _dark: 'amber.300' }
-                        : { base: 'gray.600', _dark: 'gray.300' },
-                      boxShadow: selectedTier === 'medium' ? 'sm' : 'none',
-                      _hover: {
-                        borderColor: { base: 'amber.400', _dark: 'amber.500' },
-                        color: { base: 'amber.600', _dark: 'amber.300' },
-                      },
-                    })}
-                  >
-                    {tierLabels.medium}
-                  </button>
-                )}
-                {tierCounts.hard > 0 && (
-                  <button
-                    data-tier="hard"
-                    data-selected={selectedTier === 'hard'}
-                    onClick={() => setSelectedTier(selectedTier === 'hard' ? 'all' : 'hard')}
-                    className={css({
-                      paddingX: '4',
-                      paddingY: '2',
-                      fontSize: 'sm',
-                      fontWeight: 'semibold',
-                      borderRadius: 'lg',
-                      border: '1px solid',
-                      borderColor: selectedTier === 'hard'
-                        ? { base: 'rose.400', _dark: 'rose.500' }
-                        : { base: 'gray.300', _dark: 'gray.500' },
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      backgroundColor: selectedTier === 'hard'
-                        ? { base: 'white', _dark: 'gray.600' }
-                        : { base: 'gray.100', _dark: 'gray.800' },
-                      color: selectedTier === 'hard'
-                        ? { base: 'rose.600', _dark: 'rose.300' }
-                        : { base: 'gray.600', _dark: 'gray.300' },
-                      boxShadow: selectedTier === 'hard' ? 'sm' : 'none',
-                      _hover: {
-                        borderColor: { base: 'rose.400', _dark: 'rose.500' },
-                        color: { base: 'rose.600', _dark: 'rose.300' },
-                      },
-                    })}
-                  >
-                    {tierLabels.hard}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })()}
+                {flowchart.definition.title}
+              </h2>
+
+              {/* Segmented control for difficulty filter */}
+              {showTabs && (
+                <div
+                  data-element="difficulty-filter"
+                  className={css({
+                    display: 'inline-flex',
+                    backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                    borderRadius: 'xl',
+                    padding: '1',
+                    gap: '1',
+                  })}
+                >
+                  {tierCounts.easy > 0 && (
+                    <button
+                      data-tier="easy"
+                      data-selected={selectedTier === 'easy'}
+                      onClick={() => setSelectedTier(selectedTier === 'easy' ? 'all' : 'easy')}
+                      className={css({
+                        paddingX: '4',
+                        paddingY: '2',
+                        fontSize: 'sm',
+                        fontWeight: 'semibold',
+                        borderRadius: 'lg',
+                        border: '1px solid',
+                        borderColor:
+                          selectedTier === 'easy'
+                            ? { base: 'emerald.400', _dark: 'emerald.500' }
+                            : { base: 'gray.300', _dark: 'gray.500' },
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        backgroundColor:
+                          selectedTier === 'easy'
+                            ? { base: 'white', _dark: 'gray.600' }
+                            : { base: 'gray.100', _dark: 'gray.800' },
+                        color:
+                          selectedTier === 'easy'
+                            ? { base: 'emerald.600', _dark: 'emerald.300' }
+                            : { base: 'gray.600', _dark: 'gray.300' },
+                        boxShadow: selectedTier === 'easy' ? 'sm' : 'none',
+                        _hover: {
+                          borderColor: { base: 'emerald.400', _dark: 'emerald.500' },
+                          color: { base: 'emerald.600', _dark: 'emerald.300' },
+                        },
+                      })}
+                    >
+                      {tierLabels.easy}
+                    </button>
+                  )}
+                  {tierCounts.medium > 0 && (
+                    <button
+                      data-tier="medium"
+                      data-selected={selectedTier === 'medium'}
+                      onClick={() => setSelectedTier(selectedTier === 'medium' ? 'all' : 'medium')}
+                      className={css({
+                        paddingX: '4',
+                        paddingY: '2',
+                        fontSize: 'sm',
+                        fontWeight: 'semibold',
+                        borderRadius: 'lg',
+                        border: '1px solid',
+                        borderColor:
+                          selectedTier === 'medium'
+                            ? { base: 'amber.400', _dark: 'amber.500' }
+                            : { base: 'gray.300', _dark: 'gray.500' },
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        backgroundColor:
+                          selectedTier === 'medium'
+                            ? { base: 'white', _dark: 'gray.600' }
+                            : { base: 'gray.100', _dark: 'gray.800' },
+                        color:
+                          selectedTier === 'medium'
+                            ? { base: 'amber.600', _dark: 'amber.300' }
+                            : { base: 'gray.600', _dark: 'gray.300' },
+                        boxShadow: selectedTier === 'medium' ? 'sm' : 'none',
+                        _hover: {
+                          borderColor: { base: 'amber.400', _dark: 'amber.500' },
+                          color: { base: 'amber.600', _dark: 'amber.300' },
+                        },
+                      })}
+                    >
+                      {tierLabels.medium}
+                    </button>
+                  )}
+                  {tierCounts.hard > 0 && (
+                    <button
+                      data-tier="hard"
+                      data-selected={selectedTier === 'hard'}
+                      onClick={() => setSelectedTier(selectedTier === 'hard' ? 'all' : 'hard')}
+                      className={css({
+                        paddingX: '4',
+                        paddingY: '2',
+                        fontSize: 'sm',
+                        fontWeight: 'semibold',
+                        borderRadius: 'lg',
+                        border: '1px solid',
+                        borderColor:
+                          selectedTier === 'hard'
+                            ? { base: 'rose.400', _dark: 'rose.500' }
+                            : { base: 'gray.300', _dark: 'gray.500' },
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        backgroundColor:
+                          selectedTier === 'hard'
+                            ? { base: 'white', _dark: 'gray.600' }
+                            : { base: 'gray.100', _dark: 'gray.800' },
+                        color:
+                          selectedTier === 'hard'
+                            ? { base: 'rose.600', _dark: 'rose.300' }
+                            : { base: 'gray.600', _dark: 'gray.300' },
+                        boxShadow: selectedTier === 'hard' ? 'sm' : 'none',
+                        _hover: {
+                          borderColor: { base: 'rose.400', _dark: 'rose.500' },
+                          color: { base: 'rose.600', _dark: 'rose.300' },
+                        },
+                      })}
+                    >
+                      {tierLabels.hard}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
       {/* Debug: Dimension distribution for current tier */}
       {isVisualDebugEnabled && selectedTier !== 'all' && baseGridDimensions && (
@@ -874,10 +878,20 @@ export function FlowchartProblemInput({
             color: { base: 'gray.600', _dark: 'gray.400' },
           })}
         >
-          <div><strong>Tier:</strong> {selectedTier} → Label: "{tierLabels[selectedTier as 'easy' | 'medium' | 'hard']}"</div>
-          <div><strong>Base grid:</strong> {baseGridDimensions.rows.length} rows × {baseGridDimensions.cols.length} cols</div>
-          <div><strong>Rows:</strong> {baseGridDimensions.rows.join(', ')}</div>
-          <div><strong>Cols:</strong> {baseGridDimensions.cols.join(', ')}</div>
+          <div>
+            <strong>Tier:</strong> {selectedTier} → Label: "
+            {tierLabels[selectedTier as 'easy' | 'medium' | 'hard']}"
+          </div>
+          <div>
+            <strong>Base grid:</strong> {baseGridDimensions.rows.length} rows ×{' '}
+            {baseGridDimensions.cols.length} cols
+          </div>
+          <div>
+            <strong>Rows:</strong> {baseGridDimensions.rows.join(', ')}
+          </div>
+          <div>
+            <strong>Cols:</strong> {baseGridDimensions.cols.join(', ')}
+          </div>
           <div style={{ marginTop: '4px' }}>
             <strong>Distribution ({filteredExamples.length} examples):</strong>
             {(() => {
@@ -892,9 +906,21 @@ export function FlowchartProblemInput({
               }
               return (
                 <div style={{ paddingLeft: '8px' }}>
-                  <div>By row: {baseGridDimensions.rows.map((r, i) => `${r}: ${rowCounts.get(i) || 0}`).join(', ')}</div>
-                  <div>By col: {baseGridDimensions.cols.map((c, i) => `${c}: ${colCounts.get(i) || 0}`).join(', ')}</div>
-                  <div>Unique rows: {rowCounts.size}, Unique cols: {colCounts.size}</div>
+                  <div>
+                    By row:{' '}
+                    {baseGridDimensions.rows
+                      .map((r, i) => `${r}: ${rowCounts.get(i) || 0}`)
+                      .join(', ')}
+                  </div>
+                  <div>
+                    By col:{' '}
+                    {baseGridDimensions.cols
+                      .map((c, i) => `${c}: ${colCounts.get(i) || 0}`)
+                      .join(', ')}
+                  </div>
+                  <div>
+                    Unique rows: {rowCounts.size}, Unique cols: {colCounts.size}
+                  </div>
                 </div>
               )
             })()}
@@ -941,7 +967,6 @@ export function FlowchartProblemInput({
                   {col}
                 </div>
               ))}
-
               {/* Data rows - flatten into single array of grid items */}
               {gridDimensions.rows.flatMap((row, rowIdx) => [
                 // Row label - angled and wrapped
@@ -1350,134 +1375,140 @@ export function FlowchartProblemInput({
 
       {/* Edit Popover - shows when editing an example */}
       {/* Use portal to escape modal's transform containing block for correct fixed positioning */}
-      {editingExample && containerRef.current && createPortal(
-        <>
-          {/* Backdrop to close on click outside */}
-          <div
-            data-element="edit-backdrop"
-            onClick={handleCloseEditor}
-            className={css({
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.3)',
-              zIndex: 200, // Higher than modal (101) to work in modal mode
-              pointerEvents: 'auto', // Override Radix Dialog's pointer-events: none on body
-            })}
-          />
-          {/* Popover positioned over the example */}
-          <div
-            data-section="edit-popover"
-            data-schema={schema.schema}
-            data-difficulty={editorDifficultyLevel}
-            className={css({
-              position: 'fixed',
-              zIndex: 201, // Higher than modal (101) to work in modal mode
-              padding: '3',
-              borderRadius: 'lg',
-              border: '3px solid',
-              borderColor: getDifficultyBorderColor(editorDifficultyLevel),
-              backgroundColor: { base: 'white', _dark: 'gray.800' },
-              boxShadow: 'xl',
-              width: 'max-content',
-              transition: 'border-color 0.2s ease-out',
-              pointerEvents: 'auto', // Override Radix Dialog's pointer-events: none on body
-            })}
-            style={{
-              // Center over the button
-              top: `${editingExample.buttonRect.top + editingExample.buttonRect.height / 2}px`,
-              left: `${editingExample.buttonRect.left + editingExample.buttonRect.width / 2}px`,
-              transform: 'translate(-50%, -50%)',
-            }}
-          >
-            <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
-              {/* Close button */}
-              <button
-                data-element="close-button"
-                onClick={handleCloseEditor}
-                className={css({
-                  position: 'absolute',
-                  top: '6px',
-                  right: '6px',
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: 'full',
-                  backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '12px',
-                  color: { base: 'gray.500', _dark: 'gray.400' },
-                  _hover: {
-                    backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
-                  },
-                })}
-              >
-                ✕
-              </button>
-
-              {/* Input fields */}
-              {schema.schema === 'two-digit-subtraction' ? (
-                <TwoDigitSubtractionInput values={values} onChange={handleChange} />
-              ) : schema.schema === 'two-fractions-with-op' ? (
-                <TwoFractionsInput values={values} onChange={handleChange} />
-              ) : schema.schema === 'linear-equation' ? (
-                <LinearEquationInput values={values} onChange={handleChange} />
-              ) : (
-                <GenericFieldsInput fields={schema.fields} values={values} onChange={handleChange} />
-              )}
-
-              {/* Error message */}
-              {error && (
-                <p
-                  data-element="error-message"
+      {editingExample &&
+        containerRef.current &&
+        createPortal(
+          <>
+            {/* Backdrop to close on click outside */}
+            <div
+              data-element="edit-backdrop"
+              onClick={handleCloseEditor}
+              className={css({
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                zIndex: 200, // Higher than modal (101) to work in modal mode
+                pointerEvents: 'auto', // Override Radix Dialog's pointer-events: none on body
+              })}
+            />
+            {/* Popover positioned over the example */}
+            <div
+              data-section="edit-popover"
+              data-schema={schema.schema}
+              data-difficulty={editorDifficultyLevel}
+              className={css({
+                position: 'fixed',
+                zIndex: 201, // Higher than modal (101) to work in modal mode
+                padding: '3',
+                borderRadius: 'lg',
+                border: '3px solid',
+                borderColor: getDifficultyBorderColor(editorDifficultyLevel),
+                backgroundColor: { base: 'white', _dark: 'gray.800' },
+                boxShadow: 'xl',
+                width: 'max-content',
+                transition: 'border-color 0.2s ease-out',
+                pointerEvents: 'auto', // Override Radix Dialog's pointer-events: none on body
+              })}
+              style={{
+                // Center over the button
+                top: `${editingExample.buttonRect.top + editingExample.buttonRect.height / 2}px`,
+                left: `${editingExample.buttonRect.left + editingExample.buttonRect.width / 2}px`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
+                {/* Close button */}
+                <button
+                  data-element="close-button"
+                  onClick={handleCloseEditor}
                   className={css({
-                    color: { base: 'red.600', _dark: 'red.400' },
-                    fontSize: 'sm',
-                    textAlign: 'center',
+                    position: 'absolute',
+                    top: '6px',
+                    right: '6px',
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: 'full',
+                    backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    color: { base: 'gray.500', _dark: 'gray.400' },
+                    _hover: {
+                      backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
+                    },
                   })}
                 >
-                  {error}
-                </p>
-              )}
+                  ✕
+                </button>
 
-              {/* Submit button */}
-              <button
-                data-testid="start-button"
-                data-difficulty={editorDifficultyLevel}
-                onClick={() => {
-                  handleSubmit()
-                  // Close popover after successful submit (handleSubmit sets error if invalid)
-                }}
-                className={css({
-                  width: '100%',
-                  padding: '1.5',
-                  fontSize: 'sm',
-                  fontWeight: 'semibold',
-                  borderRadius: 'md',
-                  backgroundColor: getDifficultyButtonColor(editorDifficultyLevel),
-                  color: 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  _hover: {
-                    backgroundColor: getDifficultyButtonHoverColor(editorDifficultyLevel),
-                  },
-                  _active: {
-                    transform: 'scale(0.98)',
-                  },
-                })}
-              >
-                Start
-              </button>
+                {/* Input fields */}
+                {schema.schema === 'two-digit-subtraction' ? (
+                  <TwoDigitSubtractionInput values={values} onChange={handleChange} />
+                ) : schema.schema === 'two-fractions-with-op' ? (
+                  <TwoFractionsInput values={values} onChange={handleChange} />
+                ) : schema.schema === 'linear-equation' ? (
+                  <LinearEquationInput values={values} onChange={handleChange} />
+                ) : (
+                  <GenericFieldsInput
+                    fields={schema.fields}
+                    values={values}
+                    onChange={handleChange}
+                  />
+                )}
+
+                {/* Error message */}
+                {error && (
+                  <p
+                    data-element="error-message"
+                    className={css({
+                      color: { base: 'red.600', _dark: 'red.400' },
+                      fontSize: 'sm',
+                      textAlign: 'center',
+                    })}
+                  >
+                    {error}
+                  </p>
+                )}
+
+                {/* Submit button */}
+                <button
+                  data-testid="start-button"
+                  data-difficulty={editorDifficultyLevel}
+                  onClick={() => {
+                    handleSubmit()
+                    // Close popover after successful submit (handleSubmit sets error if invalid)
+                  }}
+                  className={css({
+                    width: '100%',
+                    padding: '1.5',
+                    fontSize: 'sm',
+                    fontWeight: 'semibold',
+                    borderRadius: 'md',
+                    backgroundColor: getDifficultyButtonColor(editorDifficultyLevel),
+                    color: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    _hover: {
+                      backgroundColor: getDifficultyButtonHoverColor(editorDifficultyLevel),
+                    },
+                    _active: {
+                      transform: 'scale(0.98)',
+                    },
+                  })}
+                >
+                  Start
+                </button>
+              </div>
             </div>
-          </div>
-        </>,
-        document.body
-      )}
+          </>,
+          document.body
+        )}
     </Wrapper>
   )
 }
@@ -1496,7 +1527,10 @@ interface TwoDigitSubtractionInputProps {
  */
 function TwoDigitSubtractionInput({ values, onChange }: TwoDigitSubtractionInputProps) {
   return (
-    <div data-input-type="two-digit-subtraction" className={vstack({ gap: '1', alignItems: 'center' })}>
+    <div
+      data-input-type="two-digit-subtraction"
+      className={vstack({ gap: '1', alignItems: 'center' })}
+    >
       {/* Top number (minuend) */}
       <input
         type="number"
@@ -1754,7 +1788,9 @@ function LinearEquationInput({ values, onChange }: TwoDigitSubtractionInputProps
         placeholder="3"
         className={inputStyle}
       />
-      <span data-element="variable-label" className={labelStyle}>x</span>
+      <span data-element="variable-label" className={labelStyle}>
+        x
+      </span>
 
       {/* Operation */}
       <select
@@ -1789,7 +1825,9 @@ function LinearEquationInput({ values, onChange }: TwoDigitSubtractionInputProps
         className={inputStyle}
       />
 
-      <span data-element="equals-sign" className={labelStyle}>=</span>
+      <span data-element="equals-sign" className={labelStyle}>
+        =
+      </span>
 
       {/* Equals */}
       <input
@@ -1821,7 +1859,11 @@ function GenericFieldsInput({ fields, values, onChange }: GenericFieldsInputProp
   return (
     <div data-input-type="generic" className={vstack({ gap: '4', alignItems: 'stretch' })}>
       {fields.map((field) => (
-        <div key={field.name} data-field-container={field.name} className={vstack({ gap: '1', alignItems: 'stretch' })}>
+        <div
+          key={field.name}
+          data-field-container={field.name}
+          className={vstack({ gap: '1', alignItems: 'stretch' })}
+        >
           <label
             data-element="field-label"
             className={css({
@@ -1898,7 +1940,11 @@ function renderFieldInput(
     case 'mixed-number': {
       const mn = (value as MixedNumberValue) || { whole: 0, num: 0, denom: 1 }
       return (
-        <div data-field={field.name} data-field-type="mixed-number" className={hstack({ gap: '2', alignItems: 'center' })}>
+        <div
+          data-field={field.name}
+          data-field-type="mixed-number"
+          className={hstack({ gap: '2', alignItems: 'center' })}
+        >
           <input
             type="number"
             min={0}

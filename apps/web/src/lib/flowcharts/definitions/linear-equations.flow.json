@@ -87,8 +87,20 @@
       "type": "decision",
       "correctAnswer": "constant != 0",
       "options": [
-        { "label": "ADDED ON (+/−)", "value": "add", "next": "STUCK_ADD", "pathLabel": "Undo +", "gridLabel": "Undo addition/subtraction" },
-        { "label": "MULTIPLIED IN (×/÷)", "value": "mul", "next": "STUCK_MUL", "pathLabel": "÷", "gridLabel": "Undo multiplication" }
+        {
+          "label": "ADDED ON (+/−)",
+          "value": "add",
+          "next": "STUCK_ADD",
+          "pathLabel": "Undo +",
+          "gridLabel": "Undo addition/subtraction"
+        },
+        {
+          "label": "MULTIPLIED IN (×/÷)",
+          "value": "mul",
+          "next": "STUCK_MUL",
+          "pathLabel": "÷",
+          "gridLabel": "Undo multiplication"
+        }
       ]
     },
     "STUCK_ADD": {

@@ -307,7 +307,12 @@ export function FlowchartWalker({
 
       if (result === null || result.correct) {
         // No validation or correct
-        const newState = applyStateUpdate(state, state.currentNode, flowchart, value as ProblemValue)
+        const newState = applyStateUpdate(
+          state,
+          state.currentNode,
+          flowchart,
+          value as ProblemValue
+        )
         setState(newState)
         setPhase({
           type: 'checkpointFeedback',
@@ -333,7 +338,6 @@ export function FlowchartWalker({
     },
     [flowchart, state, advanceToNext]
   )
-
 
   const handleChecklistToggle = useCallback(
     (index: number) => {
@@ -432,8 +436,14 @@ export function FlowchartWalker({
         const formatFeedback = () => {
           if (isTwoNumbers) {
             return {
-              expected: phase.type === 'checkpointFeedback' ? phase.expected as [number, number] : undefined,
-              userAnswer: phase.type === 'checkpointFeedback' ? phase.userAnswer as [number, number] : undefined,
+              expected:
+                phase.type === 'checkpointFeedback'
+                  ? (phase.expected as [number, number])
+                  : undefined,
+              userAnswer:
+                phase.type === 'checkpointFeedback'
+                  ? (phase.userAnswer as [number, number])
+                  : undefined,
             }
           }
           return {

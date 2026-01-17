@@ -40,7 +40,10 @@ describe('fraction-add-sub path enumeration', () => {
     for (const path of paths) {
       console.log(`  ${path.nodeIds.join('→')}`)
       console.log(`    decisions: ${path.decisions}, checkpoints: ${path.checkpoints}`)
-      console.log(`    constraints:`, path.constraints.map(c => `${c.expression}=${c.requiredOutcome}`))
+      console.log(
+        `    constraints:`,
+        path.constraints.map((c) => `${c.expression}=${c.requiredOutcome}`)
+      )
     }
 
     expect(paths.length).toBeGreaterThan(0)
@@ -51,12 +54,15 @@ describe('fraction-add-sub path enumeration', () => {
     const paths = enumerateAllPaths(flowchart)
 
     // Find path that goes through CONV1A (multiplier) and BORROW
-    const dividesBorrowPath = paths.find(p =>
-      p.nodeIds.includes('CONV1A') && p.nodeIds.includes('BORROW')
+    const dividesBorrowPath = paths.find(
+      (p) => p.nodeIds.includes('CONV1A') && p.nodeIds.includes('BORROW')
     )
 
     console.log('Divides + borrow path:', dividesBorrowPath?.nodeIds.join('→'))
-    console.log('Constraints:', dividesBorrowPath?.constraints.map(c => `${c.expression}=${c.requiredOutcome}`))
+    console.log(
+      'Constraints:',
+      dividesBorrowPath?.constraints.map((c) => `${c.expression}=${c.requiredOutcome}`)
+    )
 
     expect(dividesBorrowPath).toBeDefined()
   })
@@ -66,8 +72,8 @@ describe('fraction-add-sub path enumeration', () => {
     const paths = enumerateAllPaths(flowchart)
 
     // Find path that goes through: STEP2 (NO) -> ... -> BORROW
-    const lcdBorrowPath = paths.find(p =>
-      p.nodeIds.includes('STEP3') && p.nodeIds.includes('BORROW')
+    const lcdBorrowPath = paths.find(
+      (p) => p.nodeIds.includes('STEP3') && p.nodeIds.includes('BORROW')
     )
 
     console.log('LCD + borrow path:', lcdBorrowPath?.nodeIds.join('→'))
@@ -136,7 +142,7 @@ describe('example generation coverage', () => {
     const examples = generateDiverseExamples(flowchart, 50)
 
     // Log all unique path signatures
-    const pathSignatures = new Set(examples.map(e => e.pathSignature))
+    const pathSignatures = new Set(examples.map((e) => e.pathSignature))
     console.log('Generated path signatures:')
     for (const sig of pathSignatures) {
       console.log(`  ${sig}`)
@@ -144,8 +150,8 @@ describe('example generation coverage', () => {
 
     // Find LCD + borrow examples
     // The path should contain "LCD" and "borrow" based on pathLabels
-    const lcdBorrowExamples = examples.filter(e =>
-      e.pathDescriptor.includes('LCD') && e.pathDescriptor.includes('borrow')
+    const lcdBorrowExamples = examples.filter(
+      (e) => e.pathDescriptor.includes('LCD') && e.pathDescriptor.includes('borrow')
     )
 
     console.log(`\nLCD + borrow examples: ${lcdBorrowExamples.length}`)
@@ -166,8 +172,8 @@ describe('example generation coverage', () => {
     const paths = enumerateAllPaths(flowchart)
 
     // Find the LCD + borrow path
-    const lcdBorrowPath = paths.find(p =>
-      p.nodeIds.includes('STEP3') && p.nodeIds.includes('BORROW')
+    const lcdBorrowPath = paths.find(
+      (p) => p.nodeIds.includes('STEP3') && p.nodeIds.includes('BORROW')
     )
 
     if (!lcdBorrowPath) {
@@ -192,8 +198,12 @@ describe('example generation coverage', () => {
     for (let i = 0; i < 1000; i++) {
       const leftDenom = leftDenoms[Math.floor(Math.random() * leftDenoms.length)]
       const rightDenom = rightDenoms[Math.floor(Math.random() * rightDenoms.length)]
-      const leftNum = leftNums.filter(n => n < leftDenom)[Math.floor(Math.random() * leftNums.filter(n => n < leftDenom).length)]
-      const rightNum = rightNums.filter(n => n < rightDenom)[Math.floor(Math.random() * rightNums.filter(n => n < rightDenom).length)]
+      const leftNum = leftNums.filter((n) => n < leftDenom)[
+        Math.floor(Math.random() * leftNums.filter((n) => n < leftDenom).length)
+      ]
+      const rightNum = rightNums.filter((n) => n < rightDenom)[
+        Math.floor(Math.random() * rightNums.filter((n) => n < rightDenom).length)
+      ]
 
       if (!leftNum || !rightNum) continue
       testedCount++
@@ -218,8 +228,7 @@ describe('example generation coverage', () => {
       for (const [varName, varDef] of Object.entries(flowchart.definition.variables)) {
         try {
           context.computed[varName] = evaluate(varDef.init, context)
-        } catch {
-        }
+        } catch {}
       }
 
       // Check if this satisfies LCD + borrow path
@@ -240,7 +249,7 @@ describe('example generation coverage', () => {
     console.log(`\nRandom generation statistics (subtraction only):`)
     console.log(`  Tested: ${testedCount}`)
     console.log(`  Satisfied LCD + borrow + positiveResult: ${satisfiedCount}`)
-    console.log(`  Probability: ${(satisfiedCount / testedCount * 100).toFixed(1)}%`)
+    console.log(`  Probability: ${((satisfiedCount / testedCount) * 100).toFixed(1)}%`)
 
     // The probability should be reasonable for 100 attempts to succeed
     // If it's very low, that explains the missing examples
@@ -277,7 +286,7 @@ describe('hard tier grid debug', () => {
 
     // Filter to Hard tier (complexity >= 8 for fraction flowchart)
     // min = 5, max = 9, so normalized >= 0.66 means score >= 7.64, i.e., score >= 8
-    const hardExamples = examples.filter(ex => {
+    const hardExamples = examples.filter((ex) => {
       const score = ex.complexity.decisions + ex.complexity.checkpoints
       return score >= 8
     })
@@ -286,7 +295,9 @@ describe('hard tier grid debug', () => {
     for (const ex of hardExamples) {
       const score = ex.complexity.decisions + ex.complexity.checkpoints
       console.log(`  [${score}] ${ex.pathDescriptor}`)
-      console.log(`       values: leftDenom=${ex.values.leftDenom}, rightDenom=${ex.values.rightDenom}, op=${ex.values.op}`)
+      console.log(
+        `       values: leftDenom=${ex.values.leftDenom}, rightDenom=${ex.values.rightDenom}, op=${ex.values.op}`
+      )
     }
 
     // Group by LCD path key
@@ -340,7 +351,7 @@ describe('hard tier grid debug', () => {
     const examples = generateDiverseExamples(flowchart, 500)
 
     // Figure out the complexity range
-    const scores = examples.map(ex => ex.complexity.decisions + ex.complexity.checkpoints)
+    const scores = examples.map((ex) => ex.complexity.decisions + ex.complexity.checkpoints)
     const minScore = Math.min(...scores)
     const maxScore = Math.max(...scores)
     console.log(`\nComplexity range: ${minScore} - ${maxScore}`)
@@ -352,7 +363,7 @@ describe('hard tier grid debug', () => {
 
     console.log(`Medium tier range: ${mediumMin.toFixed(1)} - ${mediumMax.toFixed(1)}`)
 
-    const mediumExamples = examples.filter(ex => {
+    const mediumExamples = examples.filter((ex) => {
       const score = ex.complexity.decisions + ex.complexity.checkpoints
       return score >= mediumMin && score < mediumMax
     })
@@ -385,7 +396,8 @@ describe('hard tier grid debug', () => {
     const byPath = new Map<string, number[]>()
     for (const ex of examples) {
       const score = ex.complexity.decisions + ex.complexity.checkpoints
-      const pathKey = ex.pathDescriptor.match(/^Diff (LCD|Divides) − (borrow|no borrow)/)?.[0] || 'other'
+      const pathKey =
+        ex.pathDescriptor.match(/^Diff (LCD|Divides) − (borrow|no borrow)/)?.[0] || 'other'
       const scores = byPath.get(pathKey) || []
       scores.push(score)
       byPath.set(pathKey, scores)
@@ -394,12 +406,12 @@ describe('hard tier grid debug', () => {
     for (const [path, scores] of byPath) {
       const min = Math.min(...scores)
       const max = Math.max(...scores)
-      const hardCount = scores.filter(s => s >= 8).length
+      const hardCount = scores.filter((s) => s >= 8).length
       console.log(`  ${path}: ${scores.length} total, complexity ${min}-${max}, ${hardCount} hard`)
     }
 
     // Filter to Hard tier
-    const hardExamples = examples.filter(ex => {
+    const hardExamples = examples.filter((ex) => {
       const score = ex.complexity.decisions + ex.complexity.checkpoints
       return score >= 8
     })
@@ -443,7 +455,7 @@ describe('hard tier grid debug', () => {
       // 1D grid
       console.log('1D Grid:')
       for (let r = 0; r < gridDimensions.rows.length; r++) {
-        const exs = hardExamples.filter(ex => {
+        const exs = hardExamples.filter((ex) => {
           const cell = gridDimensions.cellMap.get(ex.pathDescriptor)
           return cell && cell[0] === r
         })
@@ -453,11 +465,11 @@ describe('hard tier grid debug', () => {
       // 2D grid
       console.log(`2D Grid (${gridDimensions.rows.length}x${gridDimensions.cols.length}):`)
       console.log('       | ' + gridDimensions.cols.join(' | '))
-      console.log('-------|-' + gridDimensions.cols.map(c => '-'.repeat(c.length)).join('-|-'))
+      console.log('-------|-' + gridDimensions.cols.map((c) => '-'.repeat(c.length)).join('-|-'))
       for (let r = 0; r < gridDimensions.rows.length; r++) {
         const cells: string[] = []
         for (let c = 0; c < gridDimensions.cols.length; c++) {
-          const exs = hardExamples.filter(ex => {
+          const exs = hardExamples.filter((ex) => {
             const cell = gridDimensions.cellMap.get(ex.pathDescriptor)
             return cell && cell[0] === r && cell[1] === c
           })
@@ -478,29 +490,65 @@ describe('hard tier grid debug', () => {
     const mockExamples: GeneratedExample[] = [
       // Same denom + Subtract (cell [0,0] if rows=[Same,Diff], cols=[Sub,Add])
       {
-        values: { leftWhole: 5, leftNum: 3, leftDenom: 6, op: '−', rightWhole: 0, rightNum: 1, rightDenom: 6 },
-        pathSignature: 'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→BORROWCHECK→GOSTEP4B→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        values: {
+          leftWhole: 5,
+          leftNum: 3,
+          leftDenom: 6,
+          op: '−',
+          rightWhole: 0,
+          rightNum: 1,
+          rightDenom: 6,
+        },
+        pathSignature:
+          'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→BORROWCHECK→GOSTEP4B→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
         pathDescriptor: 'Same − no borrow no simp proper',
         complexity: { decisions: 4, checkpoints: 1, pathLength: 14, path: [] },
       },
       // Another Same denom + Subtract
       {
-        values: { leftWhole: 3, leftNum: 2, leftDenom: 4, op: '−', rightWhole: 1, rightNum: 1, rightDenom: 4 },
-        pathSignature: 'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→BORROWCHECK→GOSTEP4B→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        values: {
+          leftWhole: 3,
+          leftNum: 2,
+          leftDenom: 4,
+          op: '−',
+          rightWhole: 1,
+          rightNum: 1,
+          rightDenom: 4,
+        },
+        pathSignature:
+          'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→BORROWCHECK→GOSTEP4B→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
         pathDescriptor: 'Same − no borrow no simp proper',
         complexity: { decisions: 4, checkpoints: 1, pathLength: 14, path: [] },
       },
       // Different denom + Add (cell [1,1] if rows=[Same,Diff], cols=[Sub,Add])
       {
-        values: { leftWhole: 1, leftNum: 2, leftDenom: 4, op: '+', rightWhole: 2, rightNum: 4, rightDenom: 6 },
-        pathSignature: 'STEP0→STEP1→STEP2→STEP3→STEP3B→READY3→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        values: {
+          leftWhole: 1,
+          leftNum: 2,
+          leftDenom: 4,
+          op: '+',
+          rightWhole: 2,
+          rightNum: 4,
+          rightDenom: 6,
+        },
+        pathSignature:
+          'STEP0→STEP1→STEP2→STEP3→STEP3B→READY3→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
         pathDescriptor: 'Diff LCD + no simp proper',
         complexity: { decisions: 4, checkpoints: 2, pathLength: 16, path: [] },
       },
       // Another Different denom + Add
       {
-        values: { leftWhole: 3, leftNum: 4, leftDenom: 8, op: '+', rightWhole: 2, rightNum: 3, rightDenom: 5 },
-        pathSignature: 'STEP0→STEP1→STEP2→STEP3→STEP3B→READY3→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        values: {
+          leftWhole: 3,
+          leftNum: 4,
+          leftDenom: 8,
+          op: '+',
+          rightWhole: 2,
+          rightNum: 3,
+          rightDenom: 5,
+        },
+        pathSignature:
+          'STEP0→STEP1→STEP2→STEP3→STEP3B→READY3→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
         pathDescriptor: 'Diff LCD + no simp proper',
         complexity: { decisions: 4, checkpoints: 2, pathLength: 16, path: [] },
       },
@@ -536,22 +584,49 @@ describe('hard tier grid debug', () => {
     const mockExamples: GeneratedExample[] = [
       // Same denom + Subtract
       {
-        values: { leftWhole: 5, leftNum: 3, leftDenom: 6, op: '−', rightWhole: 0, rightNum: 1, rightDenom: 6 },
-        pathSignature: 'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→BORROWCHECK→GOSTEP4B→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        values: {
+          leftWhole: 5,
+          leftNum: 3,
+          leftDenom: 6,
+          op: '−',
+          rightWhole: 0,
+          rightNum: 1,
+          rightDenom: 6,
+        },
+        pathSignature:
+          'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→BORROWCHECK→GOSTEP4B→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
         pathDescriptor: 'Same − no borrow no simp proper',
         complexity: { decisions: 4, checkpoints: 1, pathLength: 14, path: [] },
       },
       // Same denom + Add (same row as above, different column)
       {
-        values: { leftWhole: 2, leftNum: 1, leftDenom: 4, op: '+', rightWhole: 1, rightNum: 2, rightDenom: 4 },
-        pathSignature: 'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        values: {
+          leftWhole: 2,
+          leftNum: 1,
+          leftDenom: 4,
+          op: '+',
+          rightWhole: 1,
+          rightNum: 2,
+          rightDenom: 4,
+        },
+        pathSignature:
+          'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
         pathDescriptor: 'Same + no simp proper',
         complexity: { decisions: 3, checkpoints: 1, pathLength: 13, path: [] },
       },
       // Different denom + Add
       {
-        values: { leftWhole: 1, leftNum: 2, leftDenom: 4, op: '+', rightWhole: 2, rightNum: 4, rightDenom: 6 },
-        pathSignature: 'STEP0→STEP1→STEP2→STEP3→STEP3B→READY3→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        values: {
+          leftWhole: 1,
+          leftNum: 2,
+          leftDenom: 4,
+          op: '+',
+          rightWhole: 2,
+          rightNum: 4,
+          rightDenom: 6,
+        },
+        pathSignature:
+          'STEP0→STEP1→STEP2→STEP3→STEP3B→READY3→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
         pathDescriptor: 'Diff LCD + no simp proper',
         complexity: { decisions: 4, checkpoints: 2, pathLength: 16, path: [] },
       },
@@ -600,7 +675,7 @@ describe('parallel generation correctness', () => {
     expect(examples.length).toBeGreaterThan(0)
 
     // Log path descriptors for debugging
-    const descriptors = new Set(examples.map(e => e.pathDescriptor))
+    const descriptors = new Set(examples.map((e) => e.pathDescriptor))
     console.log(`Unique path descriptors: ${descriptors.size}`)
     for (const desc of descriptors) {
       console.log(`  ${desc}`)
@@ -614,28 +689,39 @@ describe('parallel generation correctness', () => {
     // Simulate parallel generation by splitting paths
     const halfIdx = Math.floor(analysis.paths.length / 2)
     const worker1Paths = Array.from({ length: halfIdx }, (_, i) => i)
-    const worker2Paths = Array.from({ length: analysis.paths.length - halfIdx }, (_, i) => halfIdx + i)
+    const worker2Paths = Array.from(
+      { length: analysis.paths.length - halfIdx },
+      (_, i) => halfIdx + i
+    )
 
     // Generate examples for each "worker"
-    const examples1 = generateExamplesForPaths(flowchart, worker1Paths, { positiveAnswersOnly: true })
-    const examples2 = generateExamplesForPaths(flowchart, worker2Paths, { positiveAnswersOnly: true })
+    const examples1 = generateExamplesForPaths(flowchart, worker1Paths, {
+      positiveAnswersOnly: true,
+    })
+    const examples2 = generateExamplesForPaths(flowchart, worker2Paths, {
+      positiveAnswersOnly: true,
+    })
 
     console.log(`\nWorker 1 (paths 0-${halfIdx - 1}): ${examples1.length} examples`)
-    console.log(`Worker 2 (paths ${halfIdx}-${analysis.paths.length - 1}): ${examples2.length} examples`)
+    console.log(
+      `Worker 2 (paths ${halfIdx}-${analysis.paths.length - 1}): ${examples2.length} examples`
+    )
 
     // Merge results
     const allExamples = [...examples1, ...examples2]
     const count = 20
     const finalExamples = mergeAndFinalizeExamples(allExamples, count)
 
-    console.log(`\nMerged: ${allExamples.length} total -> ${finalExamples.length} final (requested ${count})`)
+    console.log(
+      `\nMerged: ${allExamples.length} total -> ${finalExamples.length} final (requested ${count})`
+    )
 
     // Should return the requested count or fewer if not enough unique paths
     expect(finalExamples.length).toBeLessThanOrEqual(count)
     expect(finalExamples.length).toBeGreaterThan(0)
 
     // Final examples should be diverse (different path descriptors)
-    const finalDescriptors = new Set(finalExamples.map(e => e.pathDescriptor))
+    const finalDescriptors = new Set(finalExamples.map((e) => e.pathDescriptor))
     console.log(`Unique path descriptors in final: ${finalDescriptors.size}`)
 
     // Should have reasonable diversity
@@ -648,7 +734,7 @@ describe('parallel generation correctness', () => {
 
     // Run sync generation
     const syncExamples = generateDiverseExamples(flowchart, 50, { positiveAnswersOnly: true })
-    const syncDescriptors = new Set(syncExamples.map(e => e.pathDescriptor))
+    const syncDescriptors = new Set(syncExamples.map((e) => e.pathDescriptor))
 
     // Simulate parallel generation with 4 workers
     const numWorkers = 4
@@ -661,21 +747,23 @@ describe('parallel generation correctness', () => {
       if (startIdx >= analysis.paths.length) break
 
       const pathIndices = Array.from({ length: endIdx - startIdx }, (_, i) => startIdx + i)
-      const examples = generateExamplesForPaths(flowchart, pathIndices, { positiveAnswersOnly: true })
+      const examples = generateExamplesForPaths(flowchart, pathIndices, {
+        positiveAnswersOnly: true,
+      })
       workerResults.push(examples)
     }
 
     const allParallel = workerResults.flat()
     const parallelExamples = mergeAndFinalizeExamples(allParallel, 50)
-    const parallelDescriptors = new Set(parallelExamples.map(e => e.pathDescriptor))
+    const parallelDescriptors = new Set(parallelExamples.map((e) => e.pathDescriptor))
 
     console.log(`\n=== PATH COVERAGE COMPARISON ===`)
     console.log(`Sync paths covered: ${syncDescriptors.size}`)
     console.log(`Parallel paths covered: ${parallelDescriptors.size}`)
 
     // Check for paths in sync but not parallel
-    const missingInParallel = [...syncDescriptors].filter(d => !parallelDescriptors.has(d))
-    const extraInParallel = [...parallelDescriptors].filter(d => !syncDescriptors.has(d))
+    const missingInParallel = [...syncDescriptors].filter((d) => !parallelDescriptors.has(d))
+    const extraInParallel = [...parallelDescriptors].filter((d) => !syncDescriptors.has(d))
 
     if (missingInParallel.length > 0) {
       console.log(`\nPaths in SYNC but not PARALLEL:`)
@@ -716,15 +804,16 @@ describe('parallel generation correctness', () => {
     for (const ex of examples) {
       try {
         // Verify values are valid fractions
-        const { leftNum, leftDenom, rightNum, rightDenom, leftWhole, rightWhole, op } = ex.values as {
-          leftNum: number
-          leftDenom: number
-          rightNum: number
-          rightDenom: number
-          leftWhole: number
-          rightWhole: number
-          op: string
-        }
+        const { leftNum, leftDenom, rightNum, rightDenom, leftWhole, rightWhole, op } =
+          ex.values as {
+            leftNum: number
+            leftDenom: number
+            rightNum: number
+            rightDenom: number
+            leftWhole: number
+            rightWhole: number
+            op: string
+          }
 
         // Denominators should be positive
         if (leftDenom <= 0 || rightDenom <= 0) {

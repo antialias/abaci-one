@@ -154,7 +154,9 @@ export function TeacherConfigPanel({
                 })}
               >
                 <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
-                  <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
+                  <div
+                    className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}
+                  >
                     <label
                       htmlFor="example-count"
                       className={css({
@@ -185,7 +187,9 @@ export function TeacherConfigPanel({
                     onChange={(e) => onExampleCountChange(Number(e.target.value))}
                     className={css({ width: '100%', cursor: 'pointer' })}
                   />
-                  <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
+                  <div
+                    className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}
+                  >
                     <span className={css({ fontSize: 'xs', color: 'gray.500' })}>
                       Higher = more reliable grid coverage
                     </span>
