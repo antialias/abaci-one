@@ -198,7 +198,8 @@ export function TeacherConfigPanel({
                       type="button"
                       onClick={onRegenerate}
                       className={css({
-                        padding: '1 3',
+                        paddingX: '3',
+                        paddingY: '1',
                         fontSize: 'xs',
                         fontWeight: 'medium',
                         backgroundColor: { base: 'blue.500', _dark: 'blue.600' },
