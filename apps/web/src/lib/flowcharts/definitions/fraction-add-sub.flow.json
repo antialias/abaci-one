@@ -341,10 +341,10 @@
     },
     "SIMPLIFY_Q": {
       "type": "decision",
-      "correctAnswer": "!needsSimplify",
+      "correctAnswer": "needsSimplify",
       "options": [
-        { "label": "NO ✓ (can't simplify)", "value": "no", "next": "IMPROPER_Q", "pathLabel": "no simp", "gridLabel": "Already simple" },
-        { "label": "YES (can simplify)", "value": "yes", "next": "SIMPLIFY_HOW", "pathLabel": "simplify", "gridLabel": "Reduce it" }
+        { "label": "YES (can simplify)", "value": "yes", "next": "SIMPLIFY_HOW", "pathLabel": "simplify", "gridLabel": "Reduce it" },
+        { "label": "NO ✓ (can't simplify)", "value": "no", "next": "IMPROPER_Q", "pathLabel": "no simp", "gridLabel": "Already simple" }
       ]
     },
     "SIMPLIFY_HOW": {
@@ -353,10 +353,10 @@
     },
     "IMPROPER_Q": {
       "type": "decision",
-      "correctAnswer": "!isImproper",
+      "correctAnswer": "isImproper",
       "options": [
-        { "label": "NO ✓ (proper fraction)", "value": "no", "next": "CHECK3", "pathLabel": "proper", "gridLabel": "Proper result" },
-        { "label": "YES (improper)", "value": "yes", "next": "MIXED_HOW", "pathLabel": "→mixed", "gridLabel": "Make mixed" }
+        { "label": "YES (improper)", "value": "yes", "next": "MIXED_HOW", "pathLabel": "→mixed", "gridLabel": "Make mixed" },
+        { "label": "NO ✓ (proper fraction)", "value": "no", "next": "CHECK3", "pathLabel": "proper", "gridLabel": "Proper result" }
       ]
     },
     "MIXED_HOW": {
