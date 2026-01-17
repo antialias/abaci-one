@@ -687,160 +687,197 @@ export function FlowchartWalker({
       {/* Phase rail with flowchart navigation */}
       <FlowchartPhaseRail flowchart={flowchart} state={state} />
 
-      {/* Working problem ledger */}
-      {state.workingProblemHistory.length > 0 && (
-        <div
-          data-testid="working-problem-ledger"
-          data-step-count={state.workingProblemHistory.length}
-          className={css({
-            padding: '4',
-            backgroundColor: { base: 'blue.50', _dark: 'blue.900' },
-            borderRadius: 'xl',
-            border: '2px solid',
-            borderColor: { base: 'blue.200', _dark: 'blue.700' },
-          })}
-        >
-          <div className={vstack({ gap: '3', alignItems: 'stretch' })}>
-            <span
-              className={css({
-                fontSize: 'xs',
-                fontWeight: 'medium',
-                color: { base: 'blue.600', _dark: 'blue.300' },
-                textTransform: 'uppercase',
-                letterSpacing: 'wide',
-                textAlign: 'center',
-              })}
-            >
-              Your Work
-            </span>
+      {/* Main content area - two columns on larger screens */}
+      <div
+        data-testid="main-content-area"
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4',
+          // On lg screens (iPad landscape and up): two columns
+          lg: {
+            flexDirection: 'row-reverse',
+            alignItems: 'flex-start',
+          },
+        })}
+      >
+        {/* Working problem ledger - right side on lg */}
+        {state.workingProblemHistory.length > 0 && (
+          <div
+            data-testid="working-problem-ledger"
+            data-step-count={state.workingProblemHistory.length}
+            className={css({
+              padding: '4',
+              backgroundColor: { base: 'blue.50', _dark: 'blue.900' },
+              borderRadius: 'xl',
+              border: '2px solid',
+              borderColor: { base: 'blue.200', _dark: 'blue.700' },
+              // On lg screens: fixed width on right side
+              lg: {
+                width: '320px',
+                flexShrink: 0,
+                position: 'sticky',
+                top: '4',
+              },
+            })}
+          >
+            <div className={vstack({ gap: '3', alignItems: 'stretch' })}>
+              <span
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: 'medium',
+                  color: { base: 'blue.600', _dark: 'blue.300' },
+                  textTransform: 'uppercase',
+                  letterSpacing: 'wide',
+                  textAlign: 'center',
+                })}
+              >
+                Your Work
+              </span>
 
-            {/* Ledger entries */}
-            <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
-              {state.workingProblemHistory.map((step, idx) => {
-                const isLatest = idx === state.workingProblemHistory.length - 1
-                const nodeTitle = flowchart.nodes[step.nodeId]?.content?.title
+              {/* Ledger entries */}
+              <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
+                {state.workingProblemHistory.map((step, idx) => {
+                  const isLatest = idx === state.workingProblemHistory.length - 1
+                  const nodeTitle = flowchart.nodes[step.nodeId]?.content?.title
 
-                return (
-                  <div
-                    key={idx}
-                    data-testid={`ledger-step-${idx}`}
-                    data-step-index={idx}
-                    data-is-latest={isLatest}
-                    data-is-clickable={!isLatest}
-                    data-node-id={step.nodeId}
-                    onClick={!isLatest ? () => navigateToStep(idx) : undefined}
-                    role={!isLatest ? 'button' : undefined}
-                    tabIndex={!isLatest ? 0 : undefined}
-                    onKeyDown={
-                      !isLatest
-                        ? (e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              navigateToStep(idx)
-                            }
-                          }
-                        : undefined
-                    }
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '3',
-                      padding: '2 3',
-                      borderRadius: 'lg',
-                      backgroundColor: isLatest
-                        ? { base: 'blue.100', _dark: 'blue.800' }
-                        : { base: 'transparent', _dark: 'transparent' },
-                      border: isLatest ? '2px solid' : '1px solid',
-                      borderColor: isLatest
-                        ? { base: 'blue.400', _dark: 'blue.500' }
-                        : { base: 'blue.200', _dark: 'blue.700' },
-                      opacity: isLatest ? 1 : 0.7,
-                      cursor: isLatest ? 'default' : 'pointer',
-                      transition: 'all 0.15s ease-out',
-                      _hover: isLatest
-                        ? {}
-                        : {
-                            opacity: 1,
-                            backgroundColor: { base: 'blue.50', _dark: 'blue.900/50' },
-                            borderColor: { base: 'blue.300', _dark: 'blue.600' },
-                          },
-                    })}
-                  >
-                    {/* Step number */}
-                    <span
-                      className={css({
-                        fontSize: 'xs',
-                        fontWeight: 'bold',
-                        color: { base: 'blue.500', _dark: 'blue.400' },
-                        minWidth: '1.5rem',
-                        textAlign: 'center',
-                      })}
-                    >
-                      {idx + 1}
-                    </span>
-
-                    {/* Math expression */}
+                  return (
                     <div
+                      key={idx}
+                      data-testid={`ledger-step-${idx}`}
+                      data-step-index={idx}
+                      data-is-latest={isLatest}
+                      data-is-clickable={!isLatest}
+                      data-node-id={step.nodeId}
+                      onClick={!isLatest ? () => navigateToStep(idx) : undefined}
+                      role={!isLatest ? 'button' : undefined}
+                      tabIndex={!isLatest ? 0 : undefined}
+                      onKeyDown={
+                        !isLatest
+                          ? (e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                navigateToStep(idx)
+                              }
+                            }
+                          : undefined
+                      }
                       className={css({
-                        flex: 1,
-                        color: { base: 'blue.900', _dark: 'blue.100' },
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3',
+                        padding: '2 3',
+                        borderRadius: 'lg',
+                        backgroundColor: isLatest
+                          ? { base: 'blue.100', _dark: 'blue.800' }
+                          : { base: 'transparent', _dark: 'transparent' },
+                        border: isLatest ? '2px solid' : '1px solid',
+                        borderColor: isLatest
+                          ? { base: 'blue.400', _dark: 'blue.500' }
+                          : { base: 'blue.200', _dark: 'blue.700' },
+                        opacity: isLatest ? 1 : 0.7,
+                        cursor: isLatest ? 'default' : 'pointer',
+                        transition: 'all 0.15s ease-out',
+                        _hover: isLatest
+                          ? {}
+                          : {
+                              opacity: 1,
+                              backgroundColor: { base: 'blue.50', _dark: 'blue.900/50' },
+                              borderColor: { base: 'blue.300', _dark: 'blue.600' },
+                            },
                       })}
                     >
-                      <MathDisplay expression={step.value} size={isLatest ? 'lg' : 'md'} />
-                    </div>
+                      {/* Step number */}
+                      <span
+                        className={css({
+                          fontSize: 'xs',
+                          fontWeight: 'bold',
+                          color: { base: 'blue.500', _dark: 'blue.400' },
+                          minWidth: '1.5rem',
+                          textAlign: 'center',
+                        })}
+                      >
+                        {idx + 1}
+                      </span>
 
-                    {/* Step label / what happened */}
-                    <span
-                      className={css({
-                        fontSize: 'xs',
-                        color: { base: 'blue.600', _dark: 'blue.400' },
-                        textAlign: 'right',
-                        maxWidth: '120px',
-                      })}
-                      title={nodeTitle ? `From: ${nodeTitle}` : undefined}
-                    >
-                      {step.label}
-                    </span>
-                  </div>
-                )
-              })}
+                      {/* Math expression */}
+                      <div
+                        className={css({
+                          flex: 1,
+                          color: { base: 'blue.900', _dark: 'blue.100' },
+                        })}
+                      >
+                        <MathDisplay expression={step.value} size={isLatest ? 'lg' : 'md'} />
+                      </div>
+
+                      {/* Step label / what happened */}
+                      <span
+                        className={css({
+                          fontSize: 'xs',
+                          color: { base: 'blue.600', _dark: 'blue.400' },
+                          textAlign: 'right',
+                          maxWidth: '120px',
+                        })}
+                        title={nodeTitle ? `From: ${nodeTitle}` : undefined}
+                      >
+                        {step.label}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Node content */}
-      <div
-        data-testid="node-content-container"
-        data-node-type={currentNode?.definition.type}
-        className={css({
-          padding: '6',
-          backgroundColor: { base: 'white', _dark: 'gray.800' },
-          borderRadius: 'xl',
-          boxShadow: 'lg',
-          border: '1px solid',
-          borderColor: { base: 'gray.200', _dark: 'gray.700' },
-        })}
-      >
-        {currentNode && (
-          <FlowchartNodeContent
-            content={currentNode.content}
-            checkedItems={hasInteractiveChecklist ? checkedItems : undefined}
-            onChecklistToggle={hasInteractiveChecklist ? handleChecklistToggle : undefined}
-          />
         )}
-      </div>
 
-      {/* Interaction area */}
-      <div
-        data-testid="interaction-area"
-        className={css({
-          padding: '4',
-          display: 'flex',
-          justifyContent: 'center',
-        })}
-      >
-        {renderNodeInteraction()}
+        {/* Left column: Node content + Interaction area */}
+        <div
+          data-testid="node-interaction-column"
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4',
+            // On lg screens: take remaining space
+            lg: {
+              flex: 1,
+              minWidth: 0,
+            },
+          })}
+        >
+          {/* Node content */}
+          <div
+            data-testid="node-content-container"
+            data-node-type={currentNode?.definition.type}
+            className={css({
+              padding: '6',
+              backgroundColor: { base: 'white', _dark: 'gray.800' },
+              borderRadius: 'xl',
+              boxShadow: 'lg',
+              border: '1px solid',
+              borderColor: { base: 'gray.200', _dark: 'gray.700' },
+            })}
+          >
+            {currentNode && (
+              <FlowchartNodeContent
+                content={currentNode.content}
+                checkedItems={hasInteractiveChecklist ? checkedItems : undefined}
+                onChecklistToggle={hasInteractiveChecklist ? handleChecklistToggle : undefined}
+              />
+            )}
+          </div>
+
+          {/* Interaction area */}
+          <div
+            data-testid="interaction-area"
+            className={css({
+              padding: '4',
+              display: 'flex',
+              justifyContent: 'center',
+            })}
+          >
+            {renderNodeInteraction()}
+          </div>
+        </div>
       </div>
     </div>
   )
