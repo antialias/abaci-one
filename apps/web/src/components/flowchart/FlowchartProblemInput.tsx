@@ -596,18 +596,20 @@ export function FlowchartProblemInput({
           data-element="dice-corner"
           className={css({
             position: 'absolute',
-            top: asModal ? '8px' : '-4px',
+            top: '-4px',
             right: asModal ? undefined : '-4px',
-            left: asModal ? '8px' : undefined,
+            left: asModal ? '-4px' : undefined,
             width: '44px',
             height: '44px',
-            backgroundColor: asModal ? 'transparent' : { base: 'gray.100', _dark: 'gray.700' },
+            backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
             borderBottomLeftRadius: asModal ? 'none' : 'xl',
+            borderBottomRightRadius: asModal ? 'xl' : 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            paddingTop: asModal ? '0' : '4px',
+            paddingTop: '4px',
             paddingRight: asModal ? '0' : '4px',
+            paddingLeft: asModal ? '4px' : '0',
             zIndex: 10,
           })}
         >
