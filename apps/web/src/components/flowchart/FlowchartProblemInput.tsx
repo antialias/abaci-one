@@ -646,10 +646,10 @@ export function FlowchartProblemInput({
                 data-element="difficulty-filter"
                 className={css({
                   display: 'inline-flex',
-                  backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
-                  borderRadius: 'lg',
+                  backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                  borderRadius: 'xl',
                   padding: '1',
-                  gap: '0',
+                  gap: '1',
                 })}
               >
                 {tierCounts.easy > 0 && (
@@ -658,25 +658,25 @@ export function FlowchartProblemInput({
                     data-selected={selectedTier === 'easy'}
                     onClick={() => setSelectedTier(selectedTier === 'easy' ? 'all' : 'easy')}
                     className={css({
-                      padding: '1.5 4',
+                      padding: '2 4',
                       fontSize: 'sm',
-                      fontWeight: 'medium',
-                      borderRadius: 'md',
+                      fontWeight: 'semibold',
+                      borderRadius: 'lg',
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       backgroundColor: selectedTier === 'easy'
-                        ? { base: 'white', _dark: 'gray.700' }
+                        ? { base: 'white', _dark: 'gray.600' }
                         : 'transparent',
                       color: selectedTier === 'easy'
-                        ? { base: 'emerald.600', _dark: 'emerald.400' }
-                        : { base: 'gray.500', _dark: 'gray.400' },
+                        ? { base: 'emerald.600', _dark: 'emerald.300' }
+                        : { base: 'gray.600', _dark: 'gray.300' },
                       boxShadow: selectedTier === 'easy'
-                        ? { base: 'sm', _dark: 'none' }
+                        ? { base: 'sm', _dark: 'md' }
                         : 'none',
                       _hover: selectedTier !== 'easy' ? {
-                        color: { base: 'emerald.600', _dark: 'emerald.400' },
-                        backgroundColor: { base: 'gray.50', _dark: 'gray.700/50' },
+                        color: { base: 'emerald.600', _dark: 'emerald.300' },
+                        backgroundColor: { base: 'white/50', _dark: 'gray.600/50' },
                       } : {},
                     })}
                   >
@@ -689,25 +689,25 @@ export function FlowchartProblemInput({
                     data-selected={selectedTier === 'medium'}
                     onClick={() => setSelectedTier(selectedTier === 'medium' ? 'all' : 'medium')}
                     className={css({
-                      padding: '1.5 4',
+                      padding: '2 4',
                       fontSize: 'sm',
-                      fontWeight: 'medium',
-                      borderRadius: 'md',
+                      fontWeight: 'semibold',
+                      borderRadius: 'lg',
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       backgroundColor: selectedTier === 'medium'
-                        ? { base: 'white', _dark: 'gray.700' }
+                        ? { base: 'white', _dark: 'gray.600' }
                         : 'transparent',
                       color: selectedTier === 'medium'
-                        ? { base: 'amber.600', _dark: 'amber.400' }
-                        : { base: 'gray.500', _dark: 'gray.400' },
+                        ? { base: 'amber.600', _dark: 'amber.300' }
+                        : { base: 'gray.600', _dark: 'gray.300' },
                       boxShadow: selectedTier === 'medium'
-                        ? { base: 'sm', _dark: 'none' }
+                        ? { base: 'sm', _dark: 'md' }
                         : 'none',
                       _hover: selectedTier !== 'medium' ? {
-                        color: { base: 'amber.600', _dark: 'amber.400' },
-                        backgroundColor: { base: 'gray.50', _dark: 'gray.700/50' },
+                        color: { base: 'amber.600', _dark: 'amber.300' },
+                        backgroundColor: { base: 'white/50', _dark: 'gray.600/50' },
                       } : {},
                     })}
                   >
@@ -720,25 +720,25 @@ export function FlowchartProblemInput({
                     data-selected={selectedTier === 'hard'}
                     onClick={() => setSelectedTier(selectedTier === 'hard' ? 'all' : 'hard')}
                     className={css({
-                      padding: '1.5 4',
+                      padding: '2 4',
                       fontSize: 'sm',
-                      fontWeight: 'medium',
-                      borderRadius: 'md',
+                      fontWeight: 'semibold',
+                      borderRadius: 'lg',
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       backgroundColor: selectedTier === 'hard'
-                        ? { base: 'white', _dark: 'gray.700' }
+                        ? { base: 'white', _dark: 'gray.600' }
                         : 'transparent',
                       color: selectedTier === 'hard'
-                        ? { base: 'rose.600', _dark: 'rose.400' }
-                        : { base: 'gray.500', _dark: 'gray.400' },
+                        ? { base: 'rose.600', _dark: 'rose.300' }
+                        : { base: 'gray.600', _dark: 'gray.300' },
                       boxShadow: selectedTier === 'hard'
-                        ? { base: 'sm', _dark: 'none' }
+                        ? { base: 'sm', _dark: 'md' }
                         : 'none',
                       _hover: selectedTier !== 'hard' ? {
-                        color: { base: 'rose.600', _dark: 'rose.400' },
-                        backgroundColor: { base: 'gray.50', _dark: 'gray.700/50' },
+                        color: { base: 'rose.600', _dark: 'rose.300' },
+                        backgroundColor: { base: 'white/50', _dark: 'gray.600/50' },
                       } : {},
                     })}
                   >
