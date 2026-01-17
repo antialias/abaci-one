@@ -605,7 +605,7 @@ export function FlowchartProblemInput({
         />
       </div>
 
-      {/* Title + Difficulty Tabs - combined header */}
+      {/* Title + Difficulty Filter */}
       {flowchart && (() => {
         const availableTiers = [
           tierCounts.easy > 0 ? 'easy' : null,
@@ -621,137 +621,132 @@ export function FlowchartProblemInput({
 
         const showTabs = generatedExamples.length > 0 && availableTiers.length > 1 && !allLabelsFromGrid
 
-        // Pill chip styling helper
-        const getChipStyle = (tier: 'easy' | 'medium' | 'hard', isSelected: boolean) => {
-          const colors = {
-            easy: {
-              bg: { base: 'green.500', _dark: 'green.600' },
-              bgHover: { base: 'green.600', _dark: 'green.500' },
-              text: 'white',
-              inactiveBg: { base: 'green.50', _dark: 'green.900/30' },
-              inactiveText: { base: 'green.700', _dark: 'green.400' },
-            },
-            medium: {
-              bg: { base: 'orange.500', _dark: 'orange.600' },
-              bgHover: { base: 'orange.600', _dark: 'orange.500' },
-              text: 'white',
-              inactiveBg: { base: 'orange.50', _dark: 'orange.900/30' },
-              inactiveText: { base: 'orange.700', _dark: 'orange.400' },
-            },
-            hard: {
-              bg: { base: 'red.500', _dark: 'red.600' },
-              bgHover: { base: 'red.600', _dark: 'red.500' },
-              text: 'white',
-              inactiveBg: { base: 'red.50', _dark: 'red.900/30' },
-              inactiveText: { base: 'red.700', _dark: 'red.400' },
-            },
-          }
-          const c = colors[tier]
-          return css({
-            padding: '1 3',
-            fontSize: 'xs',
-            fontWeight: 'medium',
-            borderRadius: 'full',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-            backgroundColor: isSelected ? c.bg : c.inactiveBg,
-            color: isSelected ? c.text : c.inactiveText,
-            _hover: {
-              backgroundColor: isSelected ? c.bgHover : c.bg,
-              color: 'white',
-            },
-          })
-        }
-
         return (
           <div
             data-testid="tier-selection"
-            className={vstack({ gap: '0', alignItems: 'stretch' })}
+            className={vstack({ gap: '3', alignItems: 'center' })}
           >
-            {/* Title + filter chips */}
-            <div
+            {/* Title */}
+            <h2
+              data-element="title"
               className={css({
-                padding: '3 4',
-                borderRadius: 'lg',
-                backgroundColor: { base: 'gray.50', _dark: 'gray.700/50' },
-                border: '1px solid',
-                borderColor: { base: 'gray.200', _dark: 'gray.600' },
+                fontSize: 'xl',
+                fontWeight: 'bold',
+                color: { base: 'gray.800', _dark: 'gray.100' },
+                textAlign: 'center',
+                letterSpacing: '-0.01em',
               })}
             >
-              {/* Title - clickable to show all when filters active */}
-              <button
-                data-element="title"
-                data-tier="all"
-                data-selected={selectedTier === 'all'}
-                onClick={() => setSelectedTier('all')}
-                disabled={!showTabs}
+              {flowchart.definition.title}
+            </h2>
+
+            {/* Segmented control for difficulty filter */}
+            {showTabs && (
+              <div
+                data-element="difficulty-filter"
                 className={css({
-                  width: '100%',
-                  fontSize: 'lg',
-                  fontWeight: 'bold',
-                  textAlign: 'center',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: { base: 'gray.800', _dark: 'gray.200' },
-                  cursor: showTabs ? 'pointer' : 'default',
-                  transition: 'all 0.15s',
-                  marginBottom: showTabs ? '2' : '0',
-                  _hover: showTabs ? {
-                    color: { base: 'gray.600', _dark: 'gray.400' },
-                  } : {},
-                  _disabled: {
-                    cursor: 'default',
-                  },
+                  display: 'inline-flex',
+                  backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
+                  borderRadius: 'lg',
+                  padding: '1',
+                  gap: '0',
                 })}
               >
-                {flowchart.definition.title}
-              </button>
-
-              {/* Filter chips - only show if multiple tiers available */}
-              {showTabs && (
-                <div
-                  data-element="difficulty-chips"
-                  className={css({
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: '2',
-                    flexWrap: 'wrap',
-                  })}
-                >
-                  {tierCounts.easy > 0 && (
-                    <button
-                      data-tier="easy"
-                      data-selected={selectedTier === 'easy'}
-                      onClick={() => setSelectedTier(selectedTier === 'easy' ? 'all' : 'easy')}
-                      className={getChipStyle('easy', selectedTier === 'easy')}
-                    >
-                      {tierLabels.easy}
-                    </button>
-                  )}
-                  {tierCounts.medium > 0 && (
-                    <button
-                      data-tier="medium"
-                      data-selected={selectedTier === 'medium'}
-                      onClick={() => setSelectedTier(selectedTier === 'medium' ? 'all' : 'medium')}
-                      className={getChipStyle('medium', selectedTier === 'medium')}
-                    >
-                      {tierLabels.medium}
-                    </button>
-                  )}
-                  {tierCounts.hard > 0 && (
-                    <button
-                      data-tier="hard"
-                      data-selected={selectedTier === 'hard'}
-                      onClick={() => setSelectedTier(selectedTier === 'hard' ? 'all' : 'hard')}
-                      className={getChipStyle('hard', selectedTier === 'hard')}
-                    >
-                      {tierLabels.hard}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+                {tierCounts.easy > 0 && (
+                  <button
+                    data-tier="easy"
+                    data-selected={selectedTier === 'easy'}
+                    onClick={() => setSelectedTier(selectedTier === 'easy' ? 'all' : 'easy')}
+                    className={css({
+                      padding: '1.5 4',
+                      fontSize: 'sm',
+                      fontWeight: 'medium',
+                      borderRadius: 'md',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      backgroundColor: selectedTier === 'easy'
+                        ? { base: 'white', _dark: 'gray.700' }
+                        : 'transparent',
+                      color: selectedTier === 'easy'
+                        ? { base: 'emerald.600', _dark: 'emerald.400' }
+                        : { base: 'gray.500', _dark: 'gray.400' },
+                      boxShadow: selectedTier === 'easy'
+                        ? { base: 'sm', _dark: 'none' }
+                        : 'none',
+                      _hover: selectedTier !== 'easy' ? {
+                        color: { base: 'emerald.600', _dark: 'emerald.400' },
+                        backgroundColor: { base: 'gray.50', _dark: 'gray.700/50' },
+                      } : {},
+                    })}
+                  >
+                    {tierLabels.easy}
+                  </button>
+                )}
+                {tierCounts.medium > 0 && (
+                  <button
+                    data-tier="medium"
+                    data-selected={selectedTier === 'medium'}
+                    onClick={() => setSelectedTier(selectedTier === 'medium' ? 'all' : 'medium')}
+                    className={css({
+                      padding: '1.5 4',
+                      fontSize: 'sm',
+                      fontWeight: 'medium',
+                      borderRadius: 'md',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      backgroundColor: selectedTier === 'medium'
+                        ? { base: 'white', _dark: 'gray.700' }
+                        : 'transparent',
+                      color: selectedTier === 'medium'
+                        ? { base: 'amber.600', _dark: 'amber.400' }
+                        : { base: 'gray.500', _dark: 'gray.400' },
+                      boxShadow: selectedTier === 'medium'
+                        ? { base: 'sm', _dark: 'none' }
+                        : 'none',
+                      _hover: selectedTier !== 'medium' ? {
+                        color: { base: 'amber.600', _dark: 'amber.400' },
+                        backgroundColor: { base: 'gray.50', _dark: 'gray.700/50' },
+                      } : {},
+                    })}
+                  >
+                    {tierLabels.medium}
+                  </button>
+                )}
+                {tierCounts.hard > 0 && (
+                  <button
+                    data-tier="hard"
+                    data-selected={selectedTier === 'hard'}
+                    onClick={() => setSelectedTier(selectedTier === 'hard' ? 'all' : 'hard')}
+                    className={css({
+                      padding: '1.5 4',
+                      fontSize: 'sm',
+                      fontWeight: 'medium',
+                      borderRadius: 'md',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      backgroundColor: selectedTier === 'hard'
+                        ? { base: 'white', _dark: 'gray.700' }
+                        : 'transparent',
+                      color: selectedTier === 'hard'
+                        ? { base: 'rose.600', _dark: 'rose.400' }
+                        : { base: 'gray.500', _dark: 'gray.400' },
+                      boxShadow: selectedTier === 'hard'
+                        ? { base: 'sm', _dark: 'none' }
+                        : 'none',
+                      _hover: selectedTier !== 'hard' ? {
+                        color: { base: 'rose.600', _dark: 'rose.400' },
+                        backgroundColor: { base: 'gray.50', _dark: 'gray.700/50' },
+                      } : {},
+                    })}
+                  >
+                    {tierLabels.hard}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )
       })()}
