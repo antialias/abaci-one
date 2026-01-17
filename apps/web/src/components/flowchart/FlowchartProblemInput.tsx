@@ -556,38 +556,54 @@ export function FlowchartProblemInput({
       data-testid="flowchart-problem-input"
       className={containerStyles}
     >
-      {/* Modal close button */}
+      {/* Cozy close corner - upper right (modal only) */}
       {asModal && (
-        <Dialog.Close asChild>
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-            className={css({
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
-              width: '32px',
-              height: '32px',
-              borderRadius: 'full',
-              backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '16px',
-              color: { base: 'gray.500', _dark: 'gray.400' },
-              transition: 'all 0.15s',
-              zIndex: 20,
-              _hover: {
-                backgroundColor: { base: 'gray.300', _dark: 'gray.600' },
-              },
-            })}
-          >
-            ✕
-          </button>
-        </Dialog.Close>
+        <div
+          data-element="close-corner"
+          className={css({
+            position: 'absolute',
+            top: '-4px',
+            right: '-4px',
+            width: '44px',
+            height: '44px',
+            backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+            borderBottomLeftRadius: 'xl',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: '4px',
+            paddingRight: '4px',
+            zIndex: 20,
+          })}
+        >
+          <Dialog.Close asChild>
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={onClose}
+              className={css({
+                width: '28px',
+                height: '28px',
+                borderRadius: 'md',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                color: { base: 'gray.500', _dark: 'gray.400' },
+                transition: 'all 0.2s',
+                _hover: {
+                  backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
+                  transform: 'scale(1.1)',
+                },
+              })}
+            >
+              ✕
+            </button>
+          </Dialog.Close>
+        </div>
       )}
 
       {/* Cozy dice corner - top-left in modal mode, top-right otherwise */}
