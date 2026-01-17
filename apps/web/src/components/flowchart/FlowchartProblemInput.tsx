@@ -550,7 +550,7 @@ export function FlowchartProblemInput({
         width: '95vw',
         maxWidth: '500px',
         maxHeight: '90vh',
-        overflowY: 'auto',
+        overflow: 'hidden',
         zIndex: 101,
         _focus: { outline: 'none' },
       })
