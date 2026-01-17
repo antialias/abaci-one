@@ -1345,6 +1345,7 @@ export function FlowchartProblemInput({
               bottom: 0,
               backgroundColor: 'rgba(0, 0, 0, 0.3)',
               zIndex: 200, // Higher than modal (101) to work in modal mode
+              pointerEvents: 'auto', // Override Radix Dialog's pointer-events: none on body
             })}
           />
           {/* Popover positioned over the example */}
@@ -1363,6 +1364,7 @@ export function FlowchartProblemInput({
               boxShadow: 'xl',
               width: 'max-content',
               transition: 'border-color 0.2s ease-out',
+              pointerEvents: 'auto', // Override Radix Dialog's pointer-events: none on body
             })}
             style={{
               // Center over the button
