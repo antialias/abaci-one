@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import * as Dialog from '@radix-ui/react-dialog'
 import type {
   ProblemInputSchema,
@@ -1329,7 +1330,8 @@ export function FlowchartProblemInput({
       ) : null}
 
       {/* Edit Popover - shows when editing an example */}
-      {editingExample && containerRef.current && (
+      {/* Use portal to escape modal's transform containing block for correct fixed positioning */}
+      {editingExample && containerRef.current && createPortal(
         <>
           {/* Backdrop to close on click outside */}
           <div
@@ -1452,7 +1454,8 @@ export function FlowchartProblemInput({
               </button>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </Wrapper>
   )
