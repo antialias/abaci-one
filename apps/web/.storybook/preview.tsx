@@ -17,11 +17,9 @@ const queryClient = new QueryClient({
     },
   },
 })
-// Panda CSS uses file-based chunking - import base styles + tokens
-import '../styled-system/reset.css'
-import '../styled-system/global.css'
-// Note: utility styles are in chunks/ directory and loaded per-file by Next.js
-// For Storybook, we need to import the CSS directly in globals.css
+// Panda CSS - import the generated styles
+import '../styled-system/styles.css'
+// App global styles
 import '../src/app/globals.css'
 
 // Merge messages for Storybook (add more as needed)

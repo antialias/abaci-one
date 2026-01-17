@@ -1,0 +1,226 @@
+/* KidNumberInput styles for react-simple-keyboard
+ * Uses CSS custom properties for theming (dark/light mode)
+ * These properties are set dynamically via style attribute on containers
+ */
+
+/* Animations */
+@keyframes kid-input-correct {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes kid-input-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}
+
+/* Layout switching based on orientation - Fixed mode */
+.kid-keypad-portrait-container {
+  display: block;
+}
+
+.kid-keypad-landscape-container {
+  display: none;
+}
+
+/* Only show landscape keypad on small screens (phones) */
+@media (orientation: landscape) and (max-height: 500px) {
+  .kid-keypad-portrait-container {
+    display: none;
+  }
+
+  .kid-keypad-landscape-container {
+    display: block;
+  }
+}
+
+/* On larger landscape screens, keep portrait bar at bottom */
+@media (orientation: landscape) and (min-height: 501px) {
+  .kid-keypad-portrait-container {
+    display: block;
+  }
+
+  .kid-keypad-landscape-container {
+    display: none;
+  }
+}
+
+/* Portrait keyboard styles */
+.kid-keypad-portrait {
+  width: 100%;
+}
+
+.kid-keypad-portrait .simple-keyboard {
+  background: var(--kid-keypad-bg);
+  padding: 4px 2px;
+  border-radius: 0;
+  width: 100%;
+  max-width: none;
+}
+
+.kid-keypad-portrait .hg-row {
+  display: flex;
+  margin: 0;
+}
+
+.kid-keypad-portrait .hg-button {
+  height: 48px;
+  flex: 1;
+  margin: 0 2px;
+  border-radius: 8px;
+  background: var(--kid-keypad-btn-bg);
+  color: var(--kid-keypad-btn-color);
+  border: 1px solid var(--kid-keypad-btn-border);
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: var(--kid-keypad-btn-shadow);
+  transition: all 0.1s ease-out;
+}
+
+.kid-keypad-portrait .hg-button:active {
+  background: #3b82f6;
+  color: white;
+  box-shadow: none;
+  transform: translateY(2px);
+}
+
+/* Backspace button - portrait */
+.kid-keypad-portrait .hg-button[data-skbtn='\7Bbksp\7D'] {
+  background: var(--kid-keypad-bksp-bg);
+  color: var(--kid-keypad-bksp-color);
+  border-color: var(--kid-keypad-bksp-border);
+}
+
+.kid-keypad-portrait .hg-button[data-skbtn='\7Bbksp\7D']:active {
+  background: #dc2626;
+  color: white;
+}
+
+/* Landscape keyboard styles */
+.kid-keypad-landscape .simple-keyboard {
+  background: var(--kid-keypad-bg);
+  padding: 4px;
+  border-radius: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.kid-keypad-landscape .hg-rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.kid-keypad-landscape .hg-row {
+  display: flex;
+  flex: 1;
+  margin: 0;
+}
+
+.kid-keypad-landscape .hg-button {
+  flex: 1;
+  margin: 2px;
+  border-radius: 8px;
+  background: var(--kid-keypad-btn-bg);
+  color: var(--kid-keypad-btn-color);
+  border: 1px solid var(--kid-keypad-btn-border);
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: var(--kid-keypad-btn-shadow);
+  transition: all 0.1s ease-out;
+}
+
+.kid-keypad-landscape .hg-button:active {
+  background: #3b82f6;
+  color: white;
+  box-shadow: none;
+  transform: translateY(2px);
+}
+
+/* Backspace button - landscape */
+.kid-keypad-landscape .hg-button[data-skbtn='\7Bbksp\7D'] {
+  background: var(--kid-keypad-bksp-bg);
+  color: var(--kid-keypad-bksp-color);
+  border-color: var(--kid-keypad-bksp-border);
+}
+
+.kid-keypad-landscape .hg-button[data-skbtn='\7Bbksp\7D']:active {
+  background: #dc2626;
+  color: white;
+}
+
+/* Inline keyboard styles (calculator-style grid) */
+.kid-keypad-inline .simple-keyboard {
+  background: var(--kid-keypad-bg);
+  padding: 8px;
+  border-radius: 16px;
+  width: 100%;
+}
+
+.kid-keypad-inline .hg-row {
+  display: flex;
+  margin: 0 0 4px 0;
+}
+
+.kid-keypad-inline .hg-row:last-child {
+  margin-bottom: 0;
+}
+
+.kid-keypad-inline .hg-button {
+  flex: 1;
+  height: 56px;
+  margin: 0 4px;
+  border-radius: 12px;
+  background: var(--kid-keypad-btn-bg);
+  color: var(--kid-keypad-btn-color);
+  border: 2px solid var(--kid-keypad-btn-border);
+  font-size: 24px;
+  font-weight: 700;
+  box-shadow: var(--kid-keypad-btn-shadow);
+  transition: all 0.1s ease-out;
+}
+
+.kid-keypad-inline .hg-button:first-child {
+  margin-left: 0;
+}
+
+.kid-keypad-inline .hg-button:last-child {
+  margin-right: 0;
+}
+
+.kid-keypad-inline .hg-button:active {
+  background: #3b82f6;
+  color: white;
+  box-shadow: none;
+  transform: translateY(2px);
+}
+
+/* Backspace button - inline */
+.kid-keypad-inline .hg-button[data-skbtn='\7Bbksp\7D'] {
+  background: var(--kid-keypad-bksp-bg);
+  color: var(--kid-keypad-bksp-color);
+  border-color: var(--kid-keypad-bksp-border);
+}
+
+.kid-keypad-inline .hg-button[data-skbtn='\7Bbksp\7D']:active {
+  background: #dc2626;
+  color: white;
+}
