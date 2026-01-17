@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import type {
   ProblemInputSchema,
   Field,
@@ -38,6 +39,10 @@ interface FlowchartProblemInputProps {
   onSubmit: (values: Record<string, ProblemValue>) => void
   /** The loaded flowchart (used to calculate path complexity for examples and display title) */
   flowchart?: ExecutableFlowchart
+  /** When true, renders as a Dialog.Content for use in a modal */
+  asModal?: boolean
+  /** Called when the modal close button is clicked (only used when asModal=true) */
+  onClose?: () => void
 }
 
 /**
@@ -48,6 +53,8 @@ export function FlowchartProblemInput({
   schema,
   onSubmit,
   flowchart,
+  asModal = false,
+  onClose,
 }: FlowchartProblemInputProps) {
   const [values, setValues] = useState<Record<string, ProblemValue>>(() =>
     initializeValues(schema.fields)
@@ -507,11 +514,27 @@ export function FlowchartProblemInput({
     onSubmit(values)
   }, [values, schema.validation, onSubmit])
 
-  return (
-    <div
-      ref={containerRef}
-      data-testid="flowchart-problem-input"
-      className={vstack({
+  const containerStyles = asModal
+    ? css({
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6',
+        padding: '6',
+        backgroundColor: { base: 'white', _dark: 'gray.800' },
+        borderRadius: '2xl',
+        boxShadow: '2xl',
+        width: '95vw',
+        maxWidth: '500px',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        zIndex: 101,
+        _focus: { outline: 'none' },
+      })
+    : vstack({
         gap: '6',
         padding: '6',
         backgroundColor: { base: 'white', _dark: 'gray.800' },
@@ -523,25 +546,68 @@ export function FlowchartProblemInput({
         margin: '0 auto',
         position: 'relative',
         overflow: 'hidden',
-      })}
+      })
+
+  const Wrapper = asModal ? Dialog.Content : 'div'
+
+  return (
+    <Wrapper
+      ref={containerRef}
+      data-testid="flowchart-problem-input"
+      className={containerStyles}
     >
-      {/* Cozy dice corner - positioned to clip against container */}
+      {/* Modal close button */}
+      {asModal && (
+        <Dialog.Close asChild>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className={css({
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              width: '32px',
+              height: '32px',
+              borderRadius: 'full',
+              backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              color: { base: 'gray.500', _dark: 'gray.400' },
+              transition: 'all 0.15s',
+              zIndex: 20,
+              _hover: {
+                backgroundColor: { base: 'gray.300', _dark: 'gray.600' },
+              },
+            })}
+          >
+            ✕
+          </button>
+        </Dialog.Close>
+      )}
+
+      {/* Cozy dice corner - top-left in modal mode, top-right otherwise */}
       {generatedExamples.length > 0 && (
         <div
           data-element="dice-corner"
           className={css({
             position: 'absolute',
-            top: '-4px',
-            right: '-4px',
+            top: asModal ? '8px' : '-4px',
+            right: asModal ? undefined : '-4px',
+            left: asModal ? '8px' : undefined,
             width: '44px',
             height: '44px',
-            backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
-            borderBottomLeftRadius: 'xl',
+            backgroundColor: asModal ? 'transparent' : { base: 'gray.100', _dark: 'gray.700' },
+            borderBottomLeftRadius: asModal ? 'none' : 'xl',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            paddingTop: '4px',
-            paddingRight: '4px',
+            paddingTop: asModal ? '0' : '4px',
+            paddingRight: asModal ? '0' : '4px',
             zIndex: 10,
           })}
         >
@@ -1370,7 +1436,7 @@ export function FlowchartProblemInput({
           </div>
         </>
       )}
-    </div>
+    </Wrapper>
   )
 }
 

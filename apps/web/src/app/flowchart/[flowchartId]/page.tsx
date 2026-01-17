@@ -23,7 +23,7 @@ export default function FlowchartPage() {
 
   const [state, setState] = useState<PageState>({ type: 'loading' })
 
-  // Load flowchart on mount
+  // Load flowchart on mount, check for stored problem values
   useEffect(() => {
     async function load() {
       const data = getFlowchart(flowchartId)
@@ -34,6 +34,25 @@ export default function FlowchartPage() {
 
       try {
         const flowchart = await loadFlowchart(data.definition, data.mermaid)
+
+        // Check for stored problem values from the picker modal
+        const storageKey = `flowchart-problem-${flowchartId}`
+        const storedValues = sessionStorage.getItem(storageKey)
+
+        if (storedValues) {
+          // Clear the stored values so they don't persist across refreshes
+          sessionStorage.removeItem(storageKey)
+
+          try {
+            const problemInput = JSON.parse(storedValues) as Record<string, ProblemValue>
+            setState({ type: 'walking', flowchart, problemInput })
+            return
+          } catch {
+            // If parsing fails, fall through to inputting
+            console.warn('Failed to parse stored problem values')
+          }
+        }
+
         setState({ type: 'inputting', flowchart })
       } catch (error) {
         console.error('Error loading flowchart:', error)
@@ -66,7 +85,14 @@ export default function FlowchartPage() {
   // Handle completion
   const handleComplete = useCallback(() => {
     // Could save results, update progress, etc.
-  }, [])
+    // For now, go back to picker
+    router.push('/flowchart')
+  }, [router])
+
+  // Handle change problem (go back to picker modal)
+  const handleChangeProblem = useCallback(() => {
+    router.push('/flowchart')
+  }, [router])
 
   // Render based on state
   return (
@@ -129,10 +155,12 @@ export default function FlowchartPage() {
             <button
               onClick={() => router.push('/flowchart')}
               className={css({
-                padding: '2 4',
+                paddingX: '4',
+                paddingY: '2',
                 borderRadius: 'md',
                 backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
                 color: { base: 'gray.800', _dark: 'gray.200' },
+                border: 'none',
                 cursor: 'pointer',
               })}
             >
@@ -155,7 +183,7 @@ export default function FlowchartPage() {
             problemInput={state.problemInput}
             onComplete={handleComplete}
             onRestart={handleRestart}
-            onChangeProblem={handleRestart}
+            onChangeProblem={handleChangeProblem}
           />
         )}
       </main>
