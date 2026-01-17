@@ -636,9 +636,9 @@ export function FlowchartProblemInput({
         </div>
       )}
 
-      {/* Teacher settings gear - lower left corner */}
+      {/* Cozy gear corner - lower left (mirrors dice corner pattern) */}
       <div
-        data-section="teacher-config"
+        data-element="gear-corner"
         className={css({
           position: 'absolute',
           bottom: '-4px',
