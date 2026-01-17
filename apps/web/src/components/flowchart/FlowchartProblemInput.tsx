@@ -22,12 +22,16 @@ import {
 } from '@/lib/flowcharts/loader'
 import { InteractiveDice } from '@/components/ui/InteractiveDice'
 import { TeacherConfigPanel } from './TeacherConfigPanel'
+import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 import { MathDisplay } from './MathDisplay'
 
 /** Difficulty tier for filtering examples */
 type DifficultyTier = 'easy' | 'medium' | 'hard' | 'all'
+
+/** Default number of examples to generate for the example picker grid */
+const DEFAULT_EXAMPLES_TO_GENERATE = 100
 
 interface FlowchartProblemInputProps {
   schema: ProblemInputSchema
@@ -64,8 +68,12 @@ export function FlowchartProblemInput({
   } | null>(null)
   // Selected difficulty tier for filtering examples
   const [selectedTier, setSelectedTier] = useState<DifficultyTier>('all')
+  // Adjustable example count (via Teacher Settings)
+  const [exampleCount, setExampleCount] = useState(DEFAULT_EXAMPLES_TO_GENERATE)
   // Ref to the container for positioning the popover
   const containerRef = useRef<HTMLDivElement>(null)
+  // Visual debug mode
+  const { isVisualDebugEnabled } = useVisualDebugSafe()
 
   // Create a stable storage key for caching examples
   const storageKey = useMemo(() => {
@@ -117,7 +125,7 @@ export function FlowchartProblemInput({
     // No cache found, generate new examples
     if (flowchart) {
       try {
-        const examples = generateDiverseExamples(flowchart, 100, constraints)
+        const examples = generateDiverseExamples(flowchart, exampleCount, constraints)
         setDisplayedExamples(examples)
         sessionStorage.setItem(storageKey, JSON.stringify(examples))
       } catch (e) {
@@ -145,13 +153,15 @@ export function FlowchartProblemInput({
   }, [generatedExamples])
 
   // Get difficulty level (1-3) for an example
+  // Tier boundaries: Easy (bottom 25%), Medium (middle 50%), Hard (top 25%)
+  // Wider medium tier = more stable grid dimensions
   const getDifficultyLevel = (example: GeneratedExample): 1 | 2 | 3 => {
     const score = example.complexity.decisions + example.complexity.checkpoints
     const { min, max } = difficultyRange
     if (max === min) return 1
     const normalized = (score - min) / (max - min)
-    if (normalized < 0.33) return 1
-    if (normalized < 0.67) return 2
+    if (normalized < 0.25) return 1
+    if (normalized < 0.75) return 2
     return 3
   }
 
@@ -182,6 +192,56 @@ export function FlowchartProblemInput({
     }
     return counts
   }, [generatedExamples, difficultyRange])
+
+  // Smart labels for tiers - if all examples in a tier share a dimension, use that as the label
+  const tierLabels = useMemo(() => {
+    const labels: { easy: string; medium: string; hard: string } = {
+      easy: 'Easy',
+      medium: 'Medium',
+      hard: 'Hard',
+    }
+
+    if (!baseGridDimensions) {
+      return labels
+    }
+
+    const is2D = baseGridDimensions.cols.length > 0
+    const tiers: Array<'easy' | 'medium' | 'hard'> = ['easy', 'medium', 'hard']
+
+    for (const tier of tiers) {
+      const tierExamples = generatedExamples.filter((ex) => getDifficultyTier(ex) === tier)
+      if (tierExamples.length === 0) continue
+
+      // Check if all examples share the same row (and column for 2D grids)
+      const rowIndices = new Set<number>()
+      const colIndices = new Set<number>()
+
+      for (const ex of tierExamples) {
+        const cell = baseGridDimensions.cellMap.get(ex.pathDescriptor)
+        if (cell) {
+          rowIndices.add(cell[0])
+          if (is2D) colIndices.add(cell[1])
+        }
+      }
+
+      // If all examples are in the same row, use that row's label
+      if (rowIndices.size === 1) {
+        const rowIdx = [...rowIndices][0]
+        if (rowIdx < baseGridDimensions.rows.length) {
+          labels[tier] = baseGridDimensions.rows[rowIdx]
+        }
+      }
+      // If all examples are in the same column (2D grid only), use that column's label
+      else if (is2D && colIndices.size === 1) {
+        const colIdx = [...colIndices][0]
+        if (colIdx < baseGridDimensions.cols.length) {
+          labels[tier] = baseGridDimensions.cols[colIdx]
+        }
+      }
+    }
+
+    return labels
+  }, [generatedExamples, baseGridDimensions, difficultyRange])
 
   // Dynamic grid dimensions based on filtered examples
   // When a tier is selected, use the dimensions that actually vary within that tier
@@ -249,8 +309,8 @@ export function FlowchartProblemInput({
       const { min, max } = difficultyRange
       if (max === min) return 1
       const normalized = (score - min) / (max - min)
-      if (normalized < 0.33) return 1
-      if (normalized < 0.67) return 2
+      if (normalized < 0.25) return 1
+      if (normalized < 0.75) return 2
       return 3
     } catch {
       // If complexity calculation fails, default to medium
@@ -263,7 +323,7 @@ export function FlowchartProblemInput({
     if (!flowchart) return
     try {
       // Compute new examples during drag - one per unique pedagogical path
-      pendingExamplesRef.current = generateDiverseExamples(flowchart, 100, constraints)
+      pendingExamplesRef.current = generateDiverseExamples(flowchart, exampleCount, constraints)
     } catch (e) {
       console.error('Error pre-generating examples:', e)
     }
@@ -280,7 +340,7 @@ export function FlowchartProblemInput({
     } else if (flowchart) {
       // Click-only roll - compute now (animation masked the compute time)
       try {
-        newExamples = generateDiverseExamples(flowchart, 100, constraints)
+        newExamples = generateDiverseExamples(flowchart, exampleCount, constraints)
       } catch (e) {
         console.error('Error generating examples:', e)
       }
@@ -305,6 +365,20 @@ export function FlowchartProblemInput({
     // The actual example update happens in handleRollComplete
     // This is called immediately when rolled - could add a spinning indicator here
   }, [])
+
+  // Handler for instant roll (shift+click) - bypasses animation
+  const handleInstantRoll = useCallback(() => {
+    if (!flowchart) return
+    try {
+      const newExamples = generateDiverseExamples(flowchart, exampleCount, constraints)
+      setDisplayedExamples(newExamples)
+      if (storageKey) {
+        sessionStorage.setItem(storageKey, JSON.stringify(newExamples))
+      }
+    } catch (e) {
+      console.error('Error generating examples:', e)
+    }
+  }, [flowchart, exampleCount, constraints, storageKey])
 
   const handleChange = useCallback((name: string, value: ProblemValue) => {
     setValues((prev) => ({ ...prev, [name]: value }))
@@ -475,8 +549,9 @@ export function FlowchartProblemInput({
             onRoll={handleRoll}
             onDragStart={handleDragStart}
             onRollComplete={handleRollComplete}
+            onInstantRoll={handleInstantRoll}
             size={18}
-            title="Roll for new examples"
+            title="Roll for new examples (shift+click for instant)"
             className={css({
               padding: '1',
               borderRadius: 'md',
@@ -493,129 +568,232 @@ export function FlowchartProblemInput({
         </div>
       )}
 
-      {/* Teacher configuration panel */}
-      <div data-section="teacher-config">
+      {/* Teacher settings gear - lower left corner */}
+      <div
+        data-section="teacher-config"
+        className={css({
+          position: 'absolute',
+          bottom: '-4px',
+          left: '-4px',
+          width: '44px',
+          height: '44px',
+          backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+          borderTopRightRadius: 'xl',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingBottom: '4px',
+          paddingLeft: '4px',
+          zIndex: 10,
+        })}
+      >
         <TeacherConfigPanel
           constraints={constraints}
           onConstraintsChange={handleConstraintsChange}
-          defaultCollapsed={true}
+          exampleCount={exampleCount}
+          onExampleCountChange={setExampleCount}
+          onRegenerate={() => {
+            if (flowchart) {
+              const examples = generateDiverseExamples(flowchart, exampleCount, constraints)
+              setDisplayedExamples(examples)
+              if (storageKey) {
+                sessionStorage.setItem(storageKey, JSON.stringify(examples))
+              }
+            }
+          }}
+          showDebugControls={isVisualDebugEnabled}
         />
       </div>
 
-      {flowchart && (
-        <h2
-          data-element="title"
-          className={css({
-            fontSize: 'xl',
-            fontWeight: 'bold',
-            color: { base: 'gray.800', _dark: 'gray.200' },
-            textAlign: 'center',
-          })}
-        >
-          {flowchart.definition.title}
-        </h2>
-      )}
+      {/* Title + Difficulty Tabs - combined header */}
+      {flowchart && (() => {
+        const availableTiers = [
+          tierCounts.easy > 0 ? 'easy' : null,
+          tierCounts.medium > 0 ? 'medium' : null,
+          tierCounts.hard > 0 ? 'hard' : null,
+        ].filter(Boolean) as ('easy' | 'medium' | 'hard')[]
 
-      {/* Difficulty Tier Selection */}
-      {generatedExamples.length > 0 && (
+        // Check if all tier labels are derived from grid dimensions (not default Easy/Medium/Hard)
+        // If so, tabs are redundant since the grid already shows that organization
+        const allLabelsFromGrid = availableTiers.every(
+          (tier) => tierLabels[tier] !== 'Easy' && tierLabels[tier] !== 'Medium' && tierLabels[tier] !== 'Hard'
+        )
+
+        const showTabs = generatedExamples.length > 0 && availableTiers.length > 1 && !allLabelsFromGrid
+
+        // Pill chip styling helper
+        const getChipStyle = (tier: 'easy' | 'medium' | 'hard', isSelected: boolean) => {
+          const colors = {
+            easy: {
+              bg: { base: 'green.500', _dark: 'green.600' },
+              bgHover: { base: 'green.600', _dark: 'green.500' },
+              text: 'white',
+              inactiveBg: { base: 'green.50', _dark: 'green.900/30' },
+              inactiveText: { base: 'green.700', _dark: 'green.400' },
+            },
+            medium: {
+              bg: { base: 'orange.500', _dark: 'orange.600' },
+              bgHover: { base: 'orange.600', _dark: 'orange.500' },
+              text: 'white',
+              inactiveBg: { base: 'orange.50', _dark: 'orange.900/30' },
+              inactiveText: { base: 'orange.700', _dark: 'orange.400' },
+            },
+            hard: {
+              bg: { base: 'red.500', _dark: 'red.600' },
+              bgHover: { base: 'red.600', _dark: 'red.500' },
+              text: 'white',
+              inactiveBg: { base: 'red.50', _dark: 'red.900/30' },
+              inactiveText: { base: 'red.700', _dark: 'red.400' },
+            },
+          }
+          const c = colors[tier]
+          return css({
+            padding: '1 3',
+            fontSize: 'xs',
+            fontWeight: 'medium',
+            borderRadius: 'full',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            backgroundColor: isSelected ? c.bg : c.inactiveBg,
+            color: isSelected ? c.text : c.inactiveText,
+            _hover: {
+              backgroundColor: isSelected ? c.bgHover : c.bg,
+              color: 'white',
+            },
+          })
+        }
+
+        return (
+          <div
+            data-testid="tier-selection"
+            className={vstack({ gap: '0', alignItems: 'stretch' })}
+          >
+            {/* Title + filter chips */}
+            <div
+              className={css({
+                padding: '3 4',
+                borderRadius: 'lg',
+                backgroundColor: { base: 'gray.50', _dark: 'gray.700/50' },
+                border: '1px solid',
+                borderColor: { base: 'gray.200', _dark: 'gray.600' },
+              })}
+            >
+              {/* Title - clickable to show all when filters active */}
+              <button
+                data-element="title"
+                data-tier="all"
+                data-selected={selectedTier === 'all'}
+                onClick={() => setSelectedTier('all')}
+                disabled={!showTabs}
+                className={css({
+                  width: '100%',
+                  fontSize: 'lg',
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: { base: 'gray.800', _dark: 'gray.200' },
+                  cursor: showTabs ? 'pointer' : 'default',
+                  transition: 'all 0.15s',
+                  marginBottom: showTabs ? '2' : '0',
+                  _hover: showTabs ? {
+                    color: { base: 'gray.600', _dark: 'gray.400' },
+                  } : {},
+                  _disabled: {
+                    cursor: 'default',
+                  },
+                })}
+              >
+                {flowchart.definition.title}
+              </button>
+
+              {/* Filter chips - only show if multiple tiers available */}
+              {showTabs && (
+                <div
+                  data-element="difficulty-chips"
+                  className={css({
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: '2',
+                    flexWrap: 'wrap',
+                  })}
+                >
+                  {tierCounts.easy > 0 && (
+                    <button
+                      data-tier="easy"
+                      data-selected={selectedTier === 'easy'}
+                      onClick={() => setSelectedTier(selectedTier === 'easy' ? 'all' : 'easy')}
+                      className={getChipStyle('easy', selectedTier === 'easy')}
+                    >
+                      {tierLabels.easy}
+                    </button>
+                  )}
+                  {tierCounts.medium > 0 && (
+                    <button
+                      data-tier="medium"
+                      data-selected={selectedTier === 'medium'}
+                      onClick={() => setSelectedTier(selectedTier === 'medium' ? 'all' : 'medium')}
+                      className={getChipStyle('medium', selectedTier === 'medium')}
+                    >
+                      {tierLabels.medium}
+                    </button>
+                  )}
+                  {tierCounts.hard > 0 && (
+                    <button
+                      data-tier="hard"
+                      data-selected={selectedTier === 'hard'}
+                      onClick={() => setSelectedTier(selectedTier === 'hard' ? 'all' : 'hard')}
+                      className={getChipStyle('hard', selectedTier === 'hard')}
+                    >
+                      {tierLabels.hard}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Debug: Dimension distribution for current tier */}
+      {isVisualDebugEnabled && selectedTier !== 'all' && baseGridDimensions && (
         <div
-          data-testid="tier-selection"
-          className={hstack({
-            gap: '1',
-            justifyContent: 'center',
-            padding: '1',
-            backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
-            borderRadius: 'lg',
+          data-element="debug-dimensions"
+          className={css({
+            fontSize: 'xs',
+            fontFamily: 'mono',
+            backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
+            padding: '2',
+            borderRadius: 'md',
+            color: { base: 'gray.600', _dark: 'gray.400' },
           })}
         >
-          <button
-            data-tier="all"
-            data-selected={selectedTier === 'all'}
-            onClick={() => setSelectedTier('all')}
-            className={css({
-              padding: '1.5 3',
-              fontSize: 'sm',
-              fontWeight: selectedTier === 'all' ? 'bold' : 'medium',
-              borderRadius: 'md',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              backgroundColor: selectedTier === 'all' ? { base: 'white', _dark: 'gray.600' } : 'transparent',
-              color: selectedTier === 'all' ? { base: 'gray.900', _dark: 'white' } : { base: 'gray.500', _dark: 'gray.400' },
-              boxShadow: selectedTier === 'all' ? 'sm' : 'none',
-              _hover: {
-                backgroundColor: selectedTier === 'all' ? { base: 'white', _dark: 'gray.600' } : { base: 'gray.200', _dark: 'gray.600' },
-              },
-            })}
-          >
-            All ({generatedExamples.length})
-          </button>
-          <button
-            data-tier="easy"
-            data-selected={selectedTier === 'easy'}
-            onClick={() => setSelectedTier('easy')}
-            className={css({
-              padding: '1.5 3',
-              fontSize: 'sm',
-              fontWeight: selectedTier === 'easy' ? 'bold' : 'medium',
-              borderRadius: 'md',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              backgroundColor: selectedTier === 'easy' ? { base: 'green.100', _dark: 'green.800' } : 'transparent',
-              color: selectedTier === 'easy' ? { base: 'green.700', _dark: 'green.200' } : { base: 'gray.500', _dark: 'gray.400' },
-              boxShadow: selectedTier === 'easy' ? 'sm' : 'none',
-              _hover: {
-                backgroundColor: selectedTier === 'easy' ? { base: 'green.100', _dark: 'green.800' } : { base: 'gray.200', _dark: 'gray.600' },
-              },
-            })}
-          >
-            Easy ({tierCounts.easy})
-          </button>
-          <button
-            data-tier="medium"
-            data-selected={selectedTier === 'medium'}
-            onClick={() => setSelectedTier('medium')}
-            className={css({
-              padding: '1.5 3',
-              fontSize: 'sm',
-              fontWeight: selectedTier === 'medium' ? 'bold' : 'medium',
-              borderRadius: 'md',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              backgroundColor: selectedTier === 'medium' ? { base: 'orange.100', _dark: 'orange.800' } : 'transparent',
-              color: selectedTier === 'medium' ? { base: 'orange.700', _dark: 'orange.200' } : { base: 'gray.500', _dark: 'gray.400' },
-              boxShadow: selectedTier === 'medium' ? 'sm' : 'none',
-              _hover: {
-                backgroundColor: selectedTier === 'medium' ? { base: 'orange.100', _dark: 'orange.800' } : { base: 'gray.200', _dark: 'gray.600' },
-              },
-            })}
-          >
-            Medium ({tierCounts.medium})
-          </button>
-          <button
-            data-tier="hard"
-            data-selected={selectedTier === 'hard'}
-            onClick={() => setSelectedTier('hard')}
-            className={css({
-              padding: '1.5 3',
-              fontSize: 'sm',
-              fontWeight: selectedTier === 'hard' ? 'bold' : 'medium',
-              borderRadius: 'md',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              backgroundColor: selectedTier === 'hard' ? { base: 'red.100', _dark: 'red.800' } : 'transparent',
-              color: selectedTier === 'hard' ? { base: 'red.700', _dark: 'red.200' } : { base: 'gray.500', _dark: 'gray.400' },
-              boxShadow: selectedTier === 'hard' ? 'sm' : 'none',
-              _hover: {
-                backgroundColor: selectedTier === 'hard' ? { base: 'red.100', _dark: 'red.800' } : { base: 'gray.200', _dark: 'gray.600' },
-              },
-            })}
-          >
-            Hard ({tierCounts.hard})
-          </button>
+          <div><strong>Tier:</strong> {selectedTier} → Label: "{tierLabels[selectedTier as 'easy' | 'medium' | 'hard']}"</div>
+          <div><strong>Base grid:</strong> {baseGridDimensions.rows.length} rows × {baseGridDimensions.cols.length} cols</div>
+          <div><strong>Rows:</strong> {baseGridDimensions.rows.join(', ')}</div>
+          <div><strong>Cols:</strong> {baseGridDimensions.cols.join(', ')}</div>
+          <div style={{ marginTop: '4px' }}>
+            <strong>Distribution ({filteredExamples.length} examples):</strong>
+            {(() => {
+              const rowCounts = new Map<number, number>()
+              const colCounts = new Map<number, number>()
+              for (const ex of filteredExamples) {
+                const cell = baseGridDimensions.cellMap.get(ex.pathDescriptor)
+                if (cell) {
+                  rowCounts.set(cell[0], (rowCounts.get(cell[0]) || 0) + 1)
+                  colCounts.set(cell[1], (colCounts.get(cell[1]) || 0) + 1)
+                }
+              }
+              return (
+                <div style={{ paddingLeft: '8px' }}>
+                  <div>By row: {baseGridDimensions.rows.map((r, i) => `${r}: ${rowCounts.get(i) || 0}`).join(', ')}</div>
+                  <div>By col: {baseGridDimensions.cols.map((c, i) => `${c}: ${colCounts.get(i) || 0}`).join(', ')}</div>
+                  <div>Unique rows: {rowCounts.size}, Unique cols: {colCounts.size}</div>
+                </div>
+              )
+            })()}
+          </div>
         </div>
       )}
 
@@ -813,11 +991,13 @@ export function FlowchartProblemInput({
               }}
             >
               {gridDimensions.rows.map((group, groupIdx) => {
-                // Find example(s) for this group
-                const groupExamples = filteredExamples.filter((ex) => {
-                  const cell = gridDimensions.cellMap.get(ex.pathDescriptor)
-                  return cell && cell[0] === groupIdx
-                })
+                // Find up to 3 examples for this group
+                const groupExamples = filteredExamples
+                  .filter((ex) => {
+                    const cell = gridDimensions.cellMap.get(ex.pathDescriptor)
+                    return cell && cell[0] === groupIdx
+                  })
+                  .slice(0, 3)
 
                 return (
                   <div
@@ -842,7 +1022,7 @@ export function FlowchartProblemInput({
                     >
                       {group}
                     </div>
-                    {/* Examples in this group */}
+                    {/* Up to 3 examples in this group */}
                     {groupExamples.map((example, idx) => {
                       const difficultyLevel = getDifficultyLevel(example)
                       return (

@@ -235,8 +235,8 @@
       "type": "decision",
       "correctAnswer": "oneDividesOther",
       "options": [
-        { "label": "YES", "value": "yes", "next": "CONV1A", "pathLabel": "Divides", "gridLabel": "One goes into the other" },
-        { "label": "NO", "value": "no", "next": "STEP3", "pathLabel": "LCD", "gridLabel": "Find LCD" }
+        { "label": "YES", "value": "yes", "next": "CONV1A", "pathLabel": "Divides", "gridLabel": "Multiply one" },
+        { "label": "NO", "value": "no", "next": "STEP3", "pathLabel": "LCD", "gridLabel": "Multiply both" }
       ]
     },
     "CONV1A": {
@@ -308,9 +308,9 @@
           "value": "yes",
           "next": "GOSTEP4B",
           "pathLabel": "no borrow",
-          "gridLabel": "Subtract"
+          "gridLabel": "No borrowing"
         },
-        { "label": "😱 NO! (need borrow)", "value": "no", "next": "BORROW", "pathLabel": "borrow", "gridLabel": "Subtract + borrow" }
+        { "label": "😱 NO! (need borrow)", "value": "no", "next": "BORROW", "pathLabel": "borrow", "gridLabel": "Borrow first" }
       ]
     },
     "GOSTEP4B": {
@@ -341,10 +341,10 @@
     },
     "SIMPLIFY_Q": {
       "type": "decision",
-      "correctAnswer": "needsSimplify",
+      "correctAnswer": "!needsSimplify",
       "options": [
-        { "label": "NO ✓ (can't simplify)", "value": "no", "next": "IMPROPER_Q", "pathLabel": "no simp", "gridLabel": "No simplifying" },
-        { "label": "YES (can simplify)", "value": "yes", "next": "SIMPLIFY_HOW", "pathLabel": "simplify", "gridLabel": "Simplify" }
+        { "label": "NO ✓ (can't simplify)", "value": "no", "next": "IMPROPER_Q", "pathLabel": "no simp", "gridLabel": "Already simple" },
+        { "label": "YES (can simplify)", "value": "yes", "next": "SIMPLIFY_HOW", "pathLabel": "simplify", "gridLabel": "Reduce it" }
       ]
     },
     "SIMPLIFY_HOW": {
@@ -353,10 +353,10 @@
     },
     "IMPROPER_Q": {
       "type": "decision",
-      "correctAnswer": "isImproper",
+      "correctAnswer": "!isImproper",
       "options": [
-        { "label": "NO ✓ (proper fraction)", "value": "no", "next": "CHECK3", "pathLabel": "proper", "gridLabel": "Proper fraction" },
-        { "label": "YES (improper)", "value": "yes", "next": "MIXED_HOW", "pathLabel": "→mixed", "gridLabel": "Convert to mixed" }
+        { "label": "NO ✓ (proper fraction)", "value": "no", "next": "CHECK3", "pathLabel": "proper", "gridLabel": "Proper result" },
+        { "label": "YES (improper)", "value": "yes", "next": "MIXED_HOW", "pathLabel": "→mixed", "gridLabel": "Make mixed" }
       ]
     },
     "MIXED_HOW": {

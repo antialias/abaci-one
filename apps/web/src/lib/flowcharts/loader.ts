@@ -1065,8 +1065,8 @@ export function inferGridDimensions(
       const pathsForOption = primaryInfo.pathsWithOption.get(optionValue)!
 
       // Check if any dependent decision refines this option
-      let refinementDisplays: string[] = []
-      let refinementKeys: string[] = []
+      const refinementDisplays: string[] = []
+      const refinementKeys: string[] = []
       for (const depNodeId of dependentDecisions) {
         const depInfo = decisionAppearances.get(depNodeId)!
 
@@ -1213,7 +1213,7 @@ function buildOneDimensionalGrid(
     const pathsForOption = dimInfo.pathsWithOption.get(optionValue)!
 
     // Check for refinements from dependent decisions
-    let refinementTuples: [string, string][] = [] // [display, key]
+    const refinementTuples: [string, string][] = [] // [display, key]
     for (const depNodeId of dependentDecisions) {
       const depInfo = decisionAppearances.get(depNodeId)!
 
@@ -1580,6 +1580,56 @@ export function inferGridDimensionsFromExamples(
     }
   }
 
+  // Check if 2D grid is sparse (diagonal pattern) - if so, collapse to 1D
+  // A 2D grid is "sparse" if no row or column has more than 1 occupied CELL
+  // (not counting descriptors - multiple descriptors can share a cell)
+
+  // Count unique columns per row, and unique rows per column
+  const colsPerRow = new Map<number, Set<number>>()
+  const rowsPerCol = new Map<number, Set<number>>()
+  for (const [rowIdx, colIdx] of cellMap.values()) {
+    if (!colsPerRow.has(rowIdx)) colsPerRow.set(rowIdx, new Set())
+    colsPerRow.get(rowIdx)!.add(colIdx)
+
+    if (!rowsPerCol.has(colIdx)) rowsPerCol.set(colIdx, new Set())
+    rowsPerCol.get(colIdx)!.add(rowIdx)
+  }
+
+  const maxColsPerRow = Math.max(...[...colsPerRow.values()].map(s => s.size), 0)
+  const maxRowsPerCol = Math.max(...[...rowsPerCol.values()].map(s => s.size), 0)
+
+  // If no row spans >1 column AND no column spans >1 row, collapse to 1D
+  if (maxColsPerRow <= 1 && maxRowsPerCol <= 1) {
+    // Create combined labels: "Row Label + Col Label"
+    // Group by unique (rowIdx, colIdx) pairs
+    const uniqueCells = new Map<string, { rowIdx: number; colIdx: number; descriptors: string[] }>()
+    for (const [descriptor, [rowIdx, colIdx]] of cellMap.entries()) {
+      const key = `${rowIdx},${colIdx}`
+      if (!uniqueCells.has(key)) {
+        uniqueCells.set(key, { rowIdx, colIdx, descriptors: [] })
+      }
+      uniqueCells.get(key)!.descriptors.push(descriptor)
+    }
+
+    const combinedRows: string[] = []
+    const combinedRowKeys: string[] = []
+    const combinedCellMap = new Map<string, [number, number]>()
+
+    let idx = 0
+    for (const { rowIdx, colIdx, descriptors } of uniqueCells.values()) {
+      const combinedLabel = `${rows[rowIdx]} + ${cols[colIdx]}`
+      combinedRows.push(combinedLabel)
+      combinedRowKeys.push(descriptors[0]) // Use first descriptor as key
+      // Map all descriptors for this cell to the new 1D index
+      for (const descriptor of descriptors) {
+        combinedCellMap.set(descriptor, [idx, 0])
+      }
+      idx++
+    }
+
+    return { rows: combinedRows, cols: [], rowKeys: combinedRowKeys, colKeys: [], cellMap: combinedCellMap }
+  }
+
   return { rows, cols, rowKeys, colKeys, cellMap }
 }
 
@@ -1732,7 +1782,7 @@ function applyFieldFilters(
  */
 export function createSeededRandom(seed: number): () => number {
   let state = seed
-  return function () {
+  return () => {
     state |= 0
     state = (state + 0x6d2b79f5) | 0
     let t = Math.imul(state ^ (state >>> 15), 1 | state)
@@ -2570,12 +2620,17 @@ export function generateDiverseExamples(
   }
 
   // Phase 1: Constraint-guided generation for each enumerated path
+  // Goal: Get at least 5 examples per target path (provides baseline coverage for filtered views)
+  // Higher count ensures reliable coverage even when filtering by difficulty tier
+  const minExamplesPerPath = 5
   for (const targetPath of analysis.paths) {
     const targetSignature = targetPath.nodeIds.join('→')
+    let targetHits = 0
 
-    // Try multiple times to generate a valid problem for this path
+    // Try multiple times to generate valid problems for this path
     // Higher count needed for paths with computed constraints (like needsBorrow)
-    for (let attempt = 0; attempt < 100; attempt++) {
+    // which have ~15% hit rate, so we need ~300 attempts to get 5 hits reliably
+    for (let attempt = 0; attempt < 300 && targetHits < minExamplesPerPath; attempt++) {
       // Use new constraint-guided generation if flowchart has generation config
       // Otherwise fall back to legacy smart generation
       const values = hasGenerationConfig
@@ -2609,8 +2664,10 @@ export function generateDiverseExamples(
         existing.push(example)
         pathGroups.set(actualSignature, existing)
 
-        // If we hit the target path, we're done with this path
-        if (actualSignature === targetSignature) break
+        // Count hits on the target path
+        if (actualSignature === targetSignature) {
+          targetHits++
+        }
       } catch {
         // Skip problems that cause evaluation errors
       }
@@ -2658,18 +2715,21 @@ export function generateDiverseExamples(
   }
 
   // Phase 3: Generate additional variety for existing paths
-  // (So we have multiple nice examples to choose from)
+  // (So we have multiple nice examples to choose from, especially when filtered by difficulty)
   for (const [pathSignature, examples] of pathGroups) {
-    if (examples.length < 5) {
+    // Target 10 examples per path to ensure good coverage when filtered by difficulty tier
+    const targetExamplesPerPath = 10
+    if (examples.length < targetExamplesPerPath) {
       // Find the path definition for this signature
       const targetPath = analysis.paths.find((p) => p.nodeIds.join('→') === pathSignature)
       if (!targetPath) continue
 
-      // Try multiple attempts per additional example (complex paths may have low hit rate)
-      const attemptsPerExample = 50
+      // Try multiple attempts per additional example (complex paths may have low hit rate ~13%)
+      // With 100 consecutive failure limit, probability of giving up before 1 hit is 0.87^100 ≈ 0.000001
+      const maxConsecutiveFailures = 100
       let consecutiveFailures = 0
 
-      while (examples.length < 5 && consecutiveFailures < attemptsPerExample) {
+      while (examples.length < targetExamplesPerPath && consecutiveFailures < maxConsecutiveFailures) {
         const values = hasGenerationConfig
           ? generateForPath(flowchart, targetPath, teacherConstraints)
           : generateSmartProblem(schemaType, targetPath)

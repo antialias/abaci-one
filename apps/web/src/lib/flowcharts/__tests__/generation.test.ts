@@ -43,6 +43,21 @@ describe('fraction-add-sub path enumeration', () => {
     expect(paths.length).toBeGreaterThan(0)
   })
 
+  it('finds the Divides + borrow path', async () => {
+    const flowchart = await loadFlowchartById('fraction-add-sub')
+    const paths = enumerateAllPaths(flowchart)
+
+    // Find path that goes through CONV1A (multiplier) and BORROW
+    const dividesBorrowPath = paths.find(p =>
+      p.nodeIds.includes('CONV1A') && p.nodeIds.includes('BORROW')
+    )
+
+    console.log('Divides + borrow path:', dividesBorrowPath?.nodeIds.join('→'))
+    console.log('Constraints:', dividesBorrowPath?.constraints.map(c => `${c.expression}=${c.requiredOutcome}`))
+
+    expect(dividesBorrowPath).toBeDefined()
+  })
+
   it('finds the LCD + borrow path', async () => {
     const flowchart = await loadFlowchartById('fraction-add-sub')
     const paths = enumerateAllPaths(flowchart)
@@ -132,7 +147,7 @@ describe('example generation coverage', () => {
 
     console.log(`\nLCD + borrow examples: ${lcdBorrowExamples.length}`)
     for (const ex of lcdBorrowExamples) {
-      console.log(`  ${ex.displayProblem} -> path: ${ex.pathDescriptor}`)
+      console.log(`  ${JSON.stringify(ex.values)} -> path: ${ex.pathDescriptor}`)
     }
 
     // This test documents the current behavior
@@ -201,7 +216,6 @@ describe('example generation coverage', () => {
         try {
           context.computed[varName] = evaluate(varDef.init, context)
         } catch {
-          continue
         }
       }
 
@@ -318,9 +332,68 @@ describe('hard tier grid debug', () => {
     }
   })
 
+  it('shows inferred grid dimensions for medium tier', async () => {
+    const flowchart = await loadFlowchartById('fraction-add-sub')
+    const examples = generateDiverseExamples(flowchart, 500)
+
+    // Figure out the complexity range
+    const scores = examples.map(ex => ex.complexity.decisions + ex.complexity.checkpoints)
+    const minScore = Math.min(...scores)
+    const maxScore = Math.max(...scores)
+    console.log(`\nComplexity range: ${minScore} - ${maxScore}`)
+
+    // Medium tier: ~0.33-0.66 of the range
+    const range = maxScore - minScore
+    const mediumMin = minScore + range * 0.33
+    const mediumMax = minScore + range * 0.66
+
+    console.log(`Medium tier range: ${mediumMin.toFixed(1)} - ${mediumMax.toFixed(1)}`)
+
+    const mediumExamples = examples.filter(ex => {
+      const score = ex.complexity.decisions + ex.complexity.checkpoints
+      return score >= mediumMin && score < mediumMax
+    })
+
+    console.log(`\nMedium tier examples (${mediumExamples.length}):`)
+    const byDescriptor = new Map<string, number>()
+    for (const ex of mediumExamples) {
+      byDescriptor.set(ex.pathDescriptor, (byDescriptor.get(ex.pathDescriptor) || 0) + 1)
+    }
+    for (const [desc, count] of byDescriptor) {
+      console.log(`  ${desc}: ${count}`)
+    }
+
+    // Show grid dimensions for Medium
+    const gridDimensions = inferGridDimensionsFromExamples(flowchart, mediumExamples)
+    if (gridDimensions) {
+      console.log('\n=== MEDIUM GRID DIMENSIONS ===')
+      console.log(`Rows: ${gridDimensions.rows.join(', ')}`)
+      console.log(`Cols: ${gridDimensions.cols.join(', ')}`)
+      console.log(`RowKeys: ${gridDimensions.rowKeys.join(', ')}`)
+      console.log(`ColKeys: ${gridDimensions.colKeys.join(', ')}`)
+    }
+  })
+
   it('shows inferred grid dimensions for hard tier', async () => {
     const flowchart = await loadFlowchartById('fraction-add-sub')
-    const examples = generateDiverseExamples(flowchart, 50)
+    const examples = generateDiverseExamples(flowchart, 500)
+
+    // Log complexity distribution by path
+    const byPath = new Map<string, number[]>()
+    for (const ex of examples) {
+      const score = ex.complexity.decisions + ex.complexity.checkpoints
+      const pathKey = ex.pathDescriptor.match(/^Diff (LCD|Divides) − (borrow|no borrow)/)?.[0] || 'other'
+      const scores = byPath.get(pathKey) || []
+      scores.push(score)
+      byPath.set(pathKey, scores)
+    }
+    console.log('\nComplexity distribution by path key:')
+    for (const [path, scores] of byPath) {
+      const min = Math.min(...scores)
+      const max = Math.max(...scores)
+      const hardCount = scores.filter(s => s >= 8).length
+      console.log(`  ${path}: ${scores.length} total, complexity ${min}-${max}, ${hardCount} hard`)
+    }
 
     // Filter to Hard tier
     const hardExamples = examples.filter(ex => {
@@ -390,5 +463,107 @@ describe('hard tier grid debug', () => {
         console.log(`${gridDimensions.rows[r].padEnd(7)}| ${cells.join(' | ')}`)
       }
     }
+  })
+
+  it('collapses sparse diagonal grids to 1D', async () => {
+    const flowchart = await loadFlowchartById('fraction-add-sub')
+
+    // Create examples that form a diagonal pattern:
+    // - Some examples: Same denominators + Subtract
+    // - Some examples: Different denominators + Add
+    // This should collapse to 1D since each row has only 1 column occupied
+    const mockExamples: GeneratedExample[] = [
+      // Same denom + Subtract (cell [0,0] if rows=[Same,Diff], cols=[Sub,Add])
+      {
+        values: { leftWhole: 5, leftNum: 3, leftDenom: 6, op: '−', rightWhole: 0, rightNum: 1, rightDenom: 6 },
+        pathSignature: 'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→BORROWCHECK→GOSTEP4B→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        pathDescriptor: 'Same − no borrow no simp proper',
+        complexity: { decisions: 4, checkpoints: 1, pathLength: 14, path: [] },
+      },
+      // Another Same denom + Subtract
+      {
+        values: { leftWhole: 3, leftNum: 2, leftDenom: 4, op: '−', rightWhole: 1, rightNum: 1, rightDenom: 4 },
+        pathSignature: 'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→BORROWCHECK→GOSTEP4B→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        pathDescriptor: 'Same − no borrow no simp proper',
+        complexity: { decisions: 4, checkpoints: 1, pathLength: 14, path: [] },
+      },
+      // Different denom + Add (cell [1,1] if rows=[Same,Diff], cols=[Sub,Add])
+      {
+        values: { leftWhole: 1, leftNum: 2, leftDenom: 4, op: '+', rightWhole: 2, rightNum: 4, rightDenom: 6 },
+        pathSignature: 'STEP0→STEP1→STEP2→STEP3→STEP3B→READY3→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        pathDescriptor: 'Diff LCD + no simp proper',
+        complexity: { decisions: 4, checkpoints: 2, pathLength: 16, path: [] },
+      },
+      // Another Different denom + Add
+      {
+        values: { leftWhole: 3, leftNum: 4, leftDenom: 8, op: '+', rightWhole: 2, rightNum: 3, rightDenom: 5 },
+        pathSignature: 'STEP0→STEP1→STEP2→STEP3→STEP3B→READY3→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        pathDescriptor: 'Diff LCD + no simp proper',
+        complexity: { decisions: 4, checkpoints: 2, pathLength: 16, path: [] },
+      },
+    ]
+
+    const gridDimensions = inferGridDimensionsFromExamples(flowchart, mockExamples)
+
+    console.log('\n=== SPARSE GRID COLLAPSE TEST ===')
+    console.log(`Input: 4 examples in diagonal pattern`)
+    console.log(`Rows: ${gridDimensions?.rows.join(', ')}`)
+    console.log(`Cols: ${gridDimensions?.cols.join(', ') || '(empty - 1D)'}`)
+
+    // The grid should be collapsed to 1D (cols should be empty)
+    expect(gridDimensions).not.toBeNull()
+    expect(gridDimensions!.cols.length).toBe(0)
+    // Should have 2 rows with combined labels
+    expect(gridDimensions!.rows.length).toBe(2)
+    // Labels should be combined like "Same denominators + Subtract"
+    for (const row of gridDimensions!.rows) {
+      expect(row).toContain(' + ')
+      console.log(`  Combined label: "${row}"`)
+    }
+  })
+
+  it('does NOT collapse when grid has non-diagonal occupancy', async () => {
+    const flowchart = await loadFlowchartById('fraction-add-sub')
+
+    // Create examples that form an L-shape or full grid:
+    // - Same denom + Subtract
+    // - Same denom + Add (same row, different column!)
+    // - Different denom + Add
+    // Row "Same" has 2 columns occupied, so should NOT collapse
+    const mockExamples: GeneratedExample[] = [
+      // Same denom + Subtract
+      {
+        values: { leftWhole: 5, leftNum: 3, leftDenom: 6, op: '−', rightWhole: 0, rightNum: 1, rightDenom: 6 },
+        pathSignature: 'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→BORROWCHECK→GOSTEP4B→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        pathDescriptor: 'Same − no borrow no simp proper',
+        complexity: { decisions: 4, checkpoints: 1, pathLength: 14, path: [] },
+      },
+      // Same denom + Add (same row as above, different column)
+      {
+        values: { leftWhole: 2, leftNum: 1, leftDenom: 4, op: '+', rightWhole: 1, rightNum: 2, rightDenom: 4 },
+        pathSignature: 'STEP0→STEP1→READY1→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        pathDescriptor: 'Same + no simp proper',
+        complexity: { decisions: 3, checkpoints: 1, pathLength: 13, path: [] },
+      },
+      // Different denom + Add
+      {
+        values: { leftWhole: 1, leftNum: 2, leftDenom: 4, op: '+', rightWhole: 2, rightNum: 4, rightDenom: 6 },
+        pathSignature: 'STEP0→STEP1→STEP2→STEP3→STEP3B→READY3→CHECK1→REMIND→ADDSUB→GOSTEP4→CHECK2→STEP4→SIMPLIFY_Q→IMPROPER_Q→CHECK3→DONE',
+        pathDescriptor: 'Diff LCD + no simp proper',
+        complexity: { decisions: 4, checkpoints: 2, pathLength: 16, path: [] },
+      },
+    ]
+
+    const gridDimensions = inferGridDimensionsFromExamples(flowchart, mockExamples)
+
+    console.log('\n=== NON-SPARSE GRID TEST ===')
+    console.log(`Input: 3 examples in L-shape (row "Same" has 2 columns)`)
+    console.log(`Rows: ${gridDimensions?.rows.join(', ')}`)
+    console.log(`Cols: ${gridDimensions?.cols.join(', ') || '(empty - 1D)'}`)
+
+    // The grid should NOT be collapsed (cols should have values)
+    expect(gridDimensions).not.toBeNull()
+    expect(gridDimensions!.cols.length).toBeGreaterThan(0)
+    console.log(`  Grid is 2D: ${gridDimensions!.rows.length}x${gridDimensions!.cols.length}`)
   })
 })

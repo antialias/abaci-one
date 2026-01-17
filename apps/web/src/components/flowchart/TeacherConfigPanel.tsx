@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import * as Switch from '@radix-ui/react-switch'
 import type { GenerationConstraints } from '@/lib/flowcharts/loader'
 import { DEFAULT_CONSTRAINTS } from '@/lib/flowcharts/loader'
@@ -12,21 +13,28 @@ interface TeacherConfigPanelProps {
   constraints: GenerationConstraints
   /** Called when constraints change */
   onConstraintsChange: (constraints: GenerationConstraints) => void
-  /** Whether the panel is collapsed by default */
-  defaultCollapsed?: boolean
+  /** Number of examples to generate */
+  exampleCount: number
+  /** Called when example count changes */
+  onExampleCountChange: (count: number) => void
+  /** Called when regenerate is requested */
+  onRegenerate: () => void
+  /** Whether to show debug controls (example count slider) */
+  showDebugControls?: boolean
 }
 
 /**
- * Teacher-facing configuration panel for controlling problem generation constraints.
- * Collapsible panel with settings like "positive answers only".
+ * Teacher-facing configuration modal for controlling problem generation constraints.
+ * Triggered by a gear icon button, opens in a Radix modal.
  */
 export function TeacherConfigPanel({
   constraints,
   onConstraintsChange,
-  defaultCollapsed = true,
+  exampleCount,
+  onExampleCountChange,
+  onRegenerate,
+  showDebugControls = false,
 }: TeacherConfigPanelProps) {
-  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
-
   const handleToggle = useCallback(
     (key: keyof GenerationConstraints) => {
       onConstraintsChange({
@@ -38,76 +46,210 @@ export function TeacherConfigPanel({
   )
 
   return (
-    <div
-      data-testid="teacher-config-panel"
-      data-collapsed={isCollapsed}
-      className={css({
-        backgroundColor: { base: 'gray.50', _dark: 'gray.800' },
-        borderRadius: 'lg',
-        border: '1px solid',
-        borderColor: { base: 'gray.200', _dark: 'gray.700' },
-        overflow: 'hidden',
-        transition: 'all 0.2s',
-      })}
-    >
-      {/* Header - always visible */}
-      <button
-        type="button"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          padding: '2 3',
-          fontSize: 'sm',
-          fontWeight: 'medium',
-          color: { base: 'gray.600', _dark: 'gray.400' },
-          backgroundColor: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          _hover: {
-            backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
-          },
-        })}
-      >
-        <span className={hstack({ gap: '2', alignItems: 'center' })}>
-          <span>⚙️</span>
-          <span>Teacher Settings</span>
-        </span>
-        <span
+    <Dialog.Root>
+      <Dialog.Trigger asChild>
+        <button
+          type="button"
+          data-testid="teacher-config-trigger"
+          title="Teacher Settings"
           className={css({
-            transition: 'transform 0.2s',
-            transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+            width: '36px',
+            height: '36px',
+            borderRadius: 'lg',
+            backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+            border: '1px solid',
+            borderColor: { base: 'gray.200', _dark: 'gray.600' },
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 'lg',
+            transition: 'all 0.15s',
+            _hover: {
+              backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
+              transform: 'scale(1.05)',
+            },
+            _active: {
+              transform: 'scale(0.95)',
+            },
           })}
         >
-          ▼
-        </span>
-      </button>
+          ⚙️
+        </button>
+      </Dialog.Trigger>
 
-      {/* Collapsible content */}
-      {!isCollapsed && (
-        <div
-          className={vstack({
-            gap: '3',
-            padding: '3',
-            paddingTop: '0',
-            alignItems: 'stretch',
+      <Dialog.Portal>
+        <Dialog.Overlay
+          className={css({
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            animation: 'fadeIn 0.15s ease-out',
+          })}
+        />
+        <Dialog.Content
+          data-testid="teacher-config-panel"
+          className={css({
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: { base: 'white', _dark: 'gray.800' },
+            borderRadius: 'xl',
+            boxShadow: 'xl',
+            padding: '5',
+            width: '90vw',
+            maxWidth: '400px',
+            maxHeight: '85vh',
+            overflowY: 'auto',
+            zIndex: 101,
+            animation: 'scaleIn 0.15s ease-out',
+            _focus: {
+              outline: 'none',
+            },
           })}
         >
-          {/* Positive Answers Only */}
-          <ConfigSwitch
-            id="positive-answers"
-            label="Positive answers only"
-            description="Generated problems will always have non-negative results"
-            checked={
-              constraints.positiveAnswersOnly ?? DEFAULT_CONSTRAINTS.positiveAnswersOnly ?? true
-            }
-            onCheckedChange={() => handleToggle('positiveAnswersOnly')}
-          />
-        </div>
-      )}
-    </div>
+          <Dialog.Title
+            className={css({
+              fontSize: 'lg',
+              fontWeight: 'bold',
+              color: { base: 'gray.800', _dark: 'gray.100' },
+              marginBottom: '4',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2',
+            })}
+          >
+            <span>⚙️</span>
+            <span>Teacher Settings</span>
+          </Dialog.Title>
+
+          <Dialog.Description
+            className={css({
+              fontSize: 'sm',
+              color: { base: 'gray.500', _dark: 'gray.400' },
+              marginBottom: '4',
+            })}
+          >
+            Configure how problems are generated for this flowchart.
+          </Dialog.Description>
+
+          <div className={vstack({ gap: '3', alignItems: 'stretch' })}>
+            {/* Positive Answers Only */}
+            <ConfigSwitch
+              id="positive-answers"
+              label="Positive answers only"
+              description="Generated problems will always have non-negative results"
+              checked={
+                constraints.positiveAnswersOnly ?? DEFAULT_CONSTRAINTS.positiveAnswersOnly ?? true
+              }
+              onCheckedChange={() => handleToggle('positiveAnswersOnly')}
+            />
+
+            {/* Example Count Slider - debug only */}
+            {showDebugControls && (
+              <div
+                className={css({
+                  padding: '3',
+                  borderRadius: 'md',
+                  backgroundColor: { base: 'gray.50', _dark: 'gray.900' },
+                  border: '1px solid',
+                  borderColor: { base: 'gray.200', _dark: 'gray.700' },
+                })}
+              >
+                <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
+                  <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
+                    <label
+                      htmlFor="example-count"
+                      className={css({
+                        fontSize: 'sm',
+                        fontWeight: 'medium',
+                        color: { base: 'gray.800', _dark: 'gray.200' },
+                      })}
+                    >
+                      Examples to generate
+                    </label>
+                    <span
+                      className={css({
+                        fontSize: 'sm',
+                        fontWeight: 'bold',
+                        color: { base: 'gray.600', _dark: 'gray.400' },
+                      })}
+                    >
+                      {exampleCount}
+                    </span>
+                  </div>
+                  <input
+                    id="example-count"
+                    type="range"
+                    min="50"
+                    max="2000"
+                    step="50"
+                    value={exampleCount}
+                    onChange={(e) => onExampleCountChange(Number(e.target.value))}
+                    className={css({ width: '100%', cursor: 'pointer' })}
+                  />
+                  <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
+                    <span className={css({ fontSize: 'xs', color: 'gray.500' })}>
+                      Higher = more reliable grid coverage
+                    </span>
+                    <button
+                      type="button"
+                      onClick={onRegenerate}
+                      className={css({
+                        padding: '1 3',
+                        fontSize: 'xs',
+                        fontWeight: 'medium',
+                        backgroundColor: { base: 'blue.500', _dark: 'blue.600' },
+                        color: 'white',
+                        borderRadius: 'md',
+                        border: 'none',
+                        cursor: 'pointer',
+                        _hover: {
+                          backgroundColor: { base: 'blue.600', _dark: 'blue.700' },
+                        },
+                      })}
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Dialog.Close asChild>
+            <button
+              type="button"
+              aria-label="Close"
+              className={css({
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                width: '28px',
+                height: '28px',
+                borderRadius: 'full',
+                backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                color: { base: 'gray.500', _dark: 'gray.400' },
+                transition: 'all 0.15s',
+                _hover: {
+                  backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
+                },
+              })}
+            >
+              ✕
+            </button>
+          </Dialog.Close>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
@@ -125,9 +267,9 @@ function ConfigSwitch({ id, label, description, checked, onCheckedChange }: Conf
       className={hstack({
         justifyContent: 'space-between',
         gap: '3',
-        padding: '2',
+        padding: '3',
         borderRadius: 'md',
-        backgroundColor: { base: 'white', _dark: 'gray.900' },
+        backgroundColor: { base: 'gray.50', _dark: 'gray.900' },
         border: '1px solid',
         borderColor: { base: 'gray.200', _dark: 'gray.700' },
       })}

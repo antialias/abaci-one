@@ -206,6 +206,8 @@ export interface InteractiveDiceProps {
   onDragStart?: () => void
   /** Called when the dice animation completes and settles back home */
   onRollComplete?: () => void
+  /** Called for instant roll (shift+click) - bypasses animation */
+  onInstantRoll?: () => void
   /** Whether the dice is disabled */
   disabled?: boolean
   /** Size of the dice in pixels (default: 22) */
@@ -232,6 +234,7 @@ export function InteractiveDice({
   onRoll,
   onDragStart,
   onRollComplete,
+  onInstantRoll,
   disabled = false,
   size = 22,
   title = 'Roll dice (drag or click)',
@@ -739,10 +742,15 @@ export function InteractiveDice({
         ref={diceButtonRef}
         type="button"
         data-action="roll-dice"
-        onClick={() => {
+        onClick={(e) => {
           // Skip if we just did a throw (pointerup already called handleRoll)
           if (justThrewRef.current) {
             justThrewRef.current = false
+            return
+          }
+          // Shift+click = instant roll (bypass animation)
+          if (e.shiftKey && onInstantRoll) {
+            onInstantRoll()
             return
           }
           handleRoll()
