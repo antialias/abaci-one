@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import * as Dialog from '@radix-ui/react-dialog'
 import { getFlowchartList, getFlowchart } from '@/lib/flowcharts/definitions'
 import { loadFlowchart } from '@/lib/flowcharts/loader'
@@ -14,14 +14,36 @@ type ModalState =
   | { type: 'closed' }
   | { type: 'loading'; flowchartId: string }
   | { type: 'inputting'; flowchartId: string; flowchart: ExecutableFlowchart }
-  | { type: 'error'; message: string }
+  | { type: 'error'; flowchartId: string; message: string }
 
 export default function FlowchartPickerPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const flowcharts = getFlowchartList()
+
+  // The selected flowchart ID from URL query param
+  const selectedId = searchParams.get('select')
+
+  // Internal modal state (loading/inputting/error) - derived from URL + async loading
   const [modalState, setModalState] = useState<ModalState>({ type: 'closed' })
 
-  // Load flowchart when modal opens
+  // Sync modal state with URL query param
+  useEffect(() => {
+    if (!selectedId) {
+      // URL has no selection - close modal
+      setModalState({ type: 'closed' })
+      return
+    }
+
+    // URL has a selection - check if we need to load it
+    const needsLoad = modalState.type === 'closed' || modalState.flowchartId !== selectedId
+    if (needsLoad) {
+      // Start loading the newly selected flowchart
+      setModalState({ type: 'loading', flowchartId: selectedId })
+    }
+  }, [selectedId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load flowchart when modal enters loading state
   useEffect(() => {
     if (modalState.type !== 'loading') return
 
@@ -30,7 +52,7 @@ export default function FlowchartPickerPage() {
     async function load() {
       const data = getFlowchart(flowchartId)
       if (!data) {
-        setModalState({ type: 'error', message: `Flowchart not found` })
+        setModalState({ type: 'error', flowchartId, message: `Flowchart not found` })
         return
       }
 
@@ -39,16 +61,17 @@ export default function FlowchartPickerPage() {
         setModalState({ type: 'inputting', flowchartId, flowchart })
       } catch (error) {
         console.error('Error loading flowchart:', error)
-        setModalState({ type: 'error', message: 'Failed to load flowchart' })
+        setModalState({ type: 'error', flowchartId, message: 'Failed to load flowchart' })
       }
     }
 
     load()
   }, [modalState])
 
+  // Open modal by updating URL (adds to browser history)
   const handleCardClick = useCallback((flowchartId: string) => {
-    setModalState({ type: 'loading', flowchartId })
-  }, [])
+    router.push(`/flowchart?select=${flowchartId}`, { scroll: false })
+  }, [router])
 
   const handleProblemSubmit = useCallback(
     (values: Record<string, ProblemValue>) => {
@@ -64,9 +87,10 @@ export default function FlowchartPickerPage() {
     [modalState, router]
   )
 
+  // Close modal by updating URL (replaces current history entry to avoid back-to-modal loop)
   const handleClose = useCallback(() => {
-    setModalState({ type: 'closed' })
-  }, [])
+    router.replace('/flowchart', { scroll: false })
+  }, [router])
 
   const isModalOpen = modalState.type !== 'closed'
 
@@ -177,8 +201,8 @@ export default function FlowchartPickerPage() {
         More flowcharts coming soon!
       </footer>
 
-      {/* Modal for problem selection */}
-      <Dialog.Root open={isModalOpen} onOpenChange={(open) => !open && handleClose()}>
+      {/* Modal for problem selection - state driven by URL query param */}
+      <Dialog.Root open={isModalOpen} onOpenChange={(open) => { if (!open) handleClose() }}>
         <Dialog.Portal>
           <Dialog.Overlay
             className={css({
