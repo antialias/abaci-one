@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { ExecutableFlowchart, ProblemValue } from '@/lib/flowcharts/schema'
@@ -22,6 +22,8 @@ export default function FlowchartPage() {
   const flowchartId = params.flowchartId as string
 
   const [state, setState] = useState<PageState>({ type: 'loading' })
+  // Track if we've already processed sessionStorage (prevents React Strict Mode double-run issues)
+  const processedStorageRef = useRef(false)
 
   // Load flowchart on mount, check for stored problem values
   useEffect(() => {
@@ -36,24 +38,29 @@ export default function FlowchartPage() {
         const flowchart = await loadFlowchart(data.definition, data.mermaid)
 
         // Check for stored problem values from the picker modal
-        const storageKey = `flowchart-problem-${flowchartId}`
-        const storedValues = sessionStorage.getItem(storageKey)
+        // Use ref to prevent React Strict Mode double-run from losing the values
+        if (!processedStorageRef.current) {
+          processedStorageRef.current = true
+          const storageKey = `flowchart-problem-${flowchartId}`
+          const storedValues = sessionStorage.getItem(storageKey)
 
-        if (storedValues) {
-          // Clear the stored values so they don't persist across refreshes
-          sessionStorage.removeItem(storageKey)
+          if (storedValues) {
+            // Clear the stored values so they don't persist across refreshes
+            sessionStorage.removeItem(storageKey)
 
-          try {
-            const problemInput = JSON.parse(storedValues) as Record<string, ProblemValue>
-            setState({ type: 'walking', flowchart, problemInput })
-            return
-          } catch {
-            // If parsing fails, fall through to inputting
-            console.warn('Failed to parse stored problem values')
+            try {
+              const problemInput = JSON.parse(storedValues) as Record<string, ProblemValue>
+              setState({ type: 'walking', flowchart, problemInput })
+              return
+            } catch {
+              // If parsing fails, fall through to inputting
+              console.warn('Failed to parse stored problem values')
+            }
           }
+          // Only set to inputting on first run if no stored values found
+          setState({ type: 'inputting', flowchart })
         }
-
-        setState({ type: 'inputting', flowchart })
+        // On subsequent runs (React Strict Mode), don't change state - let the first run's state persist
       } catch (error) {
         console.error('Error loading flowchart:', error)
         setState({ type: 'error', message: 'Failed to load flowchart' })

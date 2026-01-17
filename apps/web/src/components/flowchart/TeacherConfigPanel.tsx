@@ -53,24 +53,19 @@ export function TeacherConfigPanel({
           data-testid="teacher-config-trigger"
           title="Teacher Settings"
           className={css({
-            width: '36px',
-            height: '36px',
-            borderRadius: 'lg',
-            backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
-            border: '1px solid',
-            borderColor: { base: 'gray.200', _dark: 'gray.600' },
+            padding: '1',
+            borderRadius: 'md',
+            backgroundColor: 'transparent',
+            border: 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: 'lg',
-            transition: 'all 0.15s',
+            transition: 'all 0.2s',
             _hover: {
               backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
-              transform: 'scale(1.05)',
-            },
-            _active: {
-              transform: 'scale(0.95)',
+              transform: 'scale(1.1)',
             },
           })}
         >
