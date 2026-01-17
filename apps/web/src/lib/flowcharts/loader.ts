@@ -2849,6 +2849,211 @@ export function generateDiverseExamples(
 }
 
 // =============================================================================
+// Parallel Example Generation
+// =============================================================================
+
+/**
+ * Generate examples for a specific subset of paths.
+ * Used by parallel workers to split work across multiple threads.
+ *
+ * Returns raw examples (not yet selected/deduped) that can be merged with
+ * results from other workers.
+ */
+export function generateExamplesForPaths(
+  flowchart: ExecutableFlowchart,
+  pathIndices: number[],
+  constraints: GenerationConstraints = DEFAULT_CONSTRAINTS
+): GeneratedExample[] {
+  const schema = flowchart.definition.problemInput
+  const schemaType = schema.schema
+  const analysis = analyzeFlowchart(flowchart)
+  const hasGenerationConfig = !!flowchart.definition.generation
+
+  const results: GeneratedExample[] = []
+
+  const teacherConstraints: TeacherConstraints = {
+    positiveAnswersOnly: constraints.positiveAnswersOnly,
+  }
+
+  function satisfiesConstraintsLegacy(values: Record<string, ProblemValue>): boolean {
+    if (constraints.positiveAnswersOnly && !hasPositiveAnswerLegacy(schemaType, values)) {
+      return false
+    }
+    return true
+  }
+
+  // Process only the assigned paths
+  const minExamplesPerPath = 5
+  for (const pathIndex of pathIndices) {
+    const targetPath = analysis.paths[pathIndex]
+    if (!targetPath) continue
+
+    const targetSignature = targetPath.nodeIds.join('→')
+    let targetHits = 0
+
+    for (let attempt = 0; attempt < 300 && targetHits < minExamplesPerPath; attempt++) {
+      const values = hasGenerationConfig
+        ? generateForPath(flowchart, targetPath, teacherConstraints)
+        : generateSmartProblem(schemaType, targetPath)
+
+      if (!values) continue
+      if (!hasGenerationConfig && !isValidProblem(values, schema.validation)) continue
+      if (!hasGenerationConfig && !satisfiesConstraintsLegacy(values)) continue
+
+      try {
+        const complexity = calculatePathComplexity(flowchart, values)
+        const actualSignature = complexity.path.join('→')
+        const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path, values)
+
+        const example: GeneratedExample = {
+          values,
+          complexity,
+          pathSignature: actualSignature,
+          pathDescriptor,
+        }
+        results.push(example)
+
+        if (actualSignature === targetSignature) {
+          targetHits++
+        }
+      } catch {
+        // Skip problems that cause evaluation errors
+      }
+    }
+
+    // Phase 3 for this path: Generate additional variety
+    const targetExamplesPerPath = 10
+    const pathExamples = results.filter((ex) => ex.pathSignature === targetSignature)
+    if (pathExamples.length < targetExamplesPerPath) {
+      const maxConsecutiveFailures = 100
+      let consecutiveFailures = 0
+      let currentCount = pathExamples.length
+
+      while (currentCount < targetExamplesPerPath && consecutiveFailures < maxConsecutiveFailures) {
+        const values = hasGenerationConfig
+          ? generateForPath(flowchart, targetPath, teacherConstraints)
+          : generateSmartProblem(schemaType, targetPath)
+
+        if (!values) {
+          consecutiveFailures++
+          continue
+        }
+        if (!hasGenerationConfig && !isValidProblem(values, schema.validation)) {
+          consecutiveFailures++
+          continue
+        }
+        if (!hasGenerationConfig && !satisfiesConstraintsLegacy(values)) {
+          consecutiveFailures++
+          continue
+        }
+
+        try {
+          const complexity = calculatePathComplexity(flowchart, values)
+          if (complexity.path.join('→') === targetSignature) {
+            const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path, values)
+            results.push({ values, complexity, pathSignature: targetSignature, pathDescriptor })
+            currentCount++
+            consecutiveFailures = 0
+          } else {
+            consecutiveFailures++
+          }
+        } catch {
+          consecutiveFailures++
+        }
+      }
+    }
+  }
+
+  return results
+}
+
+/**
+ * Merge and finalize examples from multiple parallel workers.
+ * Takes raw examples from workers and produces final selected results.
+ */
+export function mergeAndFinalizeExamples(
+  allExamples: GeneratedExample[],
+  count: number
+): GeneratedExample[] {
+  // Group by pathDescriptor (pedagogical category)
+  const descriptorGroups = new Map<string, GeneratedExample[]>()
+  for (const ex of allExamples) {
+    const existing = descriptorGroups.get(ex.pathDescriptor) || []
+    existing.push(ex)
+    descriptorGroups.set(ex.pathDescriptor, existing)
+  }
+
+  const results: GeneratedExample[] = []
+
+  // Sort descriptor groups by complexity (simpler first)
+  const sortedGroups = [...descriptorGroups.entries()].sort((a, b) => {
+    const aComplexity = a[1][0].complexity.decisions + a[1][0].complexity.checkpoints
+    const bComplexity = b[1][0].complexity.decisions + b[1][0].complexity.checkpoints
+    if (aComplexity !== bComplexity) return aComplexity - bComplexity
+    return a[1][0].complexity.pathLength - b[1][0].complexity.pathLength
+  })
+
+  // Take one "nice" example from each unique descriptor
+  for (const [, examples] of sortedGroups) {
+    if (results.length >= count) break
+
+    // Deduplicate by problem values
+    const seen = new Set<string>()
+    const unique = examples.filter((ex) => {
+      const key = JSON.stringify(ex.values)
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+
+    // Sort by numeric sum (smaller = more readable)
+    const sorted = unique.sort((a, b) => {
+      const aSum = Object.values(a.values).reduce<number>(
+        (s, v) => s + (typeof v === 'number' ? v : 0),
+        0
+      )
+      const bSum = Object.values(b.values).reduce<number>(
+        (s, v) => s + (typeof v === 'number' ? v : 0),
+        0
+      )
+      return aSum - bSum
+    })
+
+    // Randomly pick from the smaller half
+    const candidateCount = Math.max(1, Math.ceil(sorted.length / 2))
+    const candidates = sorted.slice(0, candidateCount)
+    const selected = candidates[Math.floor(Math.random() * candidates.length)]
+    results.push(selected)
+  }
+
+  // Add variety with larger numbers if needed
+  if (results.length < count) {
+    for (const [, examples] of sortedGroups) {
+      if (results.length >= count) break
+
+      const larger = examples.find((ex) => {
+        const sum = Object.values(ex.values).reduce<number>(
+          (s, v) => s + (typeof v === 'number' ? v : 0),
+          0
+        )
+        return (
+          sum > 20 &&
+          !results.some(
+            (r) =>
+              r.pathDescriptor === ex.pathDescriptor &&
+              JSON.stringify(r.values) === JSON.stringify(ex.values)
+          )
+        )
+      })
+
+      if (larger) results.push(larger)
+    }
+  }
+
+  return results.slice(0, count)
+}
+
+// =============================================================================
 // Problem Input Helpers
 // =============================================================================
 

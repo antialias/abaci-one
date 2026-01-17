@@ -12,7 +12,6 @@ import type {
 } from '@/lib/flowcharts/schema'
 import { evaluate } from '@/lib/flowcharts/evaluator'
 import {
-  generateDiverseExamples,
   analyzeFlowchart,
   inferGridDimensions,
   inferGridDimensionsFromExamples,
@@ -23,6 +22,7 @@ import {
   DEFAULT_CONSTRAINTS,
 } from '@/lib/flowcharts/loader'
 import { generateExamplesAsync } from '@/lib/flowcharts/example-generator-client'
+import { runBenchmark } from '@/lib/flowcharts/benchmark'
 import { InteractiveDice } from '@/components/ui/InteractiveDice'
 import { TeacherConfigPanel } from './TeacherConfigPanel'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
@@ -131,17 +131,34 @@ export function FlowchartProblemInput({
       console.error('Error loading cached examples:', e)
     }
 
-    // No cache found, generate new examples
+    // No cache found, generate new examples (async via worker)
     if (flowchart) {
-      try {
-        const examples = generateDiverseExamples(flowchart, exampleCount, constraints)
-        setDisplayedExamples(examples)
-        sessionStorage.setItem(storageKey, JSON.stringify(examples))
-      } catch (e) {
-        console.error('Error generating examples:', e)
+      generateExamplesAsync(flowchart, exampleCount, constraints)
+        .then((examples) => {
+          setDisplayedExamples(examples)
+          sessionStorage.setItem(storageKey, JSON.stringify(examples))
+        })
+        .catch((e) => {
+          console.error('Error generating examples:', e)
+        })
+    }
+  }, [flowchart, exampleCount, constraints, storageKey])
+
+  // Keyboard shortcut for benchmark: Ctrl+Shift+B
+  useEffect(() => {
+    if (!flowchart) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'B') {
+        e.preventDefault()
+        console.log('🎲 Starting benchmark...')
+        runBenchmark(flowchart, { runs: 5, count: exampleCount, constraints })
       }
     }
-  }, [flowchart, constraints, storageKey])
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [flowchart, exampleCount, constraints])
 
   // The displayed examples (from cache or fresh generation)
   const generatedExamples = displayedExamples
@@ -679,9 +696,9 @@ export function FlowchartProblemInput({
           onConstraintsChange={handleConstraintsChange}
           exampleCount={exampleCount}
           onExampleCountChange={setExampleCount}
-          onRegenerate={() => {
+          onRegenerate={async () => {
             if (flowchart) {
-              const examples = generateDiverseExamples(flowchart, exampleCount, constraints)
+              const examples = await generateExamplesAsync(flowchart, exampleCount, constraints)
               setDisplayedExamples(examples)
               if (storageKey) {
                 sessionStorage.setItem(storageKey, JSON.stringify(examples))

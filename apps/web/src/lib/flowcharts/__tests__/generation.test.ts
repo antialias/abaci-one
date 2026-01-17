@@ -1,13 +1,16 @@
 /**
  * Unit tests for flowchart example generation
  *
- * This file helps debug why certain paths aren't getting examples generated.
+ * This file helps debug why certain paths aren't getting examples generated,
+ * and verifies correctness of parallel generation.
  */
 
 import { describe, it, expect } from 'vitest'
 import {
   loadFlowchart,
   generateDiverseExamples,
+  generateExamplesForPaths,
+  mergeAndFinalizeExamples,
   enumerateAllPaths,
   analyzeFlowchart,
   type GeneratedExample,
@@ -565,5 +568,211 @@ describe('hard tier grid debug', () => {
     expect(gridDimensions).not.toBeNull()
     expect(gridDimensions!.cols.length).toBeGreaterThan(0)
     console.log(`  Grid is 2D: ${gridDimensions!.rows.length}x${gridDimensions!.cols.length}`)
+  })
+})
+
+// =============================================================================
+// Test: Parallel Generation Correctness
+// =============================================================================
+
+describe('parallel generation correctness', () => {
+  it('generateExamplesForPaths produces valid examples for assigned paths', async () => {
+    const flowchart = await loadFlowchartById('fraction-add-sub')
+    const analysis = analyzeFlowchart(flowchart)
+
+    // Generate for just the first 3 paths
+    const pathIndices = [0, 1, 2]
+    const examples = generateExamplesForPaths(flowchart, pathIndices, { positiveAnswersOnly: true })
+
+    console.log(`\nGenerated ${examples.length} examples for paths [0, 1, 2]`)
+
+    // Each example should have valid structure
+    for (const ex of examples) {
+      expect(ex.values).toBeDefined()
+      expect(ex.complexity).toBeDefined()
+      expect(ex.pathSignature).toBeDefined()
+      expect(ex.pathDescriptor).toBeDefined()
+      expect(typeof ex.complexity.decisions).toBe('number')
+      expect(typeof ex.complexity.checkpoints).toBe('number')
+    }
+
+    // Should have at least some examples
+    expect(examples.length).toBeGreaterThan(0)
+
+    // Log path descriptors for debugging
+    const descriptors = new Set(examples.map(e => e.pathDescriptor))
+    console.log(`Unique path descriptors: ${descriptors.size}`)
+    for (const desc of descriptors) {
+      console.log(`  ${desc}`)
+    }
+  })
+
+  it('mergeAndFinalizeExamples produces correct count and diversity', async () => {
+    const flowchart = await loadFlowchartById('fraction-add-sub')
+    const analysis = analyzeFlowchart(flowchart)
+
+    // Simulate parallel generation by splitting paths
+    const halfIdx = Math.floor(analysis.paths.length / 2)
+    const worker1Paths = Array.from({ length: halfIdx }, (_, i) => i)
+    const worker2Paths = Array.from({ length: analysis.paths.length - halfIdx }, (_, i) => halfIdx + i)
+
+    // Generate examples for each "worker"
+    const examples1 = generateExamplesForPaths(flowchart, worker1Paths, { positiveAnswersOnly: true })
+    const examples2 = generateExamplesForPaths(flowchart, worker2Paths, { positiveAnswersOnly: true })
+
+    console.log(`\nWorker 1 (paths 0-${halfIdx - 1}): ${examples1.length} examples`)
+    console.log(`Worker 2 (paths ${halfIdx}-${analysis.paths.length - 1}): ${examples2.length} examples`)
+
+    // Merge results
+    const allExamples = [...examples1, ...examples2]
+    const count = 20
+    const finalExamples = mergeAndFinalizeExamples(allExamples, count)
+
+    console.log(`\nMerged: ${allExamples.length} total -> ${finalExamples.length} final (requested ${count})`)
+
+    // Should return the requested count or fewer if not enough unique paths
+    expect(finalExamples.length).toBeLessThanOrEqual(count)
+    expect(finalExamples.length).toBeGreaterThan(0)
+
+    // Final examples should be diverse (different path descriptors)
+    const finalDescriptors = new Set(finalExamples.map(e => e.pathDescriptor))
+    console.log(`Unique path descriptors in final: ${finalDescriptors.size}`)
+
+    // Should have reasonable diversity
+    expect(finalDescriptors.size).toBeGreaterThan(1)
+  })
+
+  it('parallel generation covers same paths as sync generation', async () => {
+    const flowchart = await loadFlowchartById('fraction-add-sub')
+    const analysis = analyzeFlowchart(flowchart)
+
+    // Run sync generation
+    const syncExamples = generateDiverseExamples(flowchart, 50, { positiveAnswersOnly: true })
+    const syncDescriptors = new Set(syncExamples.map(e => e.pathDescriptor))
+
+    // Simulate parallel generation with 4 workers
+    const numWorkers = 4
+    const pathsPerWorker = Math.ceil(analysis.paths.length / numWorkers)
+    const workerResults: GeneratedExample[][] = []
+
+    for (let w = 0; w < numWorkers; w++) {
+      const startIdx = w * pathsPerWorker
+      const endIdx = Math.min(startIdx + pathsPerWorker, analysis.paths.length)
+      if (startIdx >= analysis.paths.length) break
+
+      const pathIndices = Array.from({ length: endIdx - startIdx }, (_, i) => startIdx + i)
+      const examples = generateExamplesForPaths(flowchart, pathIndices, { positiveAnswersOnly: true })
+      workerResults.push(examples)
+    }
+
+    const allParallel = workerResults.flat()
+    const parallelExamples = mergeAndFinalizeExamples(allParallel, 50)
+    const parallelDescriptors = new Set(parallelExamples.map(e => e.pathDescriptor))
+
+    console.log(`\n=== PATH COVERAGE COMPARISON ===`)
+    console.log(`Sync paths covered: ${syncDescriptors.size}`)
+    console.log(`Parallel paths covered: ${parallelDescriptors.size}`)
+
+    // Check for paths in sync but not parallel
+    const missingInParallel = [...syncDescriptors].filter(d => !parallelDescriptors.has(d))
+    const extraInParallel = [...parallelDescriptors].filter(d => !syncDescriptors.has(d))
+
+    if (missingInParallel.length > 0) {
+      console.log(`\nPaths in SYNC but not PARALLEL:`)
+      for (const d of missingInParallel) {
+        console.log(`  - ${d}`)
+      }
+    }
+
+    if (extraInParallel.length > 0) {
+      console.log(`\nPaths in PARALLEL but not SYNC:`)
+      for (const d of extraInParallel) {
+        console.log(`  + ${d}`)
+      }
+    }
+
+    // Path coverage should be similar (within 20% difference is acceptable due to randomness)
+    const coverageDiff = Math.abs(syncDescriptors.size - parallelDescriptors.size)
+    const maxDiff = Math.ceil(syncDescriptors.size * 0.2)
+    console.log(`\nCoverage difference: ${coverageDiff} (max allowed: ${maxDiff})`)
+
+    expect(coverageDiff).toBeLessThanOrEqual(maxDiff)
+  })
+
+  it('parallel generation produces valid problem values', async () => {
+    const flowchart = await loadFlowchartById('fraction-add-sub')
+    const analysis = analyzeFlowchart(flowchart)
+
+    // Generate examples in parallel
+    const pathIndices = Array.from({ length: analysis.paths.length }, (_, i) => i)
+    const examples = generateExamplesForPaths(flowchart, pathIndices, { positiveAnswersOnly: true })
+
+    console.log(`\nValidating ${examples.length} examples...`)
+
+    let validCount = 0
+    let invalidCount = 0
+    const errors: string[] = []
+
+    for (const ex of examples) {
+      try {
+        // Verify values are valid fractions
+        const { leftNum, leftDenom, rightNum, rightDenom, leftWhole, rightWhole, op } = ex.values as {
+          leftNum: number
+          leftDenom: number
+          rightNum: number
+          rightDenom: number
+          leftWhole: number
+          rightWhole: number
+          op: string
+        }
+
+        // Denominators should be positive
+        if (leftDenom <= 0 || rightDenom <= 0) {
+          errors.push(`Invalid denom: ${leftDenom}, ${rightDenom}`)
+          invalidCount++
+          continue
+        }
+
+        // Numerators should be less than denominators (proper fractions)
+        if (leftNum >= leftDenom || rightNum >= rightDenom) {
+          // This is actually allowed for improper fractions
+        }
+
+        // Whole numbers should be non-negative
+        if (leftWhole < 0 || rightWhole < 0) {
+          errors.push(`Negative whole: ${leftWhole}, ${rightWhole}`)
+          invalidCount++
+          continue
+        }
+
+        // For subtraction, result should be positive (positiveAnswersOnly constraint)
+        if (op === '−') {
+          const leftValue = leftWhole + leftNum / leftDenom
+          const rightValue = rightWhole + rightNum / rightDenom
+          if (leftValue < rightValue) {
+            errors.push(`Negative result: ${leftValue} - ${rightValue}`)
+            invalidCount++
+            continue
+          }
+        }
+
+        validCount++
+      } catch (e) {
+        errors.push(`Error: ${e}`)
+        invalidCount++
+      }
+    }
+
+    console.log(`Valid: ${validCount}, Invalid: ${invalidCount}`)
+    if (errors.length > 0 && errors.length <= 5) {
+      console.log(`Errors:`)
+      for (const err of errors) {
+        console.log(`  ${err}`)
+      }
+    }
+
+    // Should have very few invalid examples (< 1%)
+    const invalidRatio = invalidCount / examples.length
+    expect(invalidRatio).toBeLessThan(0.01)
   })
 })
