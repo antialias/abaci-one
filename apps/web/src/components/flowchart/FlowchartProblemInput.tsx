@@ -22,6 +22,7 @@ import {
   type GridDimensions,
   DEFAULT_CONSTRAINTS,
 } from '@/lib/flowcharts/loader'
+import { generateExamplesAsync } from '@/lib/flowcharts/example-generator-client'
 import { InteractiveDice } from '@/components/ui/InteractiveDice'
 import { TeacherConfigPanel } from './TeacherConfigPanel'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
@@ -65,8 +66,8 @@ export function FlowchartProblemInput({
   const [constraints, setConstraints] = useState<GenerationConstraints>(DEFAULT_CONSTRAINTS)
   // Displayed examples - updated when dice roll completes
   const [displayedExamples, setDisplayedExamples] = useState<GeneratedExample[]>([])
-  // Pending examples - pre-computed during drag, shown on roll complete
-  const pendingExamplesRef = useRef<GeneratedExample[] | null>(null)
+  // Pending examples promise - generation runs async in Web Worker during drag
+  const pendingExamplesRef = useRef<Promise<GeneratedExample[]> | null>(null)
   // Track if we've loaded from cache
   const loadedFromCacheRef = useRef(false)
   // Track which example is being edited (shows popover editor)
@@ -327,28 +328,29 @@ export function FlowchartProblemInput({
   }, [flowchart, editingExample, values, difficultyRange])
 
   // Precompute new examples when user starts dragging the dice
+  // Uses Web Worker to avoid blocking the UI thread
   const handleDragStart = useCallback(() => {
     if (!flowchart) return
-    try {
-      // Compute new examples during drag - one per unique pedagogical path
-      pendingExamplesRef.current = generateDiverseExamples(flowchart, exampleCount, constraints)
-    } catch (e) {
-      console.error('Error pre-generating examples:', e)
-    }
-  }, [flowchart, constraints])
+    // Start async generation in Web Worker - stores promise for handleRollComplete to await
+    pendingExamplesRef.current = generateExamplesAsync(flowchart, exampleCount, constraints)
+  }, [flowchart, exampleCount, constraints])
 
   // Show new examples after the dice roll animation completes
-  const handleRollComplete = useCallback(() => {
+  const handleRollComplete = useCallback(async () => {
     let newExamples: GeneratedExample[] | null = null
 
-    // If we have pre-computed examples from drag, use them
+    // If we have pre-computed examples from drag (promise), await them
     if (pendingExamplesRef.current) {
-      newExamples = pendingExamplesRef.current
+      try {
+        newExamples = await pendingExamplesRef.current
+      } catch (e) {
+        console.error('Error from worker:', e)
+      }
       pendingExamplesRef.current = null
     } else if (flowchart) {
-      // Click-only roll - compute now (animation masked the compute time)
+      // Click-only roll - compute via worker (animation masked the compute time)
       try {
-        newExamples = generateDiverseExamples(flowchart, exampleCount, constraints)
+        newExamples = await generateExamplesAsync(flowchart, exampleCount, constraints)
       } catch (e) {
         console.error('Error generating examples:', e)
       }
@@ -365,7 +367,7 @@ export function FlowchartProblemInput({
         }
       }
     }
-  }, [flowchart, constraints, storageKey])
+  }, [flowchart, exampleCount, constraints, storageKey])
 
   // Handler for dice roll - we don't update examples here anymore
   // (examples update on completion via handleRollComplete)
@@ -375,10 +377,10 @@ export function FlowchartProblemInput({
   }, [])
 
   // Handler for instant roll (shift+click) - bypasses animation
-  const handleInstantRoll = useCallback(() => {
+  const handleInstantRoll = useCallback(async () => {
     if (!flowchart) return
     try {
-      const newExamples = generateDiverseExamples(flowchart, exampleCount, constraints)
+      const newExamples = await generateExamplesAsync(flowchart, exampleCount, constraints)
       setDisplayedExamples(newExamples)
       if (storageKey) {
         sessionStorage.setItem(storageKey, JSON.stringify(newExamples))
