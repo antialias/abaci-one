@@ -72,7 +72,8 @@
       "Bash(npm view:*)",
       "Bash(pnpm install:*)",
       "Bash(git ls-files:*)",
-      "Bash(pnpm panda codegen:*)"
+      "Bash(pnpm panda codegen:*)",
+      "Bash(npm run test:*)"
     ],
     "deny": [],
     "ask": []
