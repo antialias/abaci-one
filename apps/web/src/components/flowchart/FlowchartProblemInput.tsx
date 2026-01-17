@@ -1342,7 +1342,7 @@ export function FlowchartProblemInput({
               right: 0,
               bottom: 0,
               backgroundColor: 'rgba(0, 0, 0, 0.3)',
-              zIndex: 100,
+              zIndex: 200, // Higher than modal (101) to work in modal mode
             })}
           />
           {/* Popover positioned over the example */}
@@ -1352,7 +1352,7 @@ export function FlowchartProblemInput({
             data-difficulty={editorDifficultyLevel}
             className={css({
               position: 'fixed',
-              zIndex: 101,
+              zIndex: 201, // Higher than modal (101) to work in modal mode
               padding: '3',
               borderRadius: 'lg',
               border: '3px solid',
