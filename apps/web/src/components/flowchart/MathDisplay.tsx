@@ -111,9 +111,10 @@ function parseExpression(expr: string): Token[] {
     const termMatch = part.match(/^(-?\d*)([a-zA-Z])$/)
     if (termMatch) {
       const [, coef, varName] = termMatch
-      if (coef === '' || coef === '-') {
-        // Just "x" or "-x"
-        tokens.push({ type: 'variable', name: coef === '-' ? `-${varName}` : varName })
+      if (coef === '' || coef === '-' || coef === '1' || coef === '-1') {
+        // Coefficient of 1 is implicit: "1x" → "x", "-1x" → "-x"
+        const isNegative = coef === '-' || coef === '-1'
+        tokens.push({ type: 'variable', name: isNegative ? `-${varName}` : varName })
       } else {
         tokens.push({ type: 'term', coefficient: coef, variable: varName })
       }

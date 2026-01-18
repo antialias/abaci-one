@@ -84,8 +84,7 @@ describe('A/B Performance Benchmark', () => {
       console.log(`  Run ${run + 1}: ${elapsed.toFixed(1)}ms`)
     }
 
-    const nonMemoizedMean =
-      nonMemoizedTimes.reduce((a, b) => a + b, 0) / nonMemoizedTimes.length
+    const nonMemoizedMean = nonMemoizedTimes.reduce((a, b) => a + b, 0) / nonMemoizedTimes.length
 
     // ============= MEMOIZED =============
     console.log(`\n🚀 Testing MEMOIZED...`)

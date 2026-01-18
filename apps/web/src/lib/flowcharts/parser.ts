@@ -1,10 +1,36 @@
 /**
  * Mermaid Flowchart Parser
  *
- * Extracts structure from .mmd files:
- * - Node IDs and content
- * - Edge connections
- * - Subgraph (phase) definitions
+ * Extracts structure from Mermaid flowchart content (from .mmd files or embedded strings).
+ *
+ * ## Key Concepts
+ *
+ * - **Node content** is stored in Mermaid node labels using special formatting
+ * - **Phases** are Mermaid subgraphs that group related nodes
+ * - **Edges** connect nodes and may have labels
+ *
+ * ## Content Formatting
+ *
+ * Mermaid node labels use HTML-like formatting:
+ * - `<b>...</b>` - Title (extracted separately)
+ * - `<br/>` - Line breaks
+ * - `<i>...</i>` - Italic (used for examples)
+ * - `───────` - Dividers (ignored)
+ * - `📝` - Example marker
+ * - `⚠️` - Warning marker
+ * - `☐` / `☑` - Checklist items
+ *
+ * @example
+ * ```typescript
+ * import { parseMermaidFile, parseNodeContent } from './parser'
+ *
+ * const mermaid = parseMermaidFile(mermaidContent)
+ * const nodeContent = mermaid.nodes['START']
+ * const parsed = parseNodeContent(nodeContent)
+ * console.log(parsed.title, parsed.body)
+ * ```
+ *
+ * @module flowcharts/parser
  */
 
 import type { ParsedMermaid, ParsedNodeContent, ParsedEdge } from './schema'
@@ -14,14 +40,49 @@ import type { ParsedMermaid, ParsedNodeContent, ParsedEdge } from './schema'
 // =============================================================================
 
 /**
- * Parse the raw content string from a Mermaid node label.
+ * Parse the raw content string from a Mermaid node label into structured content.
  *
- * Mermaid node content uses:
- * - <b>...</b> for bold (title)
- * - <br/> for line breaks
- * - <i>...</i> for italic (examples)
- * - ─────── for dividers
- * - Emojis throughout
+ * ## Input Format
+ *
+ * Mermaid node content uses HTML-like formatting:
+ * - `<b>...</b>` - Bold text becomes the **title**
+ * - `<br/>` - Line breaks separate content
+ * - `<i>...</i>` - Italic text (treated as examples)
+ * - `───────` - Divider lines (ignored)
+ * - `📝` - Marks example text
+ * - `⚠️` - Marks warning text
+ * - `☐` / `☑` - Checklist items
+ *
+ * ## Output Structure
+ *
+ * ```typescript
+ * {
+ *   title: "The title text",        // From <b>...</b> or first line
+ *   body: ["Line 1", "Line 2"],     // Main content lines
+ *   example: "Example text",        // Lines after 📝 or <i>
+ *   warning: "Warning text",        // Lines with ⚠️
+ *   checklist: ["☐ Item 1"],       // Lines with checkboxes
+ *   raw: "original content"         // Original for fallback
+ * }
+ * ```
+ *
+ * ## Edge Cases
+ *
+ * - **Emoji-only nodes** (like milestone `(("👍"))`): Title becomes the emoji, body is empty
+ * - **No `<b>` tags**: First line becomes the title
+ * - **Multi-line titles**: `<b>Line 1<br/>Line 2</b>` becomes a single-line title
+ *
+ * @param raw - The raw content string from a Mermaid node label
+ * @returns Parsed and structured node content
+ *
+ * @example
+ * ```typescript
+ * const content = parseNodeContent('<b>Step 1</b><br/>Do this thing<br/>📝 Example: 3 + 4 = 7')
+ * // { title: "Step 1", body: ["Do this thing"], example: "Example: 3 + 4 = 7", ... }
+ *
+ * const emoji = parseNodeContent('👍')
+ * // { title: "👍", body: [], ... }
+ * ```
  */
 export function parseNodeContent(raw: string): ParsedNodeContent {
   // Decode HTML entities that might be in the content
@@ -131,7 +192,43 @@ function stripHtml(str: string): string {
 // =============================================================================
 
 /**
- * Parse a complete Mermaid flowchart file
+ * Parse a complete Mermaid flowchart into nodes, edges, and phases.
+ *
+ * ## What It Extracts
+ *
+ * - **Nodes**: ID → raw content mapping (content is NOT parsed here, use `parseNodeContent`)
+ * - **Edges**: From → To connections with optional labels
+ * - **Phases**: Subgraph groupings with title and contained node IDs
+ *
+ * ## Node Shapes Supported
+ *
+ * - `ID["content"]` - Rectangle
+ * - `ID{"content"}` - Diamond (decision)
+ * - `ID(["content"])` - Stadium (rounded rectangle)
+ * - `ID(("content"))` - Circle (milestones, often emoji-only)
+ *
+ * ## Edge Format
+ *
+ * - `A --> B` - Simple edge
+ * - `A -->|"label"| B` - Edge with label
+ *
+ * @param content - The complete Mermaid flowchart content (from .mmd file or embedded string)
+ * @returns Parsed structure with nodes, edges, and phases
+ *
+ * @example
+ * ```typescript
+ * const mermaid = parseMermaidFile(`
+ *   flowchart TB
+ *     subgraph PHASE1["Step 1"]
+ *       START["<b>Begin</b>"] --> DECISION{"<b>Continue?</b>"}
+ *       DECISION -->|"Yes"| DONE(("👍"))
+ *     end
+ * `)
+ *
+ * mermaid.nodes['START']  // '<b>Begin</b>'
+ * mermaid.edges[0]        // { from: 'START', to: 'DECISION' }
+ * mermaid.phases[0]       // { id: 'PHASE1', title: 'Step 1', nodes: ['START', 'DECISION', 'DONE'] }
+ * ```
  */
 export function parseMermaidFile(content: string): ParsedMermaid {
   const nodes: Record<string, string> = {}

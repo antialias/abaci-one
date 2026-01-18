@@ -72,21 +72,21 @@ describe('analyzeStepSkills memoization', () => {
       { currentValue: 100, term: -1, description: '100-1=99 borrow from hundreds' },
     ]
 
-    it.each(testCases)(
-      '$description produces identical results memoized vs non-memoized',
-      ({ currentValue, term }) => {
-        const newValue = currentValue + term
+    it.each(testCases)('$description produces identical results memoized vs non-memoized', ({
+      currentValue,
+      term,
+    }) => {
+      const newValue = currentValue + term
 
-        // First call (cache miss) - should compute fresh
-        const memoizedResult = analyzeStepSkillsMemoized(currentValue, term, newValue)
+      // First call (cache miss) - should compute fresh
+      const memoizedResult = analyzeStepSkillsMemoized(currentValue, term, newValue)
 
-        // Non-memoized version for comparison
-        const directResult = analyzeStepSkills(currentValue, term, newValue)
+      // Non-memoized version for comparison
+      const directResult = analyzeStepSkills(currentValue, term, newValue)
 
-        // Results must be identical
-        expect(memoizedResult).toEqual(directResult)
-      }
-    )
+      // Results must be identical
+      expect(memoizedResult).toEqual(directResult)
+    })
 
     it('repeated calls return identical arrays', () => {
       // Call multiple times with same inputs
@@ -273,7 +273,9 @@ describe('performance benchmark', () => {
     expect(stats.hits).toBeGreaterThanOrEqual(operations.length * 2)
 
     // Log for manual verification
-    console.log(`Memoized: ${memoizedTime.toFixed(2)}ms for ${repeatedOperations.length} operations`)
+    console.log(
+      `Memoized: ${memoizedTime.toFixed(2)}ms for ${repeatedOperations.length} operations`
+    )
     console.log(`Cache stats: ${stats.size} entries, ${stats.hits} hits, ${stats.misses} misses`)
     console.log(`Hit rate: ${((stats.hits / (stats.hits + stats.misses)) * 100).toFixed(1)}%`)
   })

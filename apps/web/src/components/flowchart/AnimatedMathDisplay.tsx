@@ -27,9 +27,9 @@ export function AnimatedMathDisplay({
 }: AnimatedMathDisplayProps) {
   const prevExpressionRef = useRef<string>(expression)
 
-  const [layers, setLayers] = useState<
-    Array<{ expression: string; opacity: number; id: number }>
-  >([{ expression, opacity: 1, id: 0 }])
+  const [layers, setLayers] = useState<Array<{ expression: string; opacity: number; id: number }>>([
+    { expression, opacity: 1, id: 0 },
+  ])
 
   const idCounter = useRef(1)
 

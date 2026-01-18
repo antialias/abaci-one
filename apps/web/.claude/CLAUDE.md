@@ -1382,6 +1382,48 @@ If you find yourself:
 3. [ ] Am I using `mutation.isPending` instead of manual loading state?
 4. [ ] Am I NOT using `router.refresh()` for cache updates?
 
+## Flowchart Walker System
+
+When working on the interactive flowchart walker system, refer to:
+
+- **[`src/lib/flowcharts/README.md`](../src/lib/flowcharts/README.md)** - Complete system documentation
+  - Architecture overview (JSON definitions + Mermaid content)
+  - Where to find files for each flowchart
+  - Node types and their behavior
+  - Data flow and key functions
+  - Adding new flowcharts
+
+**CRITICAL: Finding Mermaid Content**
+
+Mermaid content is **NOT always in separate `.mmd` files!** Many flowcharts embed their mermaid content directly in `definitions/index.ts`.
+
+| Flowchart ID | JSON Definition | Mermaid Content |
+|--------------|-----------------|-----------------|
+| `subtraction-regrouping` | `definitions/subtraction-regrouping.flow.json` | `definitions/subtraction-regrouping-flowchart.mmd` |
+| `fraction-add-sub` | `definitions/fraction-add-sub.flow.json` | **EMBEDDED** in `definitions/index.ts` as `FRACTION_MERMAID` |
+| `linear-equations` | `definitions/linear-equations.flow.json` | **EMBEDDED** in `definitions/index.ts` as `LINEAR_EQUATIONS_MERMAID` |
+
+**To find node content for a flowchart:**
+1. **First check `definitions/index.ts`** - search for the node ID (e.g., `READY1`)
+2. If not embedded, check the `.mmd` file referenced in the JSON's `mermaidFile` field
+
+**Key Files:**
+
+- `src/lib/flowcharts/definitions/index.ts` - **Registry + EMBEDDED MERMAID CONTENT**
+- `src/lib/flowcharts/definitions/*.flow.json` - JSON behavior definitions
+- `src/lib/flowcharts/loader.ts` - Merges JSON + Mermaid into ExecutableFlowchart
+- `src/lib/flowcharts/parser.ts` - Parses Mermaid content into nodes/edges/phases
+- `src/lib/flowcharts/evaluator.ts` - Expression evaluation engine
+- `src/components/flowchart/FlowchartWalker.tsx` - Main UI component
+
+**Two-File Architecture:**
+
+Each flowchart has two parts:
+1. **JSON definition** (`.flow.json`): Node types, validation logic, variables, constraints
+2. **Mermaid content** (`.mmd` or embedded): Visual presentation, node text, phases
+
+The loader merges these into an `ExecutableFlowchart` at runtime.
+
 ## Daily Practice System
 
 When working on the curriculum-based daily practice system, refer to:

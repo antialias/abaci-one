@@ -1,8 +1,53 @@
 /**
  * Flowchart Walker Schema Types
  *
- * Defines the structure of .flow.json companion files that add
- * interactivity metadata to .mmd Mermaid flowcharts.
+ * This module defines all TypeScript types for the flowchart walker system.
+ * These types correspond to the structure of `.flow.json` files and the
+ * runtime state used during flowchart execution.
+ *
+ * ## Architecture Overview
+ *
+ * ```
+ * FlowchartDefinition (from .flow.json)
+ *   ├── problemInput: ProblemInputSchema    # User input form definition
+ *   ├── variables: Record<string, VariableDefinition>  # Computed values
+ *   ├── nodes: Record<string, FlowchartNode>  # Node behavior definitions
+ *   ├── workingProblem?: WorkingProblemConfig  # Evolving problem display
+ *   └── constraints?: GenerationConstraints  # Problem generation rules
+ *
+ * ParsedMermaid (from .mmd or embedded)
+ *   ├── nodes: Record<string, string>  # Raw node content
+ *   ├── edges: ParsedEdge[]  # Connections between nodes
+ *   └── phases: Phase[]  # Subgraph groupings
+ *
+ * ExecutableFlowchart = FlowchartDefinition + ParsedMermaid merged
+ *   └── nodes: Record<string, ExecutableNode>  # Ready for display
+ *
+ * FlowchartState (runtime)
+ *   ├── problem: user input values
+ *   ├── computed: calculated variables
+ *   ├── currentNode: where we are
+ *   └── history: actions taken
+ * ```
+ *
+ * ## Node Types
+ *
+ * | Type | Purpose | User Action |
+ * |------|---------|-------------|
+ * | `instruction` | Show content | Tap to continue |
+ * | `decision` | Yes/No or multiple choice | Tap option |
+ * | `checkpoint` | Validate user answer | Enter value |
+ * | `milestone` | Success marker | Auto-advances |
+ * | `terminal` | End state | Shows completion |
+ *
+ * ## File Locations
+ *
+ * - JSON definitions: `lib/flowcharts/definitions/*.flow.json`
+ * - Mermaid content: `lib/flowcharts/definitions/index.ts` (embedded) or `*.mmd`
+ * - This file: Type definitions only, no runtime logic
+ *
+ * @see {@link ../README.md} for complete system documentation
+ * @module flowcharts/schema
  */
 
 // =============================================================================
@@ -434,5 +479,7 @@ export interface ExecutableNode {
 export interface ExecutableFlowchart {
   definition: FlowchartDefinition
   mermaid: ParsedMermaid
+  /** Raw mermaid content string (for debug rendering) */
+  rawMermaid: string
   nodes: Record<string, ExecutableNode>
 }

@@ -8,6 +8,7 @@ import type {
   DecisionNode,
   CheckpointNode,
 } from '@/lib/flowcharts/schema'
+import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import {
   initializeState,
   getNextNode,
@@ -28,6 +29,8 @@ import { FlowchartDecision } from './FlowchartDecision'
 import { FlowchartCheckpoint } from './FlowchartCheckpoint'
 import { FlowchartPhaseRail } from './FlowchartPhaseRail'
 import { MathDisplay } from './MathDisplay'
+import { DebugStepTimeline } from './DebugStepTimeline'
+import { DebugMermaidDiagram } from './DebugMermaidDiagram'
 
 // =============================================================================
 // Types
@@ -86,12 +89,19 @@ export function FlowchartWalker({
   const [wrongDecision, setWrongDecision] = useState<WrongDecisionState | null>(null)
   // History stack for back navigation (stores full state snapshots)
   const [stateHistory, setStateHistory] = useState<FlowchartState[]>([])
+  // Redo stack for forward navigation (when user goes back)
+  const [redoStack, setRedoStack] = useState<FlowchartState[]>([])
   // Track checked checklist items for the current node
   const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set())
+  // Debug mode: pause auto-advance to inspect nodes
+  const [autoAdvancePaused, setAutoAdvancePaused] = useState(false)
   // Track browser history depth for this walker session
   const historyDepthRef = useRef(0)
   // Flag to prevent double-handling when we programmatically go back
   const isNavigatingBackRef = useRef(false)
+
+  // Visual debug mode
+  const { isVisualDebugEnabled } = useVisualDebugSafe()
 
   // Current node
   const currentNode = useMemo(
@@ -106,6 +116,39 @@ export function FlowchartWalker({
     currentChecklist &&
     currentChecklist.length > 0
 
+  // Build timeline steps for visual debug mode
+  const timelineSteps = useMemo(() => {
+    if (!isVisualDebugEnabled) return []
+
+    const steps: Array<{ state: FlowchartState; nodeTitle: string }> = []
+
+    // Add states from history (past steps)
+    for (const s of stateHistory) {
+      const node = flowchart.nodes[s.currentNode]
+      steps.push({
+        state: s,
+        nodeTitle: node?.content?.title || s.currentNode,
+      })
+    }
+
+    // Add current state
+    steps.push({
+      state,
+      nodeTitle: currentNode?.content?.title || state.currentNode,
+    })
+
+    // Add states from redo stack (future steps) - reversed so oldest redo is first
+    for (const s of redoStack.slice().reverse()) {
+      const node = flowchart.nodes[s.currentNode]
+      steps.push({
+        state: s,
+        nodeTitle: node?.content?.title || s.currentNode,
+      })
+    }
+
+    return steps
+  }, [isVisualDebugEnabled, stateHistory, state, redoStack, flowchart.nodes, currentNode])
+
   // Reset checked items when node changes
   useEffect(() => {
     setCheckedItems(new Set())
@@ -118,6 +161,12 @@ export function FlowchartWalker({
       if (historyDepthRef.current > 0 && stateHistory.length > 0) {
         historyDepthRef.current--
         isNavigatingBackRef.current = true
+
+        // Push current state to redo stack before going back
+        setState((currentState) => {
+          setRedoStack((prev) => [...prev, currentState])
+          return currentState
+        })
 
         const previousState = stateHistory[stateHistory.length - 1]
         setStateHistory((prev) => prev.slice(0, -1))
@@ -171,6 +220,9 @@ export function FlowchartWalker({
       // Save current state to history before advancing
       setStateHistory((prev) => [...prev, state])
 
+      // Clear redo stack - user has made a new choice, branching invalidates redo
+      setRedoStack([])
+
       // Push browser history entry so back button works
       historyDepthRef.current++
       window.history.pushState({ flowchartStep: historyDepthRef.current }, '')
@@ -194,13 +246,16 @@ export function FlowchartWalker({
 
       // Check if new node is terminal
       if (isTerminal(flowchart, nextNodeId)) {
-        setTimeout(() => {
-          setPhase({ type: 'complete' })
-          onComplete?.(newState)
-        }, 500)
+        // If auto-advance is paused, don't auto-complete - let user inspect the terminal node
+        if (!autoAdvancePaused) {
+          setTimeout(() => {
+            setPhase({ type: 'complete' })
+            onComplete?.(newState)
+          }, 500)
+        }
       }
     },
-    [flowchart, state, currentNode, onComplete]
+    [flowchart, state, currentNode, onComplete, autoAdvancePaused]
   )
 
   // Go back to the previous step (uses browser history so back button stays in sync)
@@ -214,6 +269,140 @@ export function FlowchartWalker({
     // Use browser's back to trigger popstate, which handles the state update
     window.history.back()
   }, [stateHistory, onChangeProblem])
+
+  // Go forward to the next step (from redo stack) - for visual debug mode
+  const goForward = useCallback(() => {
+    if (redoStack.length === 0) return
+
+    // Push current state to history
+    setStateHistory((prev) => [...prev, state])
+
+    // Pop next state from redo stack
+    const nextState = redoStack[redoStack.length - 1]
+    setRedoStack((prev) => prev.slice(0, -1))
+    setState(nextState)
+    setPhase({ type: 'showingNode' })
+    setWrongAttempts(0)
+    setWrongDecision(null)
+    setCheckedItems(new Set())
+
+    historyDepthRef.current++
+    window.history.pushState({ flowchartStep: historyDepthRef.current }, '')
+  }, [redoStack, state])
+
+  // Navigate to a specific step in the full timeline (for visual debug mode)
+  // The timeline is: stateHistory + [current] + redoStack (reversed)
+  const navigateToHistoryStep = useCallback(
+    (targetIndex: number) => {
+      // Build full timeline: stateHistory + [current] + redoStack (reversed)
+      const fullTimeline = [...stateHistory, state, ...redoStack.slice().reverse()]
+      const currentIndex = stateHistory.length
+
+      if (targetIndex === currentIndex) return // Already there
+      if (targetIndex < 0 || targetIndex >= fullTimeline.length) return
+
+      const targetState = fullTimeline[targetIndex]
+      if (!targetState) return
+
+      // Calculate new stateHistory (everything before target)
+      const newHistory = fullTimeline.slice(0, targetIndex)
+      // Calculate new redoStack (everything after target, reversed back)
+      const newRedo = fullTimeline.slice(targetIndex + 1).reverse()
+
+      setStateHistory(newHistory)
+      setRedoStack(newRedo)
+      setState(targetState)
+      setPhase({ type: 'showingNode' })
+      setWrongAttempts(0)
+      setWrongDecision(null)
+      setCheckedItems(new Set())
+
+      // Update browser history depth to match
+      historyDepthRef.current = targetIndex
+      window.history.replaceState({ flowchartStep: historyDepthRef.current }, '')
+    },
+    [stateHistory, state, redoStack]
+  )
+
+  // Debug skip - auto-advance through the current node (for visual debug mode)
+  // For decision nodes: picks the first option
+  // For checkpoint nodes: computes and submits the correct answer
+  // For instruction nodes: just advances
+  const debugSkipStep = useCallback(() => {
+    if (!currentNode) return
+
+    const def = currentNode.definition
+
+    switch (def.type) {
+      case 'instruction':
+      case 'milestone':
+        // Just advance
+        advanceToNext()
+        break
+
+      case 'decision': {
+        // Pick the first option
+        const decisionDef = def as DecisionNode
+        if (decisionDef.options.length > 0) {
+          const firstOption = decisionDef.options[0]
+          advanceToNext(firstOption.value, firstOption.value, true)
+        }
+        break
+      }
+
+      case 'checkpoint': {
+        // Compute the correct answer and submit it
+        const checkpointDef = def as CheckpointNode
+        try {
+          const context = createContextFromState(state)
+
+          if (checkpointDef.inputType === 'two-numbers' && Array.isArray(checkpointDef.expected)) {
+            // Two-number checkpoint
+            const twoNumberAnswer: [number, number] = [
+              evaluate(checkpointDef.expected[0], context) as number,
+              evaluate(checkpointDef.expected[1], context) as number,
+            ]
+            const newState = applyStateUpdate(
+              state,
+              state.currentNode,
+              flowchart,
+              twoNumberAnswer as unknown as ProblemValue
+            )
+            setState(newState)
+            advanceToNext(undefined, twoNumberAnswer as unknown as ProblemValue, true)
+          } else if (typeof checkpointDef.expected === 'string') {
+            // Single value checkpoint - expected is a string expression
+            const correctAnswer = evaluate(checkpointDef.expected, context) as number
+            const newState = applyStateUpdate(state, state.currentNode, flowchart, correctAnswer)
+            setState(newState)
+            advanceToNext(undefined, correctAnswer, true)
+          } else {
+            // Shouldn't reach here, but just advance if we do
+            advanceToNext()
+          }
+        } catch {
+          // If we can't compute the answer, just try to advance
+          advanceToNext()
+        }
+        break
+      }
+
+      case 'terminal':
+        // Complete
+        setPhase({ type: 'complete' })
+        onComplete?.(state)
+        break
+
+      default:
+        advanceToNext()
+    }
+  }, [currentNode, state, flowchart, advanceToNext, onComplete])
+
+  // Check if we can skip (not at terminal)
+  const canDebugSkip = useMemo(() => {
+    if (!currentNode) return false
+    return !isTerminal(flowchart, state.currentNode)
+  }, [currentNode, flowchart, state.currentNode])
 
   // Navigate to a specific step in the working problem history
   // Clicking on ledger entry i takes you to the state right after that entry was created
@@ -322,10 +511,12 @@ export function FlowchartWalker({
           expected: result?.expected ?? value,
           userAnswer: value,
         })
-        // Auto-advance after short delay
-        setTimeout(() => {
-          advanceToNext(undefined, value as ProblemValue, true)
-        }, 1000)
+        // Auto-advance after short delay (unless auto-advance is paused)
+        if (!autoAdvancePaused) {
+          setTimeout(() => {
+            advanceToNext(undefined, value as ProblemValue, true)
+          }, 1000)
+        }
       } else {
         // Wrong answer
         setWrongAttempts((prev) => prev + 1)
@@ -338,7 +529,7 @@ export function FlowchartWalker({
         })
       }
     },
-    [flowchart, state, advanceToNext]
+    [flowchart, state, advanceToNext, autoAdvancePaused]
   )
 
   const handleChecklistToggle = useCallback(
@@ -351,9 +542,9 @@ export function FlowchartWalker({
           next.add(index)
         }
 
-        // Check if all items are now checked - if so, auto-advance
+        // Check if all items are now checked - if so, auto-advance (unless auto-advance is paused)
         const totalItems = currentChecklist?.length ?? 0
-        if (next.size === totalItems && totalItems > 0) {
+        if (next.size === totalItems && totalItems > 0 && !autoAdvancePaused) {
           // Small delay so the user sees the final checkbox check
           setTimeout(() => {
             advanceToNext()
@@ -363,7 +554,7 @@ export function FlowchartWalker({
         return next
       })
     },
-    [currentChecklist, advanceToNext]
+    [currentChecklist, advanceToNext, autoAdvancePaused]
   )
 
   // =============================================================================
@@ -557,8 +748,10 @@ export function FlowchartWalker({
       }
 
       case 'milestone':
-        // Auto-advance milestones
-        setTimeout(() => advanceToNext(), 500)
+        // Auto-advance milestones (unless auto-advance is paused)
+        if (!autoAdvancePaused) {
+          setTimeout(() => advanceToNext(), 500)
+        }
         return (
           <div
             data-testid="milestone-display"
@@ -723,6 +916,31 @@ export function FlowchartWalker({
         )}
       </nav>
 
+      {/* Debug step timeline - only visible when visual debug mode is enabled */}
+      {isVisualDebugEnabled && timelineSteps.length > 0 && (
+        <DebugStepTimeline
+          steps={timelineSteps}
+          currentIndex={stateHistory.length}
+          onNavigate={navigateToHistoryStep}
+          canGoBack={stateHistory.length > 0}
+          canGoForward={redoStack.length > 0}
+          canSkip={canDebugSkip}
+          onBack={goBack}
+          onForward={goForward}
+          onSkip={debugSkipStep}
+          autoAdvancePaused={autoAdvancePaused}
+          onToggleAutoAdvance={() => setAutoAdvancePaused((prev) => !prev)}
+        />
+      )}
+
+      {/* Debug mermaid diagram - shows flowchart with current node highlighted */}
+      {isVisualDebugEnabled && flowchart.rawMermaid && (
+        <DebugMermaidDiagram
+          mermaidContent={flowchart.rawMermaid}
+          currentNodeId={state.currentNode}
+        />
+      )}
+
       {/* Phase rail with flowchart navigation */}
       <FlowchartPhaseRail flowchart={flowchart} state={state} />
 
@@ -883,27 +1101,29 @@ export function FlowchartWalker({
             },
           })}
         >
-          {/* Node content */}
-          <div
-            data-testid="node-content-container"
-            data-node-type={currentNode?.definition.type}
-            className={css({
-              padding: '6',
-              backgroundColor: { base: 'white', _dark: 'gray.800' },
-              borderRadius: 'xl',
-              boxShadow: 'lg',
-              border: '1px solid',
-              borderColor: { base: 'gray.200', _dark: 'gray.700' },
-            })}
-          >
-            {currentNode && (
-              <FlowchartNodeContent
-                content={currentNode.content}
-                checkedItems={hasInteractiveChecklist ? checkedItems : undefined}
-                onChecklistToggle={hasInteractiveChecklist ? handleChecklistToggle : undefined}
-              />
-            )}
-          </div>
+          {/* Node content - skip for milestone nodes (they show emoji in interaction area) */}
+          {currentNode?.definition.type !== 'milestone' && (
+            <div
+              data-testid="node-content-container"
+              data-node-type={currentNode?.definition.type}
+              className={css({
+                padding: '6',
+                backgroundColor: { base: 'white', _dark: 'gray.800' },
+                borderRadius: 'xl',
+                boxShadow: 'lg',
+                border: '1px solid',
+                borderColor: { base: 'gray.200', _dark: 'gray.700' },
+              })}
+            >
+              {currentNode && (
+                <FlowchartNodeContent
+                  content={currentNode.content}
+                  checkedItems={hasInteractiveChecklist ? checkedItems : undefined}
+                  onChecklistToggle={hasInteractiveChecklist ? handleChecklistToggle : undefined}
+                />
+              )}
+            </div>
+          )}
 
           {/* Interaction area */}
           <div

@@ -166,7 +166,9 @@ describe('Session Generation Benchmark', () => {
     console.log(`  Per problem:     ${(finalTime / 60).toFixed(1)}ms`)
     console.log(`  Cache entries:   ${finalStats.size}`)
     console.log(`  Cache hits:      ${finalStats.hits.toLocaleString()}`)
-    console.log(`  Cache hit rate:  ${((finalStats.hits / (finalStats.hits + finalStats.misses)) * 100).toFixed(1)}%`)
+    console.log(
+      `  Cache hit rate:  ${((finalStats.hits / (finalStats.hits + finalStats.misses)) * 100).toFixed(1)}%`
+    )
 
     // Phase 2 recommendation
     console.log(`\n🤔 PHASE 2 RECOMMENDATION:`)

@@ -7,8 +7,9 @@ import type { ExecutableFlowchart, ProblemValue } from '@/lib/flowcharts/schema'
 import { loadFlowchart } from '@/lib/flowcharts/loader'
 import { getFlowchart } from '@/lib/flowcharts/definitions'
 import { FlowchartWalker, FlowchartProblemInput } from '@/components/flowchart'
+import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../../styled-system/css'
-import { vstack, hstack } from '../../../../styled-system/patterns'
+import { vstack } from '../../../../styled-system/patterns'
 
 type PageState =
   | { type: 'loading' }
@@ -101,33 +102,34 @@ export default function FlowchartPage() {
     router.push('/flowchart')
   }, [router])
 
+  // Nav slot content - Back to flowcharts link
+  const navSlot = (
+    <Link
+      href="/flowchart"
+      className={css({
+        fontSize: 'sm',
+        color: { base: 'blue.600', _dark: 'blue.400' },
+        textDecoration: 'none',
+        _hover: { textDecoration: 'underline' },
+      })}
+    >
+      ← Back to flowcharts
+    </Link>
+  )
+
   // Render based on state
   return (
-    <div className={vstack({ gap: '4', padding: '4', minHeight: '100vh' })}>
-      {/* Header */}
-      <header className={hstack({ width: '100%', justifyContent: 'flex-start' })}>
-        <Link
-          href="/flowchart"
+    <PageWithNav navSlot={navSlot}>
+      <div className={vstack({ gap: '4', padding: '4', minHeight: '100vh' })}>
+        {/* Main content */}
+        <main
           className={css({
-            fontSize: 'sm',
-            color: { base: 'blue.600', _dark: 'blue.400' },
-            textDecoration: 'none',
-            _hover: { textDecoration: 'underline' },
+            flex: 1,
+            width: '100%',
+            maxWidth: '600px',
+            margin: '0 auto',
           })}
         >
-          ← Back to flowcharts
-        </Link>
-      </header>
-
-      {/* Main content */}
-      <main
-        className={css({
-          flex: 1,
-          width: '100%',
-          maxWidth: '600px',
-          margin: '0 auto',
-        })}
-      >
         {state.type === 'loading' && (
           <div
             className={css({
@@ -193,7 +195,8 @@ export default function FlowchartPage() {
             onChangeProblem={handleChangeProblem}
           />
         )}
-      </main>
-    </div>
+        </main>
+      </div>
+    </PageWithNav>
   )
 }

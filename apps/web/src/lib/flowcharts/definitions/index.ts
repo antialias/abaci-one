@@ -1,7 +1,36 @@
 /**
- * Flowchart Definitions Index
+ * Flowchart Definitions Registry
  *
- * Exports all available flowchart definitions with their Mermaid content.
+ * **THIS FILE CONTAINS EMBEDDED MERMAID CONTENT!**
+ *
+ * Each flowchart has two parts:
+ * 1. **JSON definition** (`.flow.json`): Behavior, validation, variables
+ * 2. **Mermaid content**: Visual presentation, node text, phases
+ *
+ * ## Where is the Mermaid content?
+ *
+ * | Flowchart | Mermaid Location |
+ * |-----------|------------------|
+ * | subtraction-regrouping | Embedded below as `SUBTRACTION_MERMAID` |
+ * | fraction-add-sub | Embedded below as `FRACTION_MERMAID` |
+ * | linear-equations | Embedded below as `LINEAR_EQUATIONS_MERMAID` |
+ *
+ * **To find node content**: Search this file for the node ID (e.g., `READY1`) in
+ * the appropriate `*_MERMAID` constant.
+ *
+ * ## Why Embed Mermaid?
+ *
+ * Next.js doesn't support `?raw` imports for loading text files.
+ * Embedding the mermaid content as template strings is the simplest solution.
+ *
+ * ## Adding a New Flowchart
+ *
+ * 1. Create `my-flowchart.flow.json` in this directory
+ * 2. Add `const MY_FLOWCHART_MERMAID = \`...\`` below
+ * 3. Import the JSON and add to `FLOWCHARTS` registry
+ *
+ * @see {@link ../README.md} for complete system documentation
+ * @module flowcharts/definitions
  */
 
 import type { FlowchartDefinition } from '../schema'
@@ -9,7 +38,17 @@ import subtractionDefinition from './subtraction-regrouping.flow.json'
 import fractionDefinition from './fraction-add-sub.flow.json'
 import linearEquationsDefinition from './linear-equations.flow.json'
 
-// Mermaid content embedded as strings (since Next.js doesn't support ?raw imports)
+// =============================================================================
+// EMBEDDED MERMAID CONTENT
+// =============================================================================
+// These constants contain the visual content for each flowchart.
+// Search for node IDs (e.g., "READY1", "STEP0") to find their content.
+
+/**
+ * Mermaid content for subtraction-regrouping flowchart.
+ * Nodes: START, COMPARE, HAPPY, SAD, CHECK1, CHECK1B, NEEDIT, SKIP, TENS,
+ *        TAKEONE, BREAK, ADDTEN, CHECK2, DOONES, DOTENS, DONE
+ */
 const SUBTRACTION_MERMAID = `%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '18px', 'primaryColor': '#e3f2fd', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#90caf9', 'lineColor': '#444444'}, 'flowchart': {'curve': 'basis', 'nodeSpacing': 30, 'rankSpacing': 50, 'padding': 20}}}%%
 flowchart TB
     subgraph PHASE1["<b>1. 👀 LOOK</b>"]
@@ -68,6 +107,16 @@ flowchart TB
     style DONE fill:#66bb6a,stroke:#2e7d32,stroke-width:2px
 `
 
+/**
+ * Mermaid content for fraction-add-sub flowchart.
+ * Nodes: STEP0, STEP1, READY1, READY2, READY3, STEP2, CONV1A, CONV1B, CONV1C,
+ *        STEP3, STEP3B, CHECK1, REMIND, ADDSUB, GOSTEP4, GOSTEP4B, GOSTEP4C,
+ *        BORROWCHECK, BORROW, CHECK2, STEP4, SIMPLIFY_Q, SIMPLIFY_HOW,
+ *        IMPROPER_Q, MIXED_HOW, CHECK3, DONE
+ *
+ * NOTE: Milestone nodes (READY1, READY2, READY3, GOSTEP4, etc.) only contain
+ * emoji like (("👍")) - they display briefly before auto-advancing.
+ */
 const FRACTION_MERMAID = `%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e3f2fd', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#90caf9', 'lineColor': '#444444'}, 'flowchart': {'curve': 'basis', 'nodeSpacing': 25, 'rankSpacing': 40, 'padding': 15}}}%%
 flowchart TB
     subgraph PHASE1["<b>1. 🔍 MAKE THE BOTTOMS MATCH</b>"]
@@ -122,6 +171,12 @@ flowchart TB
     style PHASE3 fill:#e8f5e9,stroke:#388e3c,stroke-width:3px
 `
 
+/**
+ * Mermaid content for linear-equations flowchart.
+ * Nodes: INTRO, BALANCE, FIND_OP, STUCK_ADD, STUCK_MUL, CHECK1, GOAL,
+ *        HOWSTUCK, ZERO, ONE, MAKEZ, MAKEONE, EX_ADD, EX_MUL, REMIND,
+ *        CHECK2, PLUG, MATCH, DONE, RETRY
+ */
 const LINEAR_EQUATIONS_MERMAID = `%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e3f2fd', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#90caf9', 'lineColor': '#444444'}, 'flowchart': {'curve': 'basis', 'nodeSpacing': 25, 'rankSpacing': 40, 'padding': 15}}}%%
 flowchart TB
     subgraph PHASE1["<b>1. 🔍 UNDERSTAND THE EQUATION</b>"]

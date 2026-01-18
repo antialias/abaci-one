@@ -1,7 +1,41 @@
 /**
  * Flowchart Loader
  *
- * Loads and merges .mmd and .flow.json files into an executable flowchart.
+ * Combines JSON definitions (`.flow.json`) with Mermaid content (`.mmd` or embedded)
+ * to create executable flowcharts, and manages runtime state as users walk through them.
+ *
+ * ## Key Functions
+ *
+ * - {@link loadFlowchart} - Merge JSON definition + Mermaid into ExecutableFlowchart
+ * - {@link initializeState} - Create initial runtime state from problem input
+ * - {@link advanceState} - Move to next node in the flowchart
+ * - {@link validateCheckpoint} - Check if user's answer is correct
+ * - {@link isDecisionCorrect} - Check if user chose the correct option
+ * - {@link formatProblemDisplay} - Format problem values for display
+ *
+ * ## Data Flow
+ *
+ * ```
+ * FlowchartDefinition + Mermaid content
+ *                   ↓
+ *           loadFlowchart()
+ *                   ↓
+ *         ExecutableFlowchart
+ *                   ↓
+ *     initializeState(flowchart, problemInput)
+ *                   ↓
+ *           FlowchartState
+ *                   ↓
+ *     advanceState(), validateCheckpoint(), etc.
+ * ```
+ *
+ * ## Where to Find Mermaid Content
+ *
+ * **IMPORTANT**: Mermaid content is NOT always in separate `.mmd` files!
+ * Check `definitions/index.ts` first - many flowcharts embed their mermaid as constants.
+ *
+ * @see {@link ./README.md} for complete system documentation
+ * @module flowcharts/loader
  */
 
 import type {
@@ -32,7 +66,33 @@ import {
 // =============================================================================
 
 /**
- * Load and merge a flowchart definition with its Mermaid content
+ * Load and merge a flowchart definition with its Mermaid content.
+ *
+ * This is the main entry point for creating an executable flowchart.
+ * It combines:
+ * - **JSON definition** (`.flow.json`): Node types, validation logic, variables
+ * - **Mermaid content**: Node display content, phases, visual structure
+ *
+ * ## Node Merging
+ *
+ * For each node ID:
+ * 1. If in JSON definition: uses that node type/behavior
+ * 2. If only in Mermaid: creates default `instruction` node
+ * 3. Content always comes from Mermaid (parsed via `parseNodeContent`)
+ *
+ * ## Common Usage
+ *
+ * ```typescript
+ * import { getFlowchart } from './definitions'
+ * import { loadFlowchart } from './loader'
+ *
+ * const data = getFlowchart('fraction-add-sub')
+ * const flowchart = await loadFlowchart(data.definition, data.mermaid)
+ * ```
+ *
+ * @param definition - The JSON definition from `.flow.json`
+ * @param mermaidContent - The Mermaid content (from `.mmd` file or embedded string)
+ * @returns Promise resolving to executable flowchart ready for FlowchartWalker
  */
 export async function loadFlowchart(
   definition: FlowchartDefinition,
@@ -78,6 +138,7 @@ export async function loadFlowchart(
   return {
     definition,
     mermaid,
+    rawMermaid: mermaidContent,
     nodes,
   }
 }
