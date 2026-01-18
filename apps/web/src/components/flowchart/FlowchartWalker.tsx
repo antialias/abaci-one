@@ -18,7 +18,9 @@ import {
   advanceState,
   isTerminal,
   formatProblemDisplay,
+  createContextFromState,
 } from '@/lib/flowcharts/loader'
+import { evaluate } from '@/lib/flowcharts/evaluator'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 import { FlowchartNodeContent } from './FlowchartNodeContent'
@@ -432,6 +434,29 @@ export function FlowchartWalker({
         const showHint = wrongAttempts >= 2
         const isTwoNumbers = checkpointDef.inputType === 'two-numbers'
 
+        // Pre-compute expected values for immediate per-field validation
+        let expectedValues: number | [number, number] | undefined
+        try {
+          const context = createContextFromState(state)
+          if (isTwoNumbers && Array.isArray(checkpointDef.expected)) {
+            expectedValues = [
+              evaluate(checkpointDef.expected[0], context) as number,
+              evaluate(checkpointDef.expected[1], context) as number,
+            ]
+          } else if (
+            checkpointDef.inputType === 'number' &&
+            typeof checkpointDef.expected === 'string'
+          ) {
+            // Only pre-compute if the expression doesn't reference user input
+            if (!checkpointDef.expected.includes('input')) {
+              expectedValues = evaluate(checkpointDef.expected, context) as number
+            }
+          }
+        } catch {
+          // Can't pre-compute, fall back to validate-on-submit
+          expectedValues = undefined
+        }
+
         // Format feedback values based on input type
         const formatFeedback = () => {
           if (isTwoNumbers) {
@@ -512,6 +537,8 @@ export function FlowchartWalker({
                 inputType={checkpointDef.inputType}
                 inputLabels={checkpointDef.inputLabels}
                 onSubmit={handleCheckpointSubmit}
+                expectedValues={expectedValues}
+                orderMatters={checkpointDef.orderMatters}
               />
             </div>
           )
@@ -523,6 +550,8 @@ export function FlowchartWalker({
             inputType={checkpointDef.inputType}
             inputLabels={checkpointDef.inputLabels}
             onSubmit={handleCheckpointSubmit}
+            expectedValues={expectedValues}
+            orderMatters={checkpointDef.orderMatters}
           />
         )
       }

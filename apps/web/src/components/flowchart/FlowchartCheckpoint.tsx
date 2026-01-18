@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
-import { KidNumberInput, type FeedbackState } from '@/components/ui/KidNumberInput'
+import { KidNumberInput } from '@/components/ui/KidNumberInput'
+import { useIsTouchDevice, useHasPhysicalKeyboard } from '@/hooks/useDeviceCapabilities'
 
 interface FlowchartCheckpointProps {
   prompt: string
@@ -20,6 +21,10 @@ interface FlowchartCheckpointProps {
   }
   /** Hint to show after repeated failures */
   hint?: string
+  /** Expected values for immediate per-field validation (optional) */
+  expectedValues?: number | [number, number]
+  /** Whether order matters for two-numbers validation (default: true) */
+  orderMatters?: boolean
 }
 
 /**
@@ -33,12 +38,27 @@ export function FlowchartCheckpoint({
   inputLabels = ['First', 'Second'],
   feedback,
   hint,
+  expectedValues,
+  orderMatters = true,
 }: FlowchartCheckpointProps) {
   const [value, setValue] = useState('')
   const [value1, setValue1] = useState('')
   const [value2, setValue2] = useState('')
   const [focusedInput, setFocusedInput] = useState<0 | 1>(0)
   const input2Ref = useRef<HTMLInputElement>(null)
+
+  // Per-field feedback state (for immediate validation)
+  const [fieldFeedback, setFieldFeedback] = useState<{
+    first: 'none' | 'correct' | 'incorrect'
+    second: 'none' | 'correct' | 'incorrect'
+  }>({ first: 'none', second: 'none' })
+
+  // Smart keypad visibility - show on touch devices without physical keyboard
+  const isTouchDevice = useIsTouchDevice()
+  const hasPhysicalKeyboard = useHasPhysicalKeyboard()
+  // Show keypad only on touch devices without detected physical keyboard
+  // Default to showing keypad while detection is pending (hasPhysicalKeyboard === null)
+  const showOnScreenKeypad = isTouchDevice && hasPhysicalKeyboard !== true
 
   // Handlers for single number input (KidNumberInput)
   const handleDigit = useCallback(
@@ -82,19 +102,150 @@ export function FlowchartCheckpoint({
     setValue2((prev) => prev.slice(0, -1))
   }, [disabled, feedback])
 
+  // Per-field validation helper for two-numbers input
+  const validateTwoNumbersField = useCallback(
+    (
+      fieldValue: string,
+      expected: [number, number],
+      fieldIndex: 0 | 1,
+      otherFieldValue: string
+    ): 'correct' | 'incorrect' | 'pending' => {
+      if (!fieldValue.trim()) return 'pending'
+      const num = parseFloat(fieldValue)
+      if (Number.isNaN(num)) return 'pending'
+
+      // Get the expected value(s) based on which field
+      const expectedDigits = String(expected[fieldIndex]).length
+
+      // Don't validate until user has entered enough digits
+      if (fieldValue.length < expectedDigits) return 'pending'
+
+      if (orderMatters) {
+        // Simple ordered validation
+        return num === expected[fieldIndex] ? 'correct' : 'incorrect'
+      } else {
+        // Order-agnostic validation: either expected value is acceptable
+        // unless the other field already has it
+        const otherNum = parseFloat(otherFieldValue)
+
+        if (num === expected[0]) {
+          // Value matches first expected - correct unless other field already claimed it
+          return Number.isNaN(otherNum) || otherNum !== expected[0] ? 'correct' : 'incorrect'
+        }
+        if (num === expected[1]) {
+          // Value matches second expected - correct unless other field already claimed it
+          return Number.isNaN(otherNum) || otherNum !== expected[1] ? 'correct' : 'incorrect'
+        }
+        return 'incorrect'
+      }
+    },
+    [orderMatters]
+  )
+
+  // Per-field validation effect for first field (two-numbers)
+  useEffect(() => {
+    if (inputType !== 'two-numbers' || !expectedValues || disabled || feedback) return
+    if (!Array.isArray(expectedValues)) return
+
+    const result = validateTwoNumbersField(value1, expectedValues, 0, value2)
+    setFieldFeedback((prev) => ({
+      ...prev,
+      first: result === 'pending' ? 'none' : result,
+    }))
+
+    // Auto-advance to second field when first is correct
+    if (result === 'correct' && focusedInput === 0) {
+      const timeout = setTimeout(() => setFocusedInput(1), 300)
+      return () => clearTimeout(timeout)
+    }
+  }, [
+    value1,
+    value2,
+    expectedValues,
+    inputType,
+    disabled,
+    feedback,
+    focusedInput,
+    validateTwoNumbersField,
+  ])
+
+  // Per-field validation effect for second field (two-numbers)
+  useEffect(() => {
+    if (inputType !== 'two-numbers' || !expectedValues || disabled || feedback) return
+    if (!Array.isArray(expectedValues)) return
+
+    const result = validateTwoNumbersField(value2, expectedValues, 1, value1)
+    setFieldFeedback((prev) => ({
+      ...prev,
+      second: result === 'pending' ? 'none' : result,
+    }))
+
+    // Auto-submit when both fields are correct
+    if (result === 'correct' && fieldFeedback.first === 'correct') {
+      const num1 = parseFloat(value1)
+      const num2 = parseFloat(value2)
+      if (!Number.isNaN(num1) && !Number.isNaN(num2)) {
+        const timeout = setTimeout(() => {
+          onSubmit([num1, num2])
+        }, 400)
+        return () => clearTimeout(timeout)
+      }
+    }
+  }, [
+    value1,
+    value2,
+    expectedValues,
+    inputType,
+    disabled,
+    feedback,
+    fieldFeedback.first,
+    validateTwoNumbersField,
+    onSubmit,
+  ])
+
+  // Per-field validation for single number input
+  useEffect(() => {
+    if (inputType !== 'number' || typeof expectedValues !== 'number' || disabled || feedback) return
+
+    if (!value.trim()) {
+      setFieldFeedback({ first: 'none', second: 'none' })
+      return
+    }
+
+    const num = parseFloat(value)
+    if (Number.isNaN(num)) return
+
+    const expectedDigits = String(expectedValues).length
+    if (value.length < expectedDigits) {
+      setFieldFeedback({ first: 'none', second: 'none' })
+      return
+    }
+
+    const isCorrect = num === expectedValues
+    setFieldFeedback({ first: isCorrect ? 'correct' : 'incorrect', second: 'none' })
+
+    // Auto-submit when correct
+    if (isCorrect) {
+      const timeout = setTimeout(() => {
+        onSubmit(num)
+      }, 400)
+      return () => clearTimeout(timeout)
+    }
+  }, [value, expectedValues, inputType, disabled, feedback, onSubmit])
+
   // Submit handler (must be defined before useEffect that uses it)
   const handleSubmit = useCallback(() => {
     if (inputType === 'two-numbers') {
       if (!value1.trim() || !value2.trim()) return
       const num1 = parseFloat(value1)
       const num2 = parseFloat(value2)
-      if (!isNaN(num1) && !isNaN(num2)) {
+      if (!Number.isNaN(num1) && !Number.isNaN(num2)) {
         onSubmit([num1, num2])
       }
     } else if (inputType === 'number') {
       if (!value.trim()) return
       const num = parseFloat(value)
-      if (!isNaN(num)) {
+      if (!Number.isNaN(num)) {
         onSubmit(num)
       }
     } else {
@@ -163,8 +314,10 @@ export function FlowchartCheckpoint({
     handleSubmit,
   ])
 
-  // Auto-submit for two-numbers when both values are filled
+  // Auto-submit for two-numbers when both values are filled (fallback when no expectedValues)
   useEffect(() => {
+    // Skip if per-field validation is active (it handles auto-submit)
+    if (expectedValues && Array.isArray(expectedValues)) return
     if (inputType !== 'two-numbers' || disabled || feedback) return
 
     const num1 = parseFloat(value1)
@@ -174,8 +327,8 @@ export function FlowchartCheckpoint({
     if (
       value1.trim() &&
       value2.trim() &&
-      !isNaN(num1) &&
-      !isNaN(num2) &&
+      !Number.isNaN(num1) &&
+      !Number.isNaN(num2) &&
       Number.isInteger(num1) &&
       Number.isInteger(num2)
     ) {
@@ -185,7 +338,7 @@ export function FlowchartCheckpoint({
       }, 150)
       return () => clearTimeout(timeout)
     }
-  }, [value1, value2, inputType, disabled, feedback, onSubmit])
+  }, [value1, value2, inputType, disabled, feedback, onSubmit, expectedValues])
 
   const handleKeyDown = (e: React.KeyboardEvent, isFirstOfTwo?: boolean) => {
     if (e.key === 'Enter') {
@@ -307,7 +460,13 @@ export function FlowchartCheckpoint({
                   onDigit={handleDigit1}
                   onBackspace={handleBackspace1}
                   disabled={disabled || !!feedback}
-                  feedback={feedback ? (twoNumFeedback.first ? 'correct' : 'incorrect') : 'none'}
+                  feedback={
+                    feedback
+                      ? twoNumFeedback.first
+                        ? 'correct'
+                        : 'incorrect'
+                      : fieldFeedback.first
+                  }
                   showKeypad={false}
                   displaySize="md"
                   placeholder="?"
@@ -358,7 +517,13 @@ export function FlowchartCheckpoint({
                   onDigit={handleDigit2}
                   onBackspace={handleBackspace2}
                   disabled={disabled || !!feedback}
-                  feedback={feedback ? (twoNumFeedback.second ? 'correct' : 'incorrect') : 'none'}
+                  feedback={
+                    feedback
+                      ? twoNumFeedback.second
+                        ? 'correct'
+                        : 'incorrect'
+                      : fieldFeedback.second
+                  }
                   showKeypad={false}
                   displaySize="md"
                   placeholder="?"
@@ -367,19 +532,21 @@ export function FlowchartCheckpoint({
             </div>
           </div>
 
-          {/* Shared inline keypad for two-numbers */}
-          <div className={css({ width: '100%', maxWidth: '320px' })}>
-            <KidNumberInput
-              value=""
-              onDigit={focusedInput === 0 ? handleDigit1 : handleDigit2}
-              onBackspace={focusedInput === 0 ? handleBackspace1 : handleBackspace2}
-              disabled={disabled || !!feedback}
-              showKeypad={true}
-              keypadMode="inline"
-              displaySize="sm"
-              placeholder=""
-            />
-          </div>
+          {/* Shared inline keypad for two-numbers - only show on touch devices without keyboard */}
+          {showOnScreenKeypad && (
+            <div className={css({ width: '100%', maxWidth: '320px' })}>
+              <KidNumberInput
+                value=""
+                onDigit={focusedInput === 0 ? handleDigit1 : handleDigit2}
+                onBackspace={focusedInput === 0 ? handleBackspace1 : handleBackspace2}
+                disabled={disabled || !!feedback}
+                showKeypad={true}
+                keypadMode="inline"
+                displaySize="sm"
+                placeholder=""
+              />
+            </div>
+          )}
         </div>
       ) : inputType === 'number' ? (
         /* Number input with KidNumberInput */
@@ -392,8 +559,8 @@ export function FlowchartCheckpoint({
             onDigit={handleDigit}
             onBackspace={handleBackspace}
             disabled={disabled || !!feedback}
-            feedback={feedback ? (feedback.correct ? 'correct' : 'incorrect') : 'none'}
-            showKeypad={true}
+            feedback={feedback ? (feedback.correct ? 'correct' : 'incorrect') : fieldFeedback.first}
+            showKeypad={showOnScreenKeypad}
             keypadMode="inline"
             displaySize="lg"
             placeholder="?"
