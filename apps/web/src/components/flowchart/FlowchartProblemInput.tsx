@@ -28,7 +28,7 @@ import { TeacherConfigPanel } from './TeacherConfigPanel'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
-import { MathDisplay } from './MathDisplay'
+import { AnimatedMathDisplay } from './AnimatedMathDisplay'
 
 /** Difficulty tier for filtering examples */
 type DifficultyTier = 'easy' | 'medium' | 'hard' | 'all'
@@ -352,8 +352,13 @@ export function FlowchartProblemInput({
     pendingExamplesRef.current = generateExamplesAsync(flowchart, exampleCount, constraints)
   }, [flowchart, exampleCount, constraints])
 
-  // Show new examples after the dice roll animation completes
-  const handleRollComplete = useCallback(async () => {
+  // Dice roll animation complete - examples already updated in handleRoll
+  const handleRollComplete = useCallback(() => {
+    // No-op: examples are now updated at roll start (handleRoll) so crossfade syncs with dice
+  }, [])
+
+  // Handler for dice roll - update examples immediately so crossfade syncs with dice animation
+  const handleRoll = useCallback(async () => {
     let newExamples: GeneratedExample[] | null = null
 
     // If we have pre-computed examples from drag (promise), await them
@@ -365,7 +370,7 @@ export function FlowchartProblemInput({
       }
       pendingExamplesRef.current = null
     } else if (flowchart) {
-      // Click-only roll - compute via worker (animation masked the compute time)
+      // Click-only roll - compute via worker
       try {
         newExamples = await generateExamplesAsync(flowchart, exampleCount, constraints)
       } catch (e) {
@@ -385,13 +390,6 @@ export function FlowchartProblemInput({
       }
     }
   }, [flowchart, exampleCount, constraints, storageKey])
-
-  // Handler for dice roll - we don't update examples here anymore
-  // (examples update on completion via handleRollComplete)
-  const handleRoll = useCallback(() => {
-    // The actual example update happens in handleRollComplete
-    // This is called immediately when rolled - could add a spinning indicator here
-  }, [])
 
   // Handler for instant roll (shift+click) - bypasses animation
   const handleInstantRoll = useCallback(async () => {
@@ -1066,7 +1064,7 @@ export function FlowchartProblemInput({
                       })}
                     >
                       <div className={css({ color: { base: 'gray.900', _dark: 'white' } })}>
-                        <MathDisplay
+                        <AnimatedMathDisplay
                           expression={formatExampleDisplay(schema.schema, example.values)}
                           size="md"
                         />
@@ -1202,7 +1200,7 @@ export function FlowchartProblemInput({
                           })}
                         >
                           <div className={css({ color: { base: 'gray.900', _dark: 'white' } })}>
-                            <MathDisplay
+                            <AnimatedMathDisplay
                               expression={formatExampleDisplay(schema.schema, example.values)}
                               size="md"
                             />
@@ -1306,7 +1304,7 @@ export function FlowchartProblemInput({
                   })}
                 >
                   <div className={css({ color: { base: 'gray.900', _dark: 'white' } })}>
-                    <MathDisplay
+                    <AnimatedMathDisplay
                       expression={formatExampleDisplay(schema.schema, example.values)}
                       size="md"
                     />
