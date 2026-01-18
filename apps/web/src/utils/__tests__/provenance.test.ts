@@ -54,18 +54,21 @@ describe('Provenance System', () => {
       }
     })
 
-    it('should have provenance for the "5" term (ones digit)', () => {
-      const fiveStep = result.steps.find((step) => step.mathematicalTerm === '5')
-      expect(fiveStep).toBeDefined()
-      expect(fiveStep?.provenance).toBeDefined()
+    it('should have provenance for the ones digit (via TenComplement)', () => {
+      // Adding 5 to ones digit 5 requires TenComplement: +100 -90 -5
+      // The "-5" step represents the ones digit contribution
+      const minusFiveStep = result.steps.find((step) => step.mathematicalTerm === '-5')
+      expect(minusFiveStep).toBeDefined()
+      expect(minusFiveStep?.provenance).toBeDefined()
 
-      if (fiveStep?.provenance) {
-        expect(fiveStep.provenance.rhs).toBe(25)
-        expect(fiveStep.provenance.rhsDigit).toBe(5)
-        expect(fiveStep.provenance.rhsPlace).toBe(0)
-        expect(fiveStep.provenance.rhsPlaceName).toBe('ones')
-        expect(fiveStep.provenance.rhsValue).toBe(5)
-        expect(fiveStep.provenance.rhsDigitIndex).toBe(1) // '5' is second digit in '25'
+      if (minusFiveStep?.provenance) {
+        expect(minusFiveStep.provenance.rhs).toBe(25)
+        expect(minusFiveStep.provenance.rhsDigit).toBe(5)
+        expect(minusFiveStep.provenance.rhsPlace).toBe(0)
+        expect(minusFiveStep.provenance.rhsPlaceName).toBe('ones')
+        expect(minusFiveStep.provenance.rhsValue).toBe(5)
+        // All steps in the TenComplement group share the same groupId
+        expect(minusFiveStep.provenance.groupId).toBe('10comp-0-5')
       }
     })
 

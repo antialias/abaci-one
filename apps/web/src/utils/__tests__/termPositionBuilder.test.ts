@@ -56,7 +56,9 @@ describe('buildFullDecompositionWithPositions', () => {
   it('should handle standalone negative terms', () => {
     const seq = buildFullDecompositionWithPositions(10, 5, ['-5'])
 
-    expect(seq.fullDecomposition).toBe('10 + -5 = 10 + -5 = 5')
+    // Subtraction is formatted nicely as "10 - 5" in the simplified form
+    // and "10 + (-5)" in the expanded form
+    expect(seq.fullDecomposition).toBe('10 - 5 = 10 + (-5) = 5')
 
     const [p5] = seq.termPositions
     expect(seq.fullDecomposition.slice(p5.startIndex, p5.endIndex)).toBe('5') // Maps to number only
