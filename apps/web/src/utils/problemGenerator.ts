@@ -15,6 +15,90 @@ import { generateUnifiedInstructionSequence } from './unifiedStepGenerator'
 // Re-export trace types for consumers that import from this file
 export type { GenerationTrace, GenerationTraceStep }
 
+// =============================================================================
+// MEMOIZATION CACHE FOR SKILL ANALYSIS
+// =============================================================================
+//
+// The analyzeStepSkills function is called hundreds of thousands of times during
+// problem generation (e.g., 60 problems × 100 attempts × 4 terms × 18 candidates).
+// Since the result depends only on (currentValue, term), we can memoize it.
+//
+// The cache key is `${currentValue}:${term}` because:
+// - targetValue = currentValue + term (deterministic)
+// - The third parameter (_newValue) is unused
+// - Skill detection is pure functional (no side effects, no randomness)
+
+const stepSkillsCache = new Map<string, string[]>()
+
+/** Cache statistics for monitoring/testing */
+interface CacheStats {
+  size: number
+  hits: number
+  misses: number
+}
+
+let cacheHits = 0
+let cacheMisses = 0
+
+/**
+ * Get the cache key for a given step.
+ * Uses currentValue and term only (newValue is computed from these).
+ */
+function getStepSkillsCacheKey(currentValue: number, term: number): string {
+  return `${currentValue}:${term}`
+}
+
+/**
+ * Clear the step skills cache.
+ * Useful for testing or when you want to force recomputation.
+ */
+export function clearStepSkillsCache(): void {
+  stepSkillsCache.clear()
+  cacheHits = 0
+  cacheMisses = 0
+}
+
+/**
+ * Get cache statistics for monitoring and testing.
+ */
+export function getStepSkillsCacheStats(): CacheStats {
+  return {
+    size: stepSkillsCache.size,
+    hits: cacheHits,
+    misses: cacheMisses,
+  }
+}
+
+/**
+ * Memoized version of analyzeStepSkills.
+ *
+ * This function returns cached results when available, avoiding expensive
+ * abacus simulation for repeated (currentValue, term) pairs.
+ *
+ * @param currentValue - Current abacus value
+ * @param term - Term to add (positive) or subtract (negative)
+ * @param _newValue - Expected result (unused, kept for API compatibility)
+ * @returns Array of unique skill identifiers required for this step
+ */
+export function analyzeStepSkillsMemoized(
+  currentValue: number,
+  term: number,
+  _newValue: number
+): string[] {
+  const key = getStepSkillsCacheKey(currentValue, term)
+
+  const cached = stepSkillsCache.get(key)
+  if (cached !== undefined) {
+    cacheHits++
+    return cached
+  }
+
+  cacheMisses++
+  const result = analyzeStepSkills(currentValue, term, _newValue)
+  stepSkillsCache.set(key, result)
+  return result
+}
+
 export interface GeneratedProblem {
   id: string
   terms: number[]
@@ -762,9 +846,9 @@ function collectValidTerms(
     // Skip if result would be negative (for subtraction)
     if (isSubtraction && newValue < 0) return
 
-    // Get skills for this operation
+    // Get skills for this operation (memoized for performance)
     const signedTerm = isSubtraction ? -term : term
-    const stepSkills = analyzeStepSkills(currentValue, signedTerm, newValue)
+    const stepSkills = analyzeStepSkillsMemoized(currentValue, signedTerm, newValue)
 
     // Check if the step uses only allowed skills (and no forbidden skills)
     const usesValidSkills = stepSkills.every((skillPath) => {
