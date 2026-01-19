@@ -643,10 +643,24 @@ export function calculatePathComplexity(
         break
       }
 
-      // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional fallthrough to share instruction logic
       case 'checkpoint': {
+        // Check for skip condition first
+        if (def.skipIf && def.skipTo) {
+          try {
+            const shouldSkip = evaluate(def.skipIf, context)
+            if (shouldSkip) {
+              // Skip this checkpoint entirely - don't count it
+              currentNodeId = def.skipTo
+              break
+            }
+          } catch {
+            // If skipIf evaluation fails, proceed to normal checkpoint handling
+          }
+        }
         checkpoints++
+        // Fall through to instruction logic for next node
       }
+      // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional fallthrough to share instruction logic
       case 'instruction': {
         if (def.next) {
           currentNodeId = def.next
@@ -886,16 +900,47 @@ export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath
       }
 
       case 'checkpoint': {
-        const nextNode = getNextNodeForAnalysis(flowchart, nodeId, def)
-        if (nextNode) {
-          stack.push({
-            nodeId: nextNode,
-            pathSoFar: currentPath,
-            visitedInPath: currentVisited,
-            constraints,
-            decisions,
-            checkpoints: checkpoints + 1,
-          })
+        // Checkpoints with skipIf can create branching paths by default,
+        // unless excludeSkipFromPaths is true (for optional steps that
+        // don't represent different problem types).
+        if (def.skipIf && def.skipTo && !def.excludeSkipFromPaths) {
+          // Create two paths: skip path and non-skip path
+          // Path 1: Skip this checkpoint
+          if (!currentVisited.has(def.skipTo)) {
+            stack.push({
+              nodeId: def.skipTo,
+              pathSoFar: currentPath,
+              visitedInPath: currentVisited,
+              constraints,
+              decisions,
+              checkpoints,
+            })
+          }
+          // Path 2: Don't skip - continue to next node
+          const nextNode = getNextNodeForAnalysis(flowchart, nodeId, def)
+          if (nextNode && !currentVisited.has(nextNode)) {
+            stack.push({
+              nodeId: nextNode,
+              pathSoFar: currentPath,
+              visitedInPath: currentVisited,
+              constraints,
+              decisions,
+              checkpoints: checkpoints + 1,
+            })
+          }
+        } else {
+          // No skipIf, or excludeSkipFromPaths is true - just continue
+          const nextNode = getNextNodeForAnalysis(flowchart, nodeId, def)
+          if (nextNode) {
+            stack.push({
+              nodeId: nextNode,
+              pathSoFar: currentPath,
+              visitedInPath: currentVisited,
+              constraints,
+              decisions,
+              checkpoints: checkpoints + 1,
+            })
+          }
         }
         break
       }

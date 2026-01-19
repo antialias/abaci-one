@@ -233,6 +233,16 @@ export interface CheckpointNode extends BaseNode {
   tolerance?: number
   /** Optional: transform the working problem when this checkpoint is passed */
   workingProblemUpdate?: WorkingProblemStep
+  /** Optional: skip this checkpoint entirely if expression is true */
+  skipIf?: string
+  /** Node to skip to if skipIf evaluates to true */
+  skipTo?: string
+  /**
+   * If true, the skipIf condition won't create a branching path for grid dimensions.
+   * Use for optional steps that don't represent different problem types.
+   * Default: false (skipIf creates a branch for path enumeration)
+   */
+  excludeSkipFromPaths?: boolean
 }
 
 /**

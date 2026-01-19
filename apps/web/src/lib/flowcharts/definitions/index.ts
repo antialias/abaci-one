@@ -111,8 +111,8 @@ flowchart TB
  * Mermaid content for fraction-add-sub flowchart.
  * Nodes: STEP0, STEP1, READY1, READY2, READY3, STEP2, CONV1A, CONV1B, CONV1C,
  *        STEP3, STEP3B, CHECK1, REMIND, ADDSUB, GOSTEP4, GOSTEP4B, GOSTEP4C,
- *        BORROWCHECK, BORROW, CHECK2, STEP4, SIMPLIFY_Q, SIMPLIFY_HOW,
- *        IMPROPER_Q, MIXED_HOW, CHECK3, DONE
+ *        BORROWCHECK, BORROW, CHECK2, STEP4, CALC_DENOM, CALC_WHOLE,
+ *        SIMPLIFY_Q, SIMPLIFY_HOW, IMPROPER_Q, MIXED_HOW, CHECK3, DONE
  *
  * NOTE: Milestone nodes (READY1, READY2, READY3, GOSTEP4, etc.) only contain
  * emoji like (("👍")) - they display briefly before auto-advancing.
@@ -152,8 +152,10 @@ flowchart TB
 
     subgraph PHASE3["<b>3. 🎯 DO THE MATH!</b>"]
         direction LR
-        STEP4["<b>🔢 CALCULATE</b><br/>───────────<br/>• TOP numbers: add or subtract<br/>• BOTTOM: stays the same<br/>• WHOLE: add or subtract"]
-        STEP4 --> SIMPLIFY_Q{"<b>SIMPLIFY?</b>"}
+        STEP4["<b>🔢 NUMERATOR</b><br/>───────────<br/>Add or subtract<br/>the TOP numbers"]
+        STEP4 --> CALC_DENOM["<b>🔢 DENOMINATOR</b><br/>───────────<br/>The bottom number<br/>stays the same!"]
+        CALC_DENOM --> CALC_WHOLE["<b>🔢 WHOLE NUMBER</b><br/>───────────<br/>Add or subtract<br/>the whole numbers<br/>(0 if none)"]
+        CALC_WHOLE --> SIMPLIFY_Q{"<b>SIMPLIFY?</b>"}
         SIMPLIFY_Q -->|"NO ✓"| IMPROPER_Q
         SIMPLIFY_Q -->|"YES"| SIMPLIFY_HOW["<b>🪜 FRACTION LADDER</b><br/>─────────────────<br/>Keep dividing by small numbers"]
         SIMPLIFY_HOW --> IMPROPER_Q{"<b>TOP > BOTTOM?</b>"}

@@ -201,7 +201,11 @@
     "needsSimplify": { "init": "resultGcd > 1" },
     "simplifiedNum": { "init": "rawResultNum / resultGcd" },
     "simplifiedDenom": { "init": "lcd / resultGcd" },
-    "isImproper": { "init": "simplifiedNum >= simplifiedDenom" }
+    "isImproper": { "init": "simplifiedNum >= simplifiedDenom" },
+    "hasWholeNumbers": { "init": "leftWhole > 0 || rightWhole > 0" },
+    "resultWhole": {
+      "init": "op == '+' ? (leftWhole + rightWhole) : (needsBorrow ? (leftWhole - 1 - rightWhole) : (leftWhole - rightWhole))"
+    }
   },
 
   "workingProblem": {
@@ -378,8 +382,33 @@
       "advance": "tap"
     },
     "STEP4": {
-      "type": "instruction",
-      "advance": "tap"
+      "type": "checkpoint",
+      "prompt": "What's the new numerator (top number)?",
+      "inputType": "number",
+      "expected": "rawResultNum"
+    },
+    "CALC_DENOM": {
+      "type": "checkpoint",
+      "prompt": "What's the denominator (bottom number)?",
+      "inputType": "number",
+      "expected": "lcd",
+      "workingProblemUpdate": {
+        "result": "rawResultNum + '/' + lcd",
+        "label": "Calculated fraction"
+      }
+    },
+    "CALC_WHOLE": {
+      "type": "checkpoint",
+      "prompt": "What's the whole number?",
+      "inputType": "number",
+      "expected": "resultWhole",
+      "skipIf": "!hasWholeNumbers",
+      "skipTo": "SIMPLIFY_Q",
+      "excludeSkipFromPaths": true,
+      "workingProblemUpdate": {
+        "result": "(resultWhole > 0 ? (resultWhole + ' ') : '') + rawResultNum + '/' + lcd",
+        "label": "Calculated result"
+      }
     },
     "SIMPLIFY_Q": {
       "type": "decision",
@@ -450,7 +479,9 @@
     "REMIND": ["ADDSUB"],
     "BORROW": ["GOSTEP4C"],
     "CHECK2": ["STEP4"],
-    "STEP4": ["SIMPLIFY_Q"],
+    "STEP4": ["CALC_DENOM"],
+    "CALC_DENOM": ["CALC_WHOLE"],
+    "CALC_WHOLE": ["SIMPLIFY_Q"],
     "SIMPLIFY_HOW": ["IMPROPER_Q"],
     "MIXED_HOW": ["CHECK3"],
     "CHECK3": ["DONE"]
