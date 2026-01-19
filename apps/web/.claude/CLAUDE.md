@@ -1424,6 +1424,16 @@ Each flowchart has two parts:
 
 The loader merges these into an `ExecutableFlowchart` at runtime.
 
+**Modifying Flowcharts:**
+
+When adding checkpoints, changing node behavior, or adjusting path enumeration:
+- **[`.claude/skills/FLOWCHART_MODIFICATIONS.md`](./skills/FLOWCHART_MODIFICATIONS.md)** - Patterns for modifying flowcharts
+  - Adding new checkpoint nodes
+  - Conditional skipping with `skipIf` and `excludeSkipFromPaths`
+  - Understanding path enumeration and grid dimensions
+  - Working problem evolution
+  - Debugging tips and checklist
+
 ## Daily Practice System
 
 When working on the curriculum-based daily practice system, refer to:
