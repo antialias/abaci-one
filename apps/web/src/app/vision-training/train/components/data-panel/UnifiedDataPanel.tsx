@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { css } from '../../../../../../styled-system/css'
 import type { ModelType } from '../wizard/types'
 import type { QuadCorners } from '@/types/vision'
@@ -88,6 +89,40 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
   const [newSamplesCount, setNewSamplesCount] = useState(0)
   const lastRefreshTimeRef = useRef<number>(Date.now())
 
+  // Virtualized grid refs and state
+  const gridScrollContainerRef = useRef<HTMLDivElement>(null)
+  const [gridWidth, setGridWidth] = useState(0)
+
+  // Grid constants
+  const MIN_ITEM_WIDTH = 120
+  const ITEM_GAP = 8 // gap: 2 = 0.5rem = 8px
+  const GRID_PADDING = 12 // p: 3 = 0.75rem = 12px
+
+  // Calculate items per row based on container width
+  const itemsPerRow = useMemo(() => {
+    if (gridWidth === 0) return 4 // Default fallback
+    const availableWidth = gridWidth - GRID_PADDING * 2
+    // Account for gaps: n items need n-1 gaps
+    // availableWidth = n * itemWidth + (n-1) * gap
+    // Solve for n: n = (availableWidth + gap) / (itemWidth + gap)
+    const cols = Math.floor((availableWidth + ITEM_GAP) / (MIN_ITEM_WIDTH + ITEM_GAP))
+    return Math.max(1, cols)
+  }, [gridWidth])
+
+  // Calculate actual item width for the current layout
+  const actualItemWidth = useMemo(() => {
+    if (gridWidth === 0) return MIN_ITEM_WIDTH
+    const availableWidth = gridWidth - GRID_PADDING * 2
+    // Distribute available space evenly: itemWidth = (availableWidth - (n-1)*gap) / n
+    return (availableWidth - (itemsPerRow - 1) * ITEM_GAP) / itemsPerRow
+  }, [gridWidth, itemsPerRow])
+
+  // Item height based on 4:3 aspect ratio
+  const itemHeight = useMemo(() => actualItemWidth * 0.75, [actualItemWidth])
+
+  // Row height including gap
+  const rowHeight = useMemo(() => itemHeight + ITEM_GAP, [itemHeight])
+
   // === Computed values ===
 
   // Apply filters to items
@@ -101,6 +136,12 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
 
     return result
   }, [items, filters, modelType, selectedDigit])
+
+  // Total number of rows for virtualization
+  const totalRows = useMemo(
+    () => Math.ceil(filteredItems.length / itemsPerRow),
+    [filteredItems.length, itemsPerRow]
+  )
 
   // Digit counts for column classifier
   const digitCounts = useMemo(() => {
@@ -252,39 +293,55 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
     }
   }, [modelType, loadItems])
 
+  // Track grid container width for virtualization
+  useEffect(() => {
+    const element = gridScrollContainerRef.current
+    if (!element) return
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setGridWidth(entry.contentRect.width)
+      }
+    })
+
+    observer.observe(element)
+    // Set initial width
+    setGridWidth(element.clientWidth)
+
+    return () => observer.disconnect()
+  }, [])
+
+  // Virtualizer for the grid rows
+  const rowVirtualizer = useVirtualizer({
+    count: totalRows,
+    getScrollElement: () => gridScrollContainerRef.current,
+    estimateSize: () => rowHeight,
+    overscan: 3, // Render 3 extra rows above/below viewport
+  })
+
   // === Handlers ===
 
-  // Toggle selection with shift+click support for range selection
+  // Handle selection with shift+click support for range selection
   // Also opens detail panel for the clicked item (unless shift-clicking)
   const toggleSelect = useCallback(
     (id: string, index: number, shiftKey: boolean) => {
       setSelectedIds((prev) => {
-        const next = new Set(prev)
-
-        // Shift+click for range selection/deselection
+        // Shift+click for range selection (add to existing selection)
         if (shiftKey && lastClickedIndex !== null) {
+          const next = new Set(prev)
           const start = Math.min(lastClickedIndex, index)
           const end = Math.max(lastClickedIndex, index)
-          const shouldSelect = !prev.has(id)
+          // Add all items in range to selection
           for (let i = start; i <= end; i++) {
             if (filteredItems[i]) {
-              if (shouldSelect) {
-                next.add(filteredItems[i].id)
-              } else {
-                next.delete(filteredItems[i].id)
-              }
+              next.add(filteredItems[i].id)
             }
           }
+          return next
         } else {
-          // Normal toggle
-          if (next.has(id)) {
-            next.delete(id)
-          } else {
-            next.add(id)
-          }
+          // Normal click: replace selection with just this item
+          return new Set([id])
         }
-
-        return next
       })
 
       // Update last clicked index (but not for shift clicks to allow extending range)
@@ -731,6 +788,7 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
             flexDirection: 'column',
             flex: 1,
             minWidth: 0,
+            minHeight: 0, // Critical for flex children to shrink below content size
             bg: 'gray.850',
             borderRadius: 'lg',
             overflow: 'hidden',
@@ -852,48 +910,80 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
                 </div>
               </div>
 
-              {/* Grid */}
+              {/* Virtualized Grid */}
               <div
+                ref={gridScrollContainerRef}
                 data-element="grid-scroll-container"
                 className={css({
                   flex: 1,
                   overflow: 'auto',
                   minHeight: 0,
+                  contain: 'strict',
                 })}
               >
                 <div
                   data-element="grid"
-                  className={css({
-                    p: 3,
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                    gap: 2,
-                    alignContent: 'start',
-                  })}
+                  style={{
+                    height: `${rowVirtualizer.getTotalSize() + GRID_PADDING * 2}px`,
+                    width: '100%',
+                    position: 'relative',
+                    padding: `${GRID_PADDING}px`,
+                  }}
                 >
-                  {filteredItems.map((item, index) =>
-                    isBoundaryDataItem(item) ? (
-                      <BoundaryGridItem
-                        key={item.id}
-                        item={item}
-                        isSelected={selectedIds.has(item.id)}
-                        isFocused={focusedItem?.id === item.id}
-                        onSelect={(shiftKey) => toggleSelect(item.id, index, shiftKey)}
-                        onViewDetails={() => handleViewDetails(item)}
-                        onDelete={() => handleDelete(item)}
-                      />
-                    ) : isColumnDataItem(item) ? (
-                      <ColumnGridItem
-                        key={item.id}
-                        item={item}
-                        isSelected={selectedIds.has(item.id)}
-                        isFocused={focusedItem?.id === item.id}
-                        onSelect={(shiftKey) => toggleSelect(item.id, index, shiftKey)}
-                        onViewDetails={() => handleViewDetails(item)}
-                        onDelete={() => handleDelete(item)}
-                      />
-                    ) : null
-                  )}
+                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const rowStartIndex = virtualRow.index * itemsPerRow
+                    const rowItems = filteredItems.slice(rowStartIndex, rowStartIndex + itemsPerRow)
+
+                    return (
+                      <div
+                        key={virtualRow.key}
+                        data-row-index={virtualRow.index}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: `${GRID_PADDING}px`,
+                          right: `${GRID_PADDING}px`,
+                          height: `${itemHeight}px`,
+                          transform: `translateY(${virtualRow.start}px)`,
+                          display: 'flex',
+                          gap: `${ITEM_GAP}px`,
+                        }}
+                      >
+                        {rowItems.map((item, colIndex) => {
+                          const itemIndex = rowStartIndex + colIndex
+                          return isBoundaryDataItem(item) ? (
+                            <div
+                              key={item.id}
+                              style={{ width: `${actualItemWidth}px`, flexShrink: 0 }}
+                            >
+                              <BoundaryGridItem
+                                item={item}
+                                isSelected={selectedIds.has(item.id)}
+                                isFocused={focusedItem?.id === item.id}
+                                onSelect={(shiftKey) => toggleSelect(item.id, itemIndex, shiftKey)}
+                                onViewDetails={() => handleViewDetails(item)}
+                                onDelete={() => handleDelete(item)}
+                              />
+                            </div>
+                          ) : isColumnDataItem(item) ? (
+                            <div
+                              key={item.id}
+                              style={{ width: `${actualItemWidth}px`, flexShrink: 0 }}
+                            >
+                              <ColumnGridItem
+                                item={item}
+                                isSelected={selectedIds.has(item.id)}
+                                isFocused={focusedItem?.id === item.id}
+                                onSelect={(shiftKey) => toggleSelect(item.id, itemIndex, shiftKey)}
+                                onViewDetails={() => handleViewDetails(item)}
+                                onDelete={() => handleDelete(item)}
+                              />
+                            </div>
+                          ) : null
+                        })}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </>
