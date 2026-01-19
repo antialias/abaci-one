@@ -25,10 +25,11 @@ import { evaluate } from '@/lib/flowcharts/evaluator'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 import { FlowchartNodeContent } from './FlowchartNodeContent'
-import { FlowchartDecision } from './FlowchartDecision'
 import { FlowchartCheckpoint } from './FlowchartCheckpoint'
 import { FlowchartPhaseRail } from './FlowchartPhaseRail'
+import { FlowchartDecisionGraph } from './FlowchartDecisionGraph'
 import { MathDisplay } from './MathDisplay'
+import { TimeMachineHistory } from './TimeMachineHistory'
 import { DebugStepTimeline } from './DebugStepTimeline'
 import { DebugMermaidDiagram } from './DebugMermaidDiagram'
 
@@ -258,6 +259,21 @@ export function FlowchartWalker({
     [flowchart, state, currentNode, onComplete, autoAdvancePaused]
   )
 
+  // Auto-advance for embellishment and milestone nodes
+  // Using useEffect ensures proper cleanup and prevents multiple timeouts on re-renders
+  useEffect(() => {
+    if (!currentNode || autoAdvancePaused) return
+
+    const nodeType = currentNode.definition.type
+    if (nodeType === 'embellishment') {
+      const timer = setTimeout(() => advanceToNext(), 800)
+      return () => clearTimeout(timer)
+    } else if (nodeType === 'milestone') {
+      const timer = setTimeout(() => advanceToNext(), 500)
+      return () => clearTimeout(timer)
+    }
+  }, [currentNode, autoAdvancePaused, advanceToNext])
+
   // Go back to the previous step (uses browser history so back button stays in sync)
   const goBack = useCallback(() => {
     if (stateHistory.length === 0 || historyDepthRef.current === 0) {
@@ -336,6 +352,7 @@ export function FlowchartWalker({
     switch (def.type) {
       case 'instruction':
       case 'milestone':
+      case 'embellishment':
         // Just advance
         advanceToNext()
         break
@@ -598,27 +615,10 @@ export function FlowchartWalker({
           </button>
         )
 
-      case 'decision': {
-        // Add path preview info to each option
-        const decisionDef = def as DecisionNode
-        const optionsWithPaths = decisionDef.options.map((opt) => {
-          const nextNode = flowchart.nodes[opt.next]
-          return {
-            ...opt,
-            leadsTo: nextNode?.content?.title || opt.next,
-          }
-        })
-
-        return (
-          <FlowchartDecision
-            key={`decision-${wrongDecision?.attempt ?? 0}`}
-            options={optionsWithPaths}
-            onSelect={handleDecisionSelect}
-            wrongAnswer={wrongDecision?.value}
-            correctAnswer={wrongDecision?.correctValue}
-          />
-        )
-      }
+      case 'decision':
+        // Decision is rendered in the FlowchartPhaseRail as a flowchart-style graph
+        // No interaction needed here
+        return null
 
       case 'checkpoint': {
         const checkpointDef = def as CheckpointNode
@@ -748,10 +748,7 @@ export function FlowchartWalker({
       }
 
       case 'milestone':
-        // Auto-advance milestones (unless auto-advance is paused)
-        if (!autoAdvancePaused) {
-          setTimeout(() => advanceToNext(), 500)
-        }
+        // Auto-advance handled by useEffect above
         return (
           <div
             data-testid="milestone-display"
@@ -763,6 +760,11 @@ export function FlowchartWalker({
             {currentNode.content.title}
           </div>
         )
+
+      case 'embellishment':
+        // Auto-advance handled by useEffect above
+        // Display is handled in the content card, nothing needed here
+        return null
 
       case 'terminal':
         return null // Handled by complete phase
@@ -834,87 +836,139 @@ export function FlowchartWalker({
   // Can go back if there's history OR if we can go to problem selection
   const canGoBack = stateHistory.length > 0 || onChangeProblem
 
+  // Get decision options for current node if it's a decision
+  const decisionOptions = useMemo(() => {
+    const node = flowchart.nodes[state.currentNode]
+    if (!node || node.definition.type !== 'decision') return null
+
+    const def = node.definition as DecisionNode
+    return def.options.map((opt) => {
+      const nextNode = flowchart.nodes[opt.next]
+      return {
+        label: opt.label,
+        value: opt.value,
+        pathLabel: opt.pathLabel,
+        leadsTo: nextNode?.content?.title || opt.next,
+      }
+    })
+  }, [flowchart.nodes, state.currentNode])
+
+  // Feedback state for wrong decision answers
+  const [showDecisionFeedback, setShowDecisionFeedback] = useState(false)
+
+  // Handle wrong decision feedback
+  useEffect(() => {
+    if (wrongDecision) {
+      setShowDecisionFeedback(true)
+      const timer = setTimeout(() => setShowDecisionFeedback(false), 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [wrongDecision?.attempt])
+
+  const handleDecisionOptionClick = (value: string) => {
+    if (showDecisionFeedback) return
+    handleDecisionSelect(value)
+  }
+
   return (
     <div
       data-testid="flowchart-walker"
       data-current-node={state.currentNode}
       data-phase={phase.type}
-      className={vstack({ gap: '4', padding: '4', alignItems: 'stretch' })}
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        backgroundColor: { base: 'gray.50', _dark: 'gray.900' },
+      })}
     >
-      {/* Navigation bar */}
-      <nav
-        data-testid="walker-nav"
-        className={hstack({
-          justifyContent: 'space-between',
+      {/* Top bar: Phase Rail (centered) + Back/New buttons (right side) */}
+      {/* Note: Hamburger menu is handled by parent page in top-left corner */}
+      <header
+        data-testid="walker-header"
+        className={css({
+          display: 'flex',
           alignItems: 'center',
-          paddingX: '2',
+          justifyContent: 'center',
+          padding: '3 4',
+          // Leave space for floating hamburger menu on the left
+          paddingLeft: '70px',
+          backgroundColor: { base: 'white', _dark: 'gray.800' },
+          borderBottom: '1px solid',
+          borderColor: { base: 'gray.200', _dark: 'gray.700' },
+          position: 'relative',
         })}
       >
-        {/* Back button */}
-        {canGoBack ? (
-          <button
-            data-testid="back-button"
-            onClick={goBack}
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1',
-              padding: '2 3',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              color: { base: 'gray.600', _dark: 'gray.400' },
-              backgroundColor: 'transparent',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              _hover: {
-                color: { base: 'gray.900', _dark: 'gray.200' },
-                backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
-              },
-            })}
-          >
-            <span className={css({ fontSize: 'md' })}>←</span>
-            <span>{stateHistory.length === 0 ? 'Change Problem' : 'Back'}</span>
-          </button>
-        ) : (
-          <div />
-        )}
+        {/* Compact Phase Rail - centered */}
+        <FlowchartPhaseRail flowchart={flowchart} state={state} compact={true} />
 
-        {/* Problem display */}
+        {/* Right side controls: Back + New Problem */}
         <div
-          data-testid="problem-header"
-          className={css({ color: { base: 'gray.500', _dark: 'gray.500' } })}
+          className={css({
+            position: 'absolute',
+            right: '16px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2',
+          })}
         >
-          <MathDisplay expression={problemDisplay} size="sm" />
-        </div>
+          {/* Back button - for step navigation within flowchart */}
+          {stateHistory.length > 0 && (
+            <button
+              data-testid="back-button"
+              onClick={goBack}
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1',
+                padding: '1.5 2.5',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: { base: 'gray.600', _dark: 'gray.400' },
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                _hover: {
+                  color: { base: 'gray.900', _dark: 'gray.200' },
+                  backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+                },
+              })}
+            >
+              <span className={css({ fontSize: 'md' })}>←</span>
+              <span className={css({ display: { base: 'none', sm: 'inline' } })}>Back</span>
+            </button>
+          )}
 
-        {/* Change problem link (when not at start) */}
-        {stateHistory.length > 0 && onChangeProblem ? (
-          <button
-            data-testid="change-problem-button"
-            onClick={onChangeProblem}
-            className={css({
-              padding: '2 3',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              color: { base: 'blue.600', _dark: 'blue.400' },
-              backgroundColor: 'transparent',
-              border: 'none',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              _hover: {
-                backgroundColor: { base: 'blue.50', _dark: 'blue.900/30' },
-              },
-            })}
-          >
-            New Problem
-          </button>
-        ) : (
-          <div />
-        )}
-      </nav>
+          {/* New Problem button */}
+          {onChangeProblem && (
+            <button
+              data-testid="change-problem-button"
+              onClick={onChangeProblem}
+              className={css({
+                padding: '1.5 2.5',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: { base: 'blue.600', _dark: 'blue.400' },
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                _hover: {
+                  backgroundColor: { base: 'blue.50', _dark: 'blue.900/30' },
+                },
+              })}
+            >
+              <span className={css({ display: { base: 'none', sm: 'inline' } })}>New Problem</span>
+              <span className={css({ display: { base: 'inline', sm: 'none' } })}>New</span>
+            </button>
+          )}
+        </div>
+      </header>
 
       {/* Debug step timeline - only visible when visual debug mode is enabled */}
       {isVisualDebugEnabled && timelineSteps.length > 0 && (
@@ -941,176 +995,35 @@ export function FlowchartWalker({
         />
       )}
 
-      {/* Phase rail with flowchart navigation */}
-      <FlowchartPhaseRail flowchart={flowchart} state={state} />
-
-      {/* Main content area - two columns on larger screens */}
-      <div
+      {/* Main content - centered column */}
+      <main
         data-testid="main-content-area"
         className={css({
+          flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          gap: '4',
-          // On lg screens (iPad landscape and up): two columns
-          lg: {
-            flexDirection: 'row-reverse',
-            alignItems: 'flex-start',
-          },
+          alignItems: 'center',
+          padding: '4',
+          paddingTop: '6',
+          gap: '5',
+          maxWidth: '700px',
+          width: '100%',
+          margin: '0 auto',
         })}
       >
-        {/* Working problem ledger - right side on lg */}
-        {state.workingProblemHistory.length > 0 && (
-          <div
-            data-testid="working-problem-ledger"
-            data-step-count={state.workingProblemHistory.length}
-            className={css({
-              padding: '4',
-              backgroundColor: { base: 'blue.50', _dark: 'blue.900' },
-              borderRadius: 'xl',
-              border: '2px solid',
-              borderColor: { base: 'blue.200', _dark: 'blue.700' },
-              // On lg screens: fixed width on right side
-              lg: {
-                width: '320px',
-                flexShrink: 0,
-                position: 'sticky',
-                top: '4',
-              },
-            })}
-          >
-            <div className={vstack({ gap: '3', alignItems: 'stretch' })}>
-              <span
-                className={css({
-                  fontSize: 'xs',
-                  fontWeight: 'medium',
-                  color: { base: 'blue.600', _dark: 'blue.300' },
-                  textTransform: 'uppercase',
-                  letterSpacing: 'wide',
-                  textAlign: 'center',
-                })}
-              >
-                Your Work
-              </span>
-
-              {/* Ledger entries */}
-              <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
-                {state.workingProblemHistory.map((step, idx) => {
-                  const isLatest = idx === state.workingProblemHistory.length - 1
-                  const nodeTitle = flowchart.nodes[step.nodeId]?.content?.title
-
-                  return (
-                    <div
-                      key={idx}
-                      data-testid={`ledger-step-${idx}`}
-                      data-step-index={idx}
-                      data-is-latest={isLatest}
-                      data-is-clickable={!isLatest}
-                      data-node-id={step.nodeId}
-                      onClick={!isLatest ? () => navigateToStep(idx) : undefined}
-                      role={!isLatest ? 'button' : undefined}
-                      tabIndex={!isLatest ? 0 : undefined}
-                      onKeyDown={
-                        !isLatest
-                          ? (e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault()
-                                navigateToStep(idx)
-                              }
-                            }
-                          : undefined
-                      }
-                      className={css({
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '3',
-                        padding: '2 3',
-                        borderRadius: 'lg',
-                        backgroundColor: isLatest
-                          ? { base: 'blue.100', _dark: 'blue.800' }
-                          : { base: 'transparent', _dark: 'transparent' },
-                        border: isLatest ? '2px solid' : '1px solid',
-                        borderColor: isLatest
-                          ? { base: 'blue.400', _dark: 'blue.500' }
-                          : { base: 'blue.200', _dark: 'blue.700' },
-                        opacity: isLatest ? 1 : 0.7,
-                        cursor: isLatest ? 'default' : 'pointer',
-                        transition: 'all 0.15s ease-out',
-                        _hover: isLatest
-                          ? {}
-                          : {
-                              opacity: 1,
-                              backgroundColor: { base: 'blue.50', _dark: 'blue.900/50' },
-                              borderColor: { base: 'blue.300', _dark: 'blue.600' },
-                            },
-                      })}
-                    >
-                      {/* Step number */}
-                      <span
-                        className={css({
-                          fontSize: 'xs',
-                          fontWeight: 'bold',
-                          color: { base: 'blue.500', _dark: 'blue.400' },
-                          minWidth: '1.5rem',
-                          textAlign: 'center',
-                        })}
-                      >
-                        {idx + 1}
-                      </span>
-
-                      {/* Math expression */}
-                      <div
-                        className={css({
-                          flex: 1,
-                          color: { base: 'blue.900', _dark: 'blue.100' },
-                        })}
-                      >
-                        <MathDisplay expression={step.value} size={isLatest ? 'lg' : 'md'} />
-                      </div>
-
-                      {/* Step label / what happened */}
-                      <span
-                        className={css({
-                          fontSize: 'xs',
-                          color: { base: 'blue.600', _dark: 'blue.400' },
-                          textAlign: 'right',
-                          maxWidth: '120px',
-                        })}
-                        title={nodeTitle ? `From: ${nodeTitle}` : undefined}
-                      >
-                        {step.label}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Left column: Node content + Interaction area */}
-        <div
-          data-testid="node-interaction-column"
-          className={css({
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4',
-            // On lg screens: take remaining space
-            lg: {
-              flex: 1,
-              minWidth: 0,
-            },
-          })}
-        >
-          {/* Node content - skip for milestone nodes (they show emoji in interaction area) */}
-          {currentNode?.definition.type !== 'milestone' && (
+        {/* Instructions section - node content above the Time Machine */}
+        {currentNode?.definition.type !== 'milestone' &&
+          currentNode?.definition.type !== 'embellishment' &&
+          currentNode?.definition.type !== 'decision' && (
             <div
-              data-testid="node-content-container"
+              data-testid="instructions-section"
               data-node-type={currentNode?.definition.type}
               className={css({
-                padding: '6',
+                width: '100%',
+                padding: '4 5',
                 backgroundColor: { base: 'white', _dark: 'gray.800' },
                 borderRadius: 'xl',
-                boxShadow: 'lg',
+                boxShadow: 'md',
                 border: '1px solid',
                 borderColor: { base: 'gray.200', _dark: 'gray.700' },
               })}
@@ -1125,19 +1038,95 @@ export function FlowchartWalker({
             </div>
           )}
 
-          {/* Interaction area */}
+        {/* Embellishment display - animated emoji */}
+        {currentNode?.definition.type === 'embellishment' && (
+          <div
+            data-testid="embellishment-display"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '120px',
+            })}
+          >
+            <span
+              className={css({
+                fontSize: '6xl',
+                animation: 'embellishmentPop 0.6s ease-out',
+              })}
+            >
+              {currentNode.content.title}
+            </span>
+          </div>
+        )}
+
+        {/* Milestone display */}
+        {currentNode?.definition.type === 'milestone' && (
+          <div
+            data-testid="milestone-display"
+            className={css({
+              fontSize: '5xl',
+              textAlign: 'center',
+              padding: '6',
+            })}
+          >
+            {currentNode.content.title}
+          </div>
+        )}
+
+        {/* TIME MACHINE: Problem evolution stack - the hero of the page */}
+        {state.workingProblemHistory.length > 0 && (
+          <TimeMachineHistory
+            history={state.workingProblemHistory}
+            onNavigate={navigateToStep}
+            fontSize="xl"
+          />
+        )}
+
+        {/* Decision graph - when at a decision node */}
+        {decisionOptions && currentNode?.definition.type === 'decision' && (
+          <div
+            data-testid="decision-area"
+            data-element="decision-graph-container"
+            data-option-count={decisionOptions.length}
+            className={css({
+              width: '100%',
+              maxWidth: '500px',
+            })}
+          >
+            <FlowchartDecisionGraph
+              nodeTitle={currentNode.content?.title || 'Choose'}
+              nodeBody={currentNode.content?.body || []}
+              options={decisionOptions.map((opt) => ({
+                label: opt.label,
+                value: opt.value,
+                pathLabel: opt.pathLabel,
+                leadsTo: opt.leadsTo,
+              }))}
+              onSelect={handleDecisionOptionClick}
+              wrongAnswer={showDecisionFeedback ? wrongDecision?.value : undefined}
+              correctAnswer={showDecisionFeedback ? wrongDecision?.correctValue : undefined}
+              disabled={showDecisionFeedback}
+              hasPreviousNode={state.history.length > 0}
+            />
+          </div>
+        )}
+
+        {/* Interaction area: Checkpoint / "I did it" button */}
+        {currentNode?.definition.type !== 'decision' && (
           <div
             data-testid="interaction-area"
             className={css({
-              padding: '4',
               display: 'flex',
               justifyContent: 'center',
+              width: '100%',
+              maxWidth: '400px',
             })}
           >
             {renderNodeInteraction()}
           </div>
-        </div>
-      </div>
+        )}
+      </main>
     </div>
   )
 }

@@ -8,6 +8,7 @@ import { loadFlowchart } from '@/lib/flowcharts/loader'
 import { getFlowchart } from '@/lib/flowcharts/definitions'
 import { FlowchartWalker, FlowchartProblemInput } from '@/components/flowchart'
 import { PageWithNav } from '@/components/PageWithNav'
+import { FloatingHamburgerMenu } from '@/components/FloatingHamburgerMenu'
 import { css } from '../../../../styled-system/css'
 import { vstack } from '../../../../styled-system/patterns'
 
@@ -102,7 +103,7 @@ export default function FlowchartPage() {
     router.push('/flowchart')
   }, [router])
 
-  // Nav slot content - Back to flowcharts link
+  // Nav slot content - Back to flowcharts link (for non-walking states)
   const navSlot = (
     <Link
       href="/flowchart"
@@ -117,7 +118,27 @@ export default function FlowchartPage() {
     </Link>
   )
 
-  // Render based on state
+  // Walking mode: minimal distraction-free UI with just floating hamburger
+  if (state.type === 'walking') {
+    return (
+      <>
+        <FloatingHamburgerMenu
+          position="top-left"
+          onExit={handleChangeProblem}
+          exitLabel="Exit Flowchart"
+        />
+        <FlowchartWalker
+          flowchart={state.flowchart}
+          problemInput={state.problemInput}
+          onComplete={handleComplete}
+          onRestart={handleRestart}
+          onChangeProblem={handleChangeProblem}
+        />
+      </>
+    )
+  }
+
+  // Non-walking states: use full nav
   return (
     <PageWithNav navSlot={navSlot}>
       <div className={vstack({ gap: '4', padding: '4', minHeight: '100vh' })}>
@@ -130,71 +151,61 @@ export default function FlowchartPage() {
             margin: '0 auto',
           })}
         >
-        {state.type === 'loading' && (
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '300px',
-              color: { base: 'gray.500', _dark: 'gray.400' },
-            })}
-          >
-            Loading...
-          </div>
-        )}
-
-        {state.type === 'error' && (
-          <div
-            className={vstack({
-              gap: '4',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '300px',
-            })}
-          >
-            <p
+          {state.type === 'loading' && (
+            <div
               className={css({
-                color: { base: 'red.600', _dark: 'red.400' },
-                fontSize: 'lg',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '300px',
+                color: { base: 'gray.500', _dark: 'gray.400' },
               })}
             >
-              {state.message}
-            </p>
-            <button
-              onClick={() => router.push('/flowchart')}
-              className={css({
-                paddingX: '4',
-                paddingY: '2',
-                borderRadius: 'md',
-                backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
-                color: { base: 'gray.800', _dark: 'gray.200' },
-                border: 'none',
-                cursor: 'pointer',
+              Loading...
+            </div>
+          )}
+
+          {state.type === 'error' && (
+            <div
+              className={vstack({
+                gap: '4',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '300px',
               })}
             >
-              Go back
-            </button>
-          </div>
-        )}
+              <p
+                className={css({
+                  color: { base: 'red.600', _dark: 'red.400' },
+                  fontSize: 'lg',
+                })}
+              >
+                {state.message}
+              </p>
+              <button
+                onClick={() => router.push('/flowchart')}
+                className={css({
+                  paddingX: '4',
+                  paddingY: '2',
+                  borderRadius: 'md',
+                  backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                  color: { base: 'gray.800', _dark: 'gray.200' },
+                  border: 'none',
+                  cursor: 'pointer',
+                })}
+              >
+                Go back
+              </button>
+            </div>
+          )}
 
-        {state.type === 'inputting' && (
-          <FlowchartProblemInput
-            schema={state.flowchart.definition.problemInput}
-            onSubmit={handleProblemSubmit}
-            flowchart={state.flowchart}
-          />
-        )}
-
-        {state.type === 'walking' && (
-          <FlowchartWalker
-            flowchart={state.flowchart}
-            problemInput={state.problemInput}
-            onComplete={handleComplete}
-            onRestart={handleRestart}
-            onChangeProblem={handleChangeProblem}
-          />
-        )}
+          {state.type === 'inputting' && (
+            <FlowchartProblemInput
+              schema={state.flowchart.definition.problemInput}
+              onSubmit={handleProblemSubmit}
+              flowchart={state.flowchart}
+            />
+          )}
         </main>
       </div>
     </PageWithNav>

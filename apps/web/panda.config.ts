@@ -316,6 +316,13 @@ export default defineConfig({
             transform: 'translateZ(0) scale(1)',
           },
         },
+        // Embellishment pop - playful bounce for celebratory emoji moments
+        embellishmentPop: {
+          '0%': { opacity: '0', transform: 'scale(0.3)' },
+          '50%': { opacity: '1', transform: 'scale(1.2)' },
+          '70%': { transform: 'scale(0.9)' },
+          '100%': { transform: 'scale(1)' },
+        },
       },
     },
   },
