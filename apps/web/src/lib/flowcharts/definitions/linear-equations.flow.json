@@ -104,11 +104,11 @@
       ]
     },
     "STUCK_ADD": {
-      "type": "milestone",
+      "type": "embellishment",
       "next": "CHECK1"
     },
     "STUCK_MUL": {
-      "type": "milestone",
+      "type": "embellishment",
       "next": "CHECK1"
     },
     "CHECK1": {

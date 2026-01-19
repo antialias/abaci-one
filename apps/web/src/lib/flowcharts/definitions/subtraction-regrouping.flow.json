@@ -80,11 +80,11 @@
       ]
     },
     "HAPPY": {
-      "type": "milestone",
+      "type": "embellishment",
       "next": "CHECK1"
     },
     "SAD": {
-      "type": "milestone",
+      "type": "embellishment",
       "next": "CHECK1B"
     },
     "CHECK1": {
@@ -106,7 +106,7 @@
       ]
     },
     "SKIP": {
-      "type": "milestone",
+      "type": "embellishment",
       "next": "CHECK2"
     },
     "TENS": {

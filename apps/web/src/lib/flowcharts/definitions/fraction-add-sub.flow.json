@@ -240,7 +240,7 @@
       ]
     },
     "READY1": {
-      "type": "milestone",
+      "type": "embellishment",
       "next": "CHECK1"
     },
     "STEP2": {
@@ -282,7 +282,7 @@
       "advance": "tap"
     },
     "READY2": {
-      "type": "milestone",
+      "type": "embellishment",
       "next": "CHECK1"
     },
     "STEP3": {
@@ -300,7 +300,7 @@
       "advance": "tap"
     },
     "READY3": {
-      "type": "milestone",
+      "type": "embellishment",
       "next": "CHECK1"
     },
     "CHECK1": {
@@ -332,7 +332,7 @@
       ]
     },
     "GOSTEP4": {
-      "type": "milestone",
+      "type": "embellishment",
       "next": "CHECK2"
     },
     "BORROWCHECK": {
@@ -356,7 +356,7 @@
       ]
     },
     "GOSTEP4B": {
-      "type": "milestone",
+      "type": "embellishment",
       "next": "CHECK2"
     },
     "BORROW": {
@@ -370,7 +370,7 @@
       }
     },
     "GOSTEP4C": {
-      "type": "milestone",
+      "type": "embellishment",
       "next": "CHECK2"
     },
     "CHECK2": {
