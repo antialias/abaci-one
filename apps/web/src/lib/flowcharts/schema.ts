@@ -191,6 +191,11 @@ export interface DecisionNode extends BaseNode {
   skipIf?: string
   /** Node to skip to if skipIf evaluates to true */
   skipTo?: string
+  /**
+   * If true, this decision is excluded from consideration when structuring examples.
+   * Use for pedagogical decisions that shouldn't define grid dimensions.
+   */
+  excludeFromExampleStructure?: boolean
 }
 
 /** A single option in a decision node */
