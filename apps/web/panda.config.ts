@@ -12,8 +12,13 @@ export default defineConfig({
     // Storybook files don't need Panda extraction
     './src/**/*.stories.tsx',
     './src/**/*.stories.ts',
+    // Test files don't need Panda extraction
+    './src/**/__tests__/**',
+    './src/**/*.test.tsx',
+    './src/**/*.test.ts',
     // Keyboard config has special {bksp} and {enter} patterns that confuse the parser
     './src/components/practice/numericKeypadConfig.ts',
+    './src/components/ui/KidNumberInput/KidNumberInput.tsx',
   ],
 
   // The output directory for your css system
