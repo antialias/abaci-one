@@ -286,6 +286,10 @@ export function getNextNode(
       return def.next
     }
 
+    case 'embellishment': {
+      return def.next
+    }
+
     case 'terminal': {
       return null // End of flowchart
     }
@@ -587,6 +591,20 @@ export function calculatePathComplexity(
         return { pathLength: path.length, decisions, checkpoints, path }
 
       case 'decision': {
+        // Check for skip condition first
+        if (def.skipIf && def.skipTo) {
+          try {
+            const shouldSkip = evaluate(def.skipIf, context)
+            if (shouldSkip) {
+              // Skip this decision entirely - don't count it
+              currentNodeId = def.skipTo
+              break
+            }
+          } catch {
+            // If skipIf evaluation fails, proceed to normal decision handling
+          }
+        }
+
         decisions++
         // Determine which path would be taken based on correctAnswer
         if (def.correctAnswer) {
@@ -645,6 +663,7 @@ export function calculatePathComplexity(
       }
 
       case 'milestone':
+      case 'embellishment':
         currentNodeId = def.next
         break
 
@@ -785,29 +804,83 @@ export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath
         break
 
       case 'decision': {
-        // Branch into all options
-        for (let optIdx = 0; optIdx < def.options.length; optIdx++) {
-          const option = def.options[optIdx]
-          // Convention: first option (index 0) corresponds to correctAnswer being TRUE
-          // This is more reliable than checking for "yes" in the option value
-          const isFirstOption = optIdx === 0
-          const constraint: PathConstraint | undefined = def.correctAnswer
-            ? {
+        // If this decision has a skipIf/skipTo, enumerate both:
+        // 1. The skip path (when skipIf is true)
+        // 2. The regular option paths (when skipIf is false or not present)
+        if (def.skipIf && def.skipTo) {
+          // Add the skip path - this doesn't count as a decision since it's auto-skipped
+          const skipConstraint: PathConstraint = {
+            nodeId,
+            expression: def.skipIf,
+            requiredOutcome: true, // skipIf must be true for this path
+            optionValue: '__skip__',
+          }
+          stack.push({
+            nodeId: def.skipTo,
+            pathSoFar: currentPath,
+            visitedInPath: currentVisited,
+            constraints: [...constraints, skipConstraint],
+            decisions, // Don't increment - decision is skipped
+            checkpoints,
+          })
+
+          // Also add paths through options (when skipIf is false)
+          // These need a constraint that skipIf is false
+          for (let optIdx = 0; optIdx < def.options.length; optIdx++) {
+            const option = def.options[optIdx]
+            const isFirstOption = optIdx === 0
+            const optionConstraints: PathConstraint[] = [
+              // skipIf must be false to reach this option
+              {
+                nodeId,
+                expression: def.skipIf,
+                requiredOutcome: false,
+                optionValue: '__not_skipped__',
+              },
+            ]
+            if (def.correctAnswer) {
+              optionConstraints.push({
                 nodeId,
                 expression: def.correctAnswer,
                 requiredOutcome: isFirstOption,
                 optionValue: option.value,
-              }
-            : undefined
+              })
+            }
 
-          stack.push({
-            nodeId: option.next,
-            pathSoFar: currentPath,
-            visitedInPath: currentVisited,
-            constraints: constraint ? [...constraints, constraint] : constraints,
-            decisions: decisions + 1,
-            checkpoints,
-          })
+            stack.push({
+              nodeId: option.next,
+              pathSoFar: currentPath,
+              visitedInPath: currentVisited,
+              constraints: [...constraints, ...optionConstraints],
+              decisions: decisions + 1,
+              checkpoints,
+            })
+          }
+        } else {
+          // No skipIf - branch into all options normally
+          for (let optIdx = 0; optIdx < def.options.length; optIdx++) {
+            const option = def.options[optIdx]
+            // Convention: first option (index 0) corresponds to correctAnswer being TRUE
+            // This is more reliable than checking for "yes" in the option value
+            const isFirstOption = optIdx === 0
+            const constraint: PathConstraint | undefined = def.correctAnswer
+              ? {
+                  nodeId,
+                  expression: def.correctAnswer,
+                  requiredOutcome: isFirstOption,
+                  optionValue: option.value,
+                }
+              : undefined
+
+            stack.push({
+              nodeId: option.next,
+              pathSoFar: currentPath,
+              visitedInPath: currentVisited,
+              constraints: constraint ? [...constraints, constraint] : constraints,
+              decisions: decisions + 1,
+              checkpoints,
+            })
+          }
         }
         break
       }
@@ -828,7 +901,8 @@ export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath
       }
 
       case 'instruction':
-      case 'milestone': {
+      case 'milestone':
+      case 'embellishment': {
         const nextNode = getNextNodeForAnalysis(flowchart, nodeId, def)
         if (nextNode) {
           stack.push({
@@ -856,7 +930,7 @@ function getNextNodeForAnalysis(
   nodeId: string,
   def: { next?: string; type: string }
 ): string | undefined {
-  if (def.type === 'milestone' && 'next' in def) {
+  if ((def.type === 'milestone' || def.type === 'embellishment') && 'next' in def) {
     return def.next as string
   }
   if (def.next) return def.next
