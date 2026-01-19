@@ -106,7 +106,7 @@
       ]
     },
     "SKIP": {
-      "type": "embellishment",
+      "type": "milestone",
       "next": "CHECK2"
     },
     "TENS": {
