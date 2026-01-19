@@ -80,6 +80,8 @@ export default defineConfig({
           bounceIn: { value: 'bounceIn 1s ease-out' },
           // Glow animation (line 6260)
           glow: { value: 'glow 1s ease-in-out infinite alternate' },
+          // Time machine enter animation
+          timeMachineEnter: { value: 'timeMachineEnter 0.5s ease-out' },
         },
       },
       // Semantic color tokens for light/dark theme support
@@ -302,6 +304,17 @@ export default defineConfig({
           '0%': { opacity: '0', transform: 'scale(0.7)' },
           '60%': { opacity: '1', transform: 'scale(1.1)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        // Time machine enter - new history entry slides in from the void
+        timeMachineEnter: {
+          '0%': {
+            opacity: '0',
+            transform: 'translateZ(-60px) scale(0.85)',
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateZ(0) scale(1)',
+          },
         },
       },
     },
