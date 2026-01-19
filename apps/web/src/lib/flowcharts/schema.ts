@@ -38,6 +38,7 @@
  * | `decision` | Yes/No or multiple choice | Tap option |
  * | `checkpoint` | Validate user answer | Enter value |
  * | `milestone` | Success marker | Auto-advances |
+ * | `embellishment` | Decorative emoji/celebration | Auto-advances with animation |
  * | `terminal` | End state | Shows completion |
  *
  * ## File Locations
@@ -239,6 +240,17 @@ export interface MilestoneNode extends BaseNode {
 }
 
 /**
+ * Embellishment node - decorative emoji/celebration moment
+ * Shows an animated emoji within the content card, then auto-advances.
+ * Used for encouraging moments like 👍, 😎, 💪 between substantive steps.
+ */
+export interface EmbellishmentNode extends BaseNode {
+  type: 'embellishment'
+  /** Required: next node to advance to */
+  next: string
+}
+
+/**
  * Terminal node - end state
  */
 export interface TerminalNode extends BaseNode {
@@ -252,6 +264,7 @@ export type FlowchartNode =
   | DecisionNode
   | CheckpointNode
   | MilestoneNode
+  | EmbellishmentNode
   | TerminalNode
 
 // =============================================================================
