@@ -2,8 +2,9 @@
 
 import { useMemo, useState, useEffect } from 'react'
 import type { ExecutableFlowchart, FlowchartState, DecisionNode } from '@/lib/flowcharts/schema'
-import { css, cx } from '../../../styled-system/css'
+import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
+import { FlowchartDecisionGraph } from './FlowchartDecisionGraph'
 
 interface FlowchartPhaseRailProps {
   flowchart: ExecutableFlowchart
@@ -12,6 +13,8 @@ interface FlowchartPhaseRailProps {
   onDecisionSelect?: (value: string) => void
   /** Wrong answer for feedback animation */
   wrongDecision?: { value: string; correctValue: string; attempt: number } | null
+  /** Compact mode - shows only phase pills, no expanded section or decision graph */
+  compact?: boolean
 }
 
 interface PathNode {
@@ -31,24 +34,21 @@ export function FlowchartPhaseRail({
   state,
   onDecisionSelect,
   wrongDecision,
+  compact = false,
 }: FlowchartPhaseRailProps) {
   const phases = flowchart.mermaid.phases
 
-  // Shake animation state
-  const [isShaking, setIsShaking] = useState(false)
+  // Feedback state for wrong answers
   const [showFeedback, setShowFeedback] = useState(false)
 
-  // Handle wrong answer feedback
+  // Handle wrong answer feedback - show feedback briefly then allow retry
   useEffect(() => {
     if (wrongDecision) {
-      setIsShaking(true)
       setShowFeedback(true)
 
-      const shakeTimer = setTimeout(() => setIsShaking(false), 500)
       const feedbackTimer = setTimeout(() => setShowFeedback(false), 1500)
 
       return () => {
-        clearTimeout(shakeTimer)
         clearTimeout(feedbackTimer)
       }
     }
@@ -105,6 +105,7 @@ export function FlowchartPhaseRail({
       return {
         label: opt.label,
         value: opt.value,
+        pathLabel: opt.pathLabel,
         leadsTo: nextNode?.content?.title || opt.next,
       }
     })
@@ -131,17 +132,85 @@ export function FlowchartPhaseRail({
 
   const currentPhase = phases[currentPhaseIndex]
 
+  // Compact mode: just show phase pills, no expanded section
+  if (compact) {
+    return (
+      <div
+        data-testid="phase-rail-compact"
+        data-current-phase={currentPhaseIndex}
+        data-total-phases={phases.length}
+        className={hstack({
+          gap: '1.5',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+        })}
+      >
+        {phases.map((phase, idx) => {
+          const status = getPhaseStatus(idx)
+          return (
+            <span
+              key={phase.id}
+              data-testid={`phase-pill-${idx}`}
+              data-phase-id={phase.id}
+              data-phase-status={status}
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '1',
+                padding: '1 2',
+                borderRadius: 'full',
+                fontSize: '2xs',
+                fontWeight: 'medium',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
+                backgroundColor:
+                  status === 'completed'
+                    ? { base: 'green.100', _dark: 'green.900/40' }
+                    : status === 'current'
+                      ? { base: 'blue.100', _dark: 'blue.900/40' }
+                      : { base: 'gray.100', _dark: 'gray.800' },
+                color:
+                  status === 'completed'
+                    ? { base: 'green.700', _dark: 'green.300' }
+                    : status === 'current'
+                      ? { base: 'blue.700', _dark: 'blue.300' }
+                      : { base: 'gray.500', _dark: 'gray.400' },
+                border: '1px solid',
+                borderColor:
+                  status === 'completed'
+                    ? { base: 'green.200', _dark: 'green.800' }
+                    : status === 'current'
+                      ? { base: 'blue.300', _dark: 'blue.700' }
+                      : { base: 'gray.200', _dark: 'gray.700' },
+              })}
+            >
+              <span className={css({ fontSize: 'xs' })}>
+                {status === 'completed' ? '✓' : status === 'current' ? '📍' : '○'}
+              </span>
+              {phase.title}
+            </span>
+          )
+        })}
+      </div>
+    )
+  }
+
   // Build display path with ellipsis logic
+  // When showing a decision, exclude the current node since the diamond represents it
   const displayPath = useMemo(() => {
-    if (pathTaken.length <= 3) {
-      return { showEllipsis: false, nodes: pathTaken }
+    const nodesToShow = decisionOptions
+      ? pathTaken.filter((n) => !n.isCurrent) // Exclude current for decisions
+      : pathTaken
+
+    if (nodesToShow.length <= 3) {
+      return { showEllipsis: false, nodes: nodesToShow }
     }
-    // Show ellipsis + last 2 visited + current
+    // Show ellipsis + last 2-3 visited nodes
     return {
       showEllipsis: true,
-      nodes: pathTaken.slice(-3), // last 2 + current
+      nodes: nodesToShow.slice(-3),
     }
-  }, [pathTaken])
+  }, [pathTaken, decisionOptions])
 
   const handleOptionClick = (value: string) => {
     if (showFeedback) return
@@ -234,6 +303,7 @@ export function FlowchartPhaseRail({
       {currentPhase && (
         <div
           data-testid="current-phase-expanded"
+          data-element="phase-expanded-container"
           data-phase-id={currentPhase.id}
           className={css({
             padding: '3',
@@ -243,12 +313,21 @@ export function FlowchartPhaseRail({
             borderColor: { base: 'gray.200', _dark: 'gray.700' },
           })}
         >
-          <div className={vstack({ gap: '4', alignItems: 'stretch' })}>
+          <div
+            data-element="phase-expanded-content"
+            className={vstack({ gap: '4', alignItems: 'stretch' })}
+          >
             {/* Path taken */}
-            <div data-testid="path-taken" className={vstack({ gap: '1', alignItems: 'center' })}>
+            <div
+              data-testid="path-taken"
+              data-element="path-taken-section"
+              className={vstack({ gap: '1', alignItems: 'center' })}
+            >
               <div
                 data-testid="path-nodes-container"
+                data-element="path-nodes-row"
                 data-path-length={pathTaken.length}
+                data-show-ellipsis={displayPath.showEllipsis}
                 className={css({
                   display: 'flex',
                   alignItems: 'center',
@@ -260,6 +339,7 @@ export function FlowchartPhaseRail({
                 {displayPath.showEllipsis && (
                   <>
                     <span
+                      data-element="path-ellipsis"
                       className={css({
                         fontSize: 'sm',
                         color: { base: 'gray.400', _dark: 'gray.500' },
@@ -268,6 +348,7 @@ export function FlowchartPhaseRail({
                       •••
                     </span>
                     <span
+                      data-element="path-ellipsis-arrow"
                       className={css({
                         fontSize: 'sm',
                         color: { base: 'gray.400', _dark: 'gray.500' },
@@ -281,11 +362,16 @@ export function FlowchartPhaseRail({
                   <div
                     key={node.nodeId}
                     data-testid={`path-node-${idx}`}
+                    data-element="path-node-item"
                     data-node-id={node.nodeId}
+                    data-node-title={node.title}
                     data-is-current={node.isCurrent}
+                    data-has-choice={!!node.choice}
                     className={hstack({ gap: '2', alignItems: 'center' })}
                   >
                     <span
+                      data-element="path-node-badge"
+                      data-node-type={node.isCurrent ? 'current' : 'visited'}
                       className={css({
                         padding: '1 2',
                         borderRadius: 'md',
@@ -305,21 +391,23 @@ export function FlowchartPhaseRail({
                       })}
                     >
                       {node.isCurrent ? '📍 ' : '✓ '}
-                      {node.title.length > 15 ? node.title.slice(0, 13) + '…' : node.title}
+                      {node.title.length > 15 ? `${node.title.slice(0, 13)}…` : node.title}
                       {node.choice && (
                         <span
+                          data-element="path-node-choice"
                           className={css({
                             marginLeft: '1',
                             opacity: 0.8,
                             fontWeight: 'normal',
                           })}
                         >
-                          ({node.choice.length > 8 ? node.choice.slice(0, 6) + '…' : node.choice})
+                          ({node.choice.length > 8 ? `${node.choice.slice(0, 6)}…` : node.choice})
                         </span>
                       )}
                     </span>
                     {idx < displayPath.nodes.length - 1 && (
                       <span
+                        data-element="path-node-arrow"
                         className={css({
                           fontSize: 'sm',
                           color: { base: 'gray.400', _dark: 'gray.500' },
@@ -333,217 +421,32 @@ export function FlowchartPhaseRail({
               </div>
             </div>
 
-            {/* Decision branching - rendered as part of the flowchart */}
+            {/* Decision branching - flowchart-style graph */}
             {decisionOptions && onDecisionSelect && (
               <div
-                data-testid="decision-branching"
+                data-element="decision-graph-container"
                 data-option-count={decisionOptions.length}
-                className={vstack({ gap: '2', alignItems: 'center' })}
               >
-                {/* Branch line */}
-                <div
-                  className={css({
-                    width: '2px',
-                    height: '16px',
-                    backgroundColor: { base: 'gray.300', _dark: 'gray.600' },
-                  })}
+                <FlowchartDecisionGraph
+                  nodeTitle={flowchart.nodes[state.currentNode]?.content?.title || 'Choose'}
+                  nodeBody={flowchart.nodes[state.currentNode]?.content?.body || []}
+                  options={decisionOptions.map((opt) => ({
+                    label: opt.label,
+                    value: opt.value,
+                    pathLabel: opt.pathLabel,
+                    leadsTo: opt.leadsTo,
+                  }))}
+                  onSelect={handleOptionClick}
+                  wrongAnswer={showFeedback ? wrongDecision?.value : undefined}
+                  correctAnswer={showFeedback ? wrongDecision?.correctValue : undefined}
+                  disabled={showFeedback}
+                  hasPreviousNode={displayPath.nodes.length > 0}
                 />
-
-                {/* Branch split */}
-                <div
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    position: 'relative',
-                  })}
-                >
-                  {/* Horizontal connector line */}
-                  <div
-                    className={css({
-                      position: 'absolute',
-                      top: '0',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: 'calc(100% - 80px)',
-                      height: '2px',
-                      backgroundColor: { base: 'gray.300', _dark: 'gray.600' },
-                    })}
-                  />
-
-                  {/* Option cards */}
-                  <div
-                    className={cx(
-                      hstack({ gap: '4', justifyContent: 'center', alignItems: 'stretch' }),
-                      isShaking ? 'shake-animation' : ''
-                    )}
-                  >
-                    {decisionOptions.map((opt, idx) => {
-                      const isCorrect = showFeedback && wrongDecision?.correctValue === opt.value
-                      const isWrong = showFeedback && wrongDecision?.value === opt.value
-
-                      return (
-                        <div
-                          key={opt.value}
-                          data-testid={`decision-option-${idx}`}
-                          data-option-value={opt.value}
-                          data-is-correct={isCorrect}
-                          data-is-wrong={isWrong}
-                          className={vstack({ gap: '0', alignItems: 'center' })}
-                        >
-                          {/* Vertical connector */}
-                          <div
-                            className={css({
-                              width: '2px',
-                              height: '12px',
-                              backgroundColor: { base: 'gray.300', _dark: 'gray.600' },
-                            })}
-                          />
-                          {/* Arrow */}
-                          <div
-                            className={css({
-                              width: '0',
-                              height: '0',
-                              borderLeft: '6px solid transparent',
-                              borderRight: '6px solid transparent',
-                              borderTop: '8px solid',
-                              borderTopColor: { base: 'gray.300', _dark: 'gray.600' },
-                              marginBottom: '2',
-                            })}
-                          />
-
-                          {/* Clickable option card */}
-                          <button
-                            data-testid={`decision-option-button-${idx}`}
-                            onClick={() => handleOptionClick(opt.value)}
-                            disabled={showFeedback}
-                            className={css({
-                              display: 'flex',
-                              flexDirection: 'column',
-                              padding: '0',
-                              borderRadius: 'lg',
-                              border: '3px solid',
-                              cursor: showFeedback ? 'not-allowed' : 'pointer',
-                              transition: 'all 0.2s',
-                              minWidth: '120px',
-                              maxWidth: '160px',
-                              overflow: 'hidden',
-                              backgroundColor: { base: 'white', _dark: 'gray.700' },
-
-                              borderColor: isCorrect
-                                ? { base: 'green.500', _dark: 'green.400' }
-                                : isWrong
-                                  ? { base: 'red.500', _dark: 'red.400' }
-                                  : { base: 'blue.300', _dark: 'blue.600' },
-
-                              _hover: showFeedback
-                                ? {}
-                                : {
-                                    borderColor: { base: 'blue.500', _dark: 'blue.400' },
-                                    transform: 'scale(1.03)',
-                                    boxShadow: 'lg',
-                                  },
-
-                              _active: showFeedback
-                                ? {}
-                                : {
-                                    transform: 'scale(0.97)',
-                                  },
-                            })}
-                          >
-                            {/* Choice header */}
-                            <div
-                              className={css({
-                                padding: '2 3',
-                                fontSize: 'sm',
-                                fontWeight: 'bold',
-                                textAlign: 'center',
-                                backgroundColor: isCorrect
-                                  ? { base: 'green.100', _dark: 'green.800' }
-                                  : isWrong
-                                    ? { base: 'red.100', _dark: 'red.800' }
-                                    : { base: 'blue.100', _dark: 'blue.800' },
-                                color: isCorrect
-                                  ? { base: 'green.800', _dark: 'green.200' }
-                                  : isWrong
-                                    ? { base: 'red.800', _dark: 'red.200' }
-                                    : { base: 'blue.800', _dark: 'blue.200' },
-                                borderBottom: '1px solid',
-                                borderColor: isCorrect
-                                  ? { base: 'green.200', _dark: 'green.600' }
-                                  : isWrong
-                                    ? { base: 'red.200', _dark: 'red.600' }
-                                    : { base: 'blue.200', _dark: 'blue.600' },
-                                position: 'relative',
-                              })}
-                            >
-                              {isCorrect && (
-                                <span
-                                  className={css({
-                                    position: 'absolute',
-                                    top: '4px',
-                                    right: '4px',
-                                    fontSize: 'xs',
-                                  })}
-                                >
-                                  ✓
-                                </span>
-                              )}
-                              {isWrong && (
-                                <span
-                                  className={css({
-                                    position: 'absolute',
-                                    top: '4px',
-                                    right: '4px',
-                                    fontSize: 'xs',
-                                  })}
-                                >
-                                  ✗
-                                </span>
-                              )}
-                              {opt.label}
-                            </div>
-
-                            {/* Where it leads */}
-                            <div
-                              className={css({
-                                padding: '2',
-                                fontSize: '2xs',
-                                color: { base: 'gray.600', _dark: 'gray.400' },
-                                textAlign: 'center',
-                                lineHeight: 'tight',
-                              })}
-                            >
-                              {opt.leadsTo.length > 25
-                                ? opt.leadsTo.slice(0, 23) + '…'
-                                : opt.leadsTo}
-                            </div>
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
               </div>
             )}
           </div>
         </div>
       )}
-
-      {/* Shake animation styles */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            @keyframes shake {
-              0%, 100% { transform: translateX(0); }
-              10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-              20%, 40%, 60%, 80% { transform: translateX(8px); }
-            }
-            .shake-animation {
-              animation: shake 0.5s ease-in-out;
-            }
-          `,
-        }}
-      />
     </div>
   )
 }
