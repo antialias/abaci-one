@@ -505,6 +505,13 @@
       "when": 1768518000000,
       "tag": "0071_mcp_api_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "6",
+      "when": 1768854012287,
+      "tag": "0072_sudden_shard",
+      "breakpoints": true
     }
   ]
 }

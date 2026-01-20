@@ -274,15 +274,147 @@ export interface FlowchartMeta {
 }
 
 /**
- * Get list of all available flowcharts
+ * Extended metadata for flowcharts from the database
+ */
+export interface FlowchartMetaWithSource extends FlowchartMeta {
+  source: 'hardcoded' | 'database'
+  authorId?: string
+  publishedAt?: Date | null
+}
+
+/**
+ * Full flowchart data with definition and mermaid content
+ */
+export interface FlowchartData {
+  definition: FlowchartDefinition
+  mermaid: string
+  meta: FlowchartMeta
+  source: 'hardcoded' | 'database'
+  authorId?: string
+  version?: number
+  publishedAt?: Date | null
+}
+
+/**
+ * Get list of all hardcoded flowcharts (sync)
  */
 export function getFlowchartList(): FlowchartMeta[] {
   return Object.values(FLOWCHARTS).map((f) => f.meta)
 }
 
 /**
- * Get a specific flowchart by ID
+ * Get a specific hardcoded flowchart by ID (sync)
  */
 export function getFlowchart(id: string) {
   return FLOWCHARTS[id] ?? null
+}
+
+// =============================================================================
+// ASYNC LOADERS (for combining hardcoded + database flowcharts)
+// =============================================================================
+
+/**
+ * Get a flowchart by ID from either hardcoded definitions or the database.
+ * Use this in API routes and server components.
+ *
+ * @param id - The flowchart ID
+ * @returns The flowchart data or null if not found
+ */
+export async function getFlowchartByIdAsync(id: string): Promise<FlowchartData | null> {
+  // Check hardcoded first (fast path)
+  const hardcoded = FLOWCHARTS[id]
+  if (hardcoded) {
+    return {
+      definition: hardcoded.definition,
+      mermaid: hardcoded.mermaid,
+      meta: hardcoded.meta,
+      source: 'hardcoded',
+    }
+  }
+
+  // Dynamic import to avoid circular dependencies
+  const { db, schema } = await import('@/db')
+  const { and, eq } = await import('drizzle-orm')
+
+  // Check database for published flowcharts
+  const dbFlowchart = await db.query.teacherFlowcharts.findFirst({
+    where: and(
+      eq(schema.teacherFlowcharts.id, id),
+      eq(schema.teacherFlowcharts.status, 'published')
+    ),
+  })
+
+  if (dbFlowchart) {
+    let definition: FlowchartDefinition
+    try {
+      definition = JSON.parse(dbFlowchart.definitionJson)
+    } catch {
+      console.error(`Invalid definition JSON for flowchart ${id}`)
+      return null
+    }
+
+    return {
+      definition,
+      mermaid: dbFlowchart.mermaidContent,
+      meta: {
+        id: dbFlowchart.id,
+        title: dbFlowchart.title,
+        description: dbFlowchart.description || '',
+        emoji: dbFlowchart.emoji || '📊',
+        difficulty: (dbFlowchart.difficulty as FlowchartMeta['difficulty']) || 'Beginner',
+      },
+      source: 'database',
+      authorId: dbFlowchart.userId,
+      version: dbFlowchart.version,
+      publishedAt: dbFlowchart.publishedAt,
+    }
+  }
+
+  return null
+}
+
+/**
+ * Get list of all available flowcharts (hardcoded + published from database).
+ * Use this in API routes and server components.
+ *
+ * @returns Combined list of all flowchart metadata
+ */
+export async function getFlowchartListAsync(): Promise<FlowchartMetaWithSource[]> {
+  // Get hardcoded flowcharts
+  const hardcodedList: FlowchartMetaWithSource[] = Object.values(FLOWCHARTS).map((f) => ({
+    ...f.meta,
+    source: 'hardcoded' as const,
+  }))
+
+  // Dynamic import to avoid circular dependencies
+  const { db, schema } = await import('@/db')
+  const { desc, eq } = await import('drizzle-orm')
+
+  // Get published flowcharts from database
+  const dbFlowcharts = await db.query.teacherFlowcharts.findMany({
+    where: eq(schema.teacherFlowcharts.status, 'published'),
+    orderBy: [desc(schema.teacherFlowcharts.publishedAt)],
+    columns: {
+      id: true,
+      title: true,
+      description: true,
+      emoji: true,
+      difficulty: true,
+      userId: true,
+      publishedAt: true,
+    },
+  })
+
+  const dbList: FlowchartMetaWithSource[] = dbFlowcharts.map((fc) => ({
+    id: fc.id,
+    title: fc.title,
+    description: fc.description || '',
+    emoji: fc.emoji || '📊',
+    difficulty: (fc.difficulty as FlowchartMeta['difficulty']) || 'Beginner',
+    source: 'database' as const,
+    authorId: fc.userId,
+    publishedAt: fc.publishedAt,
+  }))
+
+  return [...hardcodedList, ...dbList]
 }

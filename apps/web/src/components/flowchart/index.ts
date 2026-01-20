@@ -11,3 +11,7 @@ export { FlowchartDecision, FlowchartWrongAnswerFeedback } from './FlowchartDeci
 export { FlowchartCheckpoint } from './FlowchartCheckpoint'
 export { FlowchartPhaseRail } from './FlowchartPhaseRail'
 export { MathDisplay } from './MathDisplay'
+export { FlowchartCard, CreateFlowchartButton } from './FlowchartCard'
+export { CreateFlowchartModal } from './CreateFlowchartModal'
+export { DeleteToast, DeleteToastContainer } from './DeleteToast'
+export type { PendingDeletion } from './DeleteToast'

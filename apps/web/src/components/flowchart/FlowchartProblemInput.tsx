@@ -16,6 +16,7 @@ import {
   inferGridDimensions,
   inferGridDimensionsFromExamples,
   calculatePathComplexity,
+  formatProblemDisplay,
   type GeneratedExample,
   type GenerationConstraints,
   type GridDimensions,
@@ -1065,7 +1066,11 @@ export function FlowchartProblemInput({
                     >
                       <div className={css({ color: { base: 'gray.900', _dark: 'white' } })}>
                         <AnimatedMathDisplay
-                          expression={formatExampleDisplay(schema.schema, example.values)}
+                          expression={formatExampleDisplayInternal(
+                            schema.schema,
+                            example.values,
+                            flowchart
+                          )}
                           size="md"
                         />
                       </div>
@@ -1201,7 +1206,11 @@ export function FlowchartProblemInput({
                         >
                           <div className={css({ color: { base: 'gray.900', _dark: 'white' } })}>
                             <AnimatedMathDisplay
-                              expression={formatExampleDisplay(schema.schema, example.values)}
+                              expression={formatExampleDisplayInternal(
+                                schema.schema,
+                                example.values,
+                                flowchart
+                              )}
                               size="md"
                             />
                           </div>
@@ -1305,7 +1314,11 @@ export function FlowchartProblemInput({
                 >
                   <div className={css({ color: { base: 'gray.900', _dark: 'white' } })}>
                     <AnimatedMathDisplay
-                      expression={formatExampleDisplay(schema.schema, example.values)}
+                      expression={formatExampleDisplayInternal(
+                        schema.schema,
+                        example.values,
+                        flowchart
+                      )}
                       size="md"
                     />
                   </div>
@@ -2015,9 +2028,22 @@ function renderFieldInput(
 // =============================================================================
 
 /**
- * Format example values into a readable problem expression based on schema type
+ * Format example values into a readable problem expression.
+ *
+ * When an ExecutableFlowchart is provided, uses its display.problem expression
+ * if available. Otherwise falls back to schema-specific formatting.
  */
-function formatExampleDisplay(schema: string, values: Record<string, ProblemValue>): string {
+function formatExampleDisplayInternal(
+  schema: string,
+  values: Record<string, ProblemValue>,
+  flowchart?: ExecutableFlowchart
+): string {
+  // If flowchart has a custom display expression, use formatProblemDisplay
+  if (flowchart) {
+    return formatProblemDisplay(flowchart, values)
+  }
+
+  // Fall back to schema-specific formatting
   switch (schema) {
     case 'two-digit-subtraction':
       return `${values.minuend} − ${values.subtrahend}`
@@ -2048,7 +2074,10 @@ function formatExampleDisplay(schema: string, values: Record<string, ProblemValu
     }
 
     default:
-      return JSON.stringify(values)
+      // Generic display: show key=value pairs
+      return Object.entries(values)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(', ')
   }
 }
 

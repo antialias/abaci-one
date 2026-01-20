@@ -5,8 +5,16 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import * as Dialog from '@radix-ui/react-dialog'
 import { getFlowchartList, getFlowchart } from '@/lib/flowcharts/definitions'
 import { loadFlowchart } from '@/lib/flowcharts/loader'
+import { downloadFlowchartPDF } from '@/lib/flowcharts/pdf-export'
 import type { ExecutableFlowchart, ProblemValue } from '@/lib/flowcharts/schema'
-import { FlowchartProblemInput } from '@/components/flowchart'
+import {
+  FlowchartProblemInput,
+  FlowchartCard,
+  CreateFlowchartButton,
+  CreateFlowchartModal,
+  DeleteToastContainer,
+  type PendingDeletion,
+} from '@/components/flowchart'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 
@@ -15,6 +23,18 @@ type ModalState =
   | { type: 'loading'; flowchartId: string }
   | { type: 'inputting'; flowchartId: string; flowchart: ExecutableFlowchart }
   | { type: 'error'; flowchartId: string; message: string }
+
+type FilterType = 'all' | 'published' | 'drafts'
+
+interface WorkshopSession {
+  id: string
+  state: string
+  topicDescription: string | null
+  draftTitle: string | null
+  draftEmoji: string | null
+  createdAt: string
+  updatedAt: string
+}
 
 export default function FlowchartPickerPage() {
   const router = useRouter()
@@ -26,6 +46,142 @@ export default function FlowchartPickerPage() {
 
   // Internal modal state (loading/inputting/error) - derived from URL + async loading
   const [modalState, setModalState] = useState<ModalState>({ type: 'closed' })
+
+  // Create flowchart modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+
+  // Filter state
+  const [filter, setFilter] = useState<FilterType>('all')
+
+  // Draft sessions state
+  const [draftSessions, setDraftSessions] = useState<WorkshopSession[]>([])
+  const [isLoadingDrafts, setIsLoadingDrafts] = useState(true)
+
+  // Pending deletions for undo functionality
+  const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([])
+
+  // PDF download state (tracks which flowchart is currently being exported)
+  const [exportingPdfId, setExportingPdfId] = useState<string | null>(null)
+
+  // Load draft sessions
+  useEffect(() => {
+    async function loadDrafts() {
+      try {
+        const response = await fetch('/api/flowchart-workshop/sessions')
+        if (response.ok) {
+          const data = await response.json()
+          setDraftSessions(data.sessions || [])
+        }
+      } catch (err) {
+        console.error('Failed to load draft sessions:', err)
+      } finally {
+        setIsLoadingDrafts(false)
+      }
+    }
+    loadDrafts()
+  }, [])
+
+  // Handle draft session actions
+  const handleResumeDraft = useCallback(
+    (sessionId: string) => {
+      router.push(`/flowchart/workshop/${sessionId}`)
+    },
+    [router]
+  )
+
+  // Handle remixing a built-in flowchart
+  const handleRemix = useCallback(
+    async (flowchartId: string) => {
+      try {
+        const response = await fetch('/api/flowchart-workshop/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ remixFromId: flowchartId }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to create remix session')
+        }
+
+        const { session } = await response.json()
+        router.push(`/flowchart/workshop/${session.id}`)
+      } catch (err) {
+        console.error('Failed to remix flowchart:', err)
+      }
+    },
+    [router]
+  )
+
+  // Handle PDF download for a built-in flowchart
+  const handleDownloadPDF = useCallback(async (flowchartId: string) => {
+    const flowchartData = getFlowchart(flowchartId)
+    if (!flowchartData) {
+      console.error('Flowchart not found:', flowchartId)
+      return
+    }
+
+    setExportingPdfId(flowchartId)
+    try {
+      await downloadFlowchartPDF(flowchartData.mermaid, {
+        title: flowchartData.meta.title,
+        description: flowchartData.meta.description,
+        flowchartId,
+      })
+    } catch (err) {
+      console.error('Failed to export PDF:', err)
+    } finally {
+      setExportingPdfId(null)
+    }
+  }, [])
+
+  // Start deletion with undo option
+  const handleDeleteDraft = useCallback(
+    (sessionId: string) => {
+      const session = draftSessions.find((s) => s.id === sessionId)
+      if (!session) return
+
+      // Add to pending deletions
+      setPendingDeletions((prev) => [
+        ...prev,
+        {
+          id: sessionId,
+          title: session.draftTitle || session.topicDescription || 'Untitled',
+          createdAt: Date.now(),
+        },
+      ])
+
+      // Hide from list immediately
+      setDraftSessions((prev) => prev.filter((s) => s.id !== sessionId))
+    },
+    [draftSessions]
+  )
+
+  // Undo deletion
+  const handleUndoDelete = useCallback((deletion: PendingDeletion) => {
+    // Remove from pending
+    setPendingDeletions((prev) => prev.filter((d) => d.id !== deletion.id))
+
+    // Re-fetch sessions to restore the item
+    fetch('/api/flowchart-workshop/sessions')
+      .then((res) => res.json())
+      .then((data) => setDraftSessions(data.sessions || []))
+      .catch(console.error)
+  }, [])
+
+  // Confirm deletion (actually delete)
+  const handleConfirmDelete = useCallback(async (deletion: PendingDeletion) => {
+    // Remove from pending
+    setPendingDeletions((prev) => prev.filter((d) => d.id !== deletion.id))
+
+    // Actually delete
+    try {
+      await fetch(`/api/flowchart-workshop/sessions/${deletion.id}`, {
+        method: 'DELETE',
+      })
+    } catch (err) {
+      console.error('Failed to delete session:', err)
+    }
+  }, [])
 
   // Sync modal state with URL query param
   useEffect(() => {
@@ -99,26 +255,73 @@ export default function FlowchartPickerPage() {
 
   return (
     <div className={vstack({ gap: '8', padding: '6', alignItems: 'center', minHeight: '100vh' })}>
-      <header className={vstack({ gap: '2', alignItems: 'center' })}>
-        <h1
-          className={css({
-            fontSize: '3xl',
-            fontWeight: 'bold',
-            color: { base: 'gray.900', _dark: 'gray.100' },
+      <header className={vstack({ gap: '4', alignItems: 'center' })}>
+        <div className={vstack({ gap: '2', alignItems: 'center' })}>
+          <h1
+            className={css({
+              fontSize: '3xl',
+              fontWeight: 'bold',
+              color: { base: 'gray.900', _dark: 'gray.100' },
+            })}
+          >
+            Flowchart Practice
+          </h1>
+          <p
+            className={css({
+              fontSize: 'lg',
+              color: { base: 'gray.600', _dark: 'gray.400' },
+              textAlign: 'center',
+              maxWidth: '500px',
+            })}
+          >
+            Step through math procedures one step at a time. Perfect for learning new algorithms!
+          </p>
+        </div>
+
+        {/* Filter buttons */}
+        <div
+          className={hstack({
+            gap: '2',
+            padding: '1',
+            borderRadius: 'lg',
+            backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
           })}
         >
-          Flowchart Practice
-        </h1>
-        <p
-          className={css({
-            fontSize: 'lg',
-            color: { base: 'gray.600', _dark: 'gray.400' },
-            textAlign: 'center',
-            maxWidth: '500px',
-          })}
-        >
-          Step through math procedures one step at a time. Perfect for learning new algorithms!
-        </p>
+          {[
+            { value: 'all' as const, label: 'All' },
+            { value: 'published' as const, label: 'Published' },
+            {
+              value: 'drafts' as const,
+              label: `Drafts${draftSessions.length > 0 ? ` (${draftSessions.length})` : ''}`,
+            },
+          ].map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setFilter(option.value)}
+              className={css({
+                padding: '2 4',
+                borderRadius: 'md',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                backgroundColor:
+                  filter === option.value ? { base: 'white', _dark: 'gray.700' } : 'transparent',
+                color:
+                  filter === option.value
+                    ? { base: 'gray.900', _dark: 'gray.100' }
+                    : { base: 'gray.600', _dark: 'gray.400' },
+                boxShadow: filter === option.value ? 'sm' : 'none',
+                _hover: {
+                  color: { base: 'gray.900', _dark: 'gray.100' },
+                },
+              })}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </header>
 
       <div
@@ -130,79 +333,86 @@ export default function FlowchartPickerPage() {
           maxWidth: '800px',
         })}
       >
-        {flowcharts.map((flowchart) => (
-          <button
-            key={flowchart.id}
-            onClick={() => handleCardClick(flowchart.id)}
+        {/* Create Your Own button - appears first (except when showing only published) */}
+        {filter !== 'published' && (
+          <CreateFlowchartButton onClick={() => setIsCreateModalOpen(true)} />
+        )}
+
+        {/* Built-in (published) flowcharts */}
+        {filter !== 'drafts' &&
+          flowcharts.map((flowchart) => (
+            <FlowchartCard
+              key={flowchart.id}
+              title={flowchart.title}
+              description={flowchart.description}
+              emoji={flowchart.emoji}
+              difficulty={flowchart.difficulty}
+              onClick={() => handleCardClick(flowchart.id)}
+              actions={[
+                {
+                  label: exportingPdfId === flowchart.id ? 'Exporting...' : 'PDF',
+                  onClick: () => handleDownloadPDF(flowchart.id),
+                  variant: 'secondary',
+                  disabled: exportingPdfId === flowchart.id,
+                },
+                {
+                  label: 'Remix',
+                  onClick: () => handleRemix(flowchart.id),
+                  variant: 'secondary',
+                },
+              ]}
+            />
+          ))}
+
+        {/* Draft flowcharts */}
+        {filter !== 'published' &&
+          draftSessions.map((session) => (
+            <FlowchartCard
+              key={session.id}
+              title={session.draftTitle || session.topicDescription || 'Untitled'}
+              emoji={session.draftEmoji || '📝'}
+              status={session.state === 'refining' ? 'In Progress' : 'Draft'}
+              subtitle={`Updated ${new Date(session.updatedAt).toLocaleDateString()}`}
+              onClick={() => handleResumeDraft(session.id)}
+              actions={[
+                {
+                  label: 'Edit',
+                  onClick: () => handleResumeDraft(session.id),
+                  variant: 'primary',
+                },
+                {
+                  label: 'Delete',
+                  onClick: () => handleDeleteDraft(session.id),
+                  variant: 'danger',
+                },
+              ]}
+            />
+          ))}
+
+        {/* Empty state for drafts filter */}
+        {filter === 'drafts' && !isLoadingDrafts && draftSessions.length === 0 && (
+          <div
             className={css({
-              display: 'block',
-              padding: '6',
-              backgroundColor: { base: 'white', _dark: 'gray.800' },
-              borderRadius: 'xl',
-              boxShadow: 'md',
-              border: '2px solid',
-              borderColor: { base: 'gray.200', _dark: 'gray.700' },
-              transition: 'all 0.2s',
-              textDecoration: 'none',
-              textAlign: 'left',
-              cursor: 'pointer',
-              width: '100%',
-              _hover: {
-                borderColor: { base: 'blue.400', _dark: 'blue.500' },
-                transform: 'translateY(-2px)',
-                boxShadow: 'lg',
-              },
+              gridColumn: '1 / -1',
+              padding: '8',
+              textAlign: 'center',
+              color: { base: 'gray.500', _dark: 'gray.400' },
             })}
           >
-            <div className={hstack({ gap: '4', alignItems: 'flex-start' })}>
-              <span className={css({ fontSize: '3xl' })}>{flowchart.emoji}</span>
-              <div className={vstack({ gap: '1', alignItems: 'flex-start' })}>
-                <h2
-                  className={css({
-                    fontSize: 'lg',
-                    fontWeight: 'semibold',
-                    color: { base: 'gray.900', _dark: 'gray.100' },
-                  })}
-                >
-                  {flowchart.title}
-                </h2>
-                <p
-                  className={css({
-                    fontSize: 'sm',
-                    color: { base: 'gray.600', _dark: 'gray.400' },
-                  })}
-                >
-                  {flowchart.description}
-                </p>
-                <span
-                  className={css({
-                    fontSize: 'xs',
-                    paddingX: '2',
-                    paddingY: '1',
-                    borderRadius: 'full',
-                    backgroundColor: { base: 'blue.100', _dark: 'blue.900' },
-                    color: { base: 'blue.700', _dark: 'blue.300' },
-                    marginTop: '1',
-                  })}
-                >
-                  {flowchart.difficulty}
-                </span>
-              </div>
-            </div>
-          </button>
-        ))}
+            <p>No drafts yet. Click the + button to create your first flowchart!</p>
+          </div>
+        )}
       </div>
 
-      <footer
-        className={css({
-          marginTop: 'auto',
-          padding: '4',
-          color: { base: 'gray.500', _dark: 'gray.500' },
-          fontSize: 'sm',
-        })}
-      >
-        More flowcharts coming soon!
-      </footer>
+      {/* Delete toast for undo functionality */}
+      <DeleteToastContainer
+        deletions={pendingDeletions}
+        onUndo={handleUndoDelete}
+        onConfirm={handleConfirmDelete}
+      />
+
+      {/* Modal for creating new flowchart */}
+      <CreateFlowchartModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} />
 
       {/* Modal for problem selection - state driven by URL query param */}
       <Dialog.Root

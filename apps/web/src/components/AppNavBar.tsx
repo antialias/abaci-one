@@ -1058,7 +1058,8 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const showBranding = !isHomePage || !homeHero || !homeHero.isHeroVisible
 
   // Auto-detect variant based on context
-  // Arcade and vision training pages use minimal nav with hamburger + centered content
+  // Arcade pages and vision training pages use minimal nav with hamburger + centered content
+  // This allows them to display their custom navSlot (game context, model selector, etc.)
   const actualVariant =
     variant === 'full' && (isArcadePage || isVisionTrainingPage) ? 'minimal' : variant
 

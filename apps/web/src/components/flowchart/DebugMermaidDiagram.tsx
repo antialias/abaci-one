@@ -46,13 +46,12 @@ export function DebugMermaidDiagram({ mermaidContent, currentNodeId }: DebugMerm
           },
         })
 
-        // Add style definition to highlight the current node
+        // Add style definition to highlight the current node (only if a node ID is provided)
         // We append this to the mermaid content
-        const highlightStyle = `
-    style ${currentNodeId} fill:#fbbf24,stroke:#d97706,stroke-width:4px,color:#000
-`
-        // Insert the highlight style before the last closing style or at the end
-        const contentWithHighlight = mermaidContent + '\n' + highlightStyle
+        const highlightStyle = currentNodeId
+          ? `\n    style ${currentNodeId} fill:#fbbf24,stroke:#d97706,stroke-width:4px,color:#000`
+          : ''
+        const contentWithHighlight = mermaidContent + highlightStyle
 
         // Generate unique ID for this render
         const id = `mermaid-debug-${Date.now()}`
@@ -114,8 +113,10 @@ export function DebugMermaidDiagram({ mermaidContent, currentNodeId }: DebugMerm
         borderRadius: 'lg',
         border: '1px solid',
         borderColor: { base: 'gray.200', _dark: 'gray.700' },
-        overflow: 'auto',
-        maxHeight: '400px',
+        height: '100%',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
       })}
     >
       {isLoading && (
@@ -133,9 +134,15 @@ export function DebugMermaidDiagram({ mermaidContent, currentNodeId }: DebugMerm
       <div
         ref={containerRef}
         className={css({
-          display: isLoading ? 'none' : 'block',
+          display: isLoading ? 'none' : 'flex',
+          flex: 1,
+          minHeight: 0,
+          overflow: 'auto',
+          alignItems: 'center',
+          justifyContent: 'center',
           '& svg': {
             maxWidth: '100%',
+            maxHeight: '100%',
             height: 'auto',
           },
         })}
