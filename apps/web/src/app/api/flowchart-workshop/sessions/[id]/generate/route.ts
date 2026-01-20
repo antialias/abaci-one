@@ -93,14 +93,45 @@ export async function POST(request: Request, { params }: RouteParams) {
     })
     .where(eq(schema.workshopSessions.id, id))
 
-  // Create SSE stream
+  // Create SSE stream with resilient event sending
+  // Key design: LLM processing and DB saves happen regardless of client connection
+  // Client streaming is best-effort - if they disconnect, we still complete the work
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
+      let clientConnected = true
+
+      // Resilient event sender - catches errors if client disconnected
+      // This ensures LLM processing continues even if client closes browser
       const sendEvent = (event: string, data: unknown) => {
-        controller.enqueue(encoder.encode(`event: ${event}\n`))
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+        if (!clientConnected) return
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\n`))
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+        } catch {
+          // Client disconnected - mark as disconnected but continue processing
+          clientConnected = false
+          console.log(`[generate] Client disconnected during ${event} event, continuing LLM processing...`)
+        }
       }
+
+      const closeStream = () => {
+        if (!clientConnected) return
+        try {
+          controller.close()
+        } catch {
+          // Already closed
+        }
+      }
+
+      // Track LLM errors separately from client errors
+      let llmError: { message: string; code?: string } | null = null
+      let finalResult: GeneratedFlowchart | null = null
+      let usage: {
+        promptTokens: number
+        completionTokens: number
+        reasoningTokens?: number
+      } | null = null
 
       try {
         sendEvent('progress', { stage: 'preparing', message: 'Preparing flowchart generation...' })
@@ -138,14 +169,8 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
           timeoutMs: 300_000, // 5 minutes for complex flowchart generation
         })
 
-        let finalResult: GeneratedFlowchart | null = null
-        let usage: {
-          promptTokens: number
-          completionTokens: number
-          reasoningTokens?: number
-        } | null = null
-
-        // Forward all stream events to the client
+        // Forward all stream events to the client (best-effort)
+        // The for-await loop processes all LLM events regardless of client state
         for await (const event of llmStream as AsyncGenerator<
           StreamEvent<GeneratedFlowchart>,
           void,
@@ -175,19 +200,12 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
               break
 
             case 'error':
+              // This is an LLM error, not a client error
+              llmError = { message: event.message, code: event.code }
               sendEvent('error', {
                 message: event.message,
                 code: event.code,
               })
-              // Update session state on error
-              await db
-                .update(schema.workshopSessions)
-                .set({
-                  state: 'initial',
-                  draftNotes: JSON.stringify([`Generation failed: ${event.message}`]),
-                  updatedAt: new Date(),
-                })
-                .where(eq(schema.workshopSessions.id, id))
               break
 
             case 'complete':
@@ -196,63 +214,69 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
               break
           }
         }
-
-        // Process the final result
-        if (finalResult) {
-          sendEvent('progress', { stage: 'validating', message: 'Validating result...' })
-
-          // Transform LLM output (array-based) to internal format (record-based)
-          const internalDefinition = transformLLMDefinitionToInternal(finalResult.definition)
-
-          // Update session with the generated content
-          await db
-            .update(schema.workshopSessions)
-            .set({
-              state: 'refining',
-              draftDefinitionJson: JSON.stringify(internalDefinition),
-              draftMermaidContent: finalResult.mermaidContent,
-              draftTitle: finalResult.title,
-              draftDescription: finalResult.description,
-              draftDifficulty: finalResult.difficulty,
-              draftEmoji: finalResult.emoji,
-              draftNotes: JSON.stringify(finalResult.notes),
-              updatedAt: new Date(),
-            })
-            .where(eq(schema.workshopSessions.id, id))
-
-          sendEvent('complete', {
-            definition: internalDefinition,
-            mermaidContent: finalResult.mermaidContent,
-            title: finalResult.title,
-            description: finalResult.description,
-            emoji: finalResult.emoji,
-            difficulty: finalResult.difficulty,
-            notes: finalResult.notes,
-            usage,
-          })
-        }
-
-        controller.close()
       } catch (error) {
+        // This catch is for unexpected errors (network issues, etc.)
+        // NOT for client disconnect (those are caught in sendEvent)
         console.error('Flowchart generation error:', error)
+        llmError = {
+          message: error instanceof Error ? error.message : 'Unknown error',
+        }
+      }
 
-        // Update session state to show error
+      // ALWAYS update database based on LLM result, regardless of client connection
+      // This is the key fix: DB operations happen outside the try-catch for client errors
+      if (llmError) {
+        // LLM failed - update session to error state
         await db
           .update(schema.workshopSessions)
           .set({
             state: 'initial',
-            draftNotes: JSON.stringify([
-              `Generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            ]),
+            draftNotes: JSON.stringify([`Generation failed: ${llmError.message}`]),
             updatedAt: new Date(),
           })
           .where(eq(schema.workshopSessions.id, id))
 
-        sendEvent('error', {
-          message: error instanceof Error ? error.message : 'Failed to generate flowchart',
+        sendEvent('error', { message: llmError.message })
+      } else if (finalResult) {
+        // LLM succeeded - save the result
+        sendEvent('progress', { stage: 'validating', message: 'Validating result...' })
+
+        // Transform LLM output (array-based) to internal format (record-based)
+        const internalDefinition = transformLLMDefinitionToInternal(finalResult.definition)
+
+        // Update session with the generated content
+        await db
+          .update(schema.workshopSessions)
+          .set({
+            state: 'refining',
+            draftDefinitionJson: JSON.stringify(internalDefinition),
+            draftMermaidContent: finalResult.mermaidContent,
+            draftTitle: finalResult.title,
+            draftDescription: finalResult.description,
+            draftDifficulty: finalResult.difficulty,
+            draftEmoji: finalResult.emoji,
+            draftNotes: JSON.stringify(finalResult.notes),
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.workshopSessions.id, id))
+
+        console.log(
+          `[generate] Flowchart saved to DB for session ${id}${clientConnected ? '' : ' (client had disconnected)'}`
+        )
+
+        sendEvent('complete', {
+          definition: internalDefinition,
+          mermaidContent: finalResult.mermaidContent,
+          title: finalResult.title,
+          description: finalResult.description,
+          emoji: finalResult.emoji,
+          difficulty: finalResult.difficulty,
+          notes: finalResult.notes,
+          usage,
         })
-        controller.close()
       }
+
+      closeStream()
     },
   })
 

@@ -101,14 +101,45 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
   }
 
-  // Create SSE stream
+  // Create SSE stream with resilient event sending
+  // Key design: LLM processing and DB saves happen regardless of client connection
+  // Client streaming is best-effort - if they disconnect, we still complete the work
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
+      let clientConnected = true
+
+      // Resilient event sender - catches errors if client disconnected
+      // This ensures LLM processing continues even if client closes browser
       const sendEvent = (event: string, data: unknown) => {
-        controller.enqueue(encoder.encode(`event: ${event}\n`))
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+        if (!clientConnected) return
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\n`))
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+        } catch {
+          // Client disconnected - mark as disconnected but continue processing
+          clientConnected = false
+          console.log(`[refine] Client disconnected during ${event} event, continuing LLM processing...`)
+        }
       }
+
+      const closeStream = () => {
+        if (!clientConnected) return
+        try {
+          controller.close()
+        } catch {
+          // Already closed
+        }
+      }
+
+      // Track LLM errors separately from client errors
+      let llmError: { message: string; code?: string } | null = null
+      let finalResult: RefinementResult | null = null
+      let usage: {
+        promptTokens: number
+        completionTokens: number
+        reasoningTokens?: number
+      } | null = null
 
       try {
         sendEvent('progress', { stage: 'preparing', message: 'Preparing refinement...' })
@@ -163,14 +194,8 @@ Please modify the flowchart according to this request. Return the complete updat
           timeoutMs: 300_000, // 5 minutes for refinement
         })
 
-        let finalResult: RefinementResult | null = null
-        let usage: {
-          promptTokens: number
-          completionTokens: number
-          reasoningTokens?: number
-        } | null = null
-
-        // Forward all stream events to the client
+        // Forward all stream events to the client (best-effort)
+        // The for-await loop processes all LLM events regardless of client state
         for await (const event of llmStream as AsyncGenerator<
           StreamEvent<RefinementResult>,
           void,
@@ -200,6 +225,8 @@ Please modify the flowchart according to this request. Return the complete updat
               break
 
             case 'error':
+              // This is an LLM error, not a client error
+              llmError = { message: event.message, code: event.code }
               sendEvent('error', {
                 message: event.message,
                 code: event.code,
@@ -212,53 +239,62 @@ Please modify the flowchart according to this request. Return the complete updat
               break
           }
         }
-
-        // Process the final result
-        if (finalResult) {
-          sendEvent('progress', { stage: 'validating', message: 'Validating changes...' })
-
-          // Transform LLM output (array-based) to internal format (record-based)
-          const internalDefinition = transformLLMDefinitionToInternal(finalResult.updatedDefinition)
-
-          // Add to refinement history
-          refinementHistory.push(refinementRequest)
-
-          // Determine the emoji (use updated if provided, otherwise keep current)
-          const newEmoji = finalResult.updatedEmoji || session.draftEmoji || '📊'
-
-          // Update session with the refined content
-          await db
-            .update(schema.workshopSessions)
-            .set({
-              state: 'refining',
-              draftDefinitionJson: JSON.stringify(internalDefinition),
-              draftMermaidContent: finalResult.updatedMermaidContent,
-              draftEmoji: newEmoji,
-              draftNotes: JSON.stringify(finalResult.notes),
-              refinementHistory: JSON.stringify(refinementHistory),
-              updatedAt: new Date(),
-            })
-            .where(eq(schema.workshopSessions.id, id))
-
-          sendEvent('complete', {
-            definition: internalDefinition,
-            mermaidContent: finalResult.updatedMermaidContent,
-            emoji: newEmoji,
-            changesSummary: finalResult.changesSummary,
-            notes: finalResult.notes,
-            usage,
-          })
-        }
-
-        controller.close()
       } catch (error) {
+        // This catch is for unexpected errors (network issues, etc.)
+        // NOT for client disconnect (those are caught in sendEvent)
         console.error('Flowchart refinement error:', error)
-
-        sendEvent('error', {
-          message: error instanceof Error ? error.message : 'Failed to refine flowchart',
-        })
-        controller.close()
+        llmError = {
+          message: error instanceof Error ? error.message : 'Unknown error',
+        }
       }
+
+      // ALWAYS update database based on LLM result, regardless of client connection
+      // This is the key fix: DB operations happen outside the try-catch for client errors
+      if (llmError) {
+        // LLM failed - just send error event (don't update state, keep previous draft)
+        sendEvent('error', { message: llmError.message })
+      } else if (finalResult) {
+        // LLM succeeded - save the result
+        sendEvent('progress', { stage: 'validating', message: 'Validating changes...' })
+
+        // Transform LLM output (array-based) to internal format (record-based)
+        const internalDefinition = transformLLMDefinitionToInternal(finalResult.updatedDefinition)
+
+        // Add to refinement history
+        refinementHistory.push(refinementRequest)
+
+        // Determine the emoji (use updated if provided, otherwise keep current)
+        const newEmoji = finalResult.updatedEmoji || session.draftEmoji || '📊'
+
+        // Update session with the refined content
+        await db
+          .update(schema.workshopSessions)
+          .set({
+            state: 'refining',
+            draftDefinitionJson: JSON.stringify(internalDefinition),
+            draftMermaidContent: finalResult.updatedMermaidContent,
+            draftEmoji: newEmoji,
+            draftNotes: JSON.stringify(finalResult.notes),
+            refinementHistory: JSON.stringify(refinementHistory),
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.workshopSessions.id, id))
+
+        console.log(
+          `[refine] Flowchart refinement saved to DB for session ${id}${clientConnected ? '' : ' (client had disconnected)'}`
+        )
+
+        sendEvent('complete', {
+          definition: internalDefinition,
+          mermaidContent: finalResult.updatedMermaidContent,
+          emoji: newEmoji,
+          changesSummary: finalResult.changesSummary,
+          notes: finalResult.notes,
+          usage,
+        })
+      }
+
+      closeStream()
     },
   })
 
