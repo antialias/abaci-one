@@ -15,6 +15,12 @@ export { FlowchartCard, CreateFlowchartButton } from './FlowchartCard'
 export type { FlowchartCardAction, FlowchartCardProps } from './FlowchartCard'
 export { AnimatedBackgroundTiles } from './AnimatedBackgroundTiles'
 export { AnimatedProblemTile } from './AnimatedProblemTile'
+export { DiagnosticBadge, DiagnosticAlert, DiagnosticList } from './FlowchartDiagnostics'
+export type {
+  DiagnosticBadgeProps,
+  DiagnosticAlertProps,
+  DiagnosticListProps,
+} from './FlowchartDiagnostics'
 export { CreateFlowchartModal } from './CreateFlowchartModal'
 export { DeleteToast, DeleteToastContainer } from './DeleteToast'
 export type { PendingDeletion } from './DeleteToast'
@@ -24,5 +30,9 @@ export { FlowchartModal, type ModalTab } from './FlowchartModal'
 export { PracticeTab } from './PracticeTab'
 export { FlowchartTab } from './FlowchartTab'
 export { WorksheetTab } from './WorksheetTab'
-export { DifficultyDistributionSlider, type DifficultyDistribution } from './DifficultyDistributionSlider'
+export {
+  DifficultyDistributionSlider,
+  type DifficultyDistribution,
+} from './DifficultyDistributionSlider'
 export { MermaidViewer } from './MermaidViewer'
+export { WorksheetDebugPanel } from './WorksheetDebugPanel'

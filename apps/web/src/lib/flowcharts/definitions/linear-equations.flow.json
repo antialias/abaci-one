@@ -23,7 +23,8 @@
   },
 
   "display": {
-    "problem": "coefficient == 1 ? 'x ' + operation + ' ' + constant + ' = ' + equals : coefficient + 'x = ' + equals"
+    "problem": "coefficient == 1 ? 'x ' + operation + ' ' + constant + ' = ' + equals : coefficient + 'x = ' + equals",
+    "answer": "'x = ' + answer"
   },
 
   "problemInput": {

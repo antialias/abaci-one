@@ -31,6 +31,7 @@ export async function GET() {
         draftDescription: true,
         draftEmoji: true,
         draftDifficulty: true,
+        draftDefinitionJson: true,
         createdAt: true,
         updatedAt: true,
         expiresAt: true,

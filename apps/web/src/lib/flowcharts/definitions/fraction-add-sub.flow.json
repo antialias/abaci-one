@@ -14,6 +14,10 @@
     }
   },
 
+  "display": {
+    "answer": "resultWhole > 0 ? (simplifiedNum > 0 ? (resultWhole + ' ' + simplifiedNum + '/' + simplifiedDenom) : resultWhole) : (simplifiedNum + '/' + simplifiedDenom)"
+  },
+
   "constraints": {
     "properLeftFraction": "leftNum < leftDenom",
     "properRightFraction": "rightNum < rightDenom",

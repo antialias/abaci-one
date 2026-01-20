@@ -4,6 +4,14 @@ import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { DebugMermaidDiagram } from '@/components/flowchart/DebugMermaidDiagram'
 import { FlowchartExampleGrid } from '@/components/flowchart/FlowchartExampleGrid'
+import { DiagnosticAlert, DiagnosticList } from '@/components/flowchart/FlowchartDiagnostics'
+import { WorksheetTab } from '@/components/flowchart/WorksheetTab'
+import { WorksheetDebugPanel } from '@/components/flowchart/WorksheetDebugPanel'
+import {
+  generateDiverseExamples,
+  type GeneratedExample,
+  DEFAULT_CONSTRAINTS,
+} from '@/lib/flowcharts/example-generator'
 import { GenerationProgressPanel } from '@/components/flowchart-workshop/GenerationProgressPanel'
 import { isGenerateResult, parseFlowchartSSE } from '@/lib/flowchart-workshop/sse-parser'
 import {
@@ -14,6 +22,11 @@ import {
 } from '@/lib/flowchart-workshop/state-machine'
 import { loadFlowchart } from '@/lib/flowcharts/loader'
 import { downloadFlowchartPDF } from '@/lib/flowcharts/pdf-export'
+import {
+  diagnoseFlowchart,
+  formatDiagnosticsForRefinement,
+  type FlowchartDiagnostic,
+} from '@/lib/flowcharts/doctor'
 import type {
   ExecutableFlowchart,
   FlowchartDefinition,
@@ -37,7 +50,7 @@ interface WorkshopSession {
   currentReasoningText: string | null
 }
 
-type TabType = 'structure' | 'input'
+type TabType = 'structure' | 'input' | 'worksheet'
 
 export default function WorkshopPage() {
   const params = useParams<{ sessionId: string }>()
@@ -49,6 +62,7 @@ export default function WorkshopPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [refinementText, setRefinementText] = useState('')
+  const [selectedDiagnostics, setSelectedDiagnostics] = useState<FlowchartDiagnostic[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
 
@@ -63,9 +77,55 @@ export default function WorkshopPage() {
   const isRefining = streamingState.streamType === 'refine' && isStreaming(streamingState.status)
   const progressMessage = getStatusMessage(streamingState)
 
-  const [activeTab, setActiveTab] = useState<TabType>('structure')
+  const [activeTab, setActiveTab] = useState<TabType>('worksheet')
   const [executableFlowchart, setExecutableFlowchart] = useState<ExecutableFlowchart | null>(null)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
+  const [showCreatePdfModal, setShowCreatePdfModal] = useState(false)
+
+  // Examples for worksheet generation
+  const [worksheetExamples, setWorksheetExamples] = useState<GeneratedExample[]>([])
+
+  // Generate examples when flowchart changes
+  useEffect(() => {
+    if (!executableFlowchart) {
+      setWorksheetExamples([])
+      return
+    }
+    try {
+      const examples = generateDiverseExamples(executableFlowchart, 100, DEFAULT_CONSTRAINTS)
+      setWorksheetExamples(examples)
+    } catch (err) {
+      console.error('Failed to generate worksheet examples:', err)
+      setWorksheetExamples([])
+    }
+  }, [executableFlowchart])
+
+  // Calculate tier counts from examples
+  const worksheetTierCounts = useMemo(() => {
+    if (worksheetExamples.length === 0) return { easy: 0, medium: 0, hard: 0 }
+
+    // Calculate difficulty range
+    const scores = worksheetExamples.map(
+      (ex) => ex.complexity.decisions + ex.complexity.checkpoints
+    )
+    const min = Math.min(...scores)
+    const max = Math.max(...scores)
+
+    // Count by tier
+    const counts = { easy: 0, medium: 0, hard: 0 }
+    for (const ex of worksheetExamples) {
+      const score = ex.complexity.decisions + ex.complexity.checkpoints
+      if (max === min) {
+        counts.easy++
+      } else {
+        const normalized = (score - min) / (max - min)
+        if (normalized < 0.25) counts.easy++
+        else if (normalized < 0.75) counts.medium++
+        else counts.hard++
+      }
+    }
+    return counts
+  }, [worksheetExamples])
 
   // Parse the definition from JSON
   const definition: FlowchartDefinition | null = useMemo(() => {
@@ -76,6 +136,22 @@ export default function WorkshopPage() {
       return null
     }
   }, [session?.draftDefinitionJson])
+
+  // Run diagnostic checks on the definition and mermaid content
+  // Note: We depend on the raw JSON strings rather than parsed objects to avoid
+  // reference instability that could cause the diagnostic to flicker
+  const diagnosticReport = useMemo(() => {
+    if (!session?.draftDefinitionJson) return null
+    try {
+      const def = JSON.parse(session.draftDefinitionJson) as FlowchartDefinition
+      return diagnoseFlowchart(def, session?.draftMermaidContent || undefined)
+    } catch {
+      return null
+    }
+  }, [session?.draftDefinitionJson, session?.draftMermaidContent])
+
+  // State for showing diagnostic details
+  const [showDiagnosticDetails, setShowDiagnosticDetails] = useState(false)
 
   // Build ExecutableFlowchart when definition and mermaid content are available
   useEffect(() => {
@@ -392,7 +468,17 @@ export default function WorkshopPage() {
 
   // Handle refinement
   const handleRefine = useCallback(async () => {
-    if (!refinementText.trim()) return
+    // Build the full refinement request from text + selected diagnostics
+    const parts: string[] = []
+    if (refinementText.trim()) {
+      parts.push(refinementText.trim())
+    }
+    if (selectedDiagnostics.length > 0) {
+      parts.push(formatDiagnosticsForRefinement(selectedDiagnostics))
+    }
+
+    const fullRequest = parts.join('\n\n')
+    if (!fullRequest) return
 
     // Reset and start
     dispatch({ type: 'START_STREAMING', streamType: 'refine' })
@@ -400,13 +486,13 @@ export default function WorkshopPage() {
 
     // Create new abort controller
     abortControllerRef.current = new AbortController()
-    const currentRefinementText = refinementText
+    const currentRefinementText = fullRequest
 
     try {
       const response = await fetch(`/api/flowchart-workshop/sessions/${sessionId}/refine`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request: refinementText }),
+        body: JSON.stringify({ request: fullRequest }),
         signal: abortControllerRef.current.signal,
       })
 
@@ -442,6 +528,7 @@ export default function WorkshopPage() {
                 : null
             )
             setRefinementText('')
+            setSelectedDiagnostics([])
           },
           onError: (message) => {
             dispatch({ type: 'STREAM_ERROR', message })
@@ -463,7 +550,55 @@ export default function WorkshopPage() {
         setError(message)
       }
     }
-  }, [refinementText, sessionId])
+  }, [refinementText, selectedDiagnostics, sessionId])
+
+  // Helper to check if two diagnostics are the same
+  // Must compare code, location, AND message because multiple diagnostics
+  // can have the same code and location (e.g., two unknown refs in same field)
+  const isSameDiagnostic = useCallback(
+    (a: FlowchartDiagnostic, b: FlowchartDiagnostic): boolean => {
+      return (
+        a.code === b.code &&
+        a.location.description === b.location.description &&
+        a.message === b.message
+      )
+    },
+    []
+  )
+
+  // Handle diagnostic click - add/remove from selected diagnostics
+  const handleDiagnosticClick = useCallback(
+    (diagnostic: FlowchartDiagnostic) => {
+      setSelectedDiagnostics((prev) => {
+        // Check if already selected
+        const isSelected = prev.some((d) => isSameDiagnostic(d, diagnostic))
+        if (isSelected) {
+          // Remove it
+          return prev.filter((d) => !isSameDiagnostic(d, diagnostic))
+        } else {
+          // Add it
+          return [...prev, diagnostic]
+        }
+      })
+    },
+    [isSameDiagnostic]
+  )
+
+  // Handle adding all diagnostics at once
+  const handleAddAllDiagnostics = useCallback(() => {
+    if (diagnosticReport) {
+      setSelectedDiagnostics(diagnosticReport.diagnostics)
+      setShowDiagnosticDetails(false)
+    }
+  }, [diagnosticReport])
+
+  // Handle removing a diagnostic from selection
+  const handleRemoveDiagnostic = useCallback(
+    (diagnostic: FlowchartDiagnostic) => {
+      setSelectedDiagnostics((prev) => prev.filter((d) => !isSameDiagnostic(d, diagnostic)))
+    },
+    [isSameDiagnostic]
+  )
 
   // Handle save
   const handleSave = useCallback(async () => {
@@ -727,6 +862,65 @@ export default function WorkshopPage() {
         </div>
       </header>
 
+      {/* Diagnostic Alert */}
+      {diagnosticReport &&
+        (diagnosticReport.errorCount > 0 || diagnosticReport.warningCount > 0) && (
+          <div
+            className={css({
+              padding: '4',
+              borderBottom: '1px solid',
+              borderColor: { base: 'gray.200', _dark: 'gray.700' },
+            })}
+          >
+            <div className={hstack({ gap: '2', alignItems: 'flex-start' })}>
+              <div className={css({ flex: 1 })}>
+                <DiagnosticAlert
+                  report={diagnosticReport}
+                  onShowDetails={() => setShowDiagnosticDetails(!showDiagnosticDetails)}
+                />
+              </div>
+              <button
+                data-action="fix-all-issues"
+                onClick={handleAddAllDiagnostics}
+                className={css({
+                  padding: '2 3',
+                  fontSize: 'sm',
+                  fontWeight: 'medium',
+                  borderRadius: 'md',
+                  backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s',
+                  _hover: {
+                    backgroundColor: { base: 'blue.700', _dark: 'blue.600' },
+                  },
+                })}
+              >
+                Fix All ({diagnosticReport.diagnostics.length})
+              </button>
+            </div>
+            {showDiagnosticDetails && (
+              <div className={css({ marginTop: '3' })}>
+                <p
+                  className={css({
+                    fontSize: 'sm',
+                    color: { base: 'gray.600', _dark: 'gray.400' },
+                    marginBottom: '2',
+                  })}
+                >
+                  Click issues to add/remove from refinement:
+                </p>
+                <DiagnosticList
+                  report={diagnosticReport}
+                  onDiagnosticClick={handleDiagnosticClick}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
       {/* Main content area */}
       <div
         className={css({
@@ -891,7 +1085,7 @@ export default function WorkshopPage() {
               flexShrink: 0,
             })}
           >
-            {(['structure', 'input'] as const).map((tab) => (
+            {(['worksheet', 'structure', 'input'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -930,6 +1124,42 @@ export default function WorkshopPage() {
           >
             {activeTab === 'structure' && <StructureTab definition={definition} notes={notes} />}
             {activeTab === 'input' && <InputTab definition={definition} />}
+            {activeTab === 'worksheet' && executableFlowchart && (
+              <div className={vstack({ gap: '4', alignItems: 'stretch' })}>
+                {/* Create PDF Button */}
+                <button
+                  data-action="open-create-pdf-modal"
+                  onClick={() => setShowCreatePdfModal(true)}
+                  className={css({
+                    padding: '3 4',
+                    borderRadius: 'lg',
+                    backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
+                    color: 'white',
+                    fontWeight: 'medium',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '2',
+                    transition: 'all 0.15s',
+                    _hover: {
+                      backgroundColor: { base: 'blue.700', _dark: 'blue.600' },
+                    },
+                  })}
+                >
+                  <span>📄</span>
+                  Create PDF Worksheet
+                </button>
+                {/* Debug Panel - shows generated examples with answers */}
+                <WorksheetDebugPanel flowchart={executableFlowchart} problemCount={10} />
+              </div>
+            )}
+            {activeTab === 'worksheet' && !executableFlowchart && (
+              <p className={css({ color: { base: 'gray.500', _dark: 'gray.400' } })}>
+                Generate a flowchart to test worksheet generation.
+              </p>
+            )}
           </div>
 
           {/* Examples section - always visible at bottom */}
@@ -968,13 +1198,80 @@ export default function WorkshopPage() {
             backgroundColor: { base: 'gray.50', _dark: 'gray.900' },
           })}
         >
+          {/* Selected diagnostics tokens */}
+          {selectedDiagnostics.length > 0 && (
+            <div
+              data-element="selected-diagnostics"
+              className={css({
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '2',
+                marginBottom: '3',
+              })}
+            >
+              {selectedDiagnostics.map((diagnostic, index) => (
+                <div
+                  key={`${diagnostic.code}-${index}`}
+                  data-element="diagnostic-token"
+                  className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '1',
+                    padding: '1 2',
+                    borderRadius: 'md',
+                    fontSize: 'sm',
+                    backgroundColor:
+                      diagnostic.severity === 'error'
+                        ? { base: 'red.100', _dark: 'red.900/40' }
+                        : { base: 'yellow.100', _dark: 'yellow.900/40' },
+                    color:
+                      diagnostic.severity === 'error'
+                        ? { base: 'red.700', _dark: 'red.300' }
+                        : { base: 'yellow.700', _dark: 'yellow.300' },
+                  })}
+                >
+                  <span>{diagnostic.severity === 'error' ? '❌' : '⚠️'}</span>
+                  <span
+                    className={css({
+                      maxWidth: '200px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    })}
+                  >
+                    {diagnostic.title}
+                  </span>
+                  <button
+                    onClick={() => handleRemoveDiagnostic(diagnostic)}
+                    className={css({
+                      padding: '0',
+                      marginLeft: '1',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 'xs',
+                      opacity: 0.7,
+                      _hover: { opacity: 1 },
+                    })}
+                    aria-label={`Remove ${diagnostic.title}`}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className={hstack({ gap: '3' })}>
             <input
               data-element="refinement-input"
               type="text"
               value={refinementText}
               onChange={(e) => setRefinementText(e.target.value)}
-              placeholder="Describe how you'd like to change the flowchart..."
+              placeholder={
+                selectedDiagnostics.length > 0
+                  ? 'Add additional instructions (optional)...'
+                  : "Describe how you'd like to change the flowchart..."
+              }
               onKeyDown={(e) => e.key === 'Enter' && !isRefining && handleRefine()}
               className={css({
                 flex: 1,
@@ -993,7 +1290,7 @@ export default function WorkshopPage() {
             <button
               data-action="refine"
               onClick={handleRefine}
-              disabled={isRefining || !refinementText.trim()}
+              disabled={isRefining || (!refinementText.trim() && selectedDiagnostics.length === 0)}
               className={css({
                 padding: '3 6',
                 borderRadius: 'lg',
@@ -1011,7 +1308,11 @@ export default function WorkshopPage() {
                 },
               })}
             >
-              {isRefining ? 'Refining...' : 'Refine'}
+              {isRefining
+                ? 'Refining...'
+                : selectedDiagnostics.length > 0
+                  ? `Fix ${selectedDiagnostics.length} Issue${selectedDiagnostics.length > 1 ? 's' : ''}`
+                  : 'Refine'}
             </button>
           </div>
           {/* Progress panel during refinement */}
@@ -1029,6 +1330,74 @@ export default function WorkshopPage() {
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Create PDF Modal */}
+      {showCreatePdfModal && executableFlowchart && (
+        <div
+          data-component="create-pdf-modal-overlay"
+          className={css({
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          })}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCreatePdfModal(false)
+          }}
+        >
+          <div
+            data-component="create-pdf-modal"
+            className={css({
+              backgroundColor: { base: 'white', _dark: 'gray.800' },
+              borderRadius: 'xl',
+              boxShadow: '2xl',
+              width: '95vw',
+              maxWidth: '500px',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              padding: '6',
+            })}
+          >
+            <div className={hstack({ justifyContent: 'space-between', marginBottom: '4' })}>
+              <h2
+                className={css({
+                  fontSize: 'xl',
+                  fontWeight: 'bold',
+                  color: { base: 'gray.900', _dark: 'gray.100' },
+                })}
+              >
+                Create PDF Worksheet
+              </h2>
+              <button
+                data-action="close-create-pdf-modal"
+                onClick={() => setShowCreatePdfModal(false)}
+                className={css({
+                  padding: '2',
+                  borderRadius: 'md',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: { base: 'gray.500', _dark: 'gray.400' },
+                  _hover: {
+                    backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+                  },
+                })}
+              >
+                ✕
+              </button>
+            </div>
+            <WorksheetTab
+              flowchart={executableFlowchart}
+              tierCounts={worksheetTierCounts}
+              examples={worksheetExamples}
+              workshopSessionId={sessionId}
+            />
+          </div>
         </div>
       )}
     </div>

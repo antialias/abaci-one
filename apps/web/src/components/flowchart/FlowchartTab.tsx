@@ -47,10 +47,7 @@ export function FlowchartTab({ flowchart, shareUrl }: FlowchartTabProps) {
   }, [shareUrl])
 
   return (
-    <div
-      data-component="flowchart-tab"
-      className={vstack({ gap: '4', alignItems: 'stretch' })}
-    >
+    <div data-component="flowchart-tab" className={vstack({ gap: '4', alignItems: 'stretch' })}>
       {/* Mermaid Diagram */}
       <div
         data-element="diagram-container"

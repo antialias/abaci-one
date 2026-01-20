@@ -1,12 +1,20 @@
 /**
- * API Route: Generate Flowchart Worksheet PDF
+ * API Route: Generate Workshop Flowchart Worksheet PDF
  *
- * Creates a printable worksheet with problems from the flowchart,
- * distributed by difficulty tier, with an optional answer key.
+ * Creates a printable worksheet from a workshop session's draft flowchart.
+ * Works with drafts that haven't been saved to the database yet.
  */
 
 import { type NextRequest, NextResponse } from 'next/server'
-import { generateWorksheetPDF, type WorksheetConfig } from '@/lib/flowcharts/worksheet-generator'
+import { db } from '@/db'
+import { workshopSessions } from '@/db/schema'
+import { eq } from 'drizzle-orm'
+import { loadFlowchart } from '@/lib/flowcharts/loader'
+import {
+  generateWorksheetPDFFromFlowchart,
+  type WorksheetConfig,
+} from '@/lib/flowcharts/worksheet-generator'
+import type { FlowchartDefinition } from '@/lib/flowcharts/schema'
 
 interface WorksheetRequest {
   /** Distribution of problems by difficulty tier */
@@ -29,8 +37,37 @@ interface WorksheetRequest {
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id: flowchartId } = await params
+    const { id: sessionId } = await params
     const body: WorksheetRequest = await request.json()
+
+    // Load the session
+    const [session] = await db
+      .select()
+      .from(workshopSessions)
+      .where(eq(workshopSessions.id, sessionId))
+      .limit(1)
+
+    if (!session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+
+    if (!session.draftDefinitionJson || !session.draftMermaidContent) {
+      return NextResponse.json(
+        { error: 'Session has no draft flowchart. Generate one first.' },
+        { status: 400 }
+      )
+    }
+
+    // Parse the definition
+    let definition: FlowchartDefinition
+    try {
+      definition = JSON.parse(session.draftDefinitionJson)
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid flowchart definition in session' },
+        { status: 400 }
+      )
+    }
 
     // Validate required fields
     if (!body.distribution) {
@@ -54,18 +91,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       )
     }
 
+    // Build ExecutableFlowchart
+    const flowchart = await loadFlowchart(definition, session.draftMermaidContent)
+
     // Build config
     const config: WorksheetConfig = {
       distribution: body.distribution,
       problemCount: body.problemCount,
       pageCount: body.pageCount,
       includeAnswerKey: body.includeAnswerKey !== false,
-      title: body.title,
+      title: body.title || session.draftTitle || undefined,
       orderByDifficulty: body.orderByDifficulty ?? false,
     }
 
     // Generate PDF
-    const pdfBuffer = await generateWorksheetPDF(flowchartId, config)
+    const pdfBuffer = await generateWorksheetPDFFromFlowchart(flowchart, config)
 
     // Return PDF
     return new NextResponse(new Uint8Array(pdfBuffer), {
@@ -75,11 +115,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       },
     })
   } catch (error) {
-    console.error('Worksheet generation error:', error)
-
-    if (error instanceof Error && error.message.includes('not found')) {
-      return NextResponse.json({ error: error.message }, { status: 404 })
-    }
+    console.error('Workshop worksheet generation error:', error)
 
     return NextResponse.json(
       {

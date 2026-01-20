@@ -113,3 +113,120 @@ export function formatProblemDisplay(
     }
   }
 }
+
+// =============================================================================
+// Answer Display Formatting
+// =============================================================================
+
+/**
+ * Format the answer for display.
+ *
+ * Uses the flowchart's `display.answer` expression if available,
+ * otherwise computes the answer from variables and formats based on schema.
+ */
+export function formatAnswerDisplay(
+  flowchart: ExecutableFlowchart,
+  problem: Record<string, ProblemValue>
+): string {
+  // Build evaluation context with computed variables
+  const context: EvalContext = {
+    problem,
+    computed: {},
+    userState: {},
+  }
+
+  // Evaluate all variables to get computed values (including answer)
+  for (const [varName, varDef] of Object.entries(flowchart.definition.variables)) {
+    try {
+      context.computed[varName] = evaluate(varDef.init, context)
+    } catch {
+      // Skip on error
+    }
+  }
+
+  // If the flowchart has a custom display.answer expression, evaluate it
+  if (flowchart.definition.display?.answer) {
+    try {
+      const result = evaluate(flowchart.definition.display.answer, context)
+      return String(result)
+    } catch {
+      // Fall through to schema-specific formatting on error
+    }
+  }
+
+  const schema = flowchart.definition.problemInput.schema
+
+  switch (schema) {
+    case 'two-digit-subtraction': {
+      const answer = (problem.minuend as number) - (problem.subtrahend as number)
+      return String(answer)
+    }
+
+    case 'linear-equation': {
+      // Answer is x
+      const answer = context.computed.answer
+      if (typeof answer === 'number') {
+        return `x = ${answer}`
+      }
+      return 'x = ?'
+    }
+
+    case 'two-fractions-with-op': {
+      // For fractions, the answer is computed from the operation
+      const answerWhole = context.computed.answerWhole as number | undefined
+      const answerNum = context.computed.answerNum as number | undefined
+      const answerDenom = context.computed.answerDenom as number | undefined
+
+      if (answerDenom !== undefined && answerNum !== undefined) {
+        if (answerWhole && answerWhole > 0) {
+          if (answerNum === 0) return String(answerWhole)
+          return `${answerWhole} ${answerNum}/${answerDenom}`
+        }
+        if (answerNum === 0) return '0'
+        return `${answerNum}/${answerDenom}`
+      }
+      return '?'
+    }
+
+    case 'two-mixed-numbers-with-op': {
+      // Similar to fractions
+      const answerWhole = context.computed.answerWhole as number | undefined
+      const answerNum = context.computed.answerNum as number | undefined
+      const answerDenom = context.computed.answerDenom as number | undefined
+
+      if (answerDenom !== undefined && answerNum !== undefined) {
+        if (answerWhole && answerWhole > 0) {
+          if (answerNum === 0) return String(answerWhole)
+          return `${answerWhole} ${answerNum}/${answerDenom}`
+        }
+        if (answerNum === 0) return '0'
+        return `${answerNum}/${answerDenom}`
+      }
+      return '?'
+    }
+
+    default: {
+      // Try to find an 'answer' variable
+      if ('answer' in context.computed) {
+        const answer = context.computed.answer
+        if (typeof answer === 'object' && answer !== null && 'denom' in answer) {
+          return formatMixedNumber(answer as MixedNumberValue)
+        }
+        return String(answer)
+      }
+
+      // Fallback: use generation.target if it points to a computed variable
+      // This is semantically correct since generation.target declares what the "answer" is
+      const target = flowchart.definition.generation?.target
+      if (target && target in context.computed) {
+        const answer = context.computed[target]
+        if (typeof answer === 'object' && answer !== null && 'denom' in answer) {
+          return formatMixedNumber(answer as MixedNumberValue)
+        }
+        return String(answer)
+      }
+
+      return '?'
+    }
+  }
+}

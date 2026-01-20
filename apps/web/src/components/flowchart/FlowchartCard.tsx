@@ -4,8 +4,10 @@ import Link from 'next/link'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
 import { AnimatedBackgroundTiles } from './AnimatedBackgroundTiles'
+import { DiagnosticBadge } from './FlowchartDiagnostics'
 import type { GeneratedExample } from '@/lib/flowcharts/loader'
 import type { ExecutableFlowchart } from '@/lib/flowcharts/schema'
+import type { DiagnosticReport } from '@/lib/flowcharts/doctor'
 
 export interface FlowchartCardAction {
   label: string
@@ -38,6 +40,8 @@ export interface FlowchartCardProps {
   flowchart?: ExecutableFlowchart
   /** Optional examples for animated background tiles */
   examples?: GeneratedExample[]
+  /** Optional diagnostic report to show health badge */
+  diagnosticReport?: DiagnosticReport
 }
 
 /**
@@ -55,6 +59,7 @@ export function FlowchartCard({
   actions,
   flowchart,
   examples,
+  diagnosticReport,
 }: FlowchartCardProps) {
   const hasActions = actions && actions.length > 0
   const hasExamples = flowchart && examples && examples.length > 0
@@ -118,6 +123,7 @@ export function FlowchartCard({
               {status}
             </span>
           )}
+          {diagnosticReport && <DiagnosticBadge report={diagnosticReport} />}
         </div>
         {subtitle && (
           <p
@@ -182,81 +188,81 @@ export function FlowchartCard({
             cardContent
           )}
           <div className={hstack({ gap: '2', justifyContent: 'flex-end', marginTop: '3' })}>
-          {actions.map((action, i) => {
-            const buttonStyles = css({
-              padding: '2 4',
-              borderRadius: 'md',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              border: 'none',
-              cursor: action.disabled ? 'not-allowed' : 'pointer',
-              transition: 'all 0.15s',
-              opacity: action.disabled ? 0.5 : 1,
-              textDecoration: 'none',
-              display: 'inline-block',
-              ...(action.variant === 'primary'
-                ? {
-                    backgroundColor: { base: 'blue.100', _dark: 'blue.900' },
-                    color: { base: 'blue.700', _dark: 'blue.300' },
-                    _hover: action.disabled
-                      ? {}
-                      : {
-                          backgroundColor: { base: 'blue.200', _dark: 'blue.800' },
-                        },
-                  }
-                : action.variant === 'danger'
+            {actions.map((action, i) => {
+              const buttonStyles = css({
+                padding: '2 4',
+                borderRadius: 'md',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                border: 'none',
+                cursor: action.disabled ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s',
+                opacity: action.disabled ? 0.5 : 1,
+                textDecoration: 'none',
+                display: 'inline-block',
+                ...(action.variant === 'primary'
                   ? {
-                      backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
-                      color: { base: 'gray.600', _dark: 'gray.400' },
+                      backgroundColor: { base: 'blue.100', _dark: 'blue.900' },
+                      color: { base: 'blue.700', _dark: 'blue.300' },
                       _hover: action.disabled
                         ? {}
                         : {
-                            backgroundColor: { base: 'red.100', _dark: 'red.900' },
-                            color: { base: 'red.600', _dark: 'red.400' },
+                            backgroundColor: { base: 'blue.200', _dark: 'blue.800' },
                           },
                     }
-                  : {
-                      backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
-                      color: { base: 'gray.700', _dark: 'gray.300' },
-                      _hover: action.disabled
-                        ? {}
-                        : {
-                            backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
-                          },
-                    }),
-            })
+                  : action.variant === 'danger'
+                    ? {
+                        backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+                        color: { base: 'gray.600', _dark: 'gray.400' },
+                        _hover: action.disabled
+                          ? {}
+                          : {
+                              backgroundColor: { base: 'red.100', _dark: 'red.900' },
+                              color: { base: 'red.600', _dark: 'red.400' },
+                            },
+                      }
+                    : {
+                        backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+                        color: { base: 'gray.700', _dark: 'gray.300' },
+                        _hover: action.disabled
+                          ? {}
+                          : {
+                              backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
+                            },
+                      }),
+              })
 
-            // Render as Link when href is provided
-            if (action.href && !action.disabled) {
+              // Render as Link when href is provided
+              if (action.href && !action.disabled) {
+                return (
+                  <Link
+                    key={i}
+                    href={action.href}
+                    className={buttonStyles}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {action.label}
+                  </Link>
+                )
+              }
+
+              // Render as button for onClick handlers or disabled states
               return (
-                <Link
+                <button
                   key={i}
-                  href={action.href}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!action.disabled && action.onClick) {
+                      action.onClick()
+                    }
+                  }}
+                  disabled={action.disabled}
                   className={buttonStyles}
-                  onClick={(e) => e.stopPropagation()}
                 >
                   {action.label}
-                </Link>
+                </button>
               )
-            }
-
-            // Render as button for onClick handlers or disabled states
-            return (
-              <button
-                key={i}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (!action.disabled && action.onClick) {
-                    action.onClick()
-                  }
-                }}
-                disabled={action.disabled}
-                className={buttonStyles}
-              >
-                {action.label}
-              </button>
-            )
-          })}
+            })}
           </div>
         </div>
       </div>

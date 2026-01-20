@@ -55,15 +55,20 @@ export function DebugMermaidDiagram({
           },
         })
 
+        // Generate unique ID for this render (before try so it's accessible in catch)
+        const id = `mermaid-debug-${Date.now()}`
+
+        // Sanitize content: convert escaped quotes that might have leaked through JSON parsing
+        const sanitizedContent = mermaidContent
+          .replace(/\\"/g, "'") // Convert \" to '
+          .replace(/\\'/g, "'") // Convert \' to '
+
         // Add style definition to highlight the current node (only if a node ID is provided)
         // We append this to the mermaid content
         const highlightStyle = currentNodeId
           ? `\n    style ${currentNodeId} fill:#fbbf24,stroke:#d97706,stroke-width:4px,color:#000`
           : ''
-        const contentWithHighlight = mermaidContent + highlightStyle
-
-        // Generate unique ID for this render
-        const id = `mermaid-debug-${Date.now()}`
+        const contentWithHighlight = sanitizedContent + highlightStyle
 
         // Render the diagram
         const { svg } = await mermaid.render(id, contentWithHighlight)
@@ -77,6 +82,12 @@ export function DebugMermaidDiagram({
             svgElement.style.maxWidth = '100%'
             svgElement.style.height = 'auto'
           }
+        }
+
+        // Clean up the render element (mermaid leaves these in document.body)
+        const renderElement = document.getElementById(id)
+        if (renderElement && renderElement.parentElement === document.body) {
+          renderElement.remove()
         }
       } catch (err) {
         console.error('Mermaid render error:', err)

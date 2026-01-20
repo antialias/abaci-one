@@ -10,6 +10,10 @@
     }
   },
 
+  "display": {
+    "answer": "answer"
+  },
+
   "constraints": {
     "positiveAnswer": "minuend > subtrahend",
     "meaningfulDifference": "minuend - subtrahend >= 5",

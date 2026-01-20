@@ -284,6 +284,12 @@ export const FlowchartDefinitionSchema = z.object({
         .describe(
           'REQUIRED: Math-style expression for problem display. Use operators not prose: "top + \' − \' + bottom" renders as "52 − 27". For fractions: "num1 + \'/\' + denom1" renders properly. Keep SHORT - appears in compact grid cells.'
         ),
+      answer: z
+        .string()
+        .nullable()
+        .describe(
+          'Expression for computing the answer display. REQUIRED for custom schemas. If omitted, system looks for a variable named "answer" or uses generation.target. Example: "fate" to display the fate variable.'
+        ),
     })
     .nullable()
     .describe('Display configuration for examples and problem selection UI'),
@@ -551,8 +557,145 @@ export function transformLLMDefinitionToInternal(
     workingProblem: llmDef.workingProblem ?? undefined,
     generation,
     constraints,
-    display: llmDef.display ? { problem: llmDef.display.problem ?? undefined } : undefined,
+    display: llmDef.display
+      ? {
+          problem: llmDef.display.problem ?? undefined,
+          answer: llmDef.display.answer ?? undefined,
+        }
+      : undefined,
   }
+}
+
+// =============================================================================
+// Validation
+// =============================================================================
+
+export interface DerivedFieldValidationError {
+  fieldName: string
+  expression: string
+  invalidReference: string
+  message: string
+}
+
+/**
+ * Validate that derived field expressions only reference input fields and other derived fields.
+ * Returns an array of validation errors (empty if valid).
+ *
+ * @param definition - The flowchart definition to validate
+ * @returns Array of validation errors for invalid derived field references
+ */
+export function validateDerivedFields(
+  definition: import('../flowcharts/schema').FlowchartDefinition
+): DerivedFieldValidationError[] {
+  const errors: DerivedFieldValidationError[] = []
+
+  // Get derived fields from generation config
+  const derived = definition.generation?.derived
+  if (!derived || Object.keys(derived).length === 0) {
+    return errors
+  }
+
+  // Collect input field names
+  const inputFieldNames = new Set(definition.problemInput.fields.map((f) => f.name))
+
+  // Collect variable names (these are NOT allowed in derived expressions)
+  const variableNames = new Set(Object.keys(definition.variables))
+
+  // Track derived field names as we process them (earlier ones can be referenced by later ones)
+  const processedDerivedNames = new Set<string>()
+
+  // Known built-in functions and constants to ignore
+  const builtIns = new Set([
+    'true',
+    'false',
+    'null',
+    'Math',
+    'abs',
+    'floor',
+    'ceil',
+    'round',
+    'min',
+    'max',
+    'gcd',
+    'lcm',
+    'sign',
+    'mod',
+    'pow',
+    'sqrt',
+  ])
+
+  // Extract variable references from an expression
+  // Returns identifiers that are NOT:
+  // - function calls (followed by open paren)
+  // - property access (preceded by dot)
+  // - built-in functions/constants
+  function extractVariableReferences(expr: string): string[] {
+    const refs: string[] = []
+    // Match all identifiers
+    const identifierPattern = /[a-zA-Z_][a-zA-Z0-9_]*/g
+    let match
+
+    while ((match = identifierPattern.exec(expr)) !== null) {
+      const identifier = match[0]
+      const startIndex = match.index
+
+      // Skip if preceded by a dot (property access like obj.prop)
+      if (startIndex > 0 && expr[startIndex - 1] === '.') {
+        continue
+      }
+
+      // Skip if followed by open paren (function call like func())
+      const afterMatch = expr.slice(startIndex + identifier.length)
+      if (/^\s*\(/.test(afterMatch)) {
+        continue
+      }
+
+      // Skip built-ins
+      if (builtIns.has(identifier)) {
+        continue
+      }
+
+      refs.push(identifier)
+    }
+
+    return refs
+  }
+
+  for (const [fieldName, expression] of Object.entries(derived)) {
+    // Extract variable references from the expression
+    const references = extractVariableReferences(expression)
+
+    for (const identifier of references) {
+      // Check if it's a valid reference
+      const isInputField = inputFieldNames.has(identifier)
+      const isPreviousDerived = processedDerivedNames.has(identifier)
+      const isVariable = variableNames.has(identifier)
+
+      if (!isInputField && !isPreviousDerived) {
+        // Invalid reference - check if it's a variable (common mistake)
+        if (isVariable) {
+          errors.push({
+            fieldName,
+            expression,
+            invalidReference: identifier,
+            message: `Derived field "${fieldName}" references "${identifier}" which is a computed variable. Derived fields can only reference input fields (${[...inputFieldNames].join(', ')}) and previously-defined derived fields.`,
+          })
+        } else {
+          errors.push({
+            fieldName,
+            expression,
+            invalidReference: identifier,
+            message: `Derived field "${fieldName}" references unknown identifier "${identifier}". Valid references are input fields (${[...inputFieldNames].join(', ')}) and previously-defined derived fields.`,
+          })
+        }
+      }
+    }
+
+    // Add this derived field to the set of processed ones
+    processedDerivedNames.add(fieldName)
+  }
+
+  return errors
 }
 
 // =============================================================================
@@ -575,7 +718,8 @@ function getCriticalRules(): string {
 7. **Descriptive pathLabels**: Use meaningful labels like "BORROW"/"DIRECT", "SAME"/"DIFF", not generic "YES"/"NO"
 8. **display.problem**: Use math-style expressions (e.g., \`"top + ' − ' + bottom"\`), not verbose text
 9. **excludeFromExampleStructure**: Mark verification/confirmation decisions with this flag to keep example grids clean
-10. **Style syntax**: Style directives MUST include node ID: \`style START fill:#10b981\` (not \`style fill:#10b981\`)`
+10. **Style syntax**: Style directives MUST include node ID: \`style START fill:#10b981\` (not \`style fill:#10b981\`)
+11. **Division in answers**: If generation.target involves division, add a conditional \`display.answer\` to handle division-by-zero cases (otherwise shows "NaN")`
 }
 
 /**
@@ -838,9 +982,18 @@ The system generates examples by:
 - For fractions: denominators like [2, 3, 4, 5, 6, 8, 10, 12], numerators [1, 2, 3, 5, 7]
 - For integers: values that exercise different paths (e.g., values that do/don't require borrowing)
 
-**\`derived\` (optional)**: Computed values needed during example generation. Use the same expression syntax as variables. Common examples:
-- \`{ "key": "lcd", "value": "lcm(denom_a, denom_b)" }\`
-- \`{ "key": "answer", "value": "top - bottom" }\`
+**\`derived\` (optional)**: Computed values needed during example generation.
+
+⚠️ CRITICAL: Derived field expressions can ONLY reference input fields from \`problemInput.fields\` and other derived fields defined earlier in the list. They CANNOT reference computed variables from the \`variables\` section.
+
+This is because derived fields are computed during example generation (before the flowchart is executed), while \`variables\` are only initialized when the flowchart starts walking.
+
+Use the same expression syntax as variables. Common examples:
+- \`{ "key": "lcd", "value": "lcm(denom_a, denom_b)" }\` (references input fields denom_a, denom_b)
+- \`{ "key": "difference", "value": "top - bottom" }\` (references input fields top, bottom)
+
+❌ WRONG: \`{ "key": "answer", "value": "answer" }\` - Cannot reference variables like "answer"
+❌ WRONG: \`{ "key": "result", "value": "needsBorrow ? 1 : 0" }\` - Cannot reference computed variables
 
 ### Example for Fraction Addition/Subtraction
 
@@ -944,9 +1097,11 @@ Some decision nodes are just verification steps that don't meaningfully split th
 
 ## Display Configuration
 
-The \`display.problem\` expression controls how problems appear in example grids and selection UI.
+The \`display\` object controls how problems and answers appear in example grids, worksheets, and PDFs.
 
-### Writing display.problem Expressions
+### display.problem (Required)
+
+Controls how problems appear in example grids and selection UI.
 
 **❌ WRONG - Verbose text (renders poorly):**
 \`\`\`json
@@ -980,6 +1135,96 @@ Result: "3/4 , 5/6" (fractions render properly with MathML)
 - Fraction operations: \`"num1 + '/' + denom1 + ' + ' + num2 + '/' + denom2"\`
 - LCD problems: \`"denom1 + ' , ' + denom2"\`
 - Equations: \`"coef + 'x = ' + result"\`
+
+### display.answer (Required for Custom Schemas)
+
+Controls how answers appear in worksheets and PDFs. Without this, custom schemas show "?" for all answers.
+
+**When it's required:**
+- Custom schemas that don't have built-in answer formatting
+- Built-in schemas (two-digit-subtraction, linear-equation, two-fractions-with-op, two-mixed-numbers-with-op) have automatic answer formatting
+
+**Fallback chain when display.answer is missing:**
+1. System looks for a variable named "answer"
+2. System uses generation.target to find the answer variable
+3. If neither works → shows "?"
+
+**✅ Best practice - always include display.answer for clarity:**
+\`\`\`json
+{
+  "display": {
+    "problem": "starMass + ' solar masses'",
+    "answer": "fate"
+  }
+}
+\`\`\`
+
+**Alternative - name your answer variable "answer":**
+\`\`\`json
+{
+  "variables": [
+    { "name": "answer", "init": "starMass > 8 ? 'Supernova' : 'White Dwarf'" }
+  ]
+}
+\`\`\`
+
+**Alternative - set generation.target:**
+\`\`\`json
+{
+  "generation": {
+    "target": "fate"
+  }
+}
+\`\`\`
+
+### Handling Multiple Outcome Types (CRITICAL for division)
+
+When a flowchart can produce different TYPES of answers (numeric vs text), you MUST use a conditional \`display.answer\` expression. This is especially important when the answer involves division, which can produce NaN (Not a Number) when the divisor is zero.
+
+**Common scenarios requiring conditional display.answer:**
+- Systems of equations: "x=2, y=3" vs "Infinite solutions" vs "No solution"
+- Fraction simplification: "3/4" vs "Already simplified"
+- Quadratic equations: "x=2, x=3" vs "No real solutions"
+
+**❌ WRONG - Single numeric answer with division:**
+\`\`\`json
+{
+  "variables": [
+    { "name": "D", "init": "a*d - b*c" },
+    { "name": "xExact", "init": "Dx / D" }
+  ],
+  "generation": { "target": "xExact" }
+  // When D=0, xExact = NaN, and worksheets show "= NaN"!
+}
+\`\`\`
+
+**✅ CORRECT - Conditional expression handles all cases:**
+\`\`\`json
+{
+  "variables": [
+    { "name": "D", "init": "a*d - b*c" },
+    { "name": "Dx", "init": "e*d - b*f" },
+    { "name": "Dy", "init": "a*f - e*c" },
+    { "name": "xExact", "init": "Dx / D" },
+    { "name": "yExact", "init": "Dy / D" }
+  ],
+  "generation": { "target": "xExact" },
+  "display": {
+    "problem": "a + 'x + ' + b + 'y = ' + e + ' , ' + c + 'x + ' + d + 'y = ' + f",
+    "answer": "D != 0 ? 'x=' + xExact + ', y=' + yExact : ((Dx == 0 && Dy == 0) ? 'Infinite solutions' : 'No solution')"
+  }
+}
+\`\`\`
+
+**Pattern for conditional answers:**
+\`\`\`
+condition ? numericAnswer : alternativeText
+\`\`\`
+
+**Multiple conditions:**
+\`\`\`
+cond1 ? answer1 : (cond2 ? answer2 : answer3)
+\`\`\`
 
 ## Key Principles
 

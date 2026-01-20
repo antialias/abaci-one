@@ -60,16 +60,13 @@ export function DifficultyDistributionSlider({
   const rightHandlePos = distribution.easy + distribution.medium
 
   // Get position from event (mouse or touch)
-  const getPositionFromEvent = useCallback(
-    (e: MouseEvent | TouchEvent): number | null => {
-      if (!trackRef.current) return null
-      const rect = trackRef.current.getBoundingClientRect()
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-      const percentage = ((clientX - rect.left) / rect.width) * 100
-      return Math.max(0, Math.min(100, percentage))
-    },
-    []
-  )
+  const getPositionFromEvent = useCallback((e: MouseEvent | TouchEvent): number | null => {
+    if (!trackRef.current) return null
+    const rect = trackRef.current.getBoundingClientRect()
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const percentage = ((clientX - rect.left) / rect.width) * 100
+    return Math.max(0, Math.min(100, percentage))
+  }, [])
 
   // Handle drag
   const handleDrag = useCallback(
@@ -156,7 +153,10 @@ export function DifficultyDistributionSlider({
 
       if (distToLeft < distToRight) {
         // Move left handle
-        const newEasy = Math.max(minPercentage, Math.min(rightHandlePos - minPercentage, percentage))
+        const newEasy = Math.max(
+          minPercentage,
+          Math.min(rightHandlePos - minPercentage, percentage)
+        )
         const newMedium = rightHandlePos - newEasy
         onChange({
           easy: Math.round(newEasy),
@@ -316,10 +316,7 @@ export function DifficultyDistributionSlider({
 
   // Full three-tier slider
   return (
-    <div
-      data-component="difficulty-slider"
-      className={vstack({ gap: '3', alignItems: 'stretch' })}
-    >
+    <div data-component="difficulty-slider" className={vstack({ gap: '3', alignItems: 'stretch' })}>
       {/* Labels */}
       <div className={hstack({ gap: '2', justifyContent: 'space-between' })}>
         <div className={vstack({ gap: '0', alignItems: 'flex-start' })}>

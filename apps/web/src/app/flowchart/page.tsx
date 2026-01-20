@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import * as Dialog from '@radix-ui/react-dialog'
 import { getFlowchart } from '@/lib/flowcharts/definitions'
@@ -9,6 +9,7 @@ import type { FlowchartDefinition } from '@/lib/flowcharts/schema'
 import { downloadFlowchartPDF } from '@/lib/flowcharts/pdf-export'
 import type { ExecutableFlowchart, ProblemValue } from '@/lib/flowcharts/schema'
 import { generateExamplesAsync } from '@/lib/flowcharts/example-generator-client'
+import { diagnoseFlowchart, type DiagnosticReport } from '@/lib/flowcharts/doctor'
 import {
   FlowchartModal,
   FlowchartCard,
@@ -34,6 +35,7 @@ interface WorkshopSession {
   topicDescription: string | null
   draftTitle: string | null
   draftEmoji: string | null
+  draftDefinitionJson: string | null
   createdAt: string
   updatedAt: string
 }
@@ -107,10 +109,34 @@ export default function FlowchartPickerPage() {
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Examples for animated card backgrounds (generated client-side)
-  // Stores both the flowchart (for formatting) and generated examples
+  // Stores the flowchart, generated examples, and diagnostic report
   const [cardExamples, setCardExamples] = useState<
-    Map<string, { flowchart: ExecutableFlowchart; examples: GeneratedExample[] }>
+    Map<
+      string,
+      {
+        flowchart: ExecutableFlowchart
+        examples: GeneratedExample[]
+        diagnosticReport: DiagnosticReport
+      }
+    >
   >(new Map())
+
+  // Compute diagnostics for draft sessions (memoized)
+  const draftDiagnostics = useMemo(() => {
+    const diagnosticsMap = new Map<string, DiagnosticReport>()
+    for (const session of draftSessions) {
+      if (session.draftDefinitionJson) {
+        try {
+          const definition: FlowchartDefinition = JSON.parse(session.draftDefinitionJson)
+          const report = diagnoseFlowchart(definition, session.draftMermaidContent || undefined)
+          diagnosticsMap.set(session.id, report)
+        } catch {
+          // Invalid JSON, skip
+        }
+      }
+    }
+    return diagnosticsMap
+  }, [draftSessions])
 
   // Load published flowcharts (hardcoded + user-created)
   useEffect(() => {
@@ -136,9 +162,7 @@ export default function FlowchartPickerPage() {
     if (isLoadingPublished) return
 
     // Find flowcharts that don't have examples yet
-    const flowchartsToGenerate = publishedFlowcharts.filter(
-      (fc) => !cardExamples.has(fc.id)
-    )
+    const flowchartsToGenerate = publishedFlowcharts.filter((fc) => !cardExamples.has(fc.id))
 
     if (flowchartsToGenerate.length === 0) return
 
@@ -147,12 +171,14 @@ export default function FlowchartPickerPage() {
       for (const fc of flowchartsToGenerate) {
         try {
           let executable: ExecutableFlowchart
+          let mermaidContent: string | undefined
 
           if (fc.source === 'hardcoded') {
             // Hardcoded flowcharts - use local definitions
             const flowchartData = getFlowchart(fc.id)
             if (!flowchartData) continue
             executable = await loadFlowchart(flowchartData.definition, flowchartData.mermaid)
+            mermaidContent = flowchartData.mermaid
           } else {
             // Database flowcharts - fetch from API
             const response = await fetch(`/api/flowcharts/${fc.id}`)
@@ -163,12 +189,16 @@ export default function FlowchartPickerPage() {
               mermaid: string
             }
             executable = await loadFlowchart(definition, mermaid)
+            mermaidContent = mermaid
           }
+
+          // Run diagnostic check on the flowchart (including mermaid content)
+          const diagnosticReport = diagnoseFlowchart(executable.definition, mermaidContent)
 
           const examples = await generateExamplesAsync(executable, 10, {})
 
           setCardExamples((prev) =>
-            new Map(prev).set(fc.id, { flowchart: executable, examples })
+            new Map(prev).set(fc.id, { flowchart: executable, examples, diagnosticReport })
           )
         } catch (err) {
           console.error(`Failed to generate examples for ${fc.id}:`, err)
@@ -865,6 +895,7 @@ export default function FlowchartPickerPage() {
                     difficulty={flowchart.difficulty}
                     flowchart={cardData?.flowchart}
                     examples={cardData?.examples}
+                    diagnosticReport={cardData?.diagnosticReport}
                     onClick={() => handleCardClick(flowchart.id)}
                     actions={
                       flowchart.source === 'hardcoded'
@@ -916,6 +947,7 @@ export default function FlowchartPickerPage() {
                   status={session.state === 'refining' ? 'In Progress' : 'Draft'}
                   subtitle={`Updated ${new Date(session.updatedAt).toLocaleDateString()}`}
                   onClick={() => handleResumeDraft(session.id)}
+                  diagnosticReport={draftDiagnostics.get(session.id)}
                   actions={[
                     {
                       label: 'Edit',
@@ -1046,19 +1078,29 @@ export default function FlowchartPickerPage() {
             </Dialog.Content>
           )}
 
-          {modalState.type === 'inputting' && (
-            <FlowchartModal
-              flowchart={modalState.flowchart}
-              onSubmit={handleProblemSubmit}
-              onClose={handleClose}
-              shareUrl={
-                // Show share button for published flowcharts (hardcoded or database)
-                publishedFlowcharts.some((fc) => fc.id === modalState.flowchartId)
-                  ? `${typeof window !== 'undefined' ? window.location.origin : ''}/flowchart?select=${modalState.flowchartId}`
-                  : undefined
-              }
-            />
-          )}
+          {modalState.type === 'inputting' &&
+            (() => {
+              const flowchartInfo = publishedFlowcharts.find(
+                (fc) => fc.id === modalState.flowchartId
+              )
+              return (
+                <FlowchartModal
+                  flowchart={modalState.flowchart}
+                  onSubmit={handleProblemSubmit}
+                  onClose={handleClose}
+                  shareUrl={
+                    // Show share button for published flowcharts (hardcoded or database)
+                    flowchartInfo
+                      ? `${typeof window !== 'undefined' ? window.location.origin : ''}/flowchart?select=${modalState.flowchartId}`
+                      : undefined
+                  }
+                  diagnosticReport={cardExamples.get(modalState.flowchartId)?.diagnosticReport}
+                  flowchartId={modalState.flowchartId}
+                  source={flowchartInfo?.source}
+                  isOwnedByUser={flowchartInfo?.authorId === currentUserId}
+                />
+              )
+            })()}
         </Dialog.Portal>
       </Dialog.Root>
     </div>

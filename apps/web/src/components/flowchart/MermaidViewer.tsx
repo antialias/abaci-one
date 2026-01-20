@@ -42,9 +42,16 @@ export function MermaidViewer({ mermaidContent }: MermaidViewerProps) {
     })
 
     const render = async () => {
+      // Generate unique ID for this render
+      const id = `mermaid-${Date.now()}`
+
       try {
-        const id = `mermaid-${Date.now()}`
-        const { svg } = await mermaid.render(id, mermaidContent)
+        // Sanitize content: convert escaped quotes that might have leaked through JSON parsing
+        const sanitizedContent = mermaidContent
+          .replace(/\\"/g, "'") // Convert \" to '
+          .replace(/\\'/g, "'") // Convert \' to '
+
+        const { svg } = await mermaid.render(id, sanitizedContent)
         if (containerRef.current) {
           containerRef.current.innerHTML = svg
           setError(null)
@@ -52,6 +59,13 @@ export function MermaidViewer({ mermaidContent }: MermaidViewerProps) {
       } catch (err) {
         console.error('Mermaid render error:', err)
         setError(err instanceof Error ? err.message : 'Failed to render diagram')
+      } finally {
+        // Clean up any orphaned mermaid elements in document.body
+        // Mermaid creates hidden divs for rendering that can persist on error
+        const orphanedElement = document.getElementById(id)
+        if (orphanedElement && orphanedElement.parentElement === document.body) {
+          orphanedElement.remove()
+        }
       }
     }
 

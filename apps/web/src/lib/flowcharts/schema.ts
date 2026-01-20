@@ -340,6 +340,12 @@ export interface DisplayConfig {
    * Example: "coefficient + 'x ' + operation + ' ' + constant + ' = ' + equals"
    */
   problem?: string
+
+  /**
+   * Expression that evaluates to the answer display string.
+   * Example: "'x = ' + answer" or "answer" or complex fraction formatting
+   */
+  answer?: string
 }
 
 // =============================================================================

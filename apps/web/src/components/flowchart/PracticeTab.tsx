@@ -137,7 +137,9 @@ export function PracticeTab({
   // Calculate difficulty range for visual indicators
   const difficultyRange = useMemo(() => {
     if (generatedExamples.length === 0) return { min: 0, max: 0 }
-    const scores = generatedExamples.map((ex) => ex.complexity.decisions + ex.complexity.checkpoints)
+    const scores = generatedExamples.map(
+      (ex) => ex.complexity.decisions + ex.complexity.checkpoints
+    )
     return { min: Math.min(...scores), max: Math.max(...scores) }
   }, [generatedExamples])
 
@@ -476,8 +478,7 @@ export function PracticeTab({
       tierLabels[tier] !== 'Easy' && tierLabels[tier] !== 'Medium' && tierLabels[tier] !== 'Hard'
   )
 
-  const showTabs =
-    generatedExamples.length > 0 && availableTiers.length > 1 && !allLabelsFromGrid
+  const showTabs = generatedExamples.length > 0 && availableTiers.length > 1 && !allLabelsFromGrid
 
   return (
     <div
@@ -1174,7 +1175,9 @@ export function PracticeTab({
                     cursor: 'pointer',
                     border: 'none',
                     transition: 'all 0.2s',
-                    _hover: { backgroundColor: getDifficultyButtonHoverColor(editorDifficultyLevel) },
+                    _hover: {
+                      backgroundColor: getDifficultyButtonHoverColor(editorDifficultyLevel),
+                    },
                     _active: { transform: 'scale(0.98)' },
                   })}
                 >

@@ -3,7 +3,10 @@
 import { useState, useCallback, useMemo } from 'react'
 import type { ExecutableFlowchart } from '@/lib/flowcharts/schema'
 import type { GeneratedExample } from '@/lib/flowcharts/loader'
-import { DifficultyDistributionSlider, type DifficultyDistribution } from './DifficultyDistributionSlider'
+import {
+  DifficultyDistributionSlider,
+  type DifficultyDistribution,
+} from './DifficultyDistributionSlider'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 
@@ -14,6 +17,10 @@ interface WorksheetTabProps {
   tierCounts: { easy: number; medium: number; hard: number }
   /** Generated examples for problem selection */
   examples?: GeneratedExample[]
+  /** Database flowchart ID (if different from definition.id) */
+  flowchartId?: string
+  /** Workshop session ID (for generating worksheets from unsaved drafts) */
+  workshopSessionId?: string
 }
 
 /** Problem counts options for dropdown */
@@ -29,7 +36,13 @@ function getDefaultPages(problemCount: number): number {
 /**
  * Worksheet tab content - generate PDF worksheets with difficulty controls.
  */
-export function WorksheetTab({ flowchart, tierCounts, examples = [] }: WorksheetTabProps) {
+export function WorksheetTab({
+  flowchart,
+  tierCounts,
+  examples = [],
+  flowchartId,
+  workshopSessionId,
+}: WorksheetTabProps) {
   // Distribution state
   const [distribution, setDistribution] = useState<DifficultyDistribution>(() => {
     // Smart default: distribute based on available examples
@@ -53,6 +66,9 @@ export function WorksheetTab({ flowchart, tierCounts, examples = [] }: Worksheet
   // Whether to include answer key
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true)
 
+  // Whether to order problems by progressive difficulty (easy → medium → hard)
+  const [orderByDifficulty, setOrderByDifficulty] = useState(false)
+
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,9 +91,7 @@ export function WorksheetTab({ flowchart, tierCounts, examples = [] }: Worksheet
     const warnings: string[] = []
 
     if (tierSelection.easy > tierCounts.easy) {
-      warnings.push(
-        `Only ${tierCounts.easy} easy problems available (need ${tierSelection.easy})`
-      )
+      warnings.push(`Only ${tierCounts.easy} easy problems available (need ${tierSelection.easy})`)
     }
     if (tierSelection.medium > tierCounts.medium) {
       warnings.push(
@@ -85,9 +99,7 @@ export function WorksheetTab({ flowchart, tierCounts, examples = [] }: Worksheet
       )
     }
     if (tierSelection.hard > tierCounts.hard) {
-      warnings.push(
-        `Only ${tierCounts.hard} hard problems available (need ${tierSelection.hard})`
-      )
+      warnings.push(`Only ${tierCounts.hard} hard problems available (need ${tierSelection.hard})`)
     }
 
     return warnings
@@ -121,7 +133,18 @@ export function WorksheetTab({ flowchart, tierCounts, examples = [] }: Worksheet
     setError(null)
 
     try {
-      const response = await fetch(`/api/flowcharts/${flowchart.definition.id}/worksheet`, {
+      // Determine which endpoint to use
+      let url: string
+      if (workshopSessionId) {
+        // Workshop mode - use the session endpoint for unsaved drafts
+        url = `/api/flowchart-workshop/sessions/${workshopSessionId}/worksheet`
+      } else {
+        // Normal mode - use database ID or fall back to definition.id
+        const id = flowchartId || flowchart.definition.id
+        url = `/api/flowcharts/${id}/worksheet`
+      }
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,6 +154,7 @@ export function WorksheetTab({ flowchart, tierCounts, examples = [] }: Worksheet
           problemCount,
           pageCount,
           includeAnswerKey,
+          orderByDifficulty,
         }),
       })
 
@@ -141,21 +165,30 @@ export function WorksheetTab({ flowchart, tierCounts, examples = [] }: Worksheet
 
       // Get the PDF blob and trigger download
       const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
+      const url2 = URL.createObjectURL(blob)
       const link = document.createElement('a')
-      link.href = url
+      link.href = url2
       link.download = `${flowchart.definition.title.toLowerCase().replace(/\s+/g, '-')}-worksheet.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      URL.revokeObjectURL(url2)
     } catch (err) {
       console.error('Failed to generate worksheet:', err)
       setError(err instanceof Error ? err.message : 'Failed to generate worksheet')
     } finally {
       setIsGenerating(false)
     }
-  }, [flowchart, distribution, problemCount, pageCount, includeAnswerKey])
+  }, [
+    flowchart,
+    flowchartId,
+    workshopSessionId,
+    distribution,
+    problemCount,
+    pageCount,
+    includeAnswerKey,
+    orderByDifficulty,
+  ])
 
   // If no examples available at all
   const totalAvailable = tierCounts.easy + tierCounts.medium + tierCounts.hard
@@ -179,10 +212,7 @@ export function WorksheetTab({ flowchart, tierCounts, examples = [] }: Worksheet
   }
 
   return (
-    <div
-      data-component="worksheet-tab"
-      className={vstack({ gap: '6', alignItems: 'stretch' })}
-    >
+    <div data-component="worksheet-tab" className={vstack({ gap: '6', alignItems: 'stretch' })}>
       {/* Difficulty Distribution */}
       <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
         <h3
@@ -293,8 +323,8 @@ export function WorksheetTab({ flowchart, tierCounts, examples = [] }: Worksheet
         </div>
       </div>
 
-      {/* Answer key toggle */}
-      <div className={hstack({ gap: '2', justifyContent: 'center' })}>
+      {/* Options toggles */}
+      <div className={vstack({ gap: '2', alignItems: 'center' })}>
         <label
           className={css({
             display: 'flex',
@@ -320,6 +350,33 @@ export function WorksheetTab({ flowchart, tierCounts, examples = [] }: Worksheet
             })}
           >
             Include answer key
+          </span>
+        </label>
+        <label
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2',
+            cursor: 'pointer',
+          })}
+        >
+          <input
+            type="checkbox"
+            checked={orderByDifficulty}
+            onChange={(e) => setOrderByDifficulty(e.target.checked)}
+            className={css({
+              width: '18px',
+              height: '18px',
+              cursor: 'pointer',
+            })}
+          />
+          <span
+            className={css({
+              fontSize: 'sm',
+              color: { base: 'gray.700', _dark: 'gray.300' },
+            })}
+          >
+            Order by difficulty (easy → hard)
           </span>
         </label>
       </div>

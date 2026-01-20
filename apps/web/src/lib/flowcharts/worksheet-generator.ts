@@ -16,7 +16,6 @@ import { loadFlowchart } from './loader'
 import {
   generateDiverseExamples,
   type GeneratedExample,
-  type GenerationConstraints,
   DEFAULT_CONSTRAINTS,
 } from './example-generator'
 import { formatProblemDisplay } from './formatting'
@@ -41,6 +40,8 @@ export interface WorksheetConfig {
   includeAnswerKey: boolean
   /** Optional custom title */
   title?: string
+  /** Order problems by progressive difficulty (easy → medium → hard) */
+  orderByDifficulty?: boolean
 }
 
 export interface WorksheetProblem {
@@ -50,8 +51,10 @@ export interface WorksheetProblem {
   display: string
   /** Difficulty tier */
   tier: 'easy' | 'medium' | 'hard'
-  /** Answer (computed from flowchart) */
+  /** Answer (computed from flowchart) - plain text */
   answer: string
+  /** Answer formatted as Typst math mode (for PDF answer key) */
+  typstAnswer: string
 }
 
 // =============================================================================
@@ -147,8 +150,15 @@ function selectProblems(
     selected.push(exampleToProblem(flowchart, example, tier))
   }
 
-  // Shuffle final selection to mix tiers
-  return shuffleArray(selected)
+  // Either sort by difficulty or shuffle to mix tiers
+  if (config.orderByDifficulty) {
+    // Sort by tier: easy → medium → hard
+    const tierOrder = { easy: 0, medium: 1, hard: 2 }
+    return selected.sort((a, b) => tierOrder[a.tier] - tierOrder[b.tier])
+  } else {
+    // Shuffle to mix tiers randomly
+    return shuffleArray(selected)
+  }
 }
 
 /**
@@ -163,13 +173,16 @@ function exampleToProblem(
 
   // Calculate answer based on schema
   let answer = ''
+  let typstAnswer = ''
   const schema = flowchart.definition.problemInput.schema
 
   switch (schema) {
     case 'two-digit-subtraction': {
       const minuend = example.values.minuend as number
       const subtrahend = example.values.subtrahend as number
-      answer = String(minuend - subtrahend)
+      const result = minuend - subtrahend
+      answer = String(result)
+      typstAnswer = String(result)
       break
     }
     case 'two-fractions-with-op': {
@@ -200,19 +213,25 @@ function exampleToProblem(
       const simplifiedNum = resultNum / gcdVal
       const simplifiedDenom = resultDenom / gcdVal
 
-      // Format answer
+      // Format answer (plain text and Typst)
       if (simplifiedDenom === 1) {
         answer = String(simplifiedNum)
+        typstAnswer = String(simplifiedNum)
       } else {
         const whole = Math.floor(Math.abs(simplifiedNum) / simplifiedDenom)
         const remainder = Math.abs(simplifiedNum) % simplifiedDenom
         const sign = simplifiedNum < 0 ? '-' : ''
         if (whole > 0 && remainder > 0) {
           answer = `${sign}${whole} ${remainder}/${simplifiedDenom}`
+          // Typst math mode: whole number followed by proper fraction
+          typstAnswer = `$${sign}${whole} frac(${remainder}, ${simplifiedDenom})$`
         } else if (whole > 0) {
           answer = `${sign}${whole}`
+          typstAnswer = `${sign}${whole}`
         } else {
           answer = `${sign}${remainder}/${simplifiedDenom}`
+          // Typst math mode: just a fraction
+          typstAnswer = `$${sign}frac(${remainder}, ${simplifiedDenom})$`
         }
       }
       break
@@ -224,12 +243,15 @@ function exampleToProblem(
       const equals = example.values.equals as number
 
       // Solve: ax + b = c or ax - b = c
-      const x = operation === '+' ? (equals - constant) / coefficient : (equals + constant) / coefficient
+      const x =
+        operation === '+' ? (equals - constant) / coefficient : (equals + constant) / coefficient
       answer = String(x)
+      typstAnswer = String(x)
       break
     }
     default:
       answer = '?'
+      typstAnswer = '?'
   }
 
   return {
@@ -237,6 +259,7 @@ function exampleToProblem(
     display,
     tier,
     answer,
+    typstAnswer,
   }
 }
 
@@ -366,10 +389,11 @@ export function generateWorksheetTypst(
 
     for (let i = 0; i < problems.length; i++) {
       const problem = problems[i]
+      // Use typstAnswer for proper fraction rendering in the PDF
       typst += `
   [
     #text(size: 10pt)[
-      *${i + 1}.* ${escapeTypst(problem.answer)}
+      *${i + 1}.* ${problem.typstAnswer}
     ]
   ],
 `
@@ -523,9 +547,9 @@ function getDifficultyDot(tier: 'easy' | 'medium' | 'hard'): string {
 // =============================================================================
 
 /**
- * Generate a worksheet PDF
+ * Generate a worksheet PDF from a flowchart ID
  *
- * @param flowchartId - ID of the flowchart
+ * @param flowchartId - ID of the flowchart (database or hardcoded)
  * @param config - Worksheet configuration
  * @returns PDF buffer
  */
@@ -541,6 +565,22 @@ export async function generateWorksheetPDF(
 
   const flowchart = await loadFlowchart(flowchartData.definition, flowchartData.mermaid)
 
+  return generateWorksheetPDFFromFlowchart(flowchart, config)
+}
+
+/**
+ * Generate a worksheet PDF from an ExecutableFlowchart directly
+ *
+ * This is useful for workshop drafts that haven't been saved to the database yet.
+ *
+ * @param flowchart - The executable flowchart
+ * @param config - Worksheet configuration
+ * @returns PDF buffer
+ */
+export async function generateWorksheetPDFFromFlowchart(
+  flowchart: ExecutableFlowchart,
+  config: WorksheetConfig
+): Promise<Buffer> {
   // Generate examples
   const exampleCount = Math.max(config.problemCount * 3, 100) // Generate extra for variety
   const examples = generateDiverseExamples(flowchart, exampleCount, DEFAULT_CONSTRAINTS)
