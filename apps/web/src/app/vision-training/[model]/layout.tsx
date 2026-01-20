@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect } from 'react'
 import { notFound } from 'next/navigation'
 import { css } from '../../../../styled-system/css'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -30,17 +30,43 @@ export default function VisionTrainingLayout({ children, params }: VisionTrainin
     notFound()
   }
 
+  // Prevent body scrolling on vision training pages
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [])
+
   return (
     <PageWithNav navSlot={<VisionTrainingNavSlot />}>
       <div
         data-component="vision-training-layout"
         className={css({
-          minHeight: '100vh',
+          // Fixed nav is position:fixed, so we need padding-top to push content below it
+          // Then fill remaining viewport height
+          pt: 'var(--app-nav-height, 72px)',
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
           bg: 'gray.900',
           color: 'gray.100',
+          overflow: 'hidden',
         })}
       >
-        <main data-element="vision-content">{children}</main>
+        <main
+          data-element="vision-content"
+          className={css({
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            overflow: 'hidden',
+          })}
+        >
+          {children}
+        </main>
       </div>
     </PageWithNav>
   )

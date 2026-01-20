@@ -295,6 +295,12 @@ def parse_args():
         default=None,
         help="Session ID for tracking this training run (for session management)",
     )
+    parser.add_argument(
+        "--manifest-file",
+        type=str,
+        default=None,
+        help="Path to manifest JSON listing specific items to train on (for filtered training).",
+    )
     return parser.parse_args()
 
 
@@ -470,7 +476,8 @@ def generate_heatmaps(keypoints: List[Tuple[float, float]], size: int, sigma: fl
 
 def load_dataset(data_dir: str, image_size: int = 224, heatmap_size: int = 56,
                  heatmap_sigma: float = 2.0, use_json: bool = False,
-                 apply_marker_masking: bool = True, color_augmentation: bool = False):
+                 apply_marker_masking: bool = True, color_augmentation: bool = False,
+                 manifest_file: str = None):
     """
     Load frames and their corner annotations.
 
@@ -482,6 +489,7 @@ def load_dataset(data_dir: str, image_size: int = 224, heatmap_size: int = 56,
         use_json: Output JSON progress events
         apply_marker_masking: Whether to mask ArUco markers (recommended True)
         color_augmentation: Whether to apply color augmentation (brightness/contrast/saturation)
+        manifest_file: Optional path to manifest JSON for filtered training
 
     Returns:
         images: Array of images (N, H, W, 3) normalized to [0, 1]
@@ -498,9 +506,61 @@ def load_dataset(data_dir: str, image_size: int = 224, heatmap_size: int = 56,
         }, use_json)
         sys.exit(1)
 
-    # Find all PNG files
-    png_files = list(data_path.glob("**/*.png"))
-    total_files = len(png_files)
+    # Check if using manifest for filtered training
+    if manifest_file:
+        emit_progress("status", {
+            "message": f"Loading filtered dataset from manifest: {manifest_file}",
+            "phase": "loading"
+        }, use_json)
+
+        try:
+            with open(manifest_file, 'r') as f:
+                manifest = json.load(f)
+        except Exception as e:
+            emit_progress("error", {
+                "message": f"Failed to load manifest file: {e}",
+            }, use_json)
+            sys.exit(1)
+
+        manifest_items = manifest.get('items', [])
+        if not manifest_items:
+            emit_progress("error", {
+                "message": "Manifest contains no items",
+            }, use_json)
+            sys.exit(1)
+
+        # Convert manifest items to PNG file paths
+        png_files = []
+        for item in manifest_items:
+            if item.get('type') != 'boundary':
+                continue
+
+            device_id = item.get('deviceId')
+            base_name = item.get('baseName')
+
+            if not device_id or not base_name:
+                continue
+
+            # Construct path: data_dir/deviceId/baseName.png
+            img_path = data_path / device_id / f"{base_name}.png"
+            if img_path.exists():
+                png_files.append(img_path)
+            else:
+                emit_progress("status", {
+                    "message": f"Warning: Missing file from manifest: {img_path}",
+                    "phase": "loading"
+                }, use_json)
+
+        total_files = len(png_files)
+        emit_progress("status", {
+            "message": f"Found {total_files} files from manifest (out of {len(manifest_items)} items)",
+            "phase": "loading"
+        }, use_json)
+
+    else:
+        # Find all PNG files (original behavior)
+        png_files = list(data_path.glob("**/*.png"))
+        total_files = len(png_files)
 
     emit_progress("loading_progress", {
         "step": "scanning",
@@ -654,6 +714,7 @@ def load_dataset(data_dir: str, image_size: int = 224, heatmap_size: int = 56,
         "marker_masking_enabled": apply_marker_masking,
         "color_augmentation_enabled": color_augmentation,
         "augment_factor": augment_factor,
+        "using_manifest": manifest_file is not None,
         "phase": "loading"
     }, use_json)
 
@@ -1102,6 +1163,85 @@ def train_model(X_train, heatmaps_train, coords_train,
 # Export
 # =============================================================================
 
+def run_subprocess_with_streaming(cmd: list, use_json: bool, timeout_seconds: int = 300) -> tuple[int, str, str]:
+    """
+    Run a subprocess with streaming output and timeout.
+
+    Returns (returncode, stdout, stderr).
+    Emits progress messages as output is received.
+    """
+    import subprocess
+    import select
+    import time
+
+    emit_progress("status", {"message": f"Running: {' '.join(cmd)}", "phase": "exporting"}, use_json)
+
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,  # Line buffered
+    )
+
+    stdout_lines = []
+    stderr_lines = []
+    start_time = time.time()
+
+    try:
+        while process.poll() is None:
+            # Check timeout
+            elapsed = time.time() - start_time
+            if elapsed > timeout_seconds:
+                process.kill()
+                emit_progress("status", {
+                    "message": f"Process timed out after {timeout_seconds}s",
+                    "phase": "exporting"
+                }, use_json)
+                return -1, '\n'.join(stdout_lines), f"Timeout after {timeout_seconds}s"
+
+            # Use select to check for available output (non-blocking)
+            if sys.platform != 'win32':
+                readable, _, _ = select.select([process.stdout, process.stderr], [], [], 1.0)
+                for stream in readable:
+                    line = stream.readline()
+                    if line:
+                        line = line.rstrip()
+                        if stream == process.stdout:
+                            stdout_lines.append(line)
+                            emit_progress("status", {
+                                "message": f"[converter] {line[:200]}",
+                                "phase": "exporting"
+                            }, use_json)
+                        else:
+                            stderr_lines.append(line)
+                            if line.strip():  # Only emit non-empty stderr
+                                emit_progress("status", {
+                                    "message": f"[converter stderr] {line[:200]}",
+                                    "phase": "exporting"
+                                }, use_json)
+            else:
+                # Windows fallback - just wait a bit
+                time.sleep(1.0)
+                emit_progress("status", {
+                    "message": f"Converting... ({int(elapsed)}s elapsed)",
+                    "phase": "exporting"
+                }, use_json)
+
+        # Read any remaining output
+        remaining_stdout, remaining_stderr = process.communicate(timeout=10)
+        if remaining_stdout:
+            stdout_lines.extend(remaining_stdout.split('\n'))
+        if remaining_stderr:
+            stderr_lines.extend(remaining_stderr.split('\n'))
+
+    except subprocess.TimeoutExpired:
+        process.kill()
+        return -1, '\n'.join(stdout_lines), "Process killed due to timeout"
+
+    return process.returncode, '\n'.join(stdout_lines), '\n'.join(stderr_lines)
+
+
 def export_to_tfjs(model, output_dir: str, use_json: bool = False):
     """Export model to TensorFlow.js format."""
     import subprocess
@@ -1140,11 +1280,12 @@ def export_to_tfjs(model, output_dir: str, use_json: bool = False):
             str(output_path),
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        # Use streaming subprocess with 5 minute timeout
+        returncode, stdout, stderr = run_subprocess_with_streaming(cmd, use_json, timeout_seconds=300)
 
-        if result.returncode != 0:
+        if returncode != 0:
             emit_progress("status", {
-                "message": f"TensorFlow.js conversion warning: {result.stderr[-500:] if result.stderr else 'unknown'}",
+                "message": f"TensorFlow.js conversion warning: {stderr[-500:] if stderr else 'unknown'}",
                 "phase": "exporting"
             }, use_json)
 
@@ -1257,6 +1398,7 @@ def main():
         use_json=use_json,
         apply_marker_masking=apply_masking,
         color_augmentation=args.color_augmentation,
+        manifest_file=args.manifest_file,
     )
 
     if len(images) < 20:

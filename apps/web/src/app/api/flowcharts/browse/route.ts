@@ -2,6 +2,7 @@ import { desc, eq, like, or } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getFlowchartList } from '@/lib/flowcharts/definitions'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/flowcharts/browse
@@ -66,7 +67,7 @@ export async function GET(req: NextRequest) {
       emoji: fc.emoji || '📊',
       difficulty: fc.difficulty as 'Beginner' | 'Intermediate' | 'Advanced',
       source: 'database' as const,
-      authorName: null, // Would need user lookup for this
+      authorId: fc.userId, // Include author ID for ownership checks
       publishedAt: fc.publishedAt,
       searchKeywords: fc.searchKeywords,
     }))
@@ -96,11 +97,20 @@ export async function GET(req: NextRequest) {
     // Apply pagination
     const paginatedFlowcharts = allFlowcharts.slice(offset, offset + limit)
 
+    // Get current user ID for ownership checks (optional - doesn't fail if not logged in)
+    let currentUserId: string | null = null
+    try {
+      currentUserId = await getDbUserId()
+    } catch {
+      // Not logged in, that's fine
+    }
+
     return NextResponse.json({
       flowcharts: paginatedFlowcharts,
       total,
       limit,
       offset,
+      currentUserId,
     })
   } catch (error) {
     console.error('Failed to browse flowcharts:', error)

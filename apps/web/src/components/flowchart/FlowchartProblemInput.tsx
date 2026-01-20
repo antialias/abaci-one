@@ -46,6 +46,8 @@ interface FlowchartProblemInputProps {
   asModal?: boolean
   /** Called when the modal close button is clicked (only used when asModal=true) */
   onClose?: () => void
+  /** Optional share URL - when provided, shows a share button that copies this URL */
+  shareUrl?: string
 }
 
 /**
@@ -58,6 +60,7 @@ export function FlowchartProblemInput({
   flowchart,
   asModal = false,
   onClose,
+  shareUrl,
 }: FlowchartProblemInputProps) {
   const [values, setValues] = useState<Record<string, ProblemValue>>(() =>
     initializeValues(schema.fields)
@@ -84,6 +87,8 @@ export function FlowchartProblemInput({
   const containerRef = useRef<HTMLDivElement>(null)
   // Visual debug mode
   const { isVisualDebugEnabled } = useVisualDebugSafe()
+  // Share button state - shows "Copied!" feedback
+  const [shareCopied, setShareCopied] = useState(false)
 
   // Create a stable storage key for caching examples
   const storageKey = useMemo(() => {
@@ -452,6 +457,18 @@ export function FlowchartProblemInput({
     setError(null)
   }, [])
 
+  // Handle share button click - copy URL to clipboard
+  const handleShare = useCallback(async () => {
+    if (!shareUrl) return
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy share URL:', err)
+    }
+  }, [shareUrl])
+
   // Long press handling for mobile
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const longPressTriggeredRef = useRef(false)
@@ -697,6 +714,60 @@ export function FlowchartProblemInput({
           showDebugControls={isVisualDebugEnabled}
         />
       </div>
+
+      {/* Cozy share corner - lower right (for shareable flowcharts) */}
+      {shareUrl && (
+        <div
+          data-element="share-corner"
+          className={css({
+            position: 'absolute',
+            bottom: '-4px',
+            right: '-4px',
+            width: '44px',
+            height: '44px',
+            backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+            borderTopLeftRadius: 'xl',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingBottom: '4px',
+            paddingRight: '4px',
+            zIndex: 10,
+          })}
+        >
+          <button
+            type="button"
+            onClick={handleShare}
+            title={shareCopied ? 'Copied!' : 'Copy link to share'}
+            className={css({
+              width: '28px',
+              height: '28px',
+              borderRadius: 'md',
+              backgroundColor: shareCopied
+                ? { base: 'green.100', _dark: 'green.900' }
+                : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '14px',
+              color: shareCopied
+                ? { base: 'green.600', _dark: 'green.400' }
+                : { base: 'gray.500', _dark: 'gray.400' },
+              transition: 'all 0.2s',
+              _hover: {
+                backgroundColor: shareCopied
+                  ? { base: 'green.200', _dark: 'green.800' }
+                  : { base: 'gray.200', _dark: 'gray.600' },
+                transform: 'scale(1.1)',
+              },
+            })}
+          >
+            {shareCopied ? '✓' : '🔗'}
+          </button>
+        </div>
+      )}
 
       {/* Title + Difficulty Filter */}
       {flowchart &&

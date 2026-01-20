@@ -27,7 +27,12 @@ interface TrainingConfig {
   validationSplit?: number
   noAugmentation?: boolean
   colorAugmentation?: boolean
+  /** Manifest ID for training on filtered data subset */
+  manifestId?: string
 }
+
+// Directory where manifests are stored
+const MANIFESTS_DIR = path.join(process.cwd(), 'data/vision-training/manifests')
 
 /**
  * Model-specific configuration
@@ -284,6 +289,22 @@ export async function POST(request: Request): Promise<Response> {
   }
   if (config.colorAugmentation) {
     args.push('--color-augmentation')
+  }
+
+  // Add manifest file path if training on filtered data
+  if (config.manifestId) {
+    const manifestPath = path.join(MANIFESTS_DIR, `${config.manifestId}.json`)
+    if (fs.existsSync(manifestPath)) {
+      args.push('--manifest-file', manifestPath)
+    } else {
+      return new Response(
+        JSON.stringify({
+          error: 'Manifest not found',
+          hint: `Manifest ${config.manifestId} does not exist`,
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
   }
 
   // Create abort controller for cancellation

@@ -2,6 +2,8 @@ import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
+import { generateFlowchartEmbeddings, EMBEDDING_VERSION } from '@/lib/flowcharts/embedding'
+import { invalidateEmbeddingCache } from '@/lib/flowcharts/embedding-search'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -73,6 +75,34 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     // - Verify expressions are valid
     // - Test with example generation
 
+    // Find the workshop session to get the original topic description (if any)
+    // This helps with semantic matching - the user's original phrasing captures intent
+    const workshopSession = await db.query.workshopSessions.findFirst({
+      where: eq(schema.workshopSessions.flowchartId, id),
+      columns: {
+        topicDescription: true,
+      },
+    })
+
+    // Generate embeddings for semantic search
+    // - embedding: full content (title + description + topic + difficulty)
+    // - promptEmbedding: just the original topic description (better for short queries)
+    let embedding: Buffer | null = null
+    let promptEmbedding: Buffer | null = null
+    try {
+      const result = await generateFlowchartEmbeddings({
+        title: existing.title,
+        description: existing.description,
+        topicDescription: workshopSession?.topicDescription,
+        difficulty: existing.difficulty,
+      })
+      embedding = result.embedding
+      promptEmbedding = result.promptEmbedding
+    } catch (embeddingError) {
+      // Log but don't fail publish - embedding is nice to have but not required
+      console.error('Failed to generate embeddings for flowchart:', embeddingError)
+    }
+
     const now = new Date()
 
     const [flowchart] = await db
@@ -81,9 +111,17 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         status: 'published',
         publishedAt: now,
         updatedAt: now,
+        embedding,
+        promptEmbedding,
+        embeddingVersion: embedding ? EMBEDDING_VERSION : null,
       })
       .where(eq(schema.teacherFlowcharts.id, id))
       .returning()
+
+    // Invalidate embedding cache so new flowchart appears in searches
+    if (embedding) {
+      invalidateEmbeddingCache()
+    }
 
     return NextResponse.json({ flowchart })
   } catch (error) {

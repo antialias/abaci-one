@@ -673,7 +673,12 @@
       "WebFetch(domain:global.download.synology.com)",
       "Bash(go version:*)",
       "Bash(go install:*)",
-      "Bash(~/go/bin/syno-vm:*)"
+      "Bash(~/go/bin/syno-vm:*)",
+      "WebFetch(domain:cdimage.debian.org)",
+      "mcp__chrome-devtools__fill",
+      "Bash(npx:*)",
+      "mcp__chrome-devtools__select_page",
+      "Bash(pgrep:*)"
     ],
     "deny": [],
     "ask": []

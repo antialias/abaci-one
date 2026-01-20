@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { css } from '../../../../../styled-system/css'
 import { TrainingDiagnosticsProvider } from '../../train/components/TrainingDiagnosticsContext'
 import { TrainingWizard } from '../../train/components/wizard/TrainingWizard'
@@ -20,6 +21,24 @@ import { isColumnClassifierSamples } from '../../train/components/wizard/types'
 
 // localStorage key for config persistence
 const STORAGE_KEY_CONFIG = 'vision-training-config'
+
+/**
+ * Training manifest for filtered data selection
+ */
+interface TrainingManifest {
+  id: string
+  modelType: 'column-classifier' | 'boundary-detector'
+  createdAt: string
+  filters: {
+    captureType?: 'passive' | 'explicit' | 'all'
+    deviceId?: string
+    digit?: number
+  }
+  items: Array<
+    | { type: 'column'; digit: number; filename: string }
+    | { type: 'boundary'; deviceId: string; baseName: string }
+  >
+}
 
 /** Animated background tile that transitions between image and digit */
 function AnimatedTile({ src, digit, index }: { src: string; digit: number; index: number }) {
@@ -122,6 +141,15 @@ const DEFAULT_CONFIG: TrainingConfig = {
 export default function TrainModelPage() {
   // Get model type from URL path - this is the single source of truth
   const modelType = useModelType()
+
+  // Get manifest ID from URL query params (for filtered training)
+  const searchParams = useSearchParams()
+  const manifestId = searchParams.get('manifest')
+
+  // Manifest state
+  const [manifest, setManifest] = useState<TrainingManifest | null>(null)
+  const [manifestLoading, setManifestLoading] = useState(false)
+  const [manifestError, setManifestError] = useState<string | null>(null)
 
   // Configuration - will be loaded from localStorage if available
   const [config, setConfig] = useState<TrainingConfig>(DEFAULT_CONFIG)
@@ -258,6 +286,38 @@ export default function TrainModelPage() {
     fetchSamples()
   }, [fetchSamples])
 
+  // Fetch manifest if manifestId is provided in URL
+  useEffect(() => {
+    if (!manifestId) {
+      setManifest(null)
+      setManifestError(null)
+      return
+    }
+
+    const fetchManifest = async () => {
+      setManifestLoading(true)
+      setManifestError(null)
+      try {
+        const response = await fetch(`/api/vision-training/manifests/${manifestId}`)
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('Manifest not found. It may have been deleted.')
+          }
+          throw new Error(`Failed to fetch manifest: ${response.statusText}`)
+        }
+        const data = await response.json()
+        setManifest(data)
+      } catch (err) {
+        setManifestError(err instanceof Error ? err.message : 'Failed to load manifest')
+        setManifest(null)
+      } finally {
+        setManifestLoading(false)
+      }
+    }
+
+    fetchManifest()
+  }, [manifestId])
+
   useEffect(() => {
     return () => {
       eventSourceRef.current?.close()
@@ -293,6 +353,8 @@ export default function TrainModelPage() {
           batchSize: config.batchSize,
           validationSplit: config.validationSplit,
           colorAugmentation: config.colorAugmentation,
+          // Include manifest ID if training on filtered data
+          manifestId: manifest?.id,
         }),
       })
 
@@ -329,7 +391,7 @@ export default function TrainModelPage() {
       setServerPhase('error')
       setError(err instanceof Error ? err.message : 'Unknown error')
     }
-  }, [config, modelType])
+  }, [config, modelType, manifest])
 
   const handleEvent = useCallback(
     (eventType: string, data: Record<string, unknown>) => {
@@ -557,7 +619,7 @@ export default function TrainModelPage() {
         overflow: 'hidden',
         pt: 4,
       })}
-      style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
+      style={{ minHeight: 'calc(100vh - 120px)' }}
     >
       {/* Tiled Background Effect */}
       {allTiles.length > 0 && (
@@ -613,6 +675,86 @@ export default function TrainModelPage() {
           zIndex: 1,
         })}
       >
+        {/* Manifest Summary Banner (when training on filtered data) */}
+        {manifestId && (
+          <div
+            data-element="manifest-banner"
+            className={css({
+              mb: 6,
+              p: 4,
+              bg: 'purple.900/30',
+              border: '1px solid',
+              borderColor: 'purple.700/50',
+              borderRadius: 'lg',
+            })}
+          >
+            {manifestLoading ? (
+              <div
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  color: 'purple.300',
+                })}
+              >
+                <span className={css({ animation: 'spin 1s linear infinite' })}>⏳</span>
+                <span>Loading manifest...</span>
+              </div>
+            ) : manifestError ? (
+              <div className={css({ color: 'red.400' })}>
+                <strong>Error:</strong> {manifestError}
+              </div>
+            ) : manifest ? (
+              <div>
+                <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 2 })}>
+                  <span className={css({ fontSize: 'lg' })}>🎯</span>
+                  <h3 className={css({ fontSize: 'md', fontWeight: 'bold', color: 'purple.200' })}>
+                    Training on Filtered Dataset
+                  </h3>
+                </div>
+                <div
+                  className={css({
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 4,
+                    fontSize: 'sm',
+                    color: 'gray.300',
+                  })}
+                >
+                  <div>
+                    <span className={css({ color: 'gray.500' })}>Items:</span>{' '}
+                    <strong className={css({ color: 'purple.300' })}>
+                      {manifest.items.length}
+                    </strong>
+                  </div>
+                  {manifest.filters.captureType && manifest.filters.captureType !== 'all' && (
+                    <div>
+                      <span className={css({ color: 'gray.500' })}>Capture:</span>{' '}
+                      <strong>{manifest.filters.captureType}</strong>
+                    </div>
+                  )}
+                  {manifest.filters.deviceId && (
+                    <div>
+                      <span className={css({ color: 'gray.500' })}>Device:</span>{' '}
+                      <strong>{manifest.filters.deviceId}</strong>
+                    </div>
+                  )}
+                  {manifest.filters.digit !== undefined && (
+                    <div>
+                      <span className={css({ color: 'gray.500' })}>Digit:</span>{' '}
+                      <strong>{manifest.filters.digit}</strong>
+                    </div>
+                  )}
+                  <div>
+                    <span className={css({ color: 'gray.500' })}>Created:</span>{' '}
+                    <span>{new Date(manifest.createdAt).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+
         {/* Title */}
         <div className={css({ textAlign: 'center', mb: 6 })}>
           <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 2 })}>

@@ -5,11 +5,12 @@ Difficulty profiles are pre-configured combinations of regrouping frequency and 
 ## The Six Profiles
 
 ### 1. Beginner
+
 **Focus:** Learning worksheet structure, no regrouping yet.
 
-| Setting | Value |
-|---------|-------|
-| Regrouping | 0% |
+| Setting     | Value         |
+| ----------- | ------------- |
+| Regrouping  | 0%            |
 | Scaffolding | Full (always) |
 
 **Use when:** Student is new to multi-digit arithmetic or needs to learn place value alignment.
@@ -19,11 +20,12 @@ Difficulty profiles are pre-configured combinations of regrouping frequency and 
 ---
 
 ### 2. Early Learner
+
 **Focus:** Introducing regrouping concept with full support.
 
-| Setting | Value |
-|---------|-------|
-| Regrouping | 25% |
+| Setting     | Value                        |
+| ----------- | ---------------------------- |
+| Regrouping  | 25%                          |
 | Scaffolding | Conditional (whenRegrouping) |
 
 **Use when:** Student understands place value, ready to encounter carrying/borrowing.
@@ -33,11 +35,12 @@ Difficulty profiles are pre-configured combinations of regrouping frequency and 
 ---
 
 ### 3. Practice
+
 **Focus:** Master regrouping mechanics WITH scaffolding support.
 
-| Setting | Value |
-|---------|-------|
-| Regrouping | 75% |
+| Setting     | Value                        |
+| ----------- | ---------------------------- |
+| Regrouping  | 75%                          |
 | Scaffolding | High (always/whenRegrouping) |
 
 **Use when:** Student understands regrouping but needs repetition to build fluency.
@@ -47,11 +50,12 @@ Difficulty profiles are pre-configured combinations of regrouping frequency and 
 ---
 
 ### 4. Intermediate
+
 **Focus:** Begin removing scaffolding while maintaining regrouping frequency.
 
-| Setting | Value |
-|---------|-------|
-| Regrouping | 75% |
+| Setting     | Value                          |
+| ----------- | ------------------------------ |
+| Regrouping  | 75%                            |
 | Scaffolding | Reduced (whenMultipleRegroups) |
 
 **Use when:** Student is accurate with regrouping, ready for more independence.
@@ -61,11 +65,12 @@ Difficulty profiles are pre-configured combinations of regrouping frequency and 
 ---
 
 ### 5. Advanced
+
 **Focus:** Complex problems with minimal support.
 
-| Setting | Value |
-|---------|-------|
-| Regrouping | 90% |
+| Setting     | Value                          |
+| ----------- | ------------------------------ |
+| Regrouping  | 90%                            |
 | Scaffolding | Minimal (when3PlusDigits only) |
 
 **Use when:** Student demonstrates consistent accuracy, building speed.
@@ -73,12 +78,13 @@ Difficulty profiles are pre-configured combinations of regrouping frequency and 
 ---
 
 ### 6. Expert
+
 **Focus:** Full independence, preparing for mental math.
 
-| Setting | Value |
-|---------|-------|
-| Regrouping | 90% |
-| Scaffolding | None |
+| Setting     | Value |
+| ----------- | ----- |
+| Regrouping  | 90%   |
+| Scaffolding | None  |
 
 **Use when:** Student is ready for standardized test format or transitioning to mental arithmetic.
 
@@ -99,12 +105,14 @@ Structure     Concept      WITH Help   Support     Problems    Independence
 Many curricula rush through the practice phase. Students who haven't mastered regrouping WITH scaffolding will struggle when it's removed.
 
 **Signs a student isn't ready to progress:**
+
 - Accuracy drops below 85%
 - Frequently forgets to carry/borrow
 - Needs to count on fingers for single-digit sums
 - Avoids problems or shows frustration
 
 **Signs a student is ready to progress:**
+
 - Consistent 90%+ accuracy
 - Smooth, confident work
 - Can explain their process
@@ -137,6 +145,7 @@ Ask these questions:
 ## Custom Configurations
 
 If profiles don't fit, you can customize:
+
 - Use Practice regrouping (75%) with Intermediate scaffolding
 - Increase regrouping to 100% for targeted practice
 - Keep scaffolding longer for students with working memory challenges

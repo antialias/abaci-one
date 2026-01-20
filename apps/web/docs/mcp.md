@@ -7,6 +7,7 @@ MCP (Model Context Protocol) allows external tools like Claude Code to access st
 ### 1. Generate an API Key
 
 **Via API:**
+
 ```bash
 curl -X POST http://localhost:3000/api/settings/mcp-keys \
   -H "Content-Type: application/json" \
@@ -39,6 +40,7 @@ For production, use your server's URL (e.g., `https://abaci.your-domain.com/api/
 ## Available Tools
 
 ### `list_students`
+
 List all students accessible to this API key.
 
 ```json
@@ -49,6 +51,7 @@ List all students accessible to this API key.
 ```
 
 Returns:
+
 ```json
 [
   { "playerId": "abc123", "name": "Sonia", "emoji": "🦊" },
@@ -57,6 +60,7 @@ Returns:
 ```
 
 ### `get_student_overview`
+
 Quick snapshot of a student's progress.
 
 ```json
@@ -67,6 +71,7 @@ Quick snapshot of a student's progress.
 ```
 
 Returns:
+
 ```json
 {
   "playerId": "abc123",
@@ -81,6 +86,7 @@ Returns:
 ```
 
 ### `get_skills`
+
 Detailed skill mastery data with optional filtering.
 
 ```json
@@ -88,13 +94,14 @@ Detailed skill mastery data with optional filtering.
   "name": "get_skills",
   "arguments": {
     "player_id": "abc123",
-    "status": "developing",        // optional: "strong", "developing", "weak"
-    "category": "tenComplements"   // optional: filter by category
+    "status": "developing", // optional: "strong", "developing", "weak"
+    "category": "tenComplements" // optional: filter by category
   }
 }
 ```
 
 Returns:
+
 ```json
 [
   {
@@ -112,6 +119,7 @@ Returns:
 ```
 
 **Skill Categories:**
+
 - `basic` - Direct addition/subtraction, heaven bead, simple combinations
 - `fiveComplements` - Five complements addition (1=5-4, 2=5-3, etc.)
 - `fiveComplementsSub` - Five complements subtraction
@@ -120,6 +128,7 @@ Returns:
 - `advanced` - Cascading carry/borrow
 
 ### `get_recent_errors`
+
 Get recent incorrect answers for targeted practice.
 
 ```json
@@ -127,14 +136,15 @@ Get recent incorrect answers for targeted practice.
   "name": "get_recent_errors",
   "arguments": {
     "player_id": "abc123",
-    "days": 7,                    // optional, default: 7
-    "skill_id": "tenComplementsSub.-1=+9-10",  // optional
-    "limit": 20                   // optional, default: 20
+    "days": 7, // optional, default: 7
+    "skill_id": "tenComplementsSub.-1=+9-10", // optional
+    "limit": 20 // optional, default: 20
   }
 }
 ```
 
 Returns:
+
 ```json
 [
   {
@@ -146,6 +156,7 @@ Returns:
 ```
 
 ### `get_practice_sessions`
+
 Get practice session history.
 
 ```json
@@ -153,12 +164,13 @@ Get practice session history.
   "name": "get_practice_sessions",
   "arguments": {
     "player_id": "abc123",
-    "days": 14                    // optional, default: 14
+    "days": 14 // optional, default: 14
   }
 }
 ```
 
 Returns:
+
 ```json
 [
   {
@@ -170,6 +182,7 @@ Returns:
 ```
 
 ### `get_recommended_focus`
+
 Get skills that need the most attention.
 
 ```json
@@ -177,12 +190,13 @@ Get skills that need the most attention.
   "name": "get_recommended_focus",
   "arguments": {
     "player_id": "abc123",
-    "count": 5                    // optional, default: 5
+    "count": 5 // optional, default: 5
   }
 }
 ```
 
 Returns:
+
 ```json
 [
   {
@@ -198,6 +212,7 @@ Returns:
 ```
 
 **Reason values:**
+
 - `needs_practice` - Weak skill, low accuracy
 - `close_to_mastery` - Developing, almost strong
 - `maintenance` - Strong but good to review
@@ -209,6 +224,7 @@ Returns:
 These tools allow you to create, control, and monitor practice sessions programmatically.
 
 ### `start_practice_session`
+
 Create and optionally start a new practice session for a student.
 
 ```json
@@ -248,6 +264,7 @@ Create and optionally start a new practice session for a student.
 | `game_breaks.selection_mode` | No | `"kid-chooses"` | `"kid-chooses"` or `"auto-start"` |
 
 Returns:
+
 ```json
 {
   "sessionId": "clxyz123",
@@ -258,15 +275,31 @@ Returns:
     "totalProblemCount": 45,
     "estimatedMinutes": 10,
     "parts": [
-      { "partNumber": 1, "type": "abacus", "problemCount": 15, "estimatedMinutes": 3 },
-      { "partNumber": 2, "type": "visualization", "problemCount": 15, "estimatedMinutes": 3 },
-      { "partNumber": 3, "type": "linear", "problemCount": 15, "estimatedMinutes": 4 }
+      {
+        "partNumber": 1,
+        "type": "abacus",
+        "problemCount": 15,
+        "estimatedMinutes": 3
+      },
+      {
+        "partNumber": 2,
+        "type": "visualization",
+        "problemCount": 15,
+        "estimatedMinutes": 3
+      },
+      {
+        "partNumber": 3,
+        "type": "linear",
+        "problemCount": 15,
+        "estimatedMinutes": 4
+      }
     ]
   }
 }
 ```
 
 ### `get_active_session`
+
 Get the current active practice session for a student, including URLs and progress.
 
 ```json
@@ -279,6 +312,7 @@ Get the current active practice session for a student, including URLs and progre
 ```
 
 Returns (when session exists):
+
 ```json
 {
   "hasActiveSession": true,
@@ -298,6 +332,7 @@ Returns (when session exists):
 ```
 
 Returns (when no session):
+
 ```json
 {
   "hasActiveSession": false,
@@ -306,6 +341,7 @@ Returns (when no session):
 ```
 
 ### `control_session`
+
 Control an active session: approve, start, end early, or abandon.
 
 ```json
@@ -328,6 +364,7 @@ Control an active session: approve, start, end early, or abandon.
 | `abandon` | Abandon the session without saving |
 
 Returns:
+
 ```json
 {
   "success": true,
@@ -338,6 +375,7 @@ Returns:
 ```
 
 ### `create_observation_link`
+
 Generate a shareable URL that allows anyone (without login) to observe a practice session in real-time.
 
 ```json
@@ -359,6 +397,7 @@ Generate a shareable URL that allows anyone (without login) to observe a practic
 | `expires_in` | Yes | `"1h"` or `"24h"` |
 
 Returns:
+
 ```json
 {
   "token": "aB3cDeFgH2",
@@ -368,6 +407,7 @@ Returns:
 ```
 
 ### `list_observation_links`
+
 List all active (non-expired, non-revoked) observation links for a session.
 
 ```json
@@ -381,6 +421,7 @@ List all active (non-expired, non-revoked) observation links for a session.
 ```
 
 Returns:
+
 ```json
 {
   "shares": [
@@ -402,6 +443,7 @@ Returns:
 These tools allow you to create and manage math worksheets with configurable difficulty and scaffolding.
 
 ### `generate_worksheet`
+
 Create a math worksheet with configurable difficulty, scaffolding, and layout.
 
 ```json
@@ -435,6 +477,7 @@ Create a math worksheet with configurable difficulty, scaffolding, and layout.
 | `cols` | No | `5` | Number of columns (1-6) |
 
 Returns:
+
 ```json
 {
   "shareId": "aBc123X",
@@ -464,6 +507,7 @@ Returns:
 ```
 
 ### `get_worksheet_info`
+
 Get information about an existing shared worksheet.
 
 ```json
@@ -476,6 +520,7 @@ Get information about an existing shared worksheet.
 ```
 
 Returns:
+
 ```json
 {
   "shareId": "aBc123X",
@@ -502,6 +547,7 @@ Returns:
 ```
 
 ### `list_difficulty_profiles`
+
 List all available difficulty profiles with their settings.
 
 ```json
@@ -512,6 +558,7 @@ List all available difficulty profiles with their settings.
 ```
 
 Returns:
+
 ```json
 {
   "profiles": [
@@ -552,11 +599,19 @@ Returns:
       }
     }
   ],
-  "progression": ["beginner", "earlyLearner", "practice", "intermediate", "advanced", "expert"]
+  "progression": [
+    "beginner",
+    "earlyLearner",
+    "practice",
+    "intermediate",
+    "advanced",
+    "expert"
+  ]
 }
 ```
 
 **Difficulty Profile Progression:**
+
 1. `beginner` - Full scaffolding, no regrouping
 2. `earlyLearner` - Conditional scaffolding, 25% regrouping
 3. `practice` - High scaffolding, 75% regrouping (master WITH support)
@@ -565,6 +620,7 @@ Returns:
 6. `expert` - No scaffolding, 90% regrouping
 
 **Scaffolding Values:**
+
 - `always` - Always show this scaffolding element
 - `never` - Never show this scaffolding element
 - `whenRegrouping` - Show only when problem requires regrouping
@@ -576,12 +632,14 @@ Returns:
 ## API Key Management
 
 ### List Keys
+
 ```bash
 curl http://localhost:3000/api/settings/mcp-keys \
   -H "Cookie: <session>"
 ```
 
 ### Create Key
+
 ```bash
 curl -X POST http://localhost:3000/api/settings/mcp-keys \
   -H "Content-Type: application/json" \
@@ -590,6 +648,7 @@ curl -X POST http://localhost:3000/api/settings/mcp-keys \
 ```
 
 ### Revoke Key
+
 ```bash
 curl -X DELETE http://localhost:3000/api/settings/mcp-keys/KEY_ID \
   -H "Cookie: <session>"
@@ -623,6 +682,7 @@ curl -X POST http://localhost:3000/api/mcp \
 ```
 
 Supported methods:
+
 - `initialize` - Capability negotiation
 - `tools/list` - List available tools
 - `tools/call` - Execute a tool
@@ -650,6 +710,7 @@ curl -X POST http://localhost:3000/api/mcp \
 ```
 
 Returns:
+
 ```json
 {
   "resources": [
@@ -704,6 +765,7 @@ curl -X POST http://localhost:3000/api/mcp \
 ```
 
 Returns:
+
 ```json
 {
   "contents": [
@@ -718,12 +780,12 @@ Returns:
 
 ### Available Resources
 
-| URI | Purpose |
-|-----|---------|
-| `docs://worksheet/regrouping` | Explains carrying/borrowing and how `pAnyStart`/`pAllStart` control regrouping frequency |
-| `docs://worksheet/scaffolding` | Describes visual aids: carryBoxes, answerBoxes, placeValueColors, tenFrames |
-| `docs://worksheet/difficulty-profiles` | The 6 preset profiles and when to use each |
-| `docs://worksheet/digit-range` | How min/max digits affect problem complexity |
-| `docs://worksheet/operators` | Addition vs subtraction vs mixed, with scaffolding differences |
+| URI                                    | Purpose                                                                                  |
+| -------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `docs://worksheet/regrouping`          | Explains carrying/borrowing and how `pAnyStart`/`pAllStart` control regrouping frequency |
+| `docs://worksheet/scaffolding`         | Describes visual aids: carryBoxes, answerBoxes, placeValueColors, tenFrames              |
+| `docs://worksheet/difficulty-profiles` | The 6 preset profiles and when to use each                                               |
+| `docs://worksheet/digit-range`         | How min/max digits affect problem complexity                                             |
+| `docs://worksheet/operators`           | Addition vs subtraction vs mixed, with scaffolding differences                           |
 
 **Tip:** Read the `difficulty-profiles` resource before generating worksheets to understand how the profiles map to regrouping and scaffolding settings

@@ -34,6 +34,7 @@ interface WorkshopSession {
   draftEmoji: string | null
   draftNotes: string | null
   refinementHistory: string[]
+  currentReasoningText: string | null
 }
 
 type TabType = 'structure' | 'input'
@@ -49,6 +50,7 @@ export default function WorkshopPage() {
 
   const [refinementText, setRefinementText] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
 
   // Streaming state management
   const [streamingState, dispatch] = useReducer(streamingReducer, initialStreamingState)
@@ -119,6 +121,190 @@ export default function WorkshopPage() {
     }
     loadSession()
   }, [sessionId])
+
+  // Connect to watch endpoint if:
+  // 1. Session is in 'generating' state (reconnection case), or
+  // 2. Session is in 'initial' state with topicDescription but no draft (auto-generation case)
+  // This handles both reconnection and the auto-start flow
+  const shouldAutoConnect =
+    session &&
+    (session.state === 'generating' ||
+      (session.state === 'initial' && session.topicDescription && !session.draftDefinitionJson))
+
+  useEffect(() => {
+    if (!shouldAutoConnect || !session) return
+
+    // Start streaming state to show progress
+    dispatch({ type: 'START_STREAMING', streamType: 'generate' })
+    setIsProgressPanelExpanded(true)
+
+    // If there's already accumulated reasoning, show it
+    if (session.currentReasoningText) {
+      dispatch({ type: 'STREAM_REASONING', text: session.currentReasoningText, append: false })
+    }
+
+    // Create abort controller for watch connection
+    const watchController = new AbortController()
+    abortControllerRef.current = watchController
+
+    // Connect to watch endpoint
+    const connectWatch = async () => {
+      try {
+        const response = await fetch(`/api/flowchart-workshop/sessions/${sessionId}/watch`, {
+          signal: watchController.signal,
+        })
+
+        if (!response.ok || !response.body) {
+          dispatch({ type: 'STREAM_ERROR', message: 'Failed to connect to watch stream' })
+          return
+        }
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          let currentEvent = ''
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              currentEvent = line.slice(7).trim()
+            } else if (line.startsWith('data: ') && currentEvent) {
+              try {
+                const data = JSON.parse(line.slice(6))
+
+                switch (currentEvent) {
+                  case 'state':
+                    // Seed with accumulated reasoning text (full replacement)
+                    if (data.reasoningText) {
+                      dispatch({
+                        type: 'STREAM_REASONING',
+                        text: data.reasoningText,
+                        append: false,
+                      })
+                    }
+                    break
+
+                  case 'reasoning': {
+                    // Live reasoning delta - append to existing
+                    const reasoningData = data as { text: string; isDelta: boolean }
+                    dispatch({ type: 'STREAM_REASONING', text: reasoningData.text, append: true })
+                    break
+                  }
+
+                  case 'complete': {
+                    // Generation completed - handle both DB format and live format
+                    // DB path sends: draftDefinitionJson (JSON string), draftMermaidContent, etc.
+                    // Live path sends: definition (object), mermaidContent, etc.
+                    let parsedDefinition = null
+                    let parsedNotes: string[] = []
+                    let mermaidContent: string | undefined
+                    let title: string | undefined
+                    let description: string | undefined
+                    let emoji: string | undefined
+                    let difficulty: string | undefined
+
+                    if (data.definition) {
+                      // Live path - data is already parsed
+                      parsedDefinition = data.definition
+                      parsedNotes = data.notes || []
+                      mermaidContent = data.mermaidContent
+                      title = data.title
+                      description = data.description
+                      emoji = data.emoji
+                      difficulty = data.difficulty
+                    } else if (data.draftDefinitionJson) {
+                      // DB path - parse JSON strings
+                      try {
+                        parsedDefinition = JSON.parse(data.draftDefinitionJson)
+                        parsedNotes = data.draftNotes ? JSON.parse(data.draftNotes) : []
+                      } catch {
+                        // Ignore parse errors
+                      }
+                      mermaidContent = data.draftMermaidContent
+                      title = data.draftTitle
+                      description = data.draftDescription
+                      emoji = data.draftEmoji
+                      difficulty = data.draftDifficulty
+                    }
+
+                    if (parsedDefinition) {
+                      dispatch({
+                        type: 'STREAM_COMPLETE',
+                        result: {
+                          definition: parsedDefinition,
+                          mermaidContent: mermaidContent || '',
+                          title: title || 'Untitled',
+                          description: description || '',
+                          emoji: emoji || '📊',
+                          difficulty: difficulty || 'Beginner',
+                          notes: parsedNotes,
+                        },
+                      })
+                    }
+
+                    // Update session state to refining
+                    setSession((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            state: 'refining',
+                            draftDefinitionJson:
+                              data.draftDefinitionJson || JSON.stringify(parsedDefinition),
+                            draftMermaidContent: mermaidContent,
+                            draftTitle: title,
+                            draftDescription: description,
+                            draftDifficulty: difficulty,
+                            draftEmoji: emoji,
+                            draftNotes: data.draftNotes || JSON.stringify(parsedNotes),
+                            currentReasoningText: null, // Clear on completion
+                          }
+                        : null
+                    )
+                    return // Exit the loop
+                  }
+
+                  case 'error':
+                    dispatch({ type: 'STREAM_ERROR', message: data.message })
+                    setError(data.message)
+                    return // Exit the loop
+
+                  case 'ping':
+                    // Keep-alive, ignore
+                    break
+                }
+              } catch {
+                // Ignore parse errors
+              }
+              currentEvent = ''
+            }
+          }
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          // Intentional abort, ignore
+          return
+        }
+        console.error('Watch connection error:', err)
+        dispatch({ type: 'STREAM_ERROR', message: 'Connection lost' })
+      }
+    }
+
+    connectWatch()
+
+    return () => {
+      watchController.abort()
+    }
+    // Depend on shouldAutoConnect (which encapsulates the connection criteria)
+    // Not reasoning text (that would cause reconnection loops)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldAutoConnect, sessionId])
 
   // Handle cancellation
   const handleCancel = useCallback(() => {
@@ -303,6 +489,49 @@ export default function WorkshopPage() {
     }
   }, [sessionId, router])
 
+  // Handle save and publish
+  const handleSaveAndPublish = useCallback(async () => {
+    setIsPublishing(true)
+    try {
+      // First save the draft
+      const saveResponse = await fetch(`/api/flowchart-workshop/sessions/${sessionId}/save`, {
+        method: 'POST',
+      })
+
+      if (!saveResponse.ok) {
+        const data = await saveResponse.json()
+        throw new Error(data.error || 'Failed to save')
+      }
+
+      const saveData = await saveResponse.json()
+      const flowchartId = saveData.flowchart.id
+
+      // If this was an in-place update of a published flowchart, skip the publish step
+      if (saveData.alreadyPublished) {
+        router.push(`/flowchart/${flowchartId}`)
+        return
+      }
+
+      // Otherwise, publish the draft
+      const publishResponse = await fetch(`/api/teacher-flowcharts/${flowchartId}/publish`, {
+        method: 'POST',
+      })
+
+      if (!publishResponse.ok) {
+        const data = await publishResponse.json()
+        throw new Error(data.error || 'Failed to publish')
+      }
+
+      // Redirect to the published flowchart
+      router.push(`/flowchart/${flowchartId}`)
+    } catch (err) {
+      console.error('Save & publish failed:', err)
+      setError(err instanceof Error ? err.message : 'Failed to save and publish')
+    } finally {
+      setIsPublishing(false)
+    }
+  }, [sessionId, router])
+
   // Handle test
   const handleTest = useCallback(() => {
     router.push(`/flowchart/workshop/${sessionId}/test`)
@@ -449,7 +678,30 @@ export default function WorkshopPage() {
                 <button
                   data-action="save"
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={isSaving || isPublishing}
+                  className={css({
+                    padding: '2 4',
+                    borderRadius: 'md',
+                    backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
+                    color: { base: 'gray.700', _dark: 'gray.300' },
+                    fontWeight: 'medium',
+                    border: 'none',
+                    cursor: 'pointer',
+                    _hover: {
+                      backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                    },
+                    _disabled: {
+                      opacity: 0.5,
+                      cursor: 'not-allowed',
+                    },
+                  })}
+                >
+                  {isSaving ? 'Saving...' : 'Save Draft'}
+                </button>
+                <button
+                  data-action="save-and-publish"
+                  onClick={handleSaveAndPublish}
+                  disabled={isSaving || isPublishing}
                   className={css({
                     padding: '2 4',
                     borderRadius: 'md',
@@ -467,7 +719,7 @@ export default function WorkshopPage() {
                     },
                   })}
                 >
-                  {isSaving ? 'Saving...' : 'Save Draft'}
+                  {isPublishing ? 'Publishing...' : 'Save & Publish'}
                 </button>
               </>
             )}
@@ -506,47 +758,41 @@ export default function WorkshopPage() {
               >
                 Topic: <strong>{session.topicDescription}</strong>
               </p>
-              <button
-                data-action="generate"
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className={css({
-                  padding: '4 8',
-                  borderRadius: 'lg',
-                  backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
-                  color: 'white',
-                  fontWeight: 'semibold',
-                  fontSize: 'lg',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  _hover: {
-                    backgroundColor: { base: 'blue.700', _dark: 'blue.600' },
-                  },
-                  _disabled: {
-                    opacity: 0.5,
-                    cursor: 'not-allowed',
-                  },
-                })}
-              >
-                {isGenerating ? 'Generating...' : 'Generate Flowchart'}
-              </button>
-              {/* Progress panel during generation */}
-              {(isGenerating ||
-                streamingState.status === 'complete' ||
-                streamingState.status === 'error') &&
-                streamingState.streamType === 'generate' && (
-                  <div className={css({ width: '100%', maxWidth: '500px' })}>
-                    <GenerationProgressPanel
-                      isExpanded={isProgressPanelExpanded}
-                      onToggle={() => setIsProgressPanelExpanded(!isProgressPanelExpanded)}
-                      status={streamingState.status}
-                      progressMessage={progressMessage}
-                      reasoningText={streamingState.reasoningText}
-                      onCancel={isGenerating ? handleCancel : undefined}
-                    />
-                  </div>
-                )}
+              {/* Show progress panel when auto-generating or manually generating */}
+              {shouldAutoConnect || isGenerating ? (
+                <div className={css({ width: '100%', maxWidth: '500px' })}>
+                  <GenerationProgressPanel
+                    isExpanded={isProgressPanelExpanded}
+                    onToggle={() => setIsProgressPanelExpanded(!isProgressPanelExpanded)}
+                    status={streamingState.status}
+                    progressMessage={progressMessage || 'Starting generation...'}
+                    reasoningText={streamingState.reasoningText}
+                    onCancel={isGenerating ? handleCancel : undefined}
+                  />
+                </div>
+              ) : (
+                /* Fallback generate button - only shown if auto-generation didn't start */
+                <button
+                  data-action="generate"
+                  onClick={handleGenerate}
+                  className={css({
+                    padding: '4 8',
+                    borderRadius: 'lg',
+                    backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
+                    color: 'white',
+                    fontWeight: 'semibold',
+                    fontSize: 'lg',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    _hover: {
+                      backgroundColor: { base: 'blue.700', _dark: 'blue.600' },
+                    },
+                  })}
+                >
+                  Generate Flowchart
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -560,6 +806,34 @@ export default function WorkshopPage() {
                   flexShrink: 0,
                 })}
               >
+                <button
+                  data-action="regenerate"
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                  title="Regenerate flowchart from scratch"
+                  className={css({
+                    padding: '1.5 3',
+                    borderRadius: 'md',
+                    fontSize: 'sm',
+                    backgroundColor: { base: 'orange.100', _dark: 'orange.900/50' },
+                    color: { base: 'orange.700', _dark: 'orange.300' },
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1.5',
+                    _hover: {
+                      backgroundColor: { base: 'orange.200', _dark: 'orange.800/50' },
+                    },
+                    _disabled: {
+                      opacity: 0.5,
+                      cursor: 'not-allowed',
+                    },
+                  })}
+                >
+                  <span>🔄</span>
+                  {isGenerating ? 'Regenerating...' : 'Regenerate'}
+                </button>
                 <button
                   data-action="export-pdf"
                   onClick={handleExportPDF}
@@ -591,6 +865,8 @@ export default function WorkshopPage() {
               <DebugMermaidDiagram
                 mermaidContent={session.draftMermaidContent || ''}
                 currentNodeId=""
+                onRegenerate={handleGenerate}
+                isRegenerating={isGenerating}
               />
             </>
           )}

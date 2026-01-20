@@ -82,7 +82,15 @@
       "mcp__chrome-devtools__evaluate_script",
       "mcp__chrome-devtools__get_console_message",
       "Bash(npx biome check:*)",
-      "mcp__chrome-devtools__click"
+      "mcp__chrome-devtools__click",
+      "mcp__chrome-devtools__list_pages",
+      "mcp__chrome-devtools__select_page",
+      "mcp__chrome-devtools__fill",
+      "mcp__chrome-devtools__new_page",
+      "Bash(python3 -m py_compile:*)",
+      "Bash(python3:*)",
+      "Bash(while read f)",
+      "Bash(do sed -i '' 's/var\\(--nav-height\\)/var\\(--app-nav-height, 72px\\)/g' \"$f\" echo \"Fixed: $f\" done)"
     ],
     "deny": [],
     "ask": []

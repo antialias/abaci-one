@@ -21,7 +21,7 @@ export interface ColumnGridItemProps {
 /**
  * Grid item for column classifier images.
  * Shows the image with digit badge, selection checkbox, and hover actions.
- * Uses uniform square aspect ratio for grid consistency,
+ * Fills parent container (sized by UnifiedDataPanel grid),
  * with objectFit: contain to preserve image proportions.
  */
 export function ColumnGridItem({
@@ -39,7 +39,8 @@ export function ColumnGridItem({
       data-focused={isFocused}
       className={css({
         position: 'relative',
-        aspectRatio: '1',
+        width: '100%',
+        height: '100%',
         bg: 'gray.900',
         border: '2px solid',
         borderColor: isFocused ? 'purple.500' : isSelected ? 'blue.500' : 'gray.700',

@@ -77,7 +77,7 @@ export function VisionTrainingNav() {
         px: 4,
         gap: 4,
       })}
-      style={{ height: 'var(--nav-height)', zIndex: Z_INDEX.NAV_BAR }}
+      style={{ height: 'var(--app-nav-height, 72px)', zIndex: Z_INDEX.NAV_BAR }}
     >
       {/* Home link */}
       <Link

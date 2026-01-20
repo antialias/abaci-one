@@ -187,6 +187,60 @@ function stripHtml(str: string): string {
     .trim()
 }
 
+/**
+ * Sanitize mermaid content to fix common issues from LLM generation.
+ *
+ * ## Issues Fixed
+ *
+ * 1. **Unescaped quotes inside node labels**: LLMs often generate content like
+ *    `NODE["...the same "state"."]` which breaks mermaid parsing because `"` is
+ *    the delimiter. These inner quotes are replaced with Unicode smart quotes
+ *    (`"` and `"`).
+ *
+ * ## How It Works
+ *
+ * The function finds all node label content (between `["...]`, `{"...}`, etc.)
+ * and replaces any `"` characters that appear INSIDE the content (not the delimiters)
+ * with Unicode curly quotes.
+ *
+ * @param content - The raw mermaid content (possibly from LLM generation)
+ * @returns Sanitized mermaid content safe for parsing
+ *
+ * @example
+ * ```typescript
+ * const bad = 'NODE["sharing the same "state"."]'
+ * const good = sanitizeMermaidContent(bad)
+ * // 'NODE["sharing the same "state"."]'
+ * ```
+ */
+export function sanitizeMermaidContent(content: string): string {
+  // Match node definitions and replace inner quotes with curly quotes
+  // Patterns: ID["..."], ID{"..."}, ID(["..."]), ID(("..."))
+  //
+  // The regex captures:
+  // - Group 1: Opening delimiter (["  or {"  or (["  or ((" )
+  // - Group 2: The content inside
+  // - Group 3: Closing delimiter ("]  or "}  or "])  or ")) )
+
+  return content.replace(
+    /(\["|\{"|(\(\[")|\(\(")([^]*?)("]|\}"|"]\)|"\)\))/g,
+    (match, open, _stadium, innerContent, close) => {
+      // If we captured the stadium opener, use that
+      const actualOpen = _stadium || open
+
+      // Replace straight quotes inside the content with smart quotes
+      // Using alternating left/right quotes for natural reading
+      let inQuote = false
+      const sanitizedContent = innerContent.replace(/"/g, () => {
+        inQuote = !inQuote
+        return inQuote ? '"' : '"'
+      })
+
+      return `${actualOpen}${sanitizedContent}${close}`
+    }
+  )
+}
+
 // =============================================================================
 // Mermaid File Parsing
 // =============================================================================

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { css } from '../../../../../../styled-system/css'
 import type { ModelType } from '../wizard/types'
@@ -50,6 +51,8 @@ export interface UnifiedDataPanelProps {
  * - Mobile: Tab toggle between browse and capture/detail
  */
 export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelProps) {
+  const router = useRouter()
+
   // === State ===
 
   // Items
@@ -64,6 +67,9 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
 
   // Bulk action state
   const [bulkActionInProgress, setBulkActionInProgress] = useState(false)
+
+  // Manifest creation state (for "Train on Filtered" feature)
+  const [creatingManifest, setCreatingManifest] = useState(false)
 
   // Filters
   const [filters, setFilters] = useState<FilterState>(getDefaultFilters)
@@ -117,8 +123,11 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
     return (availableWidth - (itemsPerRow - 1) * ITEM_GAP) / itemsPerRow
   }, [gridWidth, itemsPerRow])
 
-  // Item height based on 4:3 aspect ratio
-  const itemHeight = useMemo(() => actualItemWidth * 0.75, [actualItemWidth])
+  // Item height based on aspect ratio:
+  // - boundary-detector: 4:3 ratio (0.75)
+  // - column-classifier: 1:1 ratio (1.0)
+  const aspectRatio = modelType === 'column-classifier' ? 1.0 : 0.75
+  const itemHeight = useMemo(() => actualItemWidth * aspectRatio, [actualItemWidth, aspectRatio])
 
   // Row height including gap
   const rowHeight = useMemo(() => itemHeight + ITEM_GAP, [itemHeight])
@@ -309,7 +318,7 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
     setGridWidth(element.clientWidth)
 
     return () => observer.disconnect()
-  }, [])
+  }, [loading]) // Re-run when loading changes so we observe the grid when it mounts
 
   // Virtualizer for the grid rows
   const rowVirtualizer = useVirtualizer({
@@ -617,6 +626,76 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
     setSyncProgress({ phase: 'idle', message: '' })
   }, [])
 
+  /**
+   * Handle "Train on Filtered Items" button click.
+   * Creates a manifest from the filtered items and navigates to the training page.
+   */
+  const handleTrainOnFiltered = useCallback(async () => {
+    if (filteredItems.length === 0) return
+
+    setCreatingManifest(true)
+    try {
+      // Build manifest items based on model type
+      const manifestItems = filteredItems.map((item) => {
+        if (isBoundaryDataItem(item)) {
+          return {
+            type: 'boundary' as const,
+            deviceId: item.deviceId,
+            baseName: item.baseName,
+          }
+        } else if (isColumnDataItem(item)) {
+          return {
+            type: 'column' as const,
+            digit: item.digit,
+            filename: item.filename,
+          }
+        }
+        // Should not happen, but TypeScript requires exhaustive check
+        throw new Error('Unknown item type')
+      })
+
+      // Build filters object for display purposes
+      const manifestFilters: Record<string, unknown> = {}
+      if (filters.captureType !== 'all') {
+        manifestFilters.captureType = filters.captureType
+      }
+      if (filters.deviceId) {
+        manifestFilters.deviceId = filters.deviceId
+      }
+      if (modelType === 'column-classifier') {
+        manifestFilters.digit = selectedDigit
+      }
+
+      // Create manifest via API
+      const response = await fetch('/api/vision-training/manifests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          modelType,
+          filters: manifestFilters,
+          items: manifestItems,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create manifest')
+      }
+
+      const { manifestId } = await response.json()
+
+      // Navigate to training page with manifest parameter
+      router.push(`/vision-training/${modelType}/train?manifest=${manifestId}`)
+    } catch (error) {
+      console.error('[UnifiedDataPanel] Failed to create manifest:', error)
+      alert(
+        `Failed to create training manifest: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    } finally {
+      setCreatingManifest(false)
+    }
+  }, [filteredItems, filters, modelType, selectedDigit, router])
+
   // === Render ===
 
   return (
@@ -625,7 +704,8 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
       className={css({
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
+        flex: 1,
+        minHeight: 0, // Allow shrinking in flex context
         bg: 'gray.900',
       })}
     >
@@ -771,10 +851,10 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
           flex: 1,
           display: 'flex',
           flexDirection: { base: 'column', lg: 'row' },
+          alignItems: 'stretch', // Both panels fill full height
           minHeight: 0,
           overflow: 'hidden',
           gap: 4,
-          p: 4,
         })}
       >
         {/* Browse panel */}
@@ -886,6 +966,36 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
                 </div>
 
                 <div data-element="selection-actions" className={css({ display: 'flex', gap: 2 })}>
+                  {/* Train on Filtered button - show when we have filtered items */}
+                  {filteredItems.length > 0 && (
+                    <button
+                      type="button"
+                      data-action="train-on-filtered"
+                      onClick={handleTrainOnFiltered}
+                      disabled={creatingManifest}
+                      className={css({
+                        px: 3,
+                        py: 1,
+                        fontSize: 'xs',
+                        fontWeight: 'medium',
+                        color: 'purple.300',
+                        bg: 'purple.900/30',
+                        border: '1px solid',
+                        borderColor: 'purple.700/50',
+                        borderRadius: 'md',
+                        cursor: creatingManifest ? 'not-allowed' : 'pointer',
+                        opacity: creatingManifest ? 0.6 : 1,
+                        _hover: creatingManifest
+                          ? {}
+                          : { bg: 'purple.900/50', borderColor: 'purple.600' },
+                        whiteSpace: 'nowrap',
+                      })}
+                    >
+                      {creatingManifest
+                        ? '⏳ Creating...'
+                        : `🚀 Train on ${filteredItems.length} ${itemLabel}`}
+                    </button>
+                  )}
                   {selectedIds.size === 0 && (
                     <button
                       type="button"
@@ -937,6 +1047,7 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
                     return (
                       <div
                         key={virtualRow.key}
+                        data-element="grid-row"
                         data-row-index={virtualRow.index}
                         style={{
                           position: 'absolute',
@@ -954,7 +1065,14 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
                           return isBoundaryDataItem(item) ? (
                             <div
                               key={item.id}
-                              style={{ width: `${actualItemWidth}px`, flexShrink: 0 }}
+                              data-element="grid-item"
+                              data-item-id={item.id}
+                              data-col-index={colIndex}
+                              style={{
+                                width: `${actualItemWidth}px`,
+                                height: '100%',
+                                flexShrink: 0,
+                              }}
                             >
                               <BoundaryGridItem
                                 item={item}
@@ -968,7 +1086,14 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
                           ) : isColumnDataItem(item) ? (
                             <div
                               key={item.id}
-                              style={{ width: `${actualItemWidth}px`, flexShrink: 0 }}
+                              data-element="grid-item"
+                              data-item-id={item.id}
+                              data-col-index={colIndex}
+                              style={{
+                                width: `${actualItemWidth}px`,
+                                height: '100%',
+                                flexShrink: 0,
+                              }}
                             >
                               <ColumnGridItem
                                 item={item}
@@ -1005,7 +1130,8 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
             maxWidth: { lg: '50%' },
             flexShrink: 0,
             minHeight: 0,
-            overflow: 'auto',
+            height: { lg: '100%' }, // Fill parent height
+            overflow: 'hidden', // Don't grow from content - scroll instead
           })}
         >
           {selectedIds.size > 1 ? (
@@ -1019,6 +1145,9 @@ export function UnifiedDataPanel({ modelType, onDataChanged }: UnifiedDataPanelP
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 4,
+                flex: 1,
+                minHeight: 0,
+                overflow: 'auto',
               })}
             >
               {/* Header */}

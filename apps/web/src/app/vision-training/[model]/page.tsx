@@ -17,10 +17,13 @@ export default function VisionTrainingDataPage() {
     <div
       data-component="vision-data-hub"
       className={css({
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
         overflow: 'hidden',
+        minHeight: 0,
         pt: 4,
       })}
-      style={{ height: 'calc(100vh - var(--nav-height))' }}
     >
       <UnifiedDataPanel modelType={modelType} />
     </div>

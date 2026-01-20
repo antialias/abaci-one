@@ -73,7 +73,7 @@ export function VisionTrainingNavSlot() {
         className={css({
           fontSize: 'sm',
           fontWeight: 'semibold',
-          color: 'gray.500',
+          color: 'rgba(196, 181, 253, 0.8)',
           display: { base: 'none', md: 'block' },
           whiteSpace: 'nowrap',
         })}
@@ -89,16 +89,21 @@ export function VisionTrainingNavSlot() {
         className={css({
           px: 3,
           py: 1.5,
-          bg: 'gray.800',
-          color: 'white',
-          border: 'none',
+          bg: 'rgba(139, 92, 246, 0.25)',
+          color: 'rgba(255, 255, 255, 0.95)',
+          border: '1px solid',
+          borderColor: 'rgba(139, 92, 246, 0.4)',
           borderRadius: 'lg',
           fontSize: 'sm',
           fontWeight: 'semibold',
           cursor: 'pointer',
-          boxShadow: 'sm',
-          _hover: { bg: 'gray.700' },
-          _focus: { outline: 'none', ring: '2px', ringColor: 'blue.500', ringOffset: '2px' },
+          _hover: { bg: 'rgba(139, 92, 246, 0.35)' },
+          _focus: {
+            outline: 'none',
+            ring: '2px',
+            ringColor: 'rgba(139, 92, 246, 0.6)',
+            ringOffset: '2px',
+          },
         })}
       >
         {allModelTypes.map((type) => (
@@ -109,7 +114,14 @@ export function VisionTrainingNavSlot() {
       </select>
 
       {/* Separator */}
-      <span className={css({ color: 'gray.300', display: { base: 'none', sm: 'block' } })}>|</span>
+      <span
+        className={css({
+          color: 'rgba(139, 92, 246, 0.4)',
+          display: { base: 'none', sm: 'block' },
+        })}
+      >
+        |
+      </span>
 
       {/* Tab links */}
       <div
@@ -133,16 +145,16 @@ export function VisionTrainingNavSlot() {
                 gap: 1.5,
                 px: 2.5,
                 py: 1.5,
-                color: isActive ? 'blue.600' : 'gray.600',
+                color: isActive ? 'rgba(196, 181, 253, 1)' : 'rgba(209, 213, 219, 0.9)',
                 textDecoration: 'none',
                 fontWeight: isActive ? 'semibold' : 'medium',
                 fontSize: 'sm',
                 borderBottom: '2px solid',
-                borderColor: isActive ? 'blue.600' : 'transparent',
+                borderColor: isActive ? 'rgba(139, 92, 246, 0.8)' : 'transparent',
                 transition: 'all 0.15s ease',
                 _hover: {
-                  color: isActive ? 'blue.600' : 'gray.900',
-                  bg: isActive ? 'transparent' : 'gray.100',
+                  color: 'rgba(196, 181, 253, 1)',
+                  bg: isActive ? 'transparent' : 'rgba(139, 92, 246, 0.15)',
                   borderRadius: isActive ? '0' : 'md',
                 },
               })}

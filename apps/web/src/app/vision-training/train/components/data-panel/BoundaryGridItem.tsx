@@ -21,7 +21,7 @@ export interface BoundaryGridItemProps {
 /**
  * Grid item for boundary detector frames.
  * Shows the image with corner badge, selection checkbox, and hover actions.
- * Uses uniform 4:3 aspect ratio for grid consistency,
+ * Fills parent container (sized by UnifiedDataPanel grid),
  * with objectFit: contain to preserve image proportions.
  */
 export function BoundaryGridItem({
@@ -39,7 +39,8 @@ export function BoundaryGridItem({
       data-focused={isFocused}
       className={css({
         position: 'relative',
-        aspectRatio: '4/3',
+        width: '100%',
+        height: '100%',
         bg: 'gray.900',
         border: '2px solid',
         borderColor: isFocused ? 'blue.500' : isSelected ? 'purple.500' : 'gray.700',

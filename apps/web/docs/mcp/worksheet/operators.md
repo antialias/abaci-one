@@ -5,6 +5,7 @@ The `operator` setting controls what type of arithmetic problems appear on the w
 ## Options
 
 ### `addition`
+
 Only addition problems.
 
 ```
@@ -16,6 +17,7 @@ Only addition problems.
 **Scaffolding used:** carryBoxes, answerBoxes, placeValueColors, tenFrames
 
 ### `subtraction`
+
 Only subtraction problems.
 
 ```
@@ -29,9 +31,11 @@ Only subtraction problems.
 **Note:** Subtraction uses different scaffolding (borrowNotation/borrowingHints instead of carryBoxes/tenFrames) because the regrouping process is conceptually different.
 
 ### `mixed`
+
 Both addition and subtraction problems, randomly interspersed.
 
 **When to use:**
+
 - Student has mastered both operations separately
 - Preparing for timed tests or real-world applications
 - Building operational flexibility
@@ -41,6 +45,7 @@ Both addition and subtraction problems, randomly interspersed.
 ## Pedagogical Sequence
 
 ### Traditional Approach
+
 1. **Addition without regrouping** → learn alignment
 2. **Addition with regrouping** → learn carrying
 3. **Subtraction without regrouping** → learn inverse operation
@@ -48,12 +53,15 @@ Both addition and subtraction problems, randomly interspersed.
 5. **Mixed operations** → build flexibility
 
 ### Why Addition First?
+
 - Carrying is conceptually simpler than borrowing
 - "Making groups of 10" builds on counting knowledge
 - Errors are easier to check (count up to verify)
 
 ### Why Not Skip Ahead?
+
 Students who learn addition and subtraction together often:
+
 - Confuse carrying and borrowing
 - Make sign errors (adding when they should subtract)
 - Develop slower automaticity
@@ -61,6 +69,7 @@ Students who learn addition and subtraction together often:
 ## Regrouping in Subtraction
 
 Borrowing (subtraction regrouping) is cognitively harder because:
+
 - Requires recognizing "can't do this" situations
 - Involves reducing a digit (counterintuitive)
 - Changes two columns at once
@@ -69,13 +78,13 @@ Borrowing (subtraction regrouping) is cognitively harder because:
 
 ## Scaffolding Differences
 
-| Scaffolding | Addition | Subtraction |
-|-------------|----------|-------------|
-| carryBoxes | ✓ | - |
-| tenFrames | ✓ | - |
-| borrowNotation | - | ✓ |
-| borrowingHints | - | ✓ |
-| answerBoxes | ✓ | ✓ |
-| placeValueColors | ✓ | ✓ |
+| Scaffolding      | Addition | Subtraction |
+| ---------------- | -------- | ----------- |
+| carryBoxes       | ✓        | -           |
+| tenFrames        | ✓        | -           |
+| borrowNotation   | -        | ✓           |
+| borrowingHints   | -        | ✓           |
+| answerBoxes      | ✓        | ✓           |
+| placeValueColors | ✓        | ✓           |
 
 When using `mixed` operator, all scaffolding types may appear depending on the specific problem.

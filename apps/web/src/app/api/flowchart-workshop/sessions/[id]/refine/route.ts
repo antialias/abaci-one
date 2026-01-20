@@ -119,7 +119,9 @@ export async function POST(request: Request, { params }: RouteParams) {
         } catch {
           // Client disconnected - mark as disconnected but continue processing
           clientConnected = false
-          console.log(`[refine] Client disconnected during ${event} event, continuing LLM processing...`)
+          console.log(
+            `[refine] Client disconnected during ${event} event, continuing LLM processing...`
+          )
         }
       }
 

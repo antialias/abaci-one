@@ -3,9 +3,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { ExecutableFlowchart, ProblemValue } from '@/lib/flowcharts/schema'
+import type {
+  ExecutableFlowchart,
+  FlowchartDefinition,
+  ProblemValue,
+} from '@/lib/flowcharts/schema'
 import { loadFlowchart } from '@/lib/flowcharts/loader'
-import { getFlowchart } from '@/lib/flowcharts/definitions'
 import { FlowchartWalker, FlowchartProblemInput } from '@/components/flowchart'
 import { PageWithNav } from '@/components/PageWithNav'
 import { FloatingHamburgerMenu } from '@/components/FloatingHamburgerMenu'
@@ -30,14 +33,25 @@ export default function FlowchartPage() {
   // Load flowchart on mount, check for stored problem values
   useEffect(() => {
     async function load() {
-      const data = getFlowchart(flowchartId)
-      if (!data) {
-        setState({ type: 'error', message: `Flowchart "${flowchartId}" not found` })
-        return
-      }
-
       try {
-        const flowchart = await loadFlowchart(data.definition, data.mermaid)
+        // Fetch flowchart from API (checks both hardcoded and database flowcharts)
+        const response = await fetch(`/api/flowcharts/${flowchartId}`)
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          setState({
+            type: 'error',
+            message: errorData.error || `Flowchart "${flowchartId}" not found`,
+          })
+          return
+        }
+
+        const data = await response.json()
+        const { definition, mermaid } = data.flowchart as {
+          definition: FlowchartDefinition
+          mermaid: string
+        }
+
+        const flowchart = await loadFlowchart(definition, mermaid)
 
         // Check for stored problem values from the picker modal
         // Use ref to prevent React Strict Mode double-run from losing the values

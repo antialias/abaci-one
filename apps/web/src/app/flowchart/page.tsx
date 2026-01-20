@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import * as Dialog from '@radix-ui/react-dialog'
-import { getFlowchartList, getFlowchart } from '@/lib/flowcharts/definitions'
-import { loadFlowchart } from '@/lib/flowcharts/loader'
+import { getFlowchart } from '@/lib/flowcharts/definitions'
+import { loadFlowchart, type GeneratedExample } from '@/lib/flowcharts/loader'
+import type { FlowchartDefinition } from '@/lib/flowcharts/schema'
 import { downloadFlowchartPDF } from '@/lib/flowcharts/pdf-export'
 import type { ExecutableFlowchart, ProblemValue } from '@/lib/flowcharts/schema'
+import { generateExamplesAsync } from '@/lib/flowcharts/example-generator-client'
 import {
-  FlowchartProblemInput,
+  FlowchartModal,
   FlowchartCard,
   CreateFlowchartButton,
   CreateFlowchartModal,
@@ -36,10 +38,39 @@ interface WorkshopSession {
   updatedAt: string
 }
 
+interface EmbeddingSearchResult {
+  id: string
+  title: string
+  description: string
+  emoji: string
+  difficulty: string
+  similarity: number
+  source: 'hardcoded' | 'database'
+}
+
+interface KeywordSearchResult {
+  id: string
+  title: string
+  description: string
+  emoji: string
+  type: 'draft' | 'published'
+  sessionId?: string // For drafts, to navigate to workshop
+}
+
+interface PublishedFlowchart {
+  id: string
+  title: string
+  description: string
+  emoji: string
+  difficulty: string
+  source: 'hardcoded' | 'database'
+  authorId?: string // Only for database flowcharts
+  publishedAt: string | null
+}
+
 export default function FlowchartPickerPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const flowcharts = getFlowchartList()
 
   // The selected flowchart ID from URL query param
   const selectedId = searchParams.get('select')
@@ -53,6 +84,11 @@ export default function FlowchartPickerPage() {
   // Filter state
   const [filter, setFilter] = useState<FilterType>('all')
 
+  // Published flowcharts state (both hardcoded and user-created)
+  const [publishedFlowcharts, setPublishedFlowcharts] = useState<PublishedFlowchart[]>([])
+  const [isLoadingPublished, setIsLoadingPublished] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
   // Draft sessions state
   const [draftSessions, setDraftSessions] = useState<WorkshopSession[]>([])
   const [isLoadingDrafts, setIsLoadingDrafts] = useState(true)
@@ -62,6 +98,86 @@ export default function FlowchartPickerPage() {
 
   // PDF download state (tracks which flowchart is currently being exported)
   const [exportingPdfId, setExportingPdfId] = useState<string | null>(null)
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [embeddingResults, setEmbeddingResults] = useState<EmbeddingSearchResult[]>([])
+  const [keywordResults, setKeywordResults] = useState<KeywordSearchResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Examples for animated card backgrounds (generated client-side)
+  // Stores both the flowchart (for formatting) and generated examples
+  const [cardExamples, setCardExamples] = useState<
+    Map<string, { flowchart: ExecutableFlowchart; examples: GeneratedExample[] }>
+  >(new Map())
+
+  // Load published flowcharts (hardcoded + user-created)
+  useEffect(() => {
+    async function loadPublished() {
+      try {
+        const response = await fetch('/api/flowcharts/browse')
+        if (response.ok) {
+          const data = await response.json()
+          setPublishedFlowcharts(data.flowcharts || [])
+          setCurrentUserId(data.currentUserId || null)
+        }
+      } catch (err) {
+        console.error('Failed to load published flowcharts:', err)
+      } finally {
+        setIsLoadingPublished(false)
+      }
+    }
+    loadPublished()
+  }, [])
+
+  // Generate examples for all flowcharts (client-side, off main thread)
+  useEffect(() => {
+    if (isLoadingPublished) return
+
+    // Find flowcharts that don't have examples yet
+    const flowchartsToGenerate = publishedFlowcharts.filter(
+      (fc) => !cardExamples.has(fc.id)
+    )
+
+    if (flowchartsToGenerate.length === 0) return
+
+    // Generate examples for each flowchart
+    async function generateForAll() {
+      for (const fc of flowchartsToGenerate) {
+        try {
+          let executable: ExecutableFlowchart
+
+          if (fc.source === 'hardcoded') {
+            // Hardcoded flowcharts - use local definitions
+            const flowchartData = getFlowchart(fc.id)
+            if (!flowchartData) continue
+            executable = await loadFlowchart(flowchartData.definition, flowchartData.mermaid)
+          } else {
+            // Database flowcharts - fetch from API
+            const response = await fetch(`/api/flowcharts/${fc.id}`)
+            if (!response.ok) continue
+            const data = await response.json()
+            const { definition, mermaid } = data.flowchart as {
+              definition: FlowchartDefinition
+              mermaid: string
+            }
+            executable = await loadFlowchart(definition, mermaid)
+          }
+
+          const examples = await generateExamplesAsync(executable, 10, {})
+
+          setCardExamples((prev) =>
+            new Map(prev).set(fc.id, { flowchart: executable, examples })
+          )
+        } catch (err) {
+          console.error(`Failed to generate examples for ${fc.id}:`, err)
+        }
+      }
+    }
+
+    generateForAll()
+  }, [isLoadingPublished, publishedFlowcharts, cardExamples])
 
   // Load draft sessions
   useEffect(() => {
@@ -80,6 +196,92 @@ export default function FlowchartPickerPage() {
     }
     loadDrafts()
   }, [])
+
+  // Debounced search for flowcharts
+  useEffect(() => {
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    // Don't search if query is too short
+    if (searchQuery.trim().length < 3) {
+      setEmbeddingResults([])
+      setKeywordResults([])
+      setIsSearching(false)
+      return
+    }
+
+    setIsSearching(true)
+
+    // Debounce the search by 500ms
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        // 1. Embedding search via API (semantic matching)
+        const response = await fetch('/api/flowcharts/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: searchQuery, limit: 10 }),
+        })
+
+        let embeddingMatches: EmbeddingSearchResult[] = []
+        if (response.ok) {
+          const data = await response.json()
+          embeddingMatches = data.suggestions || []
+        }
+        setEmbeddingResults(embeddingMatches)
+
+        // 2. Keyword search on drafts (local matching)
+        const queryLower = searchQuery.toLowerCase()
+        const embeddingIds = new Set(embeddingMatches.map((r) => r.id))
+
+        const keywordMatches: KeywordSearchResult[] = []
+
+        // Search drafts by keyword
+        for (const draft of draftSessions) {
+          const title = draft.draftTitle || draft.topicDescription || ''
+          if (title.toLowerCase().includes(queryLower)) {
+            keywordMatches.push({
+              id: draft.id,
+              title: title || 'Untitled',
+              description: draft.topicDescription || '',
+              emoji: draft.draftEmoji || '📝',
+              type: 'draft',
+              sessionId: draft.id,
+            })
+          }
+        }
+
+        // Search published flowcharts that weren't in embedding results
+        for (const fc of publishedFlowcharts) {
+          if (embeddingIds.has(fc.id)) continue // Already matched by embedding
+          const inTitle = fc.title.toLowerCase().includes(queryLower)
+          const inDescription = fc.description?.toLowerCase().includes(queryLower)
+          if (inTitle || inDescription) {
+            keywordMatches.push({
+              id: fc.id,
+              title: fc.title,
+              description: fc.description,
+              emoji: fc.emoji,
+              type: 'published',
+            })
+          }
+        }
+
+        setKeywordResults(keywordMatches)
+      } catch (err) {
+        console.error('Failed to search flowcharts:', err)
+      } finally {
+        setIsSearching(false)
+      }
+    }, 500)
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [searchQuery, draftSessions, publishedFlowcharts])
 
   // Handle draft session actions
   const handleResumeDraft = useCallback(
@@ -107,6 +309,29 @@ export default function FlowchartPickerPage() {
         router.push(`/flowchart/workshop/${session.id}`)
       } catch (err) {
         console.error('Failed to remix flowchart:', err)
+      }
+    },
+    [router]
+  )
+
+  // Handle editing user's own published flowchart
+  const handleEditPublished = useCallback(
+    async (flowchartId: string) => {
+      try {
+        const response = await fetch('/api/flowchart-workshop/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ editPublishedId: flowchartId }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to create edit session')
+        }
+
+        const { session } = await response.json()
+        router.push(`/flowchart/workshop/${session.id}`)
+      } catch (err) {
+        console.error('Failed to start editing flowchart:', err)
       }
     },
     [router]
@@ -206,14 +431,26 @@ export default function FlowchartPickerPage() {
     const flowchartId = modalState.flowchartId
 
     async function load() {
-      const data = getFlowchart(flowchartId)
-      if (!data) {
-        setModalState({ type: 'error', flowchartId, message: `Flowchart not found` })
-        return
-      }
-
       try {
-        const flowchart = await loadFlowchart(data.definition, data.mermaid)
+        // Fetch from API (supports both hardcoded and database flowcharts)
+        const response = await fetch(`/api/flowcharts/${flowchartId}`)
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          setModalState({
+            type: 'error',
+            flowchartId,
+            message: errorData.error || 'Flowchart not found',
+          })
+          return
+        }
+
+        const data = await response.json()
+        const { definition, mermaid } = data.flowchart as {
+          definition: FlowchartDefinition
+          mermaid: string
+        }
+
+        const flowchart = await loadFlowchart(definition, mermaid)
         setModalState({ type: 'inputting', flowchartId, flowchart })
       } catch (error) {
         console.error('Error loading flowchart:', error)
@@ -289,7 +526,10 @@ export default function FlowchartPickerPage() {
         >
           {[
             { value: 'all' as const, label: 'All' },
-            { value: 'published' as const, label: 'Published' },
+            {
+              value: 'published' as const,
+              label: `Published${publishedFlowcharts.length > 0 ? ` (${publishedFlowcharts.length})` : ''}`,
+            },
             {
               value: 'drafts' as const,
               label: `Drafts${draftSessions.length > 0 ? ` (${draftSessions.length})` : ''}`,
@@ -322,7 +562,103 @@ export default function FlowchartPickerPage() {
             </button>
           ))}
         </div>
+
+        {/* Search input */}
+        <div
+          className={css({
+            position: 'relative',
+            width: '100%',
+            maxWidth: '400px',
+          })}
+        >
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search flowcharts by topic..."
+            className={css({
+              width: '100%',
+              padding: '3 4',
+              paddingLeft: '10',
+              borderRadius: 'lg',
+              border: '2px solid',
+              borderColor: { base: 'gray.300', _dark: 'gray.600' },
+              backgroundColor: { base: 'white', _dark: 'gray.800' },
+              color: { base: 'gray.900', _dark: 'gray.100' },
+              fontSize: 'md',
+              _focus: {
+                outline: 'none',
+                borderColor: { base: 'blue.500', _dark: 'blue.400' },
+                boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.2)',
+              },
+              _placeholder: {
+                color: { base: 'gray.400', _dark: 'gray.500' },
+              },
+            })}
+          />
+          <span
+            className={css({
+              position: 'absolute',
+              left: '3',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: { base: 'gray.400', _dark: 'gray.500' },
+              pointerEvents: 'none',
+            })}
+          >
+            🔍
+          </span>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className={css({
+                position: 'absolute',
+                right: '3',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                padding: '1',
+                borderRadius: 'full',
+                border: 'none',
+                backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
+                color: { base: 'gray.600', _dark: 'gray.300' },
+                cursor: 'pointer',
+                fontSize: 'xs',
+                lineHeight: 1,
+                _hover: {
+                  backgroundColor: { base: 'gray.300', _dark: 'gray.500' },
+                },
+              })}
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </header>
+
+      {/* Search results header */}
+      {searchQuery.trim().length >= 3 && (
+        <div
+          className={css({
+            width: '100%',
+            maxWidth: '800px',
+            textAlign: 'center',
+            color: { base: 'gray.600', _dark: 'gray.400' },
+            fontSize: 'sm',
+          })}
+        >
+          {isSearching ? (
+            'Searching...'
+          ) : embeddingResults.length > 0 || keywordResults.length > 0 ? (
+            <>
+              Found <strong>{embeddingResults.length + keywordResults.length}</strong> result
+              {embeddingResults.length + keywordResults.length !== 1 ? 's' : ''} for &ldquo;
+              {searchQuery}&rdquo;
+            </>
+          ) : (
+            <>No flowcharts found matching &ldquo;{searchQuery}&rdquo;</>
+          )}
+        </div>
+      )}
 
       <div
         className={css({
@@ -333,74 +669,282 @@ export default function FlowchartPickerPage() {
           maxWidth: '800px',
         })}
       >
-        {/* Create Your Own button - appears first (except when showing only published) */}
-        {filter !== 'published' && (
-          <CreateFlowchartButton onClick={() => setIsCreateModalOpen(true)} />
-        )}
+        {/* Show search results when search is active */}
+        {searchQuery.trim().length >= 3 ? (
+          <>
+            {/* Semantic matches (embedding-based) */}
+            {embeddingResults.length > 0 && (
+              <>
+                <div
+                  className={css({
+                    gridColumn: '1 / -1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3',
+                    color: { base: 'gray.500', _dark: 'gray.400' },
+                    fontSize: 'sm',
+                    marginBottom: '2',
+                  })}
+                >
+                  <span>🧠</span>
+                  <span>Semantic matches</span>
+                  <div
+                    className={css({
+                      flex: 1,
+                      height: '1px',
+                      backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                    })}
+                  />
+                </div>
+                {embeddingResults.map((result) => {
+                  // Check if this is the user's own flowchart by looking up in publishedFlowcharts
+                  const publishedMatch = publishedFlowcharts.find((fc) => fc.id === result.id)
+                  const isOwnFlowchart =
+                    result.source === 'database' &&
+                    currentUserId &&
+                    publishedMatch?.authorId === currentUserId
 
-        {/* Built-in (published) flowcharts */}
-        {filter !== 'drafts' &&
-          flowcharts.map((flowchart) => (
-            <FlowchartCard
-              key={flowchart.id}
-              title={flowchart.title}
-              description={flowchart.description}
-              emoji={flowchart.emoji}
-              difficulty={flowchart.difficulty}
-              onClick={() => handleCardClick(flowchart.id)}
-              actions={[
-                {
-                  label: exportingPdfId === flowchart.id ? 'Exporting...' : 'PDF',
-                  onClick: () => handleDownloadPDF(flowchart.id),
-                  variant: 'secondary',
-                  disabled: exportingPdfId === flowchart.id,
-                },
-                {
-                  label: 'Remix',
-                  onClick: () => handleRemix(flowchart.id),
-                  variant: 'secondary',
-                },
-              ]}
-            />
-          ))}
+                  return (
+                    <FlowchartCard
+                      key={result.id}
+                      title={result.title}
+                      description={result.description}
+                      emoji={result.emoji}
+                      difficulty={result.difficulty}
+                      subtitle={`${Math.round(result.similarity * 100)}% match`}
+                      onClick={() => handleCardClick(result.id)}
+                      actions={
+                        result.source === 'hardcoded'
+                          ? [
+                              {
+                                label: exportingPdfId === result.id ? 'Exporting...' : 'PDF',
+                                onClick: () => handleDownloadPDF(result.id),
+                                variant: 'secondary' as const,
+                                disabled: exportingPdfId === result.id,
+                              },
+                              {
+                                label: 'Remix',
+                                onClick: () => handleRemix(result.id),
+                                variant: 'secondary' as const,
+                              },
+                            ]
+                          : isOwnFlowchart
+                            ? [
+                                {
+                                  label: 'Edit',
+                                  onClick: () => handleEditPublished(result.id),
+                                  variant: 'primary' as const,
+                                },
+                                {
+                                  label: 'Remix',
+                                  onClick: () => handleRemix(result.id),
+                                  variant: 'secondary' as const,
+                                },
+                              ]
+                            : [
+                                {
+                                  label: 'Remix',
+                                  onClick: () => handleRemix(result.id),
+                                  variant: 'secondary' as const,
+                                },
+                              ]
+                      }
+                    />
+                  )
+                })}
+              </>
+            )}
 
-        {/* Draft flowcharts */}
-        {filter !== 'published' &&
-          draftSessions.map((session) => (
-            <FlowchartCard
-              key={session.id}
-              title={session.draftTitle || session.topicDescription || 'Untitled'}
-              emoji={session.draftEmoji || '📝'}
-              status={session.state === 'refining' ? 'In Progress' : 'Draft'}
-              subtitle={`Updated ${new Date(session.updatedAt).toLocaleDateString()}`}
-              onClick={() => handleResumeDraft(session.id)}
-              actions={[
-                {
-                  label: 'Edit',
-                  onClick: () => handleResumeDraft(session.id),
-                  variant: 'primary',
-                },
-                {
-                  label: 'Delete',
-                  onClick: () => handleDeleteDraft(session.id),
-                  variant: 'danger',
-                },
-              ]}
-            />
-          ))}
+            {/* Keyword matches */}
+            {keywordResults.length > 0 && (
+              <>
+                <div
+                  className={css({
+                    gridColumn: '1 / -1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3',
+                    color: { base: 'gray.500', _dark: 'gray.400' },
+                    fontSize: 'sm',
+                    marginTop: embeddingResults.length > 0 ? '4' : '0',
+                    marginBottom: '2',
+                  })}
+                >
+                  <span>🔤</span>
+                  <span>Keyword matches</span>
+                  <div
+                    className={css({
+                      flex: 1,
+                      height: '1px',
+                      backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                    })}
+                  />
+                </div>
+                {keywordResults.map((result) => {
+                  // For published keyword matches, check if user owns this flowchart
+                  const publishedMatch =
+                    result.type === 'published'
+                      ? publishedFlowcharts.find((fc) => fc.id === result.id)
+                      : null
+                  const isOwnFlowchart =
+                    result.type === 'published' &&
+                    currentUserId &&
+                    publishedMatch?.authorId === currentUserId
 
-        {/* Empty state for drafts filter */}
-        {filter === 'drafts' && !isLoadingDrafts && draftSessions.length === 0 && (
-          <div
-            className={css({
-              gridColumn: '1 / -1',
-              padding: '8',
-              textAlign: 'center',
-              color: { base: 'gray.500', _dark: 'gray.400' },
-            })}
-          >
-            <p>No drafts yet. Click the + button to create your first flowchart!</p>
-          </div>
+                  return (
+                    <FlowchartCard
+                      key={`keyword-${result.id}`}
+                      title={result.title}
+                      description={result.description}
+                      emoji={result.emoji}
+                      status={result.type === 'draft' ? 'Draft' : undefined}
+                      onClick={() =>
+                        result.type === 'draft' && result.sessionId
+                          ? handleResumeDraft(result.sessionId)
+                          : handleCardClick(result.id)
+                      }
+                      actions={
+                        result.type === 'draft' && result.sessionId
+                          ? [
+                              {
+                                label: 'Edit',
+                                href: `/flowchart/workshop/${result.sessionId}`,
+                                variant: 'primary' as const,
+                              },
+                            ]
+                          : isOwnFlowchart
+                            ? [
+                                {
+                                  label: 'Edit',
+                                  onClick: () => handleEditPublished(result.id),
+                                  variant: 'primary' as const,
+                                },
+                                {
+                                  label: 'Remix',
+                                  onClick: () => handleRemix(result.id),
+                                  variant: 'secondary' as const,
+                                },
+                              ]
+                            : [
+                                {
+                                  label: 'Remix',
+                                  onClick: () => handleRemix(result.id),
+                                  variant: 'secondary' as const,
+                                },
+                              ]
+                      }
+                    />
+                  )
+                })}
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Create Your Own button - appears first (except when showing only published) */}
+            {filter !== 'published' && (
+              <CreateFlowchartButton onClick={() => setIsCreateModalOpen(true)} />
+            )}
+
+            {/* Published flowcharts (hardcoded + user-created) */}
+            {filter !== 'drafts' &&
+              publishedFlowcharts.map((flowchart) => {
+                const isOwnFlowchart =
+                  flowchart.source === 'database' &&
+                  currentUserId &&
+                  flowchart.authorId === currentUserId
+
+                const cardData = cardExamples.get(flowchart.id)
+
+                return (
+                  <FlowchartCard
+                    key={flowchart.id}
+                    title={flowchart.title}
+                    description={flowchart.description}
+                    emoji={flowchart.emoji}
+                    difficulty={flowchart.difficulty}
+                    flowchart={cardData?.flowchart}
+                    examples={cardData?.examples}
+                    onClick={() => handleCardClick(flowchart.id)}
+                    actions={
+                      flowchart.source === 'hardcoded'
+                        ? [
+                            {
+                              label: exportingPdfId === flowchart.id ? 'Exporting...' : 'PDF',
+                              onClick: () => handleDownloadPDF(flowchart.id),
+                              variant: 'secondary' as const,
+                              disabled: exportingPdfId === flowchart.id,
+                            },
+                            {
+                              label: 'Remix',
+                              onClick: () => handleRemix(flowchart.id),
+                              variant: 'secondary' as const,
+                            },
+                          ]
+                        : isOwnFlowchart
+                          ? [
+                              {
+                                label: 'Edit',
+                                onClick: () => handleEditPublished(flowchart.id),
+                                variant: 'primary' as const,
+                              },
+                              {
+                                label: 'Remix',
+                                onClick: () => handleRemix(flowchart.id),
+                                variant: 'secondary' as const,
+                              },
+                            ]
+                          : [
+                              {
+                                label: 'Remix',
+                                onClick: () => handleRemix(flowchart.id),
+                                variant: 'secondary' as const,
+                              },
+                            ]
+                    }
+                  />
+                )
+              })}
+
+            {/* Draft flowcharts */}
+            {filter !== 'published' &&
+              draftSessions.map((session) => (
+                <FlowchartCard
+                  key={session.id}
+                  title={session.draftTitle || session.topicDescription || 'Untitled'}
+                  emoji={session.draftEmoji || '📝'}
+                  status={session.state === 'refining' ? 'In Progress' : 'Draft'}
+                  subtitle={`Updated ${new Date(session.updatedAt).toLocaleDateString()}`}
+                  onClick={() => handleResumeDraft(session.id)}
+                  actions={[
+                    {
+                      label: 'Edit',
+                      href: `/flowchart/workshop/${session.id}`,
+                      variant: 'primary',
+                    },
+                    {
+                      label: 'Delete',
+                      onClick: () => handleDeleteDraft(session.id),
+                      variant: 'danger',
+                    },
+                  ]}
+                />
+              ))}
+
+            {/* Empty state for drafts filter */}
+            {filter === 'drafts' && !isLoadingDrafts && draftSessions.length === 0 && (
+              <div
+                className={css({
+                  gridColumn: '1 / -1',
+                  padding: '8',
+                  textAlign: 'center',
+                  color: { base: 'gray.500', _dark: 'gray.400' },
+                })}
+              >
+                <p>No drafts yet. Click the + button to create your first flowchart!</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -445,6 +989,10 @@ export default function FlowchartPickerPage() {
                 _focus: { outline: 'none' },
               })}
             >
+              <Dialog.Title className={css({ srOnly: true })}>Loading Flowchart</Dialog.Title>
+              <Dialog.Description className={css({ srOnly: true })}>
+                Please wait while the flowchart loads
+              </Dialog.Description>
               <div
                 className={css({
                   display: 'flex',
@@ -472,6 +1020,10 @@ export default function FlowchartPickerPage() {
                 _focus: { outline: 'none' },
               })}
             >
+              <Dialog.Title className={css({ srOnly: true })}>Error Loading Flowchart</Dialog.Title>
+              <Dialog.Description className={css({ srOnly: true })}>
+                An error occurred while loading the flowchart
+              </Dialog.Description>
               <div className={vstack({ gap: '4', alignItems: 'center' })}>
                 <p className={css({ color: { base: 'red.600', _dark: 'red.400' } })}>
                   {modalState.message}
@@ -495,12 +1047,16 @@ export default function FlowchartPickerPage() {
           )}
 
           {modalState.type === 'inputting' && (
-            <FlowchartProblemInput
-              schema={modalState.flowchart.definition.problemInput}
-              onSubmit={handleProblemSubmit}
+            <FlowchartModal
               flowchart={modalState.flowchart}
-              asModal
+              onSubmit={handleProblemSubmit}
               onClose={handleClose}
+              shareUrl={
+                // Show share button for published flowcharts (hardcoded or database)
+                publishedFlowcharts.some((fc) => fc.id === modalState.flowchartId)
+                  ? `${typeof window !== 'undefined' ? window.location.origin : ''}/flowchart?select=${modalState.flowchartId}`
+                  : undefined
+              }
             />
           )}
         </Dialog.Portal>

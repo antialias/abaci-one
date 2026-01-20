@@ -80,7 +80,7 @@ export default function TestModelPage() {
         color: 'gray.100',
         pt: 4,
       })}
-      style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
+      style={{ minHeight: 'calc(100vh - 120px)' }}
     >
       {/* Session Info Banner */}
       {sessionLoading && (

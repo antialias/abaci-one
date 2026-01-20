@@ -239,6 +239,10 @@ export function MyAbacus() {
   // This matches /arcade, /arcade/*, and /arcade-rooms/*
   const isOnGameRoute = pathname?.startsWith('/arcade')
 
+  // Detect if we're on the flowchart workshop (editing a flowchart)
+  // The workshop has its own UI/UX and the floating abacus gets in the way
+  const isOnWorkshopRoute = pathname?.startsWith('/flowchart/workshop/')
+
   // Sync local button ref with context's buttonRef
   useEffect(() => {
     if (buttonRef && localButtonRef.current) {
@@ -430,11 +434,17 @@ export function MyAbacus() {
   // Hide completely when:
   // 1. isHidden is true (e.g., virtual keyboard is shown on non-game pages)
   // 2. On a game route and the game hasn't opted in to show it
-  // 3. NOT docked (docked abacus should always show)
-  // 4. NOT animating (animation layer should show)
+  // 3. On the flowchart workshop (has its own UI/UX)
+  // 4. NOT docked (docked abacus should always show)
+  // 5. NOT animating (animation layer should show)
   // Still allow open state to work (user explicitly opened it)
   // NOTE: This must come after all hooks to follow React's rules of hooks
-  if (!isOpen && !isDocked && !isAnimating && (isHidden || (isOnGameRoute && !showInGame))) {
+  if (
+    !isOpen &&
+    !isDocked &&
+    !isAnimating &&
+    (isHidden || (isOnGameRoute && !showInGame) || isOnWorkshopRoute)
+  ) {
     return null
   }
 

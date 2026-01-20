@@ -3,6 +3,8 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
 import { validateFlowchartStructure } from '@/lib/flowcharts/validator'
+import { generateFlowchartEmbeddings, EMBEDDING_VERSION } from '@/lib/flowcharts/embedding'
+import { invalidateEmbeddingCache } from '@/lib/flowcharts/embedding-search'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -66,7 +68,86 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const now = new Date()
     let flowchart
 
-    // If editing an existing flowchart
+    // If editing a published flowchart in-place (via linkedPublishedId)
+    if (session.linkedPublishedId) {
+      const existing = await db.query.teacherFlowcharts.findFirst({
+        where: and(
+          eq(schema.teacherFlowcharts.id, session.linkedPublishedId),
+          eq(schema.teacherFlowcharts.userId, userId),
+          eq(schema.teacherFlowcharts.status, 'published')
+        ),
+      })
+
+      if (!existing) {
+        return NextResponse.json({ error: 'Linked published flowchart not found' }, { status: 404 })
+      }
+
+      // Generate new embeddings for the updated content
+      let embedding: Buffer | null = null
+      let promptEmbedding: Buffer | null = null
+      try {
+        const result = await generateFlowchartEmbeddings({
+          title: session.draftTitle || existing.title,
+          description: session.draftDescription,
+          topicDescription: session.topicDescription,
+          difficulty: session.draftDifficulty,
+        })
+        embedding = result.embedding
+        promptEmbedding = result.promptEmbedding
+      } catch (embeddingError) {
+        console.error('Failed to generate embeddings:', embeddingError)
+      }
+
+      // Update the published flowchart directly
+      const [updated] = await db
+        .update(schema.teacherFlowcharts)
+        .set({
+          title: session.draftTitle || existing.title,
+          description: session.draftDescription,
+          emoji: session.draftEmoji,
+          difficulty: session.draftDifficulty,
+          definitionJson: session.draftDefinitionJson,
+          mermaidContent: session.draftMermaidContent,
+          version: existing.version + 1,
+          embedding,
+          promptEmbedding,
+          embeddingVersion: embedding ? EMBEDDING_VERSION : null,
+          updatedAt: now,
+          // Keep status as 'published' and publishedAt unchanged
+        })
+        .where(eq(schema.teacherFlowcharts.id, existing.id))
+        .returning()
+
+      flowchart = updated
+
+      // Mark session as completed and delete it (optional cleanup)
+      await db
+        .update(schema.workshopSessions)
+        .set({
+          state: 'completed',
+          updatedAt: now,
+        })
+        .where(eq(schema.workshopSessions.id, id))
+
+      // Invalidate embedding cache
+      if (embedding) {
+        invalidateEmbeddingCache()
+      }
+
+      // Get updated session
+      const updatedSession = await db.query.workshopSessions.findFirst({
+        where: eq(schema.workshopSessions.id, id),
+      })
+
+      return NextResponse.json({
+        flowchart,
+        session: updatedSession,
+        // Flag to tell the client this was an in-place update (skip publish step)
+        alreadyPublished: true,
+      })
+    }
+
+    // If editing an existing flowchart (legacy path)
     if (session.flowchartId) {
       const existing = await db.query.teacherFlowcharts.findFirst({
         where: and(

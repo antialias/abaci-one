@@ -51,7 +51,8 @@ export async function GET() {
  * Body: {
  *   topicDescription?: string - Initial topic description
  *   remixFromId?: string - ID of flowchart to remix from (hardcoded or database)
- *   flowchartId?: string - ID of existing teacher flowchart to edit
+ *   flowchartId?: string - ID of existing teacher flowchart to edit (creates new on publish)
+ *   editPublishedId?: string - ID of own published flowchart to edit (updates on publish)
  * }
  *
  * Returns: { session: WorkshopSession }
@@ -73,9 +74,38 @@ export async function POST(req: NextRequest) {
     let draftDescription: string | null = null
     let draftEmoji: string | null = null
     let draftDifficulty: 'Beginner' | 'Intermediate' | 'Advanced' | null = null
+    let linkedPublishedId: string | null = null
+    let topicDescription: string | null = body.topicDescription || null
 
-    // If editing an existing flowchart, load its data as the draft
-    if (body.flowchartId) {
+    // If editing a published flowchart (edit-in-place workflow)
+    if (body.editPublishedId) {
+      const existing = await db.query.teacherFlowcharts.findFirst({
+        where: and(
+          eq(schema.teacherFlowcharts.id, body.editPublishedId),
+          eq(schema.teacherFlowcharts.userId, userId),
+          eq(schema.teacherFlowcharts.status, 'published')
+        ),
+      })
+
+      if (!existing) {
+        return NextResponse.json(
+          { error: 'Flowchart not found or not owned by you' },
+          { status: 404 }
+        )
+      }
+
+      initialState = 'refining'
+      draftDefinitionJson = existing.definitionJson
+      draftMermaidContent = existing.mermaidContent
+      draftTitle = existing.title // Keep same title (no "(Copy)")
+      draftDescription = existing.description
+      draftEmoji = existing.emoji
+      draftDifficulty = existing.difficulty as typeof draftDifficulty
+      linkedPublishedId = existing.id // This tells publish to UPDATE instead of INSERT
+    }
+
+    // If editing an existing flowchart (legacy path), load its data as the draft
+    if (body.flowchartId && !linkedPublishedId) {
       const existing = await db.query.teacherFlowcharts.findFirst({
         where: and(
           eq(schema.teacherFlowcharts.id, body.flowchartId),
@@ -108,6 +138,7 @@ export async function POST(req: NextRequest) {
         draftDescription = hardcoded.meta.description
         draftEmoji = hardcoded.meta.emoji
         draftDifficulty = hardcoded.meta.difficulty
+        topicDescription = hardcoded.meta.description // Use description as topic for remixes
       } else {
         // Try database flowcharts
         const dbFlowchart = await db.query.teacherFlowcharts.findFirst({
@@ -125,6 +156,7 @@ export async function POST(req: NextRequest) {
           draftDescription = dbFlowchart.description
           draftEmoji = dbFlowchart.emoji
           draftDifficulty = dbFlowchart.difficulty as typeof draftDifficulty
+          topicDescription = dbFlowchart.description // Use description as topic for remixes
         }
       }
     }
@@ -134,9 +166,10 @@ export async function POST(req: NextRequest) {
       .values({
         userId,
         state: initialState,
-        topicDescription: body.topicDescription || null,
+        topicDescription,
         remixFromId: body.remixFromId || null,
         flowchartId: body.flowchartId || null,
+        linkedPublishedId,
         draftDefinitionJson,
         draftMermaidContent,
         draftTitle,

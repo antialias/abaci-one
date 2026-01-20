@@ -88,11 +88,33 @@ def parse_args():
         default=None,
         help="Session ID for tracking this training run (for session management)",
     )
+    parser.add_argument(
+        "--stop-file",
+        type=str,
+        default=None,
+        help="Path to stop signal file. Training will stop gracefully if this file exists.",
+    )
+    parser.add_argument(
+        "--manifest-file",
+        type=str,
+        default=None,
+        help="Path to manifest JSON listing specific items to train on (for filtered training).",
+    )
     return parser.parse_args()
 
 
-def load_dataset(data_dir: str, use_json: bool = False):
-    """Load images and labels from the collected data directory."""
+def load_dataset(data_dir: str, use_json: bool = False, manifest_file: str = None):
+    """
+    Load images and labels from the collected data directory.
+
+    Args:
+        data_dir: Path to the training data directory
+        use_json: Whether to output JSON progress events
+        manifest_file: Optional path to manifest JSON for filtered training
+
+    Returns:
+        Tuple of (images array, labels array)
+    """
     from PIL import Image
 
     images = []
@@ -107,26 +129,101 @@ def load_dataset(data_dir: str, use_json: bool = False):
         }, use_json)
         sys.exit(1)
 
-    emit_progress("status", {"message": f"Loading dataset from {data_dir}...", "phase": "loading"}, use_json)
+    # Check if using manifest for filtered training
+    if manifest_file:
+        emit_progress("status", {
+            "message": f"Loading filtered dataset from manifest: {manifest_file}",
+            "phase": "loading"
+        }, use_json)
 
-    # Load images from each digit directory (0-9)
-    for digit in range(10):
-        digit_dir = data_path / str(digit)
-        if not digit_dir.exists():
+        try:
+            with open(manifest_file, 'r') as f:
+                manifest = json.load(f)
+        except Exception as e:
+            emit_progress("error", {
+                "message": f"Failed to load manifest file: {e}",
+            }, use_json)
+            sys.exit(1)
+
+        manifest_items = manifest.get('items', [])
+        if not manifest_items:
+            emit_progress("error", {
+                "message": "Manifest contains no items",
+            }, use_json)
+            sys.exit(1)
+
+        emit_progress("status", {
+            "message": f"Loading {len(manifest_items)} items from manifest...",
+            "phase": "loading"
+        }, use_json)
+
+        # Initialize digit counts
+        for digit in range(10):
             digit_counts[digit] = 0
-            continue
 
-        digit_images = list(digit_dir.glob("*.png"))
-        digit_counts[digit] = len(digit_images)
+        # Load images from manifest
+        for idx, item in enumerate(manifest_items):
+            if item.get('type') != 'column':
+                continue
 
-        for img_path in digit_images:
+            digit = item.get('digit')
+            filename = item.get('filename')
+
+            if digit is None or filename is None:
+                continue
+
+            img_path = data_path / str(digit) / filename
+            if not img_path.exists():
+                emit_progress("status", {
+                    "message": f"Warning: Missing file from manifest: {img_path}",
+                    "phase": "loading"
+                }, use_json)
+                continue
+
             try:
                 img = Image.open(img_path).convert("L")  # Grayscale
                 img_array = np.array(img, dtype=np.float32) / 255.0
                 images.append(img_array)
                 labels.append(digit)
+                digit_counts[digit] = digit_counts.get(digit, 0) + 1
             except Exception as e:
-                emit_progress("status", {"message": f"Error loading {img_path}: {e}", "phase": "loading"}, use_json)
+                emit_progress("status", {
+                    "message": f"Error loading {img_path}: {e}",
+                    "phase": "loading"
+                }, use_json)
+
+            # Progress update every 100 items
+            if (idx + 1) % 100 == 0:
+                emit_progress("loading_progress", {
+                    "step": "loading_manifest",
+                    "current": idx + 1,
+                    "total": len(manifest_items),
+                    "message": f"Loading from manifest... {idx + 1}/{len(manifest_items)}",
+                    "phase": "loading"
+                }, use_json)
+
+    else:
+        # Full directory scan (original behavior)
+        emit_progress("status", {"message": f"Loading dataset from {data_dir}...", "phase": "loading"}, use_json)
+
+        # Load images from each digit directory (0-9)
+        for digit in range(10):
+            digit_dir = data_path / str(digit)
+            if not digit_dir.exists():
+                digit_counts[digit] = 0
+                continue
+
+            digit_images = list(digit_dir.glob("*.png"))
+            digit_counts[digit] = len(digit_images)
+
+            for img_path in digit_images:
+                try:
+                    img = Image.open(img_path).convert("L")  # Grayscale
+                    img_array = np.array(img, dtype=np.float32) / 255.0
+                    images.append(img_array)
+                    labels.append(digit)
+                except Exception as e:
+                    emit_progress("status", {"message": f"Error loading {img_path}: {e}", "phase": "loading"}, use_json)
 
     if not images:
         emit_progress("error", {
@@ -146,6 +243,7 @@ def load_dataset(data_dir: str, use_json: bool = False):
         "total_images": len(X),
         "input_shape": list(X.shape),
         "digit_counts": digit_counts,
+        "using_manifest": manifest_file is not None,
         "phase": "loading"
     }, use_json)
 
@@ -443,6 +541,86 @@ def train_model(
     return model, history
 
 
+def run_subprocess_with_streaming(cmd: list, use_json: bool, timeout_seconds: int = 300) -> tuple[int, str, str]:
+    """
+    Run a subprocess with streaming output and timeout.
+
+    Returns (returncode, stdout, stderr).
+    Emits progress messages as output is received.
+    """
+    import subprocess
+    import select
+    import time
+
+    emit_progress("status", {"message": f"Running: {' '.join(cmd)}", "phase": "exporting"}, use_json)
+
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,  # Line buffered
+    )
+
+    stdout_lines = []
+    stderr_lines = []
+    start_time = time.time()
+
+    try:
+        while process.poll() is None:
+            # Check timeout
+            elapsed = time.time() - start_time
+            if elapsed > timeout_seconds:
+                process.kill()
+                emit_progress("status", {
+                    "message": f"Process timed out after {timeout_seconds}s",
+                    "phase": "exporting"
+                }, use_json)
+                return -1, '\n'.join(stdout_lines), f"Timeout after {timeout_seconds}s"
+
+            # Use select to check for available output (non-blocking)
+            import sys
+            if sys.platform != 'win32':
+                readable, _, _ = select.select([process.stdout, process.stderr], [], [], 1.0)
+                for stream in readable:
+                    line = stream.readline()
+                    if line:
+                        line = line.rstrip()
+                        if stream == process.stdout:
+                            stdout_lines.append(line)
+                            emit_progress("status", {
+                                "message": f"[converter] {line[:200]}",
+                                "phase": "exporting"
+                            }, use_json)
+                        else:
+                            stderr_lines.append(line)
+                            if line.strip():  # Only emit non-empty stderr
+                                emit_progress("status", {
+                                    "message": f"[converter stderr] {line[:200]}",
+                                    "phase": "exporting"
+                                }, use_json)
+            else:
+                # Windows fallback - just wait a bit
+                time.sleep(1.0)
+                emit_progress("status", {
+                    "message": f"Converting... ({int(elapsed)}s elapsed)",
+                    "phase": "exporting"
+                }, use_json)
+
+        # Read any remaining output
+        remaining_stdout, remaining_stderr = process.communicate(timeout=10)
+        if remaining_stdout:
+            stdout_lines.extend(remaining_stdout.split('\n'))
+        if remaining_stderr:
+            stderr_lines.extend(remaining_stderr.split('\n'))
+
+    except subprocess.TimeoutExpired:
+        process.kill()
+        return -1, '\n'.join(stdout_lines), "Process killed due to timeout"
+
+    return process.returncode, '\n'.join(stdout_lines), '\n'.join(stderr_lines)
+
+
 def export_to_tfjs(model, keras_path: str, output_dir: str, use_json: bool = False):
     """
     Export model to TensorFlow.js format with quantization.
@@ -490,13 +668,12 @@ def export_to_tfjs(model, keras_path: str, output_dir: str, use_json: bool = Fal
             str(output_path),
         ]
 
-        emit_progress("status", {"message": f"Running: {' '.join(cmd)}", "phase": "exporting"}, use_json)
+        # Use streaming subprocess with 5 minute timeout
+        returncode, stdout, stderr = run_subprocess_with_streaming(cmd, use_json, timeout_seconds=300)
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
-
-        if result.returncode != 0:
+        if returncode != 0:
             emit_progress("status", {
-                "message": f"SavedModel conversion failed: {result.stderr[:500]}. Trying keras format...",
+                "message": f"SavedModel conversion failed: {stderr[:500]}. Trying keras format...",
                 "phase": "exporting"
             }, use_json)
 
@@ -509,12 +686,11 @@ def export_to_tfjs(model, keras_path: str, output_dir: str, use_json: bool = Fal
                 str(output_path),
             ]
 
-            emit_progress("status", {"message": f"Running: {' '.join(cmd)}", "phase": "exporting"}, use_json)
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            returncode, stdout, stderr = run_subprocess_with_streaming(cmd, use_json, timeout_seconds=300)
 
-            if result.returncode != 0:
+            if returncode != 0:
                 emit_progress("status", {
-                    "message": f"tensorflowjs_converter failed: {result.stderr[:500]}",
+                    "message": f"tensorflowjs_converter failed: {stderr[:500]}",
                     "phase": "exporting"
                 }, use_json)
 
@@ -812,8 +988,8 @@ def main():
             "phase": "setup"
         }, use_json)
 
-    # Load dataset
-    X, y = load_dataset(args.data_dir, use_json)
+    # Load dataset (pass manifest file if provided for filtered training)
+    X, y = load_dataset(args.data_dir, use_json, manifest_file=args.manifest_file)
 
     # Check minimum data requirements
     if len(X) < 50:

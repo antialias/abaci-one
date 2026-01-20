@@ -1,7 +1,21 @@
 'use client'
 
+import Link from 'next/link'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
+import { AnimatedBackgroundTiles } from './AnimatedBackgroundTiles'
+import type { GeneratedExample } from '@/lib/flowcharts/loader'
+import type { ExecutableFlowchart } from '@/lib/flowcharts/schema'
+
+export interface FlowchartCardAction {
+  label: string
+  /** Click handler - use this for actions that don't navigate */
+  onClick?: () => void
+  /** href - use this for navigation (renders as Link, takes precedence over onClick) */
+  href?: string
+  variant?: 'primary' | 'secondary' | 'danger'
+  disabled?: boolean
+}
 
 export interface FlowchartCardProps {
   /** Title of the flowchart */
@@ -19,12 +33,11 @@ export interface FlowchartCardProps {
   /** Click handler for the main card */
   onClick?: () => void
   /** Optional secondary actions */
-  actions?: Array<{
-    label: string
-    onClick: () => void
-    variant?: 'primary' | 'secondary' | 'danger'
-    disabled?: boolean
-  }>
+  actions?: FlowchartCardAction[]
+  /** Optional flowchart for animated background tiles (needed for formatting) */
+  flowchart?: ExecutableFlowchart
+  /** Optional examples for animated background tiles */
+  examples?: GeneratedExample[]
 }
 
 /**
@@ -40,8 +53,11 @@ export function FlowchartCard({
   subtitle,
   onClick,
   actions,
+  flowchart,
+  examples,
 }: FlowchartCardProps) {
   const hasActions = actions && actions.length > 0
+  const hasExamples = flowchart && examples && examples.length > 0
 
   const cardContent = (
     <div className={hstack({ gap: '4', alignItems: 'flex-start', flex: 1 })}>
@@ -122,7 +138,9 @@ export function FlowchartCard({
   if (hasActions) {
     return (
       <div
+        data-component="flowchart-card"
         className={css({
+          position: 'relative',
           display: 'flex',
           flexDirection: 'column',
           gap: '3',
@@ -135,84 +153,111 @@ export function FlowchartCard({
           overflow: 'hidden',
         })}
       >
-        {onClick ? (
-          <button
-            onClick={onClick}
-            className={css({
-              display: 'flex',
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              margin: 0,
-              cursor: 'pointer',
-              textAlign: 'left',
-              _hover: {
-                '& h2': {
-                  color: { base: 'blue.600', _dark: 'blue.400' },
-                },
-              },
-            })}
-          >
-            {cardContent}
-          </button>
-        ) : (
-          cardContent
-        )}
-        <div className={hstack({ gap: '2', justifyContent: 'flex-end' })}>
-          {actions.map((action, i) => (
+        {/* Animated background tiles */}
+        {hasExamples && <AnimatedBackgroundTiles examples={examples} flowchart={flowchart} />}
+
+        {/* Card content (above background) */}
+        <div className={css({ position: 'relative', zIndex: 1 })}>
+          {onClick ? (
             <button
-              key={i}
-              onClick={(e) => {
-                e.stopPropagation()
-                if (!action.disabled) {
-                  action.onClick()
-                }
-              }}
-              disabled={action.disabled}
+              onClick={onClick}
               className={css({
-                padding: '2 4',
-                borderRadius: 'md',
-                fontSize: 'sm',
-                fontWeight: 'medium',
+                display: 'flex',
+                background: 'none',
                 border: 'none',
-                cursor: action.disabled ? 'not-allowed' : 'pointer',
-                transition: 'all 0.15s',
-                opacity: action.disabled ? 0.5 : 1,
-                ...(action.variant === 'primary'
+                padding: 0,
+                margin: 0,
+                cursor: 'pointer',
+                textAlign: 'left',
+                _hover: {
+                  '& h2': {
+                    color: { base: 'blue.600', _dark: 'blue.400' },
+                  },
+                },
+              })}
+            >
+              {cardContent}
+            </button>
+          ) : (
+            cardContent
+          )}
+          <div className={hstack({ gap: '2', justifyContent: 'flex-end', marginTop: '3' })}>
+          {actions.map((action, i) => {
+            const buttonStyles = css({
+              padding: '2 4',
+              borderRadius: 'md',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              border: 'none',
+              cursor: action.disabled ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s',
+              opacity: action.disabled ? 0.5 : 1,
+              textDecoration: 'none',
+              display: 'inline-block',
+              ...(action.variant === 'primary'
+                ? {
+                    backgroundColor: { base: 'blue.100', _dark: 'blue.900' },
+                    color: { base: 'blue.700', _dark: 'blue.300' },
+                    _hover: action.disabled
+                      ? {}
+                      : {
+                          backgroundColor: { base: 'blue.200', _dark: 'blue.800' },
+                        },
+                  }
+                : action.variant === 'danger'
                   ? {
-                      backgroundColor: { base: 'blue.100', _dark: 'blue.900' },
-                      color: { base: 'blue.700', _dark: 'blue.300' },
+                      backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+                      color: { base: 'gray.600', _dark: 'gray.400' },
                       _hover: action.disabled
                         ? {}
                         : {
-                            backgroundColor: { base: 'blue.200', _dark: 'blue.800' },
+                            backgroundColor: { base: 'red.100', _dark: 'red.900' },
+                            color: { base: 'red.600', _dark: 'red.400' },
                           },
                     }
-                  : action.variant === 'danger'
-                    ? {
-                        backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
-                        color: { base: 'gray.600', _dark: 'gray.400' },
-                        _hover: action.disabled
-                          ? {}
-                          : {
-                              backgroundColor: { base: 'red.100', _dark: 'red.900' },
-                              color: { base: 'red.600', _dark: 'red.400' },
-                            },
-                      }
-                    : {
-                        backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
-                        color: { base: 'gray.700', _dark: 'gray.300' },
-                        _hover: action.disabled
-                          ? {}
-                          : {
-                              backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
-                            },
-                      }),
-              })}
-            >
-              {action.label}
-            </button>
-          ))}
+                  : {
+                      backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+                      color: { base: 'gray.700', _dark: 'gray.300' },
+                      _hover: action.disabled
+                        ? {}
+                        : {
+                            backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
+                          },
+                    }),
+            })
+
+            // Render as Link when href is provided
+            if (action.href && !action.disabled) {
+              return (
+                <Link
+                  key={i}
+                  href={action.href}
+                  className={buttonStyles}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {action.label}
+                </Link>
+              )
+            }
+
+            // Render as button for onClick handlers or disabled states
+            return (
+              <button
+                key={i}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (!action.disabled && action.onClick) {
+                    action.onClick()
+                  }
+                }}
+                disabled={action.disabled}
+                className={buttonStyles}
+              >
+                {action.label}
+              </button>
+            )
+          })}
+          </div>
         </div>
       </div>
     )
@@ -220,30 +265,44 @@ export function FlowchartCard({
 
   // Simple clickable card without actions
   return (
-    <button
-      onClick={onClick}
+    <div
+      data-component="flowchart-card"
       className={css({
-        display: 'block',
-        width: '100%',
-        padding: '6',
-        backgroundColor: { base: 'white', _dark: 'gray.800' },
+        position: 'relative',
         borderRadius: 'xl',
-        boxShadow: 'md',
-        border: '2px solid',
-        borderColor: { base: 'gray.200', _dark: 'gray.700' },
-        transition: 'all 0.2s',
-        textDecoration: 'none',
-        textAlign: 'left',
-        cursor: 'pointer',
-        _hover: {
-          borderColor: { base: 'blue.400', _dark: 'blue.500' },
-          transform: 'translateY(-2px)',
-          boxShadow: 'lg',
-        },
+        overflow: 'hidden',
       })}
     >
-      {cardContent}
-    </button>
+      {/* Animated background tiles */}
+      {hasExamples && <AnimatedBackgroundTiles examples={examples} flowchart={flowchart} />}
+
+      <button
+        onClick={onClick}
+        className={css({
+          position: 'relative',
+          zIndex: 1,
+          display: 'block',
+          width: '100%',
+          padding: '6',
+          backgroundColor: { base: 'white', _dark: 'gray.800' },
+          borderRadius: 'xl',
+          boxShadow: 'md',
+          border: '2px solid',
+          borderColor: { base: 'gray.200', _dark: 'gray.700' },
+          transition: 'all 0.2s',
+          textDecoration: 'none',
+          textAlign: 'left',
+          cursor: 'pointer',
+          _hover: {
+            borderColor: { base: 'blue.400', _dark: 'blue.500' },
+            transform: 'translateY(-2px)',
+            boxShadow: 'lg',
+          },
+        })}
+      >
+        {cardContent}
+      </button>
+    </div>
   )
 }
 

@@ -335,7 +335,7 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
           alignItems: 'center',
           justifyContent: 'center',
         })}
-        style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
+        style={{ minHeight: 'calc(100vh - 120px)' }}
       >
         Loading...
       </div>
@@ -355,7 +355,7 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
           justifyContent: 'center',
           gap: 4,
         })}
-        style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
+        style={{ minHeight: 'calc(100vh - 120px)' }}
       >
         <div className={css({ color: 'red.400' })}>
           Error: {error || (!session ? 'Session not found' : 'Session has no result data')}
@@ -393,7 +393,7 @@ export default function SessionDetailPage({ params }: { params: { id: string } }
         color: 'gray.100',
         pt: 4,
       })}
-      style={{ minHeight: 'calc(100vh - var(--nav-height))' }}
+      style={{ minHeight: 'calc(100vh - 120px)' }}
     >
       {/* Page header */}
       <div

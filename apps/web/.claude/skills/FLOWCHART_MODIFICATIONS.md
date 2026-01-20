@@ -1,6 +1,7 @@
 # Flowchart Walker Modification Skill
 
 This document captures patterns and lessons learned from modifying the flowchart walker system, specifically from the fraction addition/subtraction sprint where we:
+
 - Split a single "calculate" step into separate numerator, denominator, and whole number checkpoints
 - Added conditional skipping for optional steps
 - Fixed grid dimension stability issues
@@ -9,10 +10,10 @@ This document captures patterns and lessons learned from modifying the flowchart
 
 Each flowchart has **two parts** that must stay in sync:
 
-| Part | Location | Purpose |
-|------|----------|---------|
-| JSON definition | `definitions/*.flow.json` | Node types, validation logic, variables, constraints |
-| Mermaid content | `definitions/index.ts` (embedded) or `*.mmd` | Visual presentation, node text, phases |
+| Part            | Location                                     | Purpose                                              |
+| --------------- | -------------------------------------------- | ---------------------------------------------------- |
+| JSON definition | `definitions/*.flow.json`                    | Node types, validation logic, variables, constraints |
+| Mermaid content | `definitions/index.ts` (embedded) or `*.mmd` | Visual presentation, node text, phases               |
 
 **Critical**: Many flowcharts embed Mermaid content in `definitions/index.ts` as constants (e.g., `FRACTION_MERMAID`, `LINEAR_EQUATIONS_MERMAID`). Always check there first before looking for `.mmd` files.
 
@@ -31,6 +32,7 @@ In the JSON definition's `variables` section, add computed values the checkpoint
 ```
 
 **Expression syntax**: Uses JavaScript-like expressions with access to:
+
 - Problem input fields (e.g., `leftNum`, `rightDenom`, `op`)
 - Other computed variables
 - Built-in functions: `gcd()`, `lcm()`, `abs()`, `floor()`, `ceil()`, `min()`, `max()`
@@ -53,6 +55,7 @@ In the JSON definition's `nodes` section:
 ```
 
 **Checkpoint input types**:
+
 - `"number"` - Single numeric input
 - `"text"` - Text input
 - `"two-numbers"` - Two inputs with `inputLabels: ["First", "Second"]` and `orderMatters: boolean`
@@ -80,6 +83,7 @@ go here"]
 ```
 
 **Mermaid node format**:
+
 - `[" ... "]` for rounded rectangle (checkpoint/instruction)
 - `{" ... "}` for diamond (decision)
 - First line in `<b>...</b>` becomes the title
@@ -116,10 +120,10 @@ For checkpoints that should be skipped under certain conditions:
 
 **Critical for grid stability**: By default, a checkpoint with `skipIf` creates TWO paths in path enumeration (skip path and non-skip path), which affects example grid dimensions.
 
-| Flag Value | Behavior | Use When |
-|------------|----------|----------|
-| `false` (default) | skipIf creates branching paths | The skip represents a **structural difference** in problem types |
-| `true` | skipIf is runtime-only, no path branching | The skip is an **optional step** that doesn't define problem categories |
+| Flag Value        | Behavior                                  | Use When                                                                |
+| ----------------- | ----------------------------------------- | ----------------------------------------------------------------------- |
+| `false` (default) | skipIf creates branching paths            | The skip represents a **structural difference** in problem types        |
+| `true`            | skipIf is runtime-only, no path branching | The skip is an **optional step** that doesn't define problem categories |
 
 **Example**: CALC_WHOLE uses `excludeSkipFromPaths: true` because whether a problem has whole numbers is incidental - it doesn't define a fundamentally different problem type for the grid.
 
@@ -151,12 +155,14 @@ The example picker grid dimensions come from **decision nodes with `pathLabel`**
 ```
 
 **How grid dimensions are determined**:
+
 1. `enumerateAllPaths()` walks all possible paths through the flowchart
 2. Each path collects `pathLabel` values from decision nodes
 3. Unique combinations of decisions define grid rows/columns
 4. The `gridLabel` values become human-readable headers
 
 **What affects grid stability**:
+
 - Decision nodes with `pathLabel` options → YES, defines grid structure
 - Checkpoint nodes (normal) → NO, just increments step count
 - Checkpoint nodes with `skipIf` and `excludeSkipFromPaths: false` → YES, creates path branches
@@ -231,30 +237,33 @@ Then update it at key checkpoints:
 ## Debugging Tips
 
 ### Grid Dimensions Unstable
+
 1. Check if any checkpoint has `skipIf` without `excludeSkipFromPaths: true`
 2. Increase example generation count (in `generateExamplesForStructure`, currently 1050)
 3. Verify decision nodes have consistent `pathLabel` values
 
 ### Checkpoint Not Appearing
+
 1. Check the `skipIf` condition - is it evaluating correctly?
 2. Verify edges connect to the node
 3. Check Mermaid content has the node defined
 
 ### Wrong Expected Value
+
 1. Check variable initialization expressions
 2. Use the DEBUG panel to see computed values
 3. Test with known problem values
 
 ## Files Reference
 
-| File | Purpose |
-|------|---------|
-| `src/lib/flowcharts/schema.ts` | TypeScript types for all node types |
-| `src/lib/flowcharts/loader.ts` | Merges JSON + Mermaid, path enumeration |
-| `src/lib/flowcharts/evaluator.ts` | Expression evaluation engine |
-| `src/lib/flowcharts/definitions/index.ts` | Registry + embedded Mermaid content |
-| `src/lib/flowcharts/definitions/*.flow.json` | JSON behavior definitions |
-| `src/components/flowchart/FlowchartWalker.tsx` | Main UI component |
+| File                                           | Purpose                                 |
+| ---------------------------------------------- | --------------------------------------- |
+| `src/lib/flowcharts/schema.ts`                 | TypeScript types for all node types     |
+| `src/lib/flowcharts/loader.ts`                 | Merges JSON + Mermaid, path enumeration |
+| `src/lib/flowcharts/evaluator.ts`              | Expression evaluation engine            |
+| `src/lib/flowcharts/definitions/index.ts`      | Registry + embedded Mermaid content     |
+| `src/lib/flowcharts/definitions/*.flow.json`   | JSON behavior definitions               |
+| `src/components/flowchart/FlowchartWalker.tsx` | Main UI component                       |
 
 ## Checklist for Flowchart Modifications
 

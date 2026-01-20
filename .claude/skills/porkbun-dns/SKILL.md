@@ -23,6 +23,7 @@ ssh nas.home.network 'cat /volume1/homes/antialias/projects/abaci.one/ddns-data/
 ```
 
 The file contains:
+
 - `api_key`: Public API key (starts with `pk1_`)
 - `secret_api_key`: Secret API key (starts with `sk1_`)
 
@@ -120,12 +121,12 @@ dig +short subdomain.abaci.one @maceio.porkbun.com
 
 The domain has these key records:
 
-| Type | Host | Purpose |
-|------|------|---------|
-| A | abaci.one | Main domain → home IP (DDNS managed) |
-| CNAME | blue | Blue container instance |
-| CNAME | green | Green container instance |
-| CNAME | * | Wildcard parking page (can be deleted) |
+| Type  | Host      | Purpose                                |
+| ----- | --------- | -------------------------------------- |
+| A     | abaci.one | Main domain → home IP (DDNS managed)   |
+| CNAME | blue      | Blue container instance                |
+| CNAME | green     | Green container instance               |
+| CNAME | \*        | Wildcard parking page (can be deleted) |
 
 ## Notes
 

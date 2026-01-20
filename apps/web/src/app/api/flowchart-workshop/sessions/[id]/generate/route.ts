@@ -18,11 +18,18 @@ import { and, eq } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db, schema } from '@/db'
 import {
+  broadcast,
+  completeGeneration,
+  failGeneration,
+  startGeneration,
+} from '@/lib/flowchart-workshop/generation-registry'
+import {
   GeneratedFlowchartSchema,
   getGenerationSystemPrompt,
   getSubtractionExample,
   transformLLMDefinitionToInternal,
 } from '@/lib/flowchart-workshop/llm-schemas'
+import { sanitizeMermaidContent } from '@/lib/flowcharts/parser'
 import { llm, type StreamEvent } from '@/lib/llm'
 import { getDbUserId } from '@/lib/viewer'
 
@@ -111,7 +118,9 @@ export async function POST(request: Request, { params }: RouteParams) {
         } catch {
           // Client disconnected - mark as disconnected but continue processing
           clientConnected = false
-          console.log(`[generate] Client disconnected during ${event} event, continuing LLM processing...`)
+          console.log(
+            `[generate] Client disconnected during ${event} event, continuing LLM processing...`
+          )
         }
       }
 
@@ -133,8 +142,39 @@ export async function POST(request: Request, { params }: RouteParams) {
         reasoningTokens?: number
       } | null = null
 
+      // Start tracking this generation in the registry (for reconnection support)
+      const generationState = startGeneration(id)
+
+      // Throttled save of reasoning text to database (for durability)
+      let lastReasoningSaveTime = 0
+      const REASONING_SAVE_INTERVAL_MS = 2000 // Save reasoning every 2 seconds
+
+      const saveReasoningToDb = async (force = false) => {
+        const now = Date.now()
+        if (!force && now - lastReasoningSaveTime < REASONING_SAVE_INTERVAL_MS) {
+          return // Throttle saves
+        }
+        lastReasoningSaveTime = now
+        try {
+          await db
+            .update(schema.workshopSessions)
+            .set({
+              currentReasoningText: generationState.accumulatedReasoning,
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.workshopSessions.id, id))
+        } catch (err) {
+          // Log but don't fail the stream on DB errors
+          console.error('[generate] Failed to save reasoning to DB:', err)
+        }
+      }
+
       try {
         sendEvent('progress', { stage: 'preparing', message: 'Preparing flowchart generation...' })
+        broadcast(id, {
+          type: 'progress',
+          data: { stage: 'preparing', message: 'Preparing flowchart generation...' },
+        })
 
         // Build the prompt
         const systemPrompt = getGenerationSystemPrompt()
@@ -169,7 +209,7 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
           timeoutMs: 300_000, // 5 minutes for complex flowchart generation
         })
 
-        // Forward all stream events to the client (best-effort)
+        // Forward all stream events to the client AND broadcast to registry subscribers
         // The for-await loop processes all LLM events regardless of client state
         for await (const event of llmStream as AsyncGenerator<
           StreamEvent<GeneratedFlowchart>,
@@ -177,27 +217,40 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
           unknown
         >) {
           switch (event.type) {
-            case 'started':
-              sendEvent('started', {
+            case 'started': {
+              const startedData = {
                 responseId: event.responseId,
                 message: 'Generating flowchart...',
-              })
+              }
+              sendEvent('started', startedData)
+              // Note: 'started' is not broadcast - subscribers already know generation started
               break
+            }
 
-            case 'reasoning':
-              sendEvent('reasoning', {
+            case 'reasoning': {
+              const reasoningData = {
                 text: event.text,
                 summaryIndex: event.summaryIndex,
                 isDelta: event.isDelta,
-              })
+              }
+              // Broadcast to registry (this accumulates reasoning internally)
+              broadcast(id, { type: 'reasoning', data: reasoningData })
+              // Throttled save to database for durability (don't await - fire and forget)
+              saveReasoningToDb()
+              // Send to this client's SSE stream
+              sendEvent('reasoning', reasoningData)
               break
+            }
 
-            case 'output_delta':
-              sendEvent('output_delta', {
+            case 'output_delta': {
+              const outputData = {
                 text: event.text,
                 outputIndex: event.outputIndex,
-              })
+              }
+              broadcast(id, { type: 'output_delta', data: outputData })
+              sendEvent('output_delta', outputData)
               break
+            }
 
             case 'error':
               // This is an LLM error, not a client error
@@ -206,6 +259,7 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
                 message: event.message,
                 code: event.code,
               })
+              // Don't broadcast error here - we'll call failGeneration() below
               break
 
             case 'complete':
@@ -226,15 +280,19 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
       // ALWAYS update database based on LLM result, regardless of client connection
       // This is the key fix: DB operations happen outside the try-catch for client errors
       if (llmError) {
-        // LLM failed - update session to error state
+        // LLM failed - update session to error state, clear reasoning
         await db
           .update(schema.workshopSessions)
           .set({
             state: 'initial',
             draftNotes: JSON.stringify([`Generation failed: ${llmError.message}`]),
+            currentReasoningText: null, // Clear reasoning on completion/error
             updatedAt: new Date(),
           })
           .where(eq(schema.workshopSessions.id, id))
+
+        // Notify registry subscribers of failure
+        failGeneration(id, llmError.message)
 
         sendEvent('error', { message: llmError.message })
       } else if (finalResult) {
@@ -244,7 +302,7 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
         // Transform LLM output (array-based) to internal format (record-based)
         const internalDefinition = transformLLMDefinitionToInternal(finalResult.definition)
 
-        // Update session with the generated content
+        // Update session with the generated content, clear reasoning
         await db
           .update(schema.workshopSessions)
           .set({
@@ -256,6 +314,7 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
             draftDifficulty: finalResult.difficulty,
             draftEmoji: finalResult.emoji,
             draftNotes: JSON.stringify(finalResult.notes),
+            currentReasoningText: null, // Clear reasoning on completion
             updatedAt: new Date(),
           })
           .where(eq(schema.workshopSessions.id, id))
@@ -264,7 +323,8 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
           `[generate] Flowchart saved to DB for session ${id}${clientConnected ? '' : ' (client had disconnected)'}`
         )
 
-        sendEvent('complete', {
+        // Build complete result for broadcasting
+        const completeResult = {
           definition: internalDefinition,
           mermaidContent: finalResult.mermaidContent,
           title: finalResult.title,
@@ -273,7 +333,12 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
           difficulty: finalResult.difficulty,
           notes: finalResult.notes,
           usage,
-        })
+        }
+
+        // Notify registry subscribers of completion (this also broadcasts 'complete' event)
+        completeGeneration(id, completeResult)
+
+        sendEvent('complete', completeResult)
       }
 
       closeStream()

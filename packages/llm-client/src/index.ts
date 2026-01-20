@@ -52,6 +52,9 @@ export type {
   StreamEventOutputDelta,
   StreamEventError,
   StreamEventComplete,
+  // Embedding types
+  EmbeddingRequest,
+  EmbeddingResponse,
 } from "./types";
 
 // Errors

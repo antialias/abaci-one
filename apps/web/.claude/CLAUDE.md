@@ -246,6 +246,30 @@ git push
 
 The new migration will run on production startup and fix the schema.
 
+### Migration Timestamp Ordering Issue
+
+**VERY COMMON BUG:** Migrations get skipped because timestamps are out of order.
+
+**Root cause:** Claude (me) often creates migration files manually using `Write` tool instead of running `npx drizzle-kit generate --custom`. This results in incorrect timestamps and journal entries.
+
+**NEVER manually create files in `drizzle/` or edit `_journal.json`!** Always run the command:
+```bash
+npx drizzle-kit generate --custom
+```
+
+**Symptom:** `SqliteError: no such column: "column_name"` even though migration file exists and `db:migrate` says "complete".
+
+**See:** `.claude/skills/migration-timestamp-fix.md` for full diagnosis and fix procedure.
+
+**Quick fix:**
+1. Check `drizzle/meta/_journal.json` - is the new migration's `when` timestamp less than previous ones?
+2. If yes, edit the timestamp to be greater than all previous migrations
+3. Run `npm run db:migrate` again
+
+**Prevention:**
+1. ALWAYS use `npx drizzle-kit generate --custom` (via Bash tool), never manually create migration files
+2. After running the command, verify journal timestamps are in ascending order
+
 ## CRITICAL: @svg-maps ES Module Imports Work Correctly
 
 **The @svg-maps packages (world, usa) USE ES module syntax and this WORKS correctly in production.**
@@ -1127,6 +1151,8 @@ After running `npx drizzle-kit generate --custom`, check `drizzle/meta/_journal.
 2. Verify it's GREATER than the previous migration's timestamp
 3. If not, manually edit the journal to use a timestamp after the previous one
 
+**If you see `SqliteError: no such column` after migrations "complete":** This is likely the timestamp ordering bug. See `.claude/skills/migration-timestamp-fix.md` for full diagnosis and fix.
+
 Example of broken ordering (0057 before 0056):
 
 ```json
@@ -1397,13 +1423,14 @@ When working on the interactive flowchart walker system, refer to:
 
 Mermaid content is **NOT always in separate `.mmd` files!** Many flowcharts embed their mermaid content directly in `definitions/index.ts`.
 
-| Flowchart ID | JSON Definition | Mermaid Content |
-|--------------|-----------------|-----------------|
-| `subtraction-regrouping` | `definitions/subtraction-regrouping.flow.json` | `definitions/subtraction-regrouping-flowchart.mmd` |
-| `fraction-add-sub` | `definitions/fraction-add-sub.flow.json` | **EMBEDDED** in `definitions/index.ts` as `FRACTION_MERMAID` |
-| `linear-equations` | `definitions/linear-equations.flow.json` | **EMBEDDED** in `definitions/index.ts` as `LINEAR_EQUATIONS_MERMAID` |
+| Flowchart ID             | JSON Definition                                | Mermaid Content                                                      |
+| ------------------------ | ---------------------------------------------- | -------------------------------------------------------------------- |
+| `subtraction-regrouping` | `definitions/subtraction-regrouping.flow.json` | `definitions/subtraction-regrouping-flowchart.mmd`                   |
+| `fraction-add-sub`       | `definitions/fraction-add-sub.flow.json`       | **EMBEDDED** in `definitions/index.ts` as `FRACTION_MERMAID`         |
+| `linear-equations`       | `definitions/linear-equations.flow.json`       | **EMBEDDED** in `definitions/index.ts` as `LINEAR_EQUATIONS_MERMAID` |
 
 **To find node content for a flowchart:**
+
 1. **First check `definitions/index.ts`** - search for the node ID (e.g., `READY1`)
 2. If not embedded, check the `.mmd` file referenced in the JSON's `mermaidFile` field
 
@@ -1419,6 +1446,7 @@ Mermaid content is **NOT always in separate `.mmd` files!** Many flowcharts embe
 **Two-File Architecture:**
 
 Each flowchart has two parts:
+
 1. **JSON definition** (`.flow.json`): Node types, validation logic, variables, constraints
 2. **Mermaid content** (`.mmd` or embedded): Visual presentation, node text, phases
 
@@ -1427,6 +1455,7 @@ The loader merges these into an `ExecutableFlowchart` at runtime.
 **Modifying Flowcharts:**
 
 When adding checkpoints, changing node behavior, or adjusting path enumeration:
+
 - **[`.claude/skills/FLOWCHART_MODIFICATIONS.md`](./skills/FLOWCHART_MODIFICATIONS.md)** - Patterns for modifying flowcharts
   - Adding new checkpoint nodes
   - Conditional skipping with `skipIf` and `excludeSkipFromPaths`

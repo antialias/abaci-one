@@ -560,10 +560,30 @@ export function transformLLMDefinitionToInternal(
 // =============================================================================
 
 /**
+ * Critical rules that apply to both generation and refinement.
+ * These are extracted to ensure consistency between prompts.
+ */
+function getCriticalRules(): string {
+  return `## Critical Rules Checklist
+
+1. **Node ID consistency**: Every node in the definition must have a matching node in mermaid, and vice versa
+2. **Path completeness**: Every path through the flowchart must reach a terminal node
+3. **Expression validity**: All expressions must use valid syntax (see Expression Syntax section)
+4. **Circle node content**: Embellishment nodes using \`(())\` syntax MUST contain an emoji like \`(("😊"))\` or \`(("🎉"))\`, NEVER empty \`((""))\` (causes parse error)
+5. **No straight double quotes in node content**: Use single quotes (\`'\`) or rephrase - straight \`"\` inside node labels breaks mermaid parsing (see Quote Escaping section)
+6. **Generation config required**: The \`generation.preferred\` field MUST contain arrays of pedagogically nice values for each input field. Without this, example generation fails.
+7. **Descriptive pathLabels**: Use meaningful labels like "BORROW"/"DIRECT", "SAME"/"DIFF", not generic "YES"/"NO"
+8. **display.problem**: Use math-style expressions (e.g., \`"top + ' − ' + bottom"\`), not verbose text
+9. **excludeFromExampleStructure**: Mark verification/confirmation decisions with this flag to keep example grids clean
+10. **Style syntax**: Style directives MUST include node ID: \`style START fill:#10b981\` (not \`style fill:#10b981\`)`
+}
+
+/**
  * Get the system prompt for flowchart generation
  */
 export function getGenerationSystemPrompt(): string {
-  return `You are an expert math educator and instructional designer. Your task is to create interactive math flowcharts that guide students through problem-solving procedures.
+  return (
+    `You are an expert math educator and instructional designer. Your task is to create interactive math flowcharts that guide students through problem-solving procedures.
 
 ## Flowchart Architecture
 
@@ -747,6 +767,43 @@ Start the mermaid file with theme configuration:
 - Dividers: \`───────────\` (unicode box drawing)
 - NO special characters except emoji
 - NO unquoted text with special chars
+
+## ⚠️ CRITICAL: Quote Escaping in Mermaid
+
+**NEVER use straight double quotes (\`"\`) inside node label content.**
+
+Mermaid uses \`"\` as the delimiter for node labels: \`NODE["content here"]\`. If your content contains a quote character, it breaks parsing:
+
+**❌ WRONG - Inner quotes break parsing:**
+\`\`\`
+STATS["Variables share the same "state"."]
+                            ↑     ↑
+                         Parser stops here and fails!
+\`\`\`
+
+**✅ CORRECT - Use alternatives:**
+
+1. **Single quotes** (preferred for quoted text):
+   \`\`\`
+   STATS["Variables share the same 'state'."]
+   \`\`\`
+
+2. **Rephrase to avoid quotes entirely** (often cleaner):
+   \`\`\`
+   STATS["Variables share the same state."]
+   \`\`\`
+
+3. **Smart/curly quotes** (if you must have double-quote appearance):
+   \`\`\`
+   STATS["Variables share the same "state"."]
+   \`\`\`
+
+**Apply this rule to ALL node content**, including:
+- Instruction boxes
+- Decision questions
+- Checkpoint prompts
+- Phase titles
+- Edge labels
 
 ## CRITICAL: Generation Config (REQUIRED)
 
@@ -933,6 +990,10 @@ Result: "3/4 , 5/6" (fractions render properly with MathML)
 5. **Encouraging embellishments**: Use emoji milestones between phases
 6. **Complete paths**: Every path must reach a terminal node
 
+` +
+    getCriticalRules() +
+    `
+
 ## Output Format
 
 Return a JSON object with:
@@ -943,6 +1004,7 @@ Return a JSON object with:
 - \`difficulty\`: "Beginner", "Intermediate", or "Advanced"
 - \`notes\`: Array of user-facing notes for teachers/parents (pedagogical tips, how to use with students, topic insights). NO technical/implementation details!
 - \`debugNotes\`: Array of technical notes (node IDs, schema changes, implementation details). Not shown to users.`
+  )
 }
 
 /**
@@ -1084,7 +1146,8 @@ flowchart TB
  * Get the refinement system prompt
  */
 export function getRefinementSystemPrompt(): string {
-  return `You are an expert math educator helping a teacher refine their interactive math flowchart.
+  return (
+    `You are an expert math educator helping a teacher refine their interactive math flowchart.
 
 You will receive:
 1. The current flowchart definition (JSON)
@@ -1098,17 +1161,13 @@ Your task is to modify the flowchart according to the teacher's request while:
 - Preserving the teaching approach unless explicitly asked to change it
 - Adding helpful notes about what changed
 
-## Important Rules
+## Refinement-Specific Rule
 
-1. **Node ID consistency**: If you add a node in the definition, add it to mermaid too
-2. **Path completeness**: Every path must still reach a terminal node
-3. **Expression validity**: All expressions must use valid syntax
-4. **Preserve working features**: Don't break what's already working
-5. **Circle node content**: Embellishment nodes using \`(())\` syntax MUST contain an emoji like \`(("😊"))\` or \`(("🎉"))\`, NEVER empty \`((""))\` (causes parse error)
-6. **Generation config required**: The \`generation.preferred\` field MUST contain arrays of pedagogically nice values for each input field. Without this, example generation fails.
-7. **Descriptive pathLabels**: Use meaningful labels like "BORROW"/"DIRECT", "SAME"/"DIFF", not generic "YES"/"NO"
-8. **display.problem**: Use math-style expressions (e.g., \`"top + ' − ' + bottom"\`), not verbose text
-9. **excludeFromExampleStructure**: Mark verification/confirmation decisions with this flag to keep example grids clean
+**Preserve working features**: Don't break what's already working. Only modify what the teacher explicitly requests.
+
+` +
+    getCriticalRules() +
+    `
 
 ## Output Format
 
@@ -1118,4 +1177,5 @@ Return a JSON object with:
 - \`changesSummary\`: User-facing summary of changes (pedagogical impact, not technical details)
 - \`notes\`: Array of user-facing notes for teachers/parents (pedagogical tips, suggestions). NO technical/implementation details!
 - \`debugNotes\`: Array of technical notes (node IDs, what changed internally). Not shown to users.`
+  )
 }

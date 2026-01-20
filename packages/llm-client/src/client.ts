@@ -1,5 +1,7 @@
 import { z } from "zod";
 import type {
+  EmbeddingRequest,
+  EmbeddingResponse,
   LLMClientConfig,
   LLMProvider,
   LLMRequest,
@@ -9,7 +11,7 @@ import type {
   StreamEvent,
   ValidationFeedback,
 } from "./types";
-import { ProviderNotConfiguredError } from "./types";
+import { LLMApiError, ProviderNotConfiguredError } from "./types";
 import {
   loadConfigFromEnv,
   getProviderConfig,
@@ -234,6 +236,96 @@ export class LLMClient {
     }
     const provider = getProviderConfig(this.config, providerName);
     return provider?.defaultModel ?? "default";
+  }
+
+  /**
+   * Generate embeddings for text using OpenAI's embedding API
+   *
+   * @param request - The embedding request
+   * @returns Embedding response with Float32Array embeddings
+   *
+   * @example
+   * ```typescript
+   * const llm = new LLMClient()
+   *
+   * // Single text
+   * const { embeddings } = await llm.embed({ input: 'Hello world' })
+   * console.log(embeddings[0]) // Float32Array(1536)
+   *
+   * // Multiple texts (more efficient)
+   * const { embeddings } = await llm.embed({
+   *   input: ['Hello', 'World'],
+   *   model: 'text-embedding-3-small'
+   * })
+   * ```
+   */
+  async embed(request: EmbeddingRequest): Promise<EmbeddingResponse> {
+    // Embeddings are only available via OpenAI
+    const providerConfig = getProviderConfig(this.config, "openai");
+    if (!providerConfig) {
+      throw new ProviderNotConfiguredError("openai");
+    }
+
+    const model = request.model ?? "text-embedding-3-small";
+    const inputTexts = Array.isArray(request.input)
+      ? request.input
+      : [request.input];
+
+    const requestBody: Record<string, unknown> = {
+      model,
+      input: inputTexts,
+    };
+
+    if (request.dimensions) {
+      requestBody.dimensions = request.dimensions;
+    }
+
+    const response = await fetch(`${providerConfig.baseUrl}/embeddings`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${providerConfig.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = errorText;
+      try {
+        const errorJson = JSON.parse(errorText) as {
+          error?: { message?: string };
+        };
+        errorMessage = errorJson.error?.message ?? errorText;
+      } catch {
+        // Keep original text
+      }
+
+      throw new LLMApiError("openai", response.status, errorMessage);
+    }
+
+    const data = (await response.json()) as {
+      data: Array<{ embedding: number[]; index: number }>;
+      usage: { prompt_tokens: number; total_tokens: number };
+      model: string;
+    };
+
+    // Sort by index to ensure correct order
+    const sortedData = data.data.sort((a, b) => a.index - b.index);
+
+    // Convert to Float32Arrays
+    const embeddings = sortedData.map(
+      (item) => new Float32Array(item.embedding),
+    );
+
+    return {
+      embeddings,
+      usage: {
+        promptTokens: data.usage.prompt_tokens,
+        totalTokens: data.usage.total_tokens,
+      },
+      model: data.model,
+    };
   }
 
   /**

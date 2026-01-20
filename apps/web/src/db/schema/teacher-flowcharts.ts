@@ -1,5 +1,5 @@
 import { createId } from '@paralleldrive/cuid2'
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { blob, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { users } from './users'
 
 /**
@@ -61,6 +61,16 @@ export const teacherFlowcharts = sqliteTable(
     /** Space-separated keywords for search */
     searchKeywords: text('search_keywords'),
 
+    // Embeddings
+    /** Semantic embedding vector for full content (title + description + topic) */
+    embedding: blob('embedding', { mode: 'buffer' }),
+
+    /** Semantic embedding vector for just the original prompt/topic description */
+    promptEmbedding: blob('prompt_embedding', { mode: 'buffer' }),
+
+    /** Version of the embedding model used (for recomputation when model changes) */
+    embeddingVersion: text('embedding_version'),
+
     // Timestamps
     /** When this flowchart was created */
     createdAt: integer('created_at', { mode: 'timestamp' })
@@ -113,6 +123,11 @@ export const workshopSessions = sqliteTable(
     /** If remixing from an existing flowchart (can be hardcoded ID or teacher flowchart ID) */
     remixFromId: text('remix_from_id'),
 
+    /** If editing a published flowchart, the ID to update on publish (instead of creating new) */
+    linkedPublishedId: text('linked_published_id').references(() => teacherFlowcharts.id, {
+      onDelete: 'set null',
+    }),
+
     // Workshop state
     /** Current state of the workshop */
     state: text('state', {
@@ -151,6 +166,9 @@ export const workshopSessions = sqliteTable(
 
     /** Notes/warnings from the LLM about the current draft */
     draftNotes: text('draft_notes'),
+
+    /** Current reasoning text being streamed from the LLM (for reconnection) */
+    currentReasoningText: text('current_reasoning_text'),
 
     // Timestamps
     /** When this session was created */

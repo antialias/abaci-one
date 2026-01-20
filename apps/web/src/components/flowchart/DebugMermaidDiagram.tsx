@@ -8,6 +8,10 @@ interface DebugMermaidDiagramProps {
   mermaidContent: string
   /** Current node ID to highlight */
   currentNodeId: string
+  /** Callback when regeneration is requested (shown when there's a render error) */
+  onRegenerate?: () => void
+  /** Whether regeneration is currently in progress */
+  isRegenerating?: boolean
 }
 
 /**
@@ -16,7 +20,12 @@ interface DebugMermaidDiagramProps {
  * Only rendered when visual debug mode is enabled.
  * Uses mermaid.js to render the flowchart SVG with custom styling for the current node.
  */
-export function DebugMermaidDiagram({ mermaidContent, currentNodeId }: DebugMermaidDiagramProps) {
+export function DebugMermaidDiagram({
+  mermaidContent,
+  currentNodeId,
+  onRegenerate,
+  isRegenerating,
+}: DebugMermaidDiagramProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -91,15 +100,64 @@ export function DebugMermaidDiagram({ mermaidContent, currentNodeId }: DebugMerm
   if (error) {
     return (
       <div
+        data-element="mermaid-error"
         className={css({
-          padding: '4',
+          padding: '6',
           backgroundColor: { base: 'red.50', _dark: 'red.900/30' },
           borderRadius: 'lg',
-          color: { base: 'red.700', _dark: 'red.300' },
-          fontSize: 'sm',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '4',
         })}
       >
-        Failed to render flowchart: {error}
+        <div
+          className={css({
+            color: { base: 'red.700', _dark: 'red.300' },
+            fontSize: 'sm',
+            textAlign: 'center',
+          })}
+        >
+          <strong>Failed to render flowchart</strong>
+          <br />
+          <span className={css({ fontFamily: 'mono', fontSize: 'xs' })}>{error}</span>
+        </div>
+        {onRegenerate && (
+          <button
+            data-action="regenerate-from-error"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+            className={css({
+              padding: '3 6',
+              borderRadius: 'lg',
+              backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
+              color: 'white',
+              fontWeight: 'medium',
+              border: 'none',
+              cursor: 'pointer',
+              _hover: {
+                backgroundColor: { base: 'blue.700', _dark: 'blue.600' },
+              },
+              _disabled: {
+                opacity: 0.5,
+                cursor: 'not-allowed',
+              },
+            })}
+          >
+            {isRegenerating ? 'Regenerating...' : '🔄 Regenerate Flowchart'}
+          </button>
+        )}
+        <p
+          className={css({
+            color: { base: 'gray.500', _dark: 'gray.400' },
+            fontSize: 'xs',
+            textAlign: 'center',
+            maxWidth: '300px',
+          })}
+        >
+          The AI sometimes generates invalid mermaid syntax. Regenerating will create a new
+          flowchart from scratch.
+        </p>
       </div>
     )
   }
