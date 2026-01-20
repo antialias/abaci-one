@@ -2,8 +2,11 @@ import { z } from "zod";
 import type { ProviderConfig, ReasoningConfig, StreamEvent } from "../types";
 import { LLMApiError, LLMTimeoutError, LLMNetworkError } from "../types";
 
-/** Default timeout for streaming requests (5 minutes) */
-const DEFAULT_STREAM_TIMEOUT_MS = 300_000;
+/** Default idle timeout for streaming requests (2 minutes without data = abort) */
+const DEFAULT_IDLE_TIMEOUT_MS = 120_000;
+
+/** Default total timeout for streaming requests (15 minutes max total time) */
+const DEFAULT_TOTAL_TIMEOUT_MS = 900_000;
 
 /**
  * Content item for vision requests
@@ -101,7 +104,10 @@ export class OpenAIResponsesProvider {
     },
     schema: z.ZodType<T>,
   ): AsyncGenerator<StreamEvent<T>, void, unknown> {
-    const timeoutMs = request.timeoutMs ?? DEFAULT_STREAM_TIMEOUT_MS;
+    // Use the provided timeout as the idle timeout (time without receiving data)
+    // This is smarter for streaming: we only abort if no data flows for this duration
+    const idleTimeoutMs = request.timeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
+    const totalTimeoutMs = DEFAULT_TOTAL_TIMEOUT_MS;
 
     // Build the content array for the message
     const content: ContentItem[] = [];
@@ -153,12 +159,35 @@ export class OpenAIResponsesProvider {
       };
     }
 
-    // Set up timeout
+    // Set up idle timeout (resets on each chunk) and total timeout (absolute limit)
     const controller = new AbortController();
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let idleTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    let totalTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    let idleTimedOut = false;
 
-    if (timeoutMs > 0) {
-      timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const resetIdleTimeout = () => {
+      if (idleTimeoutId) clearTimeout(idleTimeoutId);
+      if (idleTimeoutMs > 0) {
+        idleTimeoutId = setTimeout(() => {
+          idleTimedOut = true;
+          controller.abort();
+        }, idleTimeoutMs);
+      }
+    };
+
+    const clearAllTimeouts = () => {
+      if (idleTimeoutId) clearTimeout(idleTimeoutId);
+      if (totalTimeoutId) clearTimeout(totalTimeoutId);
+    };
+
+    // Set up initial idle timeout
+    resetIdleTimeout();
+
+    // Set up total timeout (absolute limit)
+    if (totalTimeoutMs > 0) {
+      totalTimeoutId = setTimeout(() => {
+        controller.abort();
+      }, totalTimeoutMs);
     }
 
     let response: Response;
@@ -173,10 +202,11 @@ export class OpenAIResponsesProvider {
         signal: controller.signal,
       });
     } catch (error) {
-      if (timeoutId) clearTimeout(timeoutId);
+      clearAllTimeouts();
 
       if (error instanceof Error && error.name === "AbortError") {
-        throw new LLMTimeoutError(this.name, timeoutMs);
+        const timeoutValue = idleTimedOut ? idleTimeoutMs : totalTimeoutMs;
+        throw new LLMTimeoutError(this.name, timeoutValue);
       }
 
       throw new LLMNetworkError(
@@ -186,7 +216,7 @@ export class OpenAIResponsesProvider {
     }
 
     if (!response.ok) {
-      if (timeoutId) clearTimeout(timeoutId);
+      clearAllTimeouts();
       const errorText = await response.text();
       let errorMessage = errorText;
       try {
@@ -201,7 +231,7 @@ export class OpenAIResponsesProvider {
     // Process the SSE stream
     const reader = response.body?.getReader();
     if (!reader) {
-      if (timeoutId) clearTimeout(timeoutId);
+      clearAllTimeouts();
       throw new LLMApiError(this.name, 500, "No response body");
     }
 
@@ -215,6 +245,9 @@ export class OpenAIResponsesProvider {
         const { done, value } = await reader.read();
 
         if (done) break;
+
+        // Reset idle timeout on each received chunk - stream is still active
+        resetIdleTimeout();
 
         buffer += decoder.decode(value, { stream: true });
 
@@ -296,8 +329,8 @@ export class OpenAIResponsesProvider {
         }
       }
 
-      // Clear timeout on successful completion
-      if (timeoutId) clearTimeout(timeoutId);
+      // Clear timeouts on successful completion
+      clearAllTimeouts();
 
       // Extract and validate the final output
       if (finalResponse && finalResponse.type === "response.completed") {
@@ -342,7 +375,7 @@ export class OpenAIResponsesProvider {
         }
       }
     } finally {
-      if (timeoutId) clearTimeout(timeoutId);
+      clearAllTimeouts();
       reader.releaseLock();
     }
   }
