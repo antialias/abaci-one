@@ -18,7 +18,7 @@ import {
   type GeneratedExample,
   DEFAULT_CONSTRAINTS,
 } from './example-generator'
-import { formatProblemDisplay, formatAnswerDisplay } from './formatting'
+import { formatProblemDisplay } from './formatting'
 import type { ExecutableFlowchart, ProblemValue } from './schema'
 
 // =============================================================================
@@ -171,19 +171,87 @@ function exampleToProblem(
 ): WorksheetProblem {
   const display = formatProblemDisplay(flowchart, example.values)
 
-  // Get the answer using the centralized formatting function
-  // This handles display.answer expressions, computed variables, and schema-specific logic
-  const answer = formatAnswerDisplay(flowchart, example.values)
-
-  // For Typst answer key, we need special formatting for fractions
-  // For everything else, use the plain answer
-  let typstAnswer = answer
+  // Calculate answer based on schema
+  let answer = ''
+  let typstAnswer = ''
   const schema = flowchart.definition.problemInput.schema
 
-  // Special Typst formatting for fraction answers that contain "/"
-  if (schema === 'two-fractions-with-op' || schema === 'two-mixed-numbers-with-op') {
-    // Parse the answer and convert to Typst math mode
-    typstAnswer = convertFractionToTypst(answer)
+  switch (schema) {
+    case 'two-digit-subtraction': {
+      const minuend = example.values.minuend as number
+      const subtrahend = example.values.subtrahend as number
+      const result = minuend - subtrahend
+      answer = String(result)
+      typstAnswer = String(result)
+      break
+    }
+    case 'two-fractions-with-op': {
+      // Complex fraction answer - simplified form
+      const leftWhole = (example.values.leftWhole as number) || 0
+      const leftNum = (example.values.leftNum as number) || 0
+      const leftDenom = (example.values.leftDenom as number) || 1
+      const rightWhole = (example.values.rightWhole as number) || 0
+      const rightNum = (example.values.rightNum as number) || 0
+      const rightDenom = (example.values.rightDenom as number) || 1
+      const op = example.values.op as string
+
+      // Convert to improper fractions
+      const leftTotal = leftWhole * leftDenom + leftNum
+      const rightTotal = rightWhole * rightDenom + rightNum
+
+      // Common denominator
+      const lcd = lcm(leftDenom, rightDenom)
+      const leftConverted = leftTotal * (lcd / leftDenom)
+      const rightConverted = rightTotal * (lcd / rightDenom)
+
+      // Calculate result
+      const resultNum = op === '+' ? leftConverted + rightConverted : leftConverted - rightConverted
+      const resultDenom = lcd
+
+      // Simplify
+      const gcdVal = gcd(Math.abs(resultNum), resultDenom)
+      const simplifiedNum = resultNum / gcdVal
+      const simplifiedDenom = resultDenom / gcdVal
+
+      // Format answer (plain text and Typst)
+      if (simplifiedDenom === 1) {
+        answer = String(simplifiedNum)
+        typstAnswer = String(simplifiedNum)
+      } else {
+        const whole = Math.floor(Math.abs(simplifiedNum) / simplifiedDenom)
+        const remainder = Math.abs(simplifiedNum) % simplifiedDenom
+        const sign = simplifiedNum < 0 ? '-' : ''
+        if (whole > 0 && remainder > 0) {
+          answer = `${sign}${whole} ${remainder}/${simplifiedDenom}`
+          // Typst math mode: whole number followed by proper fraction
+          typstAnswer = `$${sign}${whole} frac(${remainder}, ${simplifiedDenom})$`
+        } else if (whole > 0) {
+          answer = `${sign}${whole}`
+          typstAnswer = `${sign}${whole}`
+        } else {
+          answer = `${sign}${remainder}/${simplifiedDenom}`
+          // Typst math mode: just a fraction
+          typstAnswer = `$${sign}frac(${remainder}, ${simplifiedDenom})$`
+        }
+      }
+      break
+    }
+    case 'linear-equation': {
+      const coefficient = example.values.coefficient as number
+      const operation = example.values.operation as string
+      const constant = example.values.constant as number
+      const equals = example.values.equals as number
+
+      // Solve: ax + b = c or ax - b = c
+      const x =
+        operation === '+' ? (equals - constant) / coefficient : (equals + constant) / coefficient
+      answer = String(x)
+      typstAnswer = String(x)
+      break
+    }
+    default:
+      answer = '?'
+      typstAnswer = '?'
   }
 
   return {
@@ -193,37 +261,6 @@ function exampleToProblem(
     answer,
     typstAnswer,
   }
-}
-
-/**
- * Convert a plain text fraction answer to Typst math mode
- * Examples:
- *   "5" -> "5"
- *   "3/4" -> "$frac(3, 4)$"
- *   "2 1/4" -> "$2 frac(1, 4)$"
- *   "-1 3/8" -> "$-1 frac(3, 8)$"
- */
-function convertFractionToTypst(answer: string): string {
-  // If no slash, it's just a whole number
-  if (!answer.includes('/')) {
-    return answer
-  }
-
-  // Match patterns like "2 1/4" or "1/4" or "-2 1/4"
-  const mixedMatch = answer.match(/^(-?\d+)\s+(\d+)\/(\d+)$/)
-  if (mixedMatch) {
-    const [, whole, num, denom] = mixedMatch
-    return `$${whole} frac(${num}, ${denom})$`
-  }
-
-  const fractionMatch = answer.match(/^(-?)(\d+)\/(\d+)$/)
-  if (fractionMatch) {
-    const [, sign, num, denom] = fractionMatch
-    return `$${sign}frac(${num}, ${denom})$`
-  }
-
-  // Fallback: return as-is
-  return answer
 }
 
 // =============================================================================
@@ -607,6 +644,23 @@ function shuffleArray<T>(array: T[]): T[] {
     ;[result[i], result[j]] = [result[j], result[i]]
   }
   return result
+}
+
+/** Greatest common divisor */
+function gcd(a: number, b: number): number {
+  a = Math.abs(a)
+  b = Math.abs(b)
+  while (b) {
+    const t = b
+    b = a % b
+    a = t
+  }
+  return a
+}
+
+/** Least common multiple */
+function lcm(a: number, b: number): number {
+  return Math.abs(a * b) / gcd(a, b)
 }
 
 /** Escape special characters for Typst */
