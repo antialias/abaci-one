@@ -52,6 +52,14 @@ __pycache__
 packages/core/venv/
 packages/core/.venv/
 
+# Vision training data (large files, training happens locally)
+**/data/vision-training/
+apps/web/data/vision-training/
+
+# Additional Python virtual environments
+**/.venv*
+apps/web/.venv*
+
 # Storybook
 storybook-static
 **/*.stories.tsx

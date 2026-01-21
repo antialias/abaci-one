@@ -2,6 +2,7 @@
 
 # Required
 letsencrypt_email = "your-email@example.com"
+auth_secret       = "generate-with-openssl-rand-base64-32"
 
 # Optional overrides
 # app_domain        = "abaci.one"

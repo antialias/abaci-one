@@ -1,4 +1,11 @@
-# Main application deployment
+# Main application deployment with LiteFS for distributed SQLite
+#
+# Architecture:
+# - StatefulSet for stable pod identities (abaci-app-0, abaci-app-1, etc.)
+# - Pod-0 is always the primary (handles writes)
+# - Other pods are replicas (receive replicated data, forward writes to primary)
+# - Headless service for pod-to-pod DNS resolution
+# - LiteFS handles SQLite replication transparently
 
 resource "kubernetes_secret" "app_env" {
   metadata {
@@ -7,8 +14,7 @@ resource "kubernetes_secret" "app_env" {
   }
 
   data = {
-    # Add sensitive env vars here
-    # DATABASE_URL = var.database_url
+    AUTH_SECRET = var.auth_secret
   }
 }
 
@@ -19,15 +25,47 @@ resource "kubernetes_config_map" "app_config" {
   }
 
   data = {
-    NODE_ENV               = "production"
-    PORT                   = "3000"
-    HOSTNAME               = "0.0.0.0"
+    NODE_ENV                = "production"
+    PORT                    = "3000"
+    HOSTNAME                = "0.0.0.0"
     NEXT_TELEMETRY_DISABLED = "1"
-    REDIS_URL              = "redis://redis:6379"
+    REDIS_URL               = "redis://redis:6379"
+    # LiteFS mounts the database at /litefs
+    DATABASE_URL            = "/litefs/sqlite.db"
   }
 }
 
-resource "kubernetes_deployment" "app" {
+# Headless service for StatefulSet pod-to-pod communication
+resource "kubernetes_service" "app_headless" {
+  metadata {
+    name      = "abaci-app-headless"
+    namespace = kubernetes_namespace.abaci.metadata[0].name
+  }
+
+  spec {
+    selector = {
+      app = "abaci-app"
+    }
+
+    # Headless service - no cluster IP
+    cluster_ip = "None"
+
+    port {
+      name        = "litefs"
+      port        = 20202
+      target_port = 20202
+    }
+
+    port {
+      name        = "proxy"
+      port        = 8080
+      target_port = 8080
+    }
+  }
+}
+
+# StatefulSet for stable pod identities (required for LiteFS primary election)
+resource "kubernetes_stateful_set" "app" {
   metadata {
     name      = "abaci-app"
     namespace = kubernetes_namespace.abaci.metadata[0].name
@@ -37,7 +75,8 @@ resource "kubernetes_deployment" "app" {
   }
 
   spec {
-    replicas = var.app_replicas
+    service_name = kubernetes_service.app_headless.metadata[0].name
+    replicas     = var.app_replicas
 
     selector {
       match_labels = {
@@ -45,12 +84,12 @@ resource "kubernetes_deployment" "app" {
       }
     }
 
-    strategy {
+    # Parallel pod management for faster scaling
+    pod_management_policy = "Parallel"
+
+    # Rolling update strategy
+    update_strategy {
       type = "RollingUpdate"
-      rolling_update {
-        max_surge       = 1
-        max_unavailable = 0
-      }
     }
 
     template {
@@ -61,12 +100,69 @@ resource "kubernetes_deployment" "app" {
       }
 
       spec {
+        # LiteFS requires root for FUSE mount
+        # The app itself runs as non-root via litefs exec
+        security_context {
+          fs_group = 1001
+        }
+
+        # Init container to determine if this pod is the primary candidate
+        init_container {
+          name  = "init-litefs-candidate"
+          image = "busybox:1.36"
+
+          command = ["/bin/sh", "-c"]
+          args = [<<-EOT
+            # Extract pod ordinal from hostname (e.g., abaci-app-0 -> 0)
+            ORDINAL=$(echo $HOSTNAME | rev | cut -d'-' -f1 | rev)
+            # Pod-0 is the primary candidate
+            if [ "$ORDINAL" = "0" ]; then
+              echo "true" > /config/litefs-candidate
+            else
+              echo "false" > /config/litefs-candidate
+            fi
+            echo "Pod $HOSTNAME: LITEFS_CANDIDATE=$(cat /config/litefs-candidate)"
+          EOT
+          ]
+
+          volume_mount {
+            name       = "config"
+            mount_path = "/config"
+          }
+        }
+
         container {
           name  = "app"
           image = var.app_image
 
+          # Override to use LiteFS
+          command = ["/bin/sh", "-c"]
+          args = [<<-EOT
+            export LITEFS_CANDIDATE=$(cat /config/litefs-candidate)
+            exec litefs mount
+          EOT
+          ]
+
+          # Run as root for FUSE mount (app runs as non-root via litefs exec)
+          security_context {
+            run_as_user  = 0
+            run_as_group = 0
+            privileged   = true  # Required for FUSE
+          }
+
           port {
+            name           = "proxy"
+            container_port = 8080
+          }
+
+          port {
+            name           = "app"
             container_port = 3000
+          }
+
+          port {
+            name           = "litefs"
+            container_port = 20202
           }
 
           env_from {
@@ -92,10 +188,11 @@ resource "kubernetes_deployment" "app" {
             }
           }
 
+          # Health checks hit the LiteFS proxy
           liveness_probe {
             http_get {
               path = "/api/health"
-              port = 3000
+              port = 8080
             }
             initial_delay_seconds = 30
             period_seconds        = 10
@@ -106,12 +203,56 @@ resource "kubernetes_deployment" "app" {
           readiness_probe {
             http_get {
               path = "/api/health"
-              port = 3000
+              port = 8080
             }
             initial_delay_seconds = 5
             period_seconds        = 5
             timeout_seconds       = 3
             failure_threshold     = 3
+          }
+
+          volume_mount {
+            name       = "litefs-data"
+            mount_path = "/var/lib/litefs"
+          }
+
+          volume_mount {
+            name       = "litefs-fuse"
+            mount_path = "/litefs"
+            # mount_propagation is needed for FUSE
+          }
+
+          volume_mount {
+            name       = "config"
+            mount_path = "/config"
+          }
+        }
+
+        volume {
+          name = "litefs-fuse"
+          empty_dir {}
+        }
+
+        volume {
+          name = "config"
+          empty_dir {}
+        }
+      }
+    }
+
+    # Persistent volume for LiteFS data (transaction files)
+    volume_claim_template {
+      metadata {
+        name = "litefs-data"
+      }
+
+      spec {
+        access_modes       = ["ReadWriteOnce"]
+        storage_class_name = "local-path"
+
+        resources {
+          requests = {
+            storage = "5Gi"
           }
         }
       }
@@ -121,6 +262,7 @@ resource "kubernetes_deployment" "app" {
   depends_on = [kubernetes_deployment.redis]
 }
 
+# Main service for external access (load balances across all pods)
 resource "kubernetes_service" "app" {
   metadata {
     name      = "abaci-app"
@@ -134,7 +276,7 @@ resource "kubernetes_service" "app" {
 
     port {
       port        = 80
-      target_port = 3000
+      target_port = 8080  # LiteFS proxy port
     }
 
     type = "ClusterIP"
@@ -147,10 +289,9 @@ resource "kubernetes_ingress_v1" "app" {
     name      = "abaci-app"
     namespace = kubernetes_namespace.abaci.metadata[0].name
     annotations = {
-      "cert-manager.io/cluster-issuer"           = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
-      "traefik.ingress.kubernetes.io/router.entrypoints" = "websecure"
-      # HSTS headers
-      "traefik.ingress.kubernetes.io/router.middlewares" = "${kubernetes_namespace.abaci.metadata[0].name}-hsts@kubernetescrd"
+      "cert-manager.io/cluster-issuer"                       = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
+      "traefik.ingress.kubernetes.io/router.entrypoints"     = "websecure"
+      "traefik.ingress.kubernetes.io/router.middlewares"     = "${kubernetes_namespace.abaci.metadata[0].name}-hsts@kubernetescrd"
     }
   }
 
@@ -211,8 +352,8 @@ resource "kubernetes_ingress_v1" "app_http_redirect" {
     name      = "abaci-app-http-redirect"
     namespace = kubernetes_namespace.abaci.metadata[0].name
     annotations = {
-      "traefik.ingress.kubernetes.io/router.entrypoints"  = "web"
-      "traefik.ingress.kubernetes.io/router.middlewares"  = "${kubernetes_namespace.abaci.metadata[0].name}-redirect-https@kubernetescrd"
+      "traefik.ingress.kubernetes.io/router.entrypoints" = "web"
+      "traefik.ingress.kubernetes.io/router.middlewares" = "${kubernetes_namespace.abaci.metadata[0].name}-redirect-https@kubernetescrd"
     }
   }
 

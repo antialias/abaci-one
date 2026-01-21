@@ -38,3 +38,9 @@ variable "use_staging_certs" {
   type        = bool
   default     = false
 }
+
+variable "auth_secret" {
+  description = "Secret key for NextAuth.js session encryption"
+  type        = string
+  sensitive   = true
+}
