@@ -68,20 +68,20 @@ function StatusBadge({
 }) {
   const colors = {
     healthy: {
-      bg: { base: 'green.100', _dark: 'green.900' },
-      color: { base: 'green.700', _dark: 'green.300' },
+      bg: { base: 'green.100', _dark: 'rgba(34, 197, 94, 0.25)' },
+      color: { base: 'green.700', _dark: '#86efac' },
     },
     unhealthy: {
-      bg: { base: 'red.100', _dark: 'red.900' },
-      color: { base: 'red.700', _dark: 'red.300' },
+      bg: { base: 'red.100', _dark: 'rgba(239, 68, 68, 0.25)' },
+      color: { base: 'red.700', _dark: '#fca5a5' },
     },
     loading: {
-      bg: { base: 'yellow.100', _dark: 'yellow.900' },
-      color: { base: 'yellow.700', _dark: 'yellow.300' },
+      bg: { base: 'yellow.100', _dark: 'rgba(234, 179, 8, 0.25)' },
+      color: { base: 'yellow.700', _dark: '#fde047' },
     },
     error: {
-      bg: { base: 'red.100', _dark: 'red.900' },
-      color: { base: 'red.700', _dark: 'red.300' },
+      bg: { base: 'red.100', _dark: 'rgba(239, 68, 68, 0.25)' },
+      color: { base: 'red.700', _dark: '#fca5a5' },
     },
   }
 
@@ -109,7 +109,7 @@ function StatusBadge({
         fontFamily: 'mono',
         fontSize: 'xs',
         fontWeight: 'medium',
-        padding: '1 2',
+        padding: '4px 8px',
         borderRadius: 'full',
         bg: colors[status].bg,
         color: colors[status].color,
@@ -227,16 +227,16 @@ function CodeBadge({
   const variants = {
     default: { bg: 'bg.subtle', color: 'text.primary' },
     success: {
-      bg: { base: 'green.100', _dark: 'green.900' },
-      color: { base: 'green.700', _dark: 'green.300' },
+      bg: { base: 'green.100', _dark: 'rgba(34, 197, 94, 0.25)' },
+      color: { base: 'green.700', _dark: '#86efac' },
     },
     warning: {
-      bg: { base: 'yellow.100', _dark: 'yellow.900' },
-      color: { base: 'yellow.700', _dark: 'yellow.300' },
+      bg: { base: 'yellow.100', _dark: 'rgba(234, 179, 8, 0.25)' },
+      color: { base: 'yellow.700', _dark: '#fde047' },
     },
     error: {
-      bg: { base: 'red.100', _dark: 'red.900' },
-      color: { base: 'red.700', _dark: 'red.300' },
+      bg: { base: 'red.100', _dark: 'rgba(239, 68, 68, 0.25)' },
+      color: { base: 'red.700', _dark: '#fca5a5' },
     },
   }
 
@@ -246,7 +246,7 @@ function CodeBadge({
       className={css({
         fontFamily: 'mono',
         fontSize: 'sm',
-        padding: '1 2',
+        padding: '4px 8px',
         borderRadius: 'sm',
         bg: variants[variant].bg,
         color: variants[variant].color,

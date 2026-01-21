@@ -91,184 +91,18 @@ README.md (root)
 **Invalid:** Creating `/docs/some-feature.md` without linking from anywhere ❌
 **Valid:** Creating `/docs/some-feature.md` AND linking from root README ✅
 
-## CRITICAL: Never Directly Modify Database Schema
+## CRITICAL: Database Migrations
 
-**NEVER modify the database schema directly (e.g., via sqlite3, manual SQL, or direct ALTER TABLE commands).**
+**This has caused multiple production outages. Read the full guide.**
 
-All database schema changes MUST go through the Drizzle migration system:
+Quick rules:
+- Never modify schema directly (use migrations)
+- Never modify deployed migrations (create new ones)
+- Never manually create migration files (use `npx drizzle-kit generate --custom`)
+- Always add `--> statement-breakpoint` between multiple SQL statements
+- Always verify timestamp ordering after generating
 
-1. **Modify the schema file** in `src/db/schema/`
-2. **Generate a migration** using `npx drizzle-kit generate --custom`
-3. **Edit the generated SQL file** with the actual migration statements
-4. **Run the migration** using `npm run db:migrate`
-5. **Commit both** the schema change AND the migration file
-
-**Why this matters:**
-
-- The migration system tracks which changes have been applied
-- Production runs migrations on startup to sync schema with code
-- If you modify the DB directly, the migration system doesn't know about it
-- When you later create a migration for the "same" change, it becomes a no-op locally but fails on production
-
-**The failure pattern (December 2025):**
-
-1. During development, columns were added directly to local DB (bypassing migrations)
-2. Migration 0043 was created but as `SELECT 1;` (no-op) because "columns already exist"
-3. Production ran 0043 (no-op), so it never got the columns
-4. Production crashed with "no such column: is_paused"
-5. Required emergency migration 0044 to fix
-
-**The correct pattern:**
-
-```bash
-# 1. Modify schema file
-# 2. Generate migration
-npx drizzle-kit generate --custom
-
-# 3. Edit the generated SQL file with actual ALTER TABLE statements
-# 4. Test locally
-npm run db:migrate
-
-# 5. Commit both schema and migration
-git add src/db/schema/ drizzle/
-git commit -m "feat: add new column"
-```
-
-**Never do this:**
-
-```bash
-# ❌ WRONG - Direct database modification
-sqlite3 data/sqlite.db "ALTER TABLE session_plans ADD COLUMN is_paused INTEGER;"
-
-# ❌ WRONG - Then creating a no-op migration because "column exists"
-# drizzle/0043.sql:
-# SELECT 1;  -- This does nothing on production!
-```
-
-## CRITICAL: Never Modify Migration Files After Deployment
-
-**NEVER modify a migration file after it has been deployed to production.**
-
-Drizzle tracks migrations by name/tag, not by content. Once a migration is recorded in `__drizzle_migrations`, it will NEVER be re-run, even if the file content changes.
-
-### The Failure Pattern (December 2025)
-
-1. Migration 0047 was created and deployed (possibly as a stub or incomplete)
-2. Production recorded it in `__drizzle_migrations` as "applied"
-3. Developer modified 0047.sql locally with the actual CREATE TABLE statement
-4. New deployment saw 0047 was already "applied" → skipped it
-5. Production crashed: `SqliteError: no such column: "entry_prompt_expiry_minutes"`
-6. Required emergency migration to fix
-
-**This exact pattern has caused THREE production outages:**
-
-- Migration 0043 (December 2025): `is_paused` column missing
-- Migration 0047 (December 2025): `entry_prompts` table missing
-- Migration 0048 (December 2025): `entry_prompt_expiry_minutes` column missing
-
-### Why This Happens
-
-```
-Timeline:
-1. Create migration file (empty or stub)     → deployed → recorded as "applied"
-2. Modify migration file with real SQL       → deployed → SKIPPED (already "applied")
-3. Production crashes                        → missing tables/columns
-```
-
-Drizzle's migrator checks: "Is migration 0047 in `__drizzle_migrations`?" → Yes → Skip it.
-It does NOT check: "Has the content of 0047.sql changed?"
-
-### The Correct Pattern
-
-**Before committing a migration, ensure it contains the FINAL SQL:**
-
-```bash
-# 1. Generate migration
-npx drizzle-kit generate --custom
-
-# 2. IMMEDIATELY edit the generated SQL with the actual statements
-# DO NOT commit an empty/stub migration!
-
-# 3. Run locally to verify
-npm run db:migrate
-
-# 4. Only THEN commit
-git add drizzle/
-git commit -m "feat: add entry_prompts table"
-```
-
-### If You Need to Fix a Deployed Migration
-
-**DO NOT modify the existing migration file.** Instead:
-
-```bash
-# Create a NEW migration with the fix
-npx drizzle-kit generate --custom
-# Name it something like: 0050_fix_missing_entry_prompts.sql
-
-# Add the missing SQL (with IF NOT EXISTS for safety)
-CREATE TABLE IF NOT EXISTS `entry_prompts` (...);
-# OR for SQLite (which doesn't support IF NOT EXISTS for columns):
-# Check if column exists first, or just let it fail silently
-```
-
-### Red Flags
-
-If you find yourself:
-
-- Editing a migration file that's already been committed
-- Thinking "I'll just update this migration with the correct SQL"
-- Seeing "migration already applied" but schema is wrong
-
-**STOP.** Create a NEW migration instead.
-
-### Emergency Fix for Production
-
-If production is down due to missing schema, create a new migration immediately:
-
-```bash
-# 1. Generate emergency migration
-npx drizzle-kit generate --custom
-# Creates: drizzle/0050_emergency_fix.sql
-
-# 2. Add the missing SQL with safety checks
-# For tables:
-CREATE TABLE IF NOT EXISTS `entry_prompts` (...);
-
-# For columns (SQLite workaround - will error if exists, but migration still records):
-ALTER TABLE `classrooms` ADD COLUMN `entry_prompt_expiry_minutes` integer;
-
-# 3. Commit and deploy
-git add drizzle/
-git commit -m "fix: emergency migration for missing schema"
-git push
-```
-
-The new migration will run on production startup and fix the schema.
-
-### Migration Timestamp Ordering Issue
-
-**VERY COMMON BUG:** Migrations get skipped because timestamps are out of order.
-
-**Root cause:** Claude (me) often creates migration files manually using `Write` tool instead of running `npx drizzle-kit generate --custom`. This results in incorrect timestamps and journal entries.
-
-**NEVER manually create files in `drizzle/` or edit `_journal.json`!** Always run the command:
-```bash
-npx drizzle-kit generate --custom
-```
-
-**Symptom:** `SqliteError: no such column: "column_name"` even though migration file exists and `db:migrate` says "complete".
-
-**See:** `.claude/skills/migration-timestamp-fix.md` for full diagnosis and fix procedure.
-
-**Quick fix:**
-1. Check `drizzle/meta/_journal.json` - is the new migration's `when` timestamp less than previous ones?
-2. If yes, edit the timestamp to be greater than all previous migrations
-3. Run `npm run db:migrate` again
-
-**Prevention:**
-1. ALWAYS use `npx drizzle-kit generate --custom` (via Bash tool), never manually create migration files
-2. After running the command, verify journal timestamps are in ascending order
+**Full guide:** `.claude/skills/database-migrations.md`
 
 ## CRITICAL: @svg-maps ES Module Imports Work Correctly
 
@@ -602,54 +436,14 @@ npm run check          # Biome check (format + lint + organize imports)
 
 **CRITICAL: This project uses Panda CSS, NOT Tailwind CSS.**
 
-- All styling is done with Panda CSS (`@pandacss/dev`)
-- Configuration: `/panda.config.ts`
-- Generated system: `/styled-system/`
-- Import styles using: `import { css } from '../../styled-system/css'`
-- Token syntax: `color: 'blue.200'`, `borderColor: 'gray.300'`, etc.
+**See `.claude/reference/panda-css.md` for complete reference (gotchas, dark mode, fixing corrupted styled-system).**
 
-**Common Mistakes to Avoid:**
-
-- ❌ Don't reference "Tailwind" in code, comments, or documentation
-- ❌ Don't use Tailwind utility classes (e.g., `className="bg-blue-500"`)
-- ✅ Use Panda CSS `css()` function for all styling
-- ✅ Use Panda's token system (defined in `panda.config.ts`)
-
-**Color Tokens:**
-
-```typescript
-// Correct (Panda CSS)
-css({
-  bg: "blue.200",
-  borderColor: "gray.300",
-  color: "brand.600",
-});
-
-// Incorrect (Tailwind)
-className = "bg-blue-200 border-gray-300 text-brand-600";
-```
-
-### Fixing Corrupted styled-system (Panda CSS)
-
-**If the CSS appears broken or styles aren't applying correctly**, the `styled-system/` directory may be corrupted. This can happen if prettier or other formatters modify the generated files.
-
-**Fix:**
-
-```bash
-# 1. Delete the corrupted styled-system
-rm -rf apps/web/styled-system
-
-# 2. Regenerate it
-cd apps/web && pnpm panda codegen
-
-# 3. Clear Next.js cache (if build errors persist)
-rm -rf apps/web/.next
-
-# 4. Rebuild
-pnpm build
-```
-
-**Prevention:** The repo has a `.prettierignore` at the root that excludes `**/styled-system/**`. If this file is missing or incomplete, prettier will corrupt the generated files when running `pnpm format`.
+Quick reference:
+- Config: `/panda.config.ts`, Generated: `/styled-system/`
+- Import: `import { css } from '../../styled-system/css'`
+- Tokens: `css({ bg: 'blue.200', color: 'gray.900' })`
+- **Gotcha**: `padding: '1 2'` doesn't work - use `padding: '4px 8px'` or `paddingX/paddingY`
+- **Fix broken CSS**: Run `/fix-css` or see reference doc
 
 See `.claude/GAME_THEMES.md` for standardized color theme usage in arcade games.
 
@@ -1097,184 +891,27 @@ This project uses SQLite with Drizzle ORM. Database location: `./data/sqlite.db`
 
 ### Creating Database Migrations
 
-**CRITICAL: NEVER manually create migration SQL files or edit the journal.**
+**See `.claude/skills/database-migrations.md` for the complete migration workflow.**
 
-When adding/modifying database schema:
+Quick reference:
+1. Modify schema in `src/db/schema/`
+2. Run `npx drizzle-kit generate --custom`
+3. Edit the generated SQL file
+4. Run `npm run db:migrate`
+5. Verify with `mcp__sqlite__describe_table`
 
-1. **Update the schema file** in `src/db/schema/`:
-
-   ```typescript
-   // Example: Add new column to existing table
-   export const abacusSettings = sqliteTable("abacus_settings", {
-     userId: text("user_id").primaryKey(),
-     // ... existing columns ...
-     newField: integer("new_field", { mode: "boolean" })
-       .notNull()
-       .default(false),
-   });
-   ```
-
-2. **Generate migration using drizzle-kit**:
-
-   ```bash
-   npx drizzle-kit generate --custom
-   ```
-
-   This creates:
-   - A new SQL file in `drizzle/####_name.sql`
-   - Updates `drizzle/meta/_journal.json`
-   - Creates a snapshot in `drizzle/meta/####_snapshot.json`
-
-3. **Edit the generated SQL file** (it will be empty):
-
-   ```sql
-   -- Custom SQL migration file, put your code below! --
-   ALTER TABLE `abacus_settings` ADD `new_field` integer DEFAULT 0 NOT NULL;
-   ```
-
-4. **Test the migration** on your local database:
-
-   ```bash
-   npm run db:migrate
-   ```
-
-5. **Verify** the column was added:
-   ```bash
-   mcp__sqlite__describe_table table_name
-   ```
-
-**CRITICAL: Verify migration timestamp order after generation:**
-
-After running `npx drizzle-kit generate --custom`, check `drizzle/meta/_journal.json`:
-
-1. Look at the `"when"` timestamp of the new migration
-2. Verify it's GREATER than the previous migration's timestamp
-3. If not, manually edit the journal to use a timestamp after the previous one
-
-**If you see `SqliteError: no such column` after migrations "complete":** This is likely the timestamp ordering bug. See `.claude/skills/migration-timestamp-fix.md` for full diagnosis and fix.
-
-Example of broken ordering (0057 before 0056):
-
-```json
-{ "idx": 56, "when": 1767484800000, "tag": "0056_..." },  // Jan 3
-{ "idx": 57, "when": 1767400331475, "tag": "0057_..." }   // Jan 2 - WRONG!
-```
-
-Fix by setting 0057's timestamp to be after 0056:
-
-```json
-{ "idx": 57, "when": 1767571200000, "tag": "0057_..." } // Jan 4 - CORRECT
-```
-
-**Why this happens:** `drizzle-kit generate` uses current system time, but if previous migrations were manually given future timestamps (common in CI/production scenarios), new migrations can get timestamps that sort incorrectly.
-
-**What NOT to do:**
-
-- ❌ DO NOT manually create SQL files in `drizzle/` without using `drizzle-kit generate`
-- ❌ DO NOT manually edit `drizzle/meta/_journal.json` (except to fix timestamp ordering)
-- ❌ DO NOT run SQL directly with `sqlite3` command
-- ❌ DO NOT use `drizzle-kit generate` without `--custom` flag (it requires interactive prompts)
-
-**Why this matters:**
-
-- Drizzle tracks applied migrations in `__drizzle_migrations` table
-- Manual SQL files won't be tracked properly
-- Production deployments run `npm run db:migrate` automatically
-- Improperly created migrations will fail in production
-
-### CRITICAL: Statement Breakpoints in Migrations
-
-**When a migration contains multiple SQL statements, you MUST add `--> statement-breakpoint` between them.**
-
-Drizzle's better-sqlite3 driver executes statements one at a time. If you have multiple statements without breakpoints, the migration will fail with:
-
-```
-RangeError: The supplied SQL string contains more than one statement
-```
-
-**✅ CORRECT - Multiple statements with breakpoints:**
-
-```sql
--- Create the table
-CREATE TABLE `app_settings` (
-  `id` text PRIMARY KEY DEFAULT 'default' NOT NULL,
-  `threshold` real DEFAULT 0.3 NOT NULL
-);
---> statement-breakpoint
-
--- Seed default data
-INSERT INTO `app_settings` (`id`, `threshold`) VALUES ('default', 0.3);
-```
-
-**❌ WRONG - Multiple statements without breakpoint (CAUSES PRODUCTION OUTAGE):**
-
-```sql
-CREATE TABLE `app_settings` (...);
-
--- This will fail!
-INSERT INTO `app_settings` ...;
-```
-
-**When this applies:**
-
-- CREATE TABLE followed by INSERT (seeding data)
-- CREATE TABLE followed by CREATE INDEX
-- Any migration with 2+ SQL statements
-
-**Historical context:**
-
-This mistake caused a production outage on 2025-12-18. The app crash-looped because migration 0035 had CREATE TABLE + INSERT without a breakpoint. Always verify migrations with multiple statements have `--> statement-breakpoint` markers.
+The skill covers: never modifying DB directly, timestamp ordering bugs, statement breakpoints, and fixing deployed migrations.
 
 ## Deployment Verification
 
 **CRITICAL: Never assume deployment is complete just because the website is accessible.**
 
-**Deployment System:** The NAS uses `compose-updater` (NOT Watchtower) for automatic deployments. See `.claude/DEPLOYMENT.md` for complete documentation.
+**See `.claude/DEPLOYMENT.md` for complete deployment documentation.**
 
-When monitoring deployments to production (NAS at abaci.one):
-
-1. **GitHub Actions Success ≠ NAS Deployment**
-   - GitHub Actions builds and pushes Docker images to GHCR
-   - compose-updater checks for new images every 5 minutes and auto-deploys
-   - There is a 5-7 minute delay between GitHub Actions completing and NAS deployment
-
-2. **Always verify the deployed commit:**
-
-   ```bash
-   # Check what's actually running on production
-   ssh nas.home.network '/usr/local/bin/docker inspect soroban-abacus-flashcards --format="{{index .Config.Labels \"org.opencontainers.image.revision\"}}"'
-
-   # Or check the deployment info modal in the app UI
-   # Look for the "Commit" field and compare to current HEAD
-   ```
-
-3. **Compare commits explicitly:**
-
-   ```bash
-   # Current HEAD
-   git rev-parse HEAD
-
-   # If NAS deployed commit doesn't match HEAD, deployment is INCOMPLETE
-   ```
-
-4. **Never report "deployed successfully" unless:**
-   - ✅ GitHub Actions completed
-   - ✅ NAS commit SHA matches origin/main HEAD
-   - ✅ Website is accessible AND serving the new code
-
-5. **If commits don't match:**
-   - Report the gap clearly: "NAS is X commits behind origin/main"
-   - List what features are NOT yet deployed
-   - Note that compose-updater should pick it up within 5 minutes
-
-**Force immediate deployment:**
-
-```bash
-# Restart compose-updater to trigger immediate check (instead of waiting up to 5 minutes)
-ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-compose -f docker-compose.updater.yaml restart"
-```
-
-**Common mistake:** Seeing https://abaci.one is online and assuming the new code is deployed. Always verify the commit SHA.
+Quick rules:
+- GitHub Actions success ≠ NAS deployment (5-7 min delay for compose-updater)
+- Always verify NAS commit SHA matches origin/main HEAD before reporting success
+- Use the Deployment Info modal (⌘⇧I) or `docker inspect` to check running version
 
 ## CRITICAL: React Query - Mutations Must Invalidate Related Queries
 

@@ -148,7 +148,7 @@ export function DeploymentInfoModal({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            backgroundColor: 'white',
+            backgroundColor: { base: 'white', _dark: 'gray.900' },
             borderRadius: 'lg',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             padding: '6',
@@ -168,6 +168,7 @@ export function DeploymentInfoModal({
               display: 'flex',
               alignItems: 'center',
               gap: '2',
+              color: { base: 'gray.900', _dark: 'gray.100' },
             })}
           >
             <Info size={24} />
@@ -181,9 +182,9 @@ export function DeploymentInfoModal({
               marginTop: '6',
               paddingTop: '4',
               borderTop: '1px solid',
-              borderColor: 'gray.200',
+              borderColor: { base: 'gray.200', _dark: 'gray.700' },
               fontSize: 'sm',
-              color: 'gray.600',
+              color: { base: 'gray.600', _dark: 'gray.400' },
               textAlign: 'center',
             })}
           >
@@ -191,11 +192,12 @@ export function DeploymentInfoModal({
             <kbd
               className={css({
                 fontFamily: 'mono',
-                backgroundColor: 'gray.100',
+                backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
                 padding: '0.5 1.5',
                 borderRadius: 'sm',
                 border: '1px solid',
-                borderColor: 'gray.300',
+                borderColor: { base: 'gray.300', _dark: 'gray.600' },
+                color: { base: 'gray.700', _dark: 'gray.300' },
               })}
             >
               ⌘⇧I
@@ -204,11 +206,12 @@ export function DeploymentInfoModal({
             <kbd
               className={css({
                 fontFamily: 'mono',
-                backgroundColor: 'gray.100',
+                backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
                 padding: '0.5 1.5',
                 borderRadius: 'sm',
                 border: '1px solid',
-                borderColor: 'gray.300',
+                borderColor: { base: 'gray.300', _dark: 'gray.600' },
+                color: { base: 'gray.700', _dark: 'gray.300' },
               })}
             >
               Ctrl⇧I
@@ -226,10 +229,12 @@ export function DeploymentInfoModal({
               justifyContent: 'center',
               borderRadius: 'md',
               padding: '2',
-              color: 'gray.700',
+              color: { base: 'gray.700', _dark: 'gray.300' },
               cursor: 'pointer',
+              border: 'none',
+              backgroundColor: 'transparent',
               _hover: {
-                backgroundColor: 'gray.100',
+                backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
               },
             })}
           >

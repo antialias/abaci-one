@@ -94,11 +94,18 @@
       "mcp__sqlite__list_tables",
       "mcp__sqlite__describe_table",
       "mcp__sqlite__write_query",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "WebFetch(domain:panda-css.com)",
+      "WebFetch(domain:www.humanlayer.dev)",
+      "WebFetch(domain:www.anthropic.com)",
+      "WebFetch(domain:arize.com)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }
