@@ -6,12 +6,12 @@ This directory contains Claude Code instructions and project documentation.
 
 - **[CLAUDE.md](./CLAUDE.md)** - Main instructions file (loaded every session)
 
-## Skills (Invokable Procedures)
+## Procedures (Step-by-Step Workflows)
 
-| Skill | Trigger | Description |
-|-------|---------|-------------|
-| [database-migrations.md](./skills/database-migrations.md) | Creating/modifying DB schema | Complete Drizzle migration workflow |
-| [FLOWCHART_MODIFICATIONS.md](./skills/FLOWCHART_MODIFICATIONS.md) | Modifying flowcharts | Checkpoint nodes, path enumeration, skipIf |
+| Procedure | Trigger | Description |
+|-----------|---------|-------------|
+| [database-migrations.md](./procedures/database-migrations.md) | Creating/modifying DB schema | Complete Drizzle migration workflow |
+| [FLOWCHART_MODIFICATIONS.md](./procedures/FLOWCHART_MODIFICATIONS.md) | Modifying flowcharts | Checkpoint nodes, path enumeration, skipIf |
 
 ## Reference (Passive Lookup)
 

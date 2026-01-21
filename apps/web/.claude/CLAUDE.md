@@ -22,7 +22,7 @@ Quick rules:
 - Always add `--> statement-breakpoint` between multiple SQL statements
 - Always verify timestamp ordering after generating
 
-**Full guide:** `.claude/skills/database-migrations.md`
+**Full guide:** `.claude/procedures/database-migrations.md`
 
 ## @svg-maps Imports
 
@@ -208,7 +208,7 @@ This project uses SQLite with Drizzle ORM. Database location: `./data/sqlite.db`
 
 ### Creating Database Migrations
 
-**See `.claude/skills/database-migrations.md` for the complete migration workflow.**
+**See `.claude/procedures/database-migrations.md` for the complete migration workflow.**
 
 Quick reference:
 1. Modify schema in `src/db/schema/`
@@ -245,7 +245,7 @@ Query keys defined in: `src/lib/queryKeys.ts`
 ## Flowchart Walker System
 
 **See [`src/lib/flowcharts/README.md`](../src/lib/flowcharts/README.md) for complete documentation.**
-**See [`.claude/skills/FLOWCHART_MODIFICATIONS.md`](./skills/FLOWCHART_MODIFICATIONS.md) for modification patterns.**
+**See [`.claude/procedures/FLOWCHART_MODIFICATIONS.md`](./procedures/FLOWCHART_MODIFICATIONS.md) for modification patterns.**
 
 **Finding Mermaid content:** Check `definitions/index.ts` first (some flowcharts embed mermaid there), otherwise check `.mmd` file referenced in JSON's `mermaidFile` field.
 
