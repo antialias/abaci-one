@@ -60,6 +60,7 @@ export default function WorkshopPage() {
   const [session, setSession] = useState<WorkshopSession | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [flowchartLoadError, setFlowchartLoadError] = useState<string | null>(null)
 
   const [refinementText, setRefinementText] = useState('')
   const [selectedDiagnostics, setSelectedDiagnostics] = useState<FlowchartDiagnostic[]>([])
@@ -163,9 +164,11 @@ export default function WorkshopPage() {
       try {
         const flowchart = await loadFlowchart(definition, session.draftMermaidContent)
         setExecutableFlowchart(flowchart)
+        setFlowchartLoadError(null)
       } catch (err) {
         console.error('Failed to build executable flowchart:', err)
         setExecutableFlowchart(null)
+        setFlowchartLoadError(err instanceof Error ? err.message : 'Failed to load flowchart')
       }
     }
     buildExecutable()
@@ -920,6 +923,54 @@ export default function WorkshopPage() {
             )}
           </div>
         )}
+
+      {/* Flowchart Load Error */}
+      {flowchartLoadError && (
+        <div
+          data-element="flowchart-load-error"
+          className={css({
+            padding: '4',
+            margin: '4',
+            backgroundColor: { base: 'red.50', _dark: 'red.900/30' },
+            border: '1px solid',
+            borderColor: { base: 'red.200', _dark: 'red.800' },
+            borderRadius: 'lg',
+          })}
+        >
+          <div className={hstack({ gap: '2', alignItems: 'flex-start' })}>
+            <span className={css({ fontSize: 'xl' })}>❌</span>
+            <div className={css({ flex: 1 })}>
+              <h3
+                className={css({
+                  fontWeight: 'semibold',
+                  color: { base: 'red.800', _dark: 'red.200' },
+                  marginBottom: '1',
+                })}
+              >
+                Flowchart Structure Error
+              </h3>
+              <p
+                className={css({
+                  fontSize: 'sm',
+                  color: { base: 'red.700', _dark: 'red.300' },
+                  marginBottom: '2',
+                })}
+              >
+                {flowchartLoadError}
+              </p>
+              <p
+                className={css({
+                  fontSize: 'sm',
+                  color: { base: 'red.600', _dark: 'red.400' },
+                })}
+              >
+                Use the refinement panel below to ask the AI to fix this issue, or check the
+                diagnostic details above.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main content area */}
       <div

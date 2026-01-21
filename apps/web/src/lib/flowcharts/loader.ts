@@ -137,9 +137,13 @@ export async function loadFlowchart(
   // Build executable nodes by merging definition with parsed content
   const nodes: Record<string, ExecutableNode> = {}
 
+  // Track missing nodes to detect fundamental mismatches
+  const missingNodes: string[] = []
+
   for (const [nodeId, nodeDef] of Object.entries(definition.nodes)) {
     const rawContent = mermaid.nodes[nodeId]
     if (!rawContent) {
+      missingNodes.push(nodeId)
       console.warn(`Node ${nodeId} defined in .flow.json but not found in .mmd file`)
     }
 
@@ -154,6 +158,26 @@ export async function loadFlowchart(
             raw: nodeId,
           },
     }
+  }
+
+  // Check for critical mismatches that will break rendering
+  const jsonNodeCount = Object.keys(definition.nodes).length
+  const missingRatio = missingNodes.length / jsonNodeCount
+
+  if (missingNodes.includes(definition.entryNode)) {
+    throw new Error(
+      `Entry node "${definition.entryNode}" is not defined in mermaid content. ` +
+        `The JSON and mermaid node IDs don't match. Mermaid has: ${Object.keys(mermaid.nodes).slice(0, 5).join(', ')}...`
+    )
+  }
+
+  if (missingRatio > 0.5) {
+    throw new Error(
+      `${missingNodes.length} of ${jsonNodeCount} nodes from JSON are missing in mermaid. ` +
+        `The JSON and mermaid node IDs don't match. ` +
+        `JSON expects: ${missingNodes.slice(0, 5).join(', ')}... ` +
+        `Mermaid has: ${Object.keys(mermaid.nodes).slice(0, 5).join(', ')}...`
+    )
   }
 
   // Also include nodes from Mermaid that aren't in the definition

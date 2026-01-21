@@ -719,7 +719,8 @@ function getCriticalRules(): string {
 8. **display.problem**: Use math-style expressions (e.g., \`"top + ' − ' + bottom"\`), not verbose text
 9. **excludeFromExampleStructure**: Mark verification/confirmation decisions with this flag to keep example grids clean
 10. **Style syntax**: Style directives MUST include node ID: \`style START fill:#10b981\` (not \`style fill:#10b981\`)
-11. **Division in answers**: If generation.target involves division, add a conditional \`display.answer\` to handle division-by-zero cases (otherwise shows "NaN")`
+11. **Division in answers**: If generation.target involves division, add a conditional \`display.answer\` to handle division-by-zero cases (otherwise shows "NaN")
+12. **Multi-part answers**: If the answer has multiple parts (fractions need num AND denom, coordinates need x AND y), you MUST use \`display.answer\` to combine them. \`generation.target\` alone only shows ONE value!`
 }
 
 /**
@@ -1136,46 +1137,63 @@ Result: "3/4 , 5/6" (fractions render properly with MathML)
 - LCD problems: \`"denom1 + ' , ' + denom2"\`
 - Equations: \`"coef + 'x = ' + result"\`
 
-### display.answer (Required for Custom Schemas)
+### generation.target vs display.answer (DIFFERENT purposes!)
 
-Controls how answers appear in worksheets and PDFs. Without this, custom schemas show "?" for all answers.
+⚠️ **CRITICAL**: These serve DIFFERENT purposes and you often need BOTH:
 
-**When it's required:**
-- Custom schemas that don't have built-in answer formatting
-- Built-in schemas (two-digit-subtraction, linear-equation, two-fractions-with-op, two-mixed-numbers-with-op) have automatic answer formatting
+**\`generation.target\`**: Which SINGLE variable represents the "answer" for generation diversity.
+- Used internally to vary examples across different answer values
+- Should be a SINGLE numeric value, not a formatted string
+- For fractions: use the numerator (e.g., "simpNum") since that varies between problems
+- For equations: use "x" since that's the solution value
 
-**Fallback chain when display.answer is missing:**
-1. System looks for a variable named "answer"
-2. System uses generation.target to find the answer variable
-3. If neither works → shows "?"
+**\`display.answer\`**: How to FORMAT the COMPLETE answer for worksheets/PDFs.
+- Must produce the FULL answer as humans would write it
+- For fractions: MUST combine numerator AND denominator
+- For equations: MUST include the variable name
+- Without this, custom schemas show just the raw target value (wrong!)
 
-**✅ Best practice - always include display.answer for clarity:**
+**❌ WRONG - Fraction without display.answer:**
 \`\`\`json
 {
+  "generation": { "target": "simpNum" }
+  // Worksheets show "7" instead of "7/12"!
+}
+\`\`\`
+
+**✅ CORRECT - Both configured for fractions:**
+\`\`\`json
+{
+  "generation": { "target": "simpNum" },
   "display": {
-    "problem": "starMass + ' solar masses'",
-    "answer": "fate"
+    "problem": "leftNum + '/' + leftDenom + ' − ' + rightNum + '/' + rightDenom",
+    "answer": "simpNum + '/' + simpDenom"
   }
 }
 \`\`\`
 
-**Alternative - name your answer variable "answer":**
+**✅ CORRECT - Simple answer (single value):**
 \`\`\`json
 {
   "variables": [
-    { "name": "answer", "init": "starMass > 8 ? 'Supernova' : 'White Dwarf'" }
-  ]
+    { "name": "answer", "init": "top - bottom" }
+  ],
+  "generation": { "target": "answer" }
+  // display.answer not needed - "answer" variable is used automatically
 }
 \`\`\`
 
-**Alternative - set generation.target:**
+**✅ CORRECT - Text answer:**
 \`\`\`json
 {
-  "generation": {
-    "target": "fate"
-  }
+  "variables": [
+    { "name": "fate", "init": "starMass > 8 ? 'Supernova' : 'White Dwarf'" }
+  ],
+  "display": { "answer": "fate" }
 }
 \`\`\`
+
+**Rule of thumb**: If your answer has MULTIPLE parts (numerator/denominator, x/y coordinates, etc.), you MUST use \`display.answer\` to combine them.
 
 ### Handling Multiple Outcome Types (CRITICAL for division)
 

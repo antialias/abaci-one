@@ -6,6 +6,7 @@
  */
 
 import type { FlowchartDefinition } from './schema'
+import { parseMermaidFile } from './parser'
 
 // =============================================================================
 // Types
@@ -15,7 +16,14 @@ export type DiagnosticSeverity = 'error' | 'warning' | 'info'
 
 export interface DiagnosticLocation {
   /** Top-level section of the flowchart definition */
-  section: 'problemInput' | 'variables' | 'nodes' | 'generation' | 'constraints' | 'display'
+  section:
+    | 'problemInput'
+    | 'variables'
+    | 'nodes'
+    | 'generation'
+    | 'constraints'
+    | 'display'
+    | 'mermaid'
   /** Specific field path within the section (e.g., "derived.answer" or "fields[0]") */
   path?: string
   /** Human-readable description of the location */
@@ -75,6 +83,7 @@ export const DiagnosticCodes = {
 
   // Mermaid issues (MERM-xxx)
   MERMAID_ESCAPED_QUOTES: 'MERM-001',
+  MERMAID_NODE_MISMATCH: 'MERM-002',
 } as const
 
 // =============================================================================
@@ -338,6 +347,56 @@ function checkGenerationPreferred(definition: FlowchartDefinition): FlowchartDia
 }
 
 /**
+ * Generate a context-aware suggestion for division-by-zero handling.
+ *
+ * Tries to detect patterns like:
+ * - Fraction numerator/denominator pairs (simpNum/simpDenom, answerNum/answerDenom)
+ * - Single value divisions (x = a / b)
+ *
+ * Returns a suggestion using the actual variable names from the flowchart.
+ */
+function generateDivisionSuggestion(
+  target: string,
+  expr: string,
+  variables: Record<string, { init: string }>
+): string {
+  // Pattern 1: Fraction - target ends in "Num" and there's a matching "Denom"
+  // e.g., simpNum -> simpDenom, answerNum -> answerDenom
+  if (target.endsWith('Num')) {
+    const prefix = target.slice(0, -3) // Remove "Num"
+    const denomVar = `${prefix}Denom`
+    if (denomVar in variables) {
+      return `This looks like a fraction answer. Add display.answer to show the full fraction:
+"display": {
+  "answer": "${target} + '/' + ${denomVar}"
+}`
+    }
+  }
+
+  // Pattern 2: Try to extract the divisor from the expression
+  // Match patterns like "foo / bar" or "foo/bar"
+  const divisionMatch = expr.match(/(\w+)\s*\/\s*(\w+)/)
+  if (divisionMatch) {
+    const divisor = divisionMatch[2]
+    return `Add a display.answer expression that handles when ${divisor} is zero:
+"display": {
+  "answer": "${divisor} != 0 ? ${target} : 'undefined'"
+}`
+  }
+
+  // Fallback: generic suggestion using the actual target variable
+  return `Add a display.answer expression that handles the division-by-zero case:
+"display": {
+  "answer": "${target}"
+}
+
+Or if you need to handle the zero case:
+"display": {
+  "answer": "divisor != 0 ? ${target} : 'undefined'"
+}`
+}
+
+/**
  * Check for potential division by zero in generation.target without display.answer.
  *
  * When generation.target points to a variable that involves division,
@@ -372,6 +431,10 @@ function checkDivisionInTarget(definition: FlowchartDefinition): FlowchartDiagno
     const hasDivision = /[^'"]\/[^'"]/.test(expr) || /^\s*[^'"]*\//.test(expr)
 
     if (hasDivision) {
+      // Generate a context-aware suggestion based on the actual variables
+      // Check if this looks like a fraction (target ends in Num and there's a matching Denom)
+      const suggestion = generateDivisionSuggestion(target, expr, definition.variables)
+
       diagnostics.push({
         code: DiagnosticCodes.DISPLAY_DIVISION_WITHOUT_HANDLER,
         severity: 'warning',
@@ -382,10 +445,7 @@ function checkDivisionInTarget(definition: FlowchartDefinition): FlowchartDiagno
           path: 'answer',
           description: `generation.target "${target}" → variables["${target}"].init`,
         },
-        suggestion: `Add a display.answer expression that handles the division-by-zero case. Example:
-"display": {
-  "answer": "D != 0 ? xExact : (Dx == 0 && Dy == 0 ? 'Infinite solutions' : 'No solution')"
-}`,
+        suggestion,
       })
     }
   }
@@ -426,12 +486,52 @@ function checkMermaidEscapedQuotes(mermaidContent: string): FlowchartDiagnostic[
       message:
         'The mermaid content contains escaped quotes (backslash-quote) which break parsing. Use single quotes or rephrase to avoid quotes entirely.',
       location: {
-        type: 'mermaid',
-        field: 'mermaidContent',
+        section: 'mermaid',
+        path: `line ${lineNumber}`,
         description: `Line ${lineNumber} of mermaid content`,
       },
       suggestion:
         "Replace escaped quotes with single quotes (') or remove quotes. Example: change 'same \"state\"' to 'same state' or \"same 'state'\"",
+    })
+  }
+
+  return diagnostics
+}
+
+/**
+ * Check that all nodes defined in the JSON exist in the mermaid content.
+ * A mismatch here will cause rendering failures because the loader creates
+ * placeholder content for missing nodes, but decision options and navigation
+ * will be broken.
+ */
+function checkMermaidNodeConsistency(
+  definition: FlowchartDefinition,
+  mermaidContent: string
+): FlowchartDiagnostic[] {
+  const diagnostics: FlowchartDiagnostic[] = []
+
+  // Parse mermaid to get node IDs
+  const parsedMermaid = parseMermaidFile(mermaidContent)
+  const mermaidNodeIds = new Set(Object.keys(parsedMermaid.nodes))
+  const jsonNodeIds = Object.keys(definition.nodes)
+
+  // Find JSON nodes missing from mermaid
+  const missingInMermaid = jsonNodeIds.filter((id) => !mermaidNodeIds.has(id))
+
+  if (missingInMermaid.length > 0) {
+    // Get the mermaid node IDs to suggest what might be the intended mapping
+    const mermaidIdsArray = Array.from(mermaidNodeIds)
+
+    diagnostics.push({
+      code: DiagnosticCodes.MERMAID_NODE_MISMATCH,
+      severity: 'error',
+      title: 'JSON and mermaid node IDs do not match',
+      message: `${missingInMermaid.length} node(s) defined in JSON are not found in mermaid: ${missingInMermaid.slice(0, 5).join(', ')}${missingInMermaid.length > 5 ? '...' : ''}. Mermaid has these nodes: ${mermaidIdsArray.slice(0, 5).join(', ')}${mermaidIdsArray.length > 5 ? '...' : ''}`,
+      location: {
+        section: 'mermaid',
+        description: 'Node ID mapping between JSON and mermaid',
+      },
+      suggestion: `The node IDs in the JSON "nodes" object must EXACTLY match the node IDs in the mermaid flowchart. For example, if your JSON has "nodes": { "START": {...} }, then the mermaid must have START["..."] or START{"..."} etc. REGENERATE the mermaid content using the SAME node IDs as defined in the JSON: ${jsonNodeIds.slice(0, 8).join(', ')}${jsonNodeIds.length > 8 ? '...' : ''}`,
     })
   }
 
@@ -464,6 +564,7 @@ export function diagnoseFlowchart(
   // Run mermaid content checks if provided
   if (mermaidContent) {
     diagnostics.push(...checkMermaidEscapedQuotes(mermaidContent))
+    diagnostics.push(...checkMermaidNodeConsistency(definition, mermaidContent))
   }
 
   // Count by severity
