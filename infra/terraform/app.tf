@@ -137,9 +137,11 @@ resource "kubernetes_stateful_set" "app" {
           image = var.app_image
 
           # Override to use LiteFS
+          # Export LITEFS_CANDIDATE env var and start litefs
           command = ["/bin/sh", "-c"]
           args = [<<-EOT
             export LITEFS_CANDIDATE=$(cat /config/litefs-candidate)
+            echo "Starting LiteFS with LITEFS_CANDIDATE=$LITEFS_CANDIDATE"
             exec litefs mount
           EOT
           ]

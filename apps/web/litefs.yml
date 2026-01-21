@@ -16,7 +16,7 @@ data:
 lease:
   type: "static"
   advertise-url: "http://${HOSTNAME}.abaci-app-headless.abaci.svc.cluster.local:20202"
-  candidate: ${LITEFS_CANDIDATE:-false}
+  candidate: ${LITEFS_CANDIDATE}
 
 # HTTP proxy to forward writes from replicas to primary
 # LiteFS automatically forwards writes to primary via lease advertise-url
