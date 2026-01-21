@@ -1,0 +1,10 @@
+# Copy this to terraform.tfvars and fill in values
+
+# Required
+letsencrypt_email = "your-email@example.com"
+
+# Optional overrides
+# app_domain        = "abaci.one"
+# app_image         = "ghcr.io/antialias/soroban-abacus-flashcards:latest"
+# app_replicas      = 2
+# use_staging_certs = true  # Set to true when testing to avoid rate limits

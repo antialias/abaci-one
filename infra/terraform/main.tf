@@ -18,23 +18,3 @@ resource "kubernetes_namespace" "abaci" {
     }
   }
 }
-
-# Example: Redis deployment (optional - can use this instead of Docker Redis)
-# Uncomment when ready to migrate Redis to k3s
-#
-# resource "helm_release" "redis" {
-#   name       = "redis"
-#   repository = "https://charts.bitnami.com/bitnami"
-#   chart      = "redis"
-#   namespace  = kubernetes_namespace.abaci.metadata[0].name
-#
-#   set {
-#     name  = "architecture"
-#     value = "standalone"
-#   }
-#
-#   set {
-#     name  = "auth.enabled"
-#     value = "false"
-#   }
-# }
