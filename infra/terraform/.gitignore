@@ -4,7 +4,7 @@
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
-.terraform.lock.hcl
+# Note: .terraform.lock.hcl is NOT ignored - commit it for reproducible builds
 
 # Crash logs
 crash.log
