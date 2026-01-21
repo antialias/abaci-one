@@ -99,7 +99,9 @@
       "WebFetch(domain:www.humanlayer.dev)",
       "WebFetch(domain:www.anthropic.com)",
       "WebFetch(domain:arize.com)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(claude -p \"Explain the database migration workflow for this project. Keep your response brief.\")"
     ],
     "deny": [],
     "ask": []
