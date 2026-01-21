@@ -70,6 +70,10 @@ See `.claude/CODE_QUALITY_REGIME.md` for complete documentation.
 
 No pre-commit hooks - you (Claude Code) enforce quality before commits. Always run `npm run pre-commit` before committing.
 
+## Merge Conflicts
+
+See `.claude/MERGE_CONFLICT_RESOLUTION.md` for complete guide. Quick strategy: Compare OURS vs BASE, THEIRS vs BASE, classify as Compatible/Redundant/Conflicting. Always test merged code.
+
 ## Styling Framework
 
 **CRITICAL: This project uses Panda CSS, NOT Tailwind CSS.**
