@@ -86,7 +86,7 @@ export function TimeMachineHistory({
               fontSize: 'xs',
               color: { base: 'gray.400', _dark: 'gray.500' },
               textAlign: 'center',
-              padding: '1 2',
+              paddingY: '1', paddingX: '2',
             })}
           >
             {hiddenCount} earlier step{hiddenCount > 1 ? 's' : ''} hidden

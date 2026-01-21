@@ -123,7 +123,7 @@ export function GenerationProgressPanel({
                 onCancel()
               }}
               className={css({
-                padding: '1 2',
+                paddingY: '1', paddingX: '2',
                 fontSize: 'xs',
                 borderRadius: 'md',
                 backgroundColor: { base: 'red.100', _dark: 'red.900/50' },
@@ -197,7 +197,7 @@ export function GenerationProgressPanel({
       {!isExpanded && reasoningText && (
         <div
           className={css({
-            padding: '2 3',
+            paddingY: '2', paddingX: '3',
             paddingTop: '0',
             fontSize: 'xs',
             color: { base: 'gray.500', _dark: 'gray.400' },

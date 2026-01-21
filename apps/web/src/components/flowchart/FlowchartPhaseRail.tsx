@@ -157,7 +157,7 @@ export function FlowchartPhaseRail({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '1',
-                padding: '1 2',
+                paddingY: '1', paddingX: '2',
                 borderRadius: 'full',
                 fontSize: '2xs',
                 fontWeight: 'medium',
@@ -373,7 +373,7 @@ export function FlowchartPhaseRail({
                       data-element="path-node-badge"
                       data-node-type={node.isCurrent ? 'current' : 'visited'}
                       className={css({
-                        padding: '1 2',
+                        paddingY: '1', paddingX: '2',
                         borderRadius: 'md',
                         fontSize: 'xs',
                         fontWeight: node.isCurrent ? 'bold' : 'medium',

@@ -71,7 +71,7 @@ export function FlowchartTab({ flowchart, shareUrl }: FlowchartTabProps) {
           onClick={handleDownloadPDF}
           disabled={isExporting}
           className={css({
-            padding: '2 4',
+            paddingY: '2', paddingX: '4',
             fontSize: 'sm',
             fontWeight: 'medium',
             borderRadius: 'lg',
@@ -97,7 +97,7 @@ export function FlowchartTab({ flowchart, shareUrl }: FlowchartTabProps) {
             data-action="copy-link"
             onClick={handleShare}
             className={css({
-              padding: '2 4',
+              paddingY: '2', paddingX: '4',
               fontSize: 'sm',
               fontWeight: 'medium',
               borderRadius: 'lg',

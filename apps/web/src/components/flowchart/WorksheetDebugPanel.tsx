@@ -134,7 +134,7 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
         <button
           onClick={generateExamples}
           className={css({
-            padding: '2 4',
+            paddingY: '2', paddingX: '4',
             borderRadius: 'md',
             backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
             color: 'white',
@@ -218,7 +218,7 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
             data-action="regenerate"
             onClick={generateExamples}
             className={css({
-              padding: '1 2',
+              paddingY: '1', paddingX: '2',
               fontSize: 'sm',
               borderRadius: 'md',
               backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
@@ -236,7 +236,7 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
       {/* Answer computation info */}
       <div
         className={css({
-          padding: '2 3',
+          paddingY: '2', paddingX: '3',
           borderRadius: 'md',
           backgroundColor: { base: 'blue.50', _dark: 'blue.900/30' },
           fontSize: 'xs',
@@ -251,7 +251,7 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
               className={css({
                 fontFamily: 'mono',
                 backgroundColor: { base: 'blue.100', _dark: 'blue.800/50' },
-                padding: '0 1',
+                paddingY: '0', paddingX: '1',
                 borderRadius: 'sm',
               })}
             >

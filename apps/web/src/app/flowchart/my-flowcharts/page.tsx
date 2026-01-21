@@ -151,7 +151,7 @@ export default function MyFlowchartsPage() {
         <button
           onClick={() => router.push('/flowchart/workshop')}
           className={css({
-            padding: '3 6',
+            paddingY: '3', paddingX: '6',
             borderRadius: 'lg',
             backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
             color: 'white',
@@ -168,7 +168,7 @@ export default function MyFlowchartsPage() {
         <button
           onClick={() => router.push('/flowchart/browse')}
           className={css({
-            padding: '3 6',
+            paddingY: '3', paddingX: '6',
             borderRadius: 'lg',
             backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
             color: { base: 'gray.700', _dark: 'gray.300' },
@@ -194,7 +194,7 @@ export default function MyFlowchartsPage() {
           <button
             onClick={() => router.push('/flowchart/workshop')}
             className={css({
-              padding: '3 6',
+              paddingY: '3', paddingX: '6',
               borderRadius: 'lg',
               backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
               color: 'white',
@@ -377,7 +377,7 @@ function FlowchartCard({
               onClick={onUse}
               disabled={isLoading}
               className={css({
-                padding: '2 3',
+                paddingY: '2', paddingX: '3',
                 borderRadius: 'md',
                 backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
                 color: 'white',
@@ -399,7 +399,7 @@ function FlowchartCard({
             onClick={onEdit}
             disabled={isLoading}
             className={css({
-              padding: '2 3',
+              paddingY: '2', paddingX: '3',
               borderRadius: 'md',
               backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
               color: { base: 'gray.700', _dark: 'gray.300' },
@@ -420,7 +420,7 @@ function FlowchartCard({
               onClick={onPublish}
               disabled={isLoading}
               className={css({
-                padding: '2 3',
+                paddingY: '2', paddingX: '3',
                 borderRadius: 'md',
                 backgroundColor: { base: 'green.100', _dark: 'green.900' },
                 color: { base: 'green.700', _dark: 'green.300' },
@@ -442,7 +442,7 @@ function FlowchartCard({
               onClick={onUnpublish}
               disabled={isLoading}
               className={css({
-                padding: '2 3',
+                paddingY: '2', paddingX: '3',
                 borderRadius: 'md',
                 backgroundColor: { base: 'yellow.100', _dark: 'yellow.900' },
                 color: { base: 'yellow.700', _dark: 'yellow.300' },
@@ -463,7 +463,7 @@ function FlowchartCard({
             onClick={onDelete}
             disabled={isLoading}
             className={css({
-              padding: '2 3',
+              paddingY: '2', paddingX: '3',
               borderRadius: 'md',
               backgroundColor: 'transparent',
               color: { base: 'gray.500', _dark: 'gray.500' },

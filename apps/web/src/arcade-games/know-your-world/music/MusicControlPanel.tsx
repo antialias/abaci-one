@@ -145,7 +145,7 @@ export function MusicControlPanel() {
             display: 'flex',
             alignItems: 'center',
             gap: '2',
-            padding: '2 3',
+            paddingY: '2', paddingX: '3',
             bg: isDark ? 'blue.600' : 'blue.500',
             color: 'white',
             rounded: 'lg',
@@ -332,7 +332,7 @@ export function MusicControlPanel() {
               display: 'flex',
               alignItems: 'center',
               gap: '1',
-              padding: '1 2',
+              paddingY: '1', paddingX: '2',
               fontSize: 'xs',
               color: isDark ? 'gray.500' : 'gray.500',
               bg: 'transparent',
@@ -422,7 +422,7 @@ export function MusicControlPanel() {
                 data-action="copy-pattern"
                 className={css({
                   marginTop: '2',
-                  padding: '1 2',
+                  paddingY: '1', paddingX: '2',
                   fontSize: 'xs',
                   bg: isDark ? 'gray.700' : 'gray.200',
                   color: isDark ? 'gray.300' : 'gray.700',

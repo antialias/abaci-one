@@ -475,7 +475,7 @@ export function SetupPhase() {
                                   key={badge.label}
                                   className={css({
                                     fontSize: 'xs',
-                                    padding: '1 2',
+                                    paddingY: '1', paddingX: '2',
                                     bg: isDark ? 'gray.600' : 'gray.200',
                                     color: isDark ? 'gray.300' : 'gray.600',
                                     rounded: 'md',
@@ -505,7 +505,7 @@ export function SetupPhase() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '2',
-              padding: '2 3',
+              paddingY: '2', paddingX: '3',
               width: { base: '160px', sm: '220px' },
               height: { base: '64px', sm: '72px' },
               fontSize: { base: 'sm', sm: 'md' },

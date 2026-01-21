@@ -192,7 +192,7 @@ export function FlowchartCard({
           <div className={hstack({ gap: '2', justifyContent: 'flex-end', marginTop: '3' })}>
             {actions.map((action, i) => {
               const buttonStyles = css({
-                padding: '2 4',
+                paddingY: '2', paddingX: '4',
                 borderRadius: 'md',
                 fontSize: 'sm',
                 fontWeight: 'medium',

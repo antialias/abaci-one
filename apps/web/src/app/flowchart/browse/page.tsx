@@ -103,7 +103,7 @@ export default function BrowseFlowchartsPage() {
         <button
           onClick={() => router.push('/flowchart/workshop')}
           className={css({
-            padding: '3 6',
+            paddingY: '3', paddingX: '6',
             borderRadius: 'lg',
             backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
             color: 'white',
@@ -120,7 +120,7 @@ export default function BrowseFlowchartsPage() {
         <button
           onClick={() => router.push('/flowchart/my-flowcharts')}
           className={css({
-            padding: '3 6',
+            paddingY: '3', paddingX: '6',
             borderRadius: 'lg',
             backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
             color: { base: 'gray.700', _dark: 'gray.300' },

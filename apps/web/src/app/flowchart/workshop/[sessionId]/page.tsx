@@ -709,7 +709,7 @@ export default function WorkshopPage() {
         <button
           onClick={() => router.push('/flowchart')}
           className={css({
-            padding: '3 6',
+            paddingY: '3', paddingX: '6',
             borderRadius: 'md',
             backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
             color: { base: 'gray.800', _dark: 'gray.200' },
@@ -742,7 +742,7 @@ export default function WorkshopPage() {
       <header
         data-element="top-bar"
         className={css({
-          padding: '3 4',
+          paddingY: '3', paddingX: '4',
           borderBottom: '1px solid',
           borderColor: { base: 'gray.200', _dark: 'gray.700' },
           backgroundColor: { base: 'white', _dark: 'gray.900' },
@@ -782,7 +782,7 @@ export default function WorkshopPage() {
               <span
                 className={css({
                   fontSize: 'xs',
-                  padding: '1 2',
+                  paddingY: '1', paddingX: '2',
                   borderRadius: 'full',
                   backgroundColor: { base: 'blue.100', _dark: 'blue.900' },
                   color: { base: 'blue.700', _dark: 'blue.300' },
@@ -799,7 +799,7 @@ export default function WorkshopPage() {
                   data-action="test"
                   onClick={handleTest}
                   className={css({
-                    padding: '2 4',
+                    paddingY: '2', paddingX: '4',
                     borderRadius: 'md',
                     backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
                     color: { base: 'gray.700', _dark: 'gray.300' },
@@ -818,7 +818,7 @@ export default function WorkshopPage() {
                   onClick={handleSave}
                   disabled={isSaving || isPublishing}
                   className={css({
-                    padding: '2 4',
+                    paddingY: '2', paddingX: '4',
                     borderRadius: 'md',
                     backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
                     color: { base: 'gray.700', _dark: 'gray.300' },
@@ -841,7 +841,7 @@ export default function WorkshopPage() {
                   onClick={handleSaveAndPublish}
                   disabled={isSaving || isPublishing}
                   className={css({
-                    padding: '2 4',
+                    paddingY: '2', paddingX: '4',
                     borderRadius: 'md',
                     backgroundColor: { base: 'green.600', _dark: 'green.500' },
                     color: 'white',
@@ -886,7 +886,7 @@ export default function WorkshopPage() {
                 data-action="fix-all-issues"
                 onClick={handleAddAllDiagnostics}
                 className={css({
-                  padding: '2 3',
+                  paddingY: '2', paddingX: '3',
                   fontSize: 'sm',
                   fontWeight: 'medium',
                   borderRadius: 'md',
@@ -1021,7 +1021,7 @@ export default function WorkshopPage() {
                   data-action="generate"
                   onClick={handleGenerate}
                   className={css({
-                    padding: '4 8',
+                    paddingY: '4', paddingX: '8',
                     borderRadius: 'lg',
                     backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
                     color: 'white',
@@ -1182,7 +1182,7 @@ export default function WorkshopPage() {
                   data-action="open-create-pdf-modal"
                   onClick={() => setShowCreatePdfModal(true)}
                   className={css({
-                    padding: '3 4',
+                    paddingY: '3', paddingX: '4',
                     borderRadius: 'lg',
                     backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
                     color: 'white',
@@ -1268,7 +1268,7 @@ export default function WorkshopPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '1',
-                    padding: '1 2',
+                    paddingY: '1', paddingX: '2',
                     borderRadius: 'md',
                     fontSize: 'sm',
                     backgroundColor:
@@ -1343,7 +1343,7 @@ export default function WorkshopPage() {
               onClick={handleRefine}
               disabled={isRefining || (!refinementText.trim() && selectedDiagnostics.length === 0)}
               className={css({
-                padding: '3 6',
+                paddingY: '3', paddingX: '6',
                 borderRadius: 'lg',
                 backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
                 color: 'white',
@@ -1523,7 +1523,7 @@ function StructureTab({
             <div
               key={id}
               className={css({
-                padding: '2 3',
+                paddingY: '2', paddingX: '3',
                 borderRadius: 'md',
                 backgroundColor: { base: 'gray.50', _dark: 'gray.800' },
                 fontSize: 'sm',

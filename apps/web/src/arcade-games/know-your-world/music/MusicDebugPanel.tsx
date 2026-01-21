@@ -51,7 +51,7 @@ export function MusicDebugPanel({ defaultExpanded = false }: MusicDebugPanelProp
           alignItems: 'center',
           gap: '2',
           width: '100%',
-          padding: '2 3',
+          paddingY: '2', paddingX: '3',
           bg: 'gray.800',
           color: 'gray.100',
           fontSize: 'sm',
@@ -133,7 +133,7 @@ export function MusicDebugPanel({ defaultExpanded = false }: MusicDebugPanelProp
             data-action="copy-pattern"
             className={css({
               mt: '2',
-              padding: '1 2',
+              paddingY: '1', paddingX: '2',
               fontSize: 'xs',
               bg: 'gray.700',
               color: 'gray.300',

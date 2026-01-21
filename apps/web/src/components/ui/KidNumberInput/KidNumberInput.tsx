@@ -120,10 +120,10 @@ export function KidNumberInput({
 
   // Display size styles
   const displaySizeStyles = {
-    sm: { fontSize: '2xl', padding: '2 4', minWidth: '60px' },
-    md: { fontSize: '4xl', padding: '3 6', minWidth: '80px' },
-    lg: { fontSize: '6xl', padding: '4 8', minWidth: '120px' },
-    xl: { fontSize: '7xl', padding: '4 10', minWidth: '140px' },
+    sm: { fontSize: '2xl', paddingY: '2', paddingX: '4', minWidth: '60px' },
+    md: { fontSize: '4xl', paddingY: '3', paddingX: '6', minWidth: '80px' },
+    lg: { fontSize: '6xl', paddingY: '4', paddingX: '8', minWidth: '120px' },
+    xl: { fontSize: '7xl', paddingY: '4', paddingX: '10', minWidth: '140px' },
   }
 
   const sizeStyle = displaySizeStyles[displaySize]

@@ -1137,7 +1137,7 @@ export function PracticeTab({
                         }
                         className={css({
                           width: '80px',
-                          padding: '1 2',
+                          paddingY: '1', paddingX: '2',
                           fontSize: 'md',
                           borderRadius: 'md',
                           border: '1px solid',

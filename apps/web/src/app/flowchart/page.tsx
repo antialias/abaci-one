@@ -621,7 +621,7 @@ export default function FlowchartPickerPage() {
               key={option.value}
               onClick={() => setFilter(option.value)}
               className={css({
-                padding: '2 4',
+                paddingY: '2', paddingX: '4',
                 borderRadius: 'md',
                 fontSize: 'sm',
                 fontWeight: 'medium',
@@ -660,7 +660,7 @@ export default function FlowchartPickerPage() {
             placeholder="Search flowcharts by topic..."
             className={css({
               width: '100%',
-              padding: '3 4',
+              paddingY: '3', paddingX: '4',
               paddingLeft: '10',
               borderRadius: 'lg',
               border: '2px solid',

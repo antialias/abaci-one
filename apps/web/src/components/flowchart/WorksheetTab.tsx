@@ -249,7 +249,7 @@ export function WorksheetTab({
             value={problemCount}
             onChange={handleProblemCountChange}
             className={css({
-              padding: '2 4',
+              paddingY: '2', paddingX: '4',
               fontSize: 'md',
               borderRadius: 'lg',
               border: '1px solid',
@@ -287,7 +287,7 @@ export function WorksheetTab({
             value={pageCount}
             onChange={handlePageCountChange}
             className={css({
-              padding: '2 4',
+              paddingY: '2', paddingX: '4',
               fontSize: 'md',
               borderRadius: 'lg',
               border: '1px solid',
@@ -455,7 +455,7 @@ export function WorksheetTab({
         onClick={handleGenerate}
         disabled={isGenerating}
         className={css({
-          padding: '3 6',
+          paddingY: '3', paddingX: '6',
           fontSize: 'md',
           fontWeight: 'semibold',
           borderRadius: 'xl',

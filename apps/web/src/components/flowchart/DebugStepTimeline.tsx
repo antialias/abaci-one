@@ -85,7 +85,7 @@ export function DebugStepTimeline({
           onClick={onBack}
           disabled={!canGoBack}
           className={css({
-            padding: '1 2',
+            paddingY: '1', paddingX: '2',
             fontSize: 'sm',
             fontWeight: 'medium',
             borderRadius: 'md',
@@ -131,7 +131,7 @@ export function DebugStepTimeline({
               display: 'flex',
               alignItems: 'center',
               gap: '1',
-              padding: '1 2',
+              paddingY: '1', paddingX: '2',
               fontSize: '2xs',
               fontWeight: 'medium',
               borderRadius: 'md',
@@ -168,7 +168,7 @@ export function DebugStepTimeline({
             disabled={!canGoForward}
             title="Redo - go forward to previously visited step"
             className={css({
-              padding: '1 2',
+              paddingY: '1', paddingX: '2',
               fontSize: 'sm',
               fontWeight: 'medium',
               borderRadius: 'md',
@@ -198,7 +198,7 @@ export function DebugStepTimeline({
             disabled={!canSkip}
             title="Skip - auto-answer and advance to next step"
             className={css({
-              padding: '1 2',
+              paddingY: '1', paddingX: '2',
               fontSize: 'sm',
               fontWeight: 'semibold',
               borderRadius: 'md',
@@ -250,7 +250,7 @@ export function DebugStepTimeline({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '1',
-                padding: '1 2',
+                paddingY: '1', paddingX: '2',
                 borderRadius: 'md',
                 border: '2px solid',
                 cursor: isCurrent ? 'default' : 'pointer',
