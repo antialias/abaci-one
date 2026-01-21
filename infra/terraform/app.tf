@@ -27,7 +27,8 @@ resource "kubernetes_config_map" "app_config" {
   data = {
     NODE_ENV                = "production"
     PORT                    = "3000"
-    HOSTNAME                = "0.0.0.0"
+    # Note: Don't set HOSTNAME here - it conflicts with LiteFS which needs the pod hostname
+    # Next.js will use 0.0.0.0 by default if HOSTNAME is not set
     NEXT_TELEMETRY_DISABLED = "1"
     REDIS_URL               = "redis://redis:6379"
     # LiteFS mounts the database at /litefs

@@ -199,7 +199,7 @@ EXPOSE 3000
 # LiteFS proxy listens on 8080, app on 3000
 EXPOSE 8080
 ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+# Note: Don't set HOSTNAME here - LiteFS needs the pod's actual hostname
 ENV NODE_ENV=production
 
 # Default: run without LiteFS (for local dev and Docker Compose)
