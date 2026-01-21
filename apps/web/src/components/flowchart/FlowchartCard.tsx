@@ -62,7 +62,9 @@ export function FlowchartCard({
   diagnosticReport,
 }: FlowchartCardProps) {
   const hasActions = actions && actions.length > 0
-  const hasExamples = flowchart && examples && examples.length > 0
+  // Only show animated background if flowchart has examples AND is healthy (cleared by doctor)
+  const isHealthy = !diagnosticReport || diagnosticReport.isHealthy
+  const hasExamples = flowchart && examples && examples.length > 0 && isHealthy
 
   const cardContent = (
     <div className={hstack({ gap: '4', alignItems: 'flex-start', flex: 1 })}>

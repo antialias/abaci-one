@@ -317,7 +317,13 @@ function computeDerivedFields(
       // Update context for subsequent derivations
       context.problem[fieldName] = result[fieldName]
     } catch (error) {
-      console.error(`Error computing derived field ${fieldName}:`, error)
+      console.error(
+        `Error computing derived field "${fieldName}" in flowchart "${flowchart.definition.title}" (${flowchart.definition.id}):`,
+        `\n  Expression: ${expression}`,
+        `\n  Available fields: ${Object.keys(result).join(', ')}`,
+        `\n  Error:`,
+        error
+      )
     }
   }
 

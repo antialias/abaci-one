@@ -36,6 +36,7 @@ interface WorkshopSession {
   draftTitle: string | null
   draftEmoji: string | null
   draftDefinitionJson: string | null
+  draftMermaidContent: string | null
   createdAt: string
   updatedAt: string
 }
@@ -109,7 +110,7 @@ export default function FlowchartPickerPage() {
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Examples for animated card backgrounds (generated client-side)
-  // Stores the flowchart, generated examples, and diagnostic report
+  // Unified map for both published flowcharts (keyed by flowchart ID) and drafts (keyed by session ID)
   const [cardExamples, setCardExamples] = useState<
     Map<
       string,
@@ -120,6 +121,9 @@ export default function FlowchartPickerPage() {
       }
     >
   >(new Map())
+
+  // Track IDs currently being generated to prevent duplicate work
+  const generatingIdsRef = useRef<Set<string>>(new Set())
 
   // Compute diagnostics for draft sessions (memoized)
   const draftDiagnostics = useMemo(() => {
@@ -157,58 +161,6 @@ export default function FlowchartPickerPage() {
     loadPublished()
   }, [])
 
-  // Generate examples for all flowcharts (client-side, off main thread)
-  useEffect(() => {
-    if (isLoadingPublished) return
-
-    // Find flowcharts that don't have examples yet
-    const flowchartsToGenerate = publishedFlowcharts.filter((fc) => !cardExamples.has(fc.id))
-
-    if (flowchartsToGenerate.length === 0) return
-
-    // Generate examples for each flowchart
-    async function generateForAll() {
-      for (const fc of flowchartsToGenerate) {
-        try {
-          let executable: ExecutableFlowchart
-          let mermaidContent: string | undefined
-
-          if (fc.source === 'hardcoded') {
-            // Hardcoded flowcharts - use local definitions
-            const flowchartData = getFlowchart(fc.id)
-            if (!flowchartData) continue
-            executable = await loadFlowchart(flowchartData.definition, flowchartData.mermaid)
-            mermaidContent = flowchartData.mermaid
-          } else {
-            // Database flowcharts - fetch from API
-            const response = await fetch(`/api/flowcharts/${fc.id}`)
-            if (!response.ok) continue
-            const data = await response.json()
-            const { definition, mermaid } = data.flowchart as {
-              definition: FlowchartDefinition
-              mermaid: string
-            }
-            executable = await loadFlowchart(definition, mermaid)
-            mermaidContent = mermaid
-          }
-
-          // Run diagnostic check on the flowchart (including mermaid content)
-          const diagnosticReport = diagnoseFlowchart(executable.definition, mermaidContent)
-
-          const examples = await generateExamplesAsync(executable, 10, {})
-
-          setCardExamples((prev) =>
-            new Map(prev).set(fc.id, { flowchart: executable, examples, diagnosticReport })
-          )
-        } catch (err) {
-          console.error(`Failed to generate examples for ${fc.id}:`, err)
-        }
-      }
-    }
-
-    generateForAll()
-  }, [isLoadingPublished, publishedFlowcharts, cardExamples])
-
   // Load draft sessions
   useEffect(() => {
     async function loadDrafts() {
@@ -226,6 +178,107 @@ export default function FlowchartPickerPage() {
     }
     loadDrafts()
   }, [])
+
+  // Generate examples for ALL flowcharts (published + drafts) in a single unified effect
+  // Processes sequentially because the worker pool cancels concurrent requests
+  useEffect(() => {
+    if (isLoadingPublished || isLoadingDrafts) return
+
+    // Collect all items that need examples generated
+    type ItemToGenerate = {
+      id: string
+      title: string
+      type: 'published-hardcoded' | 'published-database' | 'draft'
+      source?: 'hardcoded' | 'database'
+      // For drafts only:
+      definitionJson?: string
+      mermaidContent?: string
+    }
+
+    const itemsToGenerate: ItemToGenerate[] = []
+
+    // Add published flowcharts
+    for (const fc of publishedFlowcharts) {
+      if (cardExamples.has(fc.id) || generatingIdsRef.current.has(fc.id)) continue
+      itemsToGenerate.push({
+        id: fc.id,
+        title: fc.title,
+        type: fc.source === 'hardcoded' ? 'published-hardcoded' : 'published-database',
+        source: fc.source,
+      })
+    }
+
+    // Add healthy drafts with valid definitions
+    for (const session of draftSessions) {
+      if (cardExamples.has(session.id) || generatingIdsRef.current.has(session.id)) continue
+      if (!session.draftDefinitionJson || !session.draftMermaidContent) continue
+
+      // Only include healthy drafts
+      const report = draftDiagnostics.get(session.id)
+      if (report && !report.isHealthy) continue
+
+      itemsToGenerate.push({
+        id: session.id,
+        title: session.draftTitle || 'Untitled Draft',
+        type: 'draft',
+        definitionJson: session.draftDefinitionJson,
+        mermaidContent: session.draftMermaidContent,
+      })
+    }
+
+    if (itemsToGenerate.length === 0) return
+
+    // Mark all as generating before starting
+    for (const item of itemsToGenerate) {
+      generatingIdsRef.current.add(item.id)
+    }
+
+    // Generate examples sequentially
+    async function generateAll() {
+      for (const item of itemsToGenerate) {
+        try {
+          let executable: ExecutableFlowchart
+          let mermaidContent: string | undefined
+
+          if (item.type === 'published-hardcoded') {
+            const flowchartData = getFlowchart(item.id)
+            if (!flowchartData) continue
+            executable = await loadFlowchart(flowchartData.definition, flowchartData.mermaid)
+            mermaidContent = flowchartData.mermaid
+          } else if (item.type === 'published-database') {
+            const response = await fetch(`/api/flowcharts/${item.id}`)
+            if (!response.ok) continue
+            const data = await response.json()
+            const { definition, mermaid } = data.flowchart as {
+              definition: FlowchartDefinition
+              mermaid: string
+            }
+            executable = await loadFlowchart(definition, mermaid)
+            mermaidContent = mermaid
+          } else {
+            // Draft
+            const definition: FlowchartDefinition = JSON.parse(item.definitionJson!)
+            executable = await loadFlowchart(definition, item.mermaidContent!)
+            mermaidContent = item.mermaidContent
+          }
+
+          const diagnosticReport = diagnoseFlowchart(executable.definition, mermaidContent)
+          const examples = await generateExamplesAsync(executable, 10, {})
+
+          setCardExamples((prev) =>
+            new Map(prev).set(item.id, { flowchart: executable, examples, diagnosticReport })
+          )
+        } catch (err) {
+          console.error(`[Examples] Failed to generate for ${item.title}:`, err)
+        } finally {
+          generatingIdsRef.current.delete(item.id)
+        }
+      }
+    }
+
+    generateAll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoadingPublished, isLoadingDrafts, publishedFlowcharts, draftSessions, draftDiagnostics])
 
   // Debounced search for flowcharts
   useEffect(() => {
@@ -939,29 +992,35 @@ export default function FlowchartPickerPage() {
 
             {/* Draft flowcharts */}
             {filter !== 'published' &&
-              draftSessions.map((session) => (
-                <FlowchartCard
-                  key={session.id}
-                  title={session.draftTitle || session.topicDescription || 'Untitled'}
-                  emoji={session.draftEmoji || '📝'}
-                  status={session.state === 'refining' ? 'In Progress' : 'Draft'}
-                  subtitle={`Updated ${new Date(session.updatedAt).toLocaleDateString()}`}
-                  onClick={() => handleResumeDraft(session.id)}
-                  diagnosticReport={draftDiagnostics.get(session.id)}
-                  actions={[
-                    {
-                      label: 'Edit',
-                      href: `/flowchart/workshop/${session.id}`,
-                      variant: 'primary',
-                    },
-                    {
-                      label: 'Delete',
-                      onClick: () => handleDeleteDraft(session.id),
-                      variant: 'danger',
-                    },
-                  ]}
-                />
-              ))}
+              draftSessions.map((session) => {
+                const cardData = cardExamples.get(session.id)
+
+                return (
+                  <FlowchartCard
+                    key={session.id}
+                    title={session.draftTitle || session.topicDescription || 'Untitled'}
+                    emoji={session.draftEmoji || '📝'}
+                    status={session.state === 'refining' ? 'In Progress' : 'Draft'}
+                    subtitle={`Updated ${new Date(session.updatedAt).toLocaleDateString()}`}
+                    onClick={() => handleResumeDraft(session.id)}
+                    flowchart={cardData?.flowchart}
+                    examples={cardData?.examples}
+                    diagnosticReport={cardData?.diagnosticReport ?? draftDiagnostics.get(session.id)}
+                    actions={[
+                      {
+                        label: 'Edit',
+                        href: `/flowchart/workshop/${session.id}`,
+                        variant: 'primary',
+                      },
+                      {
+                        label: 'Delete',
+                        onClick: () => handleDeleteDraft(session.id),
+                        variant: 'danger',
+                      },
+                    ]}
+                  />
+                )
+              })}
 
             {/* Empty state for drafts filter */}
             {filter === 'drafts' && !isLoadingDrafts && draftSessions.length === 0 && (

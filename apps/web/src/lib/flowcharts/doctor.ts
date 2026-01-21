@@ -195,18 +195,25 @@ function checkDerivedFields(definition: FlowchartDefinition): FlowchartDiagnosti
             suggestion: `Either move the computation to the variables section, or rewrite the expression to only use input fields: ${[...inputFieldNames].join(', ')}`,
           })
         } else if (isLaterDerived) {
-          // References a derived field defined later
+          // Check if it's a self-reference (circular)
+          const isSelfReference = identifier === fieldName
           diagnostics.push({
             code: DiagnosticCodes.DERIVED_REFERENCES_LATER,
             severity: 'error',
-            title: 'Derived field references later-defined field',
-            message: `The derived field "${fieldName}" references "${identifier}" which is defined later in the derived fields list. Derived fields are processed in order, so earlier fields cannot reference later ones.`,
+            title: isSelfReference
+              ? 'Derived field references itself (circular)'
+              : 'Derived field references later-defined field',
+            message: isSelfReference
+              ? `The derived field "${fieldName}" references itself. This creates a circular reference that cannot be computed.`
+              : `The derived field "${fieldName}" references "${identifier}" which is defined later in the derived fields list. Derived fields are processed in order, so earlier fields cannot reference later ones.`,
             location: {
               section: 'generation',
               path: `derived.${fieldName}`,
               description: `generation.derived["${fieldName}"]`,
             },
-            suggestion: `Reorder the derived fields so that "${identifier}" is defined before "${fieldName}"`,
+            suggestion: isSelfReference
+              ? `Replace the self-reference with the actual computation. For example, if "${fieldName}" should be computed from input fields, write the formula instead of just "${fieldName}".`
+              : `Reorder the derived fields so that "${identifier}" is defined before "${fieldName}"`,
           })
         } else {
           // References an unknown identifier

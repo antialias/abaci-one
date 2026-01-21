@@ -32,6 +32,7 @@ export async function GET() {
         draftEmoji: true,
         draftDifficulty: true,
         draftDefinitionJson: true,
+        draftMermaidContent: true,
         createdAt: true,
         updatedAt: true,
         expiresAt: true,
