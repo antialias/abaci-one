@@ -39,7 +39,7 @@ proxy:
 # Run the application after LiteFS mounts
 exec:
   # Run migrations only on the primary (candidate)
-  - cmd: "node dist/migrate.js"
+  - cmd: "node dist/db/migrate.js"
     if-candidate: true
 
   # Start the app (runs on all nodes)
