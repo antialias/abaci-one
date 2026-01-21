@@ -15,6 +15,7 @@ import { generateDiverseExamples, generateExamplesForPaths } from './loader'
 
 export interface GenerateExamplesRequest {
   type: 'generate'
+  requestId: string // Unique ID to match response to request
   flowchart: ExecutableFlowchart
   count: number
   constraints: GenerationConstraints
@@ -22,6 +23,7 @@ export interface GenerateExamplesRequest {
 
 export interface GenerateExamplesPartialRequest {
   type: 'generate-partial'
+  requestId: string // Unique ID to match response to request
   flowchart: ExecutableFlowchart
   pathIndices: number[] // Which paths this worker should process
   constraints: GenerationConstraints
@@ -29,11 +31,13 @@ export interface GenerateExamplesPartialRequest {
 
 export interface GenerateExamplesResponse {
   type: 'result'
+  requestId: string // Echo back the request ID
   examples: GeneratedExample[]
 }
 
 export interface GenerateExamplesError {
   type: 'error'
+  requestId: string // Echo back the request ID
   message: string
 }
 
@@ -43,22 +47,24 @@ export type WorkerResponse = GenerateExamplesResponse | GenerateExamplesError
 // Handle incoming messages
 self.onmessage = (event: MessageEvent<WorkerMessage>) => {
   const data = event.data
+  const { requestId } = data
 
   try {
     if (data.type === 'generate') {
       // Full generation mode
       const examples = generateDiverseExamples(data.flowchart, data.count, data.constraints)
-      const response: GenerateExamplesResponse = { type: 'result', examples }
+      const response: GenerateExamplesResponse = { type: 'result', requestId, examples }
       self.postMessage(response)
     } else if (data.type === 'generate-partial') {
       // Partial generation mode - only process assigned paths
       const examples = generateExamplesForPaths(data.flowchart, data.pathIndices, data.constraints)
-      const response: GenerateExamplesResponse = { type: 'result', examples }
+      const response: GenerateExamplesResponse = { type: 'result', requestId, examples }
       self.postMessage(response)
     }
   } catch (error) {
     const response: GenerateExamplesError = {
       type: 'error',
+      requestId,
       message: error instanceof Error ? error.message : 'Unknown error',
     }
     self.postMessage(response)

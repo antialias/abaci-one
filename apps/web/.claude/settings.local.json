@@ -90,7 +90,11 @@
       "Bash(python3 -m py_compile:*)",
       "Bash(python3:*)",
       "Bash(while read f)",
-      "Bash(do sed -i '' 's/var\\(--nav-height\\)/var\\(--app-nav-height, 72px\\)/g' \"$f\" echo \"Fixed: $f\" done)"
+      "Bash(do sed -i '' 's/var\\(--nav-height\\)/var\\(--app-nav-height, 72px\\)/g' \"$f\" echo \"Fixed: $f\" done)",
+      "mcp__sqlite__list_tables",
+      "mcp__sqlite__describe_table",
+      "mcp__sqlite__write_query",
+      "Bash(git diff:*)"
     ],
     "deny": [],
     "ask": []

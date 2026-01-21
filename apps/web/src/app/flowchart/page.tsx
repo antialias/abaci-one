@@ -180,7 +180,7 @@ export default function FlowchartPickerPage() {
   }, [])
 
   // Generate examples for ALL flowcharts (published + drafts) in a single unified effect
-  // Processes sequentially because the worker pool cancels concurrent requests
+  // Uses concurrent generation - the worker pool properly queues requests via request IDs
   useEffect(() => {
     if (isLoadingPublished || isLoadingDrafts) return
 
@@ -233,50 +233,49 @@ export default function FlowchartPickerPage() {
       generatingIdsRef.current.add(item.id)
     }
 
-    // Generate examples sequentially
-    async function generateAll() {
-      for (const item of itemsToGenerate) {
-        try {
-          let executable: ExecutableFlowchart
-          let mermaidContent: string | undefined
+    // Generate examples for a single item
+    async function generateForItem(item: ItemToGenerate): Promise<void> {
+      try {
+        let executable: ExecutableFlowchart
+        let mermaidContent: string | undefined
 
-          if (item.type === 'published-hardcoded') {
-            const flowchartData = getFlowchart(item.id)
-            if (!flowchartData) continue
-            executable = await loadFlowchart(flowchartData.definition, flowchartData.mermaid)
-            mermaidContent = flowchartData.mermaid
-          } else if (item.type === 'published-database') {
-            const response = await fetch(`/api/flowcharts/${item.id}`)
-            if (!response.ok) continue
-            const data = await response.json()
-            const { definition, mermaid } = data.flowchart as {
-              definition: FlowchartDefinition
-              mermaid: string
-            }
-            executable = await loadFlowchart(definition, mermaid)
-            mermaidContent = mermaid
-          } else {
-            // Draft
-            const definition: FlowchartDefinition = JSON.parse(item.definitionJson!)
-            executable = await loadFlowchart(definition, item.mermaidContent!)
-            mermaidContent = item.mermaidContent
+        if (item.type === 'published-hardcoded') {
+          const flowchartData = getFlowchart(item.id)
+          if (!flowchartData) return
+          executable = await loadFlowchart(flowchartData.definition, flowchartData.mermaid)
+          mermaidContent = flowchartData.mermaid
+        } else if (item.type === 'published-database') {
+          const response = await fetch(`/api/flowcharts/${item.id}`)
+          if (!response.ok) return
+          const data = await response.json()
+          const { definition, mermaid } = data.flowchart as {
+            definition: FlowchartDefinition
+            mermaid: string
           }
-
-          const diagnosticReport = diagnoseFlowchart(executable.definition, mermaidContent)
-          const examples = await generateExamplesAsync(executable, 10, {})
-
-          setCardExamples((prev) =>
-            new Map(prev).set(item.id, { flowchart: executable, examples, diagnosticReport })
-          )
-        } catch (err) {
-          console.error(`[Examples] Failed to generate for ${item.title}:`, err)
-        } finally {
-          generatingIdsRef.current.delete(item.id)
+          executable = await loadFlowchart(definition, mermaid)
+          mermaidContent = mermaid
+        } else {
+          // Draft
+          const definition: FlowchartDefinition = JSON.parse(item.definitionJson!)
+          executable = await loadFlowchart(definition, item.mermaidContent!)
+          mermaidContent = item.mermaidContent
         }
+
+        const diagnosticReport = diagnoseFlowchart(executable.definition, mermaidContent)
+        const examples = await generateExamplesAsync(executable, 10, {})
+
+        setCardExamples((prev) =>
+          new Map(prev).set(item.id, { flowchart: executable, examples, diagnosticReport })
+        )
+      } catch (err) {
+        console.error(`[Examples] Failed to generate for ${item.title}:`, err)
+      } finally {
+        generatingIdsRef.current.delete(item.id)
       }
     }
 
-    generateAll()
+    // Generate all examples concurrently - the worker pool handles queuing
+    Promise.all(itemsToGenerate.map(generateForItem))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoadingPublished, isLoadingDrafts, publishedFlowcharts, draftSessions, draftDiagnostics])
 
@@ -1005,7 +1004,9 @@ export default function FlowchartPickerPage() {
                     onClick={() => handleResumeDraft(session.id)}
                     flowchart={cardData?.flowchart}
                     examples={cardData?.examples}
-                    diagnosticReport={cardData?.diagnosticReport ?? draftDiagnostics.get(session.id)}
+                    diagnosticReport={
+                      cardData?.diagnosticReport ?? draftDiagnostics.get(session.id)
+                    }
                     actions={[
                       {
                         label: 'Edit',

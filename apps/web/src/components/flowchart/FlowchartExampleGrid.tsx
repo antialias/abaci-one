@@ -40,12 +40,6 @@ export interface FlowchartExampleGridProps {
   showDifficultyFilter?: boolean
   /** Compact mode for smaller displays (default: false) */
   compact?: boolean
-  /**
-   * When true, wait before generating examples. Use this to sequence generation
-   * with other components that share the web worker pool.
-   * When undefined/false, generation starts immediately.
-   */
-  waitForReady?: boolean
 }
 
 /**
@@ -68,7 +62,6 @@ export function FlowchartExampleGrid({
   showDice = true,
   showDifficultyFilter = true,
   compact = false,
-  waitForReady = false,
 }: FlowchartExampleGridProps) {
   // Displayed examples
   const [displayedExamples, setDisplayedExamples] = useState<GeneratedExample[]>([])
@@ -110,15 +103,7 @@ export function FlowchartExampleGrid({
   }, [flowchart, analysis])
 
   // Load/generate examples on mount or when flowchart changes
-  // If waitForReady is true, wait until it becomes false before generating
   useEffect(() => {
-    // If we need to wait, don't start generation yet
-    if (waitForReady) {
-      setIsLoading(true)
-      setError(null)
-      return
-    }
-
     // Create a flag to track if this effect is still active (for cleanup)
     let isActive = true
 
@@ -174,7 +159,7 @@ export function FlowchartExampleGrid({
     return () => {
       isActive = false
     }
-  }, [flowchart, exampleCount, constraints, storageKey, waitForReady])
+  }, [flowchart, exampleCount, constraints, storageKey])
 
   // Calculate difficulty range for visual indicators
   const difficultyRange = useMemo(() => {
@@ -394,7 +379,7 @@ export function FlowchartExampleGrid({
           color: { base: 'gray.500', _dark: 'gray.400' },
         })}
       >
-        {waitForReady ? 'Waiting...' : 'Generating examples...'}
+        Generating examples...
       </div>
     )
   }

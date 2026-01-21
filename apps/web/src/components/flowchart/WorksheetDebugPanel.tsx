@@ -13,10 +13,6 @@ interface WorksheetDebugPanelProps {
   flowchart: ExecutableFlowchart
   /** Number of problems to generate (default: 10) */
   problemCount?: number
-  /** Called when example generation starts */
-  onGenerationStart?: () => void
-  /** Called when example generation completes (success or error) */
-  onGenerationComplete?: () => void
 }
 
 /** Difficulty tier type */
@@ -26,12 +22,7 @@ type DifficultyTier = 'easy' | 'medium' | 'hard'
  * Debug panel for testing worksheet generation.
  * Shows generated problems with their computed answers, raw values, and difficulty tiers.
  */
-export function WorksheetDebugPanel({
-  flowchart,
-  problemCount = 10,
-  onGenerationStart,
-  onGenerationComplete,
-}: WorksheetDebugPanelProps) {
+export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetDebugPanelProps) {
   const [examples, setExamples] = useState<GeneratedExample[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +37,6 @@ export function WorksheetDebugPanel({
   const generateExamples = useCallback(async () => {
     setIsLoading(true)
     setError(null)
-    onGenerationStart?.()
     try {
       const newExamples = await generateExamplesAsync(flowchart, problemCount, {
         positiveAnswersOnly: false,
@@ -57,9 +47,8 @@ export function WorksheetDebugPanel({
       setError(err instanceof Error ? err.message : 'Failed to generate examples')
     } finally {
       setIsLoading(false)
-      onGenerationComplete?.()
     }
-  }, [flowchart, problemCount, onGenerationStart, onGenerationComplete])
+  }, [flowchart, problemCount])
 
   // Calculate difficulty range
   const difficultyRange = useMemo(() => {

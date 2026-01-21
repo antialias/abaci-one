@@ -86,19 +86,6 @@ export default function WorkshopPage() {
   // Examples for worksheet generation
   const [worksheetExamples, setWorksheetExamples] = useState<GeneratedExample[]>([])
 
-  // Track if WorksheetDebugPanel is generating (to sequence with FlowchartExampleGrid)
-  // Initialize to true since we start on worksheet tab - WorksheetDebugPanel will set to false when done
-  const [isDebugPanelGenerating, setIsDebugPanelGenerating] = useState(true)
-  const handleDebugPanelGenerationStart = useCallback(() => setIsDebugPanelGenerating(true), [])
-  const handleDebugPanelGenerationComplete = useCallback(() => setIsDebugPanelGenerating(false), [])
-
-  // Reset generation state when flowchart changes (to re-sequence generation)
-  useEffect(() => {
-    if (executableFlowchart && activeTab === 'worksheet') {
-      setIsDebugPanelGenerating(true)
-    }
-  }, [executableFlowchart?.definition.id, activeTab])
-
   // Generate examples when flowchart changes
   useEffect(() => {
     if (!executableFlowchart) {
@@ -1216,12 +1203,7 @@ export default function WorkshopPage() {
                   Create PDF Worksheet
                 </button>
                 {/* Debug Panel - shows generated examples with answers */}
-                <WorksheetDebugPanel
-                  flowchart={executableFlowchart}
-                  problemCount={10}
-                  onGenerationStart={handleDebugPanelGenerationStart}
-                  onGenerationComplete={handleDebugPanelGenerationComplete}
-                />
+                <WorksheetDebugPanel flowchart={executableFlowchart} problemCount={10} />
               </div>
             )}
             {activeTab === 'worksheet' && !executableFlowchart && (
@@ -1251,7 +1233,6 @@ export default function WorkshopPage() {
                 // Navigate to test page - it will use the passed values
                 router.push(`/flowchart/workshop/${sessionId}/test`)
               }}
-              waitForReady={activeTab === 'worksheet' && isDebugPanelGenerating}
             />
           </div>
         </div>
@@ -1678,13 +1659,10 @@ function ExamplesTab({
   definition,
   flowchart,
   onTestExample,
-  waitForReady = false,
 }: {
   definition: FlowchartDefinition | null
   flowchart: ExecutableFlowchart | null
   onTestExample: (values: Record<string, ProblemValue>) => void
-  /** When true, wait before generating examples (to sequence with other generators) */
-  waitForReady?: boolean
 }) {
   if (!definition) {
     return (
@@ -1709,7 +1687,6 @@ function ExamplesTab({
         onSelect={onTestExample}
         compact={true}
         enableCaching={false} // Don't cache in workshop - always show fresh examples
-        waitForReady={waitForReady}
       />
       <p
         className={css({
