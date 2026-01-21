@@ -19,12 +19,11 @@ lease:
   candidate: ${LITEFS_CANDIDATE:-false}
 
 # HTTP proxy to forward writes from replicas to primary
+# LiteFS automatically forwards writes to primary via lease advertise-url
 proxy:
   addr: ":8080"
   target: "localhost:3000"
   db: "sqlite.db"
-  # Forward write requests to primary
-  primary-redirect-url: "http://abaci-app-0.abaci-app-headless.abaci.svc.cluster.local:8080"
   passthrough:
     - "*.ico"
     - "*.png"
