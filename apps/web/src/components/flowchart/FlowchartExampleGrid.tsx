@@ -40,6 +40,12 @@ export interface FlowchartExampleGridProps {
   showDifficultyFilter?: boolean
   /** Compact mode for smaller displays (default: false) */
   compact?: boolean
+  /**
+   * When true, wait before generating examples. Use this to sequence generation
+   * with other components that share the web worker pool.
+   * When undefined/false, generation starts immediately.
+   */
+  waitForReady?: boolean
 }
 
 /**
@@ -62,17 +68,18 @@ export function FlowchartExampleGrid({
   showDice = true,
   showDifficultyFilter = true,
   compact = false,
+  waitForReady = false,
 }: FlowchartExampleGridProps) {
   // Displayed examples
   const [displayedExamples, setDisplayedExamples] = useState<GeneratedExample[]>([])
   // Pending examples promise during drag
   const pendingExamplesRef = useRef<Promise<GeneratedExample[]> | null>(null)
-  // Track if we've loaded from cache
-  const loadedFromCacheRef = useRef(false)
   // Selected difficulty tier
   const [selectedTier, setSelectedTier] = useState<DifficultyTier>('all')
   // Loading state
   const [isLoading, setIsLoading] = useState(true)
+  // Error state
+  const [error, setError] = useState<string | null>(null)
 
   // Create a stable storage key for caching examples
   const storageKey = useMemo(() => {
@@ -102,10 +109,22 @@ export function FlowchartExampleGrid({
     }
   }, [flowchart, analysis])
 
-  // Load/generate examples on mount
+  // Load/generate examples on mount or when flowchart changes
+  // If waitForReady is true, wait until it becomes false before generating
   useEffect(() => {
-    if (loadedFromCacheRef.current) return
-    loadedFromCacheRef.current = true
+    // If we need to wait, don't start generation yet
+    if (waitForReady) {
+      setIsLoading(true)
+      setError(null)
+      return
+    }
+
+    // Create a flag to track if this effect is still active (for cleanup)
+    let isActive = true
+
+    // Reset loading state when flowchart changes
+    setIsLoading(true)
+    setError(null)
 
     // Try to load from cache first
     if (storageKey) {
@@ -127,7 +146,10 @@ export function FlowchartExampleGrid({
     // Generate new examples
     generateExamplesAsync(flowchart, exampleCount, constraints)
       .then((examples) => {
-        setDisplayedExamples(examples)
+        if (isActive) {
+          setDisplayedExamples(examples)
+          setError(null)
+        }
         if (storageKey) {
           try {
             sessionStorage.setItem(storageKey, JSON.stringify(examples))
@@ -138,11 +160,21 @@ export function FlowchartExampleGrid({
       })
       .catch((e) => {
         console.error('Error generating examples:', e)
+        if (isActive) {
+          setError(e instanceof Error ? e.message : 'Failed to generate examples')
+        }
       })
       .finally(() => {
-        setIsLoading(false)
+        if (isActive) {
+          setIsLoading(false)
+        }
       })
-  }, [flowchart, exampleCount, constraints, storageKey])
+
+    // Cleanup: mark this effect as inactive if component unmounts or deps change
+    return () => {
+      isActive = false
+    }
+  }, [flowchart, exampleCount, constraints, storageKey, waitForReady])
 
   // Calculate difficulty range for visual indicators
   const difficultyRange = useMemo(() => {
@@ -362,7 +394,7 @@ export function FlowchartExampleGrid({
           color: { base: 'gray.500', _dark: 'gray.400' },
         })}
       >
-        Generating examples...
+        {waitForReady ? 'Waiting...' : 'Generating examples...'}
       </div>
     )
   }
@@ -762,7 +794,15 @@ export function FlowchartExampleGrid({
             fontSize: 'sm',
           })}
         >
-          No examples could be generated.
+          {error ? (
+            <>
+              <span className={css({ color: { base: 'red.600', _dark: 'red.400' } })}>
+                Error: {error}
+              </span>
+            </>
+          ) : (
+            'No examples could be generated.'
+          )}
         </div>
       )}
     </div>

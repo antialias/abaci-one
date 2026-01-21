@@ -52,7 +52,9 @@ function getWorkerPool(): WorkerState[] {
       }
 
       worker.onerror = (error) => {
-        state.reject?.(new Error(error.message))
+        console.error('Web worker error:', error)
+        const message = error.message || 'Web worker failed to load or execute'
+        state.reject?.(new Error(message))
         state.busy = false
         state.resolve = null
         state.reject = null
