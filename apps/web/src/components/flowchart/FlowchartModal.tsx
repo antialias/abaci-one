@@ -319,7 +319,8 @@ export const FlowchartModal = forwardRef<HTMLDivElement, FlowchartModalProps>(
                   onClick={handleEdit}
                   disabled={isCreatingWorkshop}
                   className={css({
-                    paddingY: '2', paddingX: '4',
+                    paddingY: '2',
+                    paddingX: '4',
                     fontSize: 'sm',
                     fontWeight: 'medium',
                     borderRadius: 'md',
@@ -345,7 +346,8 @@ export const FlowchartModal = forwardRef<HTMLDivElement, FlowchartModalProps>(
                 onClick={handleRemix}
                 disabled={isCreatingWorkshop}
                 className={css({
-                  paddingY: '2', paddingX: '4',
+                  paddingY: '2',
+                  paddingX: '4',
                   fontSize: 'sm',
                   fontWeight: 'medium',
                   borderRadius: 'md',
@@ -388,7 +390,8 @@ export const FlowchartModal = forwardRef<HTMLDivElement, FlowchartModalProps>(
                     onClick={handleFixInWorkshop}
                     disabled={isCreatingWorkshop}
                     className={css({
-                      paddingY: '2', paddingX: '3',
+                      paddingY: '2',
+                      paddingX: '3',
                       fontSize: 'sm',
                       fontWeight: 'medium',
                       borderRadius: 'md',
@@ -461,7 +464,8 @@ export const FlowchartModal = forwardRef<HTMLDivElement, FlowchartModalProps>(
             <Tabs.Trigger
               value="practice"
               className={css({
-                paddingY: '2', paddingX: '4',
+                paddingY: '2',
+                paddingX: '4',
                 fontSize: 'sm',
                 fontWeight: 'medium',
                 borderRadius: 'md',
@@ -485,7 +489,8 @@ export const FlowchartModal = forwardRef<HTMLDivElement, FlowchartModalProps>(
             <Tabs.Trigger
               value="flowchart"
               className={css({
-                paddingY: '2', paddingX: '4',
+                paddingY: '2',
+                paddingX: '4',
                 fontSize: 'sm',
                 fontWeight: 'medium',
                 borderRadius: 'md',
@@ -509,7 +514,8 @@ export const FlowchartModal = forwardRef<HTMLDivElement, FlowchartModalProps>(
             <Tabs.Trigger
               value="worksheet"
               className={css({
-                paddingY: '2', paddingX: '4',
+                paddingY: '2',
+                paddingX: '4',
                 fontSize: 'sm',
                 fontWeight: 'medium',
                 borderRadius: 'md',

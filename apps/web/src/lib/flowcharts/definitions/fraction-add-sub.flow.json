@@ -15,6 +15,7 @@
   },
 
   "display": {
+    "problem": "(leftWhole > 0 ? (leftWhole + ' ' + leftNum + '/' + leftDenom) : (leftNum + '/' + leftDenom)) + ' ' + op + ' ' + (rightWhole > 0 ? (rightWhole + ' ' + rightNum + '/' + rightDenom) : (rightNum + '/' + rightDenom))",
     "answer": "resultWhole > 0 ? (simplifiedNum > 0 ? (resultWhole + ' ' + simplifiedNum + '/' + simplifiedDenom) : resultWhole) : (simplifiedNum + '/' + simplifiedDenom)"
   },
 

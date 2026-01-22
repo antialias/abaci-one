@@ -25,14 +25,16 @@ resource "kubernetes_config_map" "app_config" {
   }
 
   data = {
-    NODE_ENV                = "production"
-    PORT                    = "3000"
+    NODE_ENV = "production"
+    PORT     = "3000"
     # Note: Don't set HOSTNAME here - it conflicts with LiteFS which needs the pod hostname
     # Next.js will use 0.0.0.0 by default if HOSTNAME is not set
     NEXT_TELEMETRY_DISABLED = "1"
     REDIS_URL               = "redis://redis:6379"
     # LiteFS mounts the database at /litefs
-    DATABASE_URL            = "/litefs/sqlite.db"
+    DATABASE_URL = "/litefs/sqlite.db"
+    # Trust the proxy for Auth.js
+    AUTH_TRUST_HOST = "true"
   }
 }
 
@@ -137,12 +139,50 @@ resource "kubernetes_stateful_set" "app" {
           image = var.app_image
 
           # Override to use LiteFS
-          # Export LITEFS_CANDIDATE env var and start litefs
+          # Generate runtime config and start litefs
           command = ["/bin/sh", "-c"]
           args = [<<-EOT
             export LITEFS_CANDIDATE=$(cat /config/litefs-candidate)
-            echo "Starting LiteFS with LITEFS_CANDIDATE=$LITEFS_CANDIDATE"
-            exec litefs mount
+            echo "Starting LiteFS with LITEFS_CANDIDATE=$LITEFS_CANDIDATE HOSTNAME=$HOSTNAME"
+
+            # Generate litefs config at runtime
+            # Use abaci-app-0 as the well-known primary hostname for all nodes
+            PRIMARY_HOSTNAME="abaci-app-0"
+            PRIMARY_URL="http://abaci-app-0.abaci-app-headless.abaci.svc.cluster.local:20202"
+
+            cat > /tmp/litefs.yml << LITEFS_CONFIG
+            fuse:
+              dir: "/litefs"
+            data:
+              dir: "/var/lib/litefs"
+            lease:
+              type: "static"
+              # Primary hostname - all nodes use the same value to identify the primary
+              hostname: "$PRIMARY_HOSTNAME"
+              advertise-url: "$PRIMARY_URL"
+              candidate: $LITEFS_CANDIDATE
+            proxy:
+              addr: ":8080"
+              target: "localhost:3000"
+              db: "sqlite.db"
+              passthrough:
+                - "*.ico"
+                - "*.png"
+                - "*.jpg"
+                - "*.jpeg"
+                - "*.gif"
+                - "*.svg"
+                - "*.css"
+                - "*.js"
+                - "*.woff"
+                - "*.woff2"
+            exec:
+              - cmd: "node dist/db/migrate.js"
+                if-candidate: true
+              - cmd: "node server.js"
+            LITEFS_CONFIG
+
+            exec litefs mount -config /tmp/litefs.yml
           EOT
           ]
 
@@ -150,7 +190,7 @@ resource "kubernetes_stateful_set" "app" {
           security_context {
             run_as_user  = 0
             run_as_group = 0
-            privileged   = true  # Required for FUSE
+            privileged   = true # Required for FUSE
           }
 
           port {
@@ -229,6 +269,16 @@ resource "kubernetes_stateful_set" "app" {
             name       = "config"
             mount_path = "/config"
           }
+
+          volume_mount {
+            name       = "vision-training-data"
+            mount_path = "/app/apps/web/data/vision-training"
+          }
+
+          volume_mount {
+            name       = "uploads-data"
+            mount_path = "/app/apps/web/data/uploads"
+          }
         }
 
         volume {
@@ -239,6 +289,20 @@ resource "kubernetes_stateful_set" "app" {
         volume {
           name = "config"
           empty_dir {}
+        }
+
+        volume {
+          name = "vision-training-data"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.vision_training.metadata[0].name
+          }
+        }
+
+        volume {
+          name = "uploads-data"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.uploads.metadata[0].name
+          }
         }
       }
     }
@@ -279,7 +343,7 @@ resource "kubernetes_service" "app" {
 
     port {
       port        = 80
-      target_port = 8080  # LiteFS proxy port
+      target_port = 8080 # LiteFS proxy port
     }
 
     type = "ClusterIP"
@@ -292,9 +356,9 @@ resource "kubernetes_ingress_v1" "app" {
     name      = "abaci-app"
     namespace = kubernetes_namespace.abaci.metadata[0].name
     annotations = {
-      "cert-manager.io/cluster-issuer"                       = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
-      "traefik.ingress.kubernetes.io/router.entrypoints"     = "websecure"
-      "traefik.ingress.kubernetes.io/router.middlewares"     = "${kubernetes_namespace.abaci.metadata[0].name}-hsts@kubernetescrd"
+      "cert-manager.io/cluster-issuer"                   = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
+      "traefik.ingress.kubernetes.io/router.entrypoints" = "websecure"
+      "traefik.ingress.kubernetes.io/router.middlewares" = "${kubernetes_namespace.abaci.metadata[0].name}-hsts@kubernetescrd"
     }
   }
 

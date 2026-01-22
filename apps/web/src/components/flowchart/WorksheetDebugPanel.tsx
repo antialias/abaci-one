@@ -4,7 +4,8 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import type { ExecutableFlowchart, ProblemValue, MixedNumberValue } from '@/lib/flowcharts/schema'
 import type { GeneratedExample } from '@/lib/flowcharts/loader'
 import { generateExamplesAsync } from '@/lib/flowcharts/example-generator-client'
-import { formatProblemDisplay, formatAnswerDisplay } from '@/lib/flowcharts/formatting'
+import { formatProblemDisplay } from '@/lib/flowcharts/formatting'
+import { evaluateDisplayAnswer } from '@/lib/flowchart-workshop/test-case-validator'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 
@@ -134,7 +135,8 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
         <button
           onClick={generateExamples}
           className={css({
-            paddingY: '2', paddingX: '4',
+            paddingY: '2',
+            paddingX: '4',
             borderRadius: 'md',
             backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
             color: 'white',
@@ -218,7 +220,8 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
             data-action="regenerate"
             onClick={generateExamples}
             className={css({
-              paddingY: '1', paddingX: '2',
+              paddingY: '1',
+              paddingX: '2',
               fontSize: 'sm',
               borderRadius: 'md',
               backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
@@ -236,7 +239,8 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
       {/* Answer computation info */}
       <div
         className={css({
-          paddingY: '2', paddingX: '3',
+          paddingY: '2',
+          paddingX: '3',
           borderRadius: 'md',
           backgroundColor: { base: 'blue.50', _dark: 'blue.900/30' },
           fontSize: 'xs',
@@ -251,7 +255,8 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
               className={css({
                 fontFamily: 'mono',
                 backgroundColor: { base: 'blue.100', _dark: 'blue.800/50' },
-                paddingY: '0', paddingX: '1',
+                paddingY: '0',
+                paddingX: '1',
                 borderRadius: 'sm',
               })}
             >
@@ -283,7 +288,10 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
             const tierColor = getTierColor(tier)
             const isExpanded = expandedItems.has(index)
             const problemDisplay = formatProblemDisplay(flowchart, example.values)
-            const answerDisplay = formatAnswerDisplay(flowchart, example.values)
+            const { answer: answerDisplay } = evaluateDisplayAnswer(
+              flowchart.definition,
+              example.values
+            )
 
             return (
               <div

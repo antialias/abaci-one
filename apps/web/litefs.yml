@@ -15,6 +15,7 @@ data:
 # The LITEFS_CANDIDATE env var is set based on pod ordinal
 lease:
   type: "static"
+  hostname: "${HOSTNAME}"
   advertise-url: "http://${HOSTNAME}.abaci-app-headless.abaci.svc.cluster.local:20202"
   candidate: ${LITEFS_CANDIDATE}
 

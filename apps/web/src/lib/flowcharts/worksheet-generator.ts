@@ -18,8 +18,9 @@ import {
   type GeneratedExample,
   DEFAULT_CONSTRAINTS,
 } from './example-generator'
-import { formatProblemDisplay, formatAnswerDisplay } from './formatting'
+import { formatProblemDisplay } from './formatting'
 import type { ExecutableFlowchart, ProblemValue } from './schema'
+import { evaluateDisplayAnswer } from '../flowchart-workshop/test-case-validator'
 
 // =============================================================================
 // Types
@@ -171,9 +172,9 @@ function exampleToProblem(
 ): WorksheetProblem {
   const display = formatProblemDisplay(flowchart, example.values)
 
-  // Use formatAnswerDisplay to compute the answer using the flowchart's own logic
-  // This handles custom display.answer expressions and schema-specific fallbacks
-  const answer = formatAnswerDisplay(flowchart, example.values)
+  // Use evaluateDisplayAnswer to compute the answer using the flowchart's display.answer
+  const { answer: computedAnswer } = evaluateDisplayAnswer(flowchart.definition, example.values)
+  const answer = computedAnswer ?? '?'
 
   // Convert plain text answer to Typst format
   // For fractions (e.g., "3/4" or "2 1/2"), convert to Typst math mode

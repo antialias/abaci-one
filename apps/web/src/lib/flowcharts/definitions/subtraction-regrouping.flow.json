@@ -11,6 +11,7 @@
   },
 
   "display": {
+    "problem": "minuend + ' − ' + subtrahend",
     "answer": "answer"
   },
 

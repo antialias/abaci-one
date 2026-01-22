@@ -10,7 +10,6 @@ import {
   evaluateDisplayAnswer,
   runTestCaseWithFlowchart,
 } from './test-case-validator'
-import { formatAnswerDisplay } from '../flowcharts/formatting'
 import { loadFlowchart } from '../flowcharts/loader'
 import type { FlowchartDefinition, ProblemExample } from '../flowcharts/schema'
 
@@ -111,7 +110,9 @@ const fractionAddSubDefinition: FlowchartDefinition = {
     resultWhole: {
       init: "op == '+' ? (leftWhole + rightWhole) : (needsBorrow ? (leftWhole - 1 - rightWhole) : (leftWhole - rightWhole))",
     },
-    improperWhole: { init: '(simplifiedNum - (simplifiedNum % simplifiedDenom)) / simplifiedDenom' },
+    improperWhole: {
+      init: '(simplifiedNum - (simplifiedNum % simplifiedDenom)) / simplifiedDenom',
+    },
     finalWhole: { init: 'resultWhole + improperWhole' },
     finalNum: { init: 'simplifiedNum % simplifiedDenom' },
   },
@@ -199,8 +200,8 @@ describe('test-case-validator', () => {
     })
   })
 
-  describe('formatAnswerDisplay vs evaluateDisplayAnswer consistency', () => {
-    it('should produce same results for worksheet and test evaluation', async () => {
+  describe('evaluateDisplayAnswer with flowchart', () => {
+    it('should produce correct answer when used with loaded flowchart', async () => {
       const flowchart = await loadFlowchart(fractionAddSubDefinition, minimalMermaid)
 
       const values = {
@@ -213,14 +214,11 @@ describe('test-case-validator', () => {
         rightDenom: 4,
       }
 
-      // Worksheet uses formatAnswerDisplay
-      const worksheetAnswer = formatAnswerDisplay(flowchart, values)
+      // evaluateDisplayAnswer is the canonical function for all answer computation
+      const result = evaluateDisplayAnswer(flowchart.definition, values)
 
-      // Test validator uses evaluateDisplayAnswer
-      const testResult = evaluateDisplayAnswer(fractionAddSubDefinition, values)
-
-      expect(worksheetAnswer).toBe(testResult.answer)
-      expect(worksheetAnswer).toBe('3/4')
+      expect(result.error).toBeUndefined()
+      expect(result.answer).toBe('3/4')
     })
   })
 

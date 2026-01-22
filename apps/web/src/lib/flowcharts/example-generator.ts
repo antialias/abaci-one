@@ -88,12 +88,9 @@ export interface GenerationResult {
   diagnostics: GenerationDiagnostics
 }
 
-/**
- * Teacher constraints (legacy interface, to be replaced by flowchart constraints)
- */
-interface TeacherConstraints {
-  positiveAnswersOnly?: boolean
-}
+// Note: GenerationConstraints.positiveAnswersOnly is now validated via
+// flowchart.constraints (e.g., "positiveAnswer": "answer > 0").
+// Flowcharts must define their own constraints for this to work.
 
 // =============================================================================
 // Utility Functions
@@ -441,82 +438,6 @@ function satisfiesPathConstraints(
   return true
 }
 
-/**
- * Validate that the answer is positive using the flowchart's constraints
- * or falling back to schema-specific logic.
- */
-function validatePositiveAnswer(
-  values: Record<string, ProblemValue>,
-  flowchart: ExecutableFlowchart
-): boolean {
-  // If the flowchart has a positiveAnswer constraint, it's already checked
-  // by validateFlowchartConstraints. This is a fallback for older flowcharts.
-
-  const constraints = flowchart.definition.constraints
-  if (constraints && ('positiveAnswer' in constraints || 'positive' in constraints)) {
-    return true // Already validated
-  }
-
-  // Fall back to legacy schema-specific check
-  return hasPositiveAnswerLegacy(flowchart.definition.problemInput.schema, values)
-}
-
-// =============================================================================
-// Legacy Schema-Specific Functions (to be removed)
-// =============================================================================
-
-/**
- * @deprecated Use flowchart.constraints instead
- * Check if a problem produces a positive answer based on schema type.
- */
-function hasPositiveAnswerLegacy(
-  schemaType: string,
-  values: Record<string, ProblemValue>
-): boolean {
-  switch (schemaType) {
-    case 'two-fractions-with-op': {
-      const leftWhole = (values.leftWhole as number) || 0
-      const leftNum = (values.leftNum as number) || 0
-      const leftDenom = (values.leftDenom as number) || 1
-      const rightWhole = (values.rightWhole as number) || 0
-      const rightNum = (values.rightNum as number) || 0
-      const rightDenom = (values.rightDenom as number) || 1
-      const op = values.op as string
-
-      // Convert to decimal for easy comparison
-      const left = leftWhole + leftNum / leftDenom
-      const right = rightWhole + rightNum / rightDenom
-
-      if (op === '+') {
-        return left + right > 0
-      } else {
-        return left - right >= 0
-      }
-    }
-
-    case 'two-digit-subtraction': {
-      const minuend = values.minuend as number
-      const subtrahend = values.subtrahend as number
-      return minuend > subtrahend
-    }
-
-    case 'linear-equation': {
-      // For ax + b = c or ax - b = c, x = (c ∓ b) / a
-      const coefficient = values.coefficient as number
-      const operation = values.operation as string
-      const constant = values.constant as number
-      const equals = values.equals as number
-
-      const x =
-        operation === '+' ? (equals - constant) / coefficient : (equals + constant) / coefficient
-
-      return x > 0
-    }
-
-    default:
-      return true
-  }
-}
 
 // =============================================================================
 // Path Descriptor Generation
@@ -524,12 +445,11 @@ function hasPositiveAnswerLegacy(
 
 /**
  * Generate path descriptor from pathLabel on decision options.
- * Falls back to schema-specific descriptors for older flowcharts.
+ * Decision nodes must have pathLabel defined on their options for meaningful descriptors.
  */
 function generatePathDescriptorGeneric(
   flowchart: ExecutableFlowchart,
-  path: string[],
-  values: Record<string, ProblemValue>
+  path: string[]
 ): string {
   const labels: string[] = []
 
@@ -549,85 +469,9 @@ function generatePathDescriptorGeneric(
     }
   }
 
-  if (labels.length > 0) {
-    return labels.join(' ')
-  }
-
-  // Fall back to legacy schema-specific descriptors
-  return generatePathDescriptorLegacy(flowchart, path, values)
-}
-
-/**
- * @deprecated Use generatePathDescriptorGeneric with pathLabel instead
- * Generate a human-readable descriptor for a path based on the decision nodes visited.
- * This helps users understand what makes each example different.
- */
-function generatePathDescriptorLegacy(
-  flowchart: ExecutableFlowchart,
-  path: string[],
-  values: Record<string, ProblemValue>
-): string {
-  const parts: string[] = []
-  const schema = flowchart.definition.problemInput.schema
-
-  // Schema-specific descriptors
-  if (schema === 'two-fractions-with-op') {
-    // Check which LCD path was taken
-    if (path.includes('READY1')) {
-      parts.push('Same')
-    } else if (path.includes('CONV1A') || path.includes('READY2')) {
-      parts.push('Divides')
-    } else if (path.includes('STEP3') || path.includes('READY3')) {
-      parts.push('LCD')
-    }
-
-    // Check operation
-    const op = values.op as string
-    parts.push(op === '+' ? '+' : '−')
-
-    // Check if borrowing occurred
-    if (path.includes('BORROW')) {
-      parts.push('borrow')
-    }
-  } else if (schema === 'two-digit-subtraction') {
-    // Check regrouping
-    if (path.includes('TENS') || path.includes('TAKEONE')) {
-      parts.push('Regroup')
-    } else {
-      parts.push('No regroup')
-    }
-  } else if (schema === 'linear-equation') {
-    const constant = values.constant as number
-    const coef = values.coefficient as number
-    const op = values.operation as string
-
-    if (constant !== 0 && coef === 1) {
-      // Addition/subtraction only: x + 5 = 12
-      parts.push(op === '+' ? 'Undo +' : 'Undo −')
-    } else if (constant === 0 && coef !== 1) {
-      // Multiplication only: 4x = 20
-      parts.push(`÷${coef}`)
-    } else if (constant !== 0 && coef !== 1) {
-      // Two-step (shouldn't happen with current generation)
-      parts.push(op === '+' ? '−const' : '+const')
-      parts.push(`÷${coef}`)
-    } else {
-      // Trivial: x = c
-      parts.push('x = ?')
-    }
-  } else {
-    // Generic: count key decision outcomes
-    const decisionCount = path.filter((nodeId) => {
-      const node = flowchart.nodes[nodeId]
-      return node?.definition.type === 'decision'
-    }).length
-
-    if (decisionCount > 0) {
-      parts.push(`${decisionCount} decisions`)
-    }
-  }
-
-  return parts.join(' ') || 'Standard'
+  // Return joined labels or a generic fallback
+  // Flowcharts should define pathLabel on decision options for meaningful descriptors
+  return labels.length > 0 ? labels.join(' ') : 'Default path'
 }
 
 /**
@@ -668,8 +512,7 @@ function getPathLabels(flowchart: ExecutableFlowchart, path: FlowchartPath): str
  */
 function generateForPath(
   flowchart: ExecutableFlowchart,
-  targetPath: FlowchartPath,
-  teacherConstraints: TeacherConstraints
+  targetPath: FlowchartPath
 ): Record<string, ProblemValue> | null {
   const schema = flowchart.definition.problemInput
   const genConfig = flowchart.definition.generation
@@ -750,12 +593,9 @@ function generateForPath(
     return null
   }
 
-  // Validate teacher constraints (legacy support)
-  if (teacherConstraints.positiveAnswersOnly) {
-    if (!validatePositiveAnswer(values, flowchart)) {
-      return null
-    }
-  }
+  // Note: positiveAnswersOnly is validated via flowchart.constraints (e.g., positiveAnswer, positiveResult)
+  // which was already checked by validateFlowchartConstraints above.
+  // Flowcharts that need positive answers must define the constraint themselves.
 
   return values
 }
@@ -798,11 +638,6 @@ export function generateDiverseExamples(
   const pathGroups = new Map<string, GeneratedExample[]>()
   const seenPaths = new Set<string>()
 
-  // Convert legacy constraints to teacher constraints
-  const teacherConstraints: TeacherConstraints = {
-    positiveAnswersOnly: constraints.positiveAnswersOnly,
-  }
-
   // Phase 1: Constraint-guided generation for each enumerated path
   // Goal: Get at least 5 examples per target path (provides baseline coverage for filtered views)
   // Higher count ensures reliable coverage even when filtering by difficulty tier
@@ -815,7 +650,7 @@ export function generateDiverseExamples(
     // Higher count needed for paths with computed constraints (like needsBorrow)
     // which have ~15% hit rate, so we need ~300 attempts to get 5 hits reliably
     for (let attempt = 0; attempt < 300 && targetHits < minExamplesPerPath; attempt++) {
-      const values = generateForPath(flowchart, targetPath, teacherConstraints)
+      const values = generateForPath(flowchart, targetPath)
 
       if (!values) continue
 
@@ -823,7 +658,7 @@ export function generateDiverseExamples(
         // Verify the generated problem actually takes the target path
         const complexity = calculatePathComplexity(flowchart, values)
         const actualSignature = complexity.path.join('→')
-        const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path, values)
+        const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path)
 
         // Record this example under its actual path (might differ from target)
         seenPaths.add(actualSignature)
@@ -867,7 +702,7 @@ export function generateDiverseExamples(
         examples.length < targetExamplesPerPath &&
         consecutiveFailures < maxConsecutiveFailures
       ) {
-        const values = generateForPath(flowchart, targetPath, teacherConstraints)
+        const values = generateForPath(flowchart, targetPath)
 
         if (!values) {
           consecutiveFailures++
@@ -877,7 +712,7 @@ export function generateDiverseExamples(
         try {
           const complexity = calculatePathComplexity(flowchart, values)
           if (complexity.path.join('→') === pathSignature) {
-            const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path, values)
+            const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path)
             examples.push({ values, complexity, pathSignature, pathDescriptor })
             consecutiveFailures = 0 // Reset on success
           } else {
@@ -1046,9 +881,6 @@ export function generateDiverseExamplesWithDiagnostics(
   }
 
   const pathGroups = new Map<string, GeneratedExample[]>()
-  const teacherConstraints: TeacherConstraints = {
-    positiveAnswersOnly: constraints.positiveAnswersOnly,
-  }
 
   // Generate examples with tracking
   const minExamplesPerPath = 5
@@ -1058,14 +890,14 @@ export function generateDiverseExamplesWithDiagnostics(
 
     for (let attempt = 0; attempt < 300 && targetHits < minExamplesPerPath; attempt++) {
       totalAttempts++
-      const values = generateForPath(flowchart, targetPath, teacherConstraints)
+      const values = generateForPath(flowchart, targetPath)
 
       if (!values) continue
 
       try {
         const complexity = calculatePathComplexity(flowchart, values)
         const actualSignature = complexity.path.join('→')
-        const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path, values)
+        const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path)
 
         const example: GeneratedExample = {
           values,
@@ -1189,10 +1021,6 @@ export function generateExamplesForPaths(
 
   const results: GeneratedExample[] = []
 
-  const teacherConstraints: TeacherConstraints = {
-    positiveAnswersOnly: constraints.positiveAnswersOnly,
-  }
-
   // Process only the assigned paths
   const minExamplesPerPath = 5
   for (const pathIndex of pathIndices) {
@@ -1203,14 +1031,14 @@ export function generateExamplesForPaths(
     let targetHits = 0
 
     for (let attempt = 0; attempt < 300 && targetHits < minExamplesPerPath; attempt++) {
-      const values = generateForPath(flowchart, targetPath, teacherConstraints)
+      const values = generateForPath(flowchart, targetPath)
 
       if (!values) continue
 
       try {
         const complexity = calculatePathComplexity(flowchart, values)
         const actualSignature = complexity.path.join('→')
-        const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path, values)
+        const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path)
 
         const example: GeneratedExample = {
           values,
@@ -1237,7 +1065,7 @@ export function generateExamplesForPaths(
       let currentCount = pathExamples.length
 
       while (currentCount < targetExamplesPerPath && consecutiveFailures < maxConsecutiveFailures) {
-        const values = generateForPath(flowchart, targetPath, teacherConstraints)
+        const values = generateForPath(flowchart, targetPath)
 
         if (!values) {
           consecutiveFailures++
@@ -1247,7 +1075,7 @@ export function generateExamplesForPaths(
         try {
           const complexity = calculatePathComplexity(flowchart, values)
           if (complexity.path.join('→') === targetSignature) {
-            const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path, values)
+            const pathDescriptor = generatePathDescriptorGeneric(flowchart, complexity.path)
             results.push({ values, complexity, pathSignature: targetSignature, pathDescriptor })
             currentCount++
             consecutiveFailures = 0

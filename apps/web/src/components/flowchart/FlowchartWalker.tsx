@@ -594,7 +594,8 @@ export function FlowchartWalker({
             data-testid="instruction-advance-button"
             onClick={handleInstructionAdvance}
             className={css({
-              paddingY: '4', paddingX: '8',
+              paddingY: '4',
+              paddingX: '8',
               fontSize: 'lg',
               fontWeight: 'semibold',
               borderRadius: 'lg',
@@ -707,7 +708,8 @@ export function FlowchartWalker({
               {/* Passive feedback message */}
               <div
                 className={css({
-                  paddingY: '2', paddingX: '3',
+                  paddingY: '2',
+                  paddingX: '3',
                   borderRadius: 'md',
                   backgroundColor: { base: 'orange.100', _dark: 'orange.900' },
                   color: { base: 'orange.800', _dark: 'orange.200' },
@@ -816,7 +818,8 @@ export function FlowchartWalker({
             data-testid="restart-button"
             onClick={onRestart}
             className={css({
-              paddingY: '3', paddingX: '6',
+              paddingY: '3',
+              paddingX: '6',
               fontSize: 'lg',
               fontWeight: 'semibold',
               borderRadius: 'lg',
@@ -890,7 +893,8 @@ export function FlowchartWalker({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          paddingY: '3', paddingX: '4',
+          paddingY: '3',
+          paddingX: '4',
           // Leave space for floating hamburger menu on the left
           paddingLeft: '70px',
           backgroundColor: { base: 'white', _dark: 'gray.800' },
@@ -1020,7 +1024,8 @@ export function FlowchartWalker({
               data-node-type={currentNode?.definition.type}
               className={css({
                 width: '100%',
-                paddingY: '4', paddingX: '5',
+                paddingY: '4',
+                paddingX: '5',
                 backgroundColor: { base: 'white', _dark: 'gray.800' },
                 borderRadius: 'xl',
                 boxShadow: 'md',

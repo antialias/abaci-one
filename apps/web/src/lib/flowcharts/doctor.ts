@@ -80,6 +80,7 @@ export const DiagnosticCodes = {
   // Display issues (DISP-xxx)
   DISPLAY_MISSING_ANSWER: 'DISP-001',
   DISPLAY_DIVISION_WITHOUT_HANDLER: 'DISP-002',
+  DISPLAY_MISSING_PROBLEM: 'DISP-003',
 
   // Mermaid issues (MERM-xxx)
   MERMAID_ESCAPED_QUOTES: 'MERM-001',
@@ -254,61 +255,58 @@ function checkDerivedFields(definition: FlowchartDefinition): FlowchartDiagnosti
 }
 
 /**
- * Schemas that have built-in answer formatting in formatAnswerDisplay()
- */
-const RECOGNIZED_ANSWER_SCHEMAS = new Set([
-  'two-digit-subtraction',
-  'linear-equation',
-  'two-fractions-with-op',
-  'two-mixed-numbers-with-op',
-])
-
-/**
- * Check for missing display.answer configuration on custom schemas.
+ * Check for missing display.answer configuration.
  *
- * Flowcharts with custom schemas need one of:
- * 1. A display.answer expression
- * 2. A variable named "answer"
- * 3. A generation.target pointing to the answer variable
- *
- * Without any of these, worksheet/PDF generation shows "?" for answers.
+ * All flowcharts MUST have a display.answer expression defined.
+ * Without it, worksheet/PDF generation shows "?" for answers.
  */
 function checkDisplayAnswer(definition: FlowchartDefinition): FlowchartDiagnostic[] {
   const diagnostics: FlowchartDiagnostic[] = []
 
-  const schema = definition.problemInput.schema
-
-  // Skip check for recognized schemas - they have built-in answer formatting
-  if (RECOGNIZED_ANSWER_SCHEMAS.has(schema)) {
-    return diagnostics
-  }
-
-  // Check if display.answer is defined
-  const hasDisplayAnswer = !!definition.display?.answer
-
-  // Check if there's a variable named "answer"
-  const hasAnswerVariable = 'answer' in definition.variables
-
-  // Check if generation.target points to a defined variable
-  const generationTarget = definition.generation?.target
-  const hasValidTarget = generationTarget && generationTarget in definition.variables
-
-  // If none of these exist, the answer will show as "?"
-  if (!hasDisplayAnswer && !hasAnswerVariable && !hasValidTarget) {
+  if (!definition.display?.answer) {
     diagnostics.push({
       code: DiagnosticCodes.DISPLAY_MISSING_ANSWER,
-      severity: 'warning',
-      title: 'No answer display configured for custom schema',
-      message: `This flowchart uses a custom schema "${schema}" but has no way to determine the answer for display. Without configuration, worksheets and PDFs will show "?" for all answers.`,
+      severity: 'error',
+      title: 'Missing display.answer expression',
+      message:
+        'This flowchart has no display.answer expression. Worksheets and PDFs will show "?" for all answers.',
       location: {
         section: 'display',
         path: 'answer',
         description: 'display.answer (missing)',
       },
-      suggestion: `Add one of the following to fix this:
-1. Add a "display.answer" expression (e.g., "display": { "answer": "fate" })
-2. Name your answer variable "answer" instead of "${generationTarget || 'something else'}"
-3. Add "generation.target" pointing to your answer variable (e.g., "target": "fate")`,
+      suggestion:
+        'Add a "display.answer" expression that computes the answer string from your variables. Example: "display": { "answer": "finalNum + \\"/\\" + finalDenom" }',
+    })
+  }
+
+  return diagnostics
+}
+
+/**
+ * Check for missing display.problem configuration.
+ *
+ * All flowcharts SHOULD have a display.problem expression defined.
+ * Without it, the system falls back to schema-specific formatting which
+ * is an anti-pattern and will be removed in the future.
+ */
+function checkDisplayProblem(definition: FlowchartDefinition): FlowchartDiagnostic[] {
+  const diagnostics: FlowchartDiagnostic[] = []
+
+  if (!definition.display?.problem) {
+    diagnostics.push({
+      code: DiagnosticCodes.DISPLAY_MISSING_PROBLEM,
+      severity: 'warning',
+      title: 'Missing display.problem expression',
+      message:
+        'This flowchart has no display.problem expression. The system falls back to schema-specific formatting which is deprecated. Define an explicit display.problem expression for consistent behavior.',
+      location: {
+        section: 'display',
+        path: 'problem',
+        description: 'display.problem (missing)',
+      },
+      suggestion:
+        'Add a "display.problem" expression that formats the problem for display. Example for fractions: "display": { "problem": "(leftWhole > 0 ? leftWhole + \' \' : \'\') + leftNum + \'/\' + leftDenom + \' \' + op + \' \' + (rightWhole > 0 ? rightWhole + \' \' : \'\') + rightNum + \'/\' + rightDenom" }',
     })
   }
 
@@ -677,6 +675,7 @@ export function diagnoseFlowchart(
   // Run definition checks
   diagnostics.push(...checkDerivedFields(definition))
   diagnostics.push(...checkDisplayAnswer(definition))
+  diagnostics.push(...checkDisplayProblem(definition))
   diagnostics.push(...checkDivisionInTarget(definition))
   diagnostics.push(...checkGenerationPreferred(definition))
 

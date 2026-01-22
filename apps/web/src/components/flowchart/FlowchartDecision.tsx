@@ -140,7 +140,8 @@ export function FlowchartDecision({
             {/* Choice label header */}
             <div
               className={css({
-                paddingY: '3', paddingX: '4',
+                paddingY: '3',
+                paddingX: '4',
                 fontSize: 'lg',
                 fontWeight: 'bold',
                 textAlign: 'center',
@@ -212,7 +213,8 @@ export function FlowchartDecision({
             {option.leadsTo && (
               <div
                 className={css({
-                  paddingY: '2', paddingX: '3',
+                  paddingY: '2',
+                  paddingX: '3',
                   backgroundColor: { base: 'white', _dark: 'gray.800' },
                   flex: '1',
                   display: 'flex',
@@ -277,7 +279,8 @@ export function FlowchartWrongAnswerFeedback({ message }: WrongAnswerFeedbackPro
     <div
       data-testid="wrong-answer-feedback"
       className={css({
-        paddingY: '3', paddingX: '4',
+        paddingY: '3',
+        paddingX: '4',
         backgroundColor: { base: 'amber.100', _dark: 'amber.900' },
         borderRadius: 'lg',
         border: '2px solid',

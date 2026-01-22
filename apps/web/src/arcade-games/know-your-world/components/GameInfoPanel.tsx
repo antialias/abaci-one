@@ -1303,7 +1303,8 @@ export function GameInfoPanel({
                 data-element="not-your-turn-notice"
                 className={css({
                   marginTop: '3',
-                  paddingY: '2', paddingX: '4',
+                  paddingY: '2',
+                  paddingX: '4',
                   bg: isDark ? 'red.900/80' : 'red.100',
                   color: isDark ? 'red.200' : 'red.800',
                   rounded: 'lg',
@@ -1526,7 +1527,8 @@ export function GameInfoPanel({
                     data-action="guidance-dropdown"
                     title="Guidance settings"
                     className={css({
-                      paddingY: '1', paddingX: '2',
+                      paddingY: '1',
+                      paddingX: '2',
                       fontSize: 'xs',
                       cursor: 'pointer',
                       bg: 'transparent',
@@ -1704,7 +1706,8 @@ export function GameInfoPanel({
                               className={css({
                                 height: '1px',
                                 bg: isDark ? 'gray.700' : 'gray.200',
-                                marginY: '1', marginX: '0',
+                                marginY: '1',
+                                marginX: '0',
                               })}
                             />
                             <DropdownMenu.CheckboxItem
@@ -1765,7 +1768,8 @@ export function GameInfoPanel({
                       className={css({
                         height: '1px',
                         bg: isDark ? 'gray.700' : 'gray.200',
-                        marginY: '1', marginX: '0',
+                        marginY: '1',
+                        marginX: '0',
                       })}
                     />
                     <DropdownMenu.Item
@@ -2023,7 +2027,8 @@ export function GameInfoPanel({
             bottom: { base: '2', sm: '4' },
             left: '50%',
             transform: 'translateX(-50%)',
-            paddingY: '2', paddingX: '4',
+            paddingY: '2',
+            paddingX: '4',
             bg: 'red.100/95',
             color: 'red.900',
             rounded: 'xl',

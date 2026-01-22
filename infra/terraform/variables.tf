@@ -44,3 +44,9 @@ variable "auth_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "nfs_server" {
+  description = "NFS server IP address (NAS)"
+  type        = string
+  default     = "192.168.86.51"
+}

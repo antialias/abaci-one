@@ -570,7 +570,8 @@ export function FlowchartCheckpoint({
             onClick={handleSubmit}
             disabled={disabled || !value.trim()}
             className={css({
-              paddingY: '4', paddingX: '8',
+              paddingY: '4',
+              paddingX: '8',
               fontSize: 'xl',
               fontWeight: 'bold',
               borderRadius: 'xl',
@@ -643,7 +644,8 @@ export function FlowchartCheckpoint({
             onClick={handleSubmit}
             disabled={disabled || !value.trim()}
             className={css({
-              paddingY: '3', paddingX: '5',
+              paddingY: '3',
+              paddingX: '5',
               fontSize: 'lg',
               fontWeight: 'semibold',
               borderRadius: 'lg',
@@ -677,7 +679,8 @@ export function FlowchartCheckpoint({
             Array.isArray(feedback.userAnswer) ? feedback.userAnswer.join(',') : feedback.userAnswer
           }
           className={css({
-            paddingY: '3', paddingX: '4',
+            paddingY: '3',
+            paddingX: '4',
             borderRadius: 'md',
             backgroundColor: feedback.correct
               ? { base: 'green.100', _dark: 'green.800' }
@@ -715,7 +718,8 @@ export function FlowchartCheckpoint({
         <div
           data-testid="checkpoint-hint"
           className={css({
-            paddingY: '3', paddingX: '4',
+            paddingY: '3',
+            paddingX: '4',
             borderRadius: 'md',
             backgroundColor: { base: 'purple.100', _dark: 'purple.800' },
             color: { base: 'purple.800', _dark: 'purple.200' },

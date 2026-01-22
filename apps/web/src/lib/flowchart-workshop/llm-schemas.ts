@@ -1163,9 +1163,11 @@ The outcome of "needs simplification?" depends on the RESULT, which is determine
 
 The \`display\` object controls how problems and answers appear in example grids, worksheets, and PDFs.
 
-### display.problem (Required)
+**IMPORTANT**: Both \`display.problem\` and \`display.answer\` are REQUIRED. The system does NOT have schema-specific fallbacks - if you omit these, the flowchart will not render problems/answers correctly.
 
-Controls how problems appear in example grids and selection UI.
+### display.problem (REQUIRED)
+
+Controls how problems appear in example grids, worksheets, and PDFs. Without this, problems will display incorrectly.
 
 **❌ WRONG - Verbose text (renders poorly):**
 \`\`\`json

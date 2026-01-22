@@ -101,7 +101,11 @@
       "WebFetch(domain:arize.com)",
       "Bash(wc:*)",
       "Bash(sort:*)",
-      "Bash(claude -p \"Explain the database migration workflow for this project. Keep your response brief.\")"
+      "Bash(claude -p \"Explain the database migration workflow for this project. Keep your response brief.\")",
+      "Bash(tr:*)",
+      "mcp__chrome-devtools__close_page",
+      "mcp__chrome-devtools__press_key",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

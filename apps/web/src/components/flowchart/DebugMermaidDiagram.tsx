@@ -139,7 +139,8 @@ export function DebugMermaidDiagram({
             onClick={onRegenerate}
             disabled={isRegenerating}
             className={css({
-              paddingY: '3', paddingX: '6',
+              paddingY: '3',
+              paddingX: '6',
               borderRadius: 'lg',
               backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
               color: 'white',

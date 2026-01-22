@@ -92,7 +92,8 @@ export default function WorkshopTestPage() {
         <button
           onClick={() => router.push(`/flowchart/workshop/${sessionId}`)}
           className={css({
-            paddingY: '3', paddingX: '6',
+            paddingY: '3',
+            paddingX: '6',
             borderRadius: 'md',
             backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
             color: { base: 'gray.800', _dark: 'gray.200' },
@@ -140,7 +141,8 @@ export default function WorkshopTestPage() {
         <button
           onClick={handleBack}
           className={css({
-            paddingY: '2', paddingX: '4',
+            paddingY: '2',
+            paddingX: '4',
             borderRadius: 'md',
             backgroundColor: 'transparent',
             color: { base: 'gray.600', _dark: 'gray.400' },
@@ -167,7 +169,8 @@ export default function WorkshopTestPage() {
           top: 0,
           left: 0,
           right: 0,
-          paddingY: '3', paddingX: '4',
+          paddingY: '3',
+          paddingX: '4',
           backgroundColor: { base: 'white/90', _dark: 'gray.900/90' },
           borderBottom: '1px solid',
           borderColor: { base: 'gray.200', _dark: 'gray.700' },
@@ -179,7 +182,8 @@ export default function WorkshopTestPage() {
           <button
             onClick={handleBack}
             className={css({
-              paddingY: '2', paddingX: '4',
+              paddingY: '2',
+              paddingX: '4',
               borderRadius: 'md',
               backgroundColor: 'transparent',
               color: { base: 'gray.600', _dark: 'gray.400' },
@@ -203,7 +207,8 @@ export default function WorkshopTestPage() {
           <button
             onClick={handleComplete}
             className={css({
-              paddingY: '2', paddingX: '4',
+              paddingY: '2',
+              paddingX: '4',
               borderRadius: 'md',
               backgroundColor: { base: 'green.600', _dark: 'green.500' },
               color: 'white',

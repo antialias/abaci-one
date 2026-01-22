@@ -17,7 +17,6 @@ import { evaluate, type EvalContext } from '../flowcharts/evaluator'
 import { analyzeFlowchart, type FlowchartPath } from '../flowcharts/path-analysis'
 import type { ExecutableFlowchart } from '../flowcharts/schema'
 import { loadFlowchart } from '../flowcharts/loader'
-import { formatAnswerDisplay } from '../flowcharts/formatting'
 
 // =============================================================================
 // Types
@@ -142,26 +141,24 @@ function initializeComputed(
 
 /**
  * Evaluate display.answer for a given set of problem values.
- * Returns the answer string or null if evaluation fails.
+ * This is THE canonical function for computing answers from flowcharts.
+ * Used by both worksheet generation and test validation.
+ *
+ * @param definition - The flowchart definition
+ * @param exampleValues - Problem input values (will be normalized)
+ * @returns The answer string and optional error
  */
 export function evaluateDisplayAnswer(
   definition: FlowchartDefinition,
   exampleValues: Record<string, ProblemValue>
 ): { answer: string | null; error?: string } {
-  // Normalize values - convert string numbers to actual numbers
-  // This handles legacy data where LLM output "1" instead of 1
+  // Normalize values - convert string numbers to actual numbers,
+  // strip wrapper quotes from strings (LLM sometimes outputs "'+'" instead of "+")
   const normalizedValues = normalizeExampleValues(exampleValues)
 
-  // Check if display.answer is defined
+  // display.answer is required for all flowcharts
   if (!definition.display?.answer) {
-    // Fall back to the answer variable or generation target
-    const targetVar = definition.generation?.target || 'answer'
-    const computed = initializeComputed(definition.variables, normalizedValues)
-    if (targetVar in computed) {
-      const value = computed[targetVar]
-      return { answer: String(value) }
-    }
-    return { answer: null, error: 'No display.answer or answer variable defined' }
+    return { answer: null, error: 'No display.answer defined' }
   }
 
   try {
@@ -228,8 +225,7 @@ export function runTestCase(definition: FlowchartDefinition, example: ProblemExa
 
 /**
  * Run a single test case using an ExecutableFlowchart.
- * Uses formatAnswerDisplay - the SAME code path as worksheet generation.
- * This ensures tests evaluate answers exactly as worksheets do.
+ * Uses evaluateDisplayAnswer - the canonical answer computation function.
  */
 export function runTestCaseWithFlowchart(
   flowchart: ExecutableFlowchart,
@@ -245,32 +241,29 @@ export function runTestCaseWithFlowchart(
     }
   }
 
-  try {
-    // Normalize example values (convert string numbers to actual numbers)
-    const normalizedValues = normalizeExampleValues(example.values)
+  // Use evaluateDisplayAnswer - handles normalization internally
+  const { answer, error } = evaluateDisplayAnswer(flowchart.definition, example.values)
 
-    // Use formatAnswerDisplay - same as worksheet generation
-    const answer = formatAnswerDisplay(flowchart, normalizedValues)
-
-    // Compare after trimming whitespace
-    const normalizedActual = answer?.trim() ?? ''
-    const normalizedExpected = example.expectedAnswer.trim()
-    const passed = normalizedActual === normalizedExpected
-
-    return {
-      example,
-      actualAnswer: answer,
-      expectedAnswer: example.expectedAnswer,
-      passed,
-    }
-  } catch (err) {
+  if (error) {
     return {
       example,
       actualAnswer: null,
       expectedAnswer: example.expectedAnswer,
       passed: false,
-      error: err instanceof Error ? err.message : 'Evaluation failed',
+      error,
     }
+  }
+
+  // Compare after trimming whitespace
+  const normalizedActual = answer?.trim() ?? ''
+  const normalizedExpected = example.expectedAnswer.trim()
+  const passed = normalizedActual === normalizedExpected
+
+  return {
+    example,
+    actualAnswer: answer,
+    expectedAnswer: example.expectedAnswer,
+    passed,
   }
 }
 
@@ -314,8 +307,8 @@ export function validateTestCases(definition: FlowchartDefinition): ValidationRe
 
 /**
  * Validate test cases with full coverage analysis.
- * Uses ExecutableFlowchart and formatAnswerDisplay for accurate validation
- * that matches exactly how worksheet answers are computed.
+ * Uses evaluateDisplayAnswer for validation - the same function
+ * that worksheet generation uses to compute answers.
  */
 export async function validateTestCasesWithCoverage(
   definition: FlowchartDefinition,
