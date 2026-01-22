@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { DebugMermaidDiagram } from '@/components/flowchart/DebugMermaidDiagram'
 import { FlowchartExampleGrid } from '@/components/flowchart/FlowchartExampleGrid'
 import { DiagnosticAlert, DiagnosticList } from '@/components/flowchart/FlowchartDiagnostics'
+import { TestsTab } from '@/components/flowchart/TestsTab'
 import { WorksheetTab } from '@/components/flowchart/WorksheetTab'
 import { WorksheetDebugPanel } from '@/components/flowchart/WorksheetDebugPanel'
 import {
@@ -24,9 +25,12 @@ import { loadFlowchart } from '@/lib/flowcharts/loader'
 import { downloadFlowchartPDF } from '@/lib/flowcharts/pdf-export'
 import {
   diagnoseFlowchart,
+  checkTestCoverage,
   formatDiagnosticsForRefinement,
   type FlowchartDiagnostic,
+  type DiagnosticReport,
 } from '@/lib/flowcharts/doctor'
+import { validateTestCases, checkCoverage } from '@/lib/flowchart-workshop/test-case-validator'
 import type {
   ExecutableFlowchart,
   FlowchartDefinition,
@@ -50,7 +54,7 @@ interface WorkshopSession {
   currentReasoningText: string | null
 }
 
-type TabType = 'structure' | 'input' | 'worksheet'
+type TabType = 'structure' | 'input' | 'worksheet' | 'tests'
 
 export default function WorkshopPage() {
   const params = useParams<{ sessionId: string }>()
@@ -141,7 +145,7 @@ export default function WorkshopPage() {
   // Run diagnostic checks on the definition and mermaid content
   // Note: We depend on the raw JSON strings rather than parsed objects to avoid
   // reference instability that could cause the diagnostic to flicker
-  const diagnosticReport = useMemo(() => {
+  const baseDiagnosticReport = useMemo(() => {
     if (!session?.draftDefinitionJson) return null
     try {
       const def = JSON.parse(session.draftDefinitionJson) as FlowchartDefinition
@@ -150,6 +154,56 @@ export default function WorkshopPage() {
       return null
     }
   }, [session?.draftDefinitionJson, session?.draftMermaidContent])
+
+  // Run test validation once and share with both doctor and TestsTab
+  const [testValidationReport, setTestValidationReport] = useState<Awaited<
+    ReturnType<typeof validateTestCases>
+  > | null>(null)
+  const [testCoverageDiagnostics, setTestCoverageDiagnostics] = useState<FlowchartDiagnostic[]>([])
+
+  useEffect(() => {
+    async function runTestValidation() {
+      if (!definition) {
+        setTestValidationReport(null)
+        setTestCoverageDiagnostics([])
+        return
+      }
+
+      // Run basic validation
+      const validationReport = validateTestCases(definition)
+
+      // If we have an executable flowchart, also check coverage
+      if (executableFlowchart && definition.problemInput.examples) {
+        const coverage = await checkCoverage(executableFlowchart, definition.problemInput.examples)
+        validationReport.coverage = coverage
+      }
+
+      // Store the report for TestsTab to use
+      setTestValidationReport(validationReport)
+
+      // Convert to diagnostics for the doctor
+      const diagnostics = checkTestCoverage(definition, validationReport)
+      setTestCoverageDiagnostics(diagnostics)
+    }
+
+    runTestValidation()
+  }, [definition, executableFlowchart])
+
+  // Combine base diagnostics with test coverage diagnostics
+  const diagnosticReport = useMemo((): DiagnosticReport | null => {
+    if (!baseDiagnosticReport) return null
+
+    const allDiagnostics = [...baseDiagnosticReport.diagnostics, ...testCoverageDiagnostics]
+    const errorCount = allDiagnostics.filter((d) => d.severity === 'error').length
+    const warningCount = allDiagnostics.filter((d) => d.severity === 'warning').length
+
+    return {
+      isHealthy: errorCount === 0,
+      errorCount,
+      warningCount,
+      diagnostics: allDiagnostics,
+    }
+  }, [baseDiagnosticReport, testCoverageDiagnostics])
 
   // State for showing diagnostic details
   const [showDiagnosticDetails, setShowDiagnosticDetails] = useState(false)
@@ -709,7 +763,8 @@ export default function WorkshopPage() {
         <button
           onClick={() => router.push('/flowchart')}
           className={css({
-            paddingY: '3', paddingX: '6',
+            paddingY: '3',
+            paddingX: '6',
             borderRadius: 'md',
             backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
             color: { base: 'gray.800', _dark: 'gray.200' },
@@ -742,7 +797,8 @@ export default function WorkshopPage() {
       <header
         data-element="top-bar"
         className={css({
-          paddingY: '3', paddingX: '4',
+          paddingY: '3',
+          paddingX: '4',
           borderBottom: '1px solid',
           borderColor: { base: 'gray.200', _dark: 'gray.700' },
           backgroundColor: { base: 'white', _dark: 'gray.900' },
@@ -782,7 +838,8 @@ export default function WorkshopPage() {
               <span
                 className={css({
                   fontSize: 'xs',
-                  paddingY: '1', paddingX: '2',
+                  paddingY: '1',
+                  paddingX: '2',
                   borderRadius: 'full',
                   backgroundColor: { base: 'blue.100', _dark: 'blue.900' },
                   color: { base: 'blue.700', _dark: 'blue.300' },
@@ -799,7 +856,8 @@ export default function WorkshopPage() {
                   data-action="test"
                   onClick={handleTest}
                   className={css({
-                    paddingY: '2', paddingX: '4',
+                    paddingY: '2',
+                    paddingX: '4',
                     borderRadius: 'md',
                     backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
                     color: { base: 'gray.700', _dark: 'gray.300' },
@@ -818,7 +876,8 @@ export default function WorkshopPage() {
                   onClick={handleSave}
                   disabled={isSaving || isPublishing}
                   className={css({
-                    paddingY: '2', paddingX: '4',
+                    paddingY: '2',
+                    paddingX: '4',
                     borderRadius: 'md',
                     backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
                     color: { base: 'gray.700', _dark: 'gray.300' },
@@ -841,7 +900,8 @@ export default function WorkshopPage() {
                   onClick={handleSaveAndPublish}
                   disabled={isSaving || isPublishing}
                   className={css({
-                    paddingY: '2', paddingX: '4',
+                    paddingY: '2',
+                    paddingX: '4',
                     borderRadius: 'md',
                     backgroundColor: { base: 'green.600', _dark: 'green.500' },
                     color: 'white',
@@ -886,7 +946,8 @@ export default function WorkshopPage() {
                 data-action="fix-all-issues"
                 onClick={handleAddAllDiagnostics}
                 className={css({
-                  paddingY: '2', paddingX: '3',
+                  paddingY: '2',
+                  paddingX: '3',
                   fontSize: 'sm',
                   fontWeight: 'medium',
                   borderRadius: 'md',
@@ -1021,7 +1082,8 @@ export default function WorkshopPage() {
                   data-action="generate"
                   onClick={handleGenerate}
                   className={css({
-                    paddingY: '4', paddingX: '8',
+                    paddingY: '4',
+                    paddingX: '8',
                     borderRadius: 'lg',
                     backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
                     color: 'white',
@@ -1136,7 +1198,7 @@ export default function WorkshopPage() {
               flexShrink: 0,
             })}
           >
-            {(['worksheet', 'structure', 'input'] as const).map((tab) => (
+            {(['worksheet', 'tests', 'structure', 'input'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1175,6 +1237,9 @@ export default function WorkshopPage() {
           >
             {activeTab === 'structure' && <StructureTab definition={definition} notes={notes} />}
             {activeTab === 'input' && <InputTab definition={definition} />}
+            {activeTab === 'tests' && (
+              <TestsTab definition={definition} validationReport={testValidationReport} />
+            )}
             {activeTab === 'worksheet' && executableFlowchart && (
               <div className={vstack({ gap: '4', alignItems: 'stretch' })}>
                 {/* Create PDF Button */}
@@ -1182,7 +1247,8 @@ export default function WorkshopPage() {
                   data-action="open-create-pdf-modal"
                   onClick={() => setShowCreatePdfModal(true)}
                   className={css({
-                    paddingY: '3', paddingX: '4',
+                    paddingY: '3',
+                    paddingX: '4',
                     borderRadius: 'lg',
                     backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
                     color: 'white',
@@ -1268,7 +1334,8 @@ export default function WorkshopPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '1',
-                    paddingY: '1', paddingX: '2',
+                    paddingY: '1',
+                    paddingX: '2',
                     borderRadius: 'md',
                     fontSize: 'sm',
                     backgroundColor:
@@ -1343,7 +1410,8 @@ export default function WorkshopPage() {
               onClick={handleRefine}
               disabled={isRefining || (!refinementText.trim() && selectedDiagnostics.length === 0)}
               className={css({
-                paddingY: '3', paddingX: '6',
+                paddingY: '3',
+                paddingX: '6',
                 borderRadius: 'lg',
                 backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
                 color: 'white',
@@ -1523,7 +1591,8 @@ function StructureTab({
             <div
               key={id}
               className={css({
-                paddingY: '2', paddingX: '3',
+                paddingY: '2',
+                paddingX: '3',
                 borderRadius: 'md',
                 backgroundColor: { base: 'gray.50', _dark: 'gray.800' },
                 fontSize: 'sm',

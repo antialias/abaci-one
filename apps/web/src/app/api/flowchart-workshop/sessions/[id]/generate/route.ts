@@ -29,7 +29,7 @@ import {
   getSubtractionExample,
   transformLLMDefinitionToInternal,
 } from '@/lib/flowchart-workshop/llm-schemas'
-import { sanitizeMermaidContent } from '@/lib/flowcharts/parser'
+import { validateTestCasesWithCoverage } from '@/lib/flowchart-workshop/test-case-validator'
 import { llm, type StreamEvent } from '@/lib/llm'
 import { getDbUserId } from '@/lib/viewer'
 
@@ -301,6 +301,20 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
 
         // Transform LLM output (array-based) to internal format (record-based)
         const internalDefinition = transformLLMDefinitionToInternal(finalResult.definition)
+
+        // Run test case validation with coverage analysis
+        const validationReport = await validateTestCasesWithCoverage(
+          internalDefinition,
+          finalResult.mermaidContent
+        )
+
+        // Send validation event (regardless of pass/fail - UI will display results)
+        sendEvent('validation', {
+          passed: validationReport.passed,
+          failedCount: validationReport.summary.failed + validationReport.summary.errors,
+          totalCount: validationReport.summary.total,
+          coveragePercent: validationReport.coverage.coveragePercent,
+        })
 
         // Update session with the generated content, clear reasoning
         await db

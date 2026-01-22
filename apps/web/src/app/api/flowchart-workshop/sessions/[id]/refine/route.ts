@@ -23,6 +23,7 @@ import {
   RefinementResultSchema,
   transformLLMDefinitionToInternal,
 } from '@/lib/flowchart-workshop/llm-schemas'
+import { validateTestCasesWithCoverage } from '@/lib/flowchart-workshop/test-case-validator'
 import { llm, type StreamEvent } from '@/lib/llm'
 import { getDbUserId } from '@/lib/viewer'
 
@@ -261,6 +262,20 @@ Please modify the flowchart according to this request. Return the complete updat
 
         // Transform LLM output (array-based) to internal format (record-based)
         const internalDefinition = transformLLMDefinitionToInternal(finalResult.updatedDefinition)
+
+        // Run test case validation with coverage analysis
+        const validationReport = await validateTestCasesWithCoverage(
+          internalDefinition,
+          finalResult.updatedMermaidContent
+        )
+
+        // Send validation event (regardless of pass/fail - UI will display results)
+        sendEvent('validation', {
+          passed: validationReport.passed,
+          failedCount: validationReport.summary.failed + validationReport.summary.errors,
+          totalCount: validationReport.summary.total,
+          coveragePercent: validationReport.coverage.coveragePercent,
+        })
 
         // Add to refinement history
         refinementHistory.push(refinementRequest)

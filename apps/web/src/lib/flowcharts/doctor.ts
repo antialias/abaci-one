@@ -84,6 +84,11 @@ export const DiagnosticCodes = {
   // Mermaid issues (MERM-xxx)
   MERMAID_ESCAPED_QUOTES: 'MERM-001',
   MERMAID_NODE_MISMATCH: 'MERM-002',
+
+  // Test coverage issues (TEST-xxx)
+  TEST_NO_EXPECTED_ANSWERS: 'TEST-001',
+  TEST_INCOMPLETE_COVERAGE: 'TEST-002',
+  TEST_FAILING: 'TEST-003',
 } as const
 
 // =============================================================================
@@ -532,6 +537,120 @@ function checkMermaidNodeConsistency(
         description: 'Node ID mapping between JSON and mermaid',
       },
       suggestion: `The node IDs in the JSON "nodes" object must EXACTLY match the node IDs in the mermaid flowchart. For example, if your JSON has "nodes": { "START": {...} }, then the mermaid must have START["..."] or START{"..."} etc. REGENERATE the mermaid content using the SAME node IDs as defined in the JSON: ${jsonNodeIds.slice(0, 8).join(', ')}${jsonNodeIds.length > 8 ? '...' : ''}`,
+    })
+  }
+
+  return diagnostics
+}
+
+// =============================================================================
+// Test Coverage Checks
+// =============================================================================
+
+/**
+ * ValidationReport type (matches test-case-validator.ts)
+ * Defined here to avoid circular imports
+ */
+interface ValidationReportForDoctor {
+  passed: boolean
+  results: Array<{
+    example: { name: string; expectedAnswer?: string }
+    actualAnswer: string | null
+    expectedAnswer: string
+    passed: boolean
+    error?: string
+  }>
+  coverage: {
+    totalPaths: number
+    coveredPaths: number
+    uncoveredPaths: string[]
+    coveragePercent: number
+  }
+  summary: {
+    total: number
+    passed: number
+    failed: number
+    errors: number
+  }
+}
+
+/**
+ * Check test coverage and generate diagnostics for issues.
+ *
+ * This converts a validation report into doctor diagnostics so that
+ * coverage issues appear alongside other flowchart problems.
+ */
+export function checkTestCoverage(
+  definition: FlowchartDefinition,
+  validationReport: ValidationReportForDoctor
+): FlowchartDiagnostic[] {
+  const diagnostics: FlowchartDiagnostic[] = []
+
+  const examples = definition.problemInput.examples || []
+  const examplesWithTests = examples.filter((ex) => ex.expectedAnswer)
+
+  // Check 1: No test cases at all
+  if (examplesWithTests.length === 0) {
+    diagnostics.push({
+      code: DiagnosticCodes.TEST_NO_EXPECTED_ANSWERS,
+      severity: 'warning',
+      title: 'No test cases with expected answers',
+      message:
+        'None of the examples in problemInput.examples have expectedAnswer defined. Without test cases, display.answer bugs cannot be automatically detected.',
+      location: {
+        section: 'problemInput',
+        path: 'examples',
+        description: 'problemInput.examples',
+      },
+      suggestion:
+        'Add expectedAnswer to each example that shows the exact string display.answer should produce. For example: { "name": "Simple case", "values": {...}, "expectedAnswer": "5" }',
+    })
+    return diagnostics // No point checking other things if there are no tests
+  }
+
+  // Check 2: Failing tests
+  const failingTests = validationReport.results.filter((r) => !r.passed)
+  if (failingTests.length > 0) {
+    for (const failure of failingTests) {
+      const errorDetail = failure.error
+        ? `Error: ${failure.error}`
+        : `Expected "${failure.expectedAnswer}" but got "${failure.actualAnswer}"`
+
+      diagnostics.push({
+        code: DiagnosticCodes.TEST_FAILING,
+        severity: 'error',
+        title: `Test "${failure.example.name}" is failing`,
+        message: `${errorDetail}. The display.answer expression does not produce the expected output for this test case.`,
+        location: {
+          section: 'display',
+          path: 'answer',
+          description: `display.answer (test: "${failure.example.name}")`,
+        },
+        suggestion: `Fix the display.answer expression so it produces "${failure.expectedAnswer}" when evaluated with the test inputs. Check for issues like: wrong conditional logic, missing whole number handling, or incorrect string formatting.`,
+      })
+    }
+  }
+
+  // Check 3: Incomplete path coverage
+  const { totalPaths, coveredPaths, uncoveredPaths, coveragePercent } = validationReport.coverage
+  if (totalPaths > 0 && coveredPaths < totalPaths) {
+    const uncoveredList =
+      uncoveredPaths.length > 0
+        ? uncoveredPaths.slice(0, 3).join(', ') +
+          (uncoveredPaths.length > 3 ? ` and ${uncoveredPaths.length - 3} more` : '')
+        : 'some paths'
+
+    diagnostics.push({
+      code: DiagnosticCodes.TEST_INCOMPLETE_COVERAGE,
+      severity: 'warning',
+      title: `Test coverage is ${coveragePercent}% (${coveredPaths}/${totalPaths} paths)`,
+      message: `Not all flowchart paths are covered by test cases. Uncovered paths: ${uncoveredList}. Bugs in display.answer for these paths may go undetected.`,
+      location: {
+        section: 'problemInput',
+        path: 'examples',
+        description: 'problemInput.examples (coverage)',
+      },
+      suggestion: `Add test cases for the uncovered paths. Each example should exercise a different path through the flowchart to ensure display.answer works correctly for all cases.`,
     })
   }
 

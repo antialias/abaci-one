@@ -111,6 +111,10 @@ export interface ProblemExample {
   description?: string
   /** Values to populate the form with */
   values: Record<string, ProblemValue>
+  /** Expected answer string that display.answer should produce (for test validation) */
+  expectedAnswer?: string
+  /** Optional: expected decision path values taken (e.g., ["direct", "same"]) */
+  expectedPath?: string[]
 }
 
 /** Problem input schema definition */

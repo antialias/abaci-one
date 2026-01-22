@@ -82,10 +82,16 @@ export const ProblemInputSchema = z.object({
           .nullable()
           .describe('Description of what this example demonstrates'),
         values: z.array(ExampleValueSchema).describe('Field values for this example'),
+        expectedAnswer: z
+          .string()
+          .nullable()
+          .describe(
+            'REQUIRED: The exact string that display.answer should produce for these inputs. Used for automatic validation. Must match exactly after trimming whitespace.'
+          ),
       })
     )
     .nullable()
-    .describe('Example problems with specific values'),
+    .describe('Example problems with specific values and expected answers for validation'),
 })
 
 /**
@@ -475,10 +481,38 @@ export function transformLLMDefinitionToInternal(
   }
 
   // Convert examples values array to record
+  // IMPORTANT: LLM may output values incorrectly:
+  // 1. Numeric values as strings (e.g., "1" instead of 1)
+  // 2. String values wrapped in extra quotes (e.g., "'+'" instead of "+")
+  // We need to normalize these for the evaluator to work correctly
   const examples = llmDef.problemInput.examples?.map((ex) => ({
     name: ex.name,
     description: ex.description ?? undefined,
-    values: Object.fromEntries(ex.values.map((v) => [v.key, v.value])),
+    values: Object.fromEntries(
+      ex.values.map((v) => {
+        let value = v.value
+        if (typeof value === 'string') {
+          let processed = value.trim()
+
+          // Strip wrapper quotes if present (LLM sometimes outputs "'+'" instead of "+")
+          if (
+            (processed.startsWith("'") && processed.endsWith("'")) ||
+            (processed.startsWith('"') && processed.endsWith('"'))
+          ) {
+            processed = processed.slice(1, -1)
+          }
+
+          // Check if it's a valid number (integer or decimal)
+          if (processed !== '' && !isNaN(Number(processed))) {
+            value = Number(processed)
+          } else {
+            value = processed
+          }
+        }
+        return [v.key, value]
+      })
+    ),
+    expectedAnswer: ex.expectedAnswer ?? undefined,
   }))
 
   // Convert generation config
@@ -720,7 +754,8 @@ function getCriticalRules(): string {
 9. **excludeFromExampleStructure**: Mark verification/confirmation decisions with this flag to keep example grids clean
 10. **Style syntax**: Style directives MUST include node ID: \`style START fill:#10b981\` (not \`style fill:#10b981\`)
 11. **Division in answers**: If generation.target involves division, add a conditional \`display.answer\` to handle division-by-zero cases (otherwise shows "NaN")
-12. **Multi-part answers**: If the answer has multiple parts (fractions need num AND denom, coordinates need x AND y), you MUST use \`display.answer\` to combine them. \`generation.target\` alone only shows ONE value!`
+12. **Multi-part answers**: If the answer has multiple parts (fractions need num AND denom, coordinates need x AND y), you MUST use \`display.answer\` to combine them. \`generation.target\` alone only shows ONE value!
+13. **Test cases with expectedAnswer**: Every example in \`problemInput.examples\` MUST include an \`expectedAnswer\` field. Test your \`display.answer\` expression mentally with each example to ensure it produces exactly the expected string.`
 }
 
 /**
@@ -750,10 +785,10 @@ Each flowchart consists of TWO parts that work together:
 
 ## Expression Syntax
 
-Expressions are used in \`expected\`, \`correctAnswer\`, \`skipIf\`, and variable \`init\` fields.
+Expressions are used in \`expected\`, \`correctAnswer\`, \`skipIf\`, variable \`init\`, \`display.problem\`, and \`display.answer\` fields.
 
 **Operators**: +, -, *, /, %, ==, !=, <, >, <=, >=, &&, ||, !
-**Functions**: floor(), ceil(), abs(), gcd(), lcm(), min(), max()
+**Functions**: floor(), ceil(), abs(), gcd(), lcm(), min(), max(), mod()
 **Conditionals**: condition ? trueValue : falseValue
 
 **Examples**:
@@ -772,6 +807,8 @@ Fields define what values the teacher/system provides for each problem:
 ## Variables
 
 Computed at problem start from input values. Use expressions to derive useful values.
+
+**What expressions can reference**: Variables can reference input fields and previously-defined variables. Once defined, variables are available to all expressions throughout the flowchart—including node logic (\`expected\`, \`correctAnswer\`, \`skipIf\`) and display formatting (\`display.problem\`, \`display.answer\`). If you need a computed value for answer display that doesn't exist, add it as a new variable first.
 
 ## ⚠️ CRITICAL: Mermaid Layout Rules
 
@@ -1074,14 +1111,40 @@ Result: Grid columns show "SAME", "DIFF GCD", "DIFF MULT" - meaningful!
 
 ### excludeFromExampleStructure
 
-Some decision nodes are just verification steps that don't meaningfully split the problem space. Mark these with \`excludeFromExampleStructure: true\` to keep the example grid clean.
+Some decision nodes don't represent fundamentally different PROBLEM TYPES. Mark these with \`excludeFromExampleStructure: true\` to keep the path count manageable.
 
-**When to use:**
-- Verification questions ("Did you get the right answer?")
-- Error-checking branches that loop back
-- Decisions that don't represent fundamentally different problem types
+**CRITICAL: Without this flag, every decision doubles the path count!** A flowchart with 6 decisions creates 2^6=64 paths. Only decisions that represent truly different INPUT problem types should create branches.
 
-**Example:**
+**MUST mark with excludeFromExampleStructure: true:**
+- **Result formatting decisions**: "Is result improper?", "Can it be simplified?", "Is the result a whole number?" - These depend on the COMPUTED ANSWER, not the problem inputs. The specific numbers in the result are determined by the input values, so test coverage of input types automatically covers these.
+- **Verification questions**: "Did you get the right answer?", "Ready to continue?"
+- **Error-checking branches** that loop back
+- **Teaching-only decisions**: Steps that teach concepts but don't change how the problem is solved
+
+**Should NOT have excludeFromExampleStructure:**
+- Input type decisions: "Same denominators or different?"
+- Operation decisions: "Adding or subtracting?"
+- Method decisions: "Use GCD or cross-multiply?"
+- Borrowing decisions: "Need to borrow?" (this affects HOW you solve it)
+
+**Example - Result formatting (SHOULD be excluded):**
+\`\`\`json
+{
+  "id": "SIMPLIFY_Q",
+  "node": {
+    "type": "decision",
+    "correctAnswer": "needsSimplify",
+    "excludeFromExampleStructure": true,
+    "options": [
+      { "label": "Yes (can simplify)", "value": "yes", "next": "SIMPLIFY", "pathLabel": "simp", "gridLabel": null },
+      { "label": "No (already simple)", "value": "no", "next": "DONE", "pathLabel": "done", "gridLabel": null }
+    ]
+  }
+}
+\`\`\`
+The outcome of "needs simplification?" depends on the RESULT, which is determined by inputs. Test cases that cover different input types will naturally produce results that do/don't need simplification.
+
+**Example - Verification (SHOULD be excluded):**
 \`\`\`json
 {
   "id": "VERIFY",
@@ -1244,6 +1307,39 @@ condition ? numericAnswer : alternativeText
 cond1 ? answer1 : (cond2 ? answer2 : answer3)
 \`\`\`
 
+## Test Cases with Expected Answers (REQUIRED)
+
+Every example in \`problemInput.examples\` MUST include an \`expectedAnswer\` field containing the exact string that \`display.answer\` should produce for those inputs.
+
+**Purpose**: These test cases validate that your \`display.answer\` expression correctly formats answers. The system evaluates your flowchart against these test cases and will show failures if the output doesn't match.
+
+**Coverage Requirements**:
+- Include at least one test case for each major path through the flowchart
+- Cover edge cases where the answer format might change (e.g., improper fractions becoming whole numbers, "5" vs "5/1")
+- Ensure test cases exercise all branches of conditional logic in \`display.answer\`
+
+**Example**:
+\`\`\`json
+{
+  "examples": [
+    {
+      "name": "Simple case",
+      "description": "Direct calculation",
+      "values": [{ "key": "leftNum", "value": 1 }, { "key": "leftDenom", "value": 4 }, { "key": "rightNum", "value": 2 }, { "key": "rightDenom", "value": 4 }],
+      "expectedAnswer": "3/4"
+    },
+    {
+      "name": "Result is whole number",
+      "description": "Fraction simplifies to whole",
+      "values": [{ "key": "leftNum", "value": 2 }, { "key": "leftDenom", "value": 5 }, { "key": "rightNum", "value": 3 }, { "key": "rightDenom", "value": 5 }],
+      "expectedAnswer": "1"
+    }
+  ]
+}
+\`\`\`
+
+**Critical**: The \`expectedAnswer\` must match EXACTLY what \`display.answer\` produces (including spacing, formatting). Test mentally by tracing through your \`display.answer\` expression with the example values.
+
 ## Key Principles
 
 1. **Kid-friendly language**: Use simple words, emoji, visual metaphors
@@ -1297,7 +1393,8 @@ export function getSubtractionExample(): string {
         "values": [
           { "key": "top", "value": 52 },
           { "key": "bottom", "value": 27 }
-        ]
+        ],
+        "expectedAnswer": "25"
       }
     ]
   },
@@ -1424,9 +1521,15 @@ Your task is to modify the flowchart according to the teacher's request while:
 - Preserving the teaching approach unless explicitly asked to change it
 - Adding helpful notes about what changed
 
-## Refinement-Specific Rule
+## Refinement-Specific Rules
 
 **Preserve working features**: Don't break what's already working. Only modify what the teacher explicitly requests.
+
+**Test case validation**: If the teacher reports test failures (e.g., "test X should produce Y but got Z"), trace through the \`display.answer\` expression with the test's input values to find the bug. Common issues:
+- Conditional branches not matching expected formatting
+- Missing whole number extraction from improper fractions
+- Division by zero not handled
+- String concatenation order issues
 
 ` +
     getCriticalRules() +
