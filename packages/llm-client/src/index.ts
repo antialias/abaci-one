@@ -55,7 +55,15 @@ export type {
   // Embedding types
   EmbeddingRequest,
   EmbeddingResponse,
+  // Logging types
+  LogLevel,
+  LoggerFn,
+  LoggingConfig,
 } from "./types";
+
+// Logging utilities
+export { defaultLogger } from "./types";
+export { Logger } from "./logger";
 
 // Errors
 export {

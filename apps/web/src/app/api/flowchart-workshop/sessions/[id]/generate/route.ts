@@ -12,149 +12,171 @@
  * - output_delta: Partial structured output being generated
  * - complete: Generated flowchart result
  * - error: Error occurred
+ *
+ * Query params:
+ * - debug=true: Enable verbose LLM debug logging
  */
 
-import { and, eq } from 'drizzle-orm'
-import type { z } from 'zod'
-import { db, schema } from '@/db'
+import { and, eq } from "drizzle-orm";
+import type { z } from "zod";
+import { db, schema } from "@/db";
 import {
   broadcast,
   completeGeneration,
   failGeneration,
   startGeneration,
-} from '@/lib/flowchart-workshop/generation-registry'
+} from "@/lib/flowchart-workshop/generation-registry";
 import {
   GeneratedFlowchartSchema,
   getGenerationSystemPrompt,
   getSubtractionExample,
   transformLLMDefinitionToInternal,
-} from '@/lib/flowchart-workshop/llm-schemas'
-import { validateTestCasesWithCoverage } from '@/lib/flowchart-workshop/test-case-validator'
-import { llm, type StreamEvent } from '@/lib/llm'
-import { getDbUserId } from '@/lib/viewer'
+} from "@/lib/flowchart-workshop/llm-schemas";
+import { validateTestCasesWithCoverage } from "@/lib/flowchart-workshop/test-case-validator";
+import { llm, type StreamEvent } from "@/lib/llm";
+import { getDbUserId } from "@/lib/viewer";
 
-type GeneratedFlowchart = z.infer<typeof GeneratedFlowchartSchema>
+type GeneratedFlowchart = z.infer<typeof GeneratedFlowchartSchema>;
 
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
-  const { id } = await params
+  const { id } = await params;
+
+  // Check for debug mode via query param
+  const url = new URL(request.url);
+  const debug = url.searchParams.get("debug") === "true";
+
+  if (debug) {
+    console.log("[generate] Debug mode enabled");
+  }
 
   if (!id) {
-    return new Response(JSON.stringify({ error: 'Session ID required' }), {
+    return new Response(JSON.stringify({ error: "Session ID required" }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   // Authorization check
-  let userId: string
+  let userId: string;
   try {
-    userId = await getDbUserId()
+    userId = await getDbUserId();
   } catch {
-    return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+    return new Response(JSON.stringify({ error: "Not authenticated" }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   // Get the session
   const session = await db.query.workshopSessions.findFirst({
-    where: and(eq(schema.workshopSessions.id, id), eq(schema.workshopSessions.userId, userId)),
-  })
+    where: and(
+      eq(schema.workshopSessions.id, id),
+      eq(schema.workshopSessions.userId, userId),
+    ),
+  });
 
   if (!session) {
-    return new Response(JSON.stringify({ error: 'Session not found' }), {
+    return new Response(JSON.stringify({ error: "Session not found" }), {
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
-    })
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   // Parse request body
-  let topicDescription: string
+  let topicDescription: string;
   try {
-    const body = await request.json()
-    topicDescription = body.topicDescription || session.topicDescription
+    const body = await request.json();
+    topicDescription = body.topicDescription || session.topicDescription;
     if (!topicDescription) {
-      return new Response(JSON.stringify({ error: 'Topic description required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return new Response(
+        JSON.stringify({ error: "Topic description required" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+    return new Response(JSON.stringify({ error: "Invalid request body" }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   // Update session state
   await db
     .update(schema.workshopSessions)
     .set({
-      state: 'generating',
+      state: "generating",
       topicDescription,
       updatedAt: new Date(),
     })
-    .where(eq(schema.workshopSessions.id, id))
+    .where(eq(schema.workshopSessions.id, id));
 
   // Create SSE stream with resilient event sending
   // Key design: LLM processing and DB saves happen regardless of client connection
   // Client streaming is best-effort - if they disconnect, we still complete the work
-  const encoder = new TextEncoder()
+  const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      let clientConnected = true
+      let clientConnected = true;
 
       // Resilient event sender - catches errors if client disconnected
       // This ensures LLM processing continues even if client closes browser
       const sendEvent = (event: string, data: unknown) => {
-        if (!clientConnected) return
+        if (!clientConnected) return;
         try {
-          controller.enqueue(encoder.encode(`event: ${event}\n`))
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+          controller.enqueue(encoder.encode(`event: ${event}\n`));
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(data)}\n\n`),
+          );
         } catch {
           // Client disconnected - mark as disconnected but continue processing
-          clientConnected = false
-          console.log(
-            `[generate] Client disconnected during ${event} event, continuing LLM processing...`
-          )
+          clientConnected = false;
+          if (debug) {
+            console.log(`[generate] Client disconnected during ${event} event`);
+          }
         }
-      }
+      };
 
       const closeStream = () => {
-        if (!clientConnected) return
+        if (!clientConnected) return;
         try {
-          controller.close()
+          controller.close();
         } catch {
           // Already closed
         }
-      }
+      };
 
       // Track LLM errors separately from client errors
-      let llmError: { message: string; code?: string } | null = null
-      let finalResult: GeneratedFlowchart | null = null
+      let llmError: { message: string; code?: string } | null = null;
+      let finalResult: GeneratedFlowchart | null = null;
       let usage: {
-        promptTokens: number
-        completionTokens: number
-        reasoningTokens?: number
-      } | null = null
+        promptTokens: number;
+        completionTokens: number;
+        reasoningTokens?: number;
+      } | null = null;
 
       // Start tracking this generation in the registry (for reconnection support)
-      const generationState = startGeneration(id)
+      const generationState = startGeneration(id);
 
       // Throttled save of reasoning text to database (for durability)
-      let lastReasoningSaveTime = 0
-      const REASONING_SAVE_INTERVAL_MS = 2000 // Save reasoning every 2 seconds
+      let lastReasoningSaveTime = 0;
+      const REASONING_SAVE_INTERVAL_MS = 2000; // Save reasoning every 2 seconds
 
       const saveReasoningToDb = async (force = false) => {
-        const now = Date.now()
-        if (!force && now - lastReasoningSaveTime < REASONING_SAVE_INTERVAL_MS) {
-          return // Throttle saves
+        const now = Date.now();
+        if (
+          !force &&
+          now - lastReasoningSaveTime < REASONING_SAVE_INTERVAL_MS
+        ) {
+          return; // Throttle saves
         }
-        lastReasoningSaveTime = now
+        lastReasoningSaveTime = now;
         try {
           await db
             .update(schema.workshopSessions)
@@ -162,23 +184,29 @@ export async function POST(request: Request, { params }: RouteParams) {
               currentReasoningText: generationState.accumulatedReasoning,
               updatedAt: new Date(),
             })
-            .where(eq(schema.workshopSessions.id, id))
+            .where(eq(schema.workshopSessions.id, id));
         } catch (err) {
           // Log but don't fail the stream on DB errors
-          console.error('[generate] Failed to save reasoning to DB:', err)
+          console.error("[generate] Failed to save reasoning to DB:", err);
         }
-      }
+      };
 
       try {
-        sendEvent('progress', { stage: 'preparing', message: 'Preparing flowchart generation...' })
+        sendEvent("progress", {
+          stage: "preparing",
+          message: "Preparing flowchart generation...",
+        });
         broadcast(id, {
-          type: 'progress',
-          data: { stage: 'preparing', message: 'Preparing flowchart generation...' },
-        })
+          type: "progress",
+          data: {
+            stage: "preparing",
+            message: "Preparing flowchart generation...",
+          },
+        });
 
         // Build the prompt
-        const systemPrompt = getGenerationSystemPrompt()
-        const examplePrompt = getSubtractionExample()
+        const systemPrompt = getGenerationSystemPrompt();
+        const examplePrompt = getSubtractionExample();
 
         const userPrompt = `Create an interactive math flowchart for teaching the following topic:
 
@@ -191,23 +219,25 @@ Create a complete, working flowchart with:
 
 The flowchart should be engaging for students, with clear phases, checkpoints for important calculations, and encouraging visual elements.
 
-Return the result as a JSON object matching the GeneratedFlowchartSchema.`
+Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
 
         // Combine system prompt with user prompt
-        const fullPrompt = `${systemPrompt}\n\n${examplePrompt}\n\n---\n\n${userPrompt}`
+        const fullPrompt = `${systemPrompt}\n\n${examplePrompt}\n\n---\n\n${userPrompt}`;
 
         // Stream the LLM response with reasoning
+        // Use debug option to enable detailed logging in the LLM client
         const llmStream = llm.stream({
-          provider: 'openai',
-          model: 'gpt-5.2',
+          provider: "openai",
+          model: "gpt-5.2",
           prompt: fullPrompt,
           schema: GeneratedFlowchartSchema,
           reasoning: {
-            effort: 'medium',
-            summary: 'auto',
+            effort: "medium",
+            summary: "auto",
           },
           timeoutMs: 300_000, // 5 minutes for complex flowchart generation
-        })
+          debug, // Enable LLM client debug logging if debug=true
+        });
 
         // Forward all stream events to the client AND broadcast to registry subscribers
         // The for-await loop processes all LLM events regardless of client state
@@ -217,64 +247,65 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
           unknown
         >) {
           switch (event.type) {
-            case 'started': {
+            case "started": {
               const startedData = {
                 responseId: event.responseId,
-                message: 'Generating flowchart...',
-              }
-              sendEvent('started', startedData)
+                message: "Generating flowchart...",
+              };
+              sendEvent("started", startedData);
               // Note: 'started' is not broadcast - subscribers already know generation started
-              break
+              break;
             }
 
-            case 'reasoning': {
+            case "reasoning": {
               const reasoningData = {
                 text: event.text,
                 summaryIndex: event.summaryIndex,
                 isDelta: event.isDelta,
-              }
+              };
               // Broadcast to registry (this accumulates reasoning internally)
-              broadcast(id, { type: 'reasoning', data: reasoningData })
+              broadcast(id, { type: "reasoning", data: reasoningData });
               // Throttled save to database for durability (don't await - fire and forget)
-              saveReasoningToDb()
+              saveReasoningToDb();
               // Send to this client's SSE stream
-              sendEvent('reasoning', reasoningData)
-              break
+              sendEvent("reasoning", reasoningData);
+              break;
             }
 
-            case 'output_delta': {
+            case "output_delta": {
               const outputData = {
                 text: event.text,
                 outputIndex: event.outputIndex,
-              }
-              broadcast(id, { type: 'output_delta', data: outputData })
-              sendEvent('output_delta', outputData)
-              break
+              };
+              broadcast(id, { type: "output_delta", data: outputData });
+              sendEvent("output_delta", outputData);
+              break;
             }
 
-            case 'error':
+            case "error":
+              console.error("[generate] LLM error:", event.message, event.code);
               // This is an LLM error, not a client error
-              llmError = { message: event.message, code: event.code }
-              sendEvent('error', {
+              llmError = { message: event.message, code: event.code };
+              sendEvent("error", {
                 message: event.message,
                 code: event.code,
-              })
+              });
               // Don't broadcast error here - we'll call failGeneration() below
-              break
+              break;
 
-            case 'complete':
-              finalResult = event.data
-              usage = event.usage
-              break
+            case "complete":
+              finalResult = event.data;
+              usage = event.usage;
+              break;
           }
         }
       } catch (error) {
         // This catch is for unexpected errors (network issues, etc.)
         // NOT for client disconnect (those are caught in sendEvent)
-        console.error('Flowchart generation error:', error)
+        console.error("[generate] Stream processing error:", error);
         llmError = {
-          message: error instanceof Error ? error.message : 'Unknown error',
-        }
+          message: error instanceof Error ? error.message : "Unknown error",
+        };
       }
 
       // ALWAYS update database based on LLM result, regardless of client connection
@@ -284,43 +315,51 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
         await db
           .update(schema.workshopSessions)
           .set({
-            state: 'initial',
-            draftNotes: JSON.stringify([`Generation failed: ${llmError.message}`]),
+            state: "initial",
+            draftNotes: JSON.stringify([
+              `Generation failed: ${llmError.message}`,
+            ]),
             currentReasoningText: null, // Clear reasoning on completion/error
             updatedAt: new Date(),
           })
-          .where(eq(schema.workshopSessions.id, id))
+          .where(eq(schema.workshopSessions.id, id));
 
         // Notify registry subscribers of failure
-        failGeneration(id, llmError.message)
+        failGeneration(id, llmError.message);
 
-        sendEvent('error', { message: llmError.message })
+        sendEvent("error", { message: llmError.message });
       } else if (finalResult) {
         // LLM succeeded - save the result
-        sendEvent('progress', { stage: 'validating', message: 'Validating result...' })
+        sendEvent("progress", {
+          stage: "validating",
+          message: "Validating result...",
+        });
 
         // Transform LLM output (array-based) to internal format (record-based)
-        const internalDefinition = transformLLMDefinitionToInternal(finalResult.definition)
+        const internalDefinition = transformLLMDefinitionToInternal(
+          finalResult.definition,
+        );
 
         // Run test case validation with coverage analysis
         const validationReport = await validateTestCasesWithCoverage(
           internalDefinition,
-          finalResult.mermaidContent
-        )
+          finalResult.mermaidContent,
+        );
 
         // Send validation event (regardless of pass/fail - UI will display results)
-        sendEvent('validation', {
+        sendEvent("validation", {
           passed: validationReport.passed,
-          failedCount: validationReport.summary.failed + validationReport.summary.errors,
+          failedCount:
+            validationReport.summary.failed + validationReport.summary.errors,
           totalCount: validationReport.summary.total,
           coveragePercent: validationReport.coverage.coveragePercent,
-        })
+        });
 
         // Update session with the generated content, clear reasoning
         await db
           .update(schema.workshopSessions)
           .set({
-            state: 'refining',
+            state: "refining",
             draftDefinitionJson: JSON.stringify(internalDefinition),
             draftMermaidContent: finalResult.mermaidContent,
             draftTitle: finalResult.title,
@@ -331,11 +370,11 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
             currentReasoningText: null, // Clear reasoning on completion
             updatedAt: new Date(),
           })
-          .where(eq(schema.workshopSessions.id, id))
+          .where(eq(schema.workshopSessions.id, id));
 
-        console.log(
-          `[generate] Flowchart saved to DB for session ${id}${clientConnected ? '' : ' (client had disconnected)'}`
-        )
+        if (debug) {
+          console.log(`[generate] Flowchart saved to DB for session ${id}`);
+        }
 
         // Build complete result for broadcasting
         const completeResult = {
@@ -347,23 +386,23 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
           difficulty: finalResult.difficulty,
           notes: finalResult.notes,
           usage,
-        }
+        };
 
         // Notify registry subscribers of completion (this also broadcasts 'complete' event)
-        completeGeneration(id, completeResult)
+        completeGeneration(id, completeResult);
 
-        sendEvent('complete', completeResult)
+        sendEvent("complete", completeResult);
       }
 
-      closeStream()
+      closeStream();
     },
-  })
+  });
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
     },
-  })
+  });
 }

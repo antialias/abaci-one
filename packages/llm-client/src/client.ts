@@ -7,6 +7,7 @@ import type {
   LLMRequest,
   LLMResponse,
   LLMStreamRequest,
+  LoggingConfig,
   ProviderRequest,
   StreamEvent,
   ValidationFeedback,
@@ -19,6 +20,7 @@ import {
   isProviderConfigured,
 } from "./config";
 import { executeWithRetry } from "./retry";
+import { Logger } from "./logger";
 import { OpenAIProvider } from "./providers/openai";
 import { AnthropicProvider } from "./providers/anthropic";
 import { OpenAIResponsesProvider } from "./providers/openai-responses";
@@ -80,6 +82,7 @@ const providerFactories: Record<string, ProviderFactory> = {
 export class LLMClient {
   private readonly config: LLMClientConfig;
   private readonly providers: Map<string, LLMProvider> = new Map();
+  private logger: Logger;
 
   /**
    * Create a new LLM client
@@ -99,7 +102,18 @@ export class LLMClient {
         ...envConfig.providers,
         ...configOverrides?.providers,
       },
+      logging: configOverrides?.logging ?? envConfig.logging,
     };
+    this.logger = new Logger(this.config.logging);
+  }
+
+  /**
+   * Enable or disable logging at runtime
+   */
+  setLogging(config: Partial<LoggingConfig>): void {
+    const newConfig = { ...this.config.logging, ...config } as LoggingConfig;
+    this.config.logging = newConfig;
+    this.logger = new Logger(newConfig);
   }
 
   /**
@@ -158,8 +172,18 @@ export class LLMClient {
   async *stream<T extends z.ZodType>(
     request: LLMStreamRequest<T>,
   ): AsyncGenerator<StreamEvent<z.infer<T>>, void, unknown> {
+    // Get logger for this request (may be overridden by request.debug)
+    const requestLogger = this.logger.withEnabled(request.debug);
+
     const providerName = request.provider ?? this.config.defaultProvider;
     const model = request.model ?? this.getDefaultModel(providerName);
+
+    requestLogger.debug("Starting stream request", {
+      provider: providerName,
+      model,
+      promptLength: request.prompt.length,
+      hasImages: !!request.images?.length,
+    });
 
     // Currently only OpenAI Responses API supports streaming with reasoning
     if (providerName.toLowerCase() !== "openai") {
@@ -176,7 +200,10 @@ export class LLMClient {
     }
 
     // Create responses provider (separate from chat completions provider)
-    const responsesProvider = new OpenAIResponsesProvider(providerConfig);
+    const responsesProvider = new OpenAIResponsesProvider(
+      providerConfig,
+      requestLogger,
+    );
 
     // Convert Zod schema to JSON Schema
     const jsonSchema = z.toJSONSchema(request.schema, {
@@ -191,6 +218,12 @@ export class LLMClient {
           : ("low" as const),
       summary: "auto" as const,
     };
+
+    requestLogger.debug("Streaming with config", {
+      reasoning,
+      timeoutMs: request.timeoutMs,
+      schemaKeys: Object.keys(jsonSchema),
+    });
 
     // Stream the response
     yield* responsesProvider.stream<z.infer<T>>(

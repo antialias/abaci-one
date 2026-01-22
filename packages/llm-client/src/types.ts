@@ -1,5 +1,50 @@
 import type { z } from "zod";
 
+// ============================================================================
+// Logging Types
+// ============================================================================
+
+/**
+ * Log levels for LLM client logging
+ */
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+/**
+ * Logger function signature
+ * @param level - The log level
+ * @param message - The log message
+ * @param data - Optional structured data to include
+ */
+export type LoggerFn = (
+  level: LogLevel,
+  message: string,
+  data?: Record<string, unknown>,
+) => void;
+
+/**
+ * Logging configuration for the LLM client
+ */
+export interface LoggingConfig {
+  /** Enable logging globally (default: false) */
+  enabled: boolean;
+  /** Custom logger function (default: console-based logger) */
+  logger?: LoggerFn;
+  /** Minimum log level to output (default: 'debug') */
+  minLevel?: LogLevel;
+}
+
+/**
+ * Default console-based logger
+ */
+export const defaultLogger: LoggerFn = (level, message, data) => {
+  const prefix = `[llm-client:${level}]`;
+  if (data) {
+    console[level === "debug" ? "log" : level](prefix, message, data);
+  } else {
+    console[level === "debug" ? "log" : level](prefix, message);
+  }
+};
+
 /**
  * Provider configuration loaded from environment variables
  */
@@ -28,6 +73,8 @@ export interface LLMClientConfig {
   providers: Record<string, ProviderConfig>;
   /** Default maximum retry attempts */
   defaultMaxRetries: number;
+  /** Logging configuration */
+  logging?: LoggingConfig;
 }
 
 /**
@@ -336,6 +383,11 @@ export interface LLMStreamRequest<T extends z.ZodType> {
    * Streaming requests typically take longer, so default is higher
    */
   timeoutMs?: number;
+  /**
+   * Enable debug logging for this request (overrides global setting)
+   * Set to true to enable, false to disable, or omit to use global setting
+   */
+  debug?: boolean;
 }
 
 /**

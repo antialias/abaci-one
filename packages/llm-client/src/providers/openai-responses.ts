@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ProviderConfig, ReasoningConfig, StreamEvent } from "../types";
 import { LLMApiError, LLMTimeoutError, LLMNetworkError } from "../types";
+import { Logger } from "../logger";
 
 /** Default idle timeout for streaming requests (2 minutes without data = abort) */
 const DEFAULT_IDLE_TIMEOUT_MS = 120_000;
@@ -83,8 +84,15 @@ type ResponsesStreamEvent =
  */
 export class OpenAIResponsesProvider {
   readonly name = "openai";
+  private readonly logger: Logger;
 
-  constructor(private readonly config: ProviderConfig) {}
+  constructor(
+    private readonly config: ProviderConfig,
+    logger?: Logger,
+  ) {
+    // Use provided logger or create a disabled one
+    this.logger = logger ?? new Logger({ enabled: false });
+  }
 
   /**
    * Stream a response from the Responses API
@@ -192,20 +200,39 @@ export class OpenAIResponsesProvider {
 
     let response: Response;
     try {
-      response = await fetch(`${this.config.baseUrl}/responses`, {
+      const fetchUrl = `${this.config.baseUrl}/responses`;
+      const bodyJson = JSON.stringify(requestBody);
+      this.logger.debug("Making POST request", {
+        url: fetchUrl,
+        bodySize: bodyJson.length,
+        model: request.model,
+        reasoning: request.reasoning,
+      });
+      const fetchStartTime = Date.now();
+      response = await fetch(fetchUrl, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${this.config.apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(requestBody),
+        body: bodyJson,
         signal: controller.signal,
+      });
+      this.logger.debug("Fetch completed", {
+        durationMs: Date.now() - fetchStartTime,
+        status: response.status,
       });
     } catch (error) {
       clearAllTimeouts();
+      this.logger.error("Fetch error", {
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       if (error instanceof Error && error.name === "AbortError") {
         const timeoutValue = idleTimedOut ? idleTimeoutMs : totalTimeoutMs;
+        this.logger.error("Request aborted due to timeout", {
+          timeoutMs: timeoutValue,
+        });
         throw new LLMTimeoutError(this.name, timeoutValue);
       }
 
@@ -229,6 +256,7 @@ export class OpenAIResponsesProvider {
     }
 
     // Process the SSE stream
+    this.logger.debug("Starting to read SSE stream");
     const reader = response.body?.getReader();
     if (!reader) {
       clearAllTimeouts();
@@ -239,10 +267,20 @@ export class OpenAIResponsesProvider {
     let buffer = "";
     let accumulatedOutput = "";
     let finalResponse: ResponsesStreamEvent | null = null;
+    let chunkCount = 0;
+    let eventCount = 0;
 
     try {
       while (true) {
         const { done, value } = await reader.read();
+        chunkCount++;
+        if (chunkCount <= 3 || chunkCount % 100 === 0) {
+          this.logger.debug("Chunk received", {
+            chunkNum: chunkCount,
+            size: value?.length ?? 0,
+            done,
+          });
+        }
 
         if (done) break;
 
@@ -266,9 +304,14 @@ export class OpenAIResponsesProvider {
             try {
               const event = JSON.parse(data) as ResponsesStreamEvent;
 
+              eventCount++;
+
               // Handle different event types
               switch (event.type) {
                 case "response.created":
+                  this.logger.info("Stream started", {
+                    responseId: event.response.id,
+                  });
                   yield {
                     type: "started",
                     responseId: event.response.id,
@@ -285,6 +328,10 @@ export class OpenAIResponsesProvider {
                   break;
 
                 case "response.reasoning_summary_text.done":
+                  this.logger.debug("Reasoning summary complete", {
+                    summaryIndex: event.summary_index,
+                    textLength: event.text.length,
+                  });
                   yield {
                     type: "reasoning",
                     text: event.text,
@@ -303,10 +350,21 @@ export class OpenAIResponsesProvider {
                   break;
 
                 case "response.completed":
+                  this.logger.info("Stream completed", {
+                    outputLength: accumulatedOutput.length,
+                    usage:
+                      finalResponse?.type === "response.completed"
+                        ? finalResponse.response.usage
+                        : undefined,
+                  });
                   finalResponse = event;
                   break;
 
                 case "response.failed":
+                  this.logger.error("Stream failed", {
+                    message: event.error.message,
+                    code: event.error.code,
+                  });
                   yield {
                     type: "error",
                     message: event.error.message,
@@ -315,6 +373,10 @@ export class OpenAIResponsesProvider {
                   break;
 
                 case "error":
+                  this.logger.error("Stream error", {
+                    message: event.error.message,
+                    code: event.error.code ?? event.error.type,
+                  });
                   yield {
                     type: "error",
                     message: event.error.message,
@@ -331,6 +393,12 @@ export class OpenAIResponsesProvider {
 
       // Clear timeouts on successful completion
       clearAllTimeouts();
+
+      this.logger.debug("Stream reading finished", {
+        totalChunks: chunkCount,
+        totalEvents: eventCount,
+        hasFinalResponse: !!finalResponse,
+      });
 
       // Extract and validate the final output
       if (finalResponse && finalResponse.type === "response.completed") {
