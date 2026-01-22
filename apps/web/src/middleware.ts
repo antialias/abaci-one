@@ -10,12 +10,17 @@ import { defaultLocale, LOCALE_COOKIE_NAME, locales, type Locale } from './i18n/
  */
 export async function middleware(request: NextRequest) {
   const start = performance.now()
-  const response = NextResponse.next()
+
+  // Create mutable headers to pass to server components
+  const requestHeaders = new Headers(request.headers)
 
   // Detect locale from cookie or Accept-Language header
   let locale = request.cookies.get(LOCALE_COOKIE_NAME)?.value as Locale | undefined
 
-  if (!locale || !locales.includes(locale)) {
+  // Track if we need to set a new locale cookie
+  const needsLocaleCookie = !locale || !locales.includes(locale)
+
+  if (needsLocaleCookie) {
     // Parse Accept-Language header
     const acceptLanguage = request.headers.get('accept-language')
     if (acceptLanguage) {
@@ -27,20 +32,13 @@ export async function middleware(request: NextRequest) {
     } else {
       locale = defaultLocale
     }
-
-    // Set locale cookie
-    response.cookies.set(LOCALE_COOKIE_NAME, locale, {
-      path: '/',
-      maxAge: 60 * 60 * 24 * 365, // 1 year
-      sameSite: 'lax',
-    })
   }
 
-  // Add locale to headers for Server Components
-  response.headers.set('x-locale', locale)
+  // Add locale to request headers for Server Components
+  requestHeaders.set('x-locale', locale ?? defaultLocale)
 
-  // Add pathname to headers so Server Components can access it
-  response.headers.set('x-pathname', request.nextUrl.pathname)
+  // Add pathname to request headers so Server Components can access it
+  requestHeaders.set('x-pathname', request.nextUrl.pathname)
 
   // Check if guest cookie already exists
   let existing = request.cookies.get(GUEST_COOKIE_NAME)?.value
@@ -61,32 +59,15 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  let createTime = 0
   if (!existing) {
     // Generate new stable session ID
     const sid = crypto.randomUUID()
     guestId = sid
-
-    // Create signed guest token
-    const t = performance.now()
-    const token = await createGuestToken(sid)
-    createTime = performance.now() - t
-
-    // Set cookie with security flags
-    response.cookies.set({
-      name: GUEST_COOKIE_NAME,
-      value: token,
-      httpOnly: true, // Not accessible via JavaScript
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-      sameSite: 'lax', // CSRF protection
-      path: '/', // Required for __Host- prefix
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-    })
   }
 
-  // Pass guest ID to route handlers via header
+  // Pass guest ID to route handlers via request header
   if (guestId) {
-    response.headers.set('x-guest-id', guestId)
+    requestHeaders.set('x-guest-id', guestId)
   }
 
   const total = performance.now() - start
@@ -94,9 +75,41 @@ export async function middleware(request: NextRequest) {
     // Only log slow middleware calls
     console.log(
       `[PERF] middleware: ${total.toFixed(1)}ms | ` +
-        `verify=${verifyTime.toFixed(1)}ms, create=${createTime.toFixed(1)}ms | ` +
+        `verify=${verifyTime.toFixed(1)}ms | ` +
         `path=${request.nextUrl.pathname}`
     )
+  }
+
+  // Create response with modified request headers
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  })
+
+  // Set locale cookie if it was new
+  if (needsLocaleCookie && locale) {
+    response.cookies.set({
+      name: LOCALE_COOKIE_NAME,
+      value: locale,
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+      sameSite: 'lax',
+    })
+  }
+
+  // Set guest cookie if it was new
+  if (!existing && guestId) {
+    const token = await createGuestToken(guestId)
+    response.cookies.set({
+      name: GUEST_COOKIE_NAME,
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    })
   }
 
   return response
