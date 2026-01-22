@@ -146,9 +146,13 @@ Parsed into:
 ## Key Functions
 
 ### `definitions/index.ts`
-- `getFlowchart(id)` - Get a flowchart by ID (returns definition + mermaid)
-- `getFlowchartList()` - Get metadata for all flowcharts
-- `FLOWCHARTS` - Registry mapping IDs to definitions
+- `FLOWCHART_SEEDS` - Built-in flowchart seeds (source of truth in version control)
+- `getSeed(id)` - Get a seed by ID (for Seed Manager only)
+- `getSeedList()` - Get metadata for all seeds (for Seed Manager only)
+- `getFlowchartByIdAsync(id)` - Load flowchart from database (for runtime use)
+- `getFlowchartListAsync()` - Get all published flowcharts from database
+
+**Note:** Flowcharts are stored in the database. Use the Seed Manager (debug mode on `/flowchart`) to populate the database with built-in seeds.
 
 ### `loader.ts`
 - `loadFlowchart(definition, mermaid)` - Merge JSON and mermaid into ExecutableFlowchart
@@ -168,7 +172,7 @@ Parsed into:
 - `evaluate(expression, context)` - Evaluate math/logic expressions
 - Supports: arithmetic, comparisons, boolean logic, ternary, functions (gcd, lcm, floor, etc.)
 
-## Adding a New Flowchart
+## Adding a New Flowchart (as a Seed)
 
 1. **Create the JSON definition** (`definitions/my-flowchart.flow.json`):
    ```json
@@ -183,23 +187,23 @@ Parsed into:
    }
    ```
 
-2. **Create the mermaid content** - either:
-   - Standalone file: `definitions/my-flowchart.mmd`
-   - OR embed in `definitions/index.ts` as `const MY_FLOWCHART_MERMAID = \`...\``
+2. **Create the mermaid content** - embed in `definitions/index.ts` as `const MY_FLOWCHART_MERMAID = \`...\``
 
 3. **Register in `definitions/index.ts`**:
    ```typescript
    import myDefinition from './my-flowchart.flow.json'
 
-   export const FLOWCHARTS = {
+   export const FLOWCHART_SEEDS = {
      'my-flowchart': {
        definition: myDefinition as FlowchartDefinition,
-       mermaid: MY_FLOWCHART_MERMAID,  // or read from .mmd file
+       mermaid: MY_FLOWCHART_MERMAID,
        meta: { id: 'my-flowchart', title: '...', ... }
      },
      // ...
    }
    ```
+
+4. **Seed to database** - Enable debug mode on `/flowchart` and use the Seed Manager to populate the database
 
 ## Debugging Tips
 

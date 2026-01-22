@@ -17,13 +17,13 @@ import {
   type FlowchartPath,
 } from '../loader'
 import { evaluate, type EvalContext } from '../evaluator'
-import { getFlowchart } from '../definitions'
+import { FLOWCHART_SEEDS } from '../definitions'
 
-// Helper to load a flowchart by ID
+// Helper to load a flowchart by ID using seeds (for testing without database)
 async function loadFlowchartById(id: string) {
-  const data = getFlowchart(id)
-  if (!data) throw new Error(`Flowchart "${id}" not found`)
-  return loadFlowchart(data.definition, data.mermaid)
+  const seed = FLOWCHART_SEEDS[id]
+  if (!seed) throw new Error(`Flowchart seed "${id}" not found`)
+  return loadFlowchart(seed.definition, seed.mermaid)
 }
 
 // =============================================================================

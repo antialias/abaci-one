@@ -1,6 +1,6 @@
-import { eq, isNotNull } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { FLOWCHARTS, type FlowchartMeta } from './definitions'
+import type { FlowchartMeta } from './definitions'
 import { bufferToEmbedding, generateEmbedding, EMBEDDING_VERSION } from './embedding'
 
 /**
@@ -14,7 +14,7 @@ interface CachedEmbedding {
   /** Prompt-only embedding (just the original topic description) - better for short queries */
   promptEmbedding: Float32Array | null
   timestamp: number
-  source: 'hardcoded' | 'database'
+  source: 'database'
   meta: FlowchartMeta
 }
 
@@ -50,8 +50,11 @@ export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
 }
 
 /**
- * Get all flowchart embeddings from both hardcoded definitions and database.
+ * Get all published flowchart embeddings from the database.
  * Uses in-memory caching with 5 minute TTL.
+ *
+ * NOTE: All flowcharts (including built-in ones) must be seeded to
+ * the database to appear in search results.
  */
 export async function getAllFlowchartEmbeddings(): Promise<Map<string, CachedEmbedding>> {
   const now = Date.now()
@@ -63,27 +66,9 @@ export async function getAllFlowchartEmbeddings(): Promise<Map<string, CachedEmb
 
   const cache = new Map<string, CachedEmbedding>()
 
-  // Get hardcoded flowchart embeddings from database
-  const hardcodedEmbeddings = await db.query.flowchartEmbeddings.findMany()
-
-  for (const row of hardcodedEmbeddings) {
-    const hardcoded = FLOWCHARTS[row.id]
-    if (hardcoded && row.embedding) {
-      cache.set(row.id, {
-        embedding: bufferToEmbedding(row.embedding),
-        promptEmbedding: null, // Hardcoded flowcharts don't have prompt embeddings
-        timestamp: now,
-        source: 'hardcoded',
-        meta: hardcoded.meta,
-      })
-    }
-  }
-
-  // Get published teacher flowcharts with embeddings
-  const teacherFlowcharts = await db.query.teacherFlowcharts.findMany({
-    where: (fields) => {
-      return eq(fields.status, 'published')
-    },
+  // Get all published flowcharts with embeddings
+  const flowcharts = await db.query.teacherFlowcharts.findMany({
+    where: eq(schema.teacherFlowcharts.status, 'published'),
     columns: {
       id: true,
       title: true,
@@ -96,7 +81,7 @@ export async function getAllFlowchartEmbeddings(): Promise<Map<string, CachedEmb
     },
   })
 
-  for (const fc of teacherFlowcharts) {
+  for (const fc of flowcharts) {
     // Only include if has valid embedding
     if (fc.embedding && fc.embeddingVersion === EMBEDDING_VERSION) {
       cache.set(fc.id, {
@@ -131,7 +116,7 @@ export interface FlowchartSearchResult {
   emoji: string
   difficulty: string
   similarity: number
-  source: 'hardcoded' | 'database'
+  source: 'database'
 }
 
 /**

@@ -1,12 +1,14 @@
-import { desc, eq, like, or } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { getFlowchartList } from '@/lib/flowcharts/definitions'
 import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/flowcharts/browse
- * List all available flowcharts (hardcoded + published user-created)
+ * List all published flowcharts from the database.
+ *
+ * NOTE: Built-in flowcharts must be seeded via the Seed Manager
+ * (debug mode on /flowchart) to appear in this list.
  *
  * Query params:
  * - difficulty: 'Beginner' | 'Intermediate' | 'Advanced' (optional filter)
@@ -28,18 +30,7 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100)
     const offset = parseInt(url.searchParams.get('offset') || '0')
 
-    // Get hardcoded flowcharts
-    const hardcodedFlowcharts = getFlowchartList().map((meta) => ({
-      ...meta,
-      source: 'hardcoded' as const,
-      authorName: null,
-      publishedAt: null,
-    }))
-
-    // Get published user-created flowcharts from database
-    const dbConditions = eq(schema.teacherFlowcharts.status, 'published')
-
-    // Apply filters to DB query
+    // Get published flowcharts from database only
     const dbFlowcharts = await db.query.teacherFlowcharts.findMany({
       where: eq(schema.teacherFlowcharts.status, 'published'),
       orderBy: [desc(schema.teacherFlowcharts.publishedAt)],
@@ -53,27 +44,20 @@ export async function GET(req: NextRequest) {
         publishedAt: true,
         searchKeywords: true,
       },
-      with: {
-        // We'd need to add relations for this to work
-        // For now, we'll just include the userId
-      },
     })
 
-    // Transform DB flowcharts to same format as hardcoded
-    const userFlowcharts = dbFlowcharts.map((fc) => ({
+    // Transform to response format
+    let allFlowcharts = dbFlowcharts.map((fc) => ({
       id: fc.id,
       title: fc.title,
       description: fc.description || '',
       emoji: fc.emoji || '📊',
       difficulty: fc.difficulty as 'Beginner' | 'Intermediate' | 'Advanced',
       source: 'database' as const,
-      authorId: fc.userId, // Include author ID for ownership checks
+      authorId: fc.userId,
       publishedAt: fc.publishedAt,
       searchKeywords: fc.searchKeywords,
     }))
-
-    // Combine all flowcharts
-    let allFlowcharts = [...hardcodedFlowcharts, ...userFlowcharts]
 
     // Apply difficulty filter
     if (difficulty) {

@@ -224,9 +224,13 @@ flowchart TB
 `
 
 /**
- * All available flowchart definitions
+ * Built-in flowchart seeds.
+ *
+ * These are the canonical definitions for built-in flowcharts.
+ * Use the Seed Manager (debug mode on /flowchart) to populate the database.
+ * After seeding, flowcharts are loaded from the database, not from here.
  */
-export const FLOWCHARTS: Record<
+export const FLOWCHART_SEEDS: Record<
   string,
   { definition: FlowchartDefinition; mermaid: string; meta: FlowchartMeta }
 > = {
@@ -296,47 +300,41 @@ export interface FlowchartData {
 }
 
 /**
- * Get list of all hardcoded flowcharts (sync)
+ * Get list of all seed flowcharts (sync).
+ * Use this only for the Seed Manager - not for loading flowcharts.
  */
-export function getFlowchartList(): FlowchartMeta[] {
-  return Object.values(FLOWCHARTS).map((f) => f.meta)
+export function getSeedList(): FlowchartMeta[] {
+  return Object.values(FLOWCHART_SEEDS).map((f) => f.meta)
 }
 
 /**
- * Get a specific hardcoded flowchart by ID (sync)
+ * Get a specific seed flowchart by ID (sync).
+ * Use this only for the Seed Manager - not for loading flowcharts.
  */
-export function getFlowchart(id: string) {
-  return FLOWCHARTS[id] ?? null
+export function getSeed(id: string) {
+  return FLOWCHART_SEEDS[id] ?? null
 }
 
 // =============================================================================
-// ASYNC LOADERS (for combining hardcoded + database flowcharts)
+// ASYNC LOADERS (database only)
 // =============================================================================
 
 /**
- * Get a flowchart by ID from either hardcoded definitions or the database.
+ * Get a flowchart by ID from the database.
  * Use this in API routes and server components.
+ *
+ * NOTE: Flowcharts must be seeded to the database first using the Seed Manager
+ * (debug mode on /flowchart) before they can be loaded.
  *
  * @param id - The flowchart ID
  * @returns The flowchart data or null if not found
  */
 export async function getFlowchartByIdAsync(id: string): Promise<FlowchartData | null> {
-  // Check hardcoded first (fast path)
-  const hardcoded = FLOWCHARTS[id]
-  if (hardcoded) {
-    return {
-      definition: hardcoded.definition,
-      mermaid: hardcoded.mermaid,
-      meta: hardcoded.meta,
-      source: 'hardcoded',
-    }
-  }
-
   // Dynamic import to avoid circular dependencies
   const { db, schema } = await import('@/db')
   const { and, eq } = await import('drizzle-orm')
 
-  // Check database for published flowcharts
+  // Load from database only
   const dbFlowchart = await db.query.teacherFlowcharts.findFirst({
     where: and(
       eq(schema.teacherFlowcharts.id, id),
@@ -374,23 +372,20 @@ export async function getFlowchartByIdAsync(id: string): Promise<FlowchartData |
 }
 
 /**
- * Get list of all available flowcharts (hardcoded + published from database).
+ * Get list of all published flowcharts from the database.
  * Use this in API routes and server components.
  *
- * @returns Combined list of all flowchart metadata
+ * NOTE: Flowcharts must be seeded to the database first using the Seed Manager
+ * (debug mode on /flowchart) before they appear in this list.
+ *
+ * @returns List of all published flowchart metadata
  */
 export async function getFlowchartListAsync(): Promise<FlowchartMetaWithSource[]> {
-  // Get hardcoded flowcharts
-  const hardcodedList: FlowchartMetaWithSource[] = Object.values(FLOWCHARTS).map((f) => ({
-    ...f.meta,
-    source: 'hardcoded' as const,
-  }))
-
   // Dynamic import to avoid circular dependencies
   const { db, schema } = await import('@/db')
   const { desc, eq } = await import('drizzle-orm')
 
-  // Get published flowcharts from database
+  // Get published flowcharts from database only
   const dbFlowcharts = await db.query.teacherFlowcharts.findMany({
     where: eq(schema.teacherFlowcharts.status, 'published'),
     orderBy: [desc(schema.teacherFlowcharts.publishedAt)],
@@ -405,7 +400,7 @@ export async function getFlowchartListAsync(): Promise<FlowchartMetaWithSource[]
     },
   })
 
-  const dbList: FlowchartMetaWithSource[] = dbFlowcharts.map((fc) => ({
+  return dbFlowcharts.map((fc) => ({
     id: fc.id,
     title: fc.title,
     description: fc.description || '',
@@ -415,6 +410,4 @@ export async function getFlowchartListAsync(): Promise<FlowchartMetaWithSource[]
     authorId: fc.userId,
     publishedAt: fc.publishedAt,
   }))
-
-  return [...hardcodedList, ...dbList]
 }

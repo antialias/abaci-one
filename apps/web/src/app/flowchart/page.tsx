@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import * as Dialog from '@radix-ui/react-dialog'
-import { getFlowchart } from '@/lib/flowcharts/definitions'
 import { loadFlowchart, type GeneratedExample } from '@/lib/flowcharts/loader'
 import type { FlowchartDefinition } from '@/lib/flowcharts/schema'
 import { downloadFlowchartPDF } from '@/lib/flowcharts/pdf-export'
@@ -16,8 +15,10 @@ import {
   CreateFlowchartButton,
   CreateFlowchartModal,
   DeleteToastContainer,
+  SeedManagerPanel,
   type PendingDeletion,
 } from '@/components/flowchart'
+import { useVisualDebug } from '@/contexts/VisualDebugContext'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 
@@ -74,6 +75,7 @@ interface PublishedFlowchart {
 export default function FlowchartPickerPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { isVisualDebugEnabled } = useVisualDebug()
 
   // The selected flowchart ID from URL query param
   const selectedId = searchParams.get('select')
@@ -143,23 +145,24 @@ export default function FlowchartPickerPage() {
   }, [draftSessions])
 
   // Load published flowcharts (hardcoded + user-created)
-  useEffect(() => {
-    async function loadPublished() {
-      try {
-        const response = await fetch('/api/flowcharts/browse')
-        if (response.ok) {
-          const data = await response.json()
-          setPublishedFlowcharts(data.flowcharts || [])
-          setCurrentUserId(data.currentUserId || null)
-        }
-      } catch (err) {
-        console.error('Failed to load published flowcharts:', err)
-      } finally {
-        setIsLoadingPublished(false)
+  const loadPublished = useCallback(async () => {
+    try {
+      const response = await fetch('/api/flowcharts/browse')
+      if (response.ok) {
+        const data = await response.json()
+        setPublishedFlowcharts(data.flowcharts || [])
+        setCurrentUserId(data.currentUserId || null)
       }
+    } catch (err) {
+      console.error('Failed to load published flowcharts:', err)
+    } finally {
+      setIsLoadingPublished(false)
     }
-    loadPublished()
   }, [])
+
+  useEffect(() => {
+    loadPublished()
+  }, [loadPublished])
 
   // Load draft sessions
   useEffect(() => {
@@ -188,8 +191,7 @@ export default function FlowchartPickerPage() {
     type ItemToGenerate = {
       id: string
       title: string
-      type: 'published-hardcoded' | 'published-database' | 'draft'
-      source?: 'hardcoded' | 'database'
+      type: 'published' | 'draft'
       // For drafts only:
       definitionJson?: string
       mermaidContent?: string
@@ -197,14 +199,13 @@ export default function FlowchartPickerPage() {
 
     const itemsToGenerate: ItemToGenerate[] = []
 
-    // Add published flowcharts
+    // Add published flowcharts (all from database now)
     for (const fc of publishedFlowcharts) {
       if (cardExamples.has(fc.id) || generatingIdsRef.current.has(fc.id)) continue
       itemsToGenerate.push({
         id: fc.id,
         title: fc.title,
-        type: fc.source === 'hardcoded' ? 'published-hardcoded' : 'published-database',
-        source: fc.source,
+        type: 'published',
       })
     }
 
@@ -239,12 +240,8 @@ export default function FlowchartPickerPage() {
         let executable: ExecutableFlowchart
         let mermaidContent: string | undefined
 
-        if (item.type === 'published-hardcoded') {
-          const flowchartData = getFlowchart(item.id)
-          if (!flowchartData) return
-          executable = await loadFlowchart(flowchartData.definition, flowchartData.mermaid)
-          mermaidContent = flowchartData.mermaid
-        } else if (item.type === 'published-database') {
+        if (item.type === 'published') {
+          // All published flowcharts are loaded from database via API
           const response = await fetch(`/api/flowcharts/${item.id}`)
           if (!response.ok) return
           const data = await response.json()
@@ -255,7 +252,7 @@ export default function FlowchartPickerPage() {
           executable = await loadFlowchart(definition, mermaid)
           mermaidContent = mermaid
         } else {
-          // Draft
+          // Draft - use local JSON from session
           const definition: FlowchartDefinition = JSON.parse(item.definitionJson!)
           executable = await loadFlowchart(definition, item.mermaidContent!)
           mermaidContent = item.mermaidContent
@@ -421,17 +418,23 @@ export default function FlowchartPickerPage() {
 
   // Handle PDF download for a built-in flowchart
   const handleDownloadPDF = useCallback(async (flowchartId: string) => {
-    const flowchartData = getFlowchart(flowchartId)
-    if (!flowchartData) {
-      console.error('Flowchart not found:', flowchartId)
-      return
-    }
-
     setExportingPdfId(flowchartId)
     try {
-      await downloadFlowchartPDF(flowchartData.mermaid, {
-        title: flowchartData.meta.title,
-        description: flowchartData.meta.description,
+      // Fetch flowchart from API (all flowcharts are in database now)
+      const response = await fetch(`/api/flowcharts/${flowchartId}`)
+      if (!response.ok) {
+        console.error('Flowchart not found:', flowchartId)
+        return
+      }
+      const data = await response.json()
+      const { mermaid, meta } = data.flowchart as {
+        mermaid: string
+        meta: { title: string; description: string }
+      }
+
+      await downloadFlowchartPDF(mermaid, {
+        title: meta.title,
+        description: meta.description,
         flowchartId,
       })
     } catch (err) {
@@ -718,6 +721,9 @@ export default function FlowchartPickerPage() {
           )}
         </div>
       </header>
+
+      {/* Seed Manager Panel - only shown in debug mode */}
+      {isVisualDebugEnabled && <SeedManagerPanel onSeedComplete={loadPublished} />}
 
       {/* Search results header */}
       {searchQuery.trim().length >= 3 && (

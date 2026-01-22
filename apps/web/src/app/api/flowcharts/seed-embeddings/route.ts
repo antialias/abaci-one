@@ -1,6 +1,6 @@
+import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { FLOWCHARTS } from '@/lib/flowcharts/definitions'
 import {
   buildEmbeddingContent,
   generateContentHash,
@@ -13,15 +13,29 @@ import { invalidateEmbeddingCache } from '@/lib/flowcharts/embedding-search'
 /**
  * POST /api/flowcharts/seed-embeddings
  *
- * Generate and store embeddings for all hardcoded flowcharts.
- * This is an admin endpoint that should be called once to seed the data.
+ * Generate and store embeddings for all published flowcharts in the database.
+ * This is an admin endpoint that can be called to populate or refresh embeddings.
  */
 export async function POST() {
   try {
-    const flowchartIds = Object.keys(FLOWCHARTS)
-    const flowchartData = flowchartIds.map((id) => ({
-      id,
-      meta: FLOWCHARTS[id].meta,
+    // Get all published flowcharts from database
+    const dbFlowcharts = await db.query.teacherFlowcharts.findMany({
+      where: eq(schema.teacherFlowcharts.status, 'published'),
+      columns: {
+        id: true,
+        title: true,
+        description: true,
+        difficulty: true,
+      },
+    })
+
+    const flowchartData = dbFlowcharts.map((fc) => ({
+      id: fc.id,
+      meta: {
+        title: fc.title,
+        description: fc.description || '',
+        difficulty: fc.difficulty || 'Beginner',
+      },
     }))
 
     // Build content for each flowchart

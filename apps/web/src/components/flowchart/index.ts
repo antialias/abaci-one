@@ -36,3 +36,4 @@ export {
 } from './DifficultyDistributionSlider'
 export { MermaidViewer } from './MermaidViewer'
 export { WorksheetDebugPanel } from './WorksheetDebugPanel'
+export { SeedManagerPanel } from './SeedManagerPanel'

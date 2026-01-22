@@ -127,39 +127,24 @@ export async function POST(req: NextRequest) {
     }
 
     // If remixing from an existing flowchart, load it as the starting point
+    // All flowcharts are now in the database (after seeding)
     if (body.remixFromId && !draftDefinitionJson) {
-      // Try hardcoded flowcharts first
-      const { getFlowchart } = await import('@/lib/flowcharts/definitions')
-      const hardcoded = getFlowchart(body.remixFromId)
+      const dbFlowchart = await db.query.teacherFlowcharts.findFirst({
+        where: and(
+          eq(schema.teacherFlowcharts.id, body.remixFromId),
+          eq(schema.teacherFlowcharts.status, 'published')
+        ),
+      })
 
-      if (hardcoded) {
+      if (dbFlowchart) {
         initialState = 'refining'
-        draftDefinitionJson = JSON.stringify(hardcoded.definition)
-        draftMermaidContent = hardcoded.mermaid
-        draftTitle = `${hardcoded.meta.title} (Copy)`
-        draftDescription = hardcoded.meta.description
-        draftEmoji = hardcoded.meta.emoji
-        draftDifficulty = hardcoded.meta.difficulty
-        topicDescription = hardcoded.meta.description // Use description as topic for remixes
-      } else {
-        // Try database flowcharts
-        const dbFlowchart = await db.query.teacherFlowcharts.findFirst({
-          where: and(
-            eq(schema.teacherFlowcharts.id, body.remixFromId),
-            eq(schema.teacherFlowcharts.status, 'published')
-          ),
-        })
-
-        if (dbFlowchart) {
-          initialState = 'refining'
-          draftDefinitionJson = dbFlowchart.definitionJson
-          draftMermaidContent = dbFlowchart.mermaidContent
-          draftTitle = `${dbFlowchart.title} (Copy)`
-          draftDescription = dbFlowchart.description
-          draftEmoji = dbFlowchart.emoji
-          draftDifficulty = dbFlowchart.difficulty as typeof draftDifficulty
-          topicDescription = dbFlowchart.description // Use description as topic for remixes
-        }
+        draftDefinitionJson = dbFlowchart.definitionJson
+        draftMermaidContent = dbFlowchart.mermaidContent
+        draftTitle = `${dbFlowchart.title} (Copy)`
+        draftDescription = dbFlowchart.description
+        draftEmoji = dbFlowchart.emoji
+        draftDifficulty = dbFlowchart.difficulty as typeof draftDifficulty
+        topicDescription = dbFlowchart.description // Use description as topic for remixes
       }
     }
 

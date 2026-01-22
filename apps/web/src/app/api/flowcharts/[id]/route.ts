@@ -1,7 +1,6 @@
-import { and, eq, or } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { getFlowchart } from '@/lib/flowcharts/definitions'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -9,10 +8,10 @@ interface RouteParams {
 
 /**
  * GET /api/flowcharts/[id]
- * Get any flowchart by ID (hardcoded or user-created)
+ * Get a flowchart by ID from the database.
  *
- * For hardcoded flowcharts: Returns the definition and mermaid content
- * For user-created: Returns published flowcharts (or owner's drafts)
+ * NOTE: Built-in flowcharts must be seeded via the Seed Manager
+ * (debug mode on /flowchart) before they can be fetched.
  *
  * Returns: { flowchart: { definition, mermaid, meta, source } } or 404
  */
@@ -20,20 +19,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
 
-    // First check hardcoded flowcharts
-    const hardcoded = getFlowchart(id)
-    if (hardcoded) {
-      return NextResponse.json({
-        flowchart: {
-          definition: hardcoded.definition,
-          mermaid: hardcoded.mermaid,
-          meta: hardcoded.meta,
-          source: 'hardcoded',
-        },
-      })
-    }
-
-    // Check database for published flowcharts
+    // Load from database only
     const dbFlowchart = await db.query.teacherFlowcharts.findFirst({
       where: and(
         eq(schema.teacherFlowcharts.id, id),
