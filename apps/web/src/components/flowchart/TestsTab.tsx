@@ -17,6 +17,9 @@ interface TestsTabProps {
   onUpdateDefinition?: (definition: FlowchartDefinition) => void
 }
 
+/** Index of the test being edited, or null if not editing */
+type EditingState = { index: number; example: ProblemExample } | null
+
 /**
  * Tests tab for the flowchart workshop.
  * Shows test case results and allows adding new tests.
@@ -29,6 +32,7 @@ export function TestsTab({
   const [localValidationReport, setLocalValidationReport] = useState<ValidationReport | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [showAddTestForm, setShowAddTestForm] = useState(false)
+  const [editingTest, setEditingTest] = useState<EditingState>(null)
 
   // Use external report if provided, otherwise compute locally
   const validationReport = externalReport ?? localValidationReport
@@ -90,6 +94,59 @@ export function TestsTab({
       setShowAddTestForm(false)
     },
     [definition, onUpdateDefinition]
+  )
+
+  // Handle updating an existing test case
+  const handleUpdateTest = useCallback(
+    (index: number, example: ProblemExample) => {
+      if (!definition || !onUpdateDefinition) return
+
+      const existingExamples = definition.problemInput.examples || []
+      const updatedExamples = [...existingExamples]
+      updatedExamples[index] = example
+
+      const updatedDefinition: FlowchartDefinition = {
+        ...definition,
+        problemInput: {
+          ...definition.problemInput,
+          examples: updatedExamples,
+        },
+      }
+      onUpdateDefinition(updatedDefinition)
+      setEditingTest(null)
+    },
+    [definition, onUpdateDefinition]
+  )
+
+  // Handle deleting a test case
+  const handleDeleteTest = useCallback(
+    (index: number) => {
+      if (!definition || !onUpdateDefinition) return
+
+      const existingExamples = definition.problemInput.examples || []
+      const updatedExamples = existingExamples.filter((_, i) => i !== index)
+
+      const updatedDefinition: FlowchartDefinition = {
+        ...definition,
+        problemInput: {
+          ...definition.problemInput,
+          examples: updatedExamples,
+        },
+      }
+      onUpdateDefinition(updatedDefinition)
+    },
+    [definition, onUpdateDefinition]
+  )
+
+  // Find the index of a test case in the examples array
+  const findTestIndex = useCallback(
+    (example: ProblemExample): number => {
+      const examples = definition?.problemInput.examples || []
+      return examples.findIndex(
+        (ex) => ex.name === example.name && ex.expectedAnswer === example.expectedAnswer
+      )
+    },
+    [definition]
   )
 
   if (!definition) {
@@ -184,9 +241,18 @@ export function TestsTab({
           >
             Test Results
           </h4>
-          {validationReport.results.map((result, index) => (
-            <TestResultRow key={index} result={result} />
-          ))}
+          {validationReport.results.map((result, index) => {
+            const testIndex = findTestIndex(result.example)
+            return (
+              <TestResultRow
+                key={index}
+                result={result}
+                canEdit={!!onUpdateDefinition}
+                onEdit={() => setEditingTest({ index: testIndex, example: result.example })}
+                onDelete={() => handleDeleteTest(testIndex)}
+              />
+            )
+          })}
         </div>
       )}
 
@@ -299,8 +365,18 @@ export function TestsTab({
         </div>
       )}
 
+      {/* Edit Test Form */}
+      {editingTest && definition && (
+        <EditTestForm
+          definition={definition}
+          example={editingTest.example}
+          onSave={(example) => handleUpdateTest(editingTest.index, example)}
+          onCancel={() => setEditingTest(null)}
+        />
+      )}
+
       {/* Add Test Form */}
-      {showAddTestForm && definition && (
+      {showAddTestForm && definition && !editingTest && (
         <AddTestForm
           definition={definition}
           onAdd={handleAddTest}
@@ -337,7 +413,17 @@ export function TestsTab({
 /**
  * Single test result row
  */
-function TestResultRow({ result }: { result: TestResult }) {
+function TestResultRow({
+  result,
+  canEdit,
+  onEdit,
+  onDelete,
+}: {
+  result: TestResult
+  canEdit?: boolean
+  onEdit?: () => void
+  onDelete?: () => void
+}) {
   const [isExpanded, setIsExpanded] = useState(!result.passed)
 
   return (
@@ -363,7 +449,7 @@ function TestResultRow({ result }: { result: TestResult }) {
         })}
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className={hstack({ gap: '2' })}>
+        <div className={hstack({ gap: '2', flex: 1 })}>
           <span className={css({ fontSize: 'sm' })}>{result.passed ? '✓' : '✗'}</span>
           <span
             className={css({
@@ -377,14 +463,68 @@ function TestResultRow({ result }: { result: TestResult }) {
             {result.example.name}
           </span>
         </div>
-        <span
-          className={css({
-            fontSize: 'xs',
-            color: { base: 'gray.400', _dark: 'gray.500' },
-          })}
-        >
-          {isExpanded ? '▼' : '▶'}
-        </span>
+        <div className={hstack({ gap: '1' })}>
+          {canEdit && (
+            <>
+              <button
+                data-action="edit-test"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit?.()
+                }}
+                className={css({
+                  padding: '1',
+                  fontSize: 'xs',
+                  color: { base: 'gray.500', _dark: 'gray.400' },
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  borderRadius: 'sm',
+                  _hover: {
+                    color: { base: 'blue.600', _dark: 'blue.400' },
+                    backgroundColor: { base: 'blue.50', _dark: 'blue.900/30' },
+                  },
+                })}
+                title="Edit test"
+              >
+                ✏️
+              </button>
+              <button
+                data-action="delete-test"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (confirm('Delete this test case?')) {
+                    onDelete?.()
+                  }
+                }}
+                className={css({
+                  padding: '1',
+                  fontSize: 'xs',
+                  color: { base: 'gray.500', _dark: 'gray.400' },
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  borderRadius: 'sm',
+                  _hover: {
+                    color: { base: 'red.600', _dark: 'red.400' },
+                    backgroundColor: { base: 'red.50', _dark: 'red.900/30' },
+                  },
+                })}
+                title="Delete test"
+              >
+                🗑️
+              </button>
+            </>
+          )}
+          <span
+            className={css({
+              fontSize: 'xs',
+              color: { base: 'gray.400', _dark: 'gray.500' },
+            })}
+          >
+            {isExpanded ? '▼' : '▶'}
+          </span>
+        </div>
       </div>
 
       {isExpanded && (
@@ -700,6 +840,282 @@ function AddTestForm({
             })}
           >
             Add Test
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Form for editing an existing test case
+ */
+function EditTestForm({
+  definition,
+  example,
+  onSave,
+  onCancel,
+}: {
+  definition: FlowchartDefinition
+  example: ProblemExample
+  onSave: (example: ProblemExample) => void
+  onCancel: () => void
+}) {
+  const [name, setName] = useState(example.name)
+  const [expectedAnswer, setExpectedAnswer] = useState(example.expectedAnswer || '')
+  const [values, setValues] = useState<Record<string, string>>({})
+
+  // Initialize values from example
+  useEffect(() => {
+    const initialValues: Record<string, string> = {}
+    for (const field of definition.problemInput.fields) {
+      if (field.type === 'mixed-number') {
+        const val = example.values[field.name] as { whole?: number; num?: number; denom?: number } | undefined
+        initialValues[`${field.name}Whole`] = String(val?.whole ?? '')
+        initialValues[`${field.name}Num`] = String(val?.num ?? '')
+        initialValues[`${field.name}Denom`] = String(val?.denom ?? '')
+      } else {
+        initialValues[field.name] = String(example.values[field.name] ?? '')
+      }
+    }
+    setValues(initialValues)
+  }, [definition, example])
+
+  const handleSubmit = useCallback(() => {
+    if (!name.trim() || !expectedAnswer.trim()) return
+
+    // Convert string values to proper types
+    const typedValues: Record<string, ProblemValue> = {}
+    for (const field of definition.problemInput.fields) {
+      if (field.type === 'mixed-number') {
+        typedValues[field.name] = {
+          whole: Number(values[`${field.name}Whole`]) || 0,
+          num: Number(values[`${field.name}Num`]) || 0,
+          denom: Number(values[`${field.name}Denom`]) || 1,
+        }
+      } else if (field.type === 'integer' || field.type === 'number') {
+        typedValues[field.name] = Number(values[field.name]) || 0
+      } else {
+        typedValues[field.name] = values[field.name] || ''
+      }
+    }
+
+    onSave({
+      name: name.trim(),
+      description: example.description,
+      values: typedValues,
+      expectedAnswer: expectedAnswer.trim(),
+    })
+  }, [name, expectedAnswer, values, definition, example.description, onSave])
+
+  return (
+    <div
+      data-element="edit-test-form"
+      className={css({
+        padding: '3',
+        borderRadius: 'md',
+        backgroundColor: { base: 'blue.50', _dark: 'blue.900/20' },
+        border: '1px solid',
+        borderColor: { base: 'blue.200', _dark: 'blue.700' },
+      })}
+    >
+      <h4
+        className={css({
+          fontWeight: 'medium',
+          marginBottom: '3',
+          color: { base: 'gray.800', _dark: 'gray.200' },
+        })}
+      >
+        Edit Test Case
+      </h4>
+
+      <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
+        {/* Test name */}
+        <div>
+          <label
+            className={css({
+              fontSize: 'xs',
+              color: { base: 'gray.600', _dark: 'gray.400' },
+            })}
+          >
+            Test Name
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={css({
+              width: '100%',
+              padding: '2',
+              borderRadius: 'md',
+              border: '1px solid',
+              borderColor: { base: 'gray.300', _dark: 'gray.600' },
+              backgroundColor: { base: 'white', _dark: 'gray.900' },
+              fontSize: 'sm',
+            })}
+          />
+        </div>
+
+        {/* Input values */}
+        <div>
+          <label
+            className={css({
+              fontSize: 'xs',
+              color: { base: 'gray.600', _dark: 'gray.400' },
+            })}
+          >
+            Input Values
+          </label>
+          <div
+            className={css({ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2' })}
+          >
+            {definition.problemInput.fields.map((field) => {
+              if (field.type === 'mixed-number') {
+                return (
+                  <div key={field.name} className={css({ gridColumn: 'span 2' })}>
+                    <span className={css({ fontSize: 'xs' })}>{field.label || field.name}:</span>
+                    <div className={hstack({ gap: '1' })}>
+                      <input
+                        type="number"
+                        value={values[`${field.name}Whole`] || ''}
+                        onChange={(e) =>
+                          setValues({ ...values, [`${field.name}Whole`]: e.target.value })
+                        }
+                        placeholder="Whole"
+                        className={css({
+                          width: '60px',
+                          padding: '1',
+                          borderRadius: 'sm',
+                          border: '1px solid',
+                          borderColor: { base: 'gray.300', _dark: 'gray.600' },
+                          fontSize: 'sm',
+                        })}
+                      />
+                      <input
+                        type="number"
+                        value={values[`${field.name}Num`] || ''}
+                        onChange={(e) =>
+                          setValues({ ...values, [`${field.name}Num`]: e.target.value })
+                        }
+                        placeholder="Num"
+                        className={css({
+                          width: '50px',
+                          padding: '1',
+                          borderRadius: 'sm',
+                          border: '1px solid',
+                          borderColor: { base: 'gray.300', _dark: 'gray.600' },
+                          fontSize: 'sm',
+                        })}
+                      />
+                      <span>/</span>
+                      <input
+                        type="number"
+                        value={values[`${field.name}Denom`] || ''}
+                        onChange={(e) =>
+                          setValues({ ...values, [`${field.name}Denom`]: e.target.value })
+                        }
+                        placeholder="Denom"
+                        className={css({
+                          width: '50px',
+                          padding: '1',
+                          borderRadius: 'sm',
+                          border: '1px solid',
+                          borderColor: { base: 'gray.300', _dark: 'gray.600' },
+                          fontSize: 'sm',
+                        })}
+                      />
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <div key={field.name}>
+                  <span className={css({ fontSize: 'xs' })}>{field.label || field.name}:</span>
+                  <input
+                    type={field.type === 'integer' || field.type === 'number' ? 'number' : 'text'}
+                    value={values[field.name] || ''}
+                    onChange={(e) => setValues({ ...values, [field.name]: e.target.value })}
+                    className={css({
+                      width: '100%',
+                      padding: '1',
+                      borderRadius: 'sm',
+                      border: '1px solid',
+                      borderColor: { base: 'gray.300', _dark: 'gray.600' },
+                      fontSize: 'sm',
+                    })}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Expected answer */}
+        <div>
+          <label
+            className={css({
+              fontSize: 'xs',
+              color: { base: 'gray.600', _dark: 'gray.400' },
+            })}
+          >
+            Expected Answer
+          </label>
+          <input
+            type="text"
+            value={expectedAnswer}
+            onChange={(e) => setExpectedAnswer(e.target.value)}
+            className={css({
+              width: '100%',
+              padding: '2',
+              borderRadius: 'md',
+              border: '1px solid',
+              borderColor: { base: 'gray.300', _dark: 'gray.600' },
+              backgroundColor: { base: 'white', _dark: 'gray.900' },
+              fontSize: 'sm',
+            })}
+          />
+        </div>
+
+        {/* Buttons */}
+        <div className={hstack({ gap: '2', justifyContent: 'flex-end' })}>
+          <button
+            onClick={onCancel}
+            className={css({
+              padding: '1.5 3',
+              borderRadius: 'md',
+              backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+              color: { base: 'gray.700', _dark: 'gray.300' },
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 'sm',
+              _hover: {
+                backgroundColor: { base: 'gray.300', _dark: 'gray.600' },
+              },
+            })}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!name.trim() || !expectedAnswer.trim()}
+            className={css({
+              padding: '1.5 3',
+              borderRadius: 'md',
+              backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 'sm',
+              _hover: {
+                backgroundColor: { base: 'blue.700', _dark: 'blue.600' },
+              },
+              _disabled: {
+                opacity: 0.5,
+                cursor: 'not-allowed',
+              },
+            })}
+          >
+            Save Changes
           </button>
         </div>
       </div>

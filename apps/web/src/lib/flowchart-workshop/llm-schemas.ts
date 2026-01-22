@@ -1319,6 +1319,7 @@ Every example in \`problemInput.examples\` MUST include an \`expectedAnswer\` fi
 - Include at least one test case for each major path through the flowchart
 - Cover edge cases where the answer format might change (e.g., improper fractions becoming whole numbers, "5" vs "5/1")
 - Ensure test cases exercise all branches of conditional logic in \`display.answer\`
+- **Handle degenerate computed values**: When intermediate computations can reach boundary conditions (ratio = 1, difference = 0, denominator = 1, etc.), the \`display.answer\` expression must handle these. A multi-part display may need to collapse to fewer parts—test cases should cover inputs that trigger these boundary conditions.
 
 **Example**:
 \`\`\`json
@@ -1532,6 +1533,7 @@ Your task is to modify the flowchart according to the teacher's request while:
 - Missing whole number extraction from improper fractions
 - Division by zero not handled
 - String concatenation order issues
+- Computed values reaching boundary conditions (e.g., a computed denominator = 1, ratio = 1, or difference = 0) that should collapse the display to a simpler form
 
 ` +
     getCriticalRules() +

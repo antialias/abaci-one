@@ -357,21 +357,6 @@ export function applyTransforms(
   if (!node) return state
 
   const transforms = node.definition.transform || []
-  if (transforms.length === 0) {
-    // No transforms, but still add a snapshot for the node
-    const snapshot: StateSnapshot = {
-      nodeId,
-      nodeTitle: node.content?.title || nodeId,
-      values: { ...state.values },
-      transforms: [],
-      workingProblem: state.workingProblem,
-      timestamp: Date.now(),
-    }
-    return {
-      ...state,
-      snapshots: [...state.snapshots, snapshot],
-    }
-  }
 
   // Apply transforms in order
   const newValues = { ...state.values }
@@ -391,13 +376,42 @@ export function applyTransforms(
     }
   }
 
-  // Create snapshot after applying transforms
+  // Check for workingProblemUpdate on this node
+  let newWorkingProblem = state.workingProblem
+  let newWorkingProblemHistory = state.workingProblemHistory
+  const def = node.definition
+
+  let workingProblemUpdate: { result: string; label: string } | undefined
+  if (def.type === 'checkpoint') {
+    workingProblemUpdate = (def as CheckpointNode).workingProblemUpdate
+  } else if (def.type === 'instruction') {
+    workingProblemUpdate = (def as InstructionNode).workingProblemUpdate
+  }
+
+  if (workingProblemUpdate) {
+    try {
+      const context = createContextFromValues(state.problem, newValues, state.userState)
+      newWorkingProblem = String(evaluate(workingProblemUpdate.result, context))
+      newWorkingProblemHistory = [
+        ...state.workingProblemHistory,
+        {
+          value: newWorkingProblem,
+          label: workingProblemUpdate.label,
+          nodeId,
+        },
+      ]
+    } catch (error) {
+      console.error(`Working problem update error at ${nodeId}:`, error)
+    }
+  }
+
+  // Create snapshot after applying transforms (with updated working problem)
   const snapshot: StateSnapshot = {
     nodeId,
     nodeTitle: node.content?.title || nodeId,
     values: { ...newValues },
     transforms: appliedTransforms,
-    workingProblem: state.workingProblem,
+    workingProblem: newWorkingProblem,
     timestamp: Date.now(),
   }
 
@@ -406,6 +420,8 @@ export function applyTransforms(
     values: newValues,
     computed: { ...state.computed, ...newValues }, // Keep computed in sync for backwards compat
     hasError,
+    workingProblem: newWorkingProblem,
+    workingProblemHistory: newWorkingProblemHistory,
     snapshots: [...state.snapshots, snapshot],
   }
 }

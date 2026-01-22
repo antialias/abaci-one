@@ -6,8 +6,10 @@ import { css } from '../../../styled-system/css'
 interface DebugMermaidDiagramProps {
   /** Raw mermaid content */
   mermaidContent: string
-  /** Current node ID to highlight */
-  currentNodeId: string
+  /** Current node ID to highlight (amber fill - walker progress) */
+  currentNodeId?: string
+  /** Highlighted node ID for trace hover (cyan border - distinct from current) */
+  highlightedNodeId?: string
   /** Callback when regeneration is requested (shown when there's a render error) */
   onRegenerate?: () => void
   /** Whether regeneration is currently in progress */
@@ -23,6 +25,7 @@ interface DebugMermaidDiagramProps {
 export function DebugMermaidDiagram({
   mermaidContent,
   currentNodeId,
+  highlightedNodeId,
   onRegenerate,
   isRegenerating,
 }: DebugMermaidDiagramProps) {
@@ -63,12 +66,13 @@ export function DebugMermaidDiagram({
           .replace(/\\"/g, "'") // Convert \" to '
           .replace(/\\'/g, "'") // Convert \' to '
 
-        // Add style definition to highlight the current node (only if a node ID is provided)
-        // We append this to the mermaid content
-        const highlightStyle = currentNodeId
-          ? `\n    style ${currentNodeId} fill:#fbbf24,stroke:#d97706,stroke-width:4px,color:#000`
-          : ''
-        const contentWithHighlight = sanitizedContent + highlightStyle
+        // Add style definitions for current node highlighting (walker progress)
+        let highlightStyles = ''
+        if (currentNodeId) {
+          highlightStyles += `\n    style ${currentNodeId} fill:#fbbf24,stroke:#d97706,stroke-width:4px,color:#000`
+        }
+
+        const contentWithHighlight = sanitizedContent + highlightStyles
 
         // Render the diagram
         const { svg } = await mermaid.render(id, contentWithHighlight)
@@ -81,6 +85,30 @@ export function DebugMermaidDiagram({
           if (svgElement) {
             svgElement.style.maxWidth = '100%'
             svgElement.style.height = 'auto'
+
+            // Apply highlighted node style post-render
+            if (highlightedNodeId && highlightedNodeId !== currentNodeId) {
+              // Dim all nodes
+              const allNodes = svgElement.querySelectorAll('[id^="flowchart-"]')
+              allNodes.forEach((node) => {
+                ;(node as SVGElement).style.opacity = '0.85'
+              })
+
+              // Highlight the target node
+              const nodeElement = svgElement.querySelector(`[id*="flowchart-${highlightedNodeId}-"]`)
+              if (nodeElement) {
+                const svgNode = nodeElement as SVGElement
+                svgNode.style.opacity = '1'
+
+                // Add thick cyan border with non-scaling stroke
+                const shape = nodeElement.querySelector('rect, polygon, circle, ellipse, path')
+                if (shape) {
+                  shape.setAttribute('stroke', '#06b6d4') // cyan-500
+                  shape.setAttribute('stroke-width', '3')
+                  shape.setAttribute('vector-effect', 'non-scaling-stroke')
+                }
+              }
+            }
           }
         }
 
@@ -106,7 +134,7 @@ export function DebugMermaidDiagram({
     return () => {
       mounted = false
     }
-  }, [mermaidContent, currentNodeId])
+  }, [mermaidContent, currentNodeId, highlightedNodeId])
 
   if (error) {
     return (

@@ -12,7 +12,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import * as os from 'os'
 import { getFlowchartByIdAsync } from './definitions'
-import { loadFlowchart } from './loader'
+import { loadFlowchart, simulateWalk, extractAnswer } from './loader'
 import {
   generateDiverseExamples,
   type GeneratedExample,
@@ -20,7 +20,6 @@ import {
 } from './example-generator'
 import { formatProblemDisplay } from './formatting'
 import type { ExecutableFlowchart, ProblemValue } from './schema'
-import { evaluateDisplayAnswer } from '../flowchart-workshop/test-case-validator'
 
 // =============================================================================
 // Types
@@ -172,13 +171,19 @@ function exampleToProblem(
 ): WorksheetProblem {
   const display = formatProblemDisplay(flowchart, example.values)
 
-  // Use evaluateDisplayAnswer to compute the answer using the flowchart's display.answer
-  const { answer: computedAnswer } = evaluateDisplayAnswer(flowchart.definition, example.values)
-  const answer = computedAnswer ?? '?'
-
-  // Convert plain text answer to Typst format
-  // For fractions (e.g., "3/4" or "2 1/2"), convert to Typst math mode
-  const typstAnswer = convertToTypstAnswer(answer)
+  // Use simulateWalk + extractAnswer for unified answer computation
+  let answer = '?'
+  let typstAnswer = '?'
+  try {
+    const terminalState = simulateWalk(flowchart, example.values)
+    const { display: answerDisplay } = extractAnswer(flowchart, terminalState)
+    answer = answerDisplay.text || '?'
+    // Use typst template if provided, otherwise convert from text
+    typstAnswer = answerDisplay.typst || convertToTypstAnswer(answer)
+  } catch (err) {
+    console.error('Failed to compute answer via simulateWalk:', err)
+    typstAnswer = convertToTypstAnswer(answer)
+  }
 
   return {
     values: example.values,

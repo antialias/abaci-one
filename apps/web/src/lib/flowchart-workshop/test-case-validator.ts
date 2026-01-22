@@ -16,7 +16,7 @@ import type {
 import { evaluate, type EvalContext } from '../flowcharts/evaluator'
 import { analyzeFlowchart, type FlowchartPath } from '../flowcharts/path-analysis'
 import type { ExecutableFlowchart } from '../flowcharts/schema'
-import { loadFlowchart } from '../flowcharts/loader'
+import { loadFlowchart, simulateWalk, extractAnswer } from '../flowcharts/loader'
 
 // =============================================================================
 // Types
@@ -225,7 +225,7 @@ export function runTestCase(definition: FlowchartDefinition, example: ProblemExa
 
 /**
  * Run a single test case using an ExecutableFlowchart.
- * Uses evaluateDisplayAnswer - the canonical answer computation function.
+ * Uses simulateWalk + extractAnswer for unified answer computation.
  */
 export function runTestCaseWithFlowchart(
   flowchart: ExecutableFlowchart,
@@ -241,29 +241,31 @@ export function runTestCaseWithFlowchart(
     }
   }
 
-  // Use evaluateDisplayAnswer - handles normalization internally
-  const { answer, error } = evaluateDisplayAnswer(flowchart.definition, example.values)
+  // Use simulateWalk + extractAnswer for unified computation
+  try {
+    const terminalState = simulateWalk(flowchart, example.values)
+    const { display: answerDisplay } = extractAnswer(flowchart, terminalState)
+    const answer = answerDisplay.text || null
 
-  if (error) {
+    // Compare after trimming whitespace
+    const normalizedActual = answer?.trim() ?? ''
+    const normalizedExpected = example.expectedAnswer.trim()
+    const passed = normalizedActual === normalizedExpected
+
+    return {
+      example,
+      actualAnswer: answer,
+      expectedAnswer: example.expectedAnswer,
+      passed,
+    }
+  } catch (err) {
     return {
       example,
       actualAnswer: null,
       expectedAnswer: example.expectedAnswer,
       passed: false,
-      error,
+      error: err instanceof Error ? err.message : 'Evaluation failed',
     }
-  }
-
-  // Compare after trimming whitespace
-  const normalizedActual = answer?.trim() ?? ''
-  const normalizedExpected = example.expectedAnswer.trim()
-  const passed = normalizedActual === normalizedExpected
-
-  return {
-    example,
-    actualAnswer: answer,
-    expectedAnswer: example.expectedAnswer,
-    passed,
   }
 }
 
@@ -307,8 +309,8 @@ export function validateTestCases(definition: FlowchartDefinition): ValidationRe
 
 /**
  * Validate test cases with full coverage analysis.
- * Uses evaluateDisplayAnswer for validation - the same function
- * that worksheet generation uses to compute answers.
+ * Uses simulateWalk + extractAnswer for validation - the unified
+ * computation path used by worksheet generation.
  */
 export async function validateTestCasesWithCoverage(
   definition: FlowchartDefinition,

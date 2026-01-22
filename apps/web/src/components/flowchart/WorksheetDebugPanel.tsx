@@ -5,7 +5,8 @@ import type { ExecutableFlowchart, ProblemValue, MixedNumberValue } from '@/lib/
 import type { GeneratedExample } from '@/lib/flowcharts/loader'
 import { generateExamplesAsync } from '@/lib/flowcharts/example-generator-client'
 import { formatProblemDisplay } from '@/lib/flowcharts/formatting'
-import { evaluateDisplayAnswer } from '@/lib/flowchart-workshop/test-case-validator'
+import { simulateWalk, extractAnswer } from '@/lib/flowcharts/loader'
+import { ProblemTrace } from './ProblemTrace'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 
@@ -14,6 +15,8 @@ interface WorksheetDebugPanelProps {
   flowchart: ExecutableFlowchart
   /** Number of problems to generate (default: 10) */
   problemCount?: number
+  /** Callback when hovering over a trace node (for mermaid highlighting) */
+  onHoverNode?: (nodeId: string | null) => void
 }
 
 /** Difficulty tier type */
@@ -23,7 +26,7 @@ type DifficultyTier = 'easy' | 'medium' | 'hard'
  * Debug panel for testing worksheet generation.
  * Shows generated problems with their computed answers, raw values, and difficulty tiers.
  */
-export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetDebugPanelProps) {
+export function WorksheetDebugPanel({ flowchart, problemCount = 10, onHoverNode }: WorksheetDebugPanelProps) {
   const [examples, setExamples] = useState<GeneratedExample[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -117,6 +120,28 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
         return { bg: 'red.100', text: 'red.700', darkBg: 'red.900/40', darkText: 'red.300' }
     }
   }
+
+  // Compute simulations and answers for all examples (unified computation path)
+  const computedExamples = useMemo(() => {
+    return examples.map((example) => {
+      try {
+        const terminalState = simulateWalk(flowchart, example.values)
+        const { display } = extractAnswer(flowchart, terminalState)
+        return {
+          state: terminalState,
+          answerDisplay: display.text || '?',
+          error: null,
+        }
+      } catch (err) {
+        console.error('Failed to compute answer for example:', err)
+        return {
+          state: null,
+          answerDisplay: '?',
+          error: err instanceof Error ? err.message : 'Unknown error',
+        }
+      }
+    })
+  }, [examples, flowchart])
 
   if (isLoading) {
     return (
@@ -288,10 +313,8 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
             const tierColor = getTierColor(tier)
             const isExpanded = expandedItems.has(index)
             const problemDisplay = formatProblemDisplay(flowchart, example.values)
-            const { answer: answerDisplay } = evaluateDisplayAnswer(
-              flowchart.definition,
-              example.values
-            )
+            const computed = computedExamples[index]
+            const answerDisplay = computed?.answerDisplay ?? '?'
 
             return (
               <div
@@ -514,6 +537,29 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10 }: WorksheetD
                           </div>
                         </div>
                       </div>
+
+                      {/* Computation Trace */}
+                      {computed?.state?.snapshots && computed.state.snapshots.length > 0 && (
+                        <div data-element="computation-trace-section">
+                          <h4
+                            className={css({
+                              fontSize: 'xs',
+                              fontWeight: 'semibold',
+                              color: { base: 'gray.600', _dark: 'gray.400' },
+                              marginBottom: '2',
+                              textTransform: 'uppercase',
+                              letterSpacing: 'wide',
+                            })}
+                          >
+                            Computation Trace
+                          </h4>
+                          <ProblemTrace
+                            snapshots={computed.state.snapshots}
+                            defaultExpanded={false}
+                            onHoverStep={onHoverNode}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

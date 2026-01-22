@@ -86,6 +86,7 @@ export default function WorkshopPage() {
   const [executableFlowchart, setExecutableFlowchart] = useState<ExecutableFlowchart | null>(null)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
   const [showCreatePdfModal, setShowCreatePdfModal] = useState(false)
+  const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null)
 
   // Examples for worksheet generation
   const [worksheetExamples, setWorksheetExamples] = useState<GeneratedExample[]>([])
@@ -390,11 +391,11 @@ export default function WorkshopPage() {
                             state: 'refining',
                             draftDefinitionJson:
                               data.draftDefinitionJson || JSON.stringify(parsedDefinition),
-                            draftMermaidContent: mermaidContent,
-                            draftTitle: title,
-                            draftDescription: description,
-                            draftDifficulty: difficulty,
-                            draftEmoji: emoji,
+                            draftMermaidContent: mermaidContent ?? null,
+                            draftTitle: title ?? null,
+                            draftDescription: description ?? null,
+                            draftDifficulty: difficulty ?? null,
+                            draftEmoji: emoji ?? null,
                             draftNotes: data.draftNotes || JSON.stringify(parsedNotes),
                             currentReasoningText: null, // Clear on completion
                           }
@@ -608,6 +609,21 @@ export default function WorkshopPage() {
       }
     }
   }, [refinementText, selectedDiagnostics, sessionId])
+
+  // Handler for updating the definition directly (e.g., adding test cases)
+  const handleUpdateDefinition = useCallback(
+    (updatedDefinition: FlowchartDefinition) => {
+      setSession((prev) =>
+        prev
+          ? {
+              ...prev,
+              draftDefinitionJson: JSON.stringify(updatedDefinition),
+            }
+          : null
+      )
+    },
+    []
+  )
 
   // Helper to check if two diagnostics are the same
   // Must compare code, location, AND message because multiple diagnostics
@@ -1172,6 +1188,7 @@ export default function WorkshopPage() {
               <DebugMermaidDiagram
                 mermaidContent={session.draftMermaidContent || ''}
                 currentNodeId=""
+                highlightedNodeId={highlightedNodeId ?? undefined}
                 onRegenerate={handleGenerate}
                 isRegenerating={isGenerating}
               />
@@ -1238,7 +1255,11 @@ export default function WorkshopPage() {
             {activeTab === 'structure' && <StructureTab definition={definition} notes={notes} />}
             {activeTab === 'input' && <InputTab definition={definition} />}
             {activeTab === 'tests' && (
-              <TestsTab definition={definition} validationReport={testValidationReport} />
+              <TestsTab
+                definition={definition}
+                validationReport={testValidationReport}
+                onUpdateDefinition={handleUpdateDefinition}
+              />
             )}
             {activeTab === 'worksheet' && executableFlowchart && (
               <div className={vstack({ gap: '4', alignItems: 'stretch' })}>
@@ -1269,7 +1290,11 @@ export default function WorkshopPage() {
                   Create PDF Worksheet
                 </button>
                 {/* Debug Panel - shows generated examples with answers */}
-                <WorksheetDebugPanel flowchart={executableFlowchart} problemCount={10} />
+                <WorksheetDebugPanel
+                  flowchart={executableFlowchart}
+                  problemCount={10}
+                  onHoverNode={setHighlightedNodeId}
+                />
               </div>
             )}
             {activeTab === 'worksheet' && !executableFlowchart && (
