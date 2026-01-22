@@ -20,6 +20,7 @@ import {
   isTerminal,
   formatProblemDisplay,
   createContextFromState,
+  applyTransforms,
 } from '@/lib/flowcharts/loader'
 import { evaluate } from '@/lib/flowcharts/evaluator'
 import { css } from '../../../styled-system/css'
@@ -83,8 +84,18 @@ export function FlowchartWalker({
   onRestart,
   onChangeProblem,
 }: FlowchartWalkerProps) {
-  // Initialize state
-  const [state, setState] = useState<FlowchartState>(() => initializeState(flowchart, problemInput))
+  // Initialize state and apply transforms for entry node
+  const [state, setState] = useState<FlowchartState>(() => {
+    const initialState = initializeState(flowchart, problemInput)
+    // Apply transforms for the entry node
+    return applyTransforms(initialState, initialState.currentNode, flowchart)
+  })
+
+  // DEBUG: Log state snapshots when they change (remove after testing)
+  useEffect(() => {
+    console.log('[FlowchartWalker] State snapshots:', state.snapshots)
+    console.log('[FlowchartWalker] Accumulated values:', state.values)
+  }, [state.snapshots, state.values])
   const [phase, setPhase] = useState<WalkerPhase>({ type: 'showingNode' })
   const [wrongAttempts, setWrongAttempts] = useState(0)
   const [wrongDecision, setWrongDecision] = useState<WrongDecisionState | null>(null)
@@ -96,6 +107,8 @@ export function FlowchartWalker({
   const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set())
   // Debug mode: pause auto-advance to inspect nodes
   const [autoAdvancePaused, setAutoAdvancePaused] = useState(false)
+  // Feedback state for wrong decision answers
+  const [showDecisionFeedback, setShowDecisionFeedback] = useState(false)
   // Track browser history depth for this walker session
   const historyDepthRef = useRef(0)
   // Flag to prevent double-handling when we programmatically go back
@@ -154,6 +167,15 @@ export function FlowchartWalker({
   useEffect(() => {
     setCheckedItems(new Set())
   }, [state.currentNode])
+
+  // Handle wrong decision feedback timer
+  useEffect(() => {
+    if (wrongDecision) {
+      setShowDecisionFeedback(true)
+      const timer = setTimeout(() => setShowDecisionFeedback(false), 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [wrongDecision?.attempt])
 
   // Browser history integration - allow back button to go to previous step
   useEffect(() => {
@@ -239,7 +261,12 @@ export function FlowchartWalker({
         )
       }
 
-      const newState = advanceState(stateWithWorkingProblem, nextNodeId, action, userInput, correct)
+      // Advance state to next node
+      let newState = advanceState(stateWithWorkingProblem, nextNodeId, action, userInput, correct)
+
+      // Apply transforms for the new node (new unified computation model)
+      newState = applyTransforms(newState, nextNodeId, flowchart)
+
       setState(newState)
       setPhase({ type: 'showingNode' })
       setWrongAttempts(0)
@@ -420,6 +447,23 @@ export function FlowchartWalker({
     if (!currentNode) return false
     return !isTerminal(flowchart, state.currentNode)
   }, [currentNode, flowchart, state.currentNode])
+
+  // Get decision options for current node if it's a decision
+  const decisionOptions = useMemo(() => {
+    const node = flowchart.nodes[state.currentNode]
+    if (!node || node.definition.type !== 'decision') return null
+
+    const def = node.definition as DecisionNode
+    return def.options.map((opt) => {
+      const nextNode = flowchart.nodes[opt.next]
+      return {
+        label: opt.label,
+        value: opt.value,
+        pathLabel: opt.pathLabel,
+        leadsTo: nextNode?.content?.title || opt.next,
+      }
+    })
+  }, [flowchart.nodes, state.currentNode])
 
   // Navigate to a specific step in the working problem history
   // Clicking on ledger entry i takes you to the state right after that entry was created
@@ -838,35 +882,6 @@ export function FlowchartWalker({
 
   // Can go back if there's history OR if we can go to problem selection
   const canGoBack = stateHistory.length > 0 || onChangeProblem
-
-  // Get decision options for current node if it's a decision
-  const decisionOptions = useMemo(() => {
-    const node = flowchart.nodes[state.currentNode]
-    if (!node || node.definition.type !== 'decision') return null
-
-    const def = node.definition as DecisionNode
-    return def.options.map((opt) => {
-      const nextNode = flowchart.nodes[opt.next]
-      return {
-        label: opt.label,
-        value: opt.value,
-        pathLabel: opt.pathLabel,
-        leadsTo: nextNode?.content?.title || opt.next,
-      }
-    })
-  }, [flowchart.nodes, state.currentNode])
-
-  // Feedback state for wrong decision answers
-  const [showDecisionFeedback, setShowDecisionFeedback] = useState(false)
-
-  // Handle wrong decision feedback
-  useEffect(() => {
-    if (wrongDecision) {
-      setShowDecisionFeedback(true)
-      const timer = setTimeout(() => setShowDecisionFeedback(false), 1500)
-      return () => clearTimeout(timer)
-    }
-  }, [wrongDecision?.attempt])
 
   const handleDecisionOptionClick = (value: string) => {
     if (showDecisionFeedback) return

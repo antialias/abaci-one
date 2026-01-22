@@ -633,7 +633,7 @@ export function validateDerivedFields(
   const inputFieldNames = new Set(definition.problemInput.fields.map((f) => f.name))
 
   // Collect variable names (these are NOT allowed in derived expressions)
-  const variableNames = new Set(Object.keys(definition.variables))
+  const variableNames = new Set(Object.keys(definition.variables || {}))
 
   // Track derived field names as we process them (earlier ones can be referenced by later ones)
   const processedDerivedNames = new Set<string>()

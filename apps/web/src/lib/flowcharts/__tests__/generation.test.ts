@@ -109,7 +109,7 @@ describe('path constraint satisfaction', () => {
       userState: {},
     }
 
-    for (const [varName, varDef] of Object.entries(flowchart.definition.variables)) {
+    for (const [varName, varDef] of Object.entries(flowchart.definition.variables || {})) {
       context.computed[varName] = evaluate(varDef.init, context)
     }
 
@@ -225,7 +225,7 @@ describe('example generation coverage', () => {
         userState: {},
       }
 
-      for (const [varName, varDef] of Object.entries(flowchart.definition.variables)) {
+      for (const [varName, varDef] of Object.entries(flowchart.definition.variables || {})) {
         try {
           context.computed[varName] = evaluate(varDef.init, context)
         } catch {}

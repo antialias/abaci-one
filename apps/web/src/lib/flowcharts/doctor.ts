@@ -180,7 +180,7 @@ function checkDerivedFields(definition: FlowchartDefinition): FlowchartDiagnosti
   const inputFieldNames = new Set(definition.problemInput.fields.map((f) => f.name))
 
   // Collect variable names (these are NOT allowed in derived expressions)
-  const variableNames = new Set(Object.keys(definition.variables))
+  const variableNames = new Set(Object.keys(definition.variables || {}))
 
   // Track derived field names as we process them
   const processedDerivedNames = new Set<string>()
@@ -420,7 +420,8 @@ function checkDivisionInTarget(definition: FlowchartDefinition): FlowchartDiagno
   }
 
   // Get the target variable's init expression
-  const targetVar = definition.variables[target]
+  const variables = definition.variables || {}
+  const targetVar = variables[target]
   if (!targetVar) {
     return diagnostics
   }
@@ -436,7 +437,7 @@ function checkDivisionInTarget(definition: FlowchartDefinition): FlowchartDiagno
     if (hasDivision) {
       // Generate a context-aware suggestion based on the actual variables
       // Check if this looks like a fraction (target ends in Num and there's a matching Denom)
-      const suggestion = generateDivisionSuggestion(target, expr, definition.variables)
+      const suggestion = generateDivisionSuggestion(target, expr, variables)
 
       diagnostics.push({
         code: DiagnosticCodes.DISPLAY_DIVISION_WITHOUT_HANDLER,

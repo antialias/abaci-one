@@ -162,8 +162,8 @@ export function evaluateDisplayAnswer(
   }
 
   try {
-    // Initialize computed variables
-    const computed = initializeComputed(definition.variables, normalizedValues)
+    // Initialize computed variables (use empty object if no variables defined)
+    const computed = initializeComputed(definition.variables || {}, normalizedValues)
 
     // Create evaluation context
     const context: EvalContext = {
@@ -408,8 +408,8 @@ function findMatchingPath(
   // Normalize values - convert string numbers to actual numbers
   const normalizedValues = normalizeExampleValues(example.values)
 
-  // Initialize computed variables
-  const computed = initializeComputed(flowchart.definition.variables, normalizedValues)
+  // Initialize computed variables (use empty object if no variables defined)
+  const computed = initializeComputed(flowchart.definition.variables || {}, normalizedValues)
   const context: EvalContext = {
     problem: normalizedValues,
     computed,

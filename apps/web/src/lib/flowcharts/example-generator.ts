@@ -349,7 +349,7 @@ function validateFlowchartConstraints(
   }
 
   // Evaluate variable init expressions
-  for (const [varName, varDef] of Object.entries(flowchart.definition.variables)) {
+  for (const [varName, varDef] of Object.entries(flowchart.definition.variables || {})) {
     try {
       context.computed[varName] = evaluate(varDef.init, context)
     } catch {
@@ -389,7 +389,7 @@ function satisfiesPathConstraints(
   }
 
   // Evaluate all variable init expressions
-  for (const [varName, varDef] of Object.entries(flowchart.definition.variables)) {
+  for (const [varName, varDef] of Object.entries(flowchart.definition.variables || {})) {
     try {
       context.computed[varName] = evaluate(varDef.init, context)
     } catch {

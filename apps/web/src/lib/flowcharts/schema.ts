@@ -10,8 +10,9 @@
  * ```
  * FlowchartDefinition (from .flow.json)
  *   ├── problemInput: ProblemInputSchema    # User input form definition
- *   ├── variables: Record<string, VariableDefinition>  # Computed values
  *   ├── nodes: Record<string, FlowchartNode>  # Node behavior definitions
+ *   │     └── transform?: TransformExpression[]  # Computations at this node
+ *   ├── answer?: AnswerDefinition  # How to extract final answer
  *   ├── workingProblem?: WorkingProblemConfig  # Evolving problem display
  *   └── constraints?: GenerationConstraints  # Problem generation rules
  *
@@ -25,10 +26,21 @@
  *
  * FlowchartState (runtime)
  *   ├── problem: user input values
- *   ├── computed: calculated variables
+ *   ├── values: accumulated transform results (starts with problem)
  *   ├── currentNode: where we are
+ *   ├── snapshots: state history at each node (for trace)
  *   └── history: actions taken
  * ```
+ *
+ * ## Computation Model
+ *
+ * Transforms execute progressively during the walk:
+ * 1. State starts with problem input in `values`
+ * 2. Each node can have `transform` array
+ * 3. Transforms execute in order, results accumulate in `values`
+ * 4. Later transforms can reference earlier ones
+ * 5. Terminal state contains final answer in `values`
+ * 6. `extractAnswer()` uses `answer` definition to format the result
  *
  * ## Node Types
  *
@@ -128,13 +140,83 @@ export interface ProblemInputSchema {
 }
 
 // =============================================================================
-// Variables
+// Transforms (progressive computation during walk)
 // =============================================================================
 
-/** Variable definition with initialization expression */
-export interface VariableDefinition {
-  /** Expression to evaluate at start to initialize this variable */
-  init: string
+/**
+ * A single transform expression that computes a value.
+ * Transforms execute in order - later transforms can reference earlier ones.
+ */
+export interface TransformExpression {
+  /** Variable name to create/update in accumulated state */
+  key: string
+  /** Expression to evaluate (uses existing evaluator syntax) */
+  expr: string
+}
+
+/**
+ * Snapshot of state at a specific node (for trace visualization).
+ * One snapshot is recorded per node visited during a walk.
+ */
+export interface StateSnapshot {
+  /** Node ID where this snapshot was taken */
+  nodeId: string
+  /** Human-readable node title for display */
+  nodeTitle?: string
+  /** Accumulated values after transforms at this node */
+  values: Record<string, ProblemValue>
+  /** Transforms that were applied at this node */
+  transforms: TransformExpression[]
+  /** Working problem display after this node (if applicable) */
+  workingProblem?: string
+  /** Timestamp when this snapshot was taken */
+  timestamp: number
+}
+
+// =============================================================================
+// Answer Definition (extracted from terminal state)
+// =============================================================================
+
+/**
+ * Template for displaying answers in different contexts.
+ */
+export interface DisplayTemplate {
+  /** Plain text format (for tests, simple display) */
+  text: string
+  /** Web format with MathML (for browser display) */
+  web?: string
+  /** Typst format (for PDF worksheets) */
+  typst?: string
+}
+
+/**
+ * Defines how to extract the final answer from terminal state.
+ */
+export interface AnswerDefinition {
+  /**
+   * Map answer component names to variable refs in accumulated state.
+   * Example: { "answer": "finalResult" } extracts state.values.finalResult
+   */
+  values: Record<string, string>
+  /** Templates for displaying the answer */
+  display: DisplayTemplate
+}
+
+// =============================================================================
+// Structured Test Cases
+// =============================================================================
+
+/**
+ * A test case with structured expected values (primitives, not strings).
+ * Used for validating flowchart correctness.
+ */
+export interface StructuredTestCase {
+  /** Human-readable test name */
+  name: string
+  /** Problem input values */
+  values: Record<string, ProblemValue>
+  /** Expected answer values (primitives, compared directly) */
+  expected: Record<string, ProblemValue>
 }
 
 // =============================================================================
@@ -170,6 +252,12 @@ export interface WorkingProblemStep {
 interface BaseNode {
   /** Optional explicit next node (for nodes with single outgoing edge) */
   next?: string
+  /**
+   * Transforms to apply when entering this node.
+   * Executed in order - later transforms can reference earlier ones.
+   * Results accumulate in state.values.
+   */
+  transform?: TransformExpression[]
 }
 
 /**
@@ -357,6 +445,15 @@ export interface DisplayConfig {
 // =============================================================================
 
 /**
+ * @deprecated Use transform on nodes instead
+ * Variable definition with initialization expression (legacy)
+ */
+export interface VariableDefinition {
+  /** Expression to evaluate at start to initialize this variable */
+  init: string
+}
+
+/**
  * Complete flowchart definition (.flow.json)
  */
 export interface FlowchartDefinition {
@@ -368,8 +465,11 @@ export interface FlowchartDefinition {
   mermaidFile: string
   /** Problem input configuration */
   problemInput: ProblemInputSchema
-  /** Variables computed at start and updated during walkthrough */
-  variables: Record<string, VariableDefinition>
+  /**
+   * @deprecated Use transform on nodes instead.
+   * Variables computed at start - being replaced by node transforms.
+   */
+  variables?: Record<string, VariableDefinition>
   /** First node to display */
   entryNode: string
   /** Node definitions keyed by node ID */
@@ -399,9 +499,22 @@ export interface FlowchartDefinition {
   constraints?: GenerationConstraints
 
   /**
-   * Optional: Configuration for how to display the problem.
+   * Optional: Configuration for how to display the problem (legacy).
+   * Being replaced by answer.display.
    */
   display?: DisplayConfig
+
+  /**
+   * Defines how to extract the final answer from terminal state.
+   * Required for new-format flowcharts using transforms.
+   */
+  answer?: AnswerDefinition
+
+  /**
+   * Structured test cases for validating flowchart correctness.
+   * Uses primitive expected values instead of string matching.
+   */
+  tests?: StructuredTestCase[]
 }
 
 // =============================================================================
@@ -443,8 +556,16 @@ export interface WorkingProblemHistoryEntry {
 export interface FlowchartState {
   /** Problem input values (immutable after start) */
   problem: Record<string, ProblemValue>
-  /** Computed values from variable init expressions */
+  /**
+   * @deprecated Use values instead.
+   * Computed values from variable init expressions (legacy).
+   */
   computed: Record<string, ProblemValue>
+  /**
+   * Accumulated values from transforms (starts with problem input).
+   * This is the new way - transforms add to this as nodes are visited.
+   */
+  values: Record<string, ProblemValue>
   /** User-entered values during walkthrough */
   userState: Record<string, ProblemValue>
   /** Current node ID */
@@ -459,6 +580,16 @@ export interface FlowchartState {
   workingProblem?: string
   /** History of working problem transformations */
   workingProblemHistory: WorkingProblemHistoryEntry[]
+  /**
+   * Snapshots of state at each node visited (for trace visualization).
+   * Each entry represents the state after visiting that node.
+   */
+  snapshots: StateSnapshot[]
+  /**
+   * Whether any transform errors occurred during the walk.
+   * Errors are logged but don't stop the walk - values are set to null.
+   */
+  hasError: boolean
 }
 
 // =============================================================================

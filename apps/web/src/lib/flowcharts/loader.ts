@@ -47,9 +47,13 @@ import type {
   WorkingProblemHistoryEntry,
   InstructionNode,
   CheckpointNode,
+  TransformExpression,
+  StateSnapshot,
+  AnswerDefinition,
 } from './schema'
 import { parseMermaidFile, parseNodeContent } from './parser'
 import { evaluate, type EvalContext } from './evaluator'
+import { formatProblemDisplay, interpolateTemplate } from './formatting'
 
 // =============================================================================
 // Re-exports for backwards compatibility
@@ -92,6 +96,7 @@ export {
   createMixedNumber,
   formatMixedNumber,
   formatProblemDisplay,
+  interpolateTemplate,
 } from './formatting'
 
 // =============================================================================
@@ -205,12 +210,24 @@ export async function loadFlowchart(
 // =============================================================================
 
 /**
- * Initialize flowchart state from problem input
+ * Initialize flowchart state from problem input.
+ *
+ * In the new transform model:
+ * - `values` starts with problem input and accumulates transform results
+ * - `computed` is populated from legacy `variables` section (for backwards compatibility)
+ * - `snapshots` tracks state at each node for trace visualization
+ *
+ * @param flowchart - The executable flowchart
+ * @param problemInput - User's problem input values
+ * @returns Initial state ready for walking
  */
 export function initializeState(
   flowchart: ExecutableFlowchart,
   problemInput: Record<string, ProblemValue>
 ): FlowchartState {
+  // Start values with problem input (new transform model)
+  const values: Record<string, ProblemValue> = { ...problemInput }
+
   // Create evaluation context with problem values
   const context: EvalContext = {
     problem: problemInput,
@@ -218,13 +235,17 @@ export function initializeState(
     userState: {},
   }
 
-  // Evaluate all variable init expressions
+  // LEGACY: Evaluate all variable init expressions for backwards compatibility
+  // This will be removed when all flowcharts migrate to transforms
   const computed: Record<string, ProblemValue> = {}
-  for (const [varName, varDef] of Object.entries(flowchart.definition.variables)) {
+  const variables = flowchart.definition.variables || {}
+  for (const [varName, varDef] of Object.entries(variables)) {
     try {
       computed[varName] = evaluate(varDef.init, context)
       // Update context so subsequent variables can reference earlier ones
       context.computed[varName] = computed[varName]
+      // Also add to values for hybrid mode
+      values[varName] = computed[varName]
     } catch (error) {
       console.error(`Error evaluating init for variable ${varName}:`, error)
       computed[varName] = null as unknown as ProblemValue
@@ -254,9 +275,20 @@ export function initializeState(
     }
   }
 
+  // Create initial snapshot
+  const initialSnapshot: StateSnapshot = {
+    nodeId: 'initial',
+    nodeTitle: 'Start',
+    values: { ...values },
+    transforms: [],
+    workingProblem,
+    timestamp: Date.now(),
+  }
+
   return {
     problem: problemInput,
-    computed,
+    computed, // Legacy - for backwards compatibility
+    values, // New - accumulates transform results
     userState: {},
     currentNode: flowchart.definition.entryNode,
     history: [],
@@ -264,17 +296,318 @@ export function initializeState(
     mistakes: 0,
     workingProblem,
     workingProblemHistory,
+    snapshots: [initialSnapshot],
+    hasError: false,
   }
 }
 
 /**
- * Create evaluation context from current state
+ * Create evaluation context from current state.
+ *
+ * Uses `values` (accumulated transforms) as `computed` for the evaluator.
+ * Falls back to legacy `computed` for backwards compatibility.
  */
 export function createContextFromState(state: FlowchartState): EvalContext {
+  // Prefer values (new model) over computed (legacy)
+  // Merge both so expressions can reference either
+  const computed = { ...state.computed, ...state.values }
   return {
     problem: state.problem,
-    computed: state.computed,
+    computed,
     userState: state.userState,
+  }
+}
+
+/**
+ * Create evaluation context from accumulated values (for transforms).
+ */
+export function createContextFromValues(
+  problem: Record<string, ProblemValue>,
+  values: Record<string, ProblemValue>,
+  userState: Record<string, ProblemValue>
+): EvalContext {
+  return {
+    problem,
+    computed: values, // In transform model, accumulated values are the "computed"
+    userState,
+  }
+}
+
+// =============================================================================
+// Transform System (new unified computation model)
+// =============================================================================
+
+/**
+ * Apply node transforms to state.
+ *
+ * Transforms execute in order - later transforms can reference earlier ones.
+ * Results accumulate in state.values. Errors are logged but don't stop the walk.
+ *
+ * @param state - Current flowchart state
+ * @param nodeId - ID of the node whose transforms to apply
+ * @param flowchart - The executable flowchart
+ * @returns Updated state with transforms applied and new snapshot added
+ */
+export function applyTransforms(
+  state: FlowchartState,
+  nodeId: string,
+  flowchart: ExecutableFlowchart
+): FlowchartState {
+  const node = flowchart.nodes[nodeId]
+  if (!node) return state
+
+  const transforms = node.definition.transform || []
+  if (transforms.length === 0) {
+    // No transforms, but still add a snapshot for the node
+    const snapshot: StateSnapshot = {
+      nodeId,
+      nodeTitle: node.content?.title || nodeId,
+      values: { ...state.values },
+      transforms: [],
+      workingProblem: state.workingProblem,
+      timestamp: Date.now(),
+    }
+    return {
+      ...state,
+      snapshots: [...state.snapshots, snapshot],
+    }
+  }
+
+  // Apply transforms in order
+  const newValues = { ...state.values }
+  let hasError = state.hasError
+  const appliedTransforms: TransformExpression[] = []
+
+  for (const transform of transforms) {
+    try {
+      const context = createContextFromValues(state.problem, newValues, state.userState)
+      const result = evaluate(transform.expr, context)
+      newValues[transform.key] = result
+      appliedTransforms.push(transform)
+    } catch (error) {
+      console.error(`Transform error at ${nodeId}.${transform.key}:`, error)
+      newValues[transform.key] = null as unknown as ProblemValue
+      hasError = true
+    }
+  }
+
+  // Create snapshot after applying transforms
+  const snapshot: StateSnapshot = {
+    nodeId,
+    nodeTitle: node.content?.title || nodeId,
+    values: { ...newValues },
+    transforms: appliedTransforms,
+    workingProblem: state.workingProblem,
+    timestamp: Date.now(),
+  }
+
+  return {
+    ...state,
+    values: newValues,
+    computed: { ...state.computed, ...newValues }, // Keep computed in sync for backwards compat
+    hasError,
+    snapshots: [...state.snapshots, snapshot],
+  }
+}
+
+/**
+ * Extract the final answer from terminal state.
+ *
+ * Uses the flowchart's `answer` definition to:
+ * 1. Extract answer component values from accumulated state
+ * 2. Interpolate display templates (text, web, typst)
+ *
+ * Falls back to legacy `display.answer` if no `answer` definition exists.
+ *
+ * @param flowchart - The executable flowchart
+ * @param state - Terminal state with all transforms applied
+ * @returns Extracted answer values and formatted display strings
+ */
+export function extractAnswer(
+  flowchart: ExecutableFlowchart,
+  state: FlowchartState
+): {
+  values: Record<string, ProblemValue>
+  display: { text: string; web: string; typst: string }
+} {
+  const answerDef = flowchart.definition.answer
+
+  // If we have a new-style answer definition, use it
+  if (answerDef) {
+    const values: Record<string, ProblemValue> = {}
+
+    // Extract each answer component from accumulated state
+    for (const [name, ref] of Object.entries(answerDef.values)) {
+      values[name] = state.values[ref] ?? null
+    }
+
+    // Interpolate display templates
+    const allValues = { ...state.values, ...values }
+    return {
+      values,
+      display: {
+        text: interpolateTemplate(answerDef.display.text, allValues),
+        web: interpolateTemplate(answerDef.display.web || answerDef.display.text, allValues),
+        typst: interpolateTemplate(answerDef.display.typst || answerDef.display.text, allValues),
+      },
+    }
+  }
+
+  // LEGACY: Fall back to display.answer expression
+  if (flowchart.definition.display?.answer) {
+    try {
+      const context = createContextFromState(state)
+      const result = evaluate(flowchart.definition.display.answer, context)
+      const displayStr = String(result)
+      return {
+        values: { answer: result },
+        display: { text: displayStr, web: displayStr, typst: displayStr },
+      }
+    } catch (error) {
+      console.error('Error evaluating legacy display.answer:', error)
+    }
+  }
+
+  // No answer definition - return empty
+  return {
+    values: {},
+    display: { text: '', web: '', typst: '' },
+  }
+}
+
+/**
+ * Simulate walking through a flowchart to terminal state.
+ *
+ * This is THE canonical function for computing answers. All other code paths
+ * (worksheets, tests, example generation) should use this function.
+ *
+ * The walk:
+ * 1. Starts with problem input in state.values
+ * 2. Visits each node, applying transforms
+ * 3. Makes decisions based on accumulated state
+ * 4. Ends at terminal node with final answer in state.values
+ *
+ * @param flowchart - The executable flowchart
+ * @param input - Problem input values
+ * @returns Terminal state with all transforms applied and full snapshot history
+ */
+export function simulateWalk(
+  flowchart: ExecutableFlowchart,
+  input: Record<string, ProblemValue>
+): FlowchartState {
+  let state = initializeState(flowchart, input)
+  const maxSteps = 100 // Safety limit to prevent infinite loops
+  const visited = new Set<string>()
+
+  for (let step = 0; step < maxSteps; step++) {
+    const nodeId = state.currentNode
+    if (!nodeId || visited.has(nodeId)) break
+    visited.add(nodeId)
+
+    const node = flowchart.nodes[nodeId]
+    if (!node) break
+
+    // Apply transforms for this node
+    state = applyTransforms(state, nodeId, flowchart)
+
+    // Check if terminal
+    if (node.definition.type === 'terminal') break
+
+    // Determine next node based on node type and accumulated state
+    const nextNodeId = getNextNodeForSimulation(flowchart, state, nodeId)
+    if (!nextNodeId) break
+
+    state = { ...state, currentNode: nextNodeId }
+  }
+
+  return state
+}
+
+/**
+ * Get next node during simulation (without user input).
+ * Used by simulateWalk to determine path based on expressions.
+ */
+function getNextNodeForSimulation(
+  flowchart: ExecutableFlowchart,
+  state: FlowchartState,
+  nodeId: string
+): string | null {
+  const node = flowchart.nodes[nodeId]
+  if (!node) return null
+
+  const def = node.definition
+  const context = createContextFromState(state)
+
+  switch (def.type) {
+    case 'terminal':
+      return null
+
+    case 'decision': {
+      // Check for skip condition
+      if (def.skipIf && def.skipTo) {
+        try {
+          if (evaluate(def.skipIf, context)) {
+            return def.skipTo
+          }
+        } catch {
+          // Continue to normal decision handling
+        }
+      }
+
+      // Determine path based on correctAnswer expression
+      if (def.correctAnswer) {
+        try {
+          const correct = evaluate(def.correctAnswer, context)
+          if (typeof correct === 'boolean') {
+            const yesOption = def.options.find(
+              (o) => o.value === 'yes' || o.value.toLowerCase().includes('yes')
+            )
+            const noOption = def.options.find(
+              (o) => o.value === 'no' || o.value.toLowerCase().includes('no')
+            )
+            if (correct && yesOption) return yesOption.next
+            if (!correct && noOption) return noOption.next
+            // Fallback to index-based
+            return correct ? def.options[0]?.next : def.options[1]?.next
+          }
+          // String match
+          const option = def.options.find((o) => o.value === String(correct))
+          return option?.next ?? def.options[0]?.next
+        } catch {
+          return def.options[0]?.next
+        }
+      }
+      return def.options[0]?.next
+    }
+
+    case 'checkpoint': {
+      // Check for skip condition
+      if (def.skipIf && def.skipTo) {
+        try {
+          if (evaluate(def.skipIf, context)) {
+            return def.skipTo
+          }
+        } catch {
+          // Continue to normal handling
+        }
+      }
+      // Fall through to instruction logic
+    }
+    // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional fallthrough
+    case 'instruction': {
+      if (def.next) return def.next
+      const edges = flowchart.definition.edges?.[nodeId]
+      if (edges && edges.length > 0) return edges[0]
+      const mermaidEdges = flowchart.mermaid.edges.filter((e) => e.from === nodeId)
+      return mermaidEdges[0]?.to ?? null
+    }
+
+    case 'milestone':
+    case 'embellishment':
+      return def.next
+
+    default:
+      return null
   }
 }
 

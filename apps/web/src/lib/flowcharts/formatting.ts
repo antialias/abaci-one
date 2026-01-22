@@ -10,6 +10,75 @@ import type { ExecutableFlowchart, ProblemValue, MixedNumberValue } from './sche
 import { evaluate, type EvalContext } from './evaluator'
 
 // =============================================================================
+// Template Interpolation
+// =============================================================================
+
+/**
+ * Interpolate a template string with values.
+ *
+ * Supports two syntaxes:
+ * - `{{name}}` - Simple variable substitution from values
+ * - `{{=expr}}` - Expression evaluation using the evaluator
+ *
+ * @example
+ * ```ts
+ * interpolateTemplate("x = {{answer}}", { answer: 5 })
+ * // Returns: "x = 5"
+ *
+ * interpolateTemplate("Sum: {{=a + b}}", { a: 2, b: 3 })
+ * // Returns: "Sum: 5"
+ * ```
+ */
+export function interpolateTemplate(
+  template: string,
+  values: Record<string, ProblemValue>
+): string {
+  // Match {{...}} patterns
+  return template.replace(/\{\{([^}]+)\}\}/g, (match, content: string) => {
+    const trimmed = content.trim()
+
+    // Check if it's an expression (starts with =)
+    if (trimmed.startsWith('=')) {
+      const expr = trimmed.slice(1).trim()
+      try {
+        const context: EvalContext = {
+          problem: values,
+          computed: values, // In new model, values contains everything
+          userState: {},
+        }
+        const result = evaluate(expr, context)
+        return formatValueForDisplay(result)
+      } catch (error) {
+        console.error(`Template expression error: ${expr}`, error)
+        return match // Return original on error
+      }
+    }
+
+    // Simple variable substitution
+    if (trimmed in values) {
+      return formatValueForDisplay(values[trimmed])
+    }
+
+    // Variable not found - return original
+    console.warn(`Template variable not found: ${trimmed}`)
+    return match
+  })
+}
+
+/**
+ * Format a ProblemValue for display in templates.
+ */
+function formatValueForDisplay(value: ProblemValue): string {
+  if (value === null || value === undefined) {
+    return ''
+  }
+  if (typeof value === 'object' && 'denom' in value) {
+    return formatMixedNumber(value as MixedNumberValue)
+  }
+  return String(value)
+}
+
+// =============================================================================
 // Mixed Number Helpers
 // =============================================================================
 
