@@ -57,3 +57,16 @@ variable "nfs_server" {
   type        = string
   default     = "192.168.86.51"
 }
+
+variable "ghcr_token" {
+  description = "GitHub Personal Access Token with read:packages scope for ghcr.io registry access (used by Keel for polling)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "ghcr_username" {
+  description = "GitHub username for ghcr.io registry access"
+  type        = string
+  default     = "antialias"
+}

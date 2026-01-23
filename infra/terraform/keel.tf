@@ -86,3 +86,12 @@ resource "kubernetes_namespace" "keel" {
 #   }
 #
 # These are added in app.tf on the StatefulSet spec.template.metadata
+#
+# IMPORTANT: For Keel to poll ghcr.io (which requires auth even for public images),
+# the StatefulSet needs imagePullSecrets pointing to a docker-registry secret.
+# Keel reads the imagePullSecrets from the workload spec to authenticate with registries.
+#
+# To enable auto-updates:
+# 1. Create a GitHub PAT with read:packages scope
+# 2. Set the ghcr_token variable in terraform.tfvars
+# 3. Apply terraform to create the secret and update the StatefulSet

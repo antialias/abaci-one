@@ -19,6 +19,31 @@ resource "kubernetes_secret" "app_env" {
   }
 }
 
+# Docker registry secret for ghcr.io access
+# Used by Keel to poll for new image versions and by pods to pull images
+resource "kubernetes_secret" "ghcr_registry" {
+  count = var.ghcr_token != "" ? 1 : 0
+
+  metadata {
+    name      = "ghcr-registry"
+    namespace = kubernetes_namespace.abaci.metadata[0].name
+  }
+
+  type = "kubernetes.io/dockerconfigjson"
+
+  data = {
+    ".dockerconfigjson" = jsonencode({
+      auths = {
+        "ghcr.io" = {
+          username = var.ghcr_username
+          password = var.ghcr_token
+          auth     = base64encode("${var.ghcr_username}:${var.ghcr_token}")
+        }
+      }
+    })
+  }
+}
+
 resource "kubernetes_config_map" "app_config" {
   metadata {
     name      = "app-config"
@@ -135,6 +160,14 @@ resource "kubernetes_stateful_set" "app" {
       }
 
       spec {
+        # Image pull secret for ghcr.io (needed by Keel to poll for updates)
+        dynamic "image_pull_secrets" {
+          for_each = var.ghcr_token != "" ? [1] : []
+          content {
+            name = kubernetes_secret.ghcr_registry[0].metadata[0].name
+          }
+        }
+
         # LiteFS requires root for FUSE mount
         # The app itself runs as non-root via litefs exec
         security_context {
