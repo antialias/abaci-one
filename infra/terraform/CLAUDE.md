@@ -19,6 +19,19 @@ kubeconfig location: `~/.kube/k3s-config`
 kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n abaci get pods
 ```
 
+## Network Architecture
+
+**Traffic flow:** Internet → NAS Traefik (Docker) → k3s Traefik → Pods
+
+- **NAS Traefik** handles external SSL termination for all domains
+- Config location: `nas:/volume1/homes/antialias/projects/traefik/services.yaml`
+- k3s receives traffic with `passHostHeader: true`
+
+**Adding new subdomains requires:**
+1. DNS record (Porkbun API)
+2. NAS Traefik route in `services.yaml`
+3. k3s Ingress in Terraform
+
 ## Deployment Workflow
 
 **NEVER build Docker images locally.** The GitHub Actions pipeline handles this.

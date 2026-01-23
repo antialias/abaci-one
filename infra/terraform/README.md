@@ -9,11 +9,19 @@ This directory contains Terraform configuration for deploying the Abaci.one appl
                         │
                         ▼
             ┌───────────────────┐
-            │     Traefik       │  (Ingress Controller, auto-installed by k3s)
+            │  NAS Traefik      │  (Entry point, handles SSL for all domains)
+            │  (Docker)         │  Config: /volume1/homes/antialias/projects/traefik/services.yaml
             │  - SSL/TLS via    │
             │    Let's Encrypt  │
+            │  - Routes to k3s  │
+            └─────────┬─────────┘
+                      │
+                      ▼ passHostHeader: true
+            ┌───────────────────┐
+            │  k3s Traefik      │  (Internal ingress controller)
             │  - Rate Limiting  │
             │  - HSTS           │
+            │  - Path routing   │
             └─────────┬─────────┘
                       │
                       ▼
@@ -186,7 +194,62 @@ kubectl --kubeconfig=~/.kube/k3s-config -n abaci scale statefulset abaci-app --r
 
 ## SSL/TLS
 
-- Certificates managed by cert-manager
-- Issued by Let's Encrypt
-- Auto-renewal handled automatically
-- HSTS enabled (63072000 seconds / 2 years)
+SSL is handled at **two levels**:
+
+1. **NAS Traefik** (external entry point)
+   - Terminates SSL for all domains (abaci.one, status.abaci.one, etc.)
+   - Issues certs via Let's Encrypt (`certresolver: "myresolver"`)
+   - Config: `nas:/volume1/homes/antialias/projects/traefik/services.yaml`
+
+2. **k3s Traefik** (internal)
+   - Receives traffic from NAS Traefik (passHostHeader)
+   - Handles internal routing and rate limiting
+   - Can optionally manage additional certs for internal services
+
+## Adding New Subdomains
+
+To add a new subdomain (e.g., `api.abaci.one`):
+
+1. **Add DNS record** (via Porkbun)
+   ```bash
+   # CNAME pointing to main domain
+   curl -X POST "https://api.porkbun.com/api/json/v3/dns/create/abaci.one" \
+     -d '{"name": "api", "type": "CNAME", "content": "abaci.one", ...}'
+   ```
+
+2. **Update NAS Traefik** (`services.yaml`)
+   ```yaml
+   http:
+     routers:
+       api-k3s:
+         rule: "Host(`api.abaci.one`)"
+         service: abaci-k3s
+         entryPoints: ["websecure"]
+         tls:
+           certresolver: "myresolver"
+       api-k3s-http:
+         rule: "Host(`api.abaci.one`)"
+         service: abaci-k3s
+         entryPoints: ["web"]
+         middlewares: ["redirect-https"]
+   ```
+   File location: `nas:/volume1/homes/antialias/projects/traefik/services.yaml`
+   Traefik auto-reloads this file.
+
+3. **Add k3s Ingress** (in Terraform)
+   ```hcl
+   resource "kubernetes_ingress_v1" "api" {
+     # ... standard ingress config
+     spec {
+       rule {
+         host = "api.abaci.one"
+         # ...
+       }
+     }
+   }
+   ```
+
+4. **Apply Terraform**
+   ```bash
+   terraform apply
+   ```
