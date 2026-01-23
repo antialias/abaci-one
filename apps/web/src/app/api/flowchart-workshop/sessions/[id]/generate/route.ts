@@ -50,10 +50,13 @@ export async function POST(request: Request, { params }: RouteParams) {
   const debug = url.searchParams.get("debug") === "true";
 
   // Always log route hit for debugging
-  console.log(`[generate] POST /api/flowchart-workshop/sessions/${id}/generate`, {
-    debug,
-    timestamp: new Date().toISOString(),
-  });
+  console.log(
+    `[generate] POST /api/flowchart-workshop/sessions/${id}/generate`,
+    {
+      debug,
+      timestamp: new Date().toISOString(),
+    },
+  );
 
   if (debug) {
     console.log("[generate] Debug mode enabled");
@@ -170,7 +173,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       // Start tracking this generation in the registry (for reconnection support)
       console.log(`[generate] Starting generation registry for session ${id}`);
       const generationState = startGeneration(id);
-      console.log(`[generate] Generation state created`, { sessionId: generationState.sessionId, status: generationState.status });
+      console.log(`[generate] Generation state created`, {
+        sessionId: generationState.sessionId,
+        status: generationState.status,
+      });
 
       // Throttled save of reasoning text to database (for durability)
       let lastReasoningSaveTime = 0;
@@ -269,7 +275,9 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
 
           switch (event.type) {
             case "started": {
-              console.log(`[generate] LLM started event`, { responseId: event.responseId });
+              console.log(`[generate] LLM started event`, {
+                responseId: event.responseId,
+              });
               const startedData = {
                 responseId: event.responseId,
                 message: "Generating flowchart...",
@@ -318,7 +326,11 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
             }
 
             case "error":
-              console.error("[generate] LLM error event:", event.message, event.code);
+              console.error(
+                "[generate] LLM error event:",
+                event.message,
+                event.code,
+              );
               // This is an LLM error, not a client error
               llmError = { message: event.message, code: event.code };
               sendEvent("error", {
@@ -338,7 +350,9 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
               break;
           }
         }
-        console.log(`[generate] Event loop finished, total events: ${eventCount}`);
+        console.log(
+          `[generate] Event loop finished, total events: ${eventCount}`,
+        );
       } catch (error) {
         // This catch is for unexpected errors (network issues, etc.)
         // NOT for client disconnect (those are caught in sendEvent)
@@ -400,6 +414,33 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
           coveragePercent: validationReport.coverage.coveragePercent,
         });
 
+        // Increment version number and save to history
+        const currentVersion = session.currentVersionNumber ?? 0;
+        const newVersion = currentVersion + 1;
+
+        // Save version to history
+        await db.insert(schema.flowchartVersionHistory).values({
+          sessionId: id,
+          versionNumber: newVersion,
+          definitionJson: JSON.stringify(internalDefinition),
+          mermaidContent: finalResult.mermaidContent,
+          title: finalResult.title,
+          description: finalResult.description,
+          emoji: finalResult.emoji,
+          difficulty: finalResult.difficulty,
+          notes: JSON.stringify(finalResult.notes),
+          source: "generate",
+          sourceRequest: topicDescription,
+          validationPassed: validationReport.passed,
+          coveragePercent: validationReport.coverage.coveragePercent,
+        });
+
+        if (debug) {
+          console.log(
+            `[generate] Version ${newVersion} saved to history for session ${id}`,
+          );
+        }
+
         // Update session with the generated content, clear reasoning
         await db
           .update(schema.workshopSessions)
@@ -413,6 +454,7 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
             draftEmoji: finalResult.emoji,
             draftNotes: JSON.stringify(finalResult.notes),
             currentReasoningText: null, // Clear reasoning on completion
+            currentVersionNumber: newVersion,
             updatedAt: new Date(),
           })
           .where(eq(schema.workshopSessions.id, id));

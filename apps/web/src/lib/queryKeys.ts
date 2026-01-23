@@ -75,6 +75,12 @@ export const skillMetricsKeys = {
     [...skillMetricsKeys.all, 'leaderboard', 'classroom', classroomId] as const,
 }
 
+// Flowchart version history query keys (for workshop sessions)
+export const versionHistoryKeys = {
+  all: ['flowchart-version-history'] as const,
+  session: (sessionId: string) => [...versionHistoryKeys.all, sessionId] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player

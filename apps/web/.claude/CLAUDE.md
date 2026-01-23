@@ -46,10 +46,21 @@ Quick rules: Never modify schema directly, never modify deployed migrations, alw
 ### Data Attributes
 All new elements MUST have data attributes: `data-component`, `data-element`, `data-action`, etc.
 
-### React Query Mutations
-**NEVER use `fetch()` + `router.refresh()` for mutations.** See `.claude/reference/react-query-mutations.md`
+### React Query (Server State Management)
+**This app uses React Query for ALL server state.** See `.claude/reference/react-query-mutations.md`
 
-Check `src/hooks/` for existing mutation hooks. All mutations must invalidate related queries.
+**Golden Rules:**
+1. **NEVER use `fetch()` directly in components** - Use React Query hooks
+2. **NEVER use `router.refresh()` after mutations** - Invalidate queries instead
+3. **NEVER use `useState` for server data** - Use `useQuery` or `useSuspenseQuery`
+4. **ALWAYS check `src/hooks/` first** - A hook likely already exists
+5. **ALWAYS add query keys to `src/lib/queryKeys.ts`** - Enables proper cache invalidation
+
+**Quick patterns:**
+- Fetching: `useQuery` or custom hook from `src/hooks/`
+- Mutations: `useMutation` with `onSuccess` invalidation
+- Loading states: `query.isLoading` or `mutation.isPending` (not `useState`)
+- Cache refresh: `queryClient.invalidateQueries({ queryKey: ... })`
 
 ---
 
@@ -69,7 +80,7 @@ SQLite + Drizzle ORM. Location: `./data/sqlite.db`
 |-------|-----|
 | Arcade system | `.claude/ARCADE_SYSTEM.md` |
 | Panda CSS | `.claude/reference/panda-css.md` |
-| React Query mutations | `.claude/reference/react-query-mutations.md` |
+| React Query (queries, mutations, cache) | `.claude/reference/react-query-mutations.md` |
 | Database migrations | `.claude/procedures/database-migrations.md` |
 | Merge conflicts | `.claude/procedures/merge-conflicts.md` |
 | Flowchart modifications | `.claude/procedures/FLOWCHART_MODIFICATIONS.md` |
