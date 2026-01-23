@@ -9,17 +9,24 @@ const port = parseInt(process.env.PORT || '3000', 10)
 const app = next({ dev, hostname, port })
 const handle = app.getRequestHandler()
 
-// Run migrations before starting server
-console.log('🔄 Running database migrations...')
-const { migrate } = require('drizzle-orm/better-sqlite3/migrator')
-const { db } = require('./dist/db/index')
+// Run migrations before starting server (only on primary/candidate nodes)
+// LiteFS replicas are read-only, so migrations must run on the primary
+const isLiteFSReplica = process.env.LITEFS_CANDIDATE === 'false'
 
-try {
-  migrate(db, { migrationsFolder: './drizzle' })
-  console.log('✅ Migrations complete')
-} catch (error) {
-  console.error('❌ Migration failed:', error)
-  process.exit(1)
+if (isLiteFSReplica) {
+  console.log('📖 Skipping migrations (LiteFS replica - read-only)')
+} else {
+  console.log('🔄 Running database migrations...')
+  const { migrate } = require('drizzle-orm/better-sqlite3/migrator')
+  const { db } = require('./dist/db/index')
+
+  try {
+    migrate(db, { migrationsFolder: './drizzle' })
+    console.log('✅ Migrations complete')
+  } catch (error) {
+    console.error('❌ Migration failed:', error)
+    process.exit(1)
+  }
 }
 
 app.prepare().then(() => {
