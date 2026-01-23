@@ -96,6 +96,7 @@ export function DebugMermaidDiagram({
             const hasPathHighlight = highlightedPath.length > 0
             const hasNodeHighlight = highlightedNodeId && highlightedNodeId !== currentNodeId
 
+
             if (hasPathHighlight || hasNodeHighlight) {
               // Dim all nodes when we have any highlighting
               const allNodes = svgElement.querySelectorAll('[id^="flowchart-"]')
@@ -104,7 +105,8 @@ export function DebugMermaidDiagram({
               })
 
               // Dim all edge paths (the lines) - use multiple selectors for robustness
-              const allEdgePathElements = svgElement.querySelectorAll('.edgePath path, .edgePaths path')
+              // Mermaid v11+ uses .flowchart-link, older versions use .edgePath path
+              const allEdgePathElements = svgElement.querySelectorAll('.flowchart-link, .edgePath path, .edgePaths path')
               allEdgePathElements.forEach((edge) => {
                 ;(edge as SVGElement).style.opacity = '0.2'
                 ;(edge as SVGElement).style.stroke = '#9ca3af' // gray-400
@@ -117,110 +119,241 @@ export function DebugMermaidDiagram({
               })
 
               // Get edge containers for matching
-              const edgePathsContainer = svgElement.querySelector('.edgePaths')
-              const edgeLabelsContainer = svgElement.querySelector('.edgeLabels')
-              const edgePathElements = edgePathsContainer ? Array.from(edgePathsContainer.children) : []
-              const edgeLabelElements = edgeLabelsContainer ? Array.from(edgeLabelsContainer.children) : []
+              // Mermaid v11+ uses .flowchart-link class for edge paths
+              // inside a container with class .edgePaths (plural)
+              const allEdgePaths = svgElement.querySelectorAll('.flowchart-link')
+              const edgePathElements = Array.from(allEdgePaths)
+              const edgeLabelElements = Array.from(allEdgeLabels)
 
-              // Collect edge IDs and indices from snapshots for highlighting
-              // We support two matching modes:
-              // 1. ID-based: If edges use `id@-->` syntax, SVG elements have custom IDs
-              // 2. Index-based: Fallback using parse order (mermaid renders in parse order)
-              const highlightedEdgeIds = new Set<string>()
-              const highlightedEdgeIndices = new Set<number>()
-              let focusedIncomingEdgeId: string | undefined
-              let focusedIncomingEdgeIndex: number | undefined
-              let focusedOutgoingEdgeId: string | undefined
-              let focusedOutgoingEdgeIndex: number | undefined
 
-              if (highlightedSnapshots) {
+              // Collect path nodes for highlighting
+              const pathNodeSet = new Set(highlightedPath.filter(n => n !== 'initial'))
+
+              /**
+               * Build a graph from SVG edges for BFS traversal.
+               * Extracts from/to from L_FROM_TO_INDEX format.
+               */
+              const mermaidGraph = new Map<string, Array<{ to: string; edgeId: string; element: Element }>>()
+              const allSvgNodeIds = new Set<string>()
+
+              for (const edge of edgePathElements) {
+                const svgEdgeId = edge.id
+                if (!svgEdgeId) continue
+
+                // Parse L_FROM_TO_INDEX format
+                if (svgEdgeId.startsWith('L_')) {
+                  const withoutPrefix = svgEdgeId.slice(2) // Remove 'L_'
+                  const lastUnderscore = withoutPrefix.lastIndexOf('_')
+                  if (lastUnderscore > 0) {
+                    const fromTo = withoutPrefix.slice(0, lastUnderscore) // Remove '_INDEX'
+
+                    // Find all node elements to know valid node IDs
+                    const allNodeElements = svgElement.querySelectorAll('[id^="flowchart-"]')
+                    const nodeIds = new Set(
+                      Array.from(allNodeElements)
+                        .map(e => e.id.match(/flowchart-([^-]+)-/)?.[1])
+                        .filter(Boolean) as string[]
+                    )
+
+                    // Try to split FROM_TO by finding a valid node ID prefix
+                    for (const nodeId of nodeIds) {
+                      if (fromTo.startsWith(`${nodeId}_`)) {
+                        const toNode = fromTo.slice(nodeId.length + 1)
+                        if (nodeIds.has(toNode)) {
+                          allSvgNodeIds.add(nodeId)
+                          allSvgNodeIds.add(toNode)
+
+                          if (!mermaidGraph.has(nodeId)) {
+                            mermaidGraph.set(nodeId, [])
+                          }
+                          mermaidGraph.get(nodeId)!.push({ to: toNode, edgeId: svgEdgeId, element: edge })
+                          break
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
+              /**
+               * BFS to find path from `start` to `end` through mermaid graph.
+               * Returns edges and intermediate nodes on the path.
+               *
+               * If direct path not found (due to phase boundaries), falls back to
+               * finding all nodes reachable from start + all nodes that can reach end.
+               */
+              const findPathBFS = (start: string, end: string): { edges: Element[]; intermediateNodes: string[] } => {
+                if (start === end) return { edges: [], intermediateNodes: [] }
+
+                // Try direct BFS first
+                const queue: Array<{ node: string; path: Array<{ to: string; edgeId: string; element: Element }> }> = [
+                  { node: start, path: [] }
+                ]
+                const visited = new Set<string>([start])
+
+                while (queue.length > 0) {
+                  const { node, path } = queue.shift()!
+                  const neighbors = mermaidGraph.get(node) || []
+
+                  for (const neighbor of neighbors) {
+                    if (neighbor.to === end) {
+                      // Found the path!
+                      const fullPath = [...path, neighbor]
+                      return {
+                        edges: fullPath.map(p => p.element),
+                        intermediateNodes: fullPath.slice(0, -1).map(p => p.to)
+                      }
+                    }
+
+                    if (!visited.has(neighbor.to)) {
+                      visited.add(neighbor.to)
+                      queue.push({ node: neighbor.to, path: [...path, neighbor] })
+                    }
+                  }
+                }
+
+                // Direct path not found - likely a phase boundary
+                // Find all reachable from start (forward BFS)
+                const reachableFromStart = new Set<string>([start])
+                const edgesFromStart: Element[] = []
+                let frontier = [start]
+                while (frontier.length > 0) {
+                  const node = frontier.shift()!
+                  for (const neighbor of mermaidGraph.get(node) || []) {
+                    if (!reachableFromStart.has(neighbor.to)) {
+                      reachableFromStart.add(neighbor.to)
+                      edgesFromStart.push(neighbor.element)
+                      frontier.push(neighbor.to)
+                    }
+                  }
+                }
+
+                // Build reverse graph for backward BFS
+                const reverseGraph = new Map<string, Array<{ from: string; element: Element }>>()
+                for (const [from, neighbors] of mermaidGraph) {
+                  for (const n of neighbors) {
+                    if (!reverseGraph.has(n.to)) reverseGraph.set(n.to, [])
+                    reverseGraph.get(n.to)!.push({ from, element: n.element })
+                  }
+                }
+
+                // Find all that can reach end (backward BFS)
+                const canReachEnd = new Set<string>([end])
+                const edgesToEnd: Element[] = []
+                frontier = [end]
+                while (frontier.length > 0) {
+                  const node = frontier.shift()!
+                  for (const neighbor of reverseGraph.get(node) || []) {
+                    if (!canReachEnd.has(neighbor.from)) {
+                      canReachEnd.add(neighbor.from)
+                      edgesToEnd.push(neighbor.element)
+                      frontier.push(neighbor.from)
+                    }
+                  }
+                }
+
+                // Combine: nodes reachable from start + nodes that can reach end
+                // minus start and end themselves
+                const intermediateNodes = new Set<string>()
+                for (const node of reachableFromStart) {
+                  if (node !== start && node !== end) intermediateNodes.add(node)
+                }
+                for (const node of canReachEnd) {
+                  if (node !== start && node !== end) intermediateNodes.add(node)
+                }
+
+                return {
+                  edges: [...edgesFromStart, ...edgesToEnd],
+                  intermediateNodes: [...intermediateNodes]
+                }
+              }
+
+
+              // Find focused node's neighbors in the path for edge highlighting
+              let focusedPrevNode: string | undefined
+              let focusedNextNode: string | undefined
+
+              if (highlightedSnapshots && highlightedNodeId) {
                 for (let i = 0; i < highlightedSnapshots.length; i++) {
                   const snapshot = highlightedSnapshots[i]
-
-                  // Collect edge ID if available
-                  if (snapshot.edgeId) {
-                    highlightedEdgeIds.add(snapshot.edgeId)
+                  // If this snapshot's next node is the focused node, this is the predecessor
+                  if (snapshot.nextNodeId === highlightedNodeId && snapshot.nodeId !== 'initial') {
+                    focusedPrevNode = snapshot.nodeId
                   }
-                  // Also collect index for fallback
-                  if (snapshot.edgeIndex !== undefined) {
-                    highlightedEdgeIndices.add(snapshot.edgeIndex)
-                  }
-
-                  // Track edges for focused node highlighting
-                  if (highlightedNodeId) {
-                    // If this snapshot's next node is the focused node, this is the incoming edge
-                    if (snapshot.nextNodeId === highlightedNodeId) {
-                      focusedIncomingEdgeId = snapshot.edgeId
-                      focusedIncomingEdgeIndex = snapshot.edgeIndex
-                    }
-                    // If this snapshot IS the focused node, this is the outgoing edge
-                    if (snapshot.nodeId === highlightedNodeId) {
-                      focusedOutgoingEdgeId = snapshot.edgeId
-                      focusedOutgoingEdgeIndex = snapshot.edgeIndex
-                    }
+                  // If this snapshot IS the focused node, its next is the successor
+                  if (snapshot.nodeId === highlightedNodeId) {
+                    focusedNextNode = snapshot.nextNodeId
                   }
                 }
               }
 
-              // Helper to check if an edge element should be highlighted
-              const shouldHighlightEdge = (edgeGroup: Element, index: number): boolean => {
-                // Try ID-based matching first (for `id@-->` syntax)
-                if (edgeGroup.id && highlightedEdgeIds.has(edgeGroup.id)) {
-                  return true
-                }
-                // Fall back to index-based matching
-                return highlightedEdgeIndices.has(index)
+              // Find edges leading to/from focused node (using BFS to handle intermediates)
+              const focusedIncomingEdges = new Set<Element>()
+              const focusedOutgoingEdges = new Set<Element>()
+
+              if (focusedPrevNode && highlightedNodeId) {
+                const { edges } = findPathBFS(focusedPrevNode, highlightedNodeId)
+                edges.forEach(e => focusedIncomingEdges.add(e))
+              }
+              if (highlightedNodeId && focusedNextNode) {
+                const { edges } = findPathBFS(highlightedNodeId, focusedNextNode)
+                edges.forEach(e => focusedOutgoingEdges.add(e))
               }
 
-              // Helper to check if an edge is the focused incoming edge
-              const isFocusedIncoming = (edgeGroup: Element, index: number): boolean => {
-                if (focusedIncomingEdgeId && edgeGroup.id === focusedIncomingEdgeId) return true
-                return focusedIncomingEdgeIndex !== undefined && index === focusedIncomingEdgeIndex
-              }
-
-              // Helper to check if an edge is the focused outgoing edge
-              const isFocusedOutgoing = (edgeGroup: Element, index: number): boolean => {
-                if (focusedOutgoingEdgeId && edgeGroup.id === focusedOutgoingEdgeId) return true
-                return focusedOutgoingEdgeIndex !== undefined && index === focusedOutgoingEdgeIndex
-              }
-
-              // Highlight path nodes (light cyan background)
+              // Highlight path nodes and edges
               if (hasPathHighlight) {
-                for (const nodeId of highlightedPath) {
-                  if (nodeId === 'initial') continue // Skip pseudo-node
+                // Start with path nodes from simulation
+                const nodesToHighlight = new Set(highlightedPath.filter(n => n !== 'initial'))
+                const edgesToHighlight = new Set<Element>()
+
+                // For each consecutive pair of path nodes, find the path through mermaid graph
+                const pathArray = highlightedPath.filter(n => n !== 'initial')
+                for (let i = 0; i < pathArray.length - 1; i++) {
+                  const from = pathArray[i]
+                  const to = pathArray[i + 1]
+
+                  const { edges, intermediateNodes } = findPathBFS(from, to)
+
+                  // Add intermediate nodes
+                  for (const node of intermediateNodes) {
+                    nodesToHighlight.add(node)
+                  }
+
+                  // Add edges
+                  for (const edge of edges) {
+                    edgesToHighlight.add(edge)
+                  }
+                }
+
+
+                // Highlight all nodes (path + intermediate)
+                for (const nodeId of nodesToHighlight) {
                   const nodeElement = svgElement.querySelector(`[id*="flowchart-${nodeId}-"]`)
                   if (nodeElement) {
                     const svgNode = nodeElement as SVGElement
                     svgNode.style.opacity = '1'
 
-                    // Add light cyan border for path nodes
-                    const shape = nodeElement.querySelector('rect, polygon, circle, ellipse, path')
+                    // Add light cyan border
+                    const shape = nodeElement.querySelector('rect, polygon, circle, ellipse, path') as SVGElement | null
                     if (shape) {
-                      shape.setAttribute('stroke', '#06b6d4') // cyan-500
-                      shape.setAttribute('stroke-width', '2')
+                      shape.style.stroke = '#06b6d4' // cyan-500
+                      shape.style.strokeWidth = '3px'
+                      shape.setAttribute('stroke', '#06b6d4')
+                      shape.setAttribute('stroke-width', '3')
                       shape.setAttribute('vector-effect', 'non-scaling-stroke')
                     }
                   }
                 }
 
-                // Highlight edges using ID (preferred) or index (fallback)
-                edgePathElements.forEach((edgeGroup, index) => {
-                  if (shouldHighlightEdge(edgeGroup, index)) {
-                    // Find the path element inside this group
-                    const pathElement = edgeGroup.querySelector('path') || edgeGroup
-                    const svgEdge = pathElement as SVGElement
-                    svgEdge.style.opacity = '1'
-                    svgEdge.style.stroke = '#06b6d4' // cyan-500
-                    svgEdge.style.strokeWidth = '3px'
-                    svgEdge.setAttribute('stroke', '#06b6d4')
-                    svgEdge.setAttribute('stroke-width', '3')
-                    svgEdge.setAttribute('vector-effect', 'non-scaling-stroke')
-
-                    // Also highlight the corresponding label
-                    if (edgeLabelElements[index]) {
-                      ;(edgeLabelElements[index] as SVGElement).style.opacity = '1'
-                    }
-                  }
+                // Highlight edges
+                edgesToHighlight.forEach((edgeElement) => {
+                  const svgEdge = edgeElement as SVGElement
+                  svgEdge.style.opacity = '1'
+                  svgEdge.style.stroke = '#06b6d4' // cyan-500
+                  svgEdge.style.strokeWidth = '3px'
+                  svgEdge.setAttribute('stroke', '#06b6d4')
+                  svgEdge.setAttribute('stroke-width', '3')
+                  svgEdge.setAttribute('vector-effect', 'non-scaling-stroke')
                 })
               }
 
@@ -232,34 +365,32 @@ export function DebugMermaidDiagram({
                   svgNode.style.opacity = '1'
 
                   // Add thick cyan border with non-scaling stroke
-                  const shape = nodeElement.querySelector('rect, polygon, circle, ellipse, path')
+                  const shape = nodeElement.querySelector('rect, polygon, circle, ellipse, path') as SVGElement | null
                   if (shape) {
-                    shape.setAttribute('stroke', '#0891b2') // cyan-600
+                    shape.style.stroke = '#0891b2' // cyan-600
+                    shape.style.strokeWidth = '5px'
+                    shape.setAttribute('stroke', '#0891b2')
                     shape.setAttribute('stroke-width', '5')
                     shape.setAttribute('vector-effect', 'non-scaling-stroke')
                   }
                 }
 
                 // Highlight edges to/from focused node more strongly
-                edgePathElements.forEach((edgeGroup, index) => {
-                  if (isFocusedIncoming(edgeGroup, index)) {
-                    const pathElement = edgeGroup.querySelector('path') || edgeGroup
-                    const svgEdge = pathElement as SVGElement
-                    svgEdge.style.opacity = '1'
-                    svgEdge.style.stroke = '#0891b2' // cyan-600
-                    svgEdge.style.strokeWidth = '5px'
-                    svgEdge.setAttribute('stroke', '#0891b2')
-                    svgEdge.setAttribute('stroke-width', '5')
-                  }
-                  if (isFocusedOutgoing(edgeGroup, index)) {
-                    const pathElement = edgeGroup.querySelector('path') || edgeGroup
-                    const svgEdge = pathElement as SVGElement
-                    svgEdge.style.opacity = '1'
-                    svgEdge.style.stroke = '#22d3ee' // cyan-400
-                    svgEdge.style.strokeWidth = '4px'
-                    svgEdge.setAttribute('stroke', '#22d3ee')
-                    svgEdge.setAttribute('stroke-width', '4')
-                  }
+                focusedIncomingEdges.forEach((edgeElement) => {
+                  const svgEdge = edgeElement as SVGElement
+                  svgEdge.style.opacity = '1'
+                  svgEdge.style.stroke = '#0891b2' // cyan-600
+                  svgEdge.style.strokeWidth = '5px'
+                  svgEdge.setAttribute('stroke', '#0891b2')
+                  svgEdge.setAttribute('stroke-width', '5')
+                })
+                focusedOutgoingEdges.forEach((edgeElement) => {
+                  const svgEdge = edgeElement as SVGElement
+                  svgEdge.style.opacity = '1'
+                  svgEdge.style.stroke = '#22d3ee' // cyan-400
+                  svgEdge.style.strokeWidth = '4px'
+                  svgEdge.setAttribute('stroke', '#22d3ee')
+                  svgEdge.setAttribute('stroke-width', '4')
                 })
               }
             }

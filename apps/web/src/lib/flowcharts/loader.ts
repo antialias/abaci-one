@@ -57,6 +57,17 @@ import { evaluate, type EvalContext } from './evaluator'
 import { formatProblemDisplay, interpolateTemplate } from './formatting'
 
 // =============================================================================
+// Helpers
+// =============================================================================
+
+/**
+ * Escape special regex characters in a string.
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+// =============================================================================
 // Re-exports for backwards compatibility
 // =============================================================================
 
@@ -140,6 +151,9 @@ export async function loadFlowchart(
   // Parse the Mermaid file
   const mermaid = parseMermaidFile(mermaidContent)
 
+  // Track edge ID infills so we can inject them into the raw mermaid string
+  const edgeIdInfills: Array<{ from: string; to: string; label?: string; edgeId: string }> = []
+
   // Infill missing edge IDs for decision edges
   // For each decision node, if the edge doesn't have an explicit ID (starts with "edge_"),
   // assign the computed ID based on {nodeId}_{optionValue}
@@ -155,8 +169,34 @@ export async function loadFlowchart(
       if (edge && edge.id.startsWith('edge_')) {
         // Edge exists but has auto-generated ID - replace with computed ID
         edge.id = expectedEdgeId
+        // Track for injection into raw mermaid
+        edgeIdInfills.push({
+          from: nodeId,
+          to: option.next,
+          label: edge.label,
+          edgeId: expectedEdgeId,
+        })
       }
     }
+  }
+
+  // Inject edge IDs into the raw mermaid string so SVG elements will have them
+  let modifiedMermaid = mermaidContent
+  for (const infill of edgeIdInfills) {
+    // Build regex to match this specific edge
+    // Pattern: FROM -->|"LABEL"| TO  or  FROM --> TO
+    const labelPart = infill.label
+      ? `\\s*\\|"${escapeRegex(infill.label)}"\\|\\s*`
+      : '\\s*'
+    const edgeRegex = new RegExp(
+      `(${escapeRegex(infill.from)})\\s+-->${labelPart}(${escapeRegex(infill.to)})`,
+      'g'
+    )
+    // Replace with: FROM EDGEID@-->|"LABEL"| TO
+    const replacement = infill.label
+      ? `$1 ${infill.edgeId}@-->|"${infill.label}"| $2`
+      : `$1 ${infill.edgeId}@--> $2`
+    modifiedMermaid = modifiedMermaid.replace(edgeRegex, replacement)
   }
 
   // Build executable nodes by merging definition with parsed content
@@ -220,7 +260,7 @@ export async function loadFlowchart(
   return {
     definition,
     mermaid,
-    rawMermaid: mermaidContent,
+    rawMermaid: modifiedMermaid,
     nodes,
   }
 }
@@ -620,7 +660,6 @@ function getNextNodeForSimulation(
       const edgeById = flowchart.mermaid.edges.find((e) => e.id === edgeId)
       if (edgeById) return edgeById
       // If specified edgeId doesn't exist, fall through to from/to matching
-      console.warn(`Edge ID "${edgeId}" not found, falling back to from/to matching`)
     }
 
     // Priority 2+: Match by from/to

@@ -344,20 +344,24 @@ export function parseMermaidFile(content: string): ParsedMermaid {
   // Parse edges
   // Supports:
   // - Basic: ID1 --> ID2
-  // - With label: ID1 -->|"label"| ID2
+  // - With quoted label: ID1 -->|"label"| ID2
+  // - With unquoted label: ID1 -->|label| ID2
   // - With edge ID (mermaid v11.6+): ID1 edgeId@--> ID2
-  // - With edge ID and label: ID1 edgeId@-->|"label"| ID2
+  // - With edge ID and label: ID1 edgeId@-->|"label"| ID2 or ID1 edgeId@-->|label| ID2
   // - Chained: ID1 --> ID2 --> ID3
   //
   // Edge ID syntax: The ID comes before @ and before the arrow
-  const edgePattern = /(\w+)\s+(?:(\w+)@)?-->\s*(?:\|"([^"]+)"\|\s*)?(\w+)/g
+  // Label can be quoted ("label") or unquoted (label)
+  const edgePattern = /(\w+)\s+(?:(\w+)@)?-->\s*(?:\|"?([^"|]+)"?\|\s*)?(\w+)/g
   let edgeMatch
   let edgeIndex = 0
+  console.log('[PARSER] Parsing edges from mermaid content...')
   while ((edgeMatch = edgePattern.exec(cleanContent)) !== null) {
-    const [, from, edgeId, label, to] = edgeMatch
+    const [fullMatch, from, edgeId, label, to] = edgeMatch
     // Skip phase-to-phase connections and style definitions
     if (from.startsWith('PHASE') || from === 'style') continue
 
+    console.log(`[PARSER] Edge ${edgeIndex}: from=${from}, to=${to}, edgeId=${edgeId || 'auto'}, label=${label || 'none'}, fullMatch="${fullMatch}"`)
     edges.push({
       from,
       to,
@@ -368,6 +372,7 @@ export function parseMermaidFile(content: string): ParsedMermaid {
     })
     edgeIndex++
   }
+  console.log(`[PARSER] Total edges parsed: ${edges.length}`)
 
   return { nodes, edges, phases }
 }
