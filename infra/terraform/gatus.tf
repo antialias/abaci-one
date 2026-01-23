@@ -22,7 +22,7 @@ resource "kubernetes_config_map" "gatus_config" {
         logo: ""
 
       endpoints:
-        # Main website
+        # ============ Website ============
         - name: Homepage
           group: Website
           url: "https://abaci.one/"
@@ -31,38 +31,72 @@ resource "kubernetes_config_map" "gatus_config" {
             - "[STATUS] == 200"
             - "[RESPONSE_TIME] < 2000"
 
+        # ============ Arcade ============
+        - name: Games Hub
+          group: Arcade
+          url: "https://abaci.one/games"
+          interval: 120s
+          conditions:
+            - "[STATUS] == 200"
+          ui:
+            hide-url: false
+
+        # ============ Worksheets ============
+        - name: Worksheet Builder
+          group: Worksheets
+          url: "https://abaci.one/create/worksheets"
+          interval: 120s
+          conditions:
+            - "[STATUS] == 200"
+          ui:
+            hide-url: false
+
+        - name: Flashcard Generator
+          group: Worksheets
+          url: "https://abaci.one/create/flashcards"
+          interval: 120s
+          conditions:
+            - "[STATUS] == 200"
+          ui:
+            hide-url: false
+
+        # ============ Flowcharts ============
+        - name: Flowchart Viewer
+          group: Flowcharts
+          url: "https://abaci.one/flowchart"
+          interval: 120s
+          conditions:
+            - "[STATUS] == 200"
+          ui:
+            hide-url: false
+
+        # ============ Core API ============
         - name: Health API
-          group: Website
+          group: Core API
           url: "https://abaci.one/api/health"
           interval: 30s
           conditions:
             - "[STATUS] == 200"
             - "[RESPONSE_TIME] < 500"
             - "[BODY].status == healthy"
+          ui:
+            hide-url: false
 
-        # Internal services (from within cluster)
-        - name: App Service
-          group: Internal
-          url: "http://abaci-app.abaci.svc.cluster.local/api/health"
+        # ============ Infrastructure ============
+        - name: SQLite Database
+          group: Infrastructure
+          url: "https://abaci.one/api/health"
           interval: 30s
           conditions:
             - "[STATUS] == 200"
-            - "[BODY].status == healthy"
+            - "[BODY].checks.database.status == ok"
 
-        - name: Redis
-          group: Internal
+        - name: Redis Cache
+          group: Infrastructure
           url: "tcp://redis.abaci.svc.cluster.local:6379"
           interval: 30s
           conditions:
             - "[CONNECTED] == true"
-
-        - name: Database (via health)
-          group: Internal
-          url: "http://abaci-app.abaci.svc.cluster.local/api/health"
-          interval: 60s
-          conditions:
-            - "[STATUS] == 200"
-            - "[BODY].checks.database.status == ok"
     EOT
   }
 }
