@@ -140,6 +140,25 @@ export async function loadFlowchart(
   // Parse the Mermaid file
   const mermaid = parseMermaidFile(mermaidContent)
 
+  // Infill missing edge IDs for decision edges
+  // For each decision node, if the edge doesn't have an explicit ID (starts with "edge_"),
+  // assign the computed ID based on {nodeId}_{optionValue}
+  for (const [nodeId, nodeDef] of Object.entries(definition.nodes)) {
+    if (nodeDef.type !== 'decision') continue
+
+    for (const option of nodeDef.options) {
+      const expectedEdgeId = computeEdgeId(nodeId, option.value)
+
+      // Find the edge from this node to the option's next node
+      const edge = mermaid.edges.find((e) => e.from === nodeId && e.to === option.next)
+
+      if (edge && edge.id.startsWith('edge_')) {
+        // Edge exists but has auto-generated ID - replace with computed ID
+        edge.id = expectedEdgeId
+      }
+    }
+  }
+
   // Build executable nodes by merging definition with parsed content
   const nodes: Record<string, ExecutableNode> = {}
 

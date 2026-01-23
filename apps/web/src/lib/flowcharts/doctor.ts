@@ -6,7 +6,6 @@
  */
 
 import type { FlowchartDefinition, TransformExpression } from './schema'
-import { computeEdgeId } from './schema'
 import { parseMermaidFile } from './parser'
 import { evaluate, type EvalContext } from './evaluator'
 
@@ -99,7 +98,6 @@ export const DiagnosticCodes = {
   // Mermaid issues (MERM-xxx)
   MERMAID_ESCAPED_QUOTES: 'MERM-001',
   MERMAID_NODE_MISMATCH: 'MERM-002',
-  MERMAID_MISSING_EDGE_ID: 'MERM-003',
 
   // Test coverage issues (TEST-xxx)
   TEST_NO_EXPECTED_ANSWERS: 'TEST-001',
@@ -740,83 +738,6 @@ function checkMermaidNodeConsistency(
   return diagnostics
 }
 
-/**
- * Check that decision edges in mermaid have the required edge ID syntax.
- *
- * For reliable edge highlighting during visualization, decision edges must use
- * the `id@-->` syntax with IDs matching the pattern `{nodeId}_{optionValue}`.
- *
- * Example:
- *   Definition: { "id": "COMPARE", options: [{ "value": "direct", ... }] }
- *   Mermaid must have: COMPARE COMPARE_direct@-->|"..."| NEXT_NODE
- */
-function checkMermaidEdgeIds(
-  definition: FlowchartDefinition,
-  mermaidContent: string
-): FlowchartDiagnostic[] {
-  const diagnostics: FlowchartDiagnostic[] = []
-
-  // Parse mermaid to get edges
-  const parsedMermaid = parseMermaidFile(mermaidContent)
-
-  // Build a set of edge IDs that exist in the mermaid (from id@--> syntax)
-  // Edges without explicit IDs have auto-generated IDs like "edge_0"
-  const mermaidEdgeIds = new Set(
-    parsedMermaid.edges
-      .filter((e) => !e.id.startsWith('edge_')) // Only explicit IDs
-      .map((e) => e.id)
-  )
-
-  // Check each decision node's options
-  const missingEdgeIds: Array<{ nodeId: string; optionValue: string; expectedId: string }> = []
-
-  for (const [nodeId, node] of Object.entries(definition.nodes)) {
-    if (node.type !== 'decision') continue
-
-    for (const option of node.options) {
-      const expectedEdgeId = computeEdgeId(nodeId, option.value)
-
-      if (!mermaidEdgeIds.has(expectedEdgeId)) {
-        missingEdgeIds.push({
-          nodeId,
-          optionValue: option.value,
-          expectedId: expectedEdgeId,
-        })
-      }
-    }
-  }
-
-  if (missingEdgeIds.length > 0) {
-    // Group by node for cleaner reporting
-    const byNode = new Map<string, typeof missingEdgeIds>()
-    for (const item of missingEdgeIds) {
-      const existing = byNode.get(item.nodeId) || []
-      existing.push(item)
-      byNode.set(item.nodeId, existing)
-    }
-
-    for (const [nodeId, items] of byNode) {
-      const expectedIds = items.map((i) => i.expectedId).join(', ')
-      const exampleEdge = `${nodeId} ${items[0].expectedId}@-->|"${items[0].optionValue}"| NEXT_NODE`
-
-      diagnostics.push({
-        code: DiagnosticCodes.MERMAID_MISSING_EDGE_ID,
-        severity: 'warning',
-        title: `Decision node "${nodeId}" missing edge IDs in mermaid`,
-        message: `The mermaid content is missing edge IDs for decision node "${nodeId}". Expected edge IDs: ${expectedIds}. Without these IDs, edge highlighting during visualization will not work correctly.`,
-        location: {
-          section: 'mermaid',
-          path: `edges from ${nodeId}`,
-          description: `Mermaid edges from decision node "${nodeId}"`,
-        },
-        suggestion: `Add edge IDs using the id@--> syntax. Pattern: {nodeId}_{optionValue}@-->|"label"|\n\nExample:\n${exampleEdge}\n\nThe edge ID must match the pattern {nodeId}_{option.value} exactly.`,
-      })
-    }
-  }
-
-  return diagnostics
-}
-
 // =============================================================================
 // Test Coverage Checks
 // =============================================================================
@@ -962,7 +883,6 @@ export function diagnoseFlowchart(
   if (mermaidContent) {
     diagnostics.push(...checkMermaidEscapedQuotes(mermaidContent))
     diagnostics.push(...checkMermaidNodeConsistency(definition, mermaidContent))
-    diagnostics.push(...checkMermaidEdgeIds(definition, mermaidContent))
   }
 
   // Count by severity
