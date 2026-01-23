@@ -67,23 +67,9 @@ resource "kubernetes_config_map" "gatus_config" {
   }
 }
 
-resource "kubernetes_persistent_volume_claim" "gatus_data" {
-  metadata {
-    name      = "gatus-data"
-    namespace = kubernetes_namespace.abaci.metadata[0].name
-  }
-
-  spec {
-    access_modes       = ["ReadWriteOnce"]
-    storage_class_name = "local-path"
-
-    resources {
-      requests = {
-        storage = "1Gi"
-      }
-    }
-  }
-}
+# Note: Using emptyDir for simplicity. Gatus rebuilds history on restart.
+# If persistent history is needed, use a PVC but terraform may timeout
+# waiting for local-path provisioner (which only binds when pod mounts).
 
 resource "kubernetes_deployment" "gatus" {
   metadata {
@@ -169,9 +155,7 @@ resource "kubernetes_deployment" "gatus" {
 
         volume {
           name = "data"
-          persistent_volume_claim {
-            claim_name = kubernetes_persistent_volume_claim.gatus_data.metadata[0].name
-          }
+          empty_dir {}
         }
       }
     }
@@ -198,58 +182,15 @@ resource "kubernetes_service" "gatus" {
   }
 }
 
-# Ingress for status.abaci.one
+# Ingress for status.abaci.one (HTTP only for now, SSL can be added later)
+# Note: ACME HTTP-01 challenge has issues with Traefik ingress routing.
+# Consider DNS-01 challenge or using the main domain's wildcard cert.
 resource "kubernetes_ingress_v1" "gatus" {
   metadata {
     name      = "gatus"
     namespace = kubernetes_namespace.abaci.metadata[0].name
     annotations = {
-      "cert-manager.io/cluster-issuer"                   = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
-      "traefik.ingress.kubernetes.io/router.entrypoints" = "websecure"
-      "traefik.ingress.kubernetes.io/router.middlewares" = "${kubernetes_namespace.abaci.metadata[0].name}-hsts@kubernetescrd"
-    }
-  }
-
-  spec {
-    ingress_class_name = "traefik"
-
-    tls {
-      hosts       = ["status.${var.app_domain}"]
-      secret_name = "gatus-tls"
-    }
-
-    rule {
-      host = "status.${var.app_domain}"
-
-      http {
-        path {
-          path      = "/"
-          path_type = "Prefix"
-
-          backend {
-            service {
-              name = kubernetes_service.gatus.metadata[0].name
-              port {
-                number = 80
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  depends_on = [null_resource.cert_manager_issuers]
-}
-
-# HTTP to HTTPS redirect for status subdomain
-resource "kubernetes_ingress_v1" "gatus_http_redirect" {
-  metadata {
-    name      = "gatus-http-redirect"
-    namespace = kubernetes_namespace.abaci.metadata[0].name
-    annotations = {
-      "traefik.ingress.kubernetes.io/router.entrypoints" = "web"
-      "traefik.ingress.kubernetes.io/router.middlewares" = "${kubernetes_namespace.abaci.metadata[0].name}-redirect-https@kubernetescrd"
+      "traefik.ingress.kubernetes.io/router.entrypoints" = "web,websecure"
     }
   }
 
