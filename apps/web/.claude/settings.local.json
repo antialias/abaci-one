@@ -105,7 +105,21 @@
       "Bash(tr:*)",
       "mcp__chrome-devtools__close_page",
       "mcp__chrome-devtools__press_key",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run tsc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx prettier:*)",
+      "Bash(awk:*)",
+      "Bash(mcp__sqlite__read_query:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:mermaid.ai)",
+      "mcp__chrome-devtools__hover",
+      "mcp__chrome-devtools__list_network_requests",
+      "mcp__chrome-devtools__get_network_request",
+      "Bash(npm run db:push:*)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl logs:*)"
     ],
     "deny": [],
     "ask": []

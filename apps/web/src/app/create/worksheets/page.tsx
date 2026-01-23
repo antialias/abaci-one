@@ -81,7 +81,12 @@ async function loadWorksheetSettings(): Promise<
 }
 
 export default async function AdditionWorksheetPage() {
+  const pageStart = Date.now()
+
+  console.log('[SSR] Starting worksheet page render...')
+  const settingsStart = Date.now()
   const initialSettings = await loadWorksheetSettings()
+  console.log(`[SSR] loadWorksheetSettings: ${Date.now() - settingsStart}ms`)
 
   // Calculate derived state needed for preview
   // Use defaults for required fields (loadWorksheetSettings should always provide these, but TypeScript needs guarantees)
@@ -105,7 +110,10 @@ export default async function AdditionWorksheetPage() {
   const INITIAL_PAGES = 3
   const pagesToGenerate = Math.min(INITIAL_PAGES, pages)
   console.log(`[SSR] Generating initial ${pagesToGenerate} pages on server (total: ${pages})...`)
+  const previewStart = Date.now()
   const previewResult = await generateWorksheetPreview(fullConfig, 0, pagesToGenerate - 1)
+  console.log(`[SSR] generateWorksheetPreview: ${Date.now() - previewStart}ms`)
+  console.log(`[SSR] Total page render: ${Date.now() - pageStart}ms`)
   console.log('[SSR] Preview generation complete:', previewResult.success ? 'success' : 'failed')
 
   // Pass settings and preview to client, wrapped in error boundary
