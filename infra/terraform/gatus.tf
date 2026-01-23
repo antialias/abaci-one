@@ -23,7 +23,7 @@ resource "kubernetes_config_map" "gatus_config" {
 
       endpoints:
         # ============ Website ============
-        - name: Homepage
+        - name: "Homepage"
           group: Website
           url: "https://abaci.one/"
           interval: 60s
@@ -32,46 +32,38 @@ resource "kubernetes_config_map" "gatus_config" {
             - "[RESPONSE_TIME] < 2000"
 
         # ============ Arcade ============
-        - name: Games Hub
+        - name: "Games Hub — /games"
           group: Arcade
           url: "https://abaci.one/games"
           interval: 120s
           conditions:
             - "[STATUS] == 200"
-          ui:
-            hide-url: false
 
         # ============ Worksheets ============
-        - name: Worksheet Builder
+        - name: "Worksheet Builder — /create/worksheets"
           group: Worksheets
           url: "https://abaci.one/create/worksheets"
           interval: 120s
           conditions:
             - "[STATUS] == 200"
-          ui:
-            hide-url: false
 
-        - name: Flashcard Generator
+        - name: "Flashcard Generator — /create/flashcards"
           group: Worksheets
           url: "https://abaci.one/create/flashcards"
           interval: 120s
           conditions:
             - "[STATUS] == 200"
-          ui:
-            hide-url: false
 
         # ============ Flowcharts ============
-        - name: Flowchart Viewer
+        - name: "Flowchart Viewer — /flowchart"
           group: Flowcharts
           url: "https://abaci.one/flowchart"
           interval: 120s
           conditions:
             - "[STATUS] == 200"
-          ui:
-            hide-url: false
 
         # ============ Core API ============
-        - name: Health API
+        - name: "Health Check — /api/health"
           group: Core API
           url: "https://abaci.one/api/health"
           interval: 30s
@@ -79,11 +71,9 @@ resource "kubernetes_config_map" "gatus_config" {
             - "[STATUS] == 200"
             - "[RESPONSE_TIME] < 500"
             - "[BODY].status == healthy"
-          ui:
-            hide-url: false
 
         # ============ Infrastructure ============
-        - name: SQLite Database
+        - name: "SQLite Database"
           group: Infrastructure
           url: "https://abaci.one/api/health"
           interval: 30s
@@ -91,7 +81,7 @@ resource "kubernetes_config_map" "gatus_config" {
             - "[STATUS] == 200"
             - "[BODY].checks.database.status == ok"
 
-        - name: Redis Cache
+        - name: "Redis Cache"
           group: Infrastructure
           url: "tcp://redis.abaci.svc.cluster.local:6379"
           interval: 30s
