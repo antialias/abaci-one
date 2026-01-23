@@ -222,25 +222,26 @@ resource "kubernetes_stateful_set" "app" {
 
           resources {
             requests = {
-              memory = "256Mi"
-              cpu    = "100m"
+              memory = "512Mi"
+              cpu    = "200m"
             }
             limits = {
-              memory = "512Mi"
-              cpu    = "1000m"
+              memory = "1Gi"
+              cpu    = "2000m"
             }
           }
 
           # Health checks hit the LiteFS proxy
+          # Tuned for resilience under load: longer timeouts, more failures allowed
           liveness_probe {
             http_get {
               path = "/api/health"
               port = 8080
             }
             initial_delay_seconds = 30
-            period_seconds        = 10
-            timeout_seconds       = 5
-            failure_threshold     = 3
+            period_seconds        = 15
+            timeout_seconds       = 10
+            failure_threshold     = 5
           }
 
           readiness_probe {
@@ -249,9 +250,9 @@ resource "kubernetes_stateful_set" "app" {
               port = 8080
             }
             initial_delay_seconds = 5
-            period_seconds        = 5
-            timeout_seconds       = 3
-            failure_threshold     = 3
+            period_seconds        = 10
+            timeout_seconds       = 10
+            failure_threshold     = 5
           }
 
           volume_mount {
@@ -358,7 +359,7 @@ resource "kubernetes_ingress_v1" "app" {
     annotations = {
       "cert-manager.io/cluster-issuer"                   = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
       "traefik.ingress.kubernetes.io/router.entrypoints" = "websecure"
-      "traefik.ingress.kubernetes.io/router.middlewares" = "${kubernetes_namespace.abaci.metadata[0].name}-hsts@kubernetescrd"
+      "traefik.ingress.kubernetes.io/router.middlewares" = "${kubernetes_namespace.abaci.metadata[0].name}-hsts@kubernetescrd,${kubernetes_namespace.abaci.metadata[0].name}-rate-limit@kubernetescrd,${kubernetes_namespace.abaci.metadata[0].name}-in-flight-req@kubernetescrd"
     }
   }
 
@@ -408,6 +409,41 @@ resource "kubernetes_manifest" "hsts_middleware" {
         stsSeconds           = 63072000
         stsIncludeSubdomains = true
         stsPreload           = true
+      }
+    }
+  }
+}
+
+# Rate limiting middleware - protect against traffic spikes
+resource "kubernetes_manifest" "rate_limit_middleware" {
+  manifest = {
+    apiVersion = "traefik.io/v1alpha1"
+    kind       = "Middleware"
+    metadata = {
+      name      = "rate-limit"
+      namespace = kubernetes_namespace.abaci.metadata[0].name
+    }
+    spec = {
+      rateLimit = {
+        average = 50  # 50 requests/sec average
+        burst   = 100 # Allow bursts up to 100
+      }
+    }
+  }
+}
+
+# In-flight request limiting - cap concurrent connections
+resource "kubernetes_manifest" "in_flight_middleware" {
+  manifest = {
+    apiVersion = "traefik.io/v1alpha1"
+    kind       = "Middleware"
+    metadata = {
+      name      = "in-flight-req"
+      namespace = kubernetes_namespace.abaci.metadata[0].name
+    }
+    spec = {
+      inFlightReq = {
+        amount = 100 # Max 100 concurrent requests
       }
     }
   }
