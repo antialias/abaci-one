@@ -58,8 +58,9 @@ This directory contains Terraform configuration for deploying the Abaci.one appl
 ### LiteFS
 - Provides distributed SQLite with automatic replication
 - Mounted via FUSE at `/litefs`
-- Primary handles all writes, replicas forward writes to primary
+- Primary (pod-0) handles all writes
 - Replicas maintain read-only copies for load distribution
+- **Important:** LiteFS proxy's `fly-replay` header only works on Fly.io, not k8s
 
 ### Keel (Auto-Deployment)
 - Watches `ghcr.io` for new images
@@ -68,13 +69,16 @@ This directory contains Terraform configuration for deploying the Abaci.one appl
 - **No manual deployment steps required after pushing to main**
 
 ### Services
-- **abaci-app**: ClusterIP service, load balances across all pods
+- **abaci-app**: ClusterIP service, load balances GET requests across all pods
+- **abaci-app-primary**: Routes to pod-0 only (for POST/PUT/DELETE/PATCH)
 - **abaci-app-headless**: Headless service for pod-to-pod DNS (LiteFS replication)
 
-### Ingress
+### Ingress & Write Routing
 - Traefik ingress controller (included with k3s)
 - SSL certificates via cert-manager + Let's Encrypt
 - HSTS, rate limiting, and in-flight request limits
+- **IngressRoute** routes write methods (POST/PUT/DELETE/PATCH) to primary service
+- This is required because LiteFS proxy on replicas returns `fly-replay` header which k8s doesn't understand
 
 ## File Structure
 

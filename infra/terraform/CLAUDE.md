@@ -77,8 +77,28 @@ kubectl --kubeconfig=~/.kube/k3s-config -n abaci rollout restart statefulset aba
 
 - **StatefulSet**: `abaci-app` (app pods with LiteFS)
 - **Headless Service**: `abaci-app-headless` (pod-to-pod DNS)
-- **Main Service**: `abaci-app` (load balancer)
+- **Main Service**: `abaci-app` (load balancer for GET requests)
+- **Primary Service**: `abaci-app-primary` (routes to pod-0 only for writes)
 - **Ingress**: Routes `abaci.one` to app service
+- **IngressRoute**: Routes POST/PUT/DELETE/PATCH to primary service
+
+## CRITICAL: LiteFS Write Routing on k8s
+
+**LiteFS proxy only works properly on Fly.io.** On replicas, it returns a `fly-replay` header expecting Fly.io's infrastructure to re-route to the primary. k8s Traefik doesn't understand this header.
+
+**Symptoms of broken write routing:**
+- POST requests return 200 with empty body (~60-80% of the time)
+- Server logs show `http: proxy response error: context canceled`
+- Works when hitting primary pod directly, fails through load balancer
+
+**Solution implemented:**
+- `abaci-app-primary` service targets only pod-0 (LiteFS primary)
+- Traefik IngressRoute routes POST/PUT/DELETE/PATCH to primary service
+- GET requests still load-balance across all replicas
+
+**Do NOT:**
+- Add API paths to LiteFS `passthrough` config as a workaround
+- Expect LiteFS proxy to forward writes on non-Fly.io deployments
 
 ## Common Operations
 
