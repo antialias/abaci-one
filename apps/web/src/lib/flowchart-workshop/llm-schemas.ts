@@ -96,6 +96,7 @@ export const ProblemInputSchema = z.object({
 
 /**
  * Schema for a variable definition (with name for array format)
+ * DEPRECATED: Use node transforms instead
  */
 export const VariableEntrySchema = z.object({
   name: z.string().describe('Variable name (e.g., "topOnes", "needsBorrow")'),
@@ -105,7 +106,17 @@ export const VariableEntrySchema = z.object({
 })
 
 /**
+ * Schema for a transform expression on a node
+ * Transforms are executed when entering a node, in order
+ */
+export const TransformEntrySchema = z.object({
+  key: z.string().describe('Variable name to create/update'),
+  expr: z.string().describe('Expression to evaluate (can reference input fields, prior transforms)'),
+})
+
+/**
  * Schema for a string key-value pair (for OpenAI compatibility)
+ * Moved before other schemas that depend on it
  */
 export const StringKeyValueSchema = z.object({
   key: z.string().describe('Key name'),
@@ -113,11 +124,48 @@ export const StringKeyValueSchema = z.object({
 })
 
 /**
+ * Schema for display template with multiple formats
+ */
+export const DisplayTemplateSchema = z.object({
+  text: z.string().describe('Plain text format (required)'),
+  web: z.string().nullable().describe('MathML/HTML format for browser display'),
+  typst: z.string().nullable().describe('Typst format for PDF worksheets'),
+})
+
+/**
+ * Schema for answer definition
+ * Defines how to extract and display the final answer from terminal state
+ */
+export const AnswerDefinitionSchema = z.object({
+  values: z
+    .array(StringKeyValueSchema)
+    .describe('Map answer component names to variable references (e.g., [{ key: "result", value: "finalAnswer" }])'),
+  display: DisplayTemplateSchema.describe('Templates for displaying the answer (supports {{name}} and {{=expr}} interpolation)'),
+})
+
+/**
+ * Schema for structured test cases
+ */
+export const StructuredTestValueSchema = z.object({
+  key: z.string().describe('Field name'),
+  value: z.union([z.number(), z.string(), z.boolean()]).describe('Expected value (primitive)'),
+})
+
+export const StructuredTestCaseSchema = z.object({
+  name: z.string().describe('Test case name'),
+  values: z.array(ExampleValueSchema).describe('Input values for the test'),
+  expected: z.array(StructuredTestValueSchema).describe('Expected answer values (primitives, not strings)'),
+})
+
+/**
  * Schema for a decision option
+ *
+ * NOTE: Edge IDs are auto-computed as {nodeId}_{optionValue}.
+ * Mermaid content must use this exact pattern: NODE NODE_value@-->|"Label"| NEXT
  */
 export const DecisionOptionSchema = z.object({
   label: z.string().describe('Text shown on the button (e.g., "Yes! Top is bigger")'),
-  value: z.string().describe('Unique identifier for this option (e.g., "direct", "borrow")'),
+  value: z.string().describe('Unique identifier for this option (e.g., "direct", "borrow"). Also used to compute edge ID as {nodeId}_{value}'),
   next: z.string().describe('Node ID to navigate to when selected'),
   pathLabel: z
     .string()
@@ -153,6 +201,7 @@ export const FlowchartNodeSchema = z.discriminatedUnion('type', [
     workingProblemUpdate: WorkingProblemUpdateSchema.nullable().describe(
       'Optional update to working problem display'
     ),
+    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
   }),
   z.object({
     type: z.literal('decision'),
@@ -169,6 +218,7 @@ export const FlowchartNodeSchema = z.discriminatedUnion('type', [
       .describe(
         'If true, exclude from path enumeration in example grid. Use for verification/confirmation decisions that do not represent meaningfully different problem types.'
       ),
+    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
   }),
   z.object({
     type: z.literal('checkpoint'),
@@ -202,18 +252,22 @@ export const FlowchartNodeSchema = z.discriminatedUnion('type', [
       .boolean()
       .nullable()
       .describe('If true, skip path not included in enumeration'),
+    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
   }),
   z.object({
     type: z.literal('milestone'),
     next: z.string().describe('Node ID to navigate to next'),
+    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
   }),
   z.object({
     type: z.literal('embellishment'),
     next: z.string().describe('Node ID to navigate to next'),
+    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
   }),
   z.object({
     type: z.literal('terminal'),
     celebration: z.boolean().nullable().describe('Whether to show celebration animation'),
+    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
   }),
 ])
 
@@ -252,9 +306,9 @@ export const FlowchartDefinitionSchema = z.object({
   title: z.string().describe('Human-readable title (e.g., "Subtraction with Regrouping")'),
   mermaidFile: z.string().describe('Filename for mermaid content (e.g., "flowchart.mmd")'),
   problemInput: ProblemInputSchema.describe('Schema for problem inputs'),
-  variables: z.array(VariableEntrySchema).describe('Computed variables derived from inputs'),
+  variables: z.array(VariableEntrySchema).nullable().describe('DEPRECATED: Use node transforms instead. Computed variables derived from inputs.'),
   entryNode: z.string().describe('ID of the first node to display'),
-  nodes: z.array(NodeEntrySchema).describe('All nodes in the flowchart'),
+  nodes: z.array(NodeEntrySchema).describe('All nodes in the flowchart - use transform on nodes to compute values'),
   edges: z.array(EdgeEntrySchema).nullable().describe('Optional explicit edge definitions'),
   workingProblem: z
     .object({
@@ -282,6 +336,13 @@ export const FlowchartDefinitionSchema = z.object({
     .array(StringKeyValueSchema)
     .nullable()
     .describe('Additional constraints for problem generation'),
+  answer: AnswerDefinitionSchema.describe(
+    'REQUIRED: Defines how to extract and display the final answer. Use values to map answer components to computed variables, and display for formatting with {{name}} or {{=expr}} interpolation.'
+  ),
+  tests: z
+    .array(StructuredTestCaseSchema)
+    .nullable()
+    .describe('Structured test cases with primitive expected values'),
   display: z
     .object({
       problem: z
@@ -294,7 +355,7 @@ export const FlowchartDefinitionSchema = z.object({
         .string()
         .nullable()
         .describe(
-          'Expression for computing the answer display. REQUIRED for custom schemas. If omitted, system looks for a variable named "answer" or uses generation.target. Example: "fate" to display the fate variable.'
+          'DEPRECATED: Use the top-level answer definition instead. Legacy expression for computing the answer display.'
         ),
     })
     .nullable()
@@ -377,10 +438,12 @@ export const RefinementResultSchema = z.object({
 export function transformLLMDefinitionToInternal(
   llmDef: z.infer<typeof FlowchartDefinitionSchema>
 ): import('../flowcharts/schema').FlowchartDefinition {
-  // Convert variables array to record
+  // Convert variables array to record (may be null/deprecated)
   const variables: Record<string, { init: string }> = {}
-  for (const v of llmDef.variables) {
-    variables[v.name] = { init: v.init }
+  if (llmDef.variables) {
+    for (const v of llmDef.variables) {
+      variables[v.name] = { init: v.init }
+    }
   }
 
   // Convert nodes array to record
@@ -390,6 +453,10 @@ export function transformLLMDefinitionToInternal(
     const llmNode = n.node
     let internalNode: import('../flowcharts/schema').FlowchartNode
 
+    // Helper to convert transform array
+    const convertTransform = (transform: { key: string; expr: string }[] | null | undefined) =>
+      transform ? transform.map((t) => ({ key: t.key, expr: t.expr })) : undefined
+
     switch (llmNode.type) {
       case 'instruction':
         internalNode = {
@@ -397,6 +464,7 @@ export function transformLLMDefinitionToInternal(
           advance: 'tap',
           next: llmNode.next ?? undefined,
           workingProblemUpdate: llmNode.workingProblemUpdate ?? undefined,
+          transform: convertTransform(llmNode.transform),
         }
         break
       case 'decision':
@@ -413,6 +481,7 @@ export function transformLLMDefinitionToInternal(
           skipIf: llmNode.skipIf ?? undefined,
           skipTo: llmNode.skipTo ?? undefined,
           excludeFromExampleStructure: llmNode.excludeFromExampleStructure ?? undefined,
+          transform: convertTransform(llmNode.transform),
         }
         break
       case 'checkpoint': {
@@ -446,6 +515,7 @@ export function transformLLMDefinitionToInternal(
           skipIf: llmNode.skipIf ?? undefined,
           skipTo: llmNode.skipTo ?? undefined,
           excludeSkipFromPaths: llmNode.excludeSkipFromPaths ?? undefined,
+          transform: convertTransform(llmNode.transform),
         }
         break
       }
@@ -453,18 +523,21 @@ export function transformLLMDefinitionToInternal(
         internalNode = {
           type: 'milestone',
           next: llmNode.next,
+          transform: convertTransform(llmNode.transform),
         }
         break
       case 'embellishment':
         internalNode = {
           type: 'embellishment',
           next: llmNode.next,
+          transform: convertTransform(llmNode.transform),
         }
         break
       case 'terminal':
         internalNode = {
           type: 'terminal',
           celebration: llmNode.celebration ?? undefined,
+          transform: convertTransform(llmNode.transform),
         }
         break
     }
@@ -574,6 +647,27 @@ export function transformLLMDefinitionToInternal(
     }
   })
 
+  // Convert answer definition
+  const answer: import('../flowcharts/schema').AnswerDefinition | undefined = llmDef.answer
+    ? {
+        values: Object.fromEntries(llmDef.answer.values.map((v) => [v.key, v.value])),
+        display: {
+          text: llmDef.answer.display.text,
+          web: llmDef.answer.display.web ?? undefined,
+          typst: llmDef.answer.display.typst ?? undefined,
+        },
+      }
+    : undefined
+
+  // Convert tests
+  const tests: import('../flowcharts/schema').StructuredTestCase[] | undefined = llmDef.tests
+    ? llmDef.tests.map((t) => ({
+        name: t.name,
+        values: Object.fromEntries(t.values.map((v) => [v.key, v.value])),
+        expected: Object.fromEntries(t.expected.map((e) => [e.key, e.value])),
+      }))
+    : undefined
+
   return {
     id: llmDef.id,
     title: llmDef.title,
@@ -591,6 +685,8 @@ export function transformLLMDefinitionToInternal(
     workingProblem: llmDef.workingProblem ?? undefined,
     generation,
     constraints,
+    answer,
+    tests,
     display: llmDef.display
       ? {
           problem: llmDef.display.problem ?? undefined,
@@ -909,6 +1005,57 @@ READY1 --> CHECK1["<b>✅ READY CHECK</b><br/>───────────�
 **CRITICAL for circle nodes (embellishments):**
 - ✅ CORRECT: \`NODE(("😊"))\` or \`NODE(("🎉"))\` (contains emoji)
 - ❌ WRONG: \`NODE((""))\` (empty string causes parse error!)
+
+## Edge IDs (REQUIRED for reliable visualization)
+
+**ALWAYS assign unique IDs to decision edges** using the \`id@-->\` syntax. This enables reliable edge highlighting during visualization.
+
+**Edge IDs are auto-computed from the definition:**
+- Pattern: \`{nodeId}_{optionValue}\`
+- Example: Node "COMPARE" with option value "direct" → edge ID "COMPARE_direct"
+
+**You MUST use this exact pattern in mermaid:**
+\`\`\`mermaid
+COMPARE COMPARE_direct@-->|"DIRECT"| HAPPY
+COMPARE COMPARE_borrow@-->|"BORROW"| SAD
+\`\`\`
+
+**The pattern breakdown:**
+\`\`\`
+COMPARE COMPARE_direct@-->|"DIRECT"| HAPPY
+   │        │          │      │        │
+   │        │          │      │        └── Next node (matches option.next)
+   │        │          │      └── Edge label (matches option.pathLabel)
+   │        │          └── Arrow with ID prefix
+   │        └── Edge ID = {nodeId}_{option.value}
+   └── Source node (the decision node ID)
+\`\`\`
+
+**Example - Definition options:**
+\`\`\`json
+{
+  "id": "COMPARE",
+  "node": {
+    "type": "decision",
+    "options": [
+      { "value": "direct", "next": "HAPPY", "pathLabel": "DIRECT", ... },
+      { "value": "borrow", "next": "SAD", "pathLabel": "BORROW", ... }
+    ]
+  }
+}
+\`\`\`
+
+**Corresponding mermaid (edge IDs computed as COMPARE_direct, COMPARE_borrow):**
+\`\`\`mermaid
+COMPARE COMPARE_direct@-->|"DIRECT"| HAPPY
+COMPARE COMPARE_borrow@-->|"BORROW"| SAD
+\`\`\`
+
+**For non-decision edges** (sequential flow), use descriptive IDs:
+\`\`\`mermaid
+START start_to_compare@--> COMPARE
+PHASE1 phase1_to_phase2@--> PHASE2
+\`\`\`
 
 ## Emoji Usage
 
@@ -1455,40 +1602,43 @@ export function getSubtractionExample(): string {
 }
 \`\`\`
 
-**Complete Mermaid example** (with cue+details style and proper layout):
+**Complete Mermaid example** (with cue+details style, proper layout, and edge IDs):
 \`\`\`mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '18px', 'primaryColor': '#e3f2fd', 'primaryTextColor': '#1a1a1a'}, 'flowchart': {'curve': 'basis', 'nodeSpacing': 25, 'rankSpacing': 40}}}%%
 flowchart TB
     subgraph PHASE1["<b>1. 👀 LOOK AT THE ONES</b>"]
         direction LR
         START["<b>🔢 COMPARE ONES</b><br/>───────────<br/>Look at the ONES place<br/>Is the top bigger<br/>than the bottom?"]
-        START --> COMPARE{"<b>Top ones ≥<br/>bottom ones?</b>"}
-        COMPARE -->|"DIRECT"| HAPPY(("😊"))
-        COMPARE -->|"BORROW"| SAD(("😢"))
+        START START_to_COMPARE@--> COMPARE{"<b>Top ones ≥<br/>bottom ones?</b>"}
+        COMPARE COMPARE_direct@-->|"DIRECT"| HAPPY(("😊"))
+        COMPARE COMPARE_borrow@-->|"BORROW"| SAD(("😢"))
     end
 
     subgraph PHASE2["<b>2. ✏️ DO THE WORK</b>"]
         direction LR
-        HAPPY --> CHECK1["<b>✏️ SUBTRACT ONES</b><br/>───────────<br/>Top ones − bottom ones<br/>Write it in the ones place"]
-        SAD --> BORROW["<b>🏦 BORROW!</b><br/>───────────<br/>1. Cross out tens, write −1<br/>2. Add 10 to the ones<br/>3. NOW subtract"]
-        BORROW --> CHECK1
-        CHECK1 --> MILESTONE1(["✅ Ones done!"])
+        HAPPY HAPPY_to_CHECK1@--> CHECK1["<b>✏️ SUBTRACT ONES</b><br/>───────────<br/>Top ones − bottom ones<br/>Write it in the ones place"]
+        SAD SAD_to_BORROW@--> BORROW["<b>🏦 BORROW!</b><br/>───────────<br/>1. Cross out tens, write −1<br/>2. Add 10 to the ones<br/>3. NOW subtract"]
+        BORROW BORROW_to_CHECK1@--> CHECK1
+        CHECK1 CHECK1_to_MILESTONE1@--> MILESTONE1(["✅ Ones done!"])
     end
 
     subgraph PHASE3["<b>3. 🎯 FINISH UP</b>"]
         direction LR
-        MILESTONE1 --> CHECK2["<b>✏️ SUBTRACT TENS</b><br/>───────────<br/>Top tens − bottom tens<br/>Write it in the tens place"]
-        CHECK2 --> DONE(["🎉 All done!"])
+        MILESTONE1 MILESTONE1_to_CHECK2@--> CHECK2["<b>✏️ SUBTRACT TENS</b><br/>───────────<br/>Top tens − bottom tens<br/>Write it in the tens place"]
+        CHECK2 CHECK2_to_DONE@--> DONE(["🎉 All done!"])
     end
 
-    PHASE1 --> PHASE2
-    PHASE2 --> PHASE3
+    PHASE1 PHASE1_to_PHASE2@--> PHASE2
+    PHASE2 PHASE2_to_PHASE3@--> PHASE3
 
     style START fill:#e3f2fd,stroke:#1976d2
     style COMPARE fill:#fffde7,stroke:#fbc02d
     style BORROW fill:#ffcdd2,stroke:#b71c1c
     style DONE fill:#81c784,stroke:#388e3c
 \`\`\`
+
+**NOTE on edge IDs:** Decision edges use the pattern \`{nodeId}_{optionValue}\` (e.g., \`COMPARE_direct\`, \`COMPARE_borrow\`).
+Other edges can use any descriptive ID (e.g., \`START_to_COMPARE\`, \`PHASE1_to_PHASE2\`).
 
 **CRITICAL style syntax - node ID is REQUIRED:**
 - ✅ CORRECT: \`style START fill:#10b981\`

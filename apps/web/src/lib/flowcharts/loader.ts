@@ -51,6 +51,7 @@ import type {
   StateSnapshot,
   AnswerDefinition,
 } from './schema'
+import { computeEdgeId } from './schema'
 import { parseMermaidFile, parseNodeContent } from './parser'
 import { evaluate, type EvalContext } from './evaluator'
 import { formatProblemDisplay, interpolateTemplate } from './formatting'
@@ -530,13 +531,44 @@ export function simulateWalk(
     if (node.definition.type === 'terminal') break
 
     // Determine next node based on node type and accumulated state
-    const nextNodeId = getNextNodeForSimulation(flowchart, state, nodeId)
+    const { nextNodeId, selectedOptionValue, edgeId, edgeIndex } = getNextNodeForSimulation(flowchart, state, nodeId)
     if (!nextNodeId) break
+
+    // Update the last snapshot with decision/transition info
+    if (state.snapshots.length > 0) {
+      const lastSnapshot = state.snapshots[state.snapshots.length - 1]
+      const updatedSnapshot = {
+        ...lastSnapshot,
+        // Include decision info if this was a decision node
+        ...(selectedOptionValue ? { selectedOptionValue } : {}),
+        nextNodeId,
+        // Include both edge ID and index for reliable matching
+        edgeId,
+        edgeIndex,
+      }
+      state = {
+        ...state,
+        snapshots: [...state.snapshots.slice(0, -1), updatedSnapshot],
+      }
+    }
 
     state = { ...state, currentNode: nextNodeId }
   }
 
   return state
+}
+
+/**
+ * Result of determining next node during simulation.
+ */
+interface SimulationNextResult {
+  nextNodeId: string | null
+  /** For decision nodes: the option value that was selected (e.g., "MD" for multiply/divide) */
+  selectedOptionValue?: string
+  /** The unique ID of the edge taken (from ParsedEdge.id) for reliable edge matching */
+  edgeId?: string
+  /** The index of the edge in parse order (from ParsedEdge.index), for fallback matching */
+  edgeIndex?: number
 }
 
 /**
@@ -547,23 +579,71 @@ function getNextNodeForSimulation(
   flowchart: ExecutableFlowchart,
   state: FlowchartState,
   nodeId: string
-): string | null {
+): SimulationNextResult {
   const node = flowchart.nodes[nodeId]
-  if (!node) return null
+  if (!node) return { nextNodeId: null }
 
   const def = node.definition
   const context = createContextFromState(state)
 
+  /**
+   * Find an edge by ID (preferred) or by from/to/label (fallback).
+   *
+   * Priority:
+   * 1. If edgeId is provided, match by ID directly (canonical method)
+   * 2. If from/to match a single edge, use that
+   * 3. If multiple edges exist between from/to, try to match by label
+   * 4. Fallback to first matching edge
+   */
+  const findEdge = (from: string, to: string, edgeId?: string, edgeLabel?: string) => {
+    // Priority 1: Match by edge ID (canonical)
+    if (edgeId) {
+      const edgeById = flowchart.mermaid.edges.find((e) => e.id === edgeId)
+      if (edgeById) return edgeById
+      // If specified edgeId doesn't exist, fall through to from/to matching
+      console.warn(`Edge ID "${edgeId}" not found, falling back to from/to matching`)
+    }
+
+    // Priority 2+: Match by from/to
+    const matchingEdges = flowchart.mermaid.edges.filter((e) => e.from === from && e.to === to)
+    if (matchingEdges.length <= 1) return matchingEdges[0]
+
+    // Priority 3: Multiple edges - try to match by label
+    if (edgeLabel) {
+      const labelMatch = matchingEdges.find((e) => e.label === edgeLabel)
+      if (labelMatch) return labelMatch
+    }
+
+    // Priority 4: Fallback to first edge
+    return matchingEdges[0]
+  }
+
+  // Helper to build result with edge info
+  const buildResult = (
+    nextNodeId: string | null,
+    selectedOptionValue?: string,
+    explicitEdgeId?: string
+  ): SimulationNextResult => {
+    if (!nextNodeId) return { nextNodeId: null }
+    const edge = findEdge(nodeId, nextNodeId, explicitEdgeId, selectedOptionValue)
+    return {
+      nextNodeId,
+      selectedOptionValue,
+      edgeId: edge?.id,
+      edgeIndex: edge?.index,
+    }
+  }
+
   switch (def.type) {
     case 'terminal':
-      return null
+      return { nextNodeId: null }
 
     case 'decision': {
       // Check for skip condition
       if (def.skipIf && def.skipTo) {
         try {
           if (evaluate(def.skipIf, context)) {
-            return def.skipTo
+            return buildResult(def.skipTo, '__skip__')
           }
         } catch {
           // Continue to normal decision handling
@@ -571,6 +651,17 @@ function getNextNodeForSimulation(
       }
 
       // Determine path based on correctAnswer expression
+      // Use pathLabel for edge label matching (fallback), value for edge ID computation
+      const getEdgeLabel = (opt: typeof def.options[0]) => opt.pathLabel || opt.value
+
+      // Helper to build result from an option
+      // Edge ID is computed as {nodeId}_{optionValue} - mermaid must use this pattern
+      const buildFromOption = (opt: typeof def.options[0] | undefined) => {
+        if (!opt) return buildResult(null)
+        const edgeId = computeEdgeId(nodeId, opt.value)
+        return buildResult(opt.next, getEdgeLabel(opt), edgeId)
+      }
+
       if (def.correctAnswer) {
         try {
           const correct = evaluate(def.correctAnswer, context)
@@ -581,19 +672,20 @@ function getNextNodeForSimulation(
             const noOption = def.options.find(
               (o) => o.value === 'no' || o.value.toLowerCase().includes('no')
             )
-            if (correct && yesOption) return yesOption.next
-            if (!correct && noOption) return noOption.next
+            if (correct && yesOption) return buildFromOption(yesOption)
+            if (!correct && noOption) return buildFromOption(noOption)
             // Fallback to index-based
-            return correct ? def.options[0]?.next : def.options[1]?.next
+            return buildFromOption(correct ? def.options[0] : def.options[1])
           }
           // String match
           const option = def.options.find((o) => o.value === String(correct))
-          return option?.next ?? def.options[0]?.next
+          if (option) return buildFromOption(option)
+          return buildFromOption(def.options[0])
         } catch {
-          return def.options[0]?.next
+          return buildFromOption(def.options[0])
         }
       }
-      return def.options[0]?.next
+      return buildFromOption(def.options[0])
     }
 
     case 'checkpoint': {
@@ -601,7 +693,7 @@ function getNextNodeForSimulation(
       if (def.skipIf && def.skipTo) {
         try {
           if (evaluate(def.skipIf, context)) {
-            return def.skipTo
+            return buildResult(def.skipTo)
           }
         } catch {
           // Continue to normal handling
@@ -611,19 +703,19 @@ function getNextNodeForSimulation(
     }
     // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional fallthrough
     case 'instruction': {
-      if (def.next) return def.next
+      if (def.next) return buildResult(def.next)
       const edges = flowchart.definition.edges?.[nodeId]
-      if (edges && edges.length > 0) return edges[0]
+      if (edges && edges.length > 0) return buildResult(edges[0])
       const mermaidEdges = flowchart.mermaid.edges.filter((e) => e.from === nodeId)
-      return mermaidEdges[0]?.to ?? null
+      return buildResult(mermaidEdges[0]?.to ?? null)
     }
 
     case 'milestone':
     case 'embellishment':
-      return def.next
+      return buildResult(def.next)
 
     default:
-      return null
+      return { nextNodeId: null }
   }
 }
 

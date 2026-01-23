@@ -5,8 +5,10 @@
  * to help identify exactly where problems exist in flowchart configurations.
  */
 
-import type { FlowchartDefinition } from './schema'
+import type { FlowchartDefinition, TransformExpression } from './schema'
+import { computeEdgeId } from './schema'
 import { parseMermaidFile } from './parser'
+import { evaluate, type EvalContext } from './evaluator'
 
 // =============================================================================
 // Types
@@ -24,6 +26,9 @@ export interface DiagnosticLocation {
     | 'constraints'
     | 'display'
     | 'mermaid'
+    | 'transform'
+    | 'answer'
+    | 'tests'
   /** Specific field path within the section (e.g., "derived.answer" or "fields[0]") */
   path?: string
   /** Human-readable description of the location */
@@ -74,22 +79,33 @@ export const DiagnosticCodes = {
   NODE_MISSING_NEXT: 'NODE-001',
   NODE_INVALID_REFERENCE: 'NODE-002',
 
-  // Variable issues (VAR-xxx)
+  // Variable issues (VAR-xxx) - DEPRECATED, use transform instead
   VARIABLE_INVALID_EXPRESSION: 'VAR-001',
+
+  // Transform issues (XFORM-xxx)
+  TRANSFORM_CIRCULAR_REFERENCE: 'XFORM-001',
+  TRANSFORM_UNDEFINED_REFERENCE: 'XFORM-002',
+  TRANSFORM_SYNTAX_ERROR: 'XFORM-003',
+
+  // Answer definition issues (ANS-xxx)
+  ANSWER_MISSING_DEFINITION: 'ANS-001',
+  ANSWER_INVALID_REFERENCE: 'ANS-002',
+  ANSWER_TEMPLATE_ERROR: 'ANS-003',
 
   // Display issues (DISP-xxx)
   DISPLAY_MISSING_ANSWER: 'DISP-001',
   DISPLAY_DIVISION_WITHOUT_HANDLER: 'DISP-002',
-  DISPLAY_MISSING_PROBLEM: 'DISP-003',
 
   // Mermaid issues (MERM-xxx)
   MERMAID_ESCAPED_QUOTES: 'MERM-001',
   MERMAID_NODE_MISMATCH: 'MERM-002',
+  MERMAID_MISSING_EDGE_ID: 'MERM-003',
 
   // Test coverage issues (TEST-xxx)
   TEST_NO_EXPECTED_ANSWERS: 'TEST-001',
   TEST_INCOMPLETE_COVERAGE: 'TEST-002',
   TEST_FAILING: 'TEST-003',
+  TEST_EXPECTED_KEYS_MISMATCH: 'TEST-004',
 } as const
 
 // =============================================================================
@@ -255,63 +271,34 @@ function checkDerivedFields(definition: FlowchartDefinition): FlowchartDiagnosti
 }
 
 /**
- * Check for missing display.answer configuration.
+ * Check for missing answer definition.
  *
- * All flowcharts MUST have a display.answer expression defined.
- * Without it, worksheet/PDF generation shows "?" for answers.
+ * All flowcharts MUST have an `answer` definition that specifies
+ * how to extract and display the final answer.
  */
 function checkDisplayAnswer(definition: FlowchartDefinition): FlowchartDiagnostic[] {
   const diagnostics: FlowchartDiagnostic[] = []
 
-  if (!definition.display?.answer) {
+  if (!definition.answer) {
     diagnostics.push({
       code: DiagnosticCodes.DISPLAY_MISSING_ANSWER,
       severity: 'error',
-      title: 'Missing display.answer expression',
+      title: 'Missing answer definition',
       message:
-        'This flowchart has no display.answer expression. Worksheets and PDFs will show "?" for all answers.',
+        'This flowchart has no answer definition. Worksheets and PDFs will show "?" for all answers.',
       location: {
-        section: 'display',
-        path: 'answer',
-        description: 'display.answer (missing)',
+        section: 'answer',
+        path: '',
+        description: 'answer (missing)',
       },
       suggestion:
-        'Add a "display.answer" expression that computes the answer string from your variables. Example: "display": { "answer": "finalNum + \\"/\\" + finalDenom" }',
+        'Add an "answer" definition with values and display templates. Example: "answer": { "values": { "result": "finalAnswer" }, "display": { "text": "{{result}}" } }',
     })
   }
 
   return diagnostics
 }
 
-/**
- * Check for missing display.problem configuration.
- *
- * All flowcharts SHOULD have a display.problem expression defined.
- * Without it, the system falls back to schema-specific formatting which
- * is an anti-pattern and will be removed in the future.
- */
-function checkDisplayProblem(definition: FlowchartDefinition): FlowchartDiagnostic[] {
-  const diagnostics: FlowchartDiagnostic[] = []
-
-  if (!definition.display?.problem) {
-    diagnostics.push({
-      code: DiagnosticCodes.DISPLAY_MISSING_PROBLEM,
-      severity: 'warning',
-      title: 'Missing display.problem expression',
-      message:
-        'This flowchart has no display.problem expression. The system falls back to schema-specific formatting which is deprecated. Define an explicit display.problem expression for consistent behavior.',
-      location: {
-        section: 'display',
-        path: 'problem',
-        description: 'display.problem (missing)',
-      },
-      suggestion:
-        'Add a "display.problem" expression that formats the problem for display. Example for fractions: "display": { "problem": "(leftWhole > 0 ? leftWhole + \' \' : \'\') + leftNum + \'/\' + leftDenom + \' \' + op + \' \' + (rightWhole > 0 ? rightWhole + \' \' : \'\') + rightNum + \'/\' + rightDenom" }',
-    })
-  }
-
-  return diagnostics
-}
 
 /**
  * Check that generation.preferred has entries for all input fields
@@ -458,6 +445,217 @@ function checkDivisionInTarget(definition: FlowchartDefinition): FlowchartDiagno
 }
 
 // =============================================================================
+// Transform Checks (New Unified Computation Model)
+// =============================================================================
+
+/**
+ * Check node transforms for issues like circular references, undefined variables, and syntax errors.
+ */
+function checkNodeTransforms(definition: FlowchartDefinition): FlowchartDiagnostic[] {
+  const diagnostics: FlowchartDiagnostic[] = []
+
+  // Collect all input field names
+  const inputFieldNames = new Set(definition.problemInput.fields.map((f) => f.name))
+
+  // Collect all variable names (from deprecated variables section)
+  const variableNames = new Set(Object.keys(definition.variables || {}))
+
+  // Track all transform keys that will be available (accumulated across all nodes)
+  // This is an approximation since we don't know the actual walk order
+  const allTransformKeys = new Set<string>()
+
+  // First pass: collect all transform keys
+  for (const [_nodeId, node] of Object.entries(definition.nodes)) {
+    const transforms = node.transform || []
+    for (const transform of transforms) {
+      allTransformKeys.add(transform.key)
+    }
+  }
+
+  // Second pass: check each node's transforms
+  for (const [nodeId, node] of Object.entries(definition.nodes)) {
+    const transforms = node.transform || []
+    const localKeys = new Set<string>()
+
+    for (let i = 0; i < transforms.length; i++) {
+      const transform = transforms[i]
+
+      // Check for circular reference (key references itself in expr)
+      const refs = extractVariableReferences(transform.expr)
+      if (refs.includes(transform.key) && !localKeys.has(transform.key)) {
+        diagnostics.push({
+          code: DiagnosticCodes.TRANSFORM_CIRCULAR_REFERENCE,
+          severity: 'error',
+          title: 'Circular reference in transform',
+          message: `Transform "${transform.key}" references itself in its expression "${transform.expr}". This creates a circular dependency.`,
+          location: {
+            section: 'transform',
+            path: `nodes.${nodeId}.transform[${i}]`,
+            description: `Node "${nodeId}" transform[${i}]: ${transform.key}`,
+          },
+          suggestion: `Remove the self-reference or define "${transform.key}" in a previous transform before referencing it.`,
+        })
+      }
+
+      // Check for undefined references
+      for (const ref of refs) {
+        const isInput = inputFieldNames.has(ref)
+        const isVariable = variableNames.has(ref)
+        const isLocalPrevious = localKeys.has(ref)
+        const isGlobalTransform = allTransformKeys.has(ref)
+
+        // Allow: input fields, legacy variables, previously defined local keys, or any global transform key
+        if (!isInput && !isVariable && !isLocalPrevious && !isGlobalTransform) {
+          diagnostics.push({
+            code: DiagnosticCodes.TRANSFORM_UNDEFINED_REFERENCE,
+            severity: 'warning',
+            title: 'Transform may reference undefined variable',
+            message: `Transform "${transform.key}" in node "${nodeId}" references "${ref}" which is not a known input field, variable, or transform key.`,
+            location: {
+              section: 'transform',
+              path: `nodes.${nodeId}.transform[${i}]`,
+              description: `Node "${nodeId}" transform[${i}]: ${transform.key}`,
+            },
+            suggestion: `Ensure "${ref}" is defined before this node is reached during the walk. Known inputs: ${[...inputFieldNames].join(', ')}`,
+          })
+        }
+      }
+
+      // Check for syntax errors by trying to parse the expression
+      try {
+        // Create a mock context to test expression parsing
+        const mockContext: EvalContext = {
+          problem: {},
+          computed: {},
+          userState: {},
+        }
+        // We can't fully evaluate, but we can check for basic parsing
+        // The evaluate function will throw on syntax errors
+        evaluate(transform.expr, mockContext)
+      } catch (err) {
+        // Only report if it looks like a syntax error, not a reference error
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        if (
+          errorMsg.includes('syntax') ||
+          errorMsg.includes('Unexpected') ||
+          errorMsg.includes('Invalid')
+        ) {
+          diagnostics.push({
+            code: DiagnosticCodes.TRANSFORM_SYNTAX_ERROR,
+            severity: 'error',
+            title: 'Transform expression syntax error',
+            message: `Transform "${transform.key}" in node "${nodeId}" has a syntax error: ${errorMsg}`,
+            location: {
+              section: 'transform',
+              path: `nodes.${nodeId}.transform[${i}]`,
+              description: `Node "${nodeId}" transform[${i}]: ${transform.key}`,
+            },
+            suggestion: `Fix the expression syntax: "${transform.expr}"`,
+          })
+        }
+      }
+
+      localKeys.add(transform.key)
+    }
+  }
+
+  return diagnostics
+}
+
+/**
+ * Check the answer definition for issues.
+ */
+function checkAnswerDefinition(definition: FlowchartDefinition): FlowchartDiagnostic[] {
+  const diagnostics: FlowchartDiagnostic[] = []
+
+  const answerDef = definition.answer
+
+  // If no answer definition, check for legacy display.answer
+  if (!answerDef) {
+    // Legacy mode - checkDisplayAnswer will handle this
+    return diagnostics
+  }
+
+  // Collect all possible computed values (input fields + variables + all transform keys)
+  const inputFieldNames = new Set(definition.problemInput.fields.map((f) => f.name))
+  const variableNames = new Set(Object.keys(definition.variables || {}))
+  const allTransformKeys = new Set<string>()
+
+  for (const [_nodeId, node] of Object.entries(definition.nodes)) {
+    const transforms = node.transform || []
+    for (const transform of transforms) {
+      allTransformKeys.add(transform.key)
+    }
+  }
+
+  // Check that answer.values references valid computed values
+  for (const [name, ref] of Object.entries(answerDef.values)) {
+    const isInput = inputFieldNames.has(ref)
+    const isVariable = variableNames.has(ref)
+    const isTransform = allTransformKeys.has(ref)
+
+    if (!isInput && !isVariable && !isTransform) {
+      diagnostics.push({
+        code: DiagnosticCodes.ANSWER_INVALID_REFERENCE,
+        severity: 'error',
+        title: 'Answer references unknown value',
+        message: `Answer value "${name}" references "${ref}" which is not a known input field, variable, or transform key.`,
+        location: {
+          section: 'answer',
+          path: `values.${name}`,
+          description: `answer.values["${name}"]`,
+        },
+        suggestion: `Ensure "${ref}" is computed during the walk. Available: inputs (${[...inputFieldNames].join(', ')}), transforms (${[...allTransformKeys].slice(0, 5).join(', ')}${allTransformKeys.size > 5 ? '...' : ''})`,
+      })
+    }
+  }
+
+  // Check display templates for interpolation issues
+  const templates = [
+    { name: 'text', value: answerDef.display.text },
+    { name: 'web', value: answerDef.display.web },
+    { name: 'typst', value: answerDef.display.typst },
+  ]
+
+  for (const template of templates) {
+    if (!template.value) continue
+
+    // Check for {{variable}} references
+    const matches = template.value.matchAll(/\{\{([^}]+)\}\}/g)
+    for (const match of matches) {
+      const content = match[1].trim()
+
+      // If it starts with =, it's an expression - skip detailed checking
+      if (content.startsWith('=')) continue
+
+      // It's a variable reference
+      const isKnown =
+        inputFieldNames.has(content) ||
+        variableNames.has(content) ||
+        allTransformKeys.has(content) ||
+        Object.keys(answerDef.values).includes(content)
+
+      if (!isKnown) {
+        diagnostics.push({
+          code: DiagnosticCodes.ANSWER_TEMPLATE_ERROR,
+          severity: 'warning',
+          title: 'Answer template references unknown value',
+          message: `Answer display.${template.name} template references "{{${content}}}" which may not be available.`,
+          location: {
+            section: 'answer',
+            path: `display.${template.name}`,
+            description: `answer.display.${template.name}`,
+          },
+          suggestion: `Ensure "${content}" is defined as an input, transform, or answer value.`,
+        })
+      }
+    }
+  }
+
+  return diagnostics
+}
+
+// =============================================================================
 // Mermaid Content Checks
 // =============================================================================
 
@@ -537,6 +735,83 @@ function checkMermaidNodeConsistency(
       },
       suggestion: `The node IDs in the JSON "nodes" object must EXACTLY match the node IDs in the mermaid flowchart. For example, if your JSON has "nodes": { "START": {...} }, then the mermaid must have START["..."] or START{"..."} etc. REGENERATE the mermaid content using the SAME node IDs as defined in the JSON: ${jsonNodeIds.slice(0, 8).join(', ')}${jsonNodeIds.length > 8 ? '...' : ''}`,
     })
+  }
+
+  return diagnostics
+}
+
+/**
+ * Check that decision edges in mermaid have the required edge ID syntax.
+ *
+ * For reliable edge highlighting during visualization, decision edges must use
+ * the `id@-->` syntax with IDs matching the pattern `{nodeId}_{optionValue}`.
+ *
+ * Example:
+ *   Definition: { "id": "COMPARE", options: [{ "value": "direct", ... }] }
+ *   Mermaid must have: COMPARE COMPARE_direct@-->|"..."| NEXT_NODE
+ */
+function checkMermaidEdgeIds(
+  definition: FlowchartDefinition,
+  mermaidContent: string
+): FlowchartDiagnostic[] {
+  const diagnostics: FlowchartDiagnostic[] = []
+
+  // Parse mermaid to get edges
+  const parsedMermaid = parseMermaidFile(mermaidContent)
+
+  // Build a set of edge IDs that exist in the mermaid (from id@--> syntax)
+  // Edges without explicit IDs have auto-generated IDs like "edge_0"
+  const mermaidEdgeIds = new Set(
+    parsedMermaid.edges
+      .filter((e) => !e.id.startsWith('edge_')) // Only explicit IDs
+      .map((e) => e.id)
+  )
+
+  // Check each decision node's options
+  const missingEdgeIds: Array<{ nodeId: string; optionValue: string; expectedId: string }> = []
+
+  for (const [nodeId, node] of Object.entries(definition.nodes)) {
+    if (node.type !== 'decision') continue
+
+    for (const option of node.options) {
+      const expectedEdgeId = computeEdgeId(nodeId, option.value)
+
+      if (!mermaidEdgeIds.has(expectedEdgeId)) {
+        missingEdgeIds.push({
+          nodeId,
+          optionValue: option.value,
+          expectedId: expectedEdgeId,
+        })
+      }
+    }
+  }
+
+  if (missingEdgeIds.length > 0) {
+    // Group by node for cleaner reporting
+    const byNode = new Map<string, typeof missingEdgeIds>()
+    for (const item of missingEdgeIds) {
+      const existing = byNode.get(item.nodeId) || []
+      existing.push(item)
+      byNode.set(item.nodeId, existing)
+    }
+
+    for (const [nodeId, items] of byNode) {
+      const expectedIds = items.map((i) => i.expectedId).join(', ')
+      const exampleEdge = `${nodeId} ${items[0].expectedId}@-->|"${items[0].optionValue}"| NEXT_NODE`
+
+      diagnostics.push({
+        code: DiagnosticCodes.MERMAID_MISSING_EDGE_ID,
+        severity: 'warning',
+        title: `Decision node "${nodeId}" missing edge IDs in mermaid`,
+        message: `The mermaid content is missing edge IDs for decision node "${nodeId}". Expected edge IDs: ${expectedIds}. Without these IDs, edge highlighting during visualization will not work correctly.`,
+        location: {
+          section: 'mermaid',
+          path: `edges from ${nodeId}`,
+          description: `Mermaid edges from decision node "${nodeId}"`,
+        },
+        suggestion: `Add edge IDs using the id@--> syntax. Pattern: {nodeId}_{optionValue}@-->|"label"|\n\nExample:\n${exampleEdge}\n\nThe edge ID must match the pattern {nodeId}_{option.value} exactly.`,
+      })
+    }
   }
 
   return diagnostics
@@ -676,14 +951,18 @@ export function diagnoseFlowchart(
   // Run definition checks
   diagnostics.push(...checkDerivedFields(definition))
   diagnostics.push(...checkDisplayAnswer(definition))
-  diagnostics.push(...checkDisplayProblem(definition))
   diagnostics.push(...checkDivisionInTarget(definition))
   diagnostics.push(...checkGenerationPreferred(definition))
+
+  // Run new unified computation model checks
+  diagnostics.push(...checkNodeTransforms(definition))
+  diagnostics.push(...checkAnswerDefinition(definition))
 
   // Run mermaid content checks if provided
   if (mermaidContent) {
     diagnostics.push(...checkMermaidEscapedQuotes(mermaidContent))
     diagnostics.push(...checkMermaidNodeConsistency(definition, mermaidContent))
+    diagnostics.push(...checkMermaidEdgeIds(definition, mermaidContent))
   }
 
   // Count by severity

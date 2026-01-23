@@ -12,6 +12,7 @@ import type {
   ProblemExample,
   ProblemValue,
   VariableDefinition,
+  StateSnapshot,
 } from '../flowcharts/schema'
 import { evaluate, type EvalContext } from '../flowcharts/evaluator'
 import { analyzeFlowchart, type FlowchartPath } from '../flowcharts/path-analysis'
@@ -36,6 +37,8 @@ export interface TestResult {
   passed: boolean
   /** Error message if evaluation failed */
   error?: string
+  /** Computation trace snapshots (when run with ExecutableFlowchart) */
+  snapshots?: StateSnapshot[]
 }
 
 /**
@@ -50,6 +53,8 @@ export interface CoverageReport {
   uncoveredPaths: string[]
   /** Percentage of paths covered */
   coveragePercent: number
+  /** Whether path enumeration hit the safety limit (flowchart has more paths than counted) */
+  pathsLimitReached?: boolean
 }
 
 /**
@@ -257,6 +262,7 @@ export function runTestCaseWithFlowchart(
       actualAnswer: answer,
       expectedAnswer: example.expectedAnswer,
       passed,
+      snapshots: terminalState.snapshots,
     }
   } catch (err) {
     return {
@@ -395,6 +401,7 @@ export async function checkCoverage(
     coveredPaths,
     uncoveredPaths,
     coveragePercent,
+    pathsLimitReached: analysis.pathsLimitReached,
   }
 }
 
@@ -426,10 +433,19 @@ function findMatchingPath(
     for (const constraint of path.constraints) {
       try {
         const result = evaluate(constraint.expression, context)
-        const actualOutcome = Boolean(result)
-        if (actualOutcome !== constraint.requiredOutcome) {
-          matches = false
-          break
+        // For multi-option decisions, compare string values directly
+        if (constraint.requiredValue !== undefined) {
+          if (String(result) !== constraint.requiredValue) {
+            matches = false
+            break
+          }
+        } else {
+          // For binary decisions, use boolean comparison
+          const actualOutcome = Boolean(result)
+          if (actualOutcome !== constraint.requiredOutcome) {
+            matches = false
+            break
+          }
         }
       } catch {
         // If evaluation fails, this constraint doesn't match

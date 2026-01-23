@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { Logger } from '@soroban/llm-client'
 import type {
   ExecutableFlowchart,
   FlowchartState,
@@ -91,11 +92,6 @@ export function FlowchartWalker({
     return applyTransforms(initialState, initialState.currentNode, flowchart)
   })
 
-  // DEBUG: Log state snapshots when they change (remove after testing)
-  useEffect(() => {
-    console.log('[FlowchartWalker] State snapshots:', state.snapshots)
-    console.log('[FlowchartWalker] Accumulated values:', state.values)
-  }, [state.snapshots, state.values])
   const [phase, setPhase] = useState<WalkerPhase>({ type: 'showingNode' })
   const [wrongAttempts, setWrongAttempts] = useState(0)
   const [wrongDecision, setWrongDecision] = useState<WrongDecisionState | null>(null)
@@ -116,6 +112,22 @@ export function FlowchartWalker({
 
   // Visual debug mode
   const { isVisualDebugEnabled } = useVisualDebugSafe()
+
+  // Create logger that is enabled when visual debug mode is on
+  const logger = useMemo(
+    () =>
+      new Logger({
+        enabled: isVisualDebugEnabled,
+        minLevel: 'info',
+      }),
+    [isVisualDebugEnabled]
+  )
+
+  // Log state changes when visual debug mode is enabled
+  useEffect(() => {
+    logger.info('State snapshots updated', { snapshots: state.snapshots })
+    logger.info('Accumulated values', { values: state.values })
+  }, [logger, state.snapshots, state.values])
 
   // Current node
   const currentNode = useMemo(
@@ -267,6 +279,15 @@ export function FlowchartWalker({
       // Apply transforms for the new node (new unified computation model)
       newState = applyTransforms(newState, nextNodeId, flowchart)
 
+      logger.info('Advancing to node', {
+        from: state.currentNode,
+        to: nextNodeId,
+        action,
+        userInput,
+        correct,
+        values: newState.values,
+      })
+
       setState(newState)
       setPhase({ type: 'showingNode' })
       setWrongAttempts(0)
@@ -283,7 +304,7 @@ export function FlowchartWalker({
         }
       }
     },
-    [flowchart, state, currentNode, onComplete, autoAdvancePaused]
+    [flowchart, state, currentNode, onComplete, autoAdvancePaused, logger]
   )
 
   // Auto-advance for embellishment and milestone nodes
@@ -522,6 +543,12 @@ export function FlowchartWalker({
     (value: string) => {
       const correct = isDecisionCorrect(flowchart, state, state.currentNode, value)
 
+      logger.info('Decision selected', {
+        nodeId: state.currentNode,
+        selectedValue: value,
+        correct,
+      })
+
       if (correct === null || correct === true) {
         // No validation defined or correct answer
         setWrongDecision(null)
@@ -550,12 +577,19 @@ export function FlowchartWalker({
         }))
       }
     },
-    [flowchart, state, advanceToNext]
+    [flowchart, state, advanceToNext, logger]
   )
 
   const handleCheckpointSubmit = useCallback(
     (value: number | string | [number, number]) => {
       const result = validateCheckpoint(flowchart, state, state.currentNode, value)
+
+      logger.info('Checkpoint submitted', {
+        nodeId: state.currentNode,
+        userValue: value,
+        expected: result?.expected,
+        correct: result?.correct ?? true,
+      })
 
       if (result === null || result.correct) {
         // No validation or correct
@@ -590,7 +624,7 @@ export function FlowchartWalker({
         })
       }
     },
-    [flowchart, state, advanceToNext, autoAdvancePaused]
+    [flowchart, state, advanceToNext, autoAdvancePaused, logger]
   )
 
   const handleChecklistToggle = useCallback(

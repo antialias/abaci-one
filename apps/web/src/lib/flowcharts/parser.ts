@@ -342,11 +342,19 @@ export function parseMermaidFile(content: string): ParsedMermaid {
   }
 
   // Parse edges
-  // Matches: ID1 --> ID2, ID1 -->|"label"| ID2, ID1 --> ID2 --> ID3
-  const edgePattern = /(\w+)\s*-->\s*(?:\|"([^"]+)"\|\s*)?(\w+)/g
+  // Supports:
+  // - Basic: ID1 --> ID2
+  // - With label: ID1 -->|"label"| ID2
+  // - With edge ID (mermaid v11.6+): ID1 edgeId@--> ID2
+  // - With edge ID and label: ID1 edgeId@-->|"label"| ID2
+  // - Chained: ID1 --> ID2 --> ID3
+  //
+  // Edge ID syntax: The ID comes before @ and before the arrow
+  const edgePattern = /(\w+)\s+(?:(\w+)@)?-->\s*(?:\|"([^"]+)"\|\s*)?(\w+)/g
   let edgeMatch
+  let edgeIndex = 0
   while ((edgeMatch = edgePattern.exec(cleanContent)) !== null) {
-    const [, from, label, to] = edgeMatch
+    const [, from, edgeId, label, to] = edgeMatch
     // Skip phase-to-phase connections and style definitions
     if (from.startsWith('PHASE') || from === 'style') continue
 
@@ -354,7 +362,11 @@ export function parseMermaidFile(content: string): ParsedMermaid {
       from,
       to,
       label: label || undefined,
+      // Use explicit edge ID if provided, otherwise generate one
+      id: edgeId || `edge_${edgeIndex}`,
+      index: edgeIndex,
     })
+    edgeIndex++
   }
 
   return { nodes, edges, phases }

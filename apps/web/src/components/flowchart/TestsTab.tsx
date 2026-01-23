@@ -3,18 +3,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
-import type { FlowchartDefinition, ProblemExample, ProblemValue } from '@/lib/flowcharts/schema'
+import type { FlowchartDefinition, ProblemExample, ProblemValue, StateSnapshot } from '@/lib/flowcharts/schema'
 import {
   validateTestCases,
   formatTestFailure,
   type ValidationReport,
   type TestResult,
 } from '@/lib/flowchart-workshop/test-case-validator'
+import { ProblemTrace } from './ProblemTrace'
 
 interface TestsTabProps {
   definition: FlowchartDefinition | null
   validationReport?: ValidationReport | null
   onUpdateDefinition?: (definition: FlowchartDefinition) => void
+  /** Callback when hovering over a test/example (shows entire path via snapshots) */
+  onHoverSnapshots?: (snapshots: StateSnapshot[] | null) => void
+  /** Callback when hovering over a specific trace node (for focused highlighting) */
+  onHoverNode?: (nodeId: string | null) => void
 }
 
 /** Index of the test being edited, or null if not editing */
@@ -28,6 +33,8 @@ export function TestsTab({
   definition,
   validationReport: externalReport,
   onUpdateDefinition,
+  onHoverSnapshots,
+  onHoverNode,
 }: TestsTabProps) {
   const [localValidationReport, setLocalValidationReport] = useState<ValidationReport | null>(null)
   const [isRunning, setIsRunning] = useState(false)
@@ -250,6 +257,8 @@ export function TestsTab({
                 canEdit={!!onUpdateDefinition}
                 onEdit={() => setEditingTest({ index: testIndex, example: result.example })}
                 onDelete={() => handleDeleteTest(testIndex)}
+                onHoverSnapshots={onHoverSnapshots}
+                onHoverNode={onHoverNode}
               />
             )
           })}
@@ -286,9 +295,20 @@ export function TestsTab({
                   color: { base: 'blue.600', _dark: 'blue.400' },
                 })}
               >
-                {validationReport.coverage.coveredPaths}/{validationReport.coverage.totalPaths}{' '}
-                paths covered
+                {validationReport.coverage.coveredPaths}/{validationReport.coverage.totalPaths}
+                {validationReport.coverage.pathsLimitReached ? '+' : ''} paths covered
               </p>
+              {validationReport.coverage.pathsLimitReached && (
+                <p
+                  className={css({
+                    fontSize: 'xs',
+                    color: { base: 'amber.600', _dark: 'amber.400' },
+                    fontStyle: 'italic',
+                  })}
+                >
+                  (Flowchart has more paths than counted - limit reached)
+                </p>
+              )}
             </div>
           </div>
           {validationReport.coverage.uncoveredPaths.length > 0 && (
@@ -418,13 +438,20 @@ function TestResultRow({
   canEdit,
   onEdit,
   onDelete,
+  onHoverSnapshots,
+  onHoverNode,
 }: {
   result: TestResult
   canEdit?: boolean
   onEdit?: () => void
   onDelete?: () => void
+  onHoverSnapshots?: (snapshots: StateSnapshot[] | null) => void
+  onHoverNode?: (nodeId: string | null) => void
 }) {
   const [isExpanded, setIsExpanded] = useState(!result.passed)
+
+  // Use snapshots from the test result (captured during validation)
+  const snapshots = result.snapshots || []
 
   return (
     <div
@@ -440,6 +467,8 @@ function TestResultRow({
           ? { base: 'green.200', _dark: 'green.800' }
           : { base: 'red.200', _dark: 'red.800' },
       })}
+      onMouseEnter={() => snapshots.length > 0 && onHoverSnapshots?.(snapshots)}
+      onMouseLeave={() => onHoverSnapshots?.(null)}
     >
       <div
         className={hstack({
@@ -567,6 +596,33 @@ function TestResultRow({
               </p>
             )}
           </div>
+
+          {/* Computation Trace */}
+          {snapshots.length > 0 && (
+            <div
+              data-element="test-trace"
+              className={css({
+                marginTop: '3',
+                paddingTop: '3',
+                borderTop: '1px solid',
+                borderColor: { base: 'gray.200', _dark: 'gray.700' },
+              })}
+            >
+              <h4
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: 'semibold',
+                  color: { base: 'gray.600', _dark: 'gray.400' },
+                  marginBottom: '2',
+                  textTransform: 'uppercase',
+                  letterSpacing: 'wide',
+                })}
+              >
+                Computation Trace
+              </h4>
+              <ProblemTrace snapshots={snapshots} defaultExpanded={false} onHoverStep={onHoverNode} />
+            </div>
+          )}
         </div>
       )}
     </div>

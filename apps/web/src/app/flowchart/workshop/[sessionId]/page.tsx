@@ -30,11 +30,17 @@ import {
   type FlowchartDiagnostic,
   type DiagnosticReport,
 } from '@/lib/flowcharts/doctor'
-import { validateTestCases, checkCoverage } from '@/lib/flowchart-workshop/test-case-validator'
+import {
+  validateTestCases,
+  checkCoverage,
+  runTestCaseWithFlowchart,
+  type ValidationReport,
+} from '@/lib/flowchart-workshop/test-case-validator'
 import type {
   ExecutableFlowchart,
   FlowchartDefinition,
   ProblemValue,
+  StateSnapshot,
 } from '@/lib/flowcharts/schema'
 import { css } from '../../../../../styled-system/css'
 import { hstack, vstack } from '../../../../../styled-system/patterns'
@@ -86,6 +92,7 @@ export default function WorkshopPage() {
   const [executableFlowchart, setExecutableFlowchart] = useState<ExecutableFlowchart | null>(null)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
   const [showCreatePdfModal, setShowCreatePdfModal] = useState(false)
+  const [highlightedSnapshots, setHighlightedSnapshots] = useState<StateSnapshot[] | null>(null)
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null)
 
   // Examples for worksheet generation
@@ -170,13 +177,29 @@ export default function WorkshopPage() {
         return
       }
 
-      // Run basic validation
-      const validationReport = validateTestCases(definition)
+      let validationReport: ValidationReport
 
-      // If we have an executable flowchart, also check coverage
+      // Use the unified computation path when we have an executable flowchart
+      // This supports both legacy display.answer and new answer+transform model
       if (executableFlowchart && definition.problemInput.examples) {
+        const examples = definition.problemInput.examples.filter((ex) => ex.expectedAnswer)
+        const results = examples.map((example) => runTestCaseWithFlowchart(executableFlowchart, example))
         const coverage = await checkCoverage(executableFlowchart, definition.problemInput.examples)
-        validationReport.coverage = coverage
+
+        validationReport = {
+          passed: results.every((r) => r.passed),
+          results,
+          coverage,
+          summary: {
+            total: results.length,
+            passed: results.filter((r) => r.passed).length,
+            failed: results.filter((r) => !r.passed && !r.error).length,
+            errors: results.filter((r) => r.error).length,
+          },
+        }
+      } else {
+        // Fall back to basic validation (legacy path)
+        validationReport = validateTestCases(definition)
       }
 
       // Store the report for TestsTab to use
@@ -1188,6 +1211,7 @@ export default function WorkshopPage() {
               <DebugMermaidDiagram
                 mermaidContent={session.draftMermaidContent || ''}
                 currentNodeId=""
+                highlightedSnapshots={highlightedSnapshots ?? undefined}
                 highlightedNodeId={highlightedNodeId ?? undefined}
                 onRegenerate={handleGenerate}
                 isRegenerating={isGenerating}
@@ -1259,6 +1283,8 @@ export default function WorkshopPage() {
                 definition={definition}
                 validationReport={testValidationReport}
                 onUpdateDefinition={handleUpdateDefinition}
+                onHoverSnapshots={setHighlightedSnapshots}
+                onHoverNode={setHighlightedNodeId}
               />
             )}
             {activeTab === 'worksheet' && executableFlowchart && (
@@ -1293,6 +1319,7 @@ export default function WorkshopPage() {
                 <WorksheetDebugPanel
                   flowchart={executableFlowchart}
                   problemCount={10}
+                  onHoverSnapshots={setHighlightedSnapshots}
                   onHoverNode={setHighlightedNodeId}
                 />
               </div>

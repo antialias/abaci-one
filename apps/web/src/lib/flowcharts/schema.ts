@@ -171,6 +171,21 @@ export interface StateSnapshot {
   workingProblem?: string
   /** Timestamp when this snapshot was taken */
   timestamp: number
+  /** For decision nodes: the option value that was selected (e.g., "MD" for multiply/divide) */
+  selectedOptionValue?: string
+  /** For decision nodes: the next node ID that was navigated to */
+  nextNodeId?: string
+  /**
+   * The unique ID of the edge that was taken (from ParsedEdge.id).
+   * When edges use the mermaid `id@-->` syntax, this ID appears directly
+   * in the SVG element, enabling reliable ID-based matching.
+   */
+  edgeId?: string
+  /**
+   * The index of the edge in parse order (from ParsedEdge.index).
+   * Used as fallback for matching when edge IDs don't use `id@-->` syntax.
+   */
+  edgeIndex?: number
 }
 
 // =============================================================================
@@ -302,6 +317,21 @@ export interface DecisionOption {
   pathLabel?: string
   /** Kid-friendly label for grid headers (e.g., "Same denominators", "Addition"). Falls back to pathLabel if not provided */
   gridLabel?: string
+}
+
+/**
+ * Compute the expected mermaid edge ID for a decision option.
+ * Pattern: {nodeId}_{optionValue}
+ *
+ * Mermaid content must use this exact ID with the `id@-->` syntax:
+ *   COMPARE COMPARE_direct@-->|"DIRECT"| HAPPY
+ *
+ * @param nodeId - The decision node ID
+ * @param optionValue - The option's value field
+ * @returns The expected edge ID
+ */
+export function computeEdgeId(nodeId: string, optionValue: string): string {
+  return `${nodeId}_${optionValue}`
 }
 
 /**
@@ -617,6 +647,20 @@ export interface ParsedEdge {
   from: string
   to: string
   label?: string
+  /**
+   * Unique edge identifier. Can come from:
+   * 1. Mermaid edge ID syntax (e.g., `myId@-->`)
+   * 2. Generated during parsing as `edge_${globalIndex}`
+   *
+   * This ID is used for reliable edge matching in visualizations.
+   */
+  id: string
+  /**
+   * Global index of this edge in parse order (0-based).
+   * Mermaid renders edges in this order, so SVG edge elements
+   * correspond to this index.
+   */
+  index: number
 }
 
 /** Parsed Mermaid flowchart structure */

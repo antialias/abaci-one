@@ -109,8 +109,8 @@ export function formatMixedNumber(mn: MixedNumberValue): string {
 /**
  * Format problem input for display.
  *
- * Uses the flowchart's `display.problem` expression.
- * All flowcharts MUST define display.problem for proper rendering.
+ * If flowchart has `display.problem` expression, evaluates it.
+ * Otherwise falls back to showing problem values joined together.
  */
 export function formatProblemDisplay(
   flowchart: ExecutableFlowchart,
@@ -131,18 +131,11 @@ export function formatProblemDisplay(
         `Error evaluating display.problem for flowchart "${flowchart.definition.id}":`,
         error
       )
-      // Fall through to generic display
+      // Fall through to fallback
     }
-  } else {
-    // Log warning for flowcharts missing display.problem
-    console.warn(
-      `Flowchart "${flowchart.definition.id}" is missing display.problem expression. ` +
-        'Define display.problem for proper problem formatting.'
-    )
   }
 
-  // Generic fallback: show problem values in a basic format
-  // This should only happen for misconfigured flowcharts
+  // Fallback: show problem values in a basic format
   return Object.entries(problem)
     .map(([, v]) => {
       if (typeof v === 'object' && v !== null && 'denom' in v) {

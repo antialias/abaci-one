@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import type { ExecutableFlowchart, ProblemValue, MixedNumberValue } from '@/lib/flowcharts/schema'
+import type { ExecutableFlowchart, ProblemValue, MixedNumberValue, StateSnapshot } from '@/lib/flowcharts/schema'
 import type { GeneratedExample } from '@/lib/flowcharts/loader'
 import { generateExamplesAsync } from '@/lib/flowcharts/example-generator-client'
 import { formatProblemDisplay } from '@/lib/flowcharts/formatting'
@@ -15,7 +15,9 @@ interface WorksheetDebugPanelProps {
   flowchart: ExecutableFlowchart
   /** Number of problems to generate (default: 10) */
   problemCount?: number
-  /** Callback when hovering over a trace node (for mermaid highlighting) */
+  /** Callback when hovering over a problem (shows entire path via snapshots) */
+  onHoverSnapshots?: (snapshots: StateSnapshot[] | null) => void
+  /** Callback when hovering over a specific trace node (for focused highlighting) */
   onHoverNode?: (nodeId: string | null) => void
 }
 
@@ -26,7 +28,7 @@ type DifficultyTier = 'easy' | 'medium' | 'hard'
  * Debug panel for testing worksheet generation.
  * Shows generated problems with their computed answers, raw values, and difficulty tiers.
  */
-export function WorksheetDebugPanel({ flowchart, problemCount = 10, onHoverNode }: WorksheetDebugPanelProps) {
+export function WorksheetDebugPanel({ flowchart, problemCount = 10, onHoverSnapshots, onHoverNode }: WorksheetDebugPanelProps) {
   const [examples, setExamples] = useState<GeneratedExample[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -315,6 +317,8 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10, onHoverNode 
             const problemDisplay = formatProblemDisplay(flowchart, example.values)
             const computed = computedExamples[index]
             const answerDisplay = computed?.answerDisplay ?? '?'
+            // Get snapshots for hover highlighting
+            const snapshots = computed?.state?.snapshots ?? []
 
             return (
               <div
@@ -326,6 +330,8 @@ export function WorksheetDebugPanel({ flowchart, problemCount = 10, onHoverNode 
                   borderColor: { base: 'gray.200', _dark: 'gray.700' },
                   overflow: 'hidden',
                 })}
+                onMouseEnter={() => snapshots.length > 0 && onHoverSnapshots?.(snapshots)}
+                onMouseLeave={() => onHoverSnapshots?.(null)}
               >
                 {/* Problem header - clickable to expand */}
                 <button

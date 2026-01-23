@@ -290,32 +290,53 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
                 </span>
               </div>
 
-              {/* Action button */}
+              {/* Action buttons */}
               {seed.isSeeded ? (
-                <button
-                  onClick={() => handleReset(seed.id)}
-                  disabled={actionInProgress !== null}
-                  className={css({
-                    paddingX: '2',
-                    paddingY: '1',
-                    borderRadius: 'md',
-                    fontSize: 'xs',
-                    fontWeight: 'medium',
-                    backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
-                    color: { base: 'gray.700', _dark: 'gray.300' },
-                    border: 'none',
-                    cursor: 'pointer',
-                    _hover: {
-                      backgroundColor: { base: 'gray.300', _dark: 'gray.600' },
-                    },
-                    _disabled: {
-                      opacity: 0.5,
-                      cursor: 'not-allowed',
-                    },
-                  })}
-                >
-                  {actionInProgress === seed.id ? 'Resetting...' : 'Reset'}
-                </button>
+                <div className={hstack({ gap: '2' })}>
+                  <a
+                    href={`/flowchart/${seed.id}`}
+                    className={css({
+                      paddingX: '2',
+                      paddingY: '1',
+                      borderRadius: 'md',
+                      fontSize: 'xs',
+                      fontWeight: 'medium',
+                      backgroundColor: { base: 'blue.100', _dark: 'blue.900' },
+                      color: { base: 'blue.700', _dark: 'blue.300' },
+                      textDecoration: 'none',
+                      _hover: {
+                        backgroundColor: { base: 'blue.200', _dark: 'blue.800' },
+                      },
+                    })}
+                  >
+                    Walk
+                  </a>
+                  <button
+                    onClick={() => handleReset(seed.id)}
+                    disabled={actionInProgress !== null}
+                    title="Delete and re-seed from code (picks up code changes)"
+                    className={css({
+                      paddingX: '2',
+                      paddingY: '1',
+                      borderRadius: 'md',
+                      fontSize: 'xs',
+                      fontWeight: 'medium',
+                      backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                      color: { base: 'gray.700', _dark: 'gray.300' },
+                      border: 'none',
+                      cursor: 'pointer',
+                      _hover: {
+                        backgroundColor: { base: 'gray.300', _dark: 'gray.600' },
+                      },
+                      _disabled: {
+                        opacity: 0.5,
+                        cursor: 'not-allowed',
+                      },
+                    })}
+                  >
+                    {actionInProgress === seed.id ? 'Resetting...' : 'Reset'}
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => handleSeed(seed.id)}
@@ -353,10 +374,15 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
           marginTop: '3',
           fontSize: 'xs',
           color: { base: 'amber.600', _dark: 'amber.400' },
+          lineHeight: '1.5',
         })}
       >
-        Seeds are built-in flowcharts that can be added to the database. Once seeded, they appear
-        in the main flowchart list and can be used like any other flowchart.
+        <p><strong>Seed:</strong> Copy flowchart from code into database.</p>
+        <p><strong>Reset:</strong> Delete and re-seed from code (use after changing seed files).</p>
+        <p><strong>Walk:</strong> Open the flowchart walker to test it.</p>
+        <p className={css({ marginTop: '2' })}>
+          Seeded flowcharts use their seed ID (e.g., <code>sentence-type</code>) and appear in the list below.
+        </p>
       </div>
     </div>
   )

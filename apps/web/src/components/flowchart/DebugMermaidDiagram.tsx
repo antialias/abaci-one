@@ -2,13 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { css } from '../../../styled-system/css'
+import type { StateSnapshot } from '../../lib/flowcharts/schema'
 
 interface DebugMermaidDiagramProps {
   /** Raw mermaid content */
   mermaidContent: string
   /** Current node ID to highlight (amber fill - walker progress) */
   currentNodeId?: string
-  /** Highlighted node ID for trace hover (cyan border - distinct from current) */
+  /** Snapshots from the walk to highlight - extracts both path nodes and edge info */
+  highlightedSnapshots?: StateSnapshot[]
+  /** Focused node ID within the path (strong cyan - the specific step being hovered) */
   highlightedNodeId?: string
   /** Callback when regeneration is requested (shown when there's a render error) */
   onRegenerate?: () => void
@@ -25,6 +28,7 @@ interface DebugMermaidDiagramProps {
 export function DebugMermaidDiagram({
   mermaidContent,
   currentNodeId,
+  highlightedSnapshots,
   highlightedNodeId,
   onRegenerate,
   isRegenerating,
@@ -86,27 +90,177 @@ export function DebugMermaidDiagram({
             svgElement.style.maxWidth = '100%'
             svgElement.style.height = 'auto'
 
-            // Apply highlighted node style post-render
-            if (highlightedNodeId && highlightedNodeId !== currentNodeId) {
-              // Dim all nodes
+            // Apply path and node highlighting post-render
+            // Extract path info from snapshots
+            const highlightedPath = highlightedSnapshots?.map(s => s.nodeId) || []
+            const hasPathHighlight = highlightedPath.length > 0
+            const hasNodeHighlight = highlightedNodeId && highlightedNodeId !== currentNodeId
+
+            if (hasPathHighlight || hasNodeHighlight) {
+              // Dim all nodes when we have any highlighting
               const allNodes = svgElement.querySelectorAll('[id^="flowchart-"]')
               allNodes.forEach((node) => {
-                ;(node as SVGElement).style.opacity = '0.85'
+                ;(node as SVGElement).style.opacity = '0.5'
               })
 
-              // Highlight the target node
-              const nodeElement = svgElement.querySelector(`[id*="flowchart-${highlightedNodeId}-"]`)
-              if (nodeElement) {
-                const svgNode = nodeElement as SVGElement
-                svgNode.style.opacity = '1'
+              // Dim all edge paths (the lines) - use multiple selectors for robustness
+              const allEdgePathElements = svgElement.querySelectorAll('.edgePath path, .edgePaths path')
+              allEdgePathElements.forEach((edge) => {
+                ;(edge as SVGElement).style.opacity = '0.2'
+                ;(edge as SVGElement).style.stroke = '#9ca3af' // gray-400
+              })
 
-                // Add thick cyan border with non-scaling stroke
-                const shape = nodeElement.querySelector('rect, polygon, circle, ellipse, path')
-                if (shape) {
-                  shape.setAttribute('stroke', '#06b6d4') // cyan-500
-                  shape.setAttribute('stroke-width', '3')
-                  shape.setAttribute('vector-effect', 'non-scaling-stroke')
+              // Dim all edge labels
+              const allEdgeLabels = svgElement.querySelectorAll('.edgeLabel')
+              allEdgeLabels.forEach((label) => {
+                ;(label as SVGElement).style.opacity = '0.2'
+              })
+
+              // Get edge containers for matching
+              const edgePathsContainer = svgElement.querySelector('.edgePaths')
+              const edgeLabelsContainer = svgElement.querySelector('.edgeLabels')
+              const edgePathElements = edgePathsContainer ? Array.from(edgePathsContainer.children) : []
+              const edgeLabelElements = edgeLabelsContainer ? Array.from(edgeLabelsContainer.children) : []
+
+              // Collect edge IDs and indices from snapshots for highlighting
+              // We support two matching modes:
+              // 1. ID-based: If edges use `id@-->` syntax, SVG elements have custom IDs
+              // 2. Index-based: Fallback using parse order (mermaid renders in parse order)
+              const highlightedEdgeIds = new Set<string>()
+              const highlightedEdgeIndices = new Set<number>()
+              let focusedIncomingEdgeId: string | undefined
+              let focusedIncomingEdgeIndex: number | undefined
+              let focusedOutgoingEdgeId: string | undefined
+              let focusedOutgoingEdgeIndex: number | undefined
+
+              if (highlightedSnapshots) {
+                for (let i = 0; i < highlightedSnapshots.length; i++) {
+                  const snapshot = highlightedSnapshots[i]
+
+                  // Collect edge ID if available
+                  if (snapshot.edgeId) {
+                    highlightedEdgeIds.add(snapshot.edgeId)
+                  }
+                  // Also collect index for fallback
+                  if (snapshot.edgeIndex !== undefined) {
+                    highlightedEdgeIndices.add(snapshot.edgeIndex)
+                  }
+
+                  // Track edges for focused node highlighting
+                  if (highlightedNodeId) {
+                    // If this snapshot's next node is the focused node, this is the incoming edge
+                    if (snapshot.nextNodeId === highlightedNodeId) {
+                      focusedIncomingEdgeId = snapshot.edgeId
+                      focusedIncomingEdgeIndex = snapshot.edgeIndex
+                    }
+                    // If this snapshot IS the focused node, this is the outgoing edge
+                    if (snapshot.nodeId === highlightedNodeId) {
+                      focusedOutgoingEdgeId = snapshot.edgeId
+                      focusedOutgoingEdgeIndex = snapshot.edgeIndex
+                    }
+                  }
                 }
+              }
+
+              // Helper to check if an edge element should be highlighted
+              const shouldHighlightEdge = (edgeGroup: Element, index: number): boolean => {
+                // Try ID-based matching first (for `id@-->` syntax)
+                if (edgeGroup.id && highlightedEdgeIds.has(edgeGroup.id)) {
+                  return true
+                }
+                // Fall back to index-based matching
+                return highlightedEdgeIndices.has(index)
+              }
+
+              // Helper to check if an edge is the focused incoming edge
+              const isFocusedIncoming = (edgeGroup: Element, index: number): boolean => {
+                if (focusedIncomingEdgeId && edgeGroup.id === focusedIncomingEdgeId) return true
+                return focusedIncomingEdgeIndex !== undefined && index === focusedIncomingEdgeIndex
+              }
+
+              // Helper to check if an edge is the focused outgoing edge
+              const isFocusedOutgoing = (edgeGroup: Element, index: number): boolean => {
+                if (focusedOutgoingEdgeId && edgeGroup.id === focusedOutgoingEdgeId) return true
+                return focusedOutgoingEdgeIndex !== undefined && index === focusedOutgoingEdgeIndex
+              }
+
+              // Highlight path nodes (light cyan background)
+              if (hasPathHighlight) {
+                for (const nodeId of highlightedPath) {
+                  if (nodeId === 'initial') continue // Skip pseudo-node
+                  const nodeElement = svgElement.querySelector(`[id*="flowchart-${nodeId}-"]`)
+                  if (nodeElement) {
+                    const svgNode = nodeElement as SVGElement
+                    svgNode.style.opacity = '1'
+
+                    // Add light cyan border for path nodes
+                    const shape = nodeElement.querySelector('rect, polygon, circle, ellipse, path')
+                    if (shape) {
+                      shape.setAttribute('stroke', '#06b6d4') // cyan-500
+                      shape.setAttribute('stroke-width', '2')
+                      shape.setAttribute('vector-effect', 'non-scaling-stroke')
+                    }
+                  }
+                }
+
+                // Highlight edges using ID (preferred) or index (fallback)
+                edgePathElements.forEach((edgeGroup, index) => {
+                  if (shouldHighlightEdge(edgeGroup, index)) {
+                    // Find the path element inside this group
+                    const pathElement = edgeGroup.querySelector('path') || edgeGroup
+                    const svgEdge = pathElement as SVGElement
+                    svgEdge.style.opacity = '1'
+                    svgEdge.style.stroke = '#06b6d4' // cyan-500
+                    svgEdge.style.strokeWidth = '3px'
+                    svgEdge.setAttribute('stroke', '#06b6d4')
+                    svgEdge.setAttribute('stroke-width', '3')
+                    svgEdge.setAttribute('vector-effect', 'non-scaling-stroke')
+
+                    // Also highlight the corresponding label
+                    if (edgeLabelElements[index]) {
+                      ;(edgeLabelElements[index] as SVGElement).style.opacity = '1'
+                    }
+                  }
+                })
+              }
+
+              // Highlight the focused node more strongly (overrides path highlight)
+              if (hasNodeHighlight) {
+                const nodeElement = svgElement.querySelector(`[id*="flowchart-${highlightedNodeId}-"]`)
+                if (nodeElement) {
+                  const svgNode = nodeElement as SVGElement
+                  svgNode.style.opacity = '1'
+
+                  // Add thick cyan border with non-scaling stroke
+                  const shape = nodeElement.querySelector('rect, polygon, circle, ellipse, path')
+                  if (shape) {
+                    shape.setAttribute('stroke', '#0891b2') // cyan-600
+                    shape.setAttribute('stroke-width', '5')
+                    shape.setAttribute('vector-effect', 'non-scaling-stroke')
+                  }
+                }
+
+                // Highlight edges to/from focused node more strongly
+                edgePathElements.forEach((edgeGroup, index) => {
+                  if (isFocusedIncoming(edgeGroup, index)) {
+                    const pathElement = edgeGroup.querySelector('path') || edgeGroup
+                    const svgEdge = pathElement as SVGElement
+                    svgEdge.style.opacity = '1'
+                    svgEdge.style.stroke = '#0891b2' // cyan-600
+                    svgEdge.style.strokeWidth = '5px'
+                    svgEdge.setAttribute('stroke', '#0891b2')
+                    svgEdge.setAttribute('stroke-width', '5')
+                  }
+                  if (isFocusedOutgoing(edgeGroup, index)) {
+                    const pathElement = edgeGroup.querySelector('path') || edgeGroup
+                    const svgEdge = pathElement as SVGElement
+                    svgEdge.style.opacity = '1'
+                    svgEdge.style.stroke = '#22d3ee' // cyan-400
+                    svgEdge.style.strokeWidth = '4px'
+                    svgEdge.setAttribute('stroke', '#22d3ee')
+                    svgEdge.setAttribute('stroke-width', '4')
+                  }
+                })
               }
             }
           }
@@ -134,7 +288,7 @@ export function DebugMermaidDiagram({
     return () => {
       mounted = false
     }
-  }, [mermaidContent, currentNodeId, highlightedNodeId])
+  }, [mermaidContent, currentNodeId, highlightedSnapshots, highlightedNodeId])
 
   if (error) {
     return (

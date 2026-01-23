@@ -20,8 +20,10 @@ export interface PathConstraint {
   nodeId: string
   /** The decision expression (correctAnswer) */
   expression: string
-  /** What the expression must evaluate to for this path */
+  /** For boolean decisions: what the expression must evaluate to */
   requiredOutcome: boolean
+  /** For string decisions: the value the expression must equal */
+  requiredValue?: string
   /** The option that was selected */
   optionValue: string
 }
@@ -46,6 +48,8 @@ export interface FlowchartPath {
 export interface FlowchartAnalysis {
   /** All unique paths through the flowchart */
   paths: FlowchartPath[]
+  /** Whether path enumeration hit the safety limit (flowchart has more paths than enumerated) */
+  pathsLimitReached: boolean
   /** Structural statistics */
   stats: {
     totalNodes: number
@@ -82,7 +86,10 @@ export interface FlowchartAnalysis {
  * Returns all unique paths from entry node to terminal nodes.
  * Handles cycles by tracking visited nodes within each path.
  */
-export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath[] {
+export function enumerateAllPaths(flowchart: ExecutableFlowchart): {
+  paths: FlowchartPath[]
+  hitLimit: boolean
+} {
   const paths: FlowchartPath[] = []
   const entryNode = flowchart.definition.entryNode
 
@@ -107,7 +114,7 @@ export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath
     },
   ]
 
-  const MAX_PATHS = 50 // Safety limit
+  const MAX_PATHS = 200 // Safety limit
   const MAX_ITERATIONS = 10000 // Prevent infinite loops
   let iterations = 0
 
@@ -146,24 +153,8 @@ export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath
         // 1. The skip path (when skipIf is true)
         // 2. The regular option paths (when skipIf is false or not present)
         if (def.skipIf && def.skipTo) {
-          // Add the skip path - this doesn't count as a decision since it's auto-skipped
-          const skipConstraint: PathConstraint = {
-            nodeId,
-            expression: def.skipIf,
-            requiredOutcome: true, // skipIf must be true for this path
-            optionValue: '__skip__',
-          }
-          stack.push({
-            nodeId: def.skipTo,
-            pathSoFar: currentPath,
-            visitedInPath: currentVisited,
-            constraints: [...constraints, skipConstraint],
-            decisions, // Don't increment - decision is skipped
-            checkpoints,
-          })
-
-          // Also add paths through options (when skipIf is false)
-          // These need a constraint that skipIf is false
+          // Push option paths FIRST (so they're explored LAST with LIFO stack)
+          // This ensures shorter skip paths are explored first
           for (let optIdx = 0; optIdx < def.options.length; optIdx++) {
             const option = def.options[optIdx]
             const isFirstOption = optIdx === 0
@@ -181,6 +172,7 @@ export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath
                 nodeId,
                 expression: def.correctAnswer,
                 requiredOutcome: isFirstOption,
+                requiredValue: option.value, // Always use string matching
                 optionValue: option.value,
               })
             }
@@ -194,18 +186,38 @@ export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath
               checkpoints,
             })
           }
+
+          // Push skip path LAST (so it's explored FIRST with LIFO stack)
+          // Skip paths are shorter, so we want to enumerate them first
+          const skipConstraint: PathConstraint = {
+            nodeId,
+            expression: def.skipIf,
+            requiredOutcome: true, // skipIf must be true for this path
+            optionValue: '__skip__',
+          }
+          stack.push({
+            nodeId: def.skipTo,
+            pathSoFar: currentPath,
+            visitedInPath: currentVisited,
+            constraints: [...constraints, skipConstraint],
+            decisions, // Don't increment - decision is skipped
+            checkpoints,
+          })
         } else if (!def.excludeFromExampleStructure) {
           // No skipIf - branch into all options normally (unless excluded)
           for (let optIdx = 0; optIdx < def.options.length; optIdx++) {
             const option = def.options[optIdx]
-            // Convention: first option (index 0) corresponds to correctAnswer being TRUE
-            // This is more reliable than checking for "yes" in the option value
+            // Always use requiredValue for string matching - this handles both:
+            // - Multi-option decisions (3+ options) with string values like "a", "b", "c"
+            // - Binary decisions (2 options) with string values like "statement", "request"
+            // The boolean requiredOutcome is kept for backward compatibility but requiredValue takes precedence
             const isFirstOption = optIdx === 0
             const constraint: PathConstraint | undefined = def.correctAnswer
               ? {
                   nodeId,
                   expression: def.correctAnswer,
                   requiredOutcome: isFirstOption,
+                  requiredValue: option.value, // Always use string matching
                   optionValue: option.value,
                 }
               : undefined
@@ -242,27 +254,39 @@ export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath
         // don't represent different problem types).
         if (def.skipIf && def.skipTo && !def.excludeSkipFromPaths) {
           // Create two paths: skip path and non-skip path
-          // Path 1: Skip this checkpoint
-          if (!currentVisited.has(def.skipTo)) {
-            stack.push({
-              nodeId: def.skipTo,
-              pathSoFar: currentPath,
-              visitedInPath: currentVisited,
-              constraints,
-              decisions,
-              checkpoints,
-            })
-          }
-          // Path 2: Don't skip - continue to next node
+          // Push non-skip path first (so skip path is explored first with LIFO)
           const nextNode = getNextNodeForAnalysis(flowchart, nodeId, def)
           if (nextNode && !currentVisited.has(nextNode)) {
+            const notSkippedConstraint: PathConstraint = {
+              nodeId,
+              expression: def.skipIf,
+              requiredOutcome: false, // skipIf must be false
+              optionValue: '__not_skipped__',
+            }
             stack.push({
               nodeId: nextNode,
               pathSoFar: currentPath,
               visitedInPath: currentVisited,
-              constraints,
+              constraints: [...constraints, notSkippedConstraint],
               decisions,
               checkpoints: checkpoints + 1,
+            })
+          }
+          // Push skip path last (explored first with LIFO)
+          if (!currentVisited.has(def.skipTo)) {
+            const skipConstraint: PathConstraint = {
+              nodeId,
+              expression: def.skipIf,
+              requiredOutcome: true, // skipIf must be true
+              optionValue: '__skip__',
+            }
+            stack.push({
+              nodeId: def.skipTo,
+              pathSoFar: currentPath,
+              visitedInPath: currentVisited,
+              constraints: [...constraints, skipConstraint],
+              decisions,
+              checkpoints,
             })
           }
         } else {
@@ -285,23 +309,68 @@ export function enumerateAllPaths(flowchart: ExecutableFlowchart): FlowchartPath
       case 'instruction':
       case 'milestone':
       case 'embellishment': {
-        const nextNode = getNextNodeForAnalysis(flowchart, nodeId, def)
-        if (nextNode) {
-          stack.push({
-            nodeId: nextNode,
-            pathSoFar: currentPath,
-            visitedInPath: currentVisited,
-            constraints,
-            decisions,
-            checkpoints,
-          })
+        // Check if this node has skipIf/skipTo (creates branching)
+        if ('skipIf' in def && 'skipTo' in def && def.skipIf && def.skipTo) {
+          const skipIfExpr = def.skipIf as string
+          const skipToNode = def.skipTo as string
+
+          // Push normal path first (so skip path is explored first with LIFO)
+          // Add constraint that skipIf is FALSE for normal path
+          const nextNode = getNextNodeForAnalysis(flowchart, nodeId, def)
+          if (nextNode && !currentVisited.has(nextNode)) {
+            const notSkippedConstraint: PathConstraint = {
+              nodeId,
+              expression: skipIfExpr,
+              requiredOutcome: false, // skipIf must be false
+              optionValue: '__not_skipped__',
+            }
+            stack.push({
+              nodeId: nextNode,
+              pathSoFar: currentPath,
+              visitedInPath: currentVisited,
+              constraints: [...constraints, notSkippedConstraint],
+              decisions,
+              checkpoints,
+            })
+          }
+          // Push skip path last (explored first with LIFO)
+          // Add constraint that skipIf is TRUE for skip path
+          if (!currentVisited.has(skipToNode)) {
+            const skipConstraint: PathConstraint = {
+              nodeId,
+              expression: skipIfExpr,
+              requiredOutcome: true, // skipIf must be true
+              optionValue: '__skip__',
+            }
+            stack.push({
+              nodeId: skipToNode,
+              pathSoFar: currentPath,
+              visitedInPath: currentVisited,
+              constraints: [...constraints, skipConstraint],
+              decisions,
+              checkpoints,
+            })
+          }
+        } else {
+          // No skipIf - just continue to next node
+          const nextNode = getNextNodeForAnalysis(flowchart, nodeId, def)
+          if (nextNode) {
+            stack.push({
+              nodeId: nextNode,
+              pathSoFar: currentPath,
+              visitedInPath: currentVisited,
+              constraints,
+              decisions,
+              checkpoints,
+            })
+          }
         }
         break
       }
     }
   }
 
-  return paths
+  return { paths, hitLimit: paths.length >= MAX_PATHS }
 }
 
 /**
@@ -330,7 +399,7 @@ function getNextNodeForAnalysis(
  * Analyze a flowchart's structure and compute metrics
  */
 export function analyzeFlowchart(flowchart: ExecutableFlowchart): FlowchartAnalysis {
-  const paths = enumerateAllPaths(flowchart)
+  const { paths, hitLimit } = enumerateAllPaths(flowchart)
 
   // Count node types
   let decisionNodes = 0
@@ -398,5 +467,5 @@ export function analyzeFlowchart(flowchart: ExecutableFlowchart): FlowchartAnaly
     branchingFactor * 10
   )
 
-  return { paths, stats, recommendedIterations }
+  return { paths, pathsLimitReached: hitLimit, stats, recommendedIterations }
 }
