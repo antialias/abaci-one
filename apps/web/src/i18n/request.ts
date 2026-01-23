@@ -5,8 +5,8 @@ import { getMessages } from './messages'
 
 export async function getRequestLocale(): Promise<Locale> {
   // Get locale from header (set by middleware) or cookie
-  const headersList = await headers()
-  const cookieStore = await cookies()
+  // Parallelize async operations to reduce SSR latency
+  const [headersList, cookieStore] = await Promise.all([headers(), cookies()])
 
   let locale = headersList.get('x-locale') as Locale | null
 

@@ -1,6 +1,7 @@
 // Utility to extract and convert the existing GuidedAdditionTutorial data
 
 import type { Tutorial } from '../types/tutorial'
+export type { Tutorial }
 import { generateAbacusInstructions } from './abacusInstructionGenerator'
 
 // Import the existing tutorial step interface to match the current structure

@@ -1,0 +1,456 @@
+{
+  "id": "order-of-operations",
+  "title": "Order of Operations (PEMDAS)",
+  "mermaidFile": "embedded",
+  "problemInput": {
+    "schema": "pemdas-expression",
+    "fields": [
+      {
+        "name": "expr",
+        "label": "Expression",
+        "type": "string"
+      },
+      {
+        "name": "numSteps",
+        "label": "Number of operations",
+        "type": "integer",
+        "min": 1,
+        "max": 3
+      },
+      {
+        "name": "s1Priority",
+        "label": "Step 1: Priority level",
+        "type": "choice",
+        "options": ["P", "E", "MD", "AS"]
+      },
+      {
+        "name": "s1Left",
+        "label": "Step 1: Left operand",
+        "type": "number"
+      },
+      {
+        "name": "s1Op",
+        "label": "Step 1: Operator",
+        "type": "choice",
+        "options": ["+", "-", "×", "÷", "^"]
+      },
+      {
+        "name": "s1Right",
+        "label": "Step 1: Right operand",
+        "type": "number"
+      },
+      {
+        "name": "s1Result",
+        "label": "Step 1: Result",
+        "type": "number"
+      },
+      {
+        "name": "s1Expr",
+        "label": "Expression after step 1",
+        "type": "string"
+      },
+      {
+        "name": "s2Priority",
+        "label": "Step 2: Priority level",
+        "type": "choice",
+        "options": ["P", "E", "MD", "AS", "none"]
+      },
+      {
+        "name": "s2Left",
+        "label": "Step 2: Left operand",
+        "type": "number"
+      },
+      {
+        "name": "s2Op",
+        "label": "Step 2: Operator",
+        "type": "choice",
+        "options": ["+", "-", "×", "÷", "^", ""]
+      },
+      {
+        "name": "s2Right",
+        "label": "Step 2: Right operand",
+        "type": "number"
+      },
+      {
+        "name": "s2Result",
+        "label": "Step 2: Result",
+        "type": "number"
+      },
+      {
+        "name": "s2Expr",
+        "label": "Expression after step 2",
+        "type": "string"
+      },
+      {
+        "name": "s3Priority",
+        "label": "Step 3: Priority level",
+        "type": "choice",
+        "options": ["P", "E", "MD", "AS", "none"]
+      },
+      {
+        "name": "s3Left",
+        "label": "Step 3: Left operand",
+        "type": "number"
+      },
+      {
+        "name": "s3Op",
+        "label": "Step 3: Operator",
+        "type": "choice",
+        "options": ["+", "-", "×", "÷", "^", ""]
+      },
+      {
+        "name": "s3Right",
+        "label": "Step 3: Right operand",
+        "type": "number"
+      },
+      {
+        "name": "s3Result",
+        "label": "Step 3: Result",
+        "type": "number"
+      },
+      {
+        "name": "answer",
+        "label": "Final answer",
+        "type": "number"
+      }
+    ],
+    "examples": [
+      {
+        "name": "Mult before Add",
+        "description": "3 + 4 × 2 - multiplication has higher precedence",
+        "values": {
+          "expr": "3 + 4 × 2",
+          "numSteps": 2,
+          "s1Priority": "MD", "s1Left": 4, "s1Op": "×", "s1Right": 2, "s1Result": 8, "s1Expr": "3 + 8",
+          "s2Priority": "AS", "s2Left": 3, "s2Op": "+", "s2Right": 8, "s2Result": 11, "s2Expr": "11",
+          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "answer": 11
+        },
+        "expectedAnswer": "11"
+      },
+      {
+        "name": "Parentheses first",
+        "description": "(3 + 4) × 2 - parentheses override precedence",
+        "values": {
+          "expr": "(3 + 4) × 2",
+          "numSteps": 2,
+          "s1Priority": "P", "s1Left": 3, "s1Op": "+", "s1Right": 4, "s1Result": 7, "s1Expr": "7 × 2",
+          "s2Priority": "MD", "s2Left": 7, "s2Op": "×", "s2Right": 2, "s2Result": 14, "s2Expr": "14",
+          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "answer": 14
+        },
+        "expectedAnswer": "14"
+      },
+      {
+        "name": "Exponent first",
+        "description": "2 + 3² - exponents before addition",
+        "values": {
+          "expr": "2 + 3²",
+          "numSteps": 2,
+          "s1Priority": "E", "s1Left": 3, "s1Op": "^", "s1Right": 2, "s1Result": 9, "s1Expr": "2 + 9",
+          "s2Priority": "AS", "s2Left": 2, "s2Op": "+", "s2Right": 9, "s2Result": 11, "s2Expr": "11",
+          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "answer": 11
+        },
+        "expectedAnswer": "11"
+      },
+      {
+        "name": "Division before subtraction",
+        "description": "10 - 8 ÷ 2 - division before subtraction",
+        "values": {
+          "expr": "10 - 8 ÷ 2",
+          "numSteps": 2,
+          "s1Priority": "MD", "s1Left": 8, "s1Op": "÷", "s1Right": 2, "s1Result": 4, "s1Expr": "10 - 4",
+          "s2Priority": "AS", "s2Left": 10, "s2Op": "-", "s2Right": 4, "s2Result": 6, "s2Expr": "6",
+          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "answer": 6
+        },
+        "expectedAnswer": "6"
+      },
+      {
+        "name": "Left to right (same precedence)",
+        "description": "12 - 4 + 2 - same precedence, go left to right",
+        "values": {
+          "expr": "12 - 4 + 2",
+          "numSteps": 2,
+          "s1Priority": "AS", "s1Left": 12, "s1Op": "-", "s1Right": 4, "s1Result": 8, "s1Expr": "8 + 2",
+          "s2Priority": "AS", "s2Left": 8, "s2Op": "+", "s2Right": 2, "s2Result": 10, "s2Expr": "10",
+          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "answer": 10
+        },
+        "expectedAnswer": "10"
+      },
+      {
+        "name": "Three operations",
+        "description": "2 + 3 × 4 - 5 - mult first, then left to right",
+        "values": {
+          "expr": "2 + 3 × 4 - 5",
+          "numSteps": 3,
+          "s1Priority": "MD", "s1Left": 3, "s1Op": "×", "s1Right": 4, "s1Result": 12, "s1Expr": "2 + 12 - 5",
+          "s2Priority": "AS", "s2Left": 2, "s2Op": "+", "s2Right": 12, "s2Result": 14, "s2Expr": "14 - 5",
+          "s3Priority": "AS", "s3Left": 14, "s3Op": "-", "s3Right": 5, "s3Result": 9,
+          "answer": 9
+        },
+        "expectedAnswer": "9"
+      },
+      {
+        "name": "Exponent with multiply",
+        "description": "2² × 3 - exponent first, then multiply",
+        "values": {
+          "expr": "2² × 3",
+          "numSteps": 2,
+          "s1Priority": "E", "s1Left": 2, "s1Op": "^", "s1Right": 2, "s1Result": 4, "s1Expr": "4 × 3",
+          "s2Priority": "MD", "s2Left": 4, "s2Op": "×", "s2Right": 3, "s2Result": 12, "s2Expr": "12",
+          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "answer": 12
+        },
+        "expectedAnswer": "12"
+      },
+      {
+        "name": "Nested priorities",
+        "description": "(2 + 3)² - parentheses, then exponent",
+        "values": {
+          "expr": "(2 + 3)²",
+          "numSteps": 2,
+          "s1Priority": "P", "s1Left": 2, "s1Op": "+", "s1Right": 3, "s1Result": 5, "s1Expr": "5²",
+          "s2Priority": "E", "s2Left": 5, "s2Op": "^", "s2Right": 2, "s2Result": 25, "s2Expr": "25",
+          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "answer": 25
+        },
+        "expectedAnswer": "25"
+      }
+    ]
+  },
+  "generation": {
+    "useExamplesOnly": true,
+    "preferred": {
+      "expr": ["3 + 4 × 2", "(3 + 4) × 2", "2 + 3²", "10 - 8 ÷ 2", "12 - 4 + 2"],
+      "numSteps": [2],
+      "s1Priority": ["P", "E", "MD", "AS"],
+      "s1Left": [2, 3, 4, 5, 6, 7, 8, 10, 12],
+      "s1Op": ["+", "-", "×", "÷", "^"],
+      "s1Right": [2, 3, 4, 5],
+      "s1Result": [4, 6, 7, 8, 9, 10, 11, 12, 14, 25],
+      "s1Expr": ["3 + 8", "7 × 2", "2 + 9", "10 - 4", "8 + 2"],
+      "s2Priority": ["P", "E", "MD", "AS", "none"],
+      "s2Left": [2, 3, 7, 8, 10, 14],
+      "s2Op": ["+", "-", "×", "÷", "^", ""],
+      "s2Right": [2, 3, 4, 5, 8, 9],
+      "s2Result": [6, 10, 11, 12, 14, 25],
+      "s2Expr": ["6", "10", "11", "12", "14", "25"],
+      "s3Priority": ["P", "E", "MD", "AS", "none"],
+      "s3Left": [0, 14],
+      "s3Op": ["+", "-", "×", "÷", "^", ""],
+      "s3Right": [0, 5],
+      "s3Result": [0, 9],
+      "answer": [6, 9, 10, 11, 12, 14, 25]
+    }
+  },
+  "entryNode": "START",
+  "nodes": {
+    "START": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "EXPLAIN_PEMDAS",
+      "transform": [
+        { "key": "currentExpr", "expr": "expr" },
+        { "key": "currentStep", "expr": "1" }
+      ]
+    },
+    "EXPLAIN_PEMDAS": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "IDENTIFY_STEP1"
+    },
+    "IDENTIFY_STEP1": {
+      "type": "decision",
+      "correctAnswer": "s1Priority",
+      "options": [
+        { "value": "P", "label": "Parentheses (P)", "next": "DO_STEP1", "pathLabel": "P" },
+        { "value": "E", "label": "Exponents (E)", "next": "DO_STEP1", "pathLabel": "E" },
+        { "value": "MD", "label": "Multiply/Divide (MD)", "next": "DO_STEP1", "pathLabel": "MD" },
+        { "value": "AS", "label": "Add/Subtract (AS)", "next": "DO_STEP1", "pathLabel": "AS" }
+      ]
+    },
+    "DO_STEP1": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "CHECK_STEP1",
+      "transform": [
+        { "key": "opDisplay", "expr": "s1Left + ' ' + s1Op + ' ' + s1Right" }
+      ]
+    },
+    "CHECK_STEP1": {
+      "type": "checkpoint",
+      "prompt": "Calculate the result",
+      "inputType": "number",
+      "expected": "s1Result",
+      "next": "AFTER_STEP1",
+      "transform": [
+        { "key": "currentExpr", "expr": "s1Expr" },
+        { "key": "currentStep", "expr": "2" }
+      ]
+    },
+    "AFTER_STEP1": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "CHECK_MORE_STEPS1",
+      "transform": [
+        { "key": "showExpr", "expr": "s1Expr" }
+      ]
+    },
+    "CHECK_MORE_STEPS1": {
+      "type": "embellishment",
+      "next": "IDENTIFY_STEP2",
+      "skipIf": "numSteps < 2",
+      "skipTo": "DONE"
+    },
+    "IDENTIFY_STEP2": {
+      "type": "decision",
+      "correctAnswer": "s2Priority",
+      "options": [
+        { "value": "P", "label": "Parentheses (P)", "next": "DO_STEP2", "pathLabel": "P" },
+        { "value": "E", "label": "Exponents (E)", "next": "DO_STEP2", "pathLabel": "E" },
+        { "value": "MD", "label": "Multiply/Divide (MD)", "next": "DO_STEP2", "pathLabel": "MD" },
+        { "value": "AS", "label": "Add/Subtract (AS)", "next": "DO_STEP2", "pathLabel": "AS" }
+      ]
+    },
+    "DO_STEP2": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "CHECK_STEP2",
+      "transform": [
+        { "key": "opDisplay", "expr": "s2Left + ' ' + s2Op + ' ' + s2Right" }
+      ]
+    },
+    "CHECK_STEP2": {
+      "type": "checkpoint",
+      "prompt": "Calculate the result",
+      "inputType": "number",
+      "expected": "s2Result",
+      "next": "AFTER_STEP2",
+      "transform": [
+        { "key": "currentExpr", "expr": "s2Expr" },
+        { "key": "currentStep", "expr": "3" }
+      ]
+    },
+    "AFTER_STEP2": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "CHECK_MORE_STEPS2",
+      "transform": [
+        { "key": "showExpr", "expr": "s2Expr" }
+      ]
+    },
+    "CHECK_MORE_STEPS2": {
+      "type": "embellishment",
+      "next": "IDENTIFY_STEP3",
+      "skipIf": "numSteps < 3",
+      "skipTo": "DONE"
+    },
+    "IDENTIFY_STEP3": {
+      "type": "decision",
+      "correctAnswer": "s3Priority",
+      "options": [
+        { "value": "P", "label": "Parentheses (P)", "next": "DO_STEP3", "pathLabel": "P" },
+        { "value": "E", "label": "Exponents (E)", "next": "DO_STEP3", "pathLabel": "E" },
+        { "value": "MD", "label": "Multiply/Divide (MD)", "next": "DO_STEP3", "pathLabel": "MD" },
+        { "value": "AS", "label": "Add/Subtract (AS)", "next": "DO_STEP3", "pathLabel": "AS" }
+      ]
+    },
+    "DO_STEP3": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "CHECK_STEP3",
+      "transform": [
+        { "key": "opDisplay", "expr": "s3Left + ' ' + s3Op + ' ' + s3Right" }
+      ]
+    },
+    "CHECK_STEP3": {
+      "type": "checkpoint",
+      "prompt": "Calculate the result",
+      "inputType": "number",
+      "expected": "s3Result",
+      "next": "DONE",
+      "transform": [
+        { "key": "currentExpr", "expr": "s3Result" },
+        { "key": "currentStep", "expr": "'done'" }
+      ]
+    },
+    "DONE": {
+      "type": "terminal",
+      "celebration": true
+    }
+  },
+  "answer": {
+    "values": {
+      "result": "answer"
+    },
+    "display": {
+      "text": "{{answer}}",
+      "web": "<math><mn>{{answer}}</mn></math>"
+    }
+  },
+  "tests": [
+    {
+      "name": "3 + 4 × 2 = 11",
+      "values": {
+        "expr": "3 + 4 × 2",
+        "numSteps": 2,
+        "s1Priority": "MD", "s1Left": 4, "s1Op": "×", "s1Right": 2, "s1Result": 8, "s1Expr": "3 + 8",
+        "s2Priority": "AS", "s2Left": 3, "s2Op": "+", "s2Right": 8, "s2Result": 11, "s2Expr": "11",
+        "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+        "answer": 11
+      },
+      "expected": { "result": 11 }
+    },
+    {
+      "name": "(3 + 4) × 2 = 14",
+      "values": {
+        "expr": "(3 + 4) × 2",
+        "numSteps": 2,
+        "s1Priority": "P", "s1Left": 3, "s1Op": "+", "s1Right": 4, "s1Result": 7, "s1Expr": "7 × 2",
+        "s2Priority": "MD", "s2Left": 7, "s2Op": "×", "s2Right": 2, "s2Result": 14, "s2Expr": "14",
+        "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+        "answer": 14
+      },
+      "expected": { "result": 14 }
+    },
+    {
+      "name": "2 + 3² = 11",
+      "values": {
+        "expr": "2 + 3²",
+        "numSteps": 2,
+        "s1Priority": "E", "s1Left": 3, "s1Op": "^", "s1Right": 2, "s1Result": 9, "s1Expr": "2 + 9",
+        "s2Priority": "AS", "s2Left": 2, "s2Op": "+", "s2Right": 9, "s2Result": 11, "s2Expr": "11",
+        "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+        "answer": 11
+      },
+      "expected": { "result": 11 }
+    },
+    {
+      "name": "12 - 4 + 2 = 10 (left to right)",
+      "values": {
+        "expr": "12 - 4 + 2",
+        "numSteps": 2,
+        "s1Priority": "AS", "s1Left": 12, "s1Op": "-", "s1Right": 4, "s1Result": 8, "s1Expr": "8 + 2",
+        "s2Priority": "AS", "s2Left": 8, "s2Op": "+", "s2Right": 2, "s2Result": 10, "s2Expr": "10",
+        "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+        "answer": 10
+      },
+      "expected": { "result": 10 }
+    },
+    {
+      "name": "2 + 3 × 4 - 5 = 9",
+      "values": {
+        "expr": "2 + 3 × 4 - 5",
+        "numSteps": 3,
+        "s1Priority": "MD", "s1Left": 3, "s1Op": "×", "s1Right": 4, "s1Result": 12, "s1Expr": "2 + 12 - 5",
+        "s2Priority": "AS", "s2Left": 2, "s2Op": "+", "s2Right": 12, "s2Result": 14, "s2Expr": "14 - 5",
+        "s3Priority": "AS", "s3Left": 14, "s3Op": "-", "s3Right": 5, "s3Result": 9,
+        "answer": 9
+      },
+      "expected": { "result": 9 }
+    }
+  ]
+}

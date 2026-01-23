@@ -1,19 +1,77 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState, useRef } from 'react'
+import dynamic from 'next/dynamic'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useTranslations, useMessages } from 'next-intl'
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { useHomeHero } from '@/contexts/HomeHeroContext'
 import { PageWithNav } from '@/components/PageWithNav'
-import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
-import { getTutorialForEditor } from '@/utils/tutorialConverter'
+import { getTutorialForEditor, type Tutorial } from '@/utils/tutorialConverter'
 import { getAvailableGames } from '@/lib/arcade/game-registry'
-import { InteractiveFlashcards } from '@/components/InteractiveFlashcards'
-import { LevelSliderDisplay } from '@/components/LevelSliderDisplay'
 import { HomeBlogSection } from '@/components/HomeBlogSection'
 import { css } from '../../styled-system/css'
 import { container, grid, hstack, stack } from '../../styled-system/patterns'
+
+// Skeleton placeholders for lazy-loaded components
+function TutorialSkeleton() {
+  return (
+    <div
+      className={css({
+        width: '100%',
+        maxWidth: '250px',
+        height: '300px',
+        bg: 'bg.muted',
+        rounded: 'lg',
+        animation: 'pulse 2s ease-in-out infinite',
+      })}
+    />
+  )
+}
+
+function FlashcardsSkeleton() {
+  return (
+    <div
+      className={css({
+        width: '100%',
+        height: '200px',
+        bg: 'bg.muted',
+        rounded: 'lg',
+        animation: 'pulse 2s ease-in-out infinite',
+      })}
+    />
+  )
+}
+
+function LevelSliderSkeleton() {
+  return (
+    <div
+      className={css({
+        width: '100%',
+        height: '120px',
+        bg: 'bg.muted',
+        rounded: 'lg',
+        animation: 'pulse 2s ease-in-out infinite',
+      })}
+    />
+  )
+}
+
+// Lazy load heavy components - skip SSR entirely for performance
+const TutorialPlayer = dynamic(
+  () => import('@/components/tutorial/TutorialPlayer').then((m) => m.TutorialPlayer),
+  { ssr: false, loading: () => <TutorialSkeleton /> }
+)
+
+const InteractiveFlashcards = dynamic(
+  () => import('@/components/InteractiveFlashcards').then((m) => m.InteractiveFlashcards),
+  { ssr: false, loading: () => <FlashcardsSkeleton /> }
+)
+
+const LevelSliderDisplay = dynamic(
+  () => import('@/components/LevelSliderDisplay').then((m) => m.LevelSliderDisplay),
+  { ssr: false, loading: () => <LevelSliderSkeleton /> }
+)
 
 // Hero section placeholder - the actual abacus is rendered by MyAbacus component
 function HeroSection() {
@@ -213,45 +271,56 @@ export default function HomePage() {
   const t = useTranslations('home')
   const messages = useMessages() as any
   const [selectedSkillIndex, setSelectedSkillIndex] = useState(1) // Default to "Friends techniques"
-  const fullTutorial = getTutorialForEditor(messages.tutorial || {})
 
-  // Create different tutorials for each skill level
-  const skillTutorials = [
-    // Skill 0: Read and set numbers (0-9999)
-    {
-      ...fullTutorial,
-      id: 'read-numbers-demo',
-      title: t('skills.readNumbers.tutorialTitle'),
-      description: t('skills.readNumbers.tutorialDesc'),
-      steps: fullTutorial.steps.filter((step) => step.id.startsWith('basic-')),
-    },
-    // Skill 1: Friends techniques (5 = 2+3)
-    {
-      ...fullTutorial,
-      id: 'friends-of-5-demo',
-      title: t('skills.friends.tutorialTitle'),
-      description: t('skills.friends.tutorialDesc'),
-      steps: fullTutorial.steps.filter((step) => step.id === 'complement-2'),
-    },
-    // Skill 2: Multiply & divide (12×34)
-    {
-      ...fullTutorial,
-      id: 'multiply-demo',
-      title: t('skills.multiply.tutorialTitle'),
-      description: t('skills.multiply.tutorialDesc'),
-      steps: fullTutorial.steps.filter((step) => step.id.includes('complement')).slice(0, 3),
-    },
-    // Skill 3: Mental calculation (Speed math)
-    {
-      ...fullTutorial,
-      id: 'mental-calc-demo',
-      title: t('skills.mental.tutorialTitle'),
-      description: t('skills.mental.tutorialDesc'),
-      steps: fullTutorial.steps.slice(-3),
-    },
-  ]
+  // Defer tutorial processing to after hydration for better SSR performance
+  const [fullTutorial, setFullTutorial] = useState<Tutorial | null>(null)
 
-  const selectedTutorial = skillTutorials[selectedSkillIndex]
+  useEffect(() => {
+    // Process tutorial data after hydration to avoid blocking SSR
+    setFullTutorial(getTutorialForEditor(messages.tutorial || {}))
+  }, [messages.tutorial])
+
+  // Create different tutorials for each skill level (memoized to avoid recalc on every render)
+  const skillTutorials = useMemo(() => {
+    if (!fullTutorial) return null
+
+    return [
+      // Skill 0: Read and set numbers (0-9999)
+      {
+        ...fullTutorial,
+        id: 'read-numbers-demo',
+        title: t('skills.readNumbers.tutorialTitle'),
+        description: t('skills.readNumbers.tutorialDesc'),
+        steps: fullTutorial.steps.filter((step) => step.id.startsWith('basic-')),
+      },
+      // Skill 1: Friends techniques (5 = 2+3)
+      {
+        ...fullTutorial,
+        id: 'friends-of-5-demo',
+        title: t('skills.friends.tutorialTitle'),
+        description: t('skills.friends.tutorialDesc'),
+        steps: fullTutorial.steps.filter((step) => step.id === 'complement-2'),
+      },
+      // Skill 2: Multiply & divide (12×34)
+      {
+        ...fullTutorial,
+        id: 'multiply-demo',
+        title: t('skills.multiply.tutorialTitle'),
+        description: t('skills.multiply.tutorialDesc'),
+        steps: fullTutorial.steps.filter((step) => step.id.includes('complement')).slice(0, 3),
+      },
+      // Skill 3: Mental calculation (Speed math)
+      {
+        ...fullTutorial,
+        id: 'mental-calc-demo',
+        title: t('skills.mental.tutorialTitle'),
+        description: t('skills.mental.tutorialDesc'),
+        steps: fullTutorial.steps.slice(-3),
+      },
+    ]
+  }, [fullTutorial, t])
+
+  const selectedTutorial = skillTutorials?.[selectedSkillIndex] ?? null
 
   return (
     <PageWithNav>
@@ -336,17 +405,21 @@ export default function HomePage() {
                     maxW: '250px',
                   })}
                 >
-                  <TutorialPlayer
-                    key={selectedTutorial.id}
-                    tutorial={selectedTutorial}
-                    isDebugMode={false}
-                    showDebugPanel={false}
-                    hideNavigation={true}
-                    hideTooltip={true}
-                    silentErrors={true}
-                    abacusColumns={1}
-                    theme="dark"
-                  />
+                  {selectedTutorial ? (
+                    <TutorialPlayer
+                      key={selectedTutorial.id}
+                      tutorial={selectedTutorial}
+                      isDebugMode={false}
+                      showDebugPanel={false}
+                      hideNavigation={true}
+                      hideTooltip={true}
+                      silentErrors={true}
+                      abacusColumns={1}
+                      theme="dark"
+                    />
+                  ) : (
+                    <TutorialSkeleton />
+                  )}
                 </div>
 
                 {/* What you'll learn on the right */}

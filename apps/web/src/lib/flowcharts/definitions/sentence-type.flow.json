@@ -1,0 +1,205 @@
+{
+  "id": "sentence-type",
+  "title": "Identify Sentence Types",
+  "mermaidFile": "embedded",
+  "problemInput": {
+    "schema": "sentence-classification",
+    "fields": [
+      {
+        "name": "sentence",
+        "label": "Sentence",
+        "type": "choice",
+        "options": [
+          "The cat sat on the mat.",
+          "Where is my book?",
+          "Close the door!",
+          "What a beautiful day!",
+          "Please pass the salt.",
+          "Are you coming to the party?"
+        ]
+      },
+      {
+        "name": "punctuation",
+        "label": "Ending punctuation",
+        "type": "choice",
+        "options": [".", "?", "!"]
+      },
+      {
+        "name": "intent",
+        "label": "Intent (for ! or . sentences)",
+        "type": "choice",
+        "options": ["statement", "command", "feeling", "request"]
+      }
+    ],
+    "examples": [
+      {
+        "name": "Statement (period)",
+        "description": "Simple declarative sentence",
+        "values": { "sentence": "The cat sat on the mat.", "punctuation": ".", "intent": "statement" },
+        "expectedAnswer": "declarative"
+      },
+      {
+        "name": "Question",
+        "description": "Interrogative sentence",
+        "values": { "sentence": "Where is my book?", "punctuation": "?", "intent": "statement" },
+        "expectedAnswer": "interrogative"
+      },
+      {
+        "name": "Command",
+        "description": "Imperative sentence with exclamation",
+        "values": { "sentence": "Close the door!", "punctuation": "!", "intent": "command" },
+        "expectedAnswer": "imperative"
+      },
+      {
+        "name": "Strong feeling",
+        "description": "Exclamatory sentence",
+        "values": { "sentence": "What a beautiful day!", "punctuation": "!", "intent": "feeling" },
+        "expectedAnswer": "exclamatory"
+      },
+      {
+        "name": "Polite request",
+        "description": "Imperative with period",
+        "values": { "sentence": "Please pass the salt.", "punctuation": ".", "intent": "request" },
+        "expectedAnswer": "imperative"
+      },
+      {
+        "name": "Yes/No question",
+        "description": "Another interrogative",
+        "values": { "sentence": "Are you coming to the party?", "punctuation": "?", "intent": "statement" },
+        "expectedAnswer": "interrogative"
+      }
+    ]
+  },
+  "entryNode": "START",
+  "nodes": {
+    "START": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "CHECK_END",
+      "transform": [
+        { "key": "sentenceText", "expr": "sentence" }
+      ]
+    },
+    "CHECK_END": {
+      "type": "decision",
+      "correctAnswer": "punctuation == '?' ? 'question' : (punctuation == '!' ? 'exclaim' : 'period')",
+      "options": [
+        { "value": "question", "label": "? Question mark", "next": "IS_QUESTION", "pathLabel": "?" },
+        { "value": "exclaim", "label": "! Exclamation mark", "next": "CHECK_COMMAND", "pathLabel": "!" },
+        { "value": "period", "label": ". Period", "next": "CHECK_STATEMENT", "pathLabel": "." }
+      ]
+    },
+    "IS_QUESTION": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "RESULT_INTERROGATIVE",
+      "transform": [
+        { "key": "sentenceType", "expr": "'interrogative'" },
+        { "key": "explanation", "expr": "'Questions ask for information and end with ?'" }
+      ]
+    },
+    "RESULT_INTERROGATIVE": {
+      "type": "embellishment",
+      "next": "DONE",
+      "transform": [
+        { "key": "finalType", "expr": "'interrogative'" }
+      ]
+    },
+    "CHECK_COMMAND": {
+      "type": "decision",
+      "correctAnswer": "intent == 'command' ? 'command' : 'feeling'",
+      "options": [
+        { "value": "command", "label": "Giving an order or request", "next": "RESULT_IMPERATIVE_EXCLAIM", "pathLabel": "command" },
+        { "value": "feeling", "label": "Expressing strong feeling", "next": "RESULT_EXCLAMATORY", "pathLabel": "feeling" }
+      ]
+    },
+    "RESULT_IMPERATIVE_EXCLAIM": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "DONE",
+      "transform": [
+        { "key": "sentenceType", "expr": "'imperative'" },
+        { "key": "explanation", "expr": "'Commands tell someone to do something'" },
+        { "key": "finalType", "expr": "'imperative'" }
+      ]
+    },
+    "RESULT_EXCLAMATORY": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "DONE",
+      "transform": [
+        { "key": "sentenceType", "expr": "'exclamatory'" },
+        { "key": "explanation", "expr": "'Exclamations express strong emotions'" },
+        { "key": "finalType", "expr": "'exclamatory'" }
+      ]
+    },
+    "CHECK_STATEMENT": {
+      "type": "decision",
+      "correctAnswer": "intent == 'statement' ? 'statement' : 'request'",
+      "options": [
+        { "value": "statement", "label": "Making a statement", "next": "RESULT_DECLARATIVE", "pathLabel": "statement" },
+        { "value": "request", "label": "Polite request or command", "next": "RESULT_IMPERATIVE_POLITE", "pathLabel": "request" }
+      ]
+    },
+    "RESULT_DECLARATIVE": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "DONE",
+      "transform": [
+        { "key": "sentenceType", "expr": "'declarative'" },
+        { "key": "explanation", "expr": "'Declarative sentences state facts or opinions'" },
+        { "key": "finalType", "expr": "'declarative'" }
+      ]
+    },
+    "RESULT_IMPERATIVE_POLITE": {
+      "type": "instruction",
+      "advance": "tap",
+      "next": "DONE",
+      "transform": [
+        { "key": "sentenceType", "expr": "'imperative'" },
+        { "key": "explanation", "expr": "'Polite commands can end with a period'" },
+        { "key": "finalType", "expr": "'imperative'" }
+      ]
+    },
+    "DONE": {
+      "type": "terminal",
+      "celebration": true
+    }
+  },
+  "answer": {
+    "values": {
+      "type": "finalType"
+    },
+    "display": {
+      "text": "{{finalType}}",
+      "web": "<b>{{finalType}}</b>"
+    }
+  },
+  "tests": [
+    {
+      "name": "Declarative sentence",
+      "values": { "sentence": "The cat sat on the mat.", "punctuation": ".", "intent": "statement" },
+      "expected": { "type": "declarative" }
+    },
+    {
+      "name": "Interrogative sentence",
+      "values": { "sentence": "Where is my book?", "punctuation": "?", "intent": "statement" },
+      "expected": { "type": "interrogative" }
+    },
+    {
+      "name": "Imperative with exclamation",
+      "values": { "sentence": "Close the door!", "punctuation": "!", "intent": "command" },
+      "expected": { "type": "imperative" }
+    },
+    {
+      "name": "Exclamatory sentence",
+      "values": { "sentence": "What a beautiful day!", "punctuation": "!", "intent": "feeling" },
+      "expected": { "type": "exclamatory" }
+    },
+    {
+      "name": "Polite request",
+      "values": { "sentence": "Please pass the salt.", "punctuation": ".", "intent": "request" },
+      "expected": { "type": "imperative" }
+    }
+  ]
+}
