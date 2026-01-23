@@ -25,7 +25,7 @@ variable "app_image" {
 variable "app_replicas" {
   description = "Number of app replicas"
   type        = number
-  default     = 2
+  default     = 3
 }
 
 variable "letsencrypt_email" {
