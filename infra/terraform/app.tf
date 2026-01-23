@@ -67,6 +67,30 @@ resource "kubernetes_service" "app_headless" {
   }
 }
 
+# Service targeting ONLY the primary pod (pod-0) for write requests
+# LiteFS proxy on replicas returns fly-replay header which k8s doesn't understand,
+# so we route POST/PUT/DELETE directly to the primary
+resource "kubernetes_service" "app_primary" {
+  metadata {
+    name      = "abaci-app-primary"
+    namespace = kubernetes_namespace.abaci.metadata[0].name
+  }
+
+  spec {
+    selector = {
+      app                                  = "abaci-app"
+      "statefulset.kubernetes.io/pod-name" = "abaci-app-0"
+    }
+
+    port {
+      port        = 80
+      target_port = 8080
+    }
+
+    type = "ClusterIP"
+  }
+}
+
 # StatefulSet for stable pod identities (required for LiteFS primary election)
 resource "kubernetes_stateful_set" "app" {
   metadata {
@@ -505,6 +529,48 @@ resource "kubernetes_manifest" "redirect_https_middleware" {
       redirectScheme = {
         scheme    = "https"
         permanent = true
+      }
+    }
+  }
+}
+
+# IngressRoute for write requests (POST/PUT/DELETE/PATCH) - route to primary only
+# LiteFS proxy on replicas can't handle writes without Fly.io's fly-replay infrastructure
+resource "kubernetes_manifest" "app_writes_ingressroute" {
+  manifest = {
+    apiVersion = "traefik.io/v1alpha1"
+    kind       = "IngressRoute"
+    metadata = {
+      name      = "abaci-app-writes"
+      namespace = kubernetes_namespace.abaci.metadata[0].name
+    }
+    spec = {
+      entryPoints = ["websecure"]
+      routes = [
+        {
+          match = "Host(`${var.app_domain}`) && (Method(`POST`) || Method(`PUT`) || Method(`DELETE`) || Method(`PATCH`))"
+          kind  = "Rule"
+          priority = 100  # Higher priority than default ingress
+          middlewares = [
+            {
+              name      = "hsts"
+              namespace = kubernetes_namespace.abaci.metadata[0].name
+            },
+            {
+              name      = "rate-limit"
+              namespace = kubernetes_namespace.abaci.metadata[0].name
+            }
+          ]
+          services = [
+            {
+              name = kubernetes_service.app_primary.metadata[0].name
+              port = 80
+            }
+          ]
+        }
+      ]
+      tls = {
+        secretName = "abaci-tls"
       }
     }
   }
