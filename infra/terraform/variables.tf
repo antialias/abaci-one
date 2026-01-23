@@ -45,6 +45,13 @@ variable "auth_secret" {
   sensitive   = true
 }
 
+variable "openai_api_key" {
+  description = "OpenAI API key for LLM features (flowchart generation, etc.)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "nfs_server" {
   description = "NFS server IP address (NAS)"
   type        = string
