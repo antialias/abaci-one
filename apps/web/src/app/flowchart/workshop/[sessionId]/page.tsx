@@ -304,14 +304,43 @@ export default function WorkshopPage() {
     const watchController = new AbortController()
     abortControllerRef.current = watchController
 
-    // Connect to watch endpoint
+    // Determine if we need to trigger generation (session is 'initial' with topic but no draft)
+    const needsGeneration =
+      session.state === 'initial' && session.topicDescription && !session.draftDefinitionJson
+
+    // Connect to watch endpoint (after triggering generation if needed)
     const connectWatch = async () => {
+      // If session needs generation, trigger it FIRST before connecting to watch
+      // This ensures the registry entry exists when we connect
+      if (needsGeneration) {
+        console.log(`[workshop-client] Triggering generation for session ${sessionId}`)
+        try {
+          // Fire-and-forget POST to /generate - don't await the full response
+          // Just ensure the request starts processing before we connect to watch
+          fetch(`/api/flowchart-workshop/sessions/${sessionId}/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topicDescription: session.topicDescription }),
+          }).catch((err) => {
+            console.error('[workshop-client] Generate request failed:', err)
+          })
+          // Give the server a moment to register the generation
+          await new Promise((resolve) => setTimeout(resolve, 200))
+        } catch (err) {
+          console.error('[workshop-client] Failed to trigger generation:', err)
+        }
+      }
+
+      console.log(`[workshop-client] Connecting to watch endpoint for session ${sessionId}`)
       try {
         const response = await fetch(`/api/flowchart-workshop/sessions/${sessionId}/watch`, {
           signal: watchController.signal,
         })
 
+        console.log(`[workshop-client] Watch response:`, { status: response.status, ok: response.ok, hasBody: !!response.body })
+
         if (!response.ok || !response.body) {
+          console.error(`[workshop-client] Watch connection failed`, { status: response.status })
           dispatch({ type: 'STREAM_ERROR', message: 'Failed to connect to watch stream' })
           return
         }
@@ -319,10 +348,15 @@ export default function WorkshopPage() {
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
         let buffer = ''
+        let watchEventCount = 0
 
+        console.log(`[workshop-client] Starting to read watch stream`)
         while (true) {
           const { done, value } = await reader.read()
-          if (done) break
+          if (done) {
+            console.log(`[workshop-client] Watch stream done, total events: ${watchEventCount}`)
+            break
+          }
 
           buffer += decoder.decode(value, { stream: true })
           const lines = buffer.split('\n')
@@ -335,6 +369,10 @@ export default function WorkshopPage() {
             } else if (line.startsWith('data: ') && currentEvent) {
               try {
                 const data = JSON.parse(line.slice(6))
+                watchEventCount++
+                if (watchEventCount <= 5 || watchEventCount % 50 === 0) {
+                  console.log(`[workshop-client] Watch event #${watchEventCount}:`, currentEvent, data?.reasoningText?.length ? `(reasoning: ${data.reasoningText.length} chars)` : '')
+                }
 
                 switch (currentEvent) {
                   case 'state':
@@ -473,6 +511,8 @@ export default function WorkshopPage() {
   const handleGenerate = useCallback(async () => {
     if (!session?.topicDescription) return
 
+    console.log(`[workshop-client] handleGenerate called for session ${sessionId}`)
+
     // Reset and start
     dispatch({ type: 'START_STREAMING', streamType: 'generate' })
     setIsProgressPanelExpanded(true)
@@ -481,6 +521,7 @@ export default function WorkshopPage() {
     abortControllerRef.current = new AbortController()
 
     try {
+      console.log(`[workshop-client] Fetching generate endpoint`)
       const response = await fetch(`/api/flowchart-workshop/sessions/${sessionId}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -488,23 +529,42 @@ export default function WorkshopPage() {
         signal: abortControllerRef.current.signal,
       })
 
+      console.log(`[workshop-client] Generate response received:`, { status: response.status, ok: response.ok })
+
+      // Track events for logging
+      let generateEventCount = 0
+
       // Parse the SSE stream
       await parseFlowchartSSE(
         response,
         {
           onStarted: (responseId) => {
+            generateEventCount++
+            console.log(`[workshop-client] Generate onStarted:`, responseId)
             dispatch({ type: 'STREAM_STARTED', responseId })
           },
           onProgress: (stage, message) => {
+            generateEventCount++
+            console.log(`[workshop-client] Generate onProgress:`, stage, message)
             dispatch({ type: 'STREAM_PROGRESS', stage, message })
           },
           onReasoning: (text, isDelta) => {
+            generateEventCount++
+            if (generateEventCount <= 5 || generateEventCount % 50 === 0) {
+              console.log(`[workshop-client] Generate onReasoning #${generateEventCount}:`, { textLength: text?.length, isDelta })
+            }
             dispatch({ type: 'STREAM_REASONING', text, append: isDelta })
           },
           onOutputDelta: (text) => {
+            generateEventCount++
+            if (generateEventCount <= 5 || generateEventCount % 50 === 0) {
+              console.log(`[workshop-client] Generate onOutputDelta #${generateEventCount}:`, { textLength: text?.length })
+            }
             dispatch({ type: 'STREAM_OUTPUT', text, append: true })
           },
           onComplete: (result) => {
+            generateEventCount++
+            console.log(`[workshop-client] Generate onComplete`, { totalEvents: generateEventCount, hasResult: !!result })
             dispatch({ type: 'STREAM_COMPLETE', result })
             // Update session with the generated content
             if (isGenerateResult(result)) {
@@ -526,20 +586,24 @@ export default function WorkshopPage() {
             }
           },
           onError: (message) => {
+            console.error(`[workshop-client] Generate onError:`, message)
             dispatch({ type: 'STREAM_ERROR', message })
             setError(message)
           },
           onCancelled: () => {
+            console.log(`[workshop-client] Generate onCancelled`)
             dispatch({ type: 'STREAM_CANCELLED' })
           },
         },
         abortControllerRef.current.signal
       )
+      console.log(`[workshop-client] parseFlowchartSSE completed`)
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
+        console.log(`[workshop-client] Generate aborted`)
         dispatch({ type: 'STREAM_CANCELLED' })
       } else {
-        console.error('Generation failed:', err)
+        console.error('[workshop-client] Generation failed:', err)
         const message = err instanceof Error ? err.message : 'Generation failed'
         dispatch({ type: 'STREAM_ERROR', message })
         setError(message)
@@ -1208,6 +1272,19 @@ export default function WorkshopPage() {
                   {isExportingPDF ? 'Exporting...' : 'Download PDF'}
                 </button>
               </div>
+              {/* Progress panel during regeneration */}
+              {isGenerating && streamingState.streamType === 'generate' && (
+                <div className={css({ marginBottom: '4' })}>
+                  <GenerationProgressPanel
+                    isExpanded={isProgressPanelExpanded}
+                    onToggle={() => setIsProgressPanelExpanded(!isProgressPanelExpanded)}
+                    status={streamingState.status}
+                    progressMessage={progressMessage || 'Regenerating flowchart...'}
+                    reasoningText={streamingState.reasoningText}
+                    onCancel={handleCancel}
+                  />
+                </div>
+              )}
               <DebugMermaidDiagram
                 mermaidContent={session.draftMermaidContent || ''}
                 currentNodeId=""

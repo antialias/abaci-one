@@ -49,6 +49,12 @@ export async function POST(request: Request, { params }: RouteParams) {
   const url = new URL(request.url);
   const debug = url.searchParams.get("debug") === "true";
 
+  // Always log route hit for debugging
+  console.log(`[generate] POST /api/flowchart-workshop/sessions/${id}/generate`, {
+    debug,
+    timestamp: new Date().toISOString(),
+  });
+
   if (debug) {
     console.log("[generate] Debug mode enabled");
   }
@@ -162,7 +168,9 @@ export async function POST(request: Request, { params }: RouteParams) {
       } | null = null;
 
       // Start tracking this generation in the registry (for reconnection support)
+      console.log(`[generate] Starting generation registry for session ${id}`);
       const generationState = startGeneration(id);
+      console.log(`[generate] Generation state created`, { sessionId: generationState.sessionId, status: generationState.status });
 
       // Throttled save of reasoning text to database (for durability)
       let lastReasoningSaveTime = 0;
@@ -226,6 +234,12 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
 
         // Stream the LLM response with reasoning
         // Use debug option to enable detailed logging in the LLM client
+        console.log(`[generate] Creating LLM stream`, {
+          provider: "openai",
+          model: "gpt-5.2",
+          promptLength: fullPrompt.length,
+          debug,
+        });
         const llmStream = llm.stream({
           provider: "openai",
           model: "gpt-5.2",
@@ -236,18 +250,26 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
             summary: "auto",
           },
           timeoutMs: 300_000, // 5 minutes for complex flowchart generation
-          debug, // Enable LLM client debug logging if debug=true
+          debug: true, // ALWAYS enable LLM client debug logging for now
         });
+
+        console.log(`[generate] LLM stream created, starting iteration`);
 
         // Forward all stream events to the client AND broadcast to registry subscribers
         // The for-await loop processes all LLM events regardless of client state
+        let eventCount = 0;
+        console.log(`[generate] Entering event loop...`);
         for await (const event of llmStream as AsyncGenerator<
           StreamEvent<GeneratedFlowchart>,
           void,
           unknown
         >) {
+          eventCount++;
+          console.log(`[generate] LLM event #${eventCount}:`, event.type);
+
           switch (event.type) {
             case "started": {
+              console.log(`[generate] LLM started event`, { responseId: event.responseId });
               const startedData = {
                 responseId: event.responseId,
                 message: "Generating flowchart...",
@@ -258,6 +280,13 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
             }
 
             case "reasoning": {
+              if (eventCount <= 5 || eventCount % 50 === 0) {
+                console.log(`[generate] Reasoning event #${eventCount}`, {
+                  textLength: event.text?.length,
+                  isDelta: event.isDelta,
+                  summaryIndex: event.summaryIndex,
+                });
+              }
               const reasoningData = {
                 text: event.text,
                 summaryIndex: event.summaryIndex,
@@ -273,6 +302,12 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
             }
 
             case "output_delta": {
+              if (eventCount <= 5 || eventCount % 50 === 0) {
+                console.log(`[generate] Output delta event #${eventCount}`, {
+                  textLength: event.text?.length,
+                  outputIndex: event.outputIndex,
+                });
+              }
               const outputData = {
                 text: event.text,
                 outputIndex: event.outputIndex,
@@ -283,7 +318,7 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
             }
 
             case "error":
-              console.error("[generate] LLM error:", event.message, event.code);
+              console.error("[generate] LLM error event:", event.message, event.code);
               // This is an LLM error, not a client error
               llmError = { message: event.message, code: event.code };
               sendEvent("error", {
@@ -294,11 +329,16 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
               break;
 
             case "complete":
+              console.log(`[generate] LLM complete event`, {
+                hasData: !!event.data,
+                usage: event.usage,
+              });
               finalResult = event.data;
               usage = event.usage;
               break;
           }
         }
+        console.log(`[generate] Event loop finished, total events: ${eventCount}`);
       } catch (error) {
         // This catch is for unexpected errors (network issues, etc.)
         // NOT for client disconnect (those are caught in sendEvent)
@@ -310,6 +350,11 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`;
 
       // ALWAYS update database based on LLM result, regardless of client connection
       // This is the key fix: DB operations happen outside the try-catch for client errors
+      console.log(`[generate] Post-loop processing`, {
+        hasError: !!llmError,
+        hasFinalResult: !!finalResult,
+        hasUsage: !!usage,
+      });
       if (llmError) {
         // LLM failed - update session to error state, clear reasoning
         await db

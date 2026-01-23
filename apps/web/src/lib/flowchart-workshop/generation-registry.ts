@@ -53,6 +53,13 @@ const activeGenerations = new Map<string, GenerationState>()
  */
 export function startGeneration(sessionId: string): GenerationState {
   // Clean up any existing state for this session
+  const existing = activeGenerations.get(sessionId)
+  if (existing) {
+    console.log(`[registry] Cleaning up existing generation for session ${sessionId}`, {
+      previousStatus: existing.status,
+      previousSubscriberCount: existing.subscribers.size,
+    })
+  }
   activeGenerations.delete(sessionId)
 
   const state: GenerationState = {
@@ -65,6 +72,9 @@ export function startGeneration(sessionId: string): GenerationState {
   }
 
   activeGenerations.set(sessionId, state)
+  console.log(`[registry] Started generation for session ${sessionId}`, {
+    totalActiveGenerations: activeGenerations.size,
+  })
   return state
 }
 
@@ -89,21 +99,50 @@ export function isGenerationActive(sessionId: string): boolean {
  */
 export function subscribe(sessionId: string, subscriber: Subscriber): (() => void) | null {
   const state = activeGenerations.get(sessionId)
-  if (!state) return null
+  if (!state) {
+    console.log(`[registry] Subscribe failed: no generation state for session ${sessionId}`)
+    return null
+  }
 
   state.subscribers.add(subscriber)
+  console.log(`[registry] New subscriber added for session ${sessionId}`, {
+    subscriberCount: state.subscribers.size,
+    status: state.status,
+  })
 
   return () => {
     state.subscribers.delete(subscriber)
+    console.log(`[registry] Subscriber removed for session ${sessionId}`, {
+      subscriberCount: state.subscribers.size,
+    })
   }
 }
+
+// Track broadcast counts per session to avoid log spam
+const broadcastCounts = new Map<string, number>()
 
 /**
  * Broadcast an event to all subscribers of a generation
  */
 export function broadcast(sessionId: string, event: StreamEvent): void {
   const state = activeGenerations.get(sessionId)
-  if (!state) return
+  if (!state) {
+    console.log(`[registry] Broadcast failed: no generation state for session ${sessionId}`)
+    return
+  }
+
+  // Count broadcasts for this session
+  const count = (broadcastCounts.get(sessionId) ?? 0) + 1
+  broadcastCounts.set(sessionId, count)
+
+  // Log first few and then periodically
+  if (count <= 3 || count % 100 === 0) {
+    console.log(`[registry] Broadcast #${count}`, {
+      sessionId,
+      eventType: event.type,
+      subscriberCount: state.subscribers.size,
+    })
+  }
 
   // Update accumulated content
   if (event.type === 'reasoning') {
@@ -125,7 +164,7 @@ export function broadcast(sessionId: string, event: StreamEvent): void {
       subscriber(event)
     } catch (err) {
       // Remove failed subscribers
-      console.error('[generation-registry] Subscriber error:', err)
+      console.error('[registry] Subscriber error:', err)
       state.subscribers.delete(subscriber)
     }
   }
@@ -136,7 +175,16 @@ export function broadcast(sessionId: string, event: StreamEvent): void {
  */
 export function completeGeneration(sessionId: string, result: unknown): void {
   const state = activeGenerations.get(sessionId)
-  if (!state) return
+  if (!state) {
+    console.log(`[registry] completeGeneration: no state for session ${sessionId}`)
+    return
+  }
+
+  console.log(`[registry] Completing generation for session ${sessionId}`, {
+    subscriberCount: state.subscribers.size,
+    accumulatedReasoningLength: state.accumulatedReasoning.length,
+    accumulatedOutputLength: state.accumulatedOutput.length,
+  })
 
   state.status = 'complete'
   state.result = result
@@ -144,8 +192,12 @@ export function completeGeneration(sessionId: string, result: unknown): void {
   // Broadcast completion to all subscribers
   broadcast(sessionId, { type: 'complete', data: result })
 
+  // Clean broadcast count
+  broadcastCounts.delete(sessionId)
+
   // Clean up after a delay (give subscribers time to receive the event)
   setTimeout(() => {
+    console.log(`[registry] Cleaning up completed generation for session ${sessionId}`)
     activeGenerations.delete(sessionId)
   }, 5000)
 }
@@ -155,7 +207,15 @@ export function completeGeneration(sessionId: string, result: unknown): void {
  */
 export function failGeneration(sessionId: string, error: string): void {
   const state = activeGenerations.get(sessionId)
-  if (!state) return
+  if (!state) {
+    console.log(`[registry] failGeneration: no state for session ${sessionId}`)
+    return
+  }
+
+  console.log(`[registry] Failing generation for session ${sessionId}`, {
+    error,
+    subscriberCount: state.subscribers.size,
+  })
 
   state.status = 'error'
   state.error = error
@@ -163,8 +223,12 @@ export function failGeneration(sessionId: string, error: string): void {
   // Broadcast error to all subscribers
   broadcast(sessionId, { type: 'error', data: { message: error } })
 
+  // Clean broadcast count
+  broadcastCounts.delete(sessionId)
+
   // Clean up after a delay
   setTimeout(() => {
+    console.log(`[registry] Cleaning up failed generation for session ${sessionId}`)
     activeGenerations.delete(sessionId)
   }, 5000)
 }

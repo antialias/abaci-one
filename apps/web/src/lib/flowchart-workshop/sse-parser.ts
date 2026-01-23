@@ -121,6 +121,8 @@ export async function parseFlowchartSSE(
   callbacks: FlowchartSSEEvents,
   signal?: AbortSignal
 ): Promise<void> {
+  console.log(`[sse-parser] parseFlowchartSSE called`, { status: response.status, ok: response.ok })
+
   if (!response.ok) {
     const errorText = await response.text()
     let errorMessage = 'Request failed'
@@ -130,31 +132,44 @@ export async function parseFlowchartSSE(
     } catch {
       errorMessage = errorText || errorMessage
     }
+    console.error(`[sse-parser] Response not OK:`, errorMessage)
     callbacks.onError?.(errorMessage, String(response.status))
     return
   }
 
   const reader = response.body?.getReader()
   if (!reader) {
+    console.error(`[sse-parser] No response body`)
     callbacks.onError?.('No response body')
     return
   }
 
   const decoder = new TextDecoder()
   let buffer = ''
+  let chunkCount = 0
+  let eventCount = 0
+
+  console.log(`[sse-parser] Starting to read response body`)
 
   try {
     while (true) {
       // Check for cancellation
       if (signal?.aborted) {
+        console.log(`[sse-parser] Signal aborted`)
         callbacks.onCancelled?.()
         break
       }
 
       const { done, value } = await reader.read()
+      chunkCount++
 
       if (done) {
+        console.log(`[sse-parser] Reader done after ${chunkCount} chunks, ${eventCount} events`)
         break
+      }
+
+      if (chunkCount <= 3 || chunkCount % 100 === 0) {
+        console.log(`[sse-parser] Chunk #${chunkCount} received, size: ${value?.length}`)
       }
 
       buffer += decoder.decode(value, { stream: true })
@@ -179,6 +194,11 @@ export async function parseFlowchartSSE(
         }
 
         if (!eventType || !eventData) continue
+
+        eventCount++
+        if (eventCount <= 5 || eventCount % 50 === 0) {
+          console.log(`[sse-parser] Event #${eventCount}: ${eventType}`)
+        }
 
         try {
           const data = JSON.parse(eventData)
@@ -213,17 +233,21 @@ export async function parseFlowchartSSE(
               break
           }
         } catch (parseError) {
-          console.error('Failed to parse SSE event data:', parseError, eventData)
+          console.error('[sse-parser] Failed to parse SSE event data:', parseError, eventData)
         }
       }
     }
+    console.log(`[sse-parser] Reader loop finished normally, total events: ${eventCount}`)
   } catch (error) {
     if (signal?.aborted) {
+      console.log(`[sse-parser] Caught abort error`)
       callbacks.onCancelled?.()
     } else {
+      console.error(`[sse-parser] Stream error:`, error)
       callbacks.onError?.(error instanceof Error ? error.message : 'Stream error')
     }
   } finally {
+    console.log(`[sse-parser] Releasing reader lock`)
     reader.releaseLock()
   }
 }

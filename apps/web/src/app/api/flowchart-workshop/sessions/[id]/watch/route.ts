@@ -31,6 +31,11 @@ interface RouteParams {
 export async function GET(request: Request, { params }: RouteParams) {
   const { id } = await params
 
+  // Always log route hit for debugging
+  console.log(`[watch] GET /api/flowchart-workshop/sessions/${id}/watch`, {
+    timestamp: new Date().toISOString(),
+  })
+
   if (!id) {
     return new Response(JSON.stringify({ error: 'Session ID required' }), {
       status: 400,
@@ -50,7 +55,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 
   // Verify session exists and belongs to user
-  const session = await db.query.workshopSessions.findFirst({
+  let session = await db.query.workshopSessions.findFirst({
     where: and(eq(schema.workshopSessions.id, id), eq(schema.workshopSessions.userId, userId)),
   })
 
@@ -87,11 +92,64 @@ export async function GET(request: Request, { params }: RouteParams) {
       }
 
       // Check if there's an active generation in the registry
-      const activeGeneration = getGeneration(id)
+      // If not found immediately, poll briefly in case the generate route is still starting up
+      let activeGeneration = getGeneration(id)
+      let isActive = isGenerationActive(id)
 
-      if (activeGeneration && isGenerationActive(id)) {
+      console.log(`[watch] Initial generation state check`, {
+        sessionId: id,
+        hasActiveGeneration: !!activeGeneration,
+        isActive,
+        sessionState: session.state,
+      })
+
+      // If no active generation found AND session is not complete (refining state),
+      // the generate route may still be starting up. Poll briefly.
+      // This handles the race condition where watch connects before generate registers.
+      const shouldPoll = !isActive && session.state !== 'refining'
+      if (shouldPoll) {
+        console.log(`[watch] No active generation yet (state=${session.state}), polling...`)
+        const maxWaitMs = 3000 // Wait up to 3 seconds
+        const pollIntervalMs = 100
+        const startTime = Date.now()
+
+        while (Date.now() - startTime < maxWaitMs) {
+          await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
+          activeGeneration = getGeneration(id)
+          isActive = isGenerationActive(id)
+
+          if (isActive) {
+            console.log(`[watch] Found active generation after ${Date.now() - startTime}ms`)
+            break
+          }
+        }
+
+        if (!isActive) {
+          console.log(`[watch] No active generation found after ${maxWaitMs}ms polling`)
+        }
+
+        // Re-fetch session in case state changed during polling (e.g., generation completed)
+        const refreshedSession = await db.query.workshopSessions.findFirst({
+          where: and(eq(schema.workshopSessions.id, id), eq(schema.workshopSessions.userId, userId)),
+        })
+        if (refreshedSession) {
+          session = refreshedSession
+          console.log(`[watch] Refreshed session state: ${session.state}`)
+        }
+      }
+
+      console.log(`[watch] Final generation state`, {
+        sessionId: id,
+        hasActiveGeneration: !!activeGeneration,
+        isActive,
+        status: activeGeneration?.status,
+        accumulatedReasoningLength: activeGeneration?.accumulatedReasoning?.length,
+        subscriberCount: activeGeneration?.subscribers?.size,
+      })
+
+      if (activeGeneration && isActive) {
         // LIVE PATH: Subscribe to the active generation stream
-        console.log(`[watch] Subscribing to live generation for session ${id}`)
+        console.log(`[watch] LIVE PATH: Subscribing to live generation for session ${id}`)
 
         // Send accumulated content so far (seeds the client)
         sendEvent('state', {
@@ -101,8 +159,16 @@ export async function GET(request: Request, { params }: RouteParams) {
         })
 
         // Subscribe to live updates
+        console.log(`[watch] Subscribing to registry for session ${id}`)
+        let watchEventCount = 0
         const unsubscribe = subscribe(id, (event: StreamEvent) => {
+          watchEventCount++
+          if (watchEventCount <= 5 || watchEventCount % 50 === 0) {
+            console.log(`[watch] Received event #${watchEventCount}:`, event.type)
+          }
+
           if (!clientConnected) {
+            console.log(`[watch] Client disconnected, unsubscribing`)
             unsubscribe?.()
             return
           }
@@ -123,12 +189,14 @@ export async function GET(request: Request, { params }: RouteParams) {
               break
             }
             case 'complete': {
+              console.log(`[watch] Received complete event, closing stream`)
               sendEvent('complete', event.data)
               unsubscribe?.()
               closeStream()
               break
             }
             case 'error': {
+              console.log(`[watch] Received error event:`, event.data)
               const data = event.data as { message: string }
               sendEvent('error', data)
               unsubscribe?.()
@@ -137,13 +205,18 @@ export async function GET(request: Request, { params }: RouteParams) {
             }
           }
         })
+        console.log(`[watch] Subscription established, unsubscribe available: ${!!unsubscribe}`)
 
         // Clean up on disconnect
         // Note: The stream will stay open until generation completes or client disconnects
         // The registry will clean up the subscription if the subscriber throws
       } else {
         // DB PATH: Generation is not active, return DB state
-        console.log(`[watch] No active generation for session ${id}, returning DB state`)
+        console.log(`[watch] DB PATH: No active generation for session ${id}`, {
+          sessionState: session.state,
+          hasDraftDefinition: !!session.draftDefinitionJson,
+          hasReasoningText: !!session.currentReasoningText,
+        })
 
         // Send current state from DB
         sendEvent('state', {

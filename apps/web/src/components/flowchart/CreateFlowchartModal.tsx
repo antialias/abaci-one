@@ -110,20 +110,9 @@ export function CreateFlowchartModal({ open, onOpenChange }: CreateFlowchartModa
 
       const { session } = await response.json()
 
-      // Fire off generation immediately (fire-and-forget)
-      // The generate route is resilient to client disconnect, so it will
-      // continue processing even after we navigate away
-      fetch(`/api/flowchart-workshop/sessions/${session.id}/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicDescription }),
-      }).catch((err) => {
-        // Log but don't block navigation - the session page will show the error
-        console.error('Failed to start generation:', err)
-      })
-
       // Navigate to the workshop immediately
-      // The page will connect to the watch endpoint and see the live stream
+      // The workshop page will trigger generation and connect to the watch endpoint
+      console.log(`[create-modal] Navigating to /flowchart/workshop/${session.id}`)
       router.push(`/flowchart/workshop/${session.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create session')
