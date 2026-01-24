@@ -18,7 +18,7 @@ if (isEnabled) {
   const { NodeSDK } = require('@opentelemetry/sdk-node')
   const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node')
   const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-grpc')
-  const { Resource } = require('@opentelemetry/resources')
+  const { resourceFromAttributes } = require('@opentelemetry/resources')
   const {
     ATTR_SERVICE_NAME,
     ATTR_SERVICE_VERSION,
@@ -33,7 +33,7 @@ if (isEnabled) {
 
   console.log(`[Tracing] Initializing OpenTelemetry - endpoint: ${endpoint}, service: ${serviceName}, pod: ${podName}`)
 
-  const resource = new Resource({
+  const resource = resourceFromAttributes({
     [ATTR_SERVICE_NAME]: serviceName,
     [ATTR_SERVICE_VERSION]: serviceVersion,
     [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: environment,
