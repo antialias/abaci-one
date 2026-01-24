@@ -74,6 +74,59 @@ SQLite + Drizzle ORM. Location: `./data/sqlite.db`
 
 ---
 
+## Kubernetes Deployment (Keel Auto-Updates)
+
+**Production runs on k3s with Keel for automatic image updates.**
+
+### Keel Annotation Placement (CRITICAL)
+Keel annotations MUST be on the **workload metadata**, NOT the pod template:
+
+```hcl
+# CORRECT - on StatefulSet/Deployment metadata
+resource "kubernetes_stateful_set" "app" {
+  metadata {
+    annotations = {
+      "keel.sh/policy" = "force"
+      "keel.sh/trigger" = "poll"
+      "keel.sh/pollSchedule" = "@every 2m"
+    }
+  }
+}
+
+# WRONG - on pod template (Keel ignores these)
+spec {
+  template {
+    metadata {
+      annotations = { ... }  # Keel won't see these!
+    }
+  }
+}
+```
+
+### Keel Namespace Watching
+Keel must watch all namespaces (not just its own). Verify with:
+```bash
+kubectl get deployment keel -n keel -o jsonpath='{.spec.template.spec.containers[0].env}' | jq .
+```
+`NAMESPACE` should be empty or unset. If set to "keel", it only watches the keel namespace.
+
+### Debugging Keel
+```bash
+# Check if Keel sees your workload
+kubectl logs -n keel -l app=keel | grep -i "watch\|poll\|digest"
+
+# Should see: "new watch tag digest job added"
+# If not: annotations are wrong or namespace issue
+
+# Check for DNS issues
+kubectl logs -n keel -l app=keel | grep -i "error"
+```
+
+### LiteFS Replica Migrations
+Replicas are read-only. server.js checks `LITEFS_CANDIDATE` env var and skips migrations on replicas. If pods crash with "read only replica" error, this check is missing.
+
+---
+
 ## Reference Docs (Read When Relevant)
 
 | Topic | Doc |
