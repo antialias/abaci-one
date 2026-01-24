@@ -3,15 +3,18 @@
  *
  * GET /api/smoke-test-status
  *
- * Returns the status of the most recent smoke test run:
- * - 200 + {status: 'passed'} if latest run passed and is < 30 min old
+ * Returns the status of the most recent COMPLETED smoke test run:
+ * - 200 + {status: 'passed'} if latest completed run passed and is < 30 min old
  * - 503 if failed, stale, or no data
+ *
+ * Note: Running tests are ignored - we report the last completed result.
+ * This prevents Gatus from showing unhealthy status while tests are running.
  *
  * Used by Gatus to determine if browser smoke tests are passing.
  */
 
 import { NextResponse } from "next/server";
-import { desc } from "drizzle-orm";
+import { desc, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { smokeTestRuns } from "@/db/schema";
 
@@ -27,6 +30,7 @@ interface SmokeTestStatusResponse {
   durationMs?: number;
   errorMessage?: string;
   ageMinutes?: number;
+  currentlyRunning?: boolean;
 }
 
 // Maximum age of a test run before it's considered stale (30 minutes)
@@ -34,58 +38,68 @@ const MAX_AGE_MS = 30 * 60 * 1000;
 
 export async function GET(): Promise<NextResponse<SmokeTestStatusResponse>> {
   try {
-    // Get the most recent completed test run
-    const latestRun = await db
+    // Get the most recent COMPLETED test run (not "running")
+    const latestCompletedRun = await db
       .select()
       .from(smokeTestRuns)
+      .where(ne(smokeTestRuns.status, "running"))
       .orderBy(desc(smokeTestRuns.startedAt))
       .limit(1)
       .get();
 
-    if (!latestRun) {
+    // Check if there's a currently running test (for informational purposes)
+    const runningTest = await db
+      .select({ id: smokeTestRuns.id })
+      .from(smokeTestRuns)
+      .where(ne(smokeTestRuns.status, "passed"))
+      .orderBy(desc(smokeTestRuns.startedAt))
+      .limit(1)
+      .get();
+    const currentlyRunning = runningTest?.id !== latestCompletedRun?.id;
+
+    if (!latestCompletedRun) {
+      // No completed runs yet - if there's a running test, report that
+      if (currentlyRunning) {
+        return NextResponse.json(
+          {
+            status: "running",
+            currentlyRunning: true,
+          },
+          { status: 503 },
+        );
+      }
       return NextResponse.json({ status: "no_data" }, { status: 503 });
     }
 
-    const ageMs = Date.now() - latestRun.startedAt.getTime();
+    const ageMs = Date.now() - latestCompletedRun.startedAt.getTime();
     const ageMinutes = Math.floor(ageMs / 60000);
-
-    // If the test is still running, report that
-    if (latestRun.status === "running") {
-      return NextResponse.json(
-        {
-          status: "running",
-          lastRunAt: latestRun.startedAt.toISOString(),
-          lastRunId: latestRun.id,
-          ageMinutes,
-        },
-        { status: 503 },
-      );
-    }
 
     // Check if the run is too old
     if (ageMs > MAX_AGE_MS) {
       return NextResponse.json(
         {
           status: "stale",
-          lastRunAt: latestRun.startedAt.toISOString(),
-          lastRunId: latestRun.id,
+          lastRunAt: latestCompletedRun.startedAt.toISOString(),
+          lastRunId: latestCompletedRun.id,
           ageMinutes,
+          currentlyRunning,
         },
         { status: 503 },
       );
     }
 
     // Check if the run passed
-    if (latestRun.status === "passed") {
+    if (latestCompletedRun.status === "passed") {
       return NextResponse.json({
         status: "passed",
-        lastRunAt: latestRun.startedAt.toISOString(),
-        lastRunId: latestRun.id,
-        totalTests: latestRun.totalTests ?? undefined,
-        passedTests: latestRun.passedTests ?? undefined,
-        failedTests: latestRun.failedTests ?? undefined,
-        durationMs: latestRun.durationMs ?? undefined,
+        lastRunAt: latestCompletedRun.startedAt.toISOString(),
+        lastRunId: latestCompletedRun.id,
+        totalTests: latestCompletedRun.totalTests ?? undefined,
+        passedTests: latestCompletedRun.passedTests ?? undefined,
+        failedTests: latestCompletedRun.failedTests ?? undefined,
+        durationMs: latestCompletedRun.durationMs ?? undefined,
         ageMinutes,
+        currentlyRunning,
       });
     }
 
@@ -93,14 +107,15 @@ export async function GET(): Promise<NextResponse<SmokeTestStatusResponse>> {
     return NextResponse.json(
       {
         status: "failed",
-        lastRunAt: latestRun.startedAt.toISOString(),
-        lastRunId: latestRun.id,
-        totalTests: latestRun.totalTests ?? undefined,
-        passedTests: latestRun.passedTests ?? undefined,
-        failedTests: latestRun.failedTests ?? undefined,
-        durationMs: latestRun.durationMs ?? undefined,
-        errorMessage: latestRun.errorMessage ?? undefined,
+        lastRunAt: latestCompletedRun.startedAt.toISOString(),
+        lastRunId: latestCompletedRun.id,
+        totalTests: latestCompletedRun.totalTests ?? undefined,
+        passedTests: latestCompletedRun.passedTests ?? undefined,
+        failedTests: latestCompletedRun.failedTests ?? undefined,
+        durationMs: latestCompletedRun.durationMs ?? undefined,
+        errorMessage: latestCompletedRun.errorMessage ?? undefined,
         ageMinutes,
+        currentlyRunning,
       },
       { status: 503 },
     );
