@@ -312,7 +312,7 @@ resource "null_resource" "app_service_monitor" {
           - ${var.namespace}
         endpoints:
         - port: http
-          path: /metrics
+          path: /api/metrics
           interval: 30s
       EOF
     EOT
