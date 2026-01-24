@@ -49,8 +49,9 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
             }
 
             container {
-              name  = "playwright"
-              image = "ghcr.io/antialias/soroban-abacus-flashcards-smoke-tests:latest"
+              name              = "playwright"
+              image             = "ghcr.io/antialias/soroban-abacus-flashcards-smoke-tests:latest"
+              image_pull_policy = "Always"
 
               env {
                 # Test against the app service (load balances across all pods)
