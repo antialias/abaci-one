@@ -204,6 +204,7 @@ function HeroSection() {
 }
 
 // Mini abacus that cycles through a sequence of values
+// PERF: Defers rendering until after hydration to avoid SSR overhead
 function MiniAbacus({
   values,
   columns = 3,
@@ -214,7 +215,13 @@ function MiniAbacus({
   interval?: number
 }) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [mounted, setMounted] = useState(false)
   const appConfig = useAbacusConfig()
+
+  // Defer rendering until after hydration
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (values.length === 0) return
@@ -238,6 +245,31 @@ function MiniAbacus({
       stroke: 'rgba(255, 255, 255, 0.25)',
       strokeWidth: 3,
     },
+  }
+
+  // Render placeholder during SSR and initial hydration
+  if (!mounted) {
+    return (
+      <div
+        className={css({
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        })}
+      >
+        <div
+          className={css({
+            width: '60px',
+            height: '80px',
+            bg: 'bg.muted',
+            rounded: 'md',
+            animation: 'pulse 2s ease-in-out infinite',
+          })}
+        />
+      </div>
+    )
   }
 
   return (
