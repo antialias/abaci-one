@@ -15,7 +15,13 @@ import { parentChild } from '@/db/schema'
 import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
-import { computeIntervention, computeSkillCategory, type StudentWithSkillData } from '@/utils/studentGrouping'
+import {
+  computeIntervention,
+  computeSkillCategory,
+  type SkillDistribution,
+  type StudentWithSkillData,
+} from '@/utils/studentGrouping'
+import { computeBktFromHistory, getStalenessWarning } from './bkt'
 import {
   getAllSkillMastery,
   getPaginatedSessions,
@@ -89,12 +95,67 @@ export async function getPlayersForViewer(): Promise<Player[]> {
 }
 
 /**
- * Result from getPlayersWithSkillData including context for page rendering
+ * Compute skill distribution for a player from their problem history.
+ * Uses BKT to determine mastery levels and staleness.
  */
-export interface PlayersWithSkillDataResult {
-  players: StudentWithSkillData[]
-  viewerId: string
-  userId: string
+async function computePlayerSkillDistribution(
+  playerId: string,
+  practicingSkillIds: string[]
+): Promise<SkillDistribution> {
+  const distribution: SkillDistribution = {
+    strong: 0,
+    stale: 0,
+    developing: 0,
+    weak: 0,
+    unassessed: 0,
+    total: practicingSkillIds.length,
+  }
+
+  if (practicingSkillIds.length === 0) return distribution
+
+  // Fetch recent problem history (last 100 problems is enough for BKT)
+  const problemHistory = await getRecentSessionResults(playerId, 100)
+
+  if (problemHistory.length === 0) {
+    // No history = all unassessed
+    distribution.unassessed = practicingSkillIds.length
+    return distribution
+  }
+
+  // Compute BKT
+  const now = new Date()
+  const bktResult = computeBktFromHistory(problemHistory, {})
+  const bktMap = new Map(bktResult.skills.map((s) => [s.skillId, s]))
+
+  for (const skillId of practicingSkillIds) {
+    const bkt = bktMap.get(skillId)
+
+    if (!bkt || bkt.opportunities === 0) {
+      distribution.unassessed++
+      continue
+    }
+
+    const classification = bkt.masteryClassification ?? 'developing'
+
+    if (classification === 'strong') {
+      // Check staleness
+      const lastPracticed = bkt.lastPracticedAt
+      if (lastPracticed) {
+        const daysSince = (now.getTime() - lastPracticed.getTime()) / (1000 * 60 * 60 * 24)
+        if (getStalenessWarning(daysSince)) {
+          distribution.stale++
+        } else {
+          distribution.strong++
+        }
+      } else {
+        distribution.strong++
+      }
+    } else {
+      distribution[classification]++
+    }
+  }
+
+  return distribution
 }
 
 /**
@@ -105,14 +166,8 @@ export interface PlayersWithSkillDataResult {
  * - lastPracticedAt: Most recent practice timestamp (max of all skill lastPracticedAt)
  * - skillCategory: Computed highest-level skill category
  * - intervention: Intervention data if student needs attention
- *
- * Also returns viewerId and userId to avoid redundant calls in page components.
- *
- * Performance: Uses batched queries to avoid N+1 query patterns.
- * - Single query for all skill mastery records across all players
- * - Returns viewerId/userId to avoid redundant getViewerId() calls
  */
-export async function getPlayersWithSkillData(): Promise<PlayersWithSkillDataResult> {
+export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
   const viewerId = await getViewerId()
 
   // Get or create user record
@@ -124,8 +179,6 @@ export async function getPlayersWithSkillData(): Promise<PlayersWithSkillDataRes
     const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
     user = newUser
   }
-
-  const userId = user.id
 
   // Get player IDs linked via parent_child table
   const linkedPlayerIds = await db.query.parentChild.findMany({
@@ -147,59 +200,58 @@ export async function getPlayersWithSkillData(): Promise<PlayersWithSkillDataRes
     })
   }
 
-  if (players.length === 0) {
-    return { players: [], viewerId, userId }
-  }
+  // Fetch skill mastery for all players in parallel
+  const playersWithSkills = await Promise.all(
+    players.map(async (player) => {
+      const skills = await db.query.playerSkillMastery.findMany({
+        where: eq(schema.playerSkillMastery.playerId, player.id),
+      })
 
-  // OPTIMIZATION: Batch query all skill mastery records for all players at once
-  const playerIds = players.map((p) => p.id)
-  const allSkillMastery = await db.query.playerSkillMastery.findMany({
-    where: inArray(schema.playerSkillMastery.playerId, playerIds),
-  })
+      // Get practicing skills and compute lastPracticedAt
+      const practicingSkills: string[] = []
+      let lastPracticedAt: Date | null = null
 
-  // Group skill mastery by player ID for O(1) lookups
-  const skillsByPlayerId = new Map<string, typeof allSkillMastery>()
-  for (const skill of allSkillMastery) {
-    const existing = skillsByPlayerId.get(skill.playerId) || []
-    existing.push(skill)
-    skillsByPlayerId.set(skill.playerId, existing)
-  }
-
-  // First pass: compute basic skill data without intervention (no additional DB queries)
-  const playersWithBasicSkills = players.map((player) => {
-    const skills = skillsByPlayerId.get(player.id) || []
-
-    // Get practicing skills and compute lastPracticedAt
-    const practicingSkills: string[] = []
-    let lastPracticedAt: Date | null = null
-
-    for (const skill of skills) {
-      if (skill.isPracticing) {
-        practicingSkills.push(skill.skillId)
-      }
-      if (skill.lastPracticedAt) {
-        if (!lastPracticedAt || skill.lastPracticedAt > lastPracticedAt) {
-          lastPracticedAt = skill.lastPracticedAt
+      for (const skill of skills) {
+        if (skill.isPracticing) {
+          practicingSkills.push(skill.skillId)
+        }
+        // Track the most recent practice date across all skills
+        if (skill.lastPracticedAt) {
+          if (!lastPracticedAt || skill.lastPracticedAt > lastPracticedAt) {
+            lastPracticedAt = skill.lastPracticedAt
+          }
         }
       }
-    }
 
-    const skillCategory = computeSkillCategory(practicingSkills)
+      // Compute skill category
+      const skillCategory = computeSkillCategory(practicingSkills)
 
-    return {
-      ...player,
-      practicingSkills,
-      lastPracticedAt,
-      skillCategory,
-      intervention: null as ReturnType<typeof computeIntervention>,
-    }
-  })
+      // Compute intervention data (only for non-archived students with skills)
+      let intervention = null
+      if (!player.isArchived && practicingSkills.length > 0) {
+        const distribution = await computePlayerSkillDistribution(player.id, practicingSkills)
+        const daysSinceLastPractice = lastPracticedAt
+          ? (Date.now() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
+          : Infinity
 
-  // PERFORMANCE: Skip expensive intervention computation during SSR
-  // Intervention badges are helpful but not critical for initial render.
-  // They can be computed lazily on the client if needed.
-  // This avoids N additional database queries for session history.
-  return { players: playersWithBasicSkills, viewerId, userId }
+        intervention = computeIntervention(
+          distribution,
+          daysSinceLastPractice,
+          practicingSkills.length > 0
+        )
+      }
+
+      return {
+        ...player,
+        practicingSkills,
+        lastPracticedAt,
+        skillCategory,
+        intervention,
+      }
+    })
+  )
+
+  return playersWithSkills
 }
 
 // Re-export the individual functions for granular prefetching
