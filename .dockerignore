@@ -24,6 +24,8 @@ coverage
 **/*.test.tsx
 **/*.spec.ts
 **/*.spec.tsx
+# EXCEPTION: Include smoke tests for the smoke tests image
+!apps/web/e2e/smoke/*.spec.ts
 
 # IDE
 .vscode
