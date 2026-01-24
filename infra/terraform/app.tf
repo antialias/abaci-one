@@ -125,6 +125,13 @@ resource "kubernetes_stateful_set" "app" {
     labels = {
       app = "abaci-app"
     }
+    # Keel annotations for automatic image updates
+    # These MUST be on the StatefulSet metadata, not just the pod template
+    annotations = {
+      "keel.sh/policy"       = "force"     # Update even for same tags (:latest)
+      "keel.sh/trigger"      = "poll"      # Use registry polling
+      "keel.sh/pollSchedule" = "@every 2m" # Check every 2 minutes
+    }
   }
 
   spec {
@@ -150,13 +157,8 @@ resource "kubernetes_stateful_set" "app" {
         labels = {
           app = "abaci-app"
         }
-        # Keel annotations for automatic image updates
-        # When a new :latest image is pushed, Keel triggers a rolling update
-        annotations = {
-          "keel.sh/policy"       = "force"     # Update even for same tags (:latest)
-          "keel.sh/trigger"      = "poll"      # Use registry polling
-          "keel.sh/pollSchedule" = "@every 2m" # Check every 2 minutes
-        }
+        # Note: Keel annotations are on the StatefulSet metadata above, not here
+        # Pod template annotations are for other purposes
       }
 
       spec {
