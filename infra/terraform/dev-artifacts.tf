@@ -31,7 +31,7 @@ resource "kubernetes_persistent_volume" "dev_artifacts" {
     persistent_volume_source {
       nfs {
         server = var.nfs_server
-        path   = "/volume1/homes/antialias/projects/abaci.one/dev-artifacts"
+        path   = "/volume1/homes/antialias/projects/abaci.one/data/dev-artifacts"
       }
     }
   }
