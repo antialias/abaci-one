@@ -9,6 +9,7 @@ on:
       - 'apps/web/Dockerfile.smoke-tests'
       - 'apps/web/playwright.config.ts'
       - '.github/workflows/smoke-tests.yml'
+      - '.dockerignore'
   workflow_dispatch:
 
 env:
