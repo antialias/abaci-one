@@ -109,12 +109,13 @@ async function runTests(): Promise<void> {
 
   try {
     // Run Playwright tests with JSON reporter
+    // Note: testDir in playwright.config.ts is './e2e', so we pass 'smoke' not 'e2e/smoke'
     const playwrightProcess = spawn(
       "npx",
       [
         "playwright",
         "test",
-        "e2e/smoke",
+        "smoke",
         "--reporter=json",
         `--output=${reportDir}`,
       ],
