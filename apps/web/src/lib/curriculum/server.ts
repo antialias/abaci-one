@@ -9,30 +9,20 @@
 
 import 'server-only'
 
-import { and, eq, inArray, or } from 'drizzle-orm'
+import { eq, inArray, or } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { parentChild } from '@/db/schema'
 import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
-import {
-  computeIntervention,
-  computeSkillCategory,
-  type SkillDistribution,
-  type StudentWithSkillData,
-} from '@/utils/studentGrouping'
-import { computeBktFromHistory, getStalenessWarning } from './bkt'
+import { computeIntervention, computeSkillCategory, type StudentWithSkillData } from '@/utils/studentGrouping'
 import {
   getAllSkillMastery,
   getPaginatedSessions,
   getPlayerCurriculum,
   getRecentSessions,
 } from './progress-manager'
-import {
-  getActiveSessionPlan,
-  getRecentSessionResults,
-  type ProblemResultWithContext,
-} from './session-planner'
+import { getActiveSessionPlan, getRecentSessionResults } from './session-planner'
 
 export type { PlayerCurriculum } from '@/db/schema/player-curriculum'
 export type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
@@ -96,70 +86,6 @@ export async function getPlayersForViewer(): Promise<Player[]> {
   })
 
   return players
-}
-
-/**
- * Compute skill distribution for a player from their problem history.
- * Uses BKT to determine mastery levels and staleness.
- */
-async function computePlayerSkillDistribution(
-  playerId: string,
-  practicingSkillIds: string[]
-): Promise<SkillDistribution> {
-  const distribution: SkillDistribution = {
-    strong: 0,
-    stale: 0,
-    developing: 0,
-    weak: 0,
-    unassessed: 0,
-    total: practicingSkillIds.length,
-  }
-
-  if (practicingSkillIds.length === 0) return distribution
-
-  // Fetch recent problem history (last 100 problems is enough for BKT)
-  const problemHistory = await getRecentSessionResults(playerId, 100)
-
-  if (problemHistory.length === 0) {
-    // No history = all unassessed
-    distribution.unassessed = practicingSkillIds.length
-    return distribution
-  }
-
-  // Compute BKT
-  const now = new Date()
-  const bktResult = computeBktFromHistory(problemHistory, {})
-  const bktMap = new Map(bktResult.skills.map((s) => [s.skillId, s]))
-
-  for (const skillId of practicingSkillIds) {
-    const bkt = bktMap.get(skillId)
-
-    if (!bkt || bkt.opportunities === 0) {
-      distribution.unassessed++
-      continue
-    }
-
-    const classification = bkt.masteryClassification ?? 'developing'
-
-    if (classification === 'strong') {
-      // Check staleness
-      const lastPracticed = bkt.lastPracticedAt
-      if (lastPracticed) {
-        const daysSince = (now.getTime() - lastPracticed.getTime()) / (1000 * 60 * 60 * 24)
-        if (getStalenessWarning(daysSince)) {
-          distribution.stale++
-        } else {
-          distribution.strong++
-        }
-      } else {
-        distribution.strong++
-      }
-    } else {
-      distribution[classification]++
-    }
-  }
-
-  return distribution
 }
 
 /**
@@ -256,121 +182,10 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
     }
   })
 
-  // Identify players needing intervention computation (non-archived with practicing skills)
-  const playersNeedingIntervention = playersWithBasicSkills.filter(
-    (p) => !p.isArchived && p.practicingSkills.length > 0
-  )
-
-  if (playersNeedingIntervention.length === 0) {
-    return playersWithBasicSkills
-  }
-
-  // OPTIMIZATION: Batch query session history for all players needing intervention
-  const interventionPlayerIds = playersNeedingIntervention.map((p) => p.id)
-  const allSessionResults = await db.query.sessionPlans.findMany({
-    where: and(
-      inArray(schema.sessionPlans.playerId, interventionPlayerIds),
-      inArray(schema.sessionPlans.status, ['completed', 'recency-refresh'])
-    ),
-    orderBy: (plans, { desc }) => [desc(plans.completedAt)],
-    // Limit per player approximation - fetch enough for all players
-    limit: interventionPlayerIds.length * 100,
-  })
-
-  // Group sessions by player ID
-  const sessionsByPlayerId = new Map<string, typeof allSessionResults>()
-  for (const session of allSessionResults) {
-    const existing = sessionsByPlayerId.get(session.playerId) || []
-    // Keep only first 100 sessions per player for BKT
-    if (existing.length < 100) {
-      existing.push(session)
-    }
-    sessionsByPlayerId.set(session.playerId, existing)
-  }
-
-  // Compute intervention for players that need it (now using in-memory data)
-  const now = new Date()
-  for (const player of playersWithBasicSkills) {
-    if (player.isArchived || player.practicingSkills.length === 0) {
-      continue
-    }
-
-    const sessions = sessionsByPlayerId.get(player.id) || []
-
-    // Build problem history from sessions (same logic as getRecentSessionResults)
-    const problemHistory: ProblemResultWithContext[] = []
-
-    for (const session of sessions) {
-      if (!session.completedAt) continue
-      for (const result of session.results) {
-        const part = session.parts.find((p) => p.partNumber === result.partNumber)
-        const partType = part?.type ?? 'linear'
-        problemHistory.push({
-          ...result,
-          sessionId: session.id,
-          sessionCompletedAt: session.completedAt,
-          partType,
-        })
-      }
-    }
-
-    // Sort by timestamp descending
-    problemHistory.sort((a, b) => {
-      const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime()
-      const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime()
-      return timeB - timeA
-    })
-
-    // Compute skill distribution from BKT
-    const distribution: SkillDistribution = {
-      strong: 0,
-      stale: 0,
-      developing: 0,
-      weak: 0,
-      unassessed: 0,
-      total: player.practicingSkills.length,
-    }
-
-    if (problemHistory.length === 0) {
-      distribution.unassessed = player.practicingSkills.length
-    } else {
-      const bktResult = computeBktFromHistory(problemHistory, {})
-      const bktMap = new Map(bktResult.skills.map((s) => [s.skillId, s]))
-
-      for (const skillId of player.practicingSkills) {
-        const bkt = bktMap.get(skillId)
-        if (!bkt || bkt.opportunities === 0) {
-          distribution.unassessed++
-          continue
-        }
-
-        const classification = bkt.masteryClassification ?? 'developing'
-
-        if (classification === 'strong') {
-          const lastPracticed = bkt.lastPracticedAt
-          if (lastPracticed) {
-            const daysSince = (now.getTime() - lastPracticed.getTime()) / (1000 * 60 * 60 * 24)
-            if (getStalenessWarning(daysSince)) {
-              distribution.stale++
-            } else {
-              distribution.strong++
-            }
-          } else {
-            distribution.strong++
-          }
-        } else {
-          distribution[classification]++
-        }
-      }
-    }
-
-    const daysSinceLastPractice = player.lastPracticedAt
-      ? (now.getTime() - player.lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
-      : Infinity
-
-    player.intervention = computeIntervention(distribution, daysSinceLastPractice, true)
-  }
-
+  // PERFORMANCE: Skip expensive intervention computation during SSR
+  // Intervention badges are helpful but not critical for initial render.
+  // They can be computed lazily on the client if needed.
+  // This avoids N additional database queries for session history.
   return playersWithBasicSkills
 }
 
