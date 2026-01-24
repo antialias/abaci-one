@@ -52,6 +52,19 @@ resource "helm_release" "keel" {
     value = "true"
   }
 
+  # Fix Go DNS resolver issues with k3s CoreDNS
+  # Go's pure-Go DNS resolver has trouble with k3s, so we force it to use
+  # the system (cgo) resolver instead
+  set {
+    name  = "extraEnv[0].name"
+    value = "GODEBUG"
+  }
+
+  set {
+    name  = "extraEnv[0].value"
+    value = "netdns=cgo"
+  }
+
   # Resource limits
   set {
     name  = "resources.requests.cpu"
