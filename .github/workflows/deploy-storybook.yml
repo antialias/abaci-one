@@ -64,8 +64,10 @@ jobs:
           pnpm panda codegen
           npx @pandacss/dev cssgen || echo "CSS generation had warnings but continued"
 
-      - name: Build abacus-react package
-        run: pnpm --filter @soroban/abacus-react build
+      - name: Build workspace packages
+        run: |
+          pnpm --filter @soroban/llm-client build
+          pnpm --filter @soroban/abacus-react build
 
       - name: Build web Storybook
         working-directory: apps/web
