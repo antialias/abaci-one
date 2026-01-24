@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { execSync } from 'child_process'
 import { eq } from 'drizzle-orm'
 import { validateWorksheetConfig } from '@/app/create/worksheets/validation'
+import { metrics } from '@/lib/metrics'
 import {
   generateProblems,
   generateSubtractionProblems,
@@ -17,6 +18,7 @@ import { worksheetShares } from '@/db/schema'
 import { generateShareId } from '@/lib/generateShareId'
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
   try {
     const body: WorksheetFormState = await request.json()
 
@@ -162,6 +164,13 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Track worksheet metrics
+    const duration = (Date.now() - startTime) / 1000
+    const digits = `${config.digitRange.min}-${config.digitRange.max}`
+    metrics.worksheet.generationsTotal.inc({ operator: config.operator, digits, format: 'pdf' })
+    metrics.worksheet.generationDuration.observe({ operator: config.operator, format: 'pdf' }, duration)
+    metrics.worksheet.problemsGenerated.inc({ operator: config.operator }, problems.length)
 
     // Return binary PDF directly
     return new Response(pdfBuffer as unknown as BodyInit, {

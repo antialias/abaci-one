@@ -10,6 +10,7 @@ import { gameResults } from '@/db/schema'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
+import { metrics } from '@/lib/metrics'
 
 interface SaveGameResultRequest {
   playerId: string
@@ -69,6 +70,14 @@ export async function POST(request: Request) {
         fullReport: report,
       })
       .returning()
+
+    // Track arcade metrics
+    const gameName = report.gameName || 'unknown'
+    const outcome = playerResult?.accuracy && playerResult.accuracy >= 0.8 ? 'win' : 'lose'
+    metrics.arcade.gamesCompleted.inc({ game: gameName, outcome })
+    if (playerResult?.score !== undefined) {
+      metrics.arcade.scoreHistogram.observe({ game: gameName }, playerResult.score)
+    }
 
     return NextResponse.json(result[0])
   } catch (error) {
