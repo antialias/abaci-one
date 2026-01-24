@@ -8,8 +8,8 @@ import { getPlayersWithSkillData } from '@/lib/curriculum/server'
  */
 export async function GET() {
   try {
-    const players = await getPlayersWithSkillData()
-    return NextResponse.json({ players })
+    const result = await getPlayersWithSkillData()
+    return NextResponse.json({ players: result.players })
   } catch (error) {
     console.error('Failed to fetch players with skill data:', error)
     return NextResponse.json({ error: 'Failed to fetch players' }, { status: 500 })

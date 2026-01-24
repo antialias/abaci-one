@@ -89,6 +89,15 @@ export async function getPlayersForViewer(): Promise<Player[]> {
 }
 
 /**
+ * Result from getPlayersWithSkillData including context for page rendering
+ */
+export interface PlayersWithSkillDataResult {
+  players: StudentWithSkillData[]
+  viewerId: string
+  userId: string
+}
+
+/**
  * Get all players for the current viewer with enhanced skill data.
  *
  * Includes:
@@ -97,11 +106,13 @@ export async function getPlayersForViewer(): Promise<Player[]> {
  * - skillCategory: Computed highest-level skill category
  * - intervention: Intervention data if student needs attention
  *
+ * Also returns viewerId and userId to avoid redundant calls in page components.
+ *
  * Performance: Uses batched queries to avoid N+1 query patterns.
  * - Single query for all skill mastery records across all players
- * - Single query for session history across all players needing intervention
+ * - Returns viewerId/userId to avoid redundant getViewerId() calls
  */
-export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
+export async function getPlayersWithSkillData(): Promise<PlayersWithSkillDataResult> {
   const viewerId = await getViewerId()
 
   // Get or create user record
@@ -113,6 +124,8 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
     const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
     user = newUser
   }
+
+  const userId = user.id
 
   // Get player IDs linked via parent_child table
   const linkedPlayerIds = await db.query.parentChild.findMany({
@@ -135,7 +148,7 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
   }
 
   if (players.length === 0) {
-    return []
+    return { players: [], viewerId, userId }
   }
 
   // OPTIMIZATION: Batch query all skill mastery records for all players at once
@@ -186,7 +199,7 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
   // Intervention badges are helpful but not critical for initial render.
   // They can be computed lazily on the client if needed.
   // This avoids N additional database queries for session history.
-  return playersWithBasicSkills
+  return { players: playersWithBasicSkills, viewerId, userId }
 }
 
 // Re-export the individual functions for granular prefetching
