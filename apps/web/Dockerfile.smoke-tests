@@ -3,7 +3,7 @@
 # Based on official Playwright image with Chromium pre-installed.
 # Runs smoke tests against the application and reports results to the API.
 
-FROM mcr.microsoft.com/playwright:v1.55.0-jammy
+FROM mcr.microsoft.com/playwright:v1.56.0-jammy
 
 WORKDIR /app
 
