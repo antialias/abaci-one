@@ -46,6 +46,12 @@ resource "helm_release" "keel" {
     value = "false"
   }
 
+  # Watch all namespaces (not just the keel namespace)
+  set {
+    name  = "watchAllNamespaces"
+    value = "true"
+  }
+
   # Resource limits
   set {
     name  = "resources.requests.cpu"
@@ -77,21 +83,19 @@ resource "kubernetes_namespace" "keel" {
   }
 }
 
-# Note: The app StatefulSet needs these annotations for Keel to watch it:
+# Note: The app StatefulSet needs these annotations on its METADATA (not pod template):
 #
-#   annotations = {
-#     "keel.sh/policy"       = "force"    # Update even for same tags
-#     "keel.sh/trigger"      = "poll"     # Use polling (not webhooks)
-#     "keel.sh/pollSchedule" = "@every 2m" # Poll every 2 minutes
+#   metadata {
+#     annotations = {
+#       "keel.sh/policy"       = "force"    # Update even for same tags
+#       "keel.sh/trigger"      = "poll"     # Use polling (not webhooks)
+#       "keel.sh/pollSchedule" = "@every 2m" # Poll every 2 minutes
+#     }
 #   }
 #
-# These are added in app.tf on the StatefulSet spec.template.metadata
+# IMPORTANT: Annotations must be on the StatefulSet/Deployment metadata,
+# NOT on spec.template.metadata (pod template). Keel reads workload-level
+# annotations to determine which resources to watch.
 #
-# IMPORTANT: For Keel to poll ghcr.io (which requires auth even for public images),
-# the StatefulSet needs imagePullSecrets pointing to a docker-registry secret.
-# Keel reads the imagePullSecrets from the workload spec to authenticate with registries.
-#
-# To enable auto-updates:
-# 1. Create a GitHub PAT with read:packages scope
-# 2. Set the ghcr_token variable in terraform.tfvars
-# 3. Apply terraform to create the secret and update the StatefulSet
+# For private registries, Keel reads imagePullSecrets from the workload spec
+# to authenticate when polling. The ghcr_token variable in app.tf enables this.
