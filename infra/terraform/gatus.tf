@@ -87,6 +87,15 @@ resource "kubernetes_config_map" "gatus_config" {
           interval: 30s
           conditions:
             - "[CONNECTED] == true"
+
+        # ============ E2E Tests ============
+        - name: "Browser Smoke Tests"
+          group: E2E Tests
+          url: "https://abaci.one/api/smoke-test-status"
+          interval: 60s
+          conditions:
+            - "[STATUS] == 200"
+            - "[BODY].status == passed"
     EOT
   }
 }

@@ -1,0 +1,37 @@
+# Smoke Tests Docker Image
+#
+# Based on official Playwright image with Chromium pre-installed.
+# Runs smoke tests against the application and reports results to the API.
+
+FROM mcr.microsoft.com/playwright:v1.55.0-jammy
+
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm@9.15.4
+
+# Copy package files for dependency resolution
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/
+
+# Install only the playwright-related dependencies
+# We use a minimal install to keep the image small
+WORKDIR /app/apps/web
+RUN pnpm install --frozen-lockfile --filter @soroban/web --prod=false
+
+# Copy Playwright config and smoke tests
+COPY apps/web/playwright.config.ts ./
+COPY apps/web/e2e/smoke ./e2e/smoke/
+
+# Copy the smoke test runner script
+COPY apps/web/scripts/smoke-test-runner.ts ./scripts/
+
+# Install tsx for running TypeScript directly
+RUN npm install -g tsx
+
+# Set environment variables
+ENV CI=true
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+# Default command runs the smoke test runner
+CMD ["npx", "tsx", "scripts/smoke-test-runner.ts"]
