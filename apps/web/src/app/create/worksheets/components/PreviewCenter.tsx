@@ -12,6 +12,7 @@ import { extractConfigFields } from '../utils/extractConfigFields'
 import { FloatingPageIndicator } from './FloatingPageIndicator'
 import { LoadShareCodeModal } from './LoadShareCodeModal'
 import { ShareModal } from './ShareModal'
+import { useStreamedPreview } from './StreamedPreviewContext'
 import { useWorksheetConfig } from './WorksheetConfigContext'
 import { WorksheetPreview } from './WorksheetPreview'
 import { DuplicateWarningBanner } from './worksheet-preview/DuplicateWarningBanner'
@@ -39,8 +40,12 @@ export function PreviewCenter({
   const router = useRouter()
   const { resolvedTheme } = useTheme()
   const { onChange } = useWorksheetConfig()
+  const { streamedPages, isLoaded: isStreamedLoaded } = useStreamedPreview()
   const isDark = resolvedTheme === 'dark'
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // Use streamed preview from context if available, otherwise fall back to prop
+  const effectivePreview = streamedPages ?? initialPreview
   const [isScrolling, setIsScrolling] = useState(false)
   const scrollTimeoutRef = useRef<NodeJS.Timeout>()
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
@@ -582,7 +587,7 @@ export function PreviewCenter({
       >
         <WorksheetPreview
           formState={formState}
-          initialData={initialPreview}
+          initialData={effectivePreview}
           isScrolling={isScrolling}
           onPageDataReady={setPageData}
         />

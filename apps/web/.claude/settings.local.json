@@ -119,7 +119,15 @@
       "mcp__chrome-devtools__get_network_request",
       "Bash(npm run db:push:*)",
       "Bash(kubectl get:*)",
-      "Bash(kubectl logs:*)"
+      "Bash(kubectl logs:*)",
+      "Bash(kubectl rollout:*)",
+      "Bash(kubectl describe:*)",
+      "Bash(docker pull:*)",
+      "Bash(helm show values:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(helm get values:*)",
+      "Bash(kubectl set:*)",
+      "Bash(kubectl annotate:*)"
     ],
     "deny": [],
     "ask": []

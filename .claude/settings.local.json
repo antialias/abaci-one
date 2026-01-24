@@ -726,7 +726,11 @@
       "Bash(do curl -s -o /dev/null -w \"TTFB: %{time_starttransfer}s | Total: %{time_total}s\\\\n\" https://abaci.one/dashboard)",
       "Bash(do curl -s -o /dev/null -w \"TTFB: %{time_starttransfer}s | Total: %{time_total}s\\\\n\" https://abaci.one/tutorials)",
       "Bash(do curl -s -o /dev/null -w \"TTFB: %{time_starttransfer}s | Total: %{time_total}s\\\\n\" https://abaci.one/favicon.ico)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(do echo \"=== $pod ===\")",
+      "Bash(do echo \"=== Request $i ===\")",
+      "Bash(while read -r line)",
+      "Bash(do echo $#ine)"
     ],
     "deny": [],
     "ask": []
