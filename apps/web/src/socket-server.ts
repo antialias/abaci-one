@@ -26,6 +26,7 @@ import {
 } from './lib/remote-camera/session-manager'
 import { createRedisClient } from './lib/redis'
 import { VisionRecorder, type VisionFrame, type PracticeStateInput } from './lib/vision/recording'
+import { socketConnections, socketConnectionsTotal } from './lib/metrics'
 
 // Throttle map for DVR buffer info emissions (sessionId -> last emit timestamp)
 const lastDvrBufferInfoEmit = new Map<string, number>()
@@ -353,6 +354,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
   initializeYjsServer(io)
 
   io.on('connection', (socket) => {
+    // Track Socket.IO connection metrics
+    socketConnections.inc()
+    socketConnectionsTotal.inc()
+
     let currentUserId: string | null = null
 
     // Join arcade session room
@@ -1602,6 +1607,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
 
     socket.on('disconnect', () => {
+      // Track Socket.IO disconnection metrics
+      socketConnections.dec()
+
       // Handle remote camera cleanup on disconnect
       const remoteCameraSessionId = socket.data.remoteCameraSessionId as string | undefined
       if (remoteCameraSessionId) {

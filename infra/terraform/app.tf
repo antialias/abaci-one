@@ -144,10 +144,15 @@ resource "kubernetes_stateful_set" "app" {
       }
     }
 
-    # Parallel pod management for faster scaling
-    pod_management_policy = "Parallel"
+    # OrderedReady ensures pods update one at a time in reverse order (pod-2, pod-1, pod-0)
+    # This keeps primary (pod-0) running longest during rollouts
+    pod_management_policy = "OrderedReady"
 
-    # Rolling update strategy
+    # Wait 30s after pod is ready before updating next pod
+    # Gives LiteFS time to sync and stabilize
+    min_ready_seconds = 30
+
+    # Rolling update strategy - reverse ordinal order means replicas update before primary
     update_strategy {
       type = "RollingUpdate"
     }
@@ -397,11 +402,33 @@ resource "kubernetes_stateful_set" "app" {
   depends_on = [kubernetes_deployment.redis]
 }
 
+# PodDisruptionBudget ensures at least 1 pod stays available during voluntary disruptions
+# This protects against kubectl drain, node maintenance, or cluster autoscaler
+resource "kubernetes_pod_disruption_budget_v1" "app" {
+  metadata {
+    name      = "abaci-app"
+    namespace = kubernetes_namespace.abaci.metadata[0].name
+  }
+
+  spec {
+    min_available = "1"
+
+    selector {
+      match_labels = {
+        app = "abaci-app"
+      }
+    }
+  }
+}
+
 # Main service for external access (load balances across all pods)
 resource "kubernetes_service" "app" {
   metadata {
     name      = "abaci-app"
     namespace = kubernetes_namespace.abaci.metadata[0].name
+    labels = {
+      app = "abaci-app"
+    }
   }
 
   spec {
@@ -410,6 +437,7 @@ resource "kubernetes_service" "app" {
     }
 
     port {
+      name        = "http"
       port        = 80
       target_port = 8080 # LiteFS proxy port
     }
@@ -584,9 +612,9 @@ resource "kubernetes_manifest" "app_writes_ingressroute" {
       entryPoints = ["websecure"]
       routes = [
         {
-          match = "Host(`${var.app_domain}`) && (Method(`POST`) || Method(`PUT`) || Method(`DELETE`) || Method(`PATCH`))"
-          kind  = "Rule"
-          priority = 100  # Higher priority than default ingress
+          match    = "Host(`${var.app_domain}`) && (Method(`POST`) || Method(`PUT`) || Method(`DELETE`) || Method(`PATCH`))"
+          kind     = "Rule"
+          priority = 100 # Higher priority than default ingress
           middlewares = [
             {
               name      = "hsts"

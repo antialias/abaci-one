@@ -99,6 +99,7 @@
     "next-auth": "5.0.0-beta.29",
     "next-intl": "^4.4.0",
     "opencv-react": "^0.0.6",
+    "prom-client": "^15.1.0",
     "python-bridge": "^1.1.0",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
