@@ -54,6 +54,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate build info
+        working-directory: apps/web
+        run: node scripts/generate-build-info.js
+
       - name: Generate Panda CSS
         working-directory: apps/web
         run: |
