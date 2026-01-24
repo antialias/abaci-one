@@ -127,7 +127,8 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(helm get values:*)",
       "Bash(kubectl set:*)",
-      "Bash(kubectl annotate:*)"
+      "Bash(kubectl annotate:*)",
+      "Bash(kubectl run:*)"
     ],
     "deny": [],
     "ask": []

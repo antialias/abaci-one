@@ -3,7 +3,7 @@
 import { css } from '@styled/css'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -15,21 +15,17 @@ import { ConfigSidebar } from './ConfigSidebar'
 import { GenerationErrorDisplay } from './GenerationErrorDisplay'
 import { PreviewCenter } from './PreviewCenter'
 import { ResponsivePanelLayout } from './ResponsivePanelLayout'
-import { StreamedPreviewProvider } from './StreamedPreviewContext'
 import { WorksheetConfigProvider } from './WorksheetConfigContext'
 
 interface AdditionWorksheetClientProps {
   initialSettings: Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
-  /** @deprecated Use streamedPreview instead */
+  /** Optional initial preview - if not provided, will be fetched via API */
   initialPreview?: string[]
-  /** Suspense boundary containing the streaming preview */
-  streamedPreview?: ReactNode
 }
 
 export function AdditionWorksheetClient({
   initialSettings,
   initialPreview,
-  streamedPreview,
 }: AdditionWorksheetClientProps) {
   const searchParams = useSearchParams()
   const isFromShare = searchParams.get('from') === 'share'
@@ -84,41 +80,36 @@ export function AdditionWorksheetClient({
 
   return (
     <PageWithNav navTitle={t('navTitle')} navEmoji="📝">
-      <StreamedPreviewProvider>
-        <WorksheetConfigProvider formState={formState} updateFormState={updateFormState}>
-          {/* Render the streamed preview Suspense boundary - it injects data into context */}
-          {streamedPreview}
+      <WorksheetConfigProvider formState={formState} updateFormState={updateFormState}>
+        <div
+          data-component="addition-worksheet-page"
+          className={css({
+            height: '100vh',
+            bg: isDark ? 'gray.900' : 'gray.50',
+            paddingTop: 'var(--app-nav-height)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          })}
+        >
+          {/* Responsive Panel Layout (desktop) or Drawer (mobile) */}
+          <ResponsivePanelLayout
+            config={formState}
+            sidebarContent={<ConfigSidebar isSaving={isSaving} lastSaved={lastSaved} />}
+            previewContent={
+              <PreviewCenter
+                formState={debouncedFormState}
+                initialPreview={initialPreview}
+                onGenerate={handleGenerate}
+                status={status}
+              />
+            }
+          />
 
-          <div
-            data-component="addition-worksheet-page"
-            className={css({
-              height: '100vh',
-              bg: isDark ? 'gray.900' : 'gray.50',
-              paddingTop: 'var(--app-nav-height)',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-            })}
-          >
-            {/* Responsive Panel Layout (desktop) or Drawer (mobile) */}
-            <ResponsivePanelLayout
-              config={formState}
-              sidebarContent={<ConfigSidebar isSaving={isSaving} lastSaved={lastSaved} />}
-              previewContent={
-                <PreviewCenter
-                  formState={debouncedFormState}
-                  initialPreview={initialPreview}
-                  onGenerate={handleGenerate}
-                  status={status}
-                />
-              }
-            />
-
-            {/* Error Display */}
-            <GenerationErrorDisplay error={error} visible={status === 'error'} onRetry={reset} />
-          </div>
-        </WorksheetConfigProvider>
-      </StreamedPreviewProvider>
+          {/* Error Display */}
+          <GenerationErrorDisplay error={error} visible={status === 'error'} onRetry={reset} />
+        </div>
+      </WorksheetConfigProvider>
     </PageWithNav>
   )
 }

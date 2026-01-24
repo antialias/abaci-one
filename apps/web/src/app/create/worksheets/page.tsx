@@ -1,12 +1,9 @@
-import { Suspense } from 'react'
 import { eq, and } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getViewerId } from '@/lib/viewer'
 import { parseAdditionConfig, defaultAdditionConfig } from '@/app/create/worksheets/config-schemas'
 import { AdditionWorksheetClient } from './components/AdditionWorksheetClient'
 import { WorksheetErrorBoundary } from './components/WorksheetErrorBoundary'
-import { PreviewSkeleton } from './components/PreviewSkeleton'
-import { StreamedPreview } from './components/StreamedPreview'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
 
 /**
@@ -76,32 +73,12 @@ async function loadWorksheetSettings(): Promise<
 }
 
 /**
- * Build full config from settings
- */
-function buildFullConfig(
-  settings: Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
-): WorksheetFormState {
-  const problemsPerPage = settings.problemsPerPage ?? 20
-  const pages = settings.pages ?? 1
-  const cols = settings.cols ?? 5
-  const rows = Math.ceil((problemsPerPage * pages) / cols)
-  const total = problemsPerPage * pages
-
-  return {
-    ...settings,
-    rows,
-    total,
-    date: getDefaultDate(),
-  }
-}
-
-/**
- * Worksheet page with Suspense streaming for preview
+ * Worksheet page - loads settings fast, preview fetched client-side
  *
- * Architecture:
- * 1. Settings load fast (~50ms) - page shell renders immediately
- * 2. Preview generates async (~500ms) and streams in via Suspense
- * 3. User sees the page UI in ~200ms, preview appears when ready
+ * Performance optimization:
+ * - Settings load fast (~50ms) - page shell renders immediately
+ * - Preview is fetched via API after initial render (non-blocking)
+ * - User sees the page UI in ~200ms, preview appears when API completes
  */
 export default async function AdditionWorksheetPage() {
   const pageStart = Date.now()
@@ -110,19 +87,13 @@ export default async function AdditionWorksheetPage() {
   const initialSettings = await loadWorksheetSettings()
   console.log(`[SSR] Settings loaded in ${Date.now() - pageStart}ms`)
 
-  // Build full config for preview generation
-  const fullConfig = buildFullConfig(initialSettings)
-
-  // Page shell renders immediately, preview streams in via Suspense
+  // Page renders immediately - preview will be fetched client-side
+  // This avoids embedding the 1.25MB SVG in the initial HTML
   return (
     <WorksheetErrorBoundary>
       <AdditionWorksheetClient
         initialSettings={initialSettings}
-        streamedPreview={
-          <Suspense fallback={<PreviewSkeleton />}>
-            <StreamedPreview config={fullConfig} />
-          </Suspense>
-        }
+        // No initial preview - will be fetched via API
       />
     </WorksheetErrorBoundary>
   )
