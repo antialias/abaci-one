@@ -77,10 +77,16 @@ resource "kubernetes_config_map" "dev_artifacts_nginx" {
 
           root /usr/share/nginx/html;
 
-          # Enable directory listing
+          # Enable directory listing for subdirectories
           autoindex on;
           autoindex_exact_size off;
           autoindex_localtime on;
+
+          # Serve index page at root
+          location = / {
+              root /usr/share/nginx/static;
+              try_files /index.html =404;
+          }
 
           # Serve static files with caching
           location / {
@@ -105,6 +111,237 @@ resource "kubernetes_config_map" "dev_artifacts_nginx" {
               add_header Content-Type text/plain;
           }
       }
+    EOT
+
+    "index.html" = <<-EOT
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abaci Dev Portal</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --accent-hover: #7dd3fc;
+            --green: #4ade80;
+            --yellow: #facc15;
+            --purple: #a78bfa;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.2s, border-color 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .card-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .card-url {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: var(--accent);
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            margin-top: 2rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-left: 0.5rem;
+        }
+
+        .badge-live { background: var(--green); color: #000; }
+        .badge-soon { background: var(--yellow); color: #000; }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--card-border);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Abaci Dev Portal</h1>
+            <p class="subtitle">Development resources and monitoring tools</p>
+        </header>
+
+        <div class="section-title">Testing & QA</div>
+        <div class="grid">
+            <a href="/smoke-reports/" class="card">
+                <div class="card-icon">🧪</div>
+                <div class="card-title">Smoke Test Reports <span class="badge badge-live">Live</span></div>
+                <div class="card-desc">Playwright E2E test results with screenshots, traces, and video recordings. Updated every 15 minutes.</div>
+                <div class="card-url">/smoke-reports/</div>
+            </a>
+
+            <a href="/storybook/" class="card">
+                <div class="card-icon">📚</div>
+                <div class="card-title">Storybook <span class="badge badge-soon">Soon</span></div>
+                <div class="card-desc">Interactive component library with documentation, props tables, and live examples.</div>
+                <div class="card-url">/storybook/</div>
+            </a>
+
+            <a href="/coverage/" class="card">
+                <div class="card-icon">📊</div>
+                <div class="card-title">Test Coverage <span class="badge badge-soon">Soon</span></div>
+                <div class="card-desc">Code coverage reports showing tested vs untested code paths.</div>
+                <div class="card-url">/coverage/</div>
+            </a>
+        </div>
+
+        <div class="section-title">Monitoring</div>
+        <div class="grid">
+            <a href="https://grafana.dev.abaci.one" class="card">
+                <div class="card-icon">📈</div>
+                <div class="card-title">Grafana <span class="badge badge-live">Live</span></div>
+                <div class="card-desc">Dashboards for application metrics, performance monitoring, and alerting.</div>
+                <div class="card-url">grafana.dev.abaci.one</div>
+            </a>
+
+            <a href="https://prometheus.dev.abaci.one" class="card">
+                <div class="card-icon">🔥</div>
+                <div class="card-title">Prometheus <span class="badge badge-live">Live</span></div>
+                <div class="card-desc">Metrics storage and PromQL query interface for debugging and analysis.</div>
+                <div class="card-url">prometheus.dev.abaci.one</div>
+            </a>
+
+            <a href="https://status.abaci.one" class="card">
+                <div class="card-icon">🟢</div>
+                <div class="card-title">Status Page <span class="badge badge-live">Live</span></div>
+                <div class="card-desc">Public uptime monitoring and incident status powered by Gatus.</div>
+                <div class="card-url">status.abaci.one</div>
+            </a>
+        </div>
+
+        <div class="section-title">Quick Links</div>
+        <div class="grid">
+            <a href="https://abaci.one" class="card">
+                <div class="card-icon">🧮</div>
+                <div class="card-title">Production App</div>
+                <div class="card-desc">The live Abaci flashcards application.</div>
+                <div class="card-url">abaci.one</div>
+            </a>
+
+            <a href="https://github.com/antialias/soroban-abacus-flashcards" class="card">
+                <div class="card-icon">🐙</div>
+                <div class="card-title">GitHub Repository</div>
+                <div class="card-desc">Source code, issues, and pull requests.</div>
+                <div class="card-url">github.com/antialias/...</div>
+            </a>
+        </div>
+
+        <footer>
+            <p>Built with ❤️ for learning math with the soroban abacus</p>
+            <p style="margin-top: 0.5rem;">
+                <a href="https://abaci.one">abaci.one</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
     EOT
   }
 }
@@ -152,7 +389,15 @@ resource "kubernetes_deployment" "dev_artifacts" {
 
           volume_mount {
             name       = "nginx-config"
-            mount_path = "/etc/nginx/conf.d"
+            mount_path = "/etc/nginx/conf.d/default.conf"
+            sub_path   = "default.conf"
+            read_only  = true
+          }
+
+          volume_mount {
+            name       = "nginx-config"
+            mount_path = "/usr/share/nginx/static/index.html"
+            sub_path   = "index.html"
             read_only  = true
           }
 
@@ -231,9 +476,9 @@ resource "kubernetes_ingress_v1" "dev_artifacts" {
     name      = "dev-artifacts"
     namespace = kubernetes_namespace.abaci.metadata[0].name
     annotations = {
-      "cert-manager.io/cluster-issuer"                    = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
-      "traefik.ingress.kubernetes.io/router.entrypoints"  = "websecure"
-      "traefik.ingress.kubernetes.io/router.middlewares"  = "${kubernetes_namespace.abaci.metadata[0].name}-hsts@kubernetescrd"
+      "cert-manager.io/cluster-issuer"                   = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
+      "traefik.ingress.kubernetes.io/router.entrypoints" = "websecure"
+      "traefik.ingress.kubernetes.io/router.middlewares" = "${kubernetes_namespace.abaci.metadata[0].name}-hsts@kubernetescrd"
     }
   }
 
@@ -275,8 +520,8 @@ resource "kubernetes_ingress_v1" "dev_artifacts_http_redirect" {
     name      = "dev-artifacts-http-redirect"
     namespace = kubernetes_namespace.abaci.metadata[0].name
     annotations = {
-      "traefik.ingress.kubernetes.io/router.entrypoints"  = "web"
-      "traefik.ingress.kubernetes.io/router.middlewares"  = "${kubernetes_namespace.abaci.metadata[0].name}-redirect-https@kubernetescrd"
+      "traefik.ingress.kubernetes.io/router.entrypoints" = "web"
+      "traefik.ingress.kubernetes.io/router.middlewares" = "${kubernetes_namespace.abaci.metadata[0].name}-redirect-https@kubernetescrd"
     }
   }
 
