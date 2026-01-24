@@ -11,6 +11,7 @@ import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { metrics } from '@/lib/metrics'
+import { getCurrentTraceId, recordError } from '@/lib/tracing'
 
 interface SaveGameResultRequest {
   playerId: string
@@ -82,6 +83,13 @@ export async function POST(request: Request) {
     return NextResponse.json(result[0])
   } catch (error) {
     console.error('Error saving game result:', error)
-    return NextResponse.json({ error: 'Failed to save game result' }, { status: 500 })
+    if (error instanceof Error) {
+      recordError(error)
+    }
+    const traceId = getCurrentTraceId()
+    return NextResponse.json(
+      { error: 'Failed to save game result', ...(traceId && { traceId }) },
+      { status: 500 }
+    )
   }
 }

@@ -151,6 +151,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/styled-system ./apps/web
 
 # Copy server files (compiled from TypeScript)
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/server.js ./apps/web/
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/instrumentation.js ./apps/web/
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/dist ./apps/web/dist
 
 # Copy database migrations
@@ -204,4 +205,5 @@ ENV NODE_ENV=production
 
 # Default: run without LiteFS (for local dev and Docker Compose)
 # For k8s with LiteFS: override with command "litefs mount" and run as root
-CMD ["node", "server.js"]
+# Use --require to load OpenTelemetry instrumentation before any other modules
+CMD ["node", "--require", "./instrumentation.js", "server.js"]

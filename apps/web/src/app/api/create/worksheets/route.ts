@@ -16,6 +16,7 @@ import type { WorksheetFormState, WorksheetProblem } from '@/app/create/workshee
 import { db } from '@/db'
 import { worksheetShares } from '@/db/schema'
 import { generateShareId } from '@/lib/generateShareId'
+import { getCurrentTraceId, recordError } from '@/lib/tracing'
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
@@ -146,6 +147,9 @@ export async function POST(request: NextRequest) {
       })
     } catch (error) {
       console.error('Typst compilation error:', error)
+      if (error instanceof Error) {
+        recordError(error)
+      }
 
       // Extract the actual Typst error message
       const stderr =
@@ -153,10 +157,12 @@ export async function POST(request: NextRequest) {
           ? String((error as any).stderr)
           : 'Unknown compilation error'
 
+      const traceId = getCurrentTraceId()
       return NextResponse.json(
         {
           error: 'Failed to compile worksheet PDF',
           details: stderr,
+          ...(traceId && { traceId }),
           ...(process.env.NODE_ENV === 'development' && {
             typstSource: typstSource.split('\n').slice(0, 20).join('\n') + '\n...',
           }),
@@ -181,14 +187,19 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error generating worksheet:', error)
+    if (error instanceof Error) {
+      recordError(error)
+    }
 
     const errorMessage = error instanceof Error ? error.message : String(error)
     const errorStack = error instanceof Error ? error.stack : undefined
+    const traceId = getCurrentTraceId()
 
     return NextResponse.json(
       {
         error: 'Failed to generate worksheet',
         message: errorMessage,
+        ...(traceId && { traceId }),
         ...(process.env.NODE_ENV === 'development' && { stack: errorStack }),
       },
       { status: 500 }
