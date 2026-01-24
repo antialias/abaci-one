@@ -2,6 +2,7 @@
 #
 # Runs Playwright smoke tests every 15 minutes and reports results to the app API.
 # Results are exposed via /api/smoke-test-status for Gatus monitoring.
+# HTML reports are saved to the dev-artifacts PVC for viewing at dev.abaci.one/smoke-reports/
 
 resource "kubernetes_cron_job_v1" "smoke_tests" {
   metadata {
@@ -65,6 +66,12 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
                 value = "http://abaci-app-primary.${kubernetes_namespace.abaci.metadata[0].name}.svc.cluster.local/api/smoke-test-results"
               }
 
+              env {
+                # Directory to save HTML reports (on shared PVC)
+                name  = "REPORT_DIR"
+                value = "/artifacts/smoke-reports"
+              }
+
               resources {
                 requests = {
                   memory = "512Mi"
@@ -81,6 +88,12 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
                 name       = "dshm"
                 mount_path = "/dev/shm"
               }
+
+              # Mount dev-artifacts PVC for saving HTML reports
+              volume_mount {
+                name       = "artifacts"
+                mount_path = "/artifacts"
+              }
             }
 
             # Chromium needs shared memory for rendering
@@ -89,6 +102,14 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
               empty_dir {
                 medium     = "Memory"
                 size_limit = "256Mi"
+              }
+            }
+
+            # Shared storage for artifacts (HTML reports)
+            volume {
+              name = "artifacts"
+              persistent_volume_claim {
+                claim_name = kubernetes_persistent_volume_claim.dev_artifacts.metadata[0].name
               }
             }
 
