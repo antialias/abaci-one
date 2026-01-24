@@ -397,6 +397,36 @@ export const llmTokensUsed = new Counter({
 })
 
 // =============================================================================
+// SESSION / USAGE METRICS
+// =============================================================================
+
+export const sessionsActive = new Gauge({
+  name: 'sessions_active',
+  help: 'Number of active user sessions (heartbeat within last 60s)',
+  registers: [metricsRegistry],
+})
+
+export const sessionDuration = new Histogram({
+  name: 'session_duration_seconds',
+  help: 'Duration of user sessions',
+  buckets: [30, 60, 120, 300, 600, 1200, 1800, 3600, 7200],
+  registers: [metricsRegistry],
+})
+
+export const pageViewsTotal = new Counter({
+  name: 'page_views_total',
+  help: 'Total page views',
+  labelNames: ['path'],
+  registers: [metricsRegistry],
+})
+
+export const uniqueVisitorsDaily = new Gauge({
+  name: 'unique_visitors_daily',
+  help: 'Approximate unique visitors in the last 24 hours',
+  registers: [metricsRegistry],
+})
+
+// =============================================================================
 // ERROR METRICS
 // =============================================================================
 
@@ -491,5 +521,11 @@ export const metrics = {
   errors: {
     total: errorsTotal,
     byCode: errorsByCode,
+  },
+  sessions: {
+    active: sessionsActive,
+    duration: sessionDuration,
+    pageViews: pageViewsTotal,
+    uniqueVisitors: uniqueVisitorsDaily,
   },
 }

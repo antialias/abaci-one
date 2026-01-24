@@ -19,6 +19,7 @@ import type { Locale } from '@/i18n/messages'
 import { createQueryClient } from '@/lib/queryClient'
 import { AbacusSettingsSync } from './AbacusSettingsSync'
 import { DeploymentInfo } from './DeploymentInfo'
+import { HeartbeatTracker } from './HeartbeatTracker'
 import { PageTransitionOverlay } from './PageTransitionOverlay'
 
 // Lazy load MyAbacus - it includes @react-spring/web, AbacusReact, and Vision components
@@ -50,6 +51,7 @@ function InnerProviders({ children }: { children: ReactNode }) {
                       {children}
                       <PageTransitionOverlay />
                       <DeploymentInfo />
+                      <HeartbeatTracker />
                       <MyAbacus />
                     </PageTransitionProvider>
                   </DeploymentInfoProvider>
