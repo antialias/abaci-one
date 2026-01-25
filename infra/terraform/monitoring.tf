@@ -125,6 +125,103 @@ resource "helm_release" "kube_prometheus_stack" {
   depends_on = [kubernetes_namespace.monitoring]
 }
 
+# =============================================================================
+# Grafana Tempo - Distributed Tracing
+# =============================================================================
+# Receives traces via OTLP from instrumented applications.
+# Integrates with Grafana for trace visualization.
+
+resource "helm_release" "tempo" {
+  name       = "tempo"
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "tempo"
+  version    = "1.7.2"
+  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+
+  timeout = 300
+
+  values = [yamlencode({
+    tempo = {
+      # Retention period for traces
+      retention = "168h" # 7 days
+      # Resource limits for small cluster
+      resources = {
+        requests = {
+          memory = "256Mi"
+          cpu    = "100m"
+        }
+        limits = {
+          memory = "512Mi"
+          cpu    = "500m"
+        }
+      }
+    }
+    # Enable trace ingestion via OTLP
+    traces = {
+      otlp = {
+        grpc = {
+          enabled = true
+        }
+        http = {
+          enabled = true
+        }
+      }
+    }
+    # Persistence for trace data
+    persistence = {
+      enabled = true
+      size    = "5Gi"
+      storageClassName = "local-path"
+    }
+  })]
+
+  depends_on = [kubernetes_namespace.monitoring]
+}
+
+# Add Tempo as a datasource in Grafana
+# The kube-prometheus-stack Grafana sidecar will pick this up
+resource "kubernetes_config_map" "grafana_datasource_tempo" {
+  metadata {
+    name      = "grafana-datasource-tempo"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      grafana_datasource = "1"
+    }
+  }
+
+  data = {
+    "tempo-datasource.yaml" = yamlencode({
+      apiVersion = 1
+      datasources = [{
+        name      = "Tempo"
+        type      = "tempo"
+        access    = "proxy"
+        url       = "http://tempo:3100"
+        isDefault = false
+        jsonData = {
+          tracesToLogsV2 = {
+            datasourceUid = "prometheus"
+          }
+          tracesToMetrics = {
+            datasourceUid = "prometheus"
+          }
+          serviceMap = {
+            datasourceUid = "prometheus"
+          }
+          nodeGraph = {
+            enabled = true
+          }
+          lokiSearch = {
+            datasourceUid = ""
+          }
+        }
+      }]
+    })
+  }
+
+  depends_on = [helm_release.tempo, helm_release.kube_prometheus_stack]
+}
+
 # Grafana Ingress with TLS (grafana.dev.abaci.one)
 resource "kubernetes_ingress_v1" "grafana" {
   metadata {

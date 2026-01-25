@@ -240,11 +240,127 @@ ssh nas.home.network "cd /volume1/homes/antialias/projects/abaci.one && docker-c
 
 ## Network Configuration
 
-- **Reverse Proxy**: Traefik
+- **Reverse Proxy**: Traefik (see architecture below)
 - **HTTPS**: Automatic via Traefik with Let's Encrypt
 - **Domain**: abaci.one
 - **Exposed Port**: 3000 (internal to Docker network)
 - **Load Balancing**: Traefik routes to both containers, health checks determine eligibility
+
+## Traefik Ingress Architecture
+
+Traffic flows through two Traefik instances:
+
+```
+Internet → Traefik (Docker Compose on NAS) → Traefik (k3s) → Services
+```
+
+### Traefik on Docker Compose (Primary Ingress)
+
+**Location**: NAS Docker Compose
+**Role**: Entry point for all incoming traffic, TLS termination, subdomain routing
+
+The Docker Compose Traefik handles:
+- TLS certificates via Let's Encrypt (ACME)
+- Routing subdomains to appropriate backends
+- HSTS headers and HTTP→HTTPS redirects
+
+**Configuration files**:
+- `/volume1/homes/antialias/projects/traefik/services.yaml` - Dynamic file configuration for k8s routing
+
+**Key configuration (services.yaml)**:
+```yaml
+http:
+  routers:
+    # Route subdomain to k8s cluster
+    status-k3s:
+      rule: "Host(`status.abaci.one`)"
+      service: abaci-k3s
+      entryPoints: ["websecure"]
+      tls:
+        certresolver: "myresolver"
+      middlewares: ["hsts"]
+
+    dev-k3s:
+      rule: "Host(`dev.abaci.one`)"
+      service: abaci-k3s
+      entryPoints: ["websecure"]
+      tls:
+        certresolver: "myresolver"
+      middlewares: ["hsts"]
+
+  services:
+    abaci-k3s:
+      loadBalancer:
+        servers:
+          - url: "https://192.168.86.37"  # k8s node IP
+        passHostHeader: true              # Forward original Host header
+        serversTransport: "insecureTransport"
+
+  serversTransports:
+    insecureTransport:
+      insecureSkipVerify: true  # Trust k8s internal certs
+```
+
+### Traefik on k8s (Internal Routing)
+
+**Role**: Routes traffic within k8s cluster based on Host header
+
+The k8s Traefik receives traffic from Docker Compose Traefik with the original Host header preserved (`passHostHeader: true`), then routes to the appropriate k8s Service based on Ingress rules.
+
+### Adding a New Subdomain
+
+To add a new subdomain (e.g., `foo.abaci.one`):
+
+1. **Add DNS record** (CNAME to abaci.one or A record to same IP)
+   - Use Porkbun API (see `.claude/skills/porkbun-dns`)
+
+2. **Add route to Docker Compose Traefik**:
+   ```bash
+   ssh nas.home.network
+   vi /volume1/homes/antialias/projects/traefik/services.yaml
+   ```
+   Add router entries for both HTTPS and HTTP redirect (copy existing pattern).
+
+3. **Create k8s Ingress** (in Terraform):
+   ```hcl
+   resource "kubernetes_ingress_v1" "foo" {
+     metadata {
+       name = "foo"
+       namespace = kubernetes_namespace.abaci.metadata[0].name
+       annotations = {
+         "traefik.ingress.kubernetes.io/router.entrypoints" = "websecure"
+       }
+     }
+     spec {
+       ingress_class_name = "traefik"
+       rule {
+         host = "foo.${var.app_domain}"
+         http {
+           path {
+             path = "/"
+             path_type = "Prefix"
+             backend {
+               service {
+                 name = kubernetes_service.foo.metadata[0].name
+                 port { number = 80 }
+               }
+             }
+           }
+         }
+       }
+     }
+   }
+   ```
+
+4. **TLS**: Docker Compose Traefik handles TLS; k8s doesn't need cert-manager for these routes
+
+### Current Subdomains
+
+| Subdomain | Backend | Purpose |
+|-----------|---------|---------|
+| abaci.one | k8s abaci-app | Main application |
+| status.abaci.one | k8s Gatus | Status page |
+| dev.abaci.one | k8s nginx | Build artifacts (smoke reports, storybook) |
 
 ## Security Notes
 

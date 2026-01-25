@@ -61,6 +61,9 @@ resource "kubernetes_config_map" "app_config" {
     DATABASE_URL = "/litefs/sqlite.db"
     # Trust the proxy for Auth.js
     AUTH_TRUST_HOST = "true"
+    # OpenTelemetry tracing configuration
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://tempo.monitoring.svc.cluster.local:4317"
+    OTEL_SERVICE_NAME           = "abaci-app"
   }
 }
 
@@ -251,7 +254,7 @@ resource "kubernetes_stateful_set" "app" {
             exec:
               - cmd: "node dist/db/migrate.js"
                 if-candidate: true
-              - cmd: "node server.js"
+              - cmd: "node --require ./instrumentation.js server.js"
             LITEFS_CONFIG
 
             exec litefs mount -config /tmp/litefs.yml

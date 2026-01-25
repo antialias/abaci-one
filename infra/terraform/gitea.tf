@@ -629,6 +629,15 @@ resource "kubernetes_deployment" "gitea_runner" {
       }
 
       spec {
+        # Use Default DNS policy to use node's DNS (bypasses broken coredns)
+        dns_policy = "Default"
+
+        # Also add hostAliases for internal services since we're not using cluster DNS
+        host_aliases {
+          ip        = "10.43.85.76"  # gitea service IP
+          hostnames = ["gitea.gitea.svc.cluster.local"]
+        }
+
         # Docker-in-Docker sidecar for running container-based actions
         container {
           name  = "dind"

@@ -36,6 +36,8 @@ resource "kubernetes_config_map" "gatus_config" {
           group: Arcade
           url: "https://abaci.one/games"
           interval: 120s
+          client:
+            timeout: 30s
           conditions:
             - "[STATUS] == 200"
 
@@ -44,6 +46,8 @@ resource "kubernetes_config_map" "gatus_config" {
           group: Worksheets
           url: "https://abaci.one/create/worksheets"
           interval: 120s
+          client:
+            timeout: 30s
           conditions:
             - "[STATUS] == 200"
 
@@ -51,6 +55,8 @@ resource "kubernetes_config_map" "gatus_config" {
           group: Worksheets
           url: "https://abaci.one/create/flashcards"
           interval: 120s
+          client:
+            timeout: 30s
           conditions:
             - "[STATUS] == 200"
 
@@ -59,6 +65,8 @@ resource "kubernetes_config_map" "gatus_config" {
           group: Flowcharts
           url: "https://abaci.one/flowchart"
           interval: 120s
+          client:
+            timeout: 30s
           conditions:
             - "[STATUS] == 200"
 
