@@ -603,6 +603,36 @@ resource "kubernetes_secret" "gitea_runner" {
   }
 }
 
+resource "kubernetes_config_map" "gitea_runner_config" {
+  metadata {
+    name      = "gitea-runner-config"
+    namespace = kubernetes_namespace.gitea.metadata[0].name
+  }
+
+  data = {
+    "config.yaml" = <<-EOT
+      log:
+        level: debug
+
+      runner:
+        file: /data/.runner
+        capacity: 1
+        timeout: 3h
+        fetch_timeout: 5s
+        fetch_interval: 2s
+
+      cache:
+        enabled: false
+
+      container:
+        network: "host"
+        privileged: false
+        docker_host: "tcp://localhost:2375"
+        force_pull: false
+    EOT
+  }
+}
+
 resource "kubernetes_deployment" "gitea_runner" {
   metadata {
     name      = "gitea-runner"
@@ -703,6 +733,17 @@ resource "kubernetes_deployment" "gitea_runner" {
             value = "tcp://localhost:2375"
           }
 
+          env {
+            name  = "CONFIG_FILE"
+            value = "/config/config.yaml"
+          }
+
+          volume_mount {
+            name       = "runner-config"
+            mount_path = "/config"
+            read_only  = true
+          }
+
           resources {
             requests = {
               memory = "128Mi"
@@ -718,6 +759,13 @@ resource "kubernetes_deployment" "gitea_runner" {
         volume {
           name = "docker-data"
           empty_dir {}
+        }
+
+        volume {
+          name = "runner-config"
+          config_map {
+            name = kubernetes_config_map.gitea_runner_config.metadata[0].name
+          }
         }
       }
     }
