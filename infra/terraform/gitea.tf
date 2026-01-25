@@ -663,8 +663,12 @@ resource "kubernetes_deployment" "gitea_runner" {
       }
 
       spec {
-        # Use Default DNS policy to use node's DNS (bypasses broken coredns)
-        dns_policy = "Default"
+        # Use explicit DNS to avoid IPv6 issues on home network
+        dns_policy = "None"
+        dns_config {
+          nameservers = ["8.8.8.8", "8.8.4.4"]
+          searches    = ["gitea.svc.cluster.local", "svc.cluster.local", "cluster.local"]
+        }
 
         # Also add hostAliases for internal services since we're not using cluster DNS
         host_aliases {
