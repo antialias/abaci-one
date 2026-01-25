@@ -629,6 +629,7 @@ resource "kubernetes_config_map" "gitea_runner_config" {
         privileged: false
         docker_host: "tcp://localhost:2375"
         force_pull: false
+        options: "--dns 8.8.8.8 --dns 8.8.4.4"
     EOT
   }
 }
@@ -689,12 +690,12 @@ resource "kubernetes_deployment" "gitea_runner" {
 
           resources {
             requests = {
-              memory = "256Mi"
-              cpu    = "100m"
+              memory = "512Mi"
+              cpu    = "500m"
             }
             limits = {
-              memory = "2Gi"
-              cpu    = "2000m"
+              memory = "4Gi"
+              cpu    = "3000m"
             }
           }
         }
