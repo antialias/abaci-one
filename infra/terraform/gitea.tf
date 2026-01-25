@@ -622,7 +622,10 @@ resource "kubernetes_config_map" "gitea_runner_config" {
         fetch_interval: 2s
 
       cache:
-        enabled: false
+        enabled: true
+        dir: "/cache"
+        host: ""
+        external_server: ""
 
       container:
         network: "host"
@@ -745,6 +748,11 @@ resource "kubernetes_deployment" "gitea_runner" {
             read_only  = true
           }
 
+          volume_mount {
+            name       = "runner-cache"
+            mount_path = "/cache"
+          }
+
           resources {
             requests = {
               memory = "128Mi"
@@ -758,8 +766,21 @@ resource "kubernetes_deployment" "gitea_runner" {
         }
 
         volume {
+          name = "runner-cache"
+          host_path {
+            path = "/var/lib/gitea-runner-cache"
+            type = "DirectoryOrCreate"
+          }
+        }
+
+        volume {
           name = "docker-data"
-          empty_dir {}
+          # Use hostPath to persist Docker cache across pod restarts
+          # This significantly speeds up builds by caching pulled images
+          host_path {
+            path = "/var/lib/gitea-runner-docker"
+            type = "DirectoryOrCreate"
+          }
         }
 
         volume {

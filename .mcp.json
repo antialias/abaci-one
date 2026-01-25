@@ -1,5 +1,13 @@
 {
   "mcpServers": {
+    "kubernetes": {
+      "command": "/Users/antialias/.nvm/versions/node/v20.19.3/bin/npx",
+      "args": ["-y", "mcp-server-kubernetes"],
+      "env": {
+        "KUBECONFIG": "/Users/antialias/.kube/k3s-config",
+        "PATH": "/Users/antialias/.nvm/versions/node/v20.19.3/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin"
+      }
+    },
     "sqlite": {
       "command": "/Users/antialias/.nvm/versions/node/v20.19.3/bin/npx",
       "args": [
