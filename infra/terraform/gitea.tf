@@ -693,11 +693,12 @@ resource "kubernetes_deployment" "gitea_runner" {
 
           resources {
             requests = {
-              memory = "512Mi"
+              memory = "1Gi"
               cpu    = "500m"
             }
             limits = {
-              memory = "4Gi"
+              # Allow up to 10Gi for dind: 8Gi tmpfs + 2Gi for daemon overhead
+              memory = "10Gi"
               cpu    = "3000m"
             }
           }
@@ -775,11 +776,12 @@ resource "kubernetes_deployment" "gitea_runner" {
 
         volume {
           name = "docker-data"
-          # Use hostPath to persist Docker cache across pod restarts
-          # This significantly speeds up builds by caching pulled images
-          host_path {
-            path = "/var/lib/gitea-runner-docker"
-            type = "DirectoryOrCreate"
+          # Use tmpfs (RAM) for Docker storage - fast in-memory builds
+          # k3s VM has 16GB RAM, allocating 8GB for Docker cache
+          # Note: Cache is lost on pod restart, but builds are much faster
+          empty_dir {
+            medium     = "Memory"
+            size_limit = "8Gi"
           }
         }
 
