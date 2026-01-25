@@ -146,3 +146,4 @@ jobs:
 # v7 - with DNS fix
 
 # v8 - increased resources
+# v9 - secrets configured for NAS deploy
