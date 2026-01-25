@@ -105,12 +105,13 @@ resource "kubernetes_config_map" "dev_artifacts_nginx" {
               }
           }
 
-          # Redirect to GitHub Pages Storybook (until we build locally)
+          # Serve Storybook from local storage
           location /storybook/ {
-              return 302 https://antialias.github.io/soroban-abacus-flashcards/;
+              alias /usr/share/nginx/html/storybook/;
+              try_files $uri $uri/ /storybook/index.html;
           }
           location = /storybook {
-              return 302 https://antialias.github.io/soroban-abacus-flashcards/;
+              return 301 /storybook/;
           }
 
           # Health check endpoint

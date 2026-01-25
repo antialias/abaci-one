@@ -76,3 +76,48 @@ variable "grafana_admin_password" {
   type        = string
   sensitive   = true
 }
+
+# Gitea Configuration
+variable "gitea_admin_user" {
+  description = "Gitea admin username"
+  type        = string
+  default     = "antialias"
+}
+
+variable "gitea_admin_email" {
+  description = "Gitea admin email"
+  type        = string
+  default     = "hallock@gmail.com"
+}
+
+variable "gitea_admin_password" {
+  description = "Gitea admin password"
+  type        = string
+  sensitive   = true
+}
+
+variable "gitea_runner_token" {
+  description = "Gitea Actions runner registration token (get from Gitea admin UI after setup)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "github_mirror_token" {
+  description = "GitHub PAT for push mirroring (needs repo scope)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "gitea_repo_name" {
+  description = "Repository name to create/migrate in Gitea"
+  type        = string
+  default     = "soroban-abacus-flashcards"
+}
+
+variable "github_repo_url" {
+  description = "GitHub repo URL to migrate from"
+  type        = string
+  default     = "https://github.com/antialias/soroban-abacus-flashcards.git"
+}
