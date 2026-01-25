@@ -125,13 +125,35 @@ jobs:
           NAS_HOST: ${{ secrets.NAS_HOST }}
           NAS_DEPLOY_PATH: ${{ secrets.NAS_DEPLOY_PATH }}
         run: |
+          set -ex
+
+          # Debug: check if secrets are present
+          echo "NAS_HOST length: ${#NAS_HOST}"
+          echo "NAS_DEPLOY_PATH length: ${#NAS_DEPLOY_PATH}"
+          echo "NAS_SSH_KEY length: ${#NAS_SSH_KEY}"
+
+          if [ -z "$NAS_HOST" ]; then
+            echo "ERROR: NAS_HOST secret is empty"
+            exit 1
+          fi
+          if [ -z "$NAS_DEPLOY_PATH" ]; then
+            echo "ERROR: NAS_DEPLOY_PATH secret is empty"
+            exit 1
+          fi
+          if [ -z "$NAS_SSH_KEY" ]; then
+            echo "ERROR: NAS_SSH_KEY secret is empty"
+            exit 1
+          fi
+
           # Setup SSH
           mkdir -p ~/.ssh
           echo "$NAS_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "$NAS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          echo "Scanning SSH host: $NAS_HOST"
+          ssh-keyscan -H "$NAS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || echo "Warning: ssh-keyscan failed"
 
           # Deploy via rsync
+          echo "Deploying to: antialias@${NAS_HOST}:${NAS_DEPLOY_PATH}/"
           rsync -avz --delete \
             storybook-static/ \
             "antialias@${NAS_HOST}:${NAS_DEPLOY_PATH}/"
@@ -147,3 +169,4 @@ jobs:
 
 # v8 - increased resources
 # v9 - secrets configured for NAS deploy
+# v10 - debug secrets injection
