@@ -115,6 +115,10 @@ jobs:
           </html>
           EOF
 
+      - name: Install deployment tools
+        run: |
+          apt-get update && apt-get install -y rsync openssh-client
+
       - name: Deploy to NAS
         env:
           NAS_SSH_KEY: ${{ secrets.NAS_SSH_KEY }}
