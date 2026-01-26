@@ -703,6 +703,12 @@ resource "kubernetes_deployment" "gitea_runner" {
             mount_path = "/var/lib/docker"
           }
 
+          # Mount cache directory so job containers can access it via -v bind mount
+          volume_mount {
+            name       = "runner-cache"
+            mount_path = "/var/lib/gitea-runner-cache"
+          }
+
           resources {
             requests = {
               memory = "1Gi"

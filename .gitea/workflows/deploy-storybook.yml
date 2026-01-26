@@ -20,9 +20,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
-      - name: Setup pnpm with persistent store
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           run_install: false
@@ -32,12 +32,11 @@ jobs:
         with:
           node-version: "20"
 
-      # Use persistent cache directories mounted in runner for pnpm and turbo
+      # Configure pnpm to use persistent cache mounted from host
       - name: Configure caching
         run: |
-          mkdir -p /cache/pnpm-store /cache/turbo-cache
+          mkdir -p /cache/pnpm-store /cache/turbo
           pnpm config set store-dir /cache/pnpm-store
-          echo "TURBO_CACHE_DIR=/cache/turbo-cache" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -54,10 +53,8 @@ jobs:
 
       - name: Build workspace packages
         env:
-          TURBO_CACHE_DIR: /cache/turbo-cache
-        run: |
-          # Use turbo with persistent cache for faster incremental builds
-          pnpm turbo build --filter=@soroban/llm-client --filter=@soroban/abacus-react --cache-dir=/cache/turbo-cache
+          TURBO_CACHE_DIR: /cache/turbo
+        run: pnpm turbo build --filter=@soroban/llm-client --filter=@soroban/abacus-react --cache-dir=/cache/turbo
 
       - name: Build web Storybook
         working-directory: apps/web
@@ -127,8 +124,7 @@ jobs:
           EOF
 
       - name: Install deployment tools
-        run: |
-          apt-get update && apt-get install -y rsync openssh-client
+        run: apt-get update && apt-get install -y rsync openssh-client
 
       - name: Deploy to NAS
         env:
@@ -138,47 +134,20 @@ jobs:
         run: |
           set -ex
 
-          # Debug: check if secrets are present
-          echo "NAS_HOST length: ${#NAS_HOST}"
-          echo "NAS_DEPLOY_PATH length: ${#NAS_DEPLOY_PATH}"
-          echo "NAS_SSH_KEY length: ${#NAS_SSH_KEY}"
-
-          if [ -z "$NAS_HOST" ]; then
-            echo "ERROR: NAS_HOST secret is empty"
-            exit 1
-          fi
-          if [ -z "$NAS_DEPLOY_PATH" ]; then
-            echo "ERROR: NAS_DEPLOY_PATH secret is empty"
-            exit 1
-          fi
-          if [ -z "$NAS_SSH_KEY" ]; then
-            echo "ERROR: NAS_SSH_KEY secret is empty"
+          if [ -z "$NAS_HOST" ] || [ -z "$NAS_DEPLOY_PATH" ] || [ -z "$NAS_SSH_KEY" ]; then
+            echo "ERROR: Missing required secrets"
             exit 1
           fi
 
-          # Setup SSH
           mkdir -p ~/.ssh
           echo "$NAS_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          echo "Scanning SSH host: $NAS_HOST"
-          ssh-keyscan -H "$NAS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || echo "Warning: ssh-keyscan failed"
+          ssh-keyscan -H "$NAS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          # Deploy via rsync
-          echo "Deploying to: antialias@${NAS_HOST}:${NAS_DEPLOY_PATH}/"
           rsync -avz --delete \
             storybook-static/ \
             "antialias@${NAS_HOST}:${NAS_DEPLOY_PATH}/"
 
           echo "Storybook deployed to https://dev.abaci.one/storybook/"
 
-# Version history:
-# v4-v6 - initial versions
-# v7 - DNS fix
-# v8 - increased resources
-# v9 - secrets configured for NAS deploy
-# v10 - debug secrets injection
-# v11 - use IP address for NAS_HOST to fix DNS resolution in container
-# v12 - added ed25519 deploy key to NAS authorized_keys
-# v13 - PERF: added persistent pnpm store + turbo cache (target: 45min → 5min)
-
-
+# v14 - PERF: persistent pnpm store + turbo cache via volume mount to DinD
