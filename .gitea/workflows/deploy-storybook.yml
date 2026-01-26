@@ -171,5 +171,6 @@ jobs:
 # v9 - secrets configured for NAS deploy
 # v10 - debug secrets injection
 # v11 - use IP address for NAS_HOST to fix DNS resolution in container
+# v12 - added ed25519 deploy key to NAS authorized_keys
 
 
