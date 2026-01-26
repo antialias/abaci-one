@@ -34,34 +34,73 @@ kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n abaci get pods
 
 ## Deployment Workflow
 
-**NEVER build Docker images locally.** The GitHub Actions pipeline handles this.
+**NEVER build Docker images locally.** Gitea Actions handles all builds.
+
+### CI/CD Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              MacBook Runner (ARM64)                      │
+│  Fast builds (~5 min) for:                              │
+│  - Storybook deployment                                  │
+│  - Tests, linting, releases                             │
+│  - npm publish                                           │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          │ fallback if offline
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│              k3s Runner (x86_64)                         │
+│  Required for (~30 min, slower but reliable):           │
+│  - Docker image builds (must be x86_64 for k3s)         │
+│  - Fallback for all JS/TS workflows                     │
+└─────────────────────────────────────────────────────────┘
+```
 
 ### Automatic Deployment (via Keel)
 
-After Keel is deployed, the workflow is fully automatic:
+Fully automatic, no GitHub dependency:
 
-1. Commit and push to main
-2. GitHub Actions builds and pushes image to `ghcr.io`
-3. **Keel automatically detects the new image** (polls every 2 minutes)
-4. Keel triggers a rolling restart of pods
+1. Commit and push to Gitea (main branch)
+2. Gitea Actions builds image → pushes to local registry
+3. **Keel detects new image** (polls every 2 minutes)
+4. Keel triggers rolling restart of pods
 5. No manual intervention required!
+
+**Registry**: `registry.gitea.svc.cluster.local:5000/abaci-app:latest`
 
 To verify Keel is working:
 ```bash
 kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n keel logs -l app=keel --tail=50
 ```
 
-### Manual Deployment (if Keel is not deployed yet)
+### Gitea Workflows
 
-1. Make code changes
-2. Commit and push to main
-3. Monitor build: `gh run watch`
-4. Apply infrastructure: `cd infra/terraform && terraform apply`
-5. Verify pods: `kubectl --kubeconfig=~/.kube/k3s-config -n abaci get pods`
+| Workflow | Purpose | Runner |
+|----------|---------|--------|
+| `deploy.yml` | Docker image build | k3s only (x86_64) |
+| `smoke-tests.yml` | Smoke tests image | k3s only (x86_64) |
+| `deploy-storybook.yml` | Static site build | MacBook + fallback |
+| `release.yml` | Semantic release | MacBook + fallback |
+| `templates-test.yml` | Package tests | MacBook + fallback |
+
+### MacBook Runner Management
+
+```bash
+# Check status
+launchctl list | grep gitea
+
+# View logs
+tail -f ~/gitea-runner/runner.log
+
+# Restart
+launchctl unload ~/Library/LaunchAgents/com.gitea.act-runner.plist
+launchctl load ~/Library/LaunchAgents/com.gitea.act-runner.plist
+```
 
 ### Manual Rollout (quick restart)
 
-To force pods to pull the latest image without terraform:
+To force pods to pull the latest image:
 ```bash
 kubectl --kubeconfig=~/.kube/k3s-config -n abaci rollout restart statefulset abaci-app
 ```
@@ -122,3 +161,47 @@ kubectl --kubeconfig=~/.kube/k3s-config -n abaci scale statefulset abaci-app --r
 kubectl --kubeconfig=~/.kube/k3s-config -n abaci delete pvc litefs-data-abaci-app-1
 kubectl --kubeconfig=~/.kube/k3s-config -n abaci scale statefulset abaci-app --replicas=2
 ```
+
+## Debugging Gitea Actions Runner Performance
+
+**Grafana Dashboards:**
+- **Ops Metrics** (uid: `ops-metrics`) - Infrastructure monitoring for CI/CD debugging
+- **Product Metrics** (uid: `product-metrics`) - Application traffic and health
+
+Access via: https://grafana.abaci.one (or use port-forward to localhost)
+
+**Key panels for Gitea runner debugging (Ops Metrics dashboard):**
+
+| Panel | Metric | What to Look For |
+|-------|--------|------------------|
+| Runner Memory Usage | `container_memory_working_set_bytes{namespace="gitea-runner"}` | Memory spikes during builds |
+| Runner CPU Usage | `rate(container_cpu_usage_seconds_total{namespace="gitea-runner"}[5m])` | CPU saturation |
+| Runner Network I/O | `rate(container_network_receive_bytes_total{namespace="gitea-runner"}[5m])` | Network bottlenecks |
+| Node Memory % | `1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)` | System-wide memory pressure |
+| Node CPU Usage | `1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))` | Total CPU with I/O wait |
+| Disk Throughput | `rate(node_disk_read_bytes_total[5m])` | Disk read/write rates |
+| Disk I/O Utilization | `rate(node_disk_io_time_seconds_total[5m])` | Disk saturation (>90% = bottleneck) |
+
+**Known findings from prior investigation:**
+- Gitea runner container uses ~1.3GB memory when idle
+- Node has 15.6GB RAM, ~30% used at baseline
+- Node CPU at ~10% baseline
+- Docker storage on containerd: 54GB at `/var/lib/rancher/k3s/agent/containerd`
+
+**Quick Prometheus queries for debugging:**
+```promql
+# Runner memory during build
+container_memory_working_set_bytes{namespace="gitea-runner", container="gitea-runner"}
+
+# Node I/O wait (high = disk bottleneck)
+avg(rate(node_cpu_seconds_total{mode="iowait"}[5m])) * 100
+
+# Disk device utilization (>90% is bad)
+rate(node_disk_io_time_seconds_total{device=~"sd.*|nvme.*"}[5m]) * 100
+```
+
+**If builds are slow, check in order:**
+1. Disk I/O Utilization - if >90%, disk is the bottleneck
+2. Node Memory % - if >85%, memory pressure causes swapping
+3. I/O Wait - high I/O wait with low CPU = disk-bound
+4. Runner Memory - spikes may indicate build is memory-heavy

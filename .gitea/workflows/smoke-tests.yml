@@ -1,0 +1,54 @@
+name: Build Smoke Tests Image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/e2e/smoke/**'
+      - 'apps/web/scripts/smoke-test-runner.ts'
+      - 'apps/web/Dockerfile.smoke-tests'
+      - 'apps/web/playwright.config.ts'
+      - '.gitea/workflows/smoke-tests.yml'
+      - '.dockerignore'
+  workflow_dispatch:
+
+env:
+  REGISTRY: registry.gitea.svc.cluster.local:5000
+  IMAGE_NAME: abaci-smoke-tests
+
+jobs:
+  build-and-push:
+    name: Build Smoke Tests Image
+    # Must run on x86_64 for k3s compatibility
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get commit info
+        id: vars
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -f apps/web/Dockerfile.smoke-tests \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }} \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+
+      - name: Summary
+        run: |
+          echo "Pushed smoke tests image:"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}"
+
+# v1 - Local registry version

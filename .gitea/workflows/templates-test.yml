@@ -1,0 +1,98 @@
+name: Templates Package Tests
+
+on:
+  push:
+    paths:
+      - "packages/templates/**"
+      - ".gitea/workflows/templates-test.yml"
+  pull_request:
+    paths:
+      - "packages/templates/**"
+      - ".gitea/workflows/templates-test.yml"
+  workflow_dispatch:
+
+jobs:
+  # Fast tests on MacBook
+  test-fast:
+    name: Test (MacBook)
+    runs-on: macbook
+    timeout-minutes: 15
+    continue-on-error: true
+    outputs:
+      success: ${{ steps.mark-success.outputs.success }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Python
+        run: |
+          # Use system Python on macOS
+          python3 --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run templates package tests
+        run: pnpm --filter @soroban/templates test
+
+      - name: Run CI test script
+        working-directory: packages/templates
+        run: ./ci-test.sh || echo "CI test script not found or failed"
+
+      - name: Mark success
+        id: mark-success
+        run: echo "success=true" >> $GITHUB_OUTPUT
+
+  # Fallback tests on k3s
+  test-fallback:
+    name: Test (k3s fallback)
+    runs-on: ubuntu-latest
+    needs: test-fast
+    if: ${{ always() && needs.test-fast.outputs.success != 'true' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Configure caching
+        run: |
+          mkdir -p /cache/pnpm-store
+          pnpm config set store-dir /cache/pnpm-store
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run templates package tests
+        run: pnpm --filter @soroban/templates test
+
+      - name: Run CI test script
+        working-directory: packages/templates
+        run: ./ci-test.sh || echo "CI test script not found or failed"
+
+# v1 - MacBook primary with k3s fallback

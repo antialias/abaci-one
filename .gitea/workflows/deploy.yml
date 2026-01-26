@@ -1,0 +1,57 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # Local registry in k3s cluster - no external dependencies
+  REGISTRY: registry.gitea.svc.cluster.local:5000
+  IMAGE_NAME: abaci-app
+
+jobs:
+  build-and-push:
+    name: Build Docker Image
+    # Must run on x86_64 for k3s compatibility - no MacBook fallback
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get commit info
+        id: vars
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg GIT_COMMIT=${{ steps.vars.outputs.sha }} \
+            --build-arg GIT_COMMIT_SHORT=${{ steps.vars.outputs.short_sha }} \
+            --build-arg GIT_BRANCH=${{ steps.vars.outputs.branch }} \
+            --build-arg GIT_DIRTY=false \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }} \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+
+      - name: Summary
+        run: |
+          echo "Pushed images:"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}"
+          echo ""
+          echo "Keel will automatically deploy the new image."
+
+# v2 - Local registry, fully self-contained
