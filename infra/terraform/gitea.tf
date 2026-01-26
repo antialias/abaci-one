@@ -348,6 +348,11 @@ resource "kubernetes_deployment" "gitea" {
   spec {
     replicas = 1
 
+    # Gitea requires exclusive access to LevelDB queues - must stop old pod first
+    strategy {
+      type = "Recreate"
+    }
+
     selector {
       match_labels = {
         app = "gitea"
@@ -632,7 +637,10 @@ resource "kubernetes_config_map" "gitea_runner_config" {
         privileged: false
         docker_host: "tcp://localhost:2375"
         force_pull: false
-        options: "--dns 8.8.8.8 --dns 8.8.4.4"
+        # Mount host cache directory into job containers for pnpm/turbo caching
+        options: "--dns 8.8.8.8 --dns 8.8.4.4 -v /var/lib/gitea-runner-cache:/cache"
+        valid_volumes:
+          - /var/lib/gitea-runner-cache
     EOT
   }
 }
@@ -780,12 +788,11 @@ resource "kubernetes_deployment" "gitea_runner" {
 
         volume {
           name = "docker-data"
-          # Use tmpfs (RAM) for Docker storage - fast in-memory builds
-          # k3s VM has 16GB RAM, allocating 8GB for Docker cache
-          # Note: Cache is lost on pod restart, but builds are much faster
-          empty_dir {
-            medium     = "Memory"
-            size_limit = "8Gi"
+          # Use persistent host path for Docker storage to preserve layer cache across restarts
+          # Previous: tmpfs lost all cache on every pod restart, causing ~45min rebuilds
+          host_path {
+            path = "/var/lib/gitea-docker-data"
+            type = "DirectoryOrCreate"
           }
         }
 

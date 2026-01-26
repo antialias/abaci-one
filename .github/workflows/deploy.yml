@@ -61,6 +61,9 @@ jobs:
         id: vars
         run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -74,3 +77,5 @@ jobs:
             GIT_BRANCH=${{ github.ref_name }}
             GIT_TAG=${{ github.ref_type == 'tag' && github.ref_name || '' }}
             GIT_DIRTY=false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

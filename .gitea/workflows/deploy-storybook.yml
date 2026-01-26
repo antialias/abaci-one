@@ -22,13 +22,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup pnpm
+      - name: Setup pnpm with persistent store
         uses: pnpm/action-setup@v4
+        with:
+          run_install: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      # Use persistent cache directories mounted in runner for pnpm and turbo
+      - name: Configure caching
+        run: |
+          mkdir -p /cache/pnpm-store /cache/turbo-cache
+          pnpm config set store-dir /cache/pnpm-store
+          echo "TURBO_CACHE_DIR=/cache/turbo-cache" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -44,9 +53,11 @@ jobs:
           npx @pandacss/dev cssgen || echo "CSS generation had warnings but continued"
 
       - name: Build workspace packages
+        env:
+          TURBO_CACHE_DIR: /cache/turbo-cache
         run: |
-          pnpm --filter @soroban/llm-client build
-          pnpm --filter @soroban/abacus-react build
+          # Use turbo with persistent cache for faster incremental builds
+          pnpm turbo build --filter=@soroban/llm-client --filter=@soroban/abacus-react --cache-dir=/cache/turbo-cache
 
       - name: Build web Storybook
         working-directory: apps/web
@@ -160,17 +171,14 @@ jobs:
 
           echo "Storybook deployed to https://dev.abaci.one/storybook/"
 
-# trigger
-
-# v4
-# v5
-# v6
-# v7 - with DNS fix
-
+# Version history:
+# v4-v6 - initial versions
+# v7 - DNS fix
 # v8 - increased resources
 # v9 - secrets configured for NAS deploy
 # v10 - debug secrets injection
 # v11 - use IP address for NAS_HOST to fix DNS resolution in container
 # v12 - added ed25519 deploy key to NAS authorized_keys
+# v13 - PERF: added persistent pnpm store + turbo cache (target: 45min → 5min)
 
 
