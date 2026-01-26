@@ -17,9 +17,15 @@ jobs:
     name: Build Docker Image
     # Must run on x86_64 for k3s compatibility - no MacBook fallback
     runs-on: ubuntu-latest
+    # Use docker:cli container since default node:20 doesn't have Docker CLI
+    # DOCKER_HOST is automatically set by runner config to connect to DinD sidecar
+    container: docker:cli
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
 
     steps:
+      - name: Install git
+        run: apk add --no-cache git
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -54,4 +60,4 @@ jobs:
           echo ""
           echo "Keel will automatically deploy the new image."
 
-# v2 - Local registry, fully self-contained
+# v3 - Uses docker:cli container for Docker builds
