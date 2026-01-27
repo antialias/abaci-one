@@ -80,30 +80,9 @@ resource "kubernetes_config_map" "gatus_config" {
             - "[RESPONSE_TIME] < 500"
             - "[BODY].status == healthy"
 
-        # ============ Infrastructure ============
-        - name: "SQLite Database"
-          group: Infrastructure
-          url: "https://abaci.one/api/health"
-          interval: 30s
-          conditions:
-            - "[STATUS] == 200"
-            - "[BODY].checks.database.status == ok"
-
-        - name: "Redis Cache"
-          group: Infrastructure
-          url: "tcp://redis.abaci.svc.cluster.local:6379"
-          interval: 30s
-          conditions:
-            - "[CONNECTED] == true"
-
-        # ============ E2E Tests ============
-        - name: "Browser Smoke Tests"
-          group: E2E Tests
-          url: "https://abaci.one/api/smoke-test-status"
-          interval: 60s
-          conditions:
-            - "[STATUS] == 200"
-            - "[BODY].status == passed"
+        # Note: Infrastructure checks (Database, Redis, E2E Tests) removed
+        # to keep the public status page focused on user-facing services.
+        # For ops monitoring, use Grafana dashboards instead.
     EOT
   }
 }

@@ -1,21 +1,21 @@
 /**
  * In-memory registry for active flowchart generations
  *
- * This allows multiple clients to subscribe to the same generation stream.
+ * This allows multiple clients to watch the same generation stream via Socket.IO.
  * When a client reconnects during generation, they can:
- * 1. Receive the accumulated content so far
- * 2. Subscribe to live deltas going forward
+ * 1. Receive the accumulated content so far (from Redis, works cross-pod)
+ * 2. Subscribe to live deltas going forward (via Socket.IO room)
  *
  * The database is used for durability (periodic saves), but the primary
- * streaming path is through this in-memory registry for low latency.
+ * streaming path is through Socket.IO rooms with Redis adapter for low latency.
  */
+
+import { getRedisClient } from '@/lib/redis'
 
 export interface StreamEvent {
   type: 'reasoning' | 'output_delta' | 'progress' | 'complete' | 'error'
   data: unknown
 }
-
-export type Subscriber = (event: StreamEvent) => void
 
 export interface GenerationState {
   /** Session ID */
@@ -29,9 +29,6 @@ export interface GenerationState {
 
   /** Current status */
   status: 'generating' | 'complete' | 'error'
-
-  /** Active subscribers to this generation */
-  subscribers: Set<Subscriber>
 
   /** Final result (when complete) */
   result?: unknown
@@ -48,6 +45,67 @@ export interface GenerationState {
  */
 const activeGenerations = new Map<string, GenerationState>()
 
+// Redis key prefix and TTL for cross-pod state sharing
+const REDIS_KEY_PREFIX = 'flowchart:generation:'
+const REDIS_TTL = 1800 // 30 min safety TTL
+
+/**
+ * Sync generation state to Redis so any pod can serve it on client join
+ */
+async function syncToRedis(sessionId: string, state: GenerationState): Promise<void> {
+  const redis = getRedisClient()
+  if (!redis) return
+  try {
+    await redis.setex(`${REDIS_KEY_PREFIX}${sessionId}`, REDIS_TTL, JSON.stringify({
+      status: state.status,
+      accumulatedReasoning: state.accumulatedReasoning,
+      accumulatedOutput: state.accumulatedOutput,
+      startedAt: state.startedAt,
+    }))
+  } catch (err) {
+    console.error('[registry] Failed to sync to Redis:', err)
+  }
+}
+
+/**
+ * Clean up Redis key after generation completes/fails
+ */
+async function cleanRedis(sessionId: string): Promise<void> {
+  const redis = getRedisClient()
+  if (!redis) return
+  try {
+    // Delay cleanup so late-joining clients can still get state
+    setTimeout(() => {
+      redis.del(`${REDIS_KEY_PREFIX}${sessionId}`).catch((err: unknown) => {
+        console.error('[registry] Failed to clean Redis key:', err)
+      })
+    }, 5000)
+  } catch (err) {
+    console.error('[registry] Failed to schedule Redis cleanup:', err)
+  }
+}
+
+/**
+ * Get generation state from Redis (for cross-pod access)
+ * Exported for use by socket-server join handler
+ */
+export async function getGenerationFromRedis(sessionId: string): Promise<{
+  status: string
+  accumulatedReasoning: string
+  accumulatedOutput: string
+  startedAt: number
+} | null> {
+  const redis = getRedisClient()
+  if (!redis) return null
+  try {
+    const data = await redis.get(`${REDIS_KEY_PREFIX}${sessionId}`)
+    return data ? JSON.parse(data) : null
+  } catch (err) {
+    console.error('[registry] Failed to read from Redis:', err)
+    return null
+  }
+}
+
 /**
  * Create a new generation state for a session
  */
@@ -57,7 +115,6 @@ export function startGeneration(sessionId: string): GenerationState {
   if (existing) {
     console.log(`[registry] Cleaning up existing generation for session ${sessionId}`, {
       previousStatus: existing.status,
-      previousSubscriberCount: existing.subscribers.size,
     })
   }
   activeGenerations.delete(sessionId)
@@ -67,7 +124,6 @@ export function startGeneration(sessionId: string): GenerationState {
     accumulatedReasoning: '',
     accumulatedOutput: '',
     status: 'generating',
-    subscribers: new Set(),
     startedAt: Date.now(),
   }
 
@@ -75,54 +131,34 @@ export function startGeneration(sessionId: string): GenerationState {
   console.log(`[registry] Started generation for session ${sessionId}`, {
     totalActiveGenerations: activeGenerations.size,
   })
+
+  // Sync initial state to Redis
+  void syncToRedis(sessionId, state)
+
   return state
 }
 
 /**
- * Get the current generation state for a session (if active)
+ * Get the current generation state for a session (if active on this pod)
  */
 export function getGeneration(sessionId: string): GenerationState | undefined {
   return activeGenerations.get(sessionId)
 }
 
 /**
- * Check if a generation is currently active for a session
+ * Check if a generation is currently active for a session (on this pod)
  */
 export function isGenerationActive(sessionId: string): boolean {
   const state = activeGenerations.get(sessionId)
   return state?.status === 'generating'
 }
 
-/**
- * Subscribe to generation updates
- * Returns a function to unsubscribe
- */
-export function subscribe(sessionId: string, subscriber: Subscriber): (() => void) | null {
-  const state = activeGenerations.get(sessionId)
-  if (!state) {
-    console.log(`[registry] Subscribe failed: no generation state for session ${sessionId}`)
-    return null
-  }
-
-  state.subscribers.add(subscriber)
-  console.log(`[registry] New subscriber added for session ${sessionId}`, {
-    subscriberCount: state.subscribers.size,
-    status: state.status,
-  })
-
-  return () => {
-    state.subscribers.delete(subscriber)
-    console.log(`[registry] Subscriber removed for session ${sessionId}`, {
-      subscriberCount: state.subscribers.size,
-    })
-  }
-}
-
 // Track broadcast counts per session to avoid log spam
 const broadcastCounts = new Map<string, number>()
 
 /**
- * Broadcast an event to all subscribers of a generation
+ * Broadcast an event to all Socket.IO clients watching this generation
+ * Also updates accumulated state in Redis for cross-pod access
  */
 export function broadcast(sessionId: string, event: StreamEvent): void {
   const state = activeGenerations.get(sessionId)
@@ -140,7 +176,6 @@ export function broadcast(sessionId: string, event: StreamEvent): void {
     console.log(`[registry] Broadcast #${count}`, {
       sessionId,
       eventType: event.type,
-      subscriberCount: state.subscribers.size,
     })
   }
 
@@ -158,15 +193,17 @@ export function broadcast(sessionId: string, event: StreamEvent): void {
     state.accumulatedOutput += data.text
   }
 
-  // Broadcast to all subscribers
-  for (const subscriber of state.subscribers) {
-    try {
-      subscriber(event)
-    } catch (err) {
-      // Remove failed subscribers
-      console.error('[registry] Subscriber error:', err)
-      state.subscribers.delete(subscriber)
-    }
+  // Sync to Redis (throttled for high-frequency events, always for milestones)
+  if (event.type !== 'reasoning' && event.type !== 'output_delta') {
+    void syncToRedis(sessionId, state)
+  } else if (count % 20 === 0) {
+    void syncToRedis(sessionId, state)
+  }
+
+  // Emit to Socket.IO room (cross-pod via Redis adapter)
+  const io = getSocketIOLazy()
+  if (io) {
+    io.to(`flowchart:${sessionId}`).emit('flowchart:event', event)
   }
 }
 
@@ -181,7 +218,6 @@ export function completeGeneration(sessionId: string, result: unknown): void {
   }
 
   console.log(`[registry] Completing generation for session ${sessionId}`, {
-    subscriberCount: state.subscribers.size,
     accumulatedReasoningLength: state.accumulatedReasoning.length,
     accumulatedOutputLength: state.accumulatedOutput.length,
   })
@@ -189,13 +225,17 @@ export function completeGeneration(sessionId: string, result: unknown): void {
   state.status = 'complete'
   state.result = result
 
-  // Broadcast completion to all subscribers
+  // Broadcast completion to all watchers
   broadcast(sessionId, { type: 'complete', data: result })
 
   // Clean broadcast count
   broadcastCounts.delete(sessionId)
 
-  // Clean up after a delay (give subscribers time to receive the event)
+  // Final sync + cleanup
+  void syncToRedis(sessionId, state)
+  void cleanRedis(sessionId)
+
+  // Clean up local state after a delay
   setTimeout(() => {
     console.log(`[registry] Cleaning up completed generation for session ${sessionId}`)
     activeGenerations.delete(sessionId)
@@ -214,19 +254,22 @@ export function failGeneration(sessionId: string, error: string): void {
 
   console.log(`[registry] Failing generation for session ${sessionId}`, {
     error,
-    subscriberCount: state.subscribers.size,
   })
 
   state.status = 'error'
   state.error = error
 
-  // Broadcast error to all subscribers
+  // Broadcast error to all watchers
   broadcast(sessionId, { type: 'error', data: { message: error } })
 
   // Clean broadcast count
   broadcastCounts.delete(sessionId)
 
-  // Clean up after a delay
+  // Final sync + cleanup
+  void syncToRedis(sessionId, state)
+  void cleanRedis(sessionId)
+
+  // Clean up local state after a delay
   setTimeout(() => {
     console.log(`[registry] Cleaning up failed generation for session ${sessionId}`)
     activeGenerations.delete(sessionId)
@@ -255,4 +298,18 @@ export function getStats(): { activeCount: number; sessions: string[] } {
     activeCount: activeGenerations.size,
     sessions: Array.from(activeGenerations.keys()),
   }
+}
+
+/**
+ * Lazy import of getSocketIO to avoid circular dependency
+ * (socket-server imports from this module, and we need to emit to Socket.IO)
+ */
+let _cachedIO: any = null
+function getSocketIOLazy() {
+  if (_cachedIO) return _cachedIO
+  // Access globalThis directly to avoid circular import
+  _cachedIO = (globalThis as any).__socketIO || null
+  // Don't cache null - the server may not be initialized yet
+  if (!_cachedIO) return null
+  return _cachedIO
 }

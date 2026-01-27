@@ -32,7 +32,9 @@ import { GenerationProgressPanel } from "@/components/flowchart-workshop/Generat
 import {
   isGenerateResult,
   parseFlowchartSSE,
+  type FlowchartCompleteResult,
 } from "@/lib/flowchart-workshop/sse-parser";
+import { io, type Socket } from "socket.io-client";
 import {
   getStatusMessage,
   initialStreamingState,
@@ -417,240 +419,174 @@ export default function WorkshopPage() {
       });
     }
 
-    // Create abort controller for watch connection
-    const watchController = new AbortController();
-    abortControllerRef.current = watchController;
-
     // Determine if we need to trigger generation (session is 'initial' with topic but no draft)
     const needsGeneration =
       session.state === "initial" &&
       session.topicDescription &&
       !session.draftDefinitionJson;
 
-    // Connect to watch endpoint (after triggering generation if needed)
-    const connectWatch = async () => {
-      // If session needs generation, trigger it FIRST before connecting to watch
-      // This ensures the registry entry exists when we connect
-      if (needsGeneration) {
+    // If session needs generation, trigger it (fire-and-forget)
+    if (needsGeneration) {
+      console.log(
+        `[workshop-client] Triggering generation for session ${sessionId}`,
+      );
+      fetch(`/api/flowchart-workshop/sessions/${sessionId}/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topicDescription: session.topicDescription,
+        }),
+      }).catch((err) => {
+        console.error("[workshop-client] Generate request failed:", err);
+      });
+    }
+
+    // Connect to Socket.IO for watching generation progress (works cross-pod)
+    console.log(
+      `[workshop-client] Connecting Socket.IO for session ${sessionId}`,
+    );
+    const socket: Socket = io({
+      path: "/api/socket",
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10,
+    });
+
+    const handleConnect = () => {
+      console.log(
+        `[workshop-client] Socket connected, joining flowchart room: ${sessionId}`,
+      );
+      socket.emit("join-flowchart", { sessionId });
+    };
+
+    // Handle accumulated state on join (served from Redis — works cross-pod)
+    const handleState = (data: {
+      state: string;
+      reasoningText?: string;
+      outputText?: string;
+      isLive?: boolean;
+    }) => {
+      console.log(`[workshop-client] flowchart:state received`, {
+        state: data.state,
+        reasoningLength: data.reasoningText?.length,
+      });
+      if (data.state === "generating" && data.reasoningText) {
+        dispatch({
+          type: "STREAM_REASONING",
+          text: data.reasoningText,
+          append: false,
+        });
+      }
+      // state === 'idle' means no active generation — page will show DB state from initial fetch
+    };
+
+    // Handle live events (cross-pod via Redis adapter)
+    let watchEventCount = 0;
+    const handleEvent = (event: {
+      type: string;
+      data: Record<string, unknown>;
+    }) => {
+      watchEventCount++;
+      if (watchEventCount <= 5 || watchEventCount % 50 === 0) {
         console.log(
-          `[workshop-client] Triggering generation for session ${sessionId}`,
+          `[workshop-client] flowchart:event #${watchEventCount}:`,
+          event.type,
         );
-        try {
-          // Fire-and-forget POST to /generate - don't await the full response
-          // Just ensure the request starts processing before we connect to watch
-          fetch(`/api/flowchart-workshop/sessions/${sessionId}/generate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              topicDescription: session.topicDescription,
-            }),
-          }).catch((err) => {
-            console.error("[workshop-client] Generate request failed:", err);
-          });
-          // Give the server a moment to register the generation
-          await new Promise((resolve) => setTimeout(resolve, 200));
-        } catch (err) {
-          console.error("[workshop-client] Failed to trigger generation:", err);
-        }
       }
 
-      console.log(
-        `[workshop-client] Connecting to watch endpoint for session ${sessionId}`,
-      );
-      try {
-        const response = await fetch(
-          `/api/flowchart-workshop/sessions/${sessionId}/watch`,
-          {
-            signal: watchController.signal,
-          },
-        );
-
-        console.log(`[workshop-client] Watch response:`, {
-          status: response.status,
-          ok: response.ok,
-          hasBody: !!response.body,
-        });
-
-        if (!response.ok || !response.body) {
-          console.error(`[workshop-client] Watch connection failed`, {
-            status: response.status,
-          });
+      switch (event.type) {
+        case "reasoning": {
+          const data = event.data as { text: string; isDelta: boolean };
           dispatch({
-            type: "STREAM_ERROR",
-            message: "Failed to connect to watch stream",
+            type: "STREAM_REASONING",
+            text: data.text,
+            append: data.isDelta,
           });
-          return;
+          break;
         }
+        case "output_delta": {
+          const data = event.data as { text: string };
+          dispatch({ type: "STREAM_OUTPUT", text: data.text, append: true });
+          break;
+        }
+        case "progress": {
+          const data = event.data as { stage: string; message: string };
+          dispatch({
+            type: "STREAM_PROGRESS",
+            stage: data.stage,
+            message: data.message,
+          });
+          break;
+        }
+        case "complete": {
+          // Live path: data contains definition (object), mermaidContent, etc.
+          const data = event.data as Record<string, unknown>;
+          const parsedDefinition = data.definition ?? null;
+          const parsedNotes = (data.notes as string[]) || [];
+          const mermaidContent = data.mermaidContent as string | undefined;
+          const title = data.title as string | undefined;
+          const description = data.description as string | undefined;
+          const emoji = data.emoji as string | undefined;
+          const difficulty = data.difficulty as string | undefined;
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let watchEventCount = 0;
-
-        console.log(`[workshop-client] Starting to read watch stream`);
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            console.log(
-              `[workshop-client] Watch stream done, total events: ${watchEventCount}`,
-            );
-            break;
+          if (parsedDefinition) {
+            dispatch({
+              type: "STREAM_COMPLETE",
+              result: {
+                definition: parsedDefinition,
+                mermaidContent: mermaidContent || "",
+                title: title || "Untitled",
+                description: description || "",
+                emoji: emoji || "📊",
+                difficulty: difficulty || "Beginner",
+                notes: parsedNotes,
+              } as FlowchartCompleteResult,
+            });
           }
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          let currentEvent = "";
-          for (const line of lines) {
-            if (line.startsWith("event: ")) {
-              currentEvent = line.slice(7).trim();
-            } else if (line.startsWith("data: ") && currentEvent) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                watchEventCount++;
-                if (watchEventCount <= 5 || watchEventCount % 50 === 0) {
-                  console.log(
-                    `[workshop-client] Watch event #${watchEventCount}:`,
-                    currentEvent,
-                    data?.reasoningText?.length
-                      ? `(reasoning: ${data.reasoningText.length} chars)`
-                      : "",
-                  );
+          // Update session state to refining
+          setSession((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  state: "refining",
+                  draftDefinitionJson: JSON.stringify(parsedDefinition),
+                  draftMermaidContent: mermaidContent ?? null,
+                  draftTitle: title ?? null,
+                  draftDescription: description ?? null,
+                  draftDifficulty: difficulty ?? null,
+                  draftEmoji: emoji ?? null,
+                  draftNotes: JSON.stringify(parsedNotes),
+                  currentReasoningText: null,
                 }
-
-                switch (currentEvent) {
-                  case "state":
-                    // Seed with accumulated reasoning text (full replacement)
-                    if (data.reasoningText) {
-                      dispatch({
-                        type: "STREAM_REASONING",
-                        text: data.reasoningText,
-                        append: false,
-                      });
-                    }
-                    break;
-
-                  case "reasoning": {
-                    // Live reasoning delta - append to existing
-                    const reasoningData = data as {
-                      text: string;
-                      isDelta: boolean;
-                    };
-                    dispatch({
-                      type: "STREAM_REASONING",
-                      text: reasoningData.text,
-                      append: true,
-                    });
-                    break;
-                  }
-
-                  case "complete": {
-                    // Generation completed - handle both DB format and live format
-                    // DB path sends: draftDefinitionJson (JSON string), draftMermaidContent, etc.
-                    // Live path sends: definition (object), mermaidContent, etc.
-                    let parsedDefinition = null;
-                    let parsedNotes: string[] = [];
-                    let mermaidContent: string | undefined;
-                    let title: string | undefined;
-                    let description: string | undefined;
-                    let emoji: string | undefined;
-                    let difficulty: string | undefined;
-
-                    if (data.definition) {
-                      // Live path - data is already parsed
-                      parsedDefinition = data.definition;
-                      parsedNotes = data.notes || [];
-                      mermaidContent = data.mermaidContent;
-                      title = data.title;
-                      description = data.description;
-                      emoji = data.emoji;
-                      difficulty = data.difficulty;
-                    } else if (data.draftDefinitionJson) {
-                      // DB path - parse JSON strings
-                      try {
-                        parsedDefinition = JSON.parse(data.draftDefinitionJson);
-                        parsedNotes = data.draftNotes
-                          ? JSON.parse(data.draftNotes)
-                          : [];
-                      } catch {
-                        // Ignore parse errors
-                      }
-                      mermaidContent = data.draftMermaidContent;
-                      title = data.draftTitle;
-                      description = data.draftDescription;
-                      emoji = data.draftEmoji;
-                      difficulty = data.draftDifficulty;
-                    }
-
-                    if (parsedDefinition) {
-                      dispatch({
-                        type: "STREAM_COMPLETE",
-                        result: {
-                          definition: parsedDefinition,
-                          mermaidContent: mermaidContent || "",
-                          title: title || "Untitled",
-                          description: description || "",
-                          emoji: emoji || "📊",
-                          difficulty: difficulty || "Beginner",
-                          notes: parsedNotes,
-                        },
-                      });
-                    }
-
-                    // Update session state to refining
-                    setSession((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            state: "refining",
-                            draftDefinitionJson:
-                              data.draftDefinitionJson ||
-                              JSON.stringify(parsedDefinition),
-                            draftMermaidContent: mermaidContent ?? null,
-                            draftTitle: title ?? null,
-                            draftDescription: description ?? null,
-                            draftDifficulty: difficulty ?? null,
-                            draftEmoji: emoji ?? null,
-                            draftNotes:
-                              data.draftNotes || JSON.stringify(parsedNotes),
-                            currentReasoningText: null, // Clear on completion
-                          }
-                        : null,
-                    );
-                    return; // Exit the loop
-                  }
-
-                  case "error":
-                    dispatch({ type: "STREAM_ERROR", message: data.message });
-                    setError(data.message);
-                    return; // Exit the loop
-
-                  case "ping":
-                    // Keep-alive, ignore
-                    break;
-                }
-              } catch {
-                // Ignore parse errors
-              }
-              currentEvent = "";
-            }
-          }
+              : null,
+          );
+          break;
         }
-      } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
-          // Intentional abort, ignore
-          return;
+        case "error": {
+          const data = event.data as { message: string };
+          dispatch({ type: "STREAM_ERROR", message: data.message });
+          setError(data.message);
+          break;
         }
-        console.error("Watch connection error:", err);
-        dispatch({ type: "STREAM_ERROR", message: "Connection lost" });
       }
     };
 
-    connectWatch();
+    socket.on("connect", handleConnect);
+    socket.on("flowchart:state", handleState);
+    socket.on("flowchart:event", handleEvent);
+
+    // If already connected (reconnection), join immediately
+    if (socket.connected) {
+      handleConnect();
+    }
 
     return () => {
-      watchController.abort();
+      socket.off("connect", handleConnect);
+      socket.off("flowchart:state", handleState);
+      socket.off("flowchart:event", handleEvent);
+      socket.emit("leave-flowchart", { sessionId });
+      socket.disconnect();
     };
     // Depend on shouldAutoConnect (which encapsulates the connection criteria)
     // Not reasoning text (that would cause reconnection loops)

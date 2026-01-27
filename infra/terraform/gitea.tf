@@ -400,7 +400,7 @@ resource "kubernetes_deployment" "gitea" {
 
         container {
           name  = "gitea"
-          image = "gitea/gitea:1.21-rootless"
+          image = "gitea/gitea:1.25-rootless"
 
           port {
             container_port = 3000
@@ -638,7 +638,7 @@ resource "kubernetes_config_map" "gitea_runner_config" {
         docker_host: "tcp://localhost:2375"
         force_pull: false
         # Mount host cache directory into job containers for pnpm/turbo caching
-        options: "--dns 8.8.8.8 --dns 8.8.4.4 -v /var/lib/gitea-runner-cache:/cache"
+        options: "--dns 10.43.0.10 --dns 8.8.8.8 -v /var/lib/gitea-runner-cache:/cache"
         valid_volumes:
           - /var/lib/gitea-runner-cache
     EOT
@@ -671,17 +671,12 @@ resource "kubernetes_deployment" "gitea_runner" {
       }
 
       spec {
-        # Use explicit DNS to avoid IPv6 issues on home network
+        # Use CoreDNS as primary for cluster-internal resolution,
+        # with Google DNS as fallback for external names
         dns_policy = "None"
         dns_config {
-          nameservers = ["8.8.8.8", "8.8.4.4"]
+          nameservers = ["10.43.0.10", "8.8.8.8"]
           searches    = ["gitea.svc.cluster.local", "svc.cluster.local", "cluster.local"]
-        }
-
-        # Also add hostAliases for internal services since we're not using cluster DNS
-        host_aliases {
-          ip        = "10.43.85.76"  # gitea service IP
-          hostnames = ["gitea.gitea.svc.cluster.local"]
         }
 
         # Docker-in-Docker sidecar for running container-based actions
@@ -868,7 +863,7 @@ resource "kubernetes_job" "gitea_admin_setup" {
 
         container {
           name  = "create-admin"
-          image = "gitea/gitea:1.21-rootless"
+          image = "gitea/gitea:1.25-rootless"
 
           command = ["/bin/sh", "-c"]
           args = [

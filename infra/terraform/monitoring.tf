@@ -436,9 +436,9 @@ resource "null_resource" "app_service_monitor" {
 # The Grafana sidecar watches for ConfigMaps with label grafana_dashboard="1"
 # and automatically imports the dashboard JSON.
 
-resource "kubernetes_config_map" "grafana_dashboard_abaci" {
+resource "kubernetes_config_map" "grafana_dashboard_product" {
   metadata {
-    name      = "grafana-dashboard-abaci"
+    name      = "grafana-dashboard-product"
     namespace = kubernetes_namespace.monitoring.metadata[0].name
     labels = {
       grafana_dashboard = "1"
@@ -446,7 +446,7 @@ resource "kubernetes_config_map" "grafana_dashboard_abaci" {
   }
 
   data = {
-    "abaci-overview.json" = jsonencode({
+    "product-metrics.json" = jsonencode({
       annotations = {
         list = []
       }
@@ -1103,13 +1103,372 @@ resource "kubernetes_config_map" "grafana_dashboard_abaci" {
       ]
       refresh       = "30s"
       schemaVersion = 39
-      tags          = ["abaci", "application"]
+      tags          = ["product", "application", "abaci"]
       templating    = { list = [] }
       time          = { from = "now-1h", to = "now" }
       timepicker    = {}
       timezone      = "browser"
-      title         = "Abaci.One Overview"
-      uid           = "abaci-overview"
+      title         = "Product Metrics"
+      uid           = "product-metrics"
+      version       = 1
+    })
+  }
+
+  depends_on = [helm_release.kube_prometheus_stack]
+}
+
+# Ops Metrics Dashboard - Infrastructure and CI/CD monitoring
+resource "kubernetes_config_map" "grafana_dashboard_ops" {
+  metadata {
+    name      = "grafana-dashboard-ops"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      grafana_dashboard = "1"
+    }
+  }
+
+  data = {
+    "ops-metrics.json" = jsonencode({
+      annotations = { list = [] }
+      editable    = true
+      panels = [
+        # Row: Gitea Runner
+        {
+          collapsed = false
+          gridPos   = { h = 1, w = 24, x = 0, y = 0 }
+          id        = 100
+          title     = "Gitea Runner"
+          type      = "row"
+        },
+        # Gitea Runner Memory
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "palette-classic" }
+              unit  = "bytes"
+            }
+          }
+          gridPos = { h = 8, w = 8, x = 0, y = 1 }
+          id      = 101
+          options = {
+            legend  = { calcs = ["last"], displayMode = "table", placement = "bottom" }
+            tooltip = { mode = "multi" }
+          }
+          targets = [
+            {
+              expr         = "container_memory_working_set_bytes{namespace=\"gitea-runner\", container!=\"\", container!=\"POD\"}"
+              legendFormat = "{{container}}"
+              refId        = "A"
+            }
+          ]
+          title = "Runner Memory Usage"
+          type  = "timeseries"
+        },
+        # Gitea Runner CPU
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "palette-classic" }
+              unit  = "percentunit"
+            }
+          }
+          gridPos = { h = 8, w = 8, x = 8, y = 1 }
+          id      = 102
+          options = {
+            legend  = { calcs = ["mean", "max"], displayMode = "table", placement = "bottom" }
+            tooltip = { mode = "multi" }
+          }
+          targets = [
+            {
+              expr         = "rate(container_cpu_usage_seconds_total{namespace=\"gitea-runner\", container!=\"\", container!=\"POD\"}[5m])"
+              legendFormat = "{{container}}"
+              refId        = "A"
+            }
+          ]
+          title = "Runner CPU Usage"
+          type  = "timeseries"
+        },
+        # Gitea Runner Network I/O
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "palette-classic" }
+              unit  = "Bps"
+            }
+          }
+          gridPos = { h = 8, w = 8, x = 16, y = 1 }
+          id      = 103
+          options = {
+            legend  = { calcs = ["mean"], displayMode = "table", placement = "bottom" }
+            tooltip = { mode = "multi" }
+          }
+          targets = [
+            {
+              expr         = "rate(container_network_receive_bytes_total{namespace=\"gitea-runner\"}[5m])"
+              legendFormat = "RX"
+              refId        = "A"
+            },
+            {
+              expr         = "rate(container_network_transmit_bytes_total{namespace=\"gitea-runner\"}[5m])"
+              legendFormat = "TX"
+              refId        = "B"
+            }
+          ]
+          title = "Runner Network I/O"
+          type  = "timeseries"
+        },
+        # Row: Node Resources
+        {
+          collapsed = false
+          gridPos   = { h = 1, w = 24, x = 0, y = 9 }
+          id        = 200
+          title     = "Node Resources"
+          type      = "row"
+        },
+        # Node Memory Gauge
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = {
+                mode = "thresholds"
+              }
+              max = 1
+              min = 0
+              thresholds = {
+                mode = "percentage"
+                steps = [
+                  { color = "green", value = null },
+                  { color = "yellow", value = 70 },
+                  { color = "red", value = 85 }
+                ]
+              }
+              unit = "percentunit"
+            }
+          }
+          gridPos = { h = 8, w = 6, x = 0, y = 10 }
+          id      = 201
+          options = {
+            orientation   = "auto"
+            reduceOptions = { calcs = ["lastNotNull"], fields = "", values = false }
+            showThresholdLabels  = false
+            showThresholdMarkers = true
+          }
+          targets = [
+            {
+              expr  = "1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)"
+              refId = "A"
+            }
+          ]
+          title = "Node Memory %"
+          type  = "gauge"
+        },
+        # Node Memory Breakdown
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "palette-classic" }
+              unit  = "bytes"
+            }
+          }
+          gridPos = { h = 8, w = 10, x = 6, y = 10 }
+          id      = 202
+          options = {
+            legend  = { calcs = ["last"], displayMode = "table", placement = "right" }
+            tooltip = { mode = "multi" }
+          }
+          targets = [
+            {
+              expr         = "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes"
+              legendFormat = "Used"
+              refId        = "A"
+            },
+            {
+              expr         = "node_memory_Cached_bytes"
+              legendFormat = "Cached"
+              refId        = "B"
+            },
+            {
+              expr         = "node_memory_Buffers_bytes"
+              legendFormat = "Buffers"
+              refId        = "C"
+            },
+            {
+              expr         = "node_memory_MemAvailable_bytes"
+              legendFormat = "Available"
+              refId        = "D"
+            }
+          ]
+          title = "Node Memory Breakdown"
+          type  = "timeseries"
+        },
+        # Node CPU Usage
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "palette-classic" }
+              unit  = "percentunit"
+              max   = 1
+            }
+          }
+          gridPos = { h = 8, w = 8, x = 16, y = 10 }
+          id      = 203
+          options = {
+            legend  = { calcs = ["mean", "max"], displayMode = "table", placement = "bottom" }
+            tooltip = { mode = "multi" }
+          }
+          targets = [
+            {
+              expr         = "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))"
+              legendFormat = "Total CPU"
+              refId        = "A"
+            },
+            {
+              expr         = "avg(rate(node_cpu_seconds_total{mode=\"iowait\"}[5m]))"
+              legendFormat = "I/O Wait"
+              refId        = "B"
+            }
+          ]
+          title = "Node CPU Usage"
+          type  = "timeseries"
+        },
+        # Row: Disk I/O
+        {
+          collapsed = false
+          gridPos   = { h = 1, w = 24, x = 0, y = 18 }
+          id        = 300
+          title     = "Disk I/O"
+          type      = "row"
+        },
+        # Disk Read/Write Throughput
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "palette-classic" }
+              unit  = "Bps"
+            }
+          }
+          gridPos = { h = 8, w = 12, x = 0, y = 19 }
+          id      = 301
+          options = {
+            legend  = { calcs = ["mean", "max"], displayMode = "table", placement = "bottom" }
+            tooltip = { mode = "multi" }
+          }
+          targets = [
+            {
+              expr         = "rate(node_disk_read_bytes_total[5m])"
+              legendFormat = "Read {{device}}"
+              refId        = "A"
+            },
+            {
+              expr         = "rate(node_disk_written_bytes_total[5m])"
+              legendFormat = "Write {{device}}"
+              refId        = "B"
+            }
+          ]
+          title = "Disk Throughput"
+          type  = "timeseries"
+        },
+        # Disk I/O Utilization
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "palette-classic" }
+              unit  = "percentunit"
+              max   = 1
+            }
+          }
+          gridPos = { h = 8, w = 12, x = 12, y = 19 }
+          id      = 302
+          options = {
+            legend  = { calcs = ["mean", "max"], displayMode = "table", placement = "bottom" }
+            tooltip = { mode = "multi" }
+          }
+          targets = [
+            {
+              expr         = "rate(node_disk_io_time_seconds_total[5m])"
+              legendFormat = "{{device}} Util %"
+              refId        = "A"
+            }
+          ]
+          title = "Disk I/O Utilization"
+          type  = "timeseries"
+        },
+        # Row: Pod Status
+        {
+          collapsed = false
+          gridPos   = { h = 1, w = 24, x = 0, y = 27 }
+          id        = 400
+          title     = "Pod Status"
+          type      = "row"
+        },
+        # Namespace Memory by Pod
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "palette-classic" }
+              unit  = "bytes"
+            }
+          }
+          gridPos = { h = 8, w = 12, x = 0, y = 28 }
+          id      = 401
+          options = {
+            legend  = { calcs = ["last"], displayMode = "table", placement = "right" }
+            tooltip = { mode = "multi" }
+          }
+          targets = [
+            {
+              expr         = "sum by (namespace) (container_memory_working_set_bytes{container!=\"\", container!=\"POD\"})"
+              legendFormat = "{{namespace}}"
+              refId        = "A"
+            }
+          ]
+          title = "Memory by Namespace"
+          type  = "timeseries"
+        },
+        # Container Restarts
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "palette-classic" }
+              unit  = "short"
+            }
+          }
+          gridPos = { h = 8, w = 12, x = 12, y = 28 }
+          id      = 402
+          options = {
+            legend  = { calcs = ["last"], displayMode = "table", placement = "right" }
+            tooltip = { mode = "multi" }
+          }
+          targets = [
+            {
+              expr         = "increase(kube_pod_container_status_restarts_total[1h])"
+              legendFormat = "{{namespace}}/{{pod}}"
+              refId        = "A"
+            }
+          ]
+          title = "Container Restarts (1h)"
+          type  = "timeseries"
+        }
+      ]
+      refresh       = "30s"
+      schemaVersion = 39
+      tags          = ["ops", "infrastructure"]
+      templating    = { list = [] }
+      time          = { from = "now-1h", to = "now" }
+      timepicker    = {}
+      timezone      = "browser"
+      title         = "Ops Metrics"
+      uid           = "ops-metrics"
       version       = 1
     })
   }

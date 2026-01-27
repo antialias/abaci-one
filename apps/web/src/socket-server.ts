@@ -25,6 +25,10 @@ import {
   markPhoneDisconnected,
 } from './lib/remote-camera/session-manager'
 import { createRedisClient } from './lib/redis'
+import {
+  getGeneration,
+  getGenerationFromRedis,
+} from './lib/flowchart-workshop/generation-registry'
 import { VisionRecorder, type VisionFrame, type PracticeStateInput } from './lib/vision/recording'
 import { socketConnections, socketConnectionsTotal } from './lib/metrics'
 
@@ -1604,6 +1608,49 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       } catch (error) {
         console.error('Error leaving remote camera session:', error)
       }
+    })
+
+    // Flowchart Workshop: Join generation room (for watching live generation across pods)
+    socket.on('join-flowchart', async ({ sessionId }: { sessionId: string }) => {
+      try {
+        await socket.join(`flowchart:${sessionId}`)
+        console.log(`[Socket] Client joined flowchart room: ${sessionId}`)
+
+        // Try local in-memory first (if this is the generating pod)
+        const localGeneration = getGeneration(sessionId)
+        if (localGeneration && localGeneration.status === 'generating') {
+          socket.emit('flowchart:state', {
+            state: 'generating',
+            reasoningText: localGeneration.accumulatedReasoning,
+            outputText: localGeneration.accumulatedOutput,
+            isLive: true,
+          })
+          return
+        }
+
+        // Try Redis (generation is on another pod)
+        const redisGeneration = await getGenerationFromRedis(sessionId)
+        if (redisGeneration && redisGeneration.status === 'generating') {
+          socket.emit('flowchart:state', {
+            state: 'generating',
+            reasoningText: redisGeneration.accumulatedReasoning,
+            outputText: redisGeneration.accumulatedOutput,
+            isLive: true,
+          })
+          return
+        }
+
+        // No active generation found
+        socket.emit('flowchart:state', { state: 'idle' })
+      } catch (error) {
+        console.error('Error joining flowchart room:', error)
+        socket.emit('flowchart:state', { state: 'idle' })
+      }
+    })
+
+    // Flowchart Workshop: Leave generation room
+    socket.on('leave-flowchart', ({ sessionId }: { sessionId: string }) => {
+      socket.leave(`flowchart:${sessionId}`)
     })
 
     socket.on('disconnect', () => {

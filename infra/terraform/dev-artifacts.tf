@@ -105,13 +105,12 @@ resource "kubernetes_config_map" "dev_artifacts_nginx" {
               }
           }
 
-          # Serve Storybook from local storage
-          location /storybook/ {
-              alias /usr/share/nginx/html/storybook/;
-              try_files $uri $uri/ /storybook/index.html;
+          # Redirect Storybook to GitHub Pages (built by GitHub Actions)
+          location /storybook {
+              return 301 https://antialias.github.io/soroban-abacus-flashcards/;
           }
-          location = /storybook {
-              return 301 /storybook/;
+          location /storybook/ {
+              return 301 https://antialias.github.io/soroban-abacus-flashcards/;
           }
 
           # Health check endpoint
@@ -289,8 +288,8 @@ resource "kubernetes_config_map" "dev_artifacts_nginx" {
             <a href="/storybook/" class="card">
                 <div class="card-icon">📚</div>
                 <div class="card-title">Storybook <span class="badge badge-live">Live</span></div>
-                <div class="card-desc">Interactive component library with documentation, props tables, and live examples.</div>
-                <div class="card-url">/storybook/</div>
+                <div class="card-desc">Interactive component library with documentation, props tables, and live examples. Hosted on GitHub Pages.</div>
+                <div class="card-url">GitHub Pages</div>
             </a>
 
             <a href="/coverage/" class="card">
