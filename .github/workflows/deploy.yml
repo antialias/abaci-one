@@ -77,5 +77,6 @@ jobs:
             GIT_BRANCH=${{ github.ref_name }}
             GIT_TAG=${{ github.ref_type == 'tag' && github.ref_name || '' }}
             GIT_DIRTY=false
+            BUILD_TIMESTAMP=${{ github.event.head_commit.timestamp }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

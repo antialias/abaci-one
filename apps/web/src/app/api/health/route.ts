@@ -44,6 +44,7 @@ interface HealthCheckResult {
   }
   version?: string
   commit?: string
+  buildTimestamp?: string | null
 }
 
 export async function GET(): Promise<NextResponse<HealthCheckResult>> {
@@ -115,6 +116,7 @@ export async function GET(): Promise<NextResponse<HealthCheckResult>> {
   if (process.env.npm_package_version) {
     result.version = process.env.npm_package_version
   }
+  result.buildTimestamp = process.env.BUILD_TIMESTAMP ?? null
 
   // Return 200 for healthy/degraded (can still serve traffic), 503 for unhealthy
   const statusCode = result.status === 'unhealthy' ? 503 : 200
