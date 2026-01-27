@@ -11,7 +11,7 @@ export { FlowchartDecision, FlowchartWrongAnswerFeedback } from './FlowchartDeci
 export { FlowchartCheckpoint } from './FlowchartCheckpoint'
 export { FlowchartPhaseRail } from './FlowchartPhaseRail'
 export { MathDisplay } from './MathDisplay'
-export { FlowchartCard, CreateFlowchartButton } from './FlowchartCard'
+export { FlowchartCard } from './FlowchartCard'
 export type { FlowchartCardAction, FlowchartCardProps } from './FlowchartCard'
 export { AnimatedBackgroundTiles } from './AnimatedBackgroundTiles'
 export { AnimatedProblemTile } from './AnimatedProblemTile'
@@ -21,7 +21,6 @@ export type {
   DiagnosticAlertProps,
   DiagnosticListProps,
 } from './FlowchartDiagnostics'
-export { CreateFlowchartModal } from './CreateFlowchartModal'
 export { DeleteToast, DeleteToastContainer } from './DeleteToast'
 export type { PendingDeletion } from './DeleteToast'
 

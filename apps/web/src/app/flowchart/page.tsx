@@ -12,12 +12,11 @@ import { diagnoseFlowchart, type DiagnosticReport } from '@/lib/flowcharts/docto
 import {
   FlowchartModal,
   FlowchartCard,
-  CreateFlowchartButton,
-  CreateFlowchartModal,
   DeleteToastContainer,
   SeedManagerPanel,
   type PendingDeletion,
 } from '@/components/flowchart'
+import { useCreateWorkshopSession } from '@/hooks/useWorkshopSession'
 import { useVisualDebug } from '@/contexts/VisualDebugContext'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
@@ -83,8 +82,8 @@ export default function FlowchartPickerPage() {
   // Internal modal state (loading/inputting/error) - derived from URL + async loading
   const [modalState, setModalState] = useState<ModalState>({ type: 'closed' })
 
-  // Create flowchart modal state
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  // Create workshop session mutation
+  const { mutate: createSession, isPending: isCreatingFromSearch } = useCreateWorkshopSession()
 
   // Filter state
   const [filter, setFilter] = useState<FilterType>('all')
@@ -416,6 +415,12 @@ export default function FlowchartPickerPage() {
     [router]
   )
 
+  // Handle creating a new flowchart from the search bar query
+  const handleCreateFromSearch = useCallback(() => {
+    if (!searchQuery.trim()) return
+    createSession({ topicDescription: searchQuery.trim() })
+  }, [searchQuery, createSession])
+
   // Handle PDF download for a built-in flowchart
   const handleDownloadPDF = useCallback(async (flowchartId: string) => {
     setExportingPdfId(flowchartId)
@@ -661,7 +666,7 @@ export default function FlowchartPickerPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search flowcharts by topic..."
+            placeholder="Search or describe a new topic..."
             className={css({
               width: '100%',
               paddingY: '3',
@@ -762,6 +767,76 @@ export default function FlowchartPickerPage() {
         {/* Show search results when search is active */}
         {searchQuery.trim().length >= 3 ? (
           <>
+            {/* Prominent create card when best match < 0.55 or no results */}
+            {(() => {
+              const bestSimilarity =
+                embeddingResults.length > 0
+                  ? Math.max(...embeddingResults.map((r) => r.similarity))
+                  : 0
+              return bestSimilarity < 0.55 ? (
+                <div
+                  className={css({
+                    gridColumn: '1 / -1',
+                    padding: '8',
+                    borderRadius: 'xl',
+                    border: '2px dashed',
+                    borderColor: { base: 'blue.300', _dark: 'blue.600' },
+                    backgroundColor: { base: 'blue.50', _dark: 'blue.950' },
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '4',
+                    textAlign: 'center',
+                  })}
+                >
+                  <span className={css({ fontSize: '2xl' })}>&#10024;</span>
+                  <span
+                    className={css({
+                      fontSize: 'lg',
+                      fontWeight: 'semibold',
+                      color: { base: 'gray.900', _dark: 'gray.100' },
+                    })}
+                  >
+                    Create New Flowchart
+                  </span>
+                  <span
+                    className={css({
+                      fontSize: 'md',
+                      color: { base: 'gray.600', _dark: 'gray.400' },
+                      fontStyle: 'italic',
+                    })}
+                  >
+                    &ldquo;{searchQuery}&rdquo;
+                  </span>
+                  <button
+                    onClick={handleCreateFromSearch}
+                    disabled={isCreatingFromSearch}
+                    className={css({
+                      paddingY: '3',
+                      paddingX: '6',
+                      borderRadius: 'lg',
+                      backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
+                      color: 'white',
+                      fontWeight: 'semibold',
+                      fontSize: 'md',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      _hover: {
+                        backgroundColor: { base: 'blue.700', _dark: 'blue.600' },
+                      },
+                      _disabled: {
+                        opacity: 0.5,
+                        cursor: 'not-allowed',
+                      },
+                    })}
+                  >
+                    {isCreatingFromSearch ? 'Creating...' : 'Create Flowchart'}
+                  </button>
+                </div>
+              ) : null
+            })()}
+
             {/* Semantic matches (embedding-based) */}
             {embeddingResults.length > 0 && (
               <>
@@ -928,14 +1003,53 @@ export default function FlowchartPickerPage() {
                 })}
               </>
             )}
+
+            {/* Create link when good matches exist */}
+            {embeddingResults.length > 0 &&
+              Math.max(...embeddingResults.map((r) => r.similarity)) >= 0.55 && (
+                <div
+                  className={css({
+                    gridColumn: '1 / -1',
+                    textAlign: 'center',
+                    paddingY: '5',
+                    marginTop: '2',
+                  })}
+                >
+                  <button
+                    onClick={handleCreateFromSearch}
+                    disabled={isCreatingFromSearch}
+                    className={css({
+                      backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
+                      border: '1px solid',
+                      borderColor: { base: 'gray.300', _dark: 'gray.600' },
+                      borderRadius: 'lg',
+                      cursor: 'pointer',
+                      color: { base: 'gray.700', _dark: 'gray.300' },
+                      fontSize: 'sm',
+                      fontWeight: 'medium',
+                      paddingY: '3',
+                      paddingX: '5',
+                      transition: 'all 0.15s',
+                      _hover: {
+                        backgroundColor: { base: 'blue.50', _dark: 'blue.950' },
+                        borderColor: { base: 'blue.300', _dark: 'blue.600' },
+                        color: { base: 'blue.700', _dark: 'blue.300' },
+                      },
+                      _disabled: {
+                        opacity: 0.5,
+                        cursor: 'not-allowed',
+                      },
+                    })}
+                  >
+                    {isCreatingFromSearch
+                      ? 'Creating...'
+                      : `Don\u2019t see what you need? Create \u201C${searchQuery}\u201D \u2192`}
+                  </button>
+                </div>
+              )}
           </>
         ) : (
           <>
-            {/* Create Your Own button - appears first (except when showing only published) */}
-            {filter !== 'published' && (
-              <CreateFlowchartButton onClick={() => setIsCreateModalOpen(true)} />
-            )}
-
             {/* Published flowcharts (hardcoded + user-created) */}
             {filter !== 'drafts' &&
               publishedFlowcharts.map((flowchart) => {
@@ -1041,7 +1155,7 @@ export default function FlowchartPickerPage() {
                   color: { base: 'gray.500', _dark: 'gray.400' },
                 })}
               >
-                <p>No drafts yet. Click the + button to create your first flowchart!</p>
+                <p>No drafts yet. Search for a topic above to create your first flowchart!</p>
               </div>
             )}
           </>
@@ -1054,9 +1168,6 @@ export default function FlowchartPickerPage() {
         onUndo={handleUndoDelete}
         onConfirm={handleConfirmDelete}
       />
-
-      {/* Modal for creating new flowchart */}
-      <CreateFlowchartModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} />
 
       {/* Modal for problem selection - state driven by URL query param */}
       <Dialog.Root

@@ -29,6 +29,7 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionInProgress, setActionInProgress] = useState<string | null>(null)
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   // Fetch seed status
   const fetchSeeds = useCallback(async () => {
@@ -169,8 +170,30 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
       })}
     >
       {/* Header */}
-      <div className={hstack({ justify: 'space-between', marginBottom: '3' })}>
-        <div className={hstack({ gap: '2' })}>
+      <div className={hstack({ justify: 'space-between', marginBottom: isCollapsed ? '0' : '3' })}>
+        <button
+          onClick={() => setIsCollapsed((c) => !c)}
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '0',
+          })}
+        >
+          <span
+            className={css({
+              display: 'inline-block',
+              transition: 'transform 0.15s',
+              transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+              color: { base: 'amber.600', _dark: 'amber.400' },
+              fontSize: 'sm',
+            })}
+          >
+            &#9660;
+          </span>
           <span>🌱</span>
           <span
             className={css({
@@ -188,36 +211,38 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
           >
             (Debug Mode)
           </span>
-        </div>
-        <button
-          onClick={handleSeedAll}
-          disabled={actionInProgress !== null || unseededCount === 0}
-          className={css({
-            paddingX: '3',
-            paddingY: '1.5',
-            borderRadius: 'md',
-            fontSize: 'sm',
-            fontWeight: 'medium',
-            backgroundColor: { base: 'amber.600', _dark: 'amber.500' },
-            color: 'white',
-            border: 'none',
-            cursor: unseededCount === 0 ? 'not-allowed' : 'pointer',
-            opacity: unseededCount === 0 ? 0.5 : 1,
-            _hover: {
-              backgroundColor: unseededCount === 0 ? undefined : { base: 'amber.700', _dark: 'amber.600' },
-            },
-            _disabled: {
-              opacity: 0.5,
-              cursor: 'not-allowed',
-            },
-          })}
-        >
-          {actionInProgress === 'all' ? 'Seeding...' : `Seed All (${unseededCount})`}
         </button>
+        {!isCollapsed && (
+          <button
+            onClick={handleSeedAll}
+            disabled={actionInProgress !== null || unseededCount === 0}
+            className={css({
+              paddingX: '3',
+              paddingY: '1.5',
+              borderRadius: 'md',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              backgroundColor: { base: 'amber.600', _dark: 'amber.500' },
+              color: 'white',
+              border: 'none',
+              cursor: unseededCount === 0 ? 'not-allowed' : 'pointer',
+              opacity: unseededCount === 0 ? 0.5 : 1,
+              _hover: {
+                backgroundColor: unseededCount === 0 ? undefined : { base: 'amber.700', _dark: 'amber.600' },
+              },
+              _disabled: {
+                opacity: 0.5,
+                cursor: 'not-allowed',
+              },
+            })}
+          >
+            {actionInProgress === 'all' ? 'Seeding...' : `Seed All (${unseededCount})`}
+          </button>
+        )}
       </div>
 
       {/* Error message */}
-      {error && (
+      {!isCollapsed && error && (
         <div
           className={css({
             marginBottom: '3',
@@ -233,7 +258,7 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
       )}
 
       {/* Seed list */}
-      <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
+      {!isCollapsed && <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
         {seeds.map((seed) => (
           <div
             key={seed.id}
@@ -366,10 +391,10 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
             </div>
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Help text */}
-      <div
+      {!isCollapsed && <div
         className={css({
           marginTop: '3',
           fontSize: 'xs',
@@ -383,7 +408,7 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
         <p className={css({ marginTop: '2' })}>
           Seeded flowcharts use their seed ID (e.g., <code>sentence-type</code>) and appear in the list below.
         </p>
-      </div>
+      </div>}
     </div>
   )
 }

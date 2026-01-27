@@ -75,6 +75,13 @@ export const skillMetricsKeys = {
     [...skillMetricsKeys.all, 'leaderboard', 'classroom', classroomId] as const,
 }
 
+// Workshop session query keys
+export const workshopSessionKeys = {
+  all: ['workshop-sessions'] as const,
+  list: () => [...workshopSessionKeys.all, 'list'] as const,
+  detail: (sessionId: string) => [...workshopSessionKeys.all, 'detail', sessionId] as const,
+}
+
 // Flowchart version history query keys (for workshop sessions)
 export const versionHistoryKeys = {
   all: ['flowchart-version-history'] as const,
