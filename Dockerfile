@@ -93,6 +93,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Download typst with retries (network can be flaky in CI)
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
         TYPST_ARCH="x86_64-unknown-linux-musl"; \
@@ -102,7 +103,10 @@ RUN ARCH=$(uname -m) && \
         echo "Unsupported architecture: $ARCH" && exit 1; \
     fi && \
     TYPST_VERSION="v0.13.0" && \
-    wget -q "https://github.com/typst/typst/releases/download/${TYPST_VERSION}/typst-${TYPST_ARCH}.tar.xz" && \
+    for i in 1 2 3 4 5; do \
+        wget --timeout=30 --tries=3 -q "https://github.com/typst/typst/releases/download/${TYPST_VERSION}/typst-${TYPST_ARCH}.tar.xz" && break || \
+        echo "Attempt $i failed, retrying in 5s..." && sleep 5; \
+    done && \
     tar -xf "typst-${TYPST_ARCH}.tar.xz" && \
     mv "typst-${TYPST_ARCH}/typst" /usr/local/bin/typst && \
     chmod +x /usr/local/bin/typst
