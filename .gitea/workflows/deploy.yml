@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Install Docker CLI
         run: |
+          # Force IPv4 for apt - CoreDNS returns AAAA records that can't be routed
+          echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
           # Install Docker CLI to connect to the DinD sidecar
           apt-get update && apt-get install -y docker.io
           # Verify Docker is accessible via the runner's DOCKER_HOST
