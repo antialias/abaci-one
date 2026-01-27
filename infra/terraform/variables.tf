@@ -19,7 +19,7 @@ variable "app_domain" {
 variable "app_image" {
   description = "Docker image for the application"
   type        = string
-  default     = "registry.gitea.svc.cluster.local:5000/abaci-app:latest"
+  default     = "ghcr.io/antialias/soroban-abacus-flashcards:latest"
 }
 
 variable "app_replicas" {

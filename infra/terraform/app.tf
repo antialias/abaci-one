@@ -134,6 +134,7 @@ resource "kubernetes_stateful_set" "app" {
       "keel.sh/policy"       = "force"     # Update even for same tags (:latest)
       "keel.sh/trigger"      = "poll"      # Use registry polling
       "keel.sh/pollSchedule" = "@every 2m" # Check every 2 minutes
+      "keel.sh/match-tag"    = "true"      # Only track the current tag (:latest), don't switch to other tags
     }
   }
 

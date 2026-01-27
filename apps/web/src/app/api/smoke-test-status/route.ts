@@ -4,7 +4,7 @@
  * GET /api/smoke-test-status
  *
  * Returns the status of the most recent COMPLETED smoke test run:
- * - 200 + {status: 'passed'} if latest completed run passed and is < 30 min old
+ * - 200 + {status: 'passed'} if latest completed run passed and is < 25 hours old
  * - 503 if failed, stale, or no data
  *
  * Note: Running tests are ignored - we report the last completed result.
@@ -33,8 +33,9 @@ interface SmokeTestStatusResponse {
   currentlyRunning?: boolean;
 }
 
-// Maximum age of a test run before it's considered stale (30 minutes)
-const MAX_AGE_MS = 30 * 60 * 1000;
+// Maximum age of a test run before it's considered stale (25 hours)
+// Smoke tests run daily at 2 AM Central, so allow slightly over 24h for schedule drift
+const MAX_AGE_MS = 25 * 60 * 60 * 1000;
 
 export async function GET(): Promise<NextResponse<SmokeTestStatusResponse>> {
   try {

@@ -12,9 +12,15 @@ resource "helm_release" "keel" {
   name             = "keel"
   repository       = "https://charts.keel.sh"
   chart            = "keel"
-  version          = "1.0.3"
+  version          = "1.1.0"
   namespace        = kubernetes_namespace.keel.metadata[0].name
   create_namespace = false
+
+  # Use "latest" tag since 0.21.0 isn't tagged on Docker Hub
+  set {
+    name  = "image.tag"
+    value = "latest"
+  }
 
   # Basic webhook configuration (optional, for GitHub webhooks)
   set {
@@ -52,9 +58,10 @@ resource "helm_release" "keel" {
     value = "true"
   }
 
-  # Fix Go DNS resolver issues with k3s CoreDNS
-  # Go's pure-Go DNS resolver has trouble with k3s, so we force it to use
-  # the system (cgo) resolver instead
+  # Force Go's pure-Go DNS resolver instead of CGO
+  # The CGO resolver in Keel's minimal container image fails intermittently
+  # with "no such host" errors due to ndots:5 search domain expansion.
+  # The pure-Go resolver handles this correctly.
   set {
     name  = "extraEnv[0].name"
     value = "GODEBUG"
@@ -62,7 +69,7 @@ resource "helm_release" "keel" {
 
   set {
     name  = "extraEnv[0].value"
-    value = "netdns=cgo"
+    value = "netdns=go"
   }
 
   # Resource limits

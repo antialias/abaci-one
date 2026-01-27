@@ -1,6 +1,6 @@
 # Smoke Tests CronJob
 #
-# Runs Playwright smoke tests every 15 minutes and reports results to the app API.
+# Runs Playwright smoke tests daily at 2 AM Central and reports results to the app API.
 # Results are exposed via /api/smoke-test-status for Gatus monitoring.
 # HTML reports are saved to the dev-artifacts PVC for viewing at dev.abaci.one/smoke-reports/
 
@@ -14,7 +14,7 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
   }
 
   spec {
-    schedule                      = "*/15 * * * *" # Every 15 minutes
+    schedule                      = "0 8 * * *" # Daily at 2:00 AM Central (UTC-6 = 08:00 UTC)
     concurrency_policy            = "Forbid"       # Don't run if previous job still running
     successful_jobs_history_limit = 3
     failed_jobs_history_limit     = 3
