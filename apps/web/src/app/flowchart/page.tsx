@@ -581,189 +581,196 @@ export default function FlowchartPickerPage() {
   const isModalOpen = modalState.type !== 'closed'
 
   return (
-    <div className={vstack({ gap: '8', padding: '6', alignItems: 'center', minHeight: '100vh' })}>
-      <header className={vstack({ gap: '4', alignItems: 'center' })}>
-        <div className={vstack({ gap: '2', alignItems: 'center' })}>
-          <h1
-            className={css({
-              fontSize: '3xl',
-              fontWeight: 'bold',
-              color: { base: 'gray.900', _dark: 'gray.100' },
-            })}
-          >
-            Flowchart Practice
-          </h1>
-          <p
-            className={css({
-              fontSize: 'lg',
-              color: { base: 'gray.600', _dark: 'gray.400' },
-              textAlign: 'center',
-              maxWidth: '500px',
-            })}
-          >
-            Step through math procedures one step at a time. Perfect for learning new algorithms!
-          </p>
-        </div>
-
-        {/* Filter buttons */}
-        <div
-          className={hstack({
-            gap: '2',
-            padding: '1',
-            borderRadius: 'lg',
-            backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
-          })}
-        >
-          {[
-            { value: 'all' as const, label: 'All' },
-            {
-              value: 'published' as const,
-              label: `Published${publishedFlowcharts.length > 0 ? ` (${publishedFlowcharts.length})` : ''}`,
-            },
-            {
-              value: 'drafts' as const,
-              label: `Drafts${draftSessions.length > 0 ? ` (${draftSessions.length})` : ''}`,
-            },
-          ].map((option) => (
-            <button
-              key={option.value}
-              onClick={() => setFilter(option.value)}
-              className={css({
-                paddingY: '2',
-                paddingX: '4',
-                borderRadius: 'md',
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                backgroundColor:
-                  filter === option.value ? { base: 'white', _dark: 'gray.700' } : 'transparent',
-                color:
-                  filter === option.value
-                    ? { base: 'gray.900', _dark: 'gray.100' }
-                    : { base: 'gray.600', _dark: 'gray.400' },
-                boxShadow: filter === option.value ? 'sm' : 'none',
-                _hover: {
-                  color: { base: 'gray.900', _dark: 'gray.100' },
-                },
-              })}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search input */}
-        <div
-          className={css({
-            position: 'relative',
-            width: '100%',
-            maxWidth: '400px',
-          })}
-        >
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search or describe a new topic..."
-            className={css({
-              width: '100%',
-              paddingY: '3',
-              paddingX: '4',
-              paddingLeft: '10',
-              borderRadius: 'lg',
-              border: '2px solid',
-              borderColor: { base: 'gray.300', _dark: 'gray.600' },
-              backgroundColor: { base: 'white', _dark: 'gray.800' },
-              color: { base: 'gray.900', _dark: 'gray.100' },
-              fontSize: 'md',
-              _focus: {
-                outline: 'none',
-                borderColor: { base: 'blue.500', _dark: 'blue.400' },
-                boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.2)',
-              },
-              _placeholder: {
-                color: { base: 'gray.400', _dark: 'gray.500' },
-              },
-            })}
-          />
-          <span
-            className={css({
-              position: 'absolute',
-              left: '3',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: { base: 'gray.400', _dark: 'gray.500' },
-              pointerEvents: 'none',
-            })}
-          >
-            🔍
-          </span>
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className={css({
-                position: 'absolute',
-                right: '3',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                padding: '1',
-                borderRadius: 'full',
-                border: 'none',
-                backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
-                color: { base: 'gray.600', _dark: 'gray.300' },
-                cursor: 'pointer',
-                fontSize: 'xs',
-                lineHeight: 1,
-                _hover: {
-                  backgroundColor: { base: 'gray.300', _dark: 'gray.500' },
-                },
-              })}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      </header>
-
+    <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6', minHeight: '100vh' })}>
       {/* Seed Manager Panel - only shown in debug mode */}
       {isVisualDebugEnabled && <SeedManagerPanel onSeedComplete={loadPublished} />}
-
-      {/* Search results header */}
-      {searchQuery.trim().length >= 3 && (
-        <div
-          className={css({
-            width: '100%',
-            maxWidth: '800px',
-            textAlign: 'center',
-            color: { base: 'gray.600', _dark: 'gray.400' },
-            fontSize: 'sm',
-          })}
-        >
-          {isSearching ? (
-            'Searching...'
-          ) : embeddingResults.length > 0 || keywordResults.length > 0 ? (
-            <>
-              Found <strong>{embeddingResults.length + keywordResults.length}</strong> result
-              {embeddingResults.length + keywordResults.length !== 1 ? 's' : ''} for &ldquo;
-              {searchQuery}&rdquo;
-            </>
-          ) : (
-            <>No flowcharts found matching &ldquo;{searchQuery}&rdquo;</>
-          )}
-        </div>
-      )}
 
       <div
         className={css({
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
           gap: '4',
           width: '100%',
-          maxWidth: '800px',
+          maxWidth: '1200px',
         })}
       >
+        {/* Unified search + filter bar */}
+        <header
+          className={css({
+            gridColumn: '1 / -1',
+            display: 'flex',
+            flexDirection: { base: 'column', md: 'row' },
+            alignItems: { base: 'stretch', md: 'center' },
+            width: '100%',
+            borderRadius: 'xl',
+            border: '2px solid',
+            borderColor: { base: 'gray.300', _dark: 'gray.600' },
+            backgroundColor: { base: 'white', _dark: 'gray.800' },
+            overflow: 'hidden',
+            transition: 'border-color 0.15s, box-shadow 0.15s',
+            _focusWithin: {
+              borderColor: { base: 'blue.500', _dark: 'blue.400' },
+              boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.2)',
+            },
+          })}
+        >
+          {/* Search input area */}
+          <div
+            className={css({
+              position: 'relative',
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+            })}
+          >
+            <span
+              className={css({
+                position: 'absolute',
+                left: '3',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: { base: 'gray.400', _dark: 'gray.500' },
+                pointerEvents: 'none',
+              })}
+            >
+              🔍
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search or describe a new topic..."
+              className={css({
+                width: '100%',
+                paddingY: '3',
+                paddingLeft: '10',
+                paddingRight: searchQuery ? '9' : '3',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: { base: 'gray.900', _dark: 'gray.100' },
+                fontSize: 'md',
+                _focus: {
+                  outline: 'none',
+                },
+                _placeholder: {
+                  color: { base: 'gray.400', _dark: 'gray.500' },
+                },
+              })}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className={css({
+                  position: 'absolute',
+                  right: '2',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  padding: '1',
+                  borderRadius: 'full',
+                  border: 'none',
+                  backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
+                  color: { base: 'gray.600', _dark: 'gray.300' },
+                  cursor: 'pointer',
+                  fontSize: 'xs',
+                  lineHeight: 1,
+                  _hover: {
+                    backgroundColor: { base: 'gray.300', _dark: 'gray.500' },
+                  },
+                })}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Divider: vertical on md+, horizontal on mobile */}
+          <div
+            className={css({
+              width: { base: '100%', md: '1px' },
+              height: { base: '1px', md: '60%' },
+              alignSelf: { base: 'stretch', md: 'center' },
+              backgroundColor: { base: 'gray.300', _dark: 'gray.600' },
+              flexShrink: 0,
+            })}
+          />
+
+          {/* Filter buttons */}
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: { base: 'stretch', md: 'flex-start' },
+              gap: '1',
+              padding: '1',
+              flexShrink: 0,
+            })}
+          >
+            {[
+              { value: 'all' as const, label: 'All' },
+              {
+                value: 'published' as const,
+                label: `Published${publishedFlowcharts.length > 0 ? ` (${publishedFlowcharts.length})` : ''}`,
+              },
+              {
+                value: 'drafts' as const,
+                label: `Drafts${draftSessions.length > 0 ? ` (${draftSessions.length})` : ''}`,
+              },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setFilter(option.value)}
+                className={css({
+                  flex: { base: 1, md: 'initial' },
+                  paddingY: '1.5',
+                  paddingX: '3',
+                  borderRadius: 'md',
+                  fontSize: 'sm',
+                  fontWeight: 'medium',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  whiteSpace: 'nowrap',
+                  backgroundColor:
+                    filter === option.value ? { base: 'gray.100', _dark: 'gray.700' } : 'transparent',
+                  color:
+                    filter === option.value
+                      ? { base: 'gray.900', _dark: 'gray.100' }
+                      : { base: 'gray.600', _dark: 'gray.400' },
+                  boxShadow: filter === option.value ? 'sm' : 'none',
+                  _hover: {
+                    color: { base: 'gray.900', _dark: 'gray.100' },
+                  },
+                })}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        {/* Search results header */}
+        {searchQuery.trim().length >= 3 && (
+          <div
+            className={css({
+              gridColumn: '1 / -1',
+              textAlign: 'center',
+              color: { base: 'gray.600', _dark: 'gray.400' },
+              fontSize: 'sm',
+            })}
+          >
+            {isSearching ? (
+              'Searching...'
+            ) : embeddingResults.length > 0 || keywordResults.length > 0 ? (
+              <>
+                Found <strong>{embeddingResults.length + keywordResults.length}</strong> result
+                {embeddingResults.length + keywordResults.length !== 1 ? 's' : ''} for &ldquo;
+                {searchQuery}&rdquo;
+              </>
+            ) : (
+              <>No flowcharts found matching &ldquo;{searchQuery}&rdquo;</>
+            )}
+          </div>
+        )}
         {/* Show search results when search is active */}
         {searchQuery.trim().length >= 3 ? (
           <>
@@ -777,50 +784,45 @@ export default function FlowchartPickerPage() {
                 <div
                   className={css({
                     gridColumn: '1 / -1',
-                    padding: '8',
-                    borderRadius: 'xl',
+                    paddingY: '3',
+                    paddingX: '4',
+                    borderRadius: 'lg',
                     border: '2px dashed',
                     borderColor: { base: 'blue.300', _dark: 'blue.600' },
                     backgroundColor: { base: 'blue.50', _dark: 'blue.950' },
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
-                    gap: '4',
-                    textAlign: 'center',
+                    gap: '3',
                   })}
                 >
-                  <span className={css({ fontSize: '2xl' })}>&#10024;</span>
+                  <span className={css({ fontSize: 'lg', flexShrink: 0 })}>&#10024;</span>
                   <span
                     className={css({
-                      fontSize: 'lg',
-                      fontWeight: 'semibold',
-                      color: { base: 'gray.900', _dark: 'gray.100' },
+                      fontSize: 'sm',
+                      color: { base: 'gray.700', _dark: 'gray.300' },
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
                     })}
                   >
-                    Create New Flowchart
-                  </span>
-                  <span
-                    className={css({
-                      fontSize: 'md',
-                      color: { base: 'gray.600', _dark: 'gray.400' },
-                      fontStyle: 'italic',
-                    })}
-                  >
-                    &ldquo;{searchQuery}&rdquo;
+                    Create &ldquo;{searchQuery}&rdquo;
                   </span>
                   <button
                     onClick={handleCreateFromSearch}
                     disabled={isCreatingFromSearch}
                     className={css({
-                      paddingY: '3',
-                      paddingX: '6',
-                      borderRadius: 'lg',
+                      paddingY: '1.5',
+                      paddingX: '4',
+                      borderRadius: 'md',
                       backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
                       color: 'white',
                       fontWeight: 'semibold',
-                      fontSize: 'md',
+                      fontSize: 'sm',
                       border: 'none',
                       cursor: 'pointer',
+                      flexShrink: 0,
                       transition: 'all 0.2s',
                       _hover: {
                         backgroundColor: { base: 'blue.700', _dark: 'blue.600' },
@@ -831,7 +833,7 @@ export default function FlowchartPickerPage() {
                       },
                     })}
                   >
-                    {isCreatingFromSearch ? 'Creating...' : 'Create Flowchart'}
+                    {isCreatingFromSearch ? 'Creating...' : 'Create'}
                   </button>
                 </div>
               ) : null

@@ -29,7 +29,7 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionInProgress, setActionInProgress] = useState<string | null>(null)
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true)
 
   // Fetch seed status
   const fetchSeeds = useCallback(async () => {
@@ -139,18 +139,22 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
   if (isLoading) {
     return (
       <div
+        data-component="SeedManagerPanel"
         className={css({
-          width: '100%',
-          maxWidth: '800px',
+          position: 'fixed',
+          bottom: '4',
+          right: '4',
+          zIndex: 90,
           padding: '4',
           borderRadius: 'lg',
           backgroundColor: { base: 'amber.50', _dark: 'amber.950' },
           border: '2px dashed',
           borderColor: { base: 'amber.300', _dark: 'amber.700' },
+          boxShadow: 'lg',
         })}
       >
         <div className={css({ color: { base: 'amber.700', _dark: 'amber.300' } })}>
-          Loading seeds...
+          🌱 Loading seeds...
         </div>
       </div>
     )
@@ -160,13 +164,20 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
     <div
       data-component="SeedManagerPanel"
       className={css({
-        width: '100%',
-        maxWidth: '800px',
+        position: 'fixed',
+        bottom: '4',
+        right: '4',
+        zIndex: 90,
+        width: '400px',
+        maxWidth: 'calc(100vw - 32px)',
+        maxHeight: '80vh',
+        overflow: 'auto',
         padding: '4',
         borderRadius: 'lg',
         backgroundColor: { base: 'amber.50', _dark: 'amber.950' },
         border: '2px dashed',
         borderColor: { base: 'amber.300', _dark: 'amber.700' },
+        boxShadow: 'lg',
       })}
     >
       {/* Header */}

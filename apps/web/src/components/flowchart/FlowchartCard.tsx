@@ -67,7 +67,7 @@ export function FlowchartCard({
   const hasExamples = flowchart && examples && examples.length > 0 && isHealthy
 
   const cardContent = (
-    <div className={hstack({ gap: '4', alignItems: 'flex-start', flex: 1 })}>
+    <div className={hstack({ gap: '4', alignItems: 'flex-start', flex: 1, minWidth: 0 })}>
       {emoji && <span className={css({ fontSize: '3xl', flexShrink: 0 })}>{emoji}</span>}
       <div className={vstack({ gap: '1', alignItems: 'flex-start', flex: 1, minWidth: 0 })}>
         <h2
@@ -165,12 +165,14 @@ export function FlowchartCard({
         {hasExamples && <AnimatedBackgroundTiles examples={examples} flowchart={flowchart} />}
 
         {/* Card content (above background) */}
-        <div className={css({ position: 'relative', zIndex: 1 })}>
+        <div className={css({ position: 'relative', zIndex: 1, overflow: 'hidden' })}>
           {onClick ? (
             <button
               onClick={onClick}
               className={css({
                 display: 'flex',
+                width: '100%',
+                minWidth: 0,
                 background: 'none',
                 border: 'none',
                 padding: 0,
@@ -292,6 +294,7 @@ export function FlowchartCard({
           zIndex: 1,
           display: 'block',
           width: '100%',
+          minWidth: 0,
           padding: '6',
           backgroundColor: { base: 'white', _dark: 'gray.800' },
           borderRadius: 'xl',
