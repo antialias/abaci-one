@@ -123,6 +123,10 @@ export default function FlowchartPickerPage() {
   const [isSearching, setIsSearching] = useState(false)
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Taxonomy navigation scope - allows drilling into clusters
+  const [scopedFlowchartIds, setScopedFlowchartIds] = useState<string[] | null>(null)
+  const [scopeLabel, setScopeLabel] = useState<string | null>(null)
+
   // Examples for animated card backgrounds (generated client-side)
   // Unified map for both published flowcharts (keyed by flowchart ID) and drafts (keyed by session ID)
   const [cardExamples, setCardExamples] = useState<
@@ -166,7 +170,11 @@ export default function FlowchartPickerPage() {
     const labelDistIds = distanceData.ids.filter((id) => id.startsWith(LABEL_PREFIX))
 
     // Only cluster published flowcharts (drafts don't have embeddings)
-    const visibleIds = filter === 'drafts' ? [] : publishedFlowcharts.map((fc) => fc.id)
+    // When scoped, only include flowcharts in the scope
+    const baseIds = filter === 'drafts' ? [] : publishedFlowcharts.map((fc) => fc.id)
+    const visibleIds = scopedFlowchartIds
+      ? baseIds.filter((id) => scopedFlowchartIds.includes(id))
+      : baseIds
 
     // Subset distance matrix to visible flowchart IDs that have embeddings
     const subset = subsetDistanceMatrix(distanceData.ids, distanceData.matrix, visibleIds)
@@ -237,7 +245,7 @@ export default function FlowchartPickerPage() {
     }
 
     return { map, k: result.k, centroids: result.centroids, ids: subset.ids, clusterEmojis, clusterLabels }
-  }, [distanceData, publishedFlowcharts, filter])
+  }, [distanceData, publishedFlowcharts, filter, scopedFlowchartIds])
 
   // Memoized clustering for semantic search results
   const semanticClusterAssignments = useMemo(() => {
@@ -1446,6 +1454,66 @@ export default function FlowchartPickerPage() {
                 const clusteredIds = new Set(clusterAssignments.ids)
                 const elements: React.ReactNode[] = []
 
+                // Scope navigation header (back button when drilled in)
+                if (scopedFlowchartIds) {
+                  elements.push(
+                    <div
+                      key="scope-nav"
+                      className={css({
+                        gridColumn: '1 / -1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2',
+                        marginBottom: '3',
+                      })}
+                    >
+                      <button
+                        onClick={() => {
+                          setScopedFlowchartIds(null)
+                          setScopeLabel(null)
+                        }}
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1.5',
+                          paddingX: '3',
+                          paddingY: '1.5',
+                          borderRadius: 'lg',
+                          fontSize: 'sm',
+                          fontWeight: 'medium',
+                          color: { base: 'gray.600', _dark: 'gray.300' },
+                          backgroundColor: { base: 'gray.100', _dark: 'gray.800' },
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          _hover: {
+                            backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                          },
+                        })}
+                      >
+                        <span className={css({ fontSize: '12px' })}>←</span>
+                        Back to all
+                      </button>
+                      <span
+                        className={css({
+                          fontSize: 'sm',
+                          color: { base: 'gray.500', _dark: 'gray.400' },
+                        })}
+                      >
+                        /
+                      </span>
+                      <span
+                        className={css({
+                          fontSize: 'sm',
+                          fontWeight: 'medium',
+                          color: { base: 'gray.700', _dark: 'gray.200' },
+                        })}
+                      >
+                        {scopeLabel}
+                      </span>
+                    </div>
+                  )
+                }
+
                 // Render each cluster with a header
                 for (let ci = 0; ci < clusterAssignments.k; ci++) {
                   const color = CLUSTER_COLORS[ci % CLUSTER_COLORS.length]
@@ -1457,6 +1525,7 @@ export default function FlowchartPickerPage() {
 
                   // Section header
                   const topicLabel = clusterAssignments.clusterLabels[ci]
+                  const clusterIds = clusterFlowcharts.map((fc) => fc.id)
                   elements.push(
                     <div
                       key={`cluster-header-${ci}`}
@@ -1482,6 +1551,34 @@ export default function FlowchartPickerPage() {
                           backgroundColor: color.line,
                         })}
                       />
+                      {clusterFlowcharts.length > 1 && (
+                        <button
+                          onClick={() => {
+                            setScopedFlowchartIds(clusterIds)
+                            setScopeLabel(topicLabel || `${emojis[0] || ''} Cluster`)
+                          }}
+                          className={css({
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1',
+                            paddingX: '2',
+                            paddingY: '1',
+                            borderRadius: 'md',
+                            fontSize: 'xs',
+                            fontWeight: 'medium',
+                            color: color.text,
+                            backgroundColor: 'transparent',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s',
+                            _hover: {
+                              backgroundColor: color.bg,
+                            },
+                          })}
+                        >
+                          Explore
+                          <span className={css({ fontSize: '10px' })}>→</span>
+                        </button>
+                      )}
                     </div>
                   )
 
