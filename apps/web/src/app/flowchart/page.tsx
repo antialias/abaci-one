@@ -581,37 +581,44 @@ export default function FlowchartPickerPage() {
   const isModalOpen = modalState.type !== 'closed'
 
   return (
-    <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6', minHeight: '100vh' })}>
+    <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh' })}>
       {/* Seed Manager Panel - only shown in debug mode */}
       {isVisualDebugEnabled && <SeedManagerPanel onSeedComplete={loadPublished} />}
 
+      {/* Outer wrapper: full-width edge-to-edge */}
       <div
         className={css({
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: '4',
           width: '100%',
-          maxWidth: '1200px',
         })}
       >
-        {/* Unified search + filter bar */}
+        {/* Sticky search/filter bar — top "lid" of the container */}
         <header
           className={css({
-            gridColumn: '1 / -1',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
             display: 'flex',
-            flexDirection: { base: 'column', md: 'row' },
-            alignItems: { base: 'stretch', md: 'center' },
+            justifyContent: 'center',
             width: '100%',
-            borderRadius: 'xl',
-            border: '2px solid',
-            borderColor: { base: 'gray.300', _dark: 'gray.600' },
+            borderBottom: '2px solid',
+            borderBottomColor: { base: 'gray.200', _dark: 'gray.700' },
             backgroundColor: { base: 'white', _dark: 'gray.800' },
-            overflow: 'hidden',
             transition: 'border-color 0.15s, box-shadow 0.15s',
             _focusWithin: {
               borderColor: { base: 'blue.500', _dark: 'blue.400' },
               boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.2)',
             },
+          })}
+        >
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: { base: 'column', md: 'row' },
+            alignItems: { base: 'stretch', md: 'center' },
+            width: '100%',
+            maxWidth: '1200px',
+            paddingX: '4',
+            overflow: 'hidden',
           })}
         >
           {/* Search input area */}
@@ -639,7 +646,7 @@ export default function FlowchartPickerPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search or describe a new topic..."
+              placeholder="What do you want to learn?"
               className={css({
                 width: '100%',
                 paddingY: '3',
@@ -746,8 +753,30 @@ export default function FlowchartPickerPage() {
               </button>
             ))}
           </div>
+        </div>
         </header>
 
+        {/* Recessed card well — cards sit in this subtle "well" below the sticky header */}
+        <div
+          className={css({
+            backgroundColor: { base: 'gray.50', _dark: 'gray.900' },
+            paddingX: '4',
+            paddingY: '6',
+            display: 'flex',
+            justifyContent: 'center',
+            minHeight: 0,
+            flex: 1,
+          })}
+        >
+        <div
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '4',
+            width: '100%',
+            maxWidth: '1200px',
+          })}
+        >
         {/* Search results header */}
         {searchQuery.trim().length >= 3 && (
           <div
@@ -1163,6 +1192,11 @@ export default function FlowchartPickerPage() {
           </>
         )}
       </div>
+      {/* Close grid */}
+      </div>
+      {/* Close recessed well */}
+      </div>
+      {/* Close outer wrapper */}
 
       {/* Delete toast for undo functionality */}
       <DeleteToastContainer
