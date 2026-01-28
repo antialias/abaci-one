@@ -602,6 +602,53 @@ resource "kubernetes_manifest" "redirect_https_middleware" {
   }
 }
 
+# IngressRoute for Socket.IO - requires sticky sessions for multi-pod support
+# Socket.IO HTTP long-polling requires all requests from a client to hit the same pod
+# This route has highest priority to catch /api/socket before the write routing rule
+resource "kubernetes_manifest" "app_socketio_ingressroute" {
+  manifest = {
+    apiVersion = "traefik.io/v1alpha1"
+    kind       = "IngressRoute"
+    metadata = {
+      name      = "abaci-app-socketio"
+      namespace = kubernetes_namespace.abaci.metadata[0].name
+    }
+    spec = {
+      entryPoints = ["websecure"]
+      routes = [
+        {
+          match    = "Host(`${var.app_domain}`) && PathPrefix(`/api/socket`)"
+          kind     = "Rule"
+          priority = 150 # Higher priority than write routing (100) and default ingress
+          middlewares = [
+            {
+              name      = "hsts"
+              namespace = kubernetes_namespace.abaci.metadata[0].name
+            }
+          ]
+          services = [
+            {
+              name   = kubernetes_service.app.metadata[0].name
+              port   = 80
+              sticky = {
+                cookie = {
+                  name     = "io"
+                  secure   = true
+                  httpOnly = true
+                  sameSite = "none"
+                }
+              }
+            }
+          ]
+        }
+      ]
+      tls = {
+        secretName = "abaci-tls"
+      }
+    }
+  }
+}
+
 # IngressRoute for write requests (POST/PUT/DELETE/PATCH) - route to primary only
 # LiteFS proxy on replicas can't handle writes without Fly.io's fly-replay infrastructure
 resource "kubernetes_manifest" "app_writes_ingressroute" {

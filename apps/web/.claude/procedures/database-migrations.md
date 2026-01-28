@@ -5,8 +5,10 @@
 1. **Never modify schema directly** - Always use migrations
 2. **Never modify deployed migrations** - Create new ones instead
 3. **Never manually create migration files** - Use `npx drizzle-kit generate --custom`
-4. **Always add statement breakpoints** - Between multiple SQL statements
-5. **Always verify timestamp ordering** - After generating a migration
+4. **Never manually edit `drizzle/meta/_journal.json`** - Let drizzle-kit manage it
+5. **Never run raw SQL against the database** - Use migrations for ALL schema changes
+6. **Always add statement breakpoints** - Between multiple SQL statements
+7. **Always verify timestamp ordering** - After generating a migration
 
 ## The Workflow
 
@@ -18,8 +20,9 @@ npx drizzle-kit generate --custom
 
 # 3. Edit the generated SQL file with actual statements
 # 4. Verify timestamp ordering (see below)
-# 5. Run locally
-npm run db:migrate
+
+# 5. Run migration WITHOUT restarting dev server
+pnpm db:migrate
 
 # 6. Verify with MCP tool
 mcp__sqlite__describe_table table_name
@@ -28,6 +31,17 @@ mcp__sqlite__describe_table table_name
 git add src/db/schema/ drizzle/
 git commit -m "feat: add new column"
 ```
+
+## CRITICAL: Run Migrations via `pnpm db:migrate`
+
+**Do NOT rely on dev server restart to apply migrations during development.**
+
+Running `pnpm db:migrate` applies migrations cleanly without corrupting drizzle state.
+
+**What happens if you skip this:**
+- Running raw SQL (`sqlite3 ...`) bypasses the journal → production won't have the change
+- Manually creating migration files creates invalid journal entries
+- Dev server restart may fail silently if journal is corrupted
 
 ---
 

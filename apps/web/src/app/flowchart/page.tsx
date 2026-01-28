@@ -385,6 +385,7 @@ export default function FlowchartPickerPage() {
           flowchartMatchStrengths.set(mid, strength)
         }
       }
+
     }
 
     return {
@@ -1040,52 +1041,122 @@ export default function FlowchartPickerPage() {
             >
               🔍
             </span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="What do you want to learn?"
-              className={css({
-                width: '100%',
-                paddingY: '3',
-                paddingLeft: '10',
-                paddingRight: searchQuery ? '9' : '3',
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: { base: 'gray.900', _dark: 'gray.100' },
-                fontSize: 'md',
-                _focus: {
-                  outline: 'none',
-                },
-                _placeholder: {
-                  color: { base: 'gray.400', _dark: 'gray.500' },
-                },
-              })}
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className={css({
-                  position: 'absolute',
-                  right: '2',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  padding: '1',
-                  borderRadius: 'full',
-                  border: 'none',
-                  backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
-                  color: { base: 'gray.600', _dark: 'gray.300' },
-                  cursor: 'pointer',
-                  fontSize: 'xs',
-                  lineHeight: 1,
-                  _hover: {
-                    backgroundColor: { base: 'gray.300', _dark: 'gray.500' },
-                  },
-                })}
-              >
-                ✕
-              </button>
-            )}
+            {(() => {
+              // Check if we should show inline create UI (no results, query >= 3 chars, not searching)
+              const hasNoResults = searchQuery.trim().length >= 3 && !isSearching && embeddingResults.length === 0 && keywordResults.length === 0
+              return (
+                <>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && hasNoResults && !isCreatingFromSearch) {
+                        e.preventDefault()
+                        handleCreateFromSearch()
+                      }
+                    }}
+                    placeholder="What do you want to learn?"
+                    className={css({
+                      width: '100%',
+                      paddingY: '3',
+                      paddingLeft: '10',
+                      paddingRight: hasNoResults ? '120px' : searchQuery ? '9' : '3',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      color: { base: 'gray.900', _dark: 'gray.100' },
+                      fontSize: 'md',
+                      _focus: {
+                        outline: 'none',
+                      },
+                      _placeholder: {
+                        color: { base: 'gray.400', _dark: 'gray.500' },
+                      },
+                    })}
+                  />
+                  {hasNoResults ? (
+                    <div
+                      className={css({
+                        position: 'absolute',
+                        right: '2',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2',
+                      })}
+                    >
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className={css({
+                          padding: '1',
+                          borderRadius: 'full',
+                          border: 'none',
+                          backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
+                          color: { base: 'gray.600', _dark: 'gray.300' },
+                          cursor: 'pointer',
+                          fontSize: 'xs',
+                          lineHeight: 1,
+                          _hover: {
+                            backgroundColor: { base: 'gray.300', _dark: 'gray.500' },
+                          },
+                        })}
+                      >
+                        ✕
+                      </button>
+                      <button
+                        onClick={handleCreateFromSearch}
+                        disabled={isCreatingFromSearch}
+                        className={css({
+                          paddingY: '1.5',
+                          paddingX: '3',
+                          borderRadius: 'md',
+                          backgroundColor: { base: 'blue.600', _dark: 'blue.500' },
+                          color: 'white',
+                          fontWeight: 'semibold',
+                          fontSize: 'sm',
+                          border: 'none',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          _hover: {
+                            backgroundColor: { base: 'blue.700', _dark: 'blue.600' },
+                          },
+                          _disabled: {
+                            opacity: 0.5,
+                            cursor: 'not-allowed',
+                          },
+                        })}
+                      >
+                        {isCreatingFromSearch ? 'Creating...' : 'Create'}
+                      </button>
+                    </div>
+                  ) : searchQuery ? (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className={css({
+                        position: 'absolute',
+                        right: '2',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        padding: '1',
+                        borderRadius: 'full',
+                        border: 'none',
+                        backgroundColor: { base: 'gray.200', _dark: 'gray.600' },
+                        color: { base: 'gray.600', _dark: 'gray.300' },
+                        cursor: 'pointer',
+                        fontSize: 'xs',
+                        lineHeight: 1,
+                        _hover: {
+                          backgroundColor: { base: 'gray.300', _dark: 'gray.500' },
+                        },
+                      })}
+                    >
+                      ✕
+                    </button>
+                  ) : null}
+                </>
+              )
+            })()}
           </div>
 
           {/* Divider: vertical on md+, horizontal on mobile */}
@@ -1177,7 +1248,7 @@ export default function FlowchartPickerPage() {
           })}
         >
         {/* Search results header */}
-        {searchQuery.trim().length >= 3 && (
+        {searchQuery.trim().length >= 3 && (embeddingResults.length > 0 || keywordResults.length > 0 || isSearching) && (
           <div
             className={css({
               gridColumn: '1 / -1',
@@ -1188,22 +1259,23 @@ export default function FlowchartPickerPage() {
           >
             {isSearching ? (
               'Searching...'
-            ) : embeddingResults.length > 0 || keywordResults.length > 0 ? (
+            ) : (
               <>
                 Found <strong>{embeddingResults.length + keywordResults.length}</strong> result
                 {embeddingResults.length + keywordResults.length !== 1 ? 's' : ''} for &ldquo;
                 {searchQuery}&rdquo;
               </>
-            ) : (
-              <>No flowcharts found matching &ldquo;{searchQuery}&rdquo;</>
             )}
           </div>
         )}
         {/* Show search results when search is active */}
         {searchQuery.trim().length >= 3 ? (
           <>
-            {/* Prominent create card when best match < 0.55 or no results */}
+            {/* Prominent create card when there ARE results but best match < 0.55 */}
+            {/* (When there are NO results, the create button is in the search bar) */}
             {(() => {
+              const hasResults = embeddingResults.length > 0 || keywordResults.length > 0
+              if (!hasResults) return null // Create is in search bar when no results
               const bestSimilarity =
                 embeddingResults.length > 0
                   ? Math.max(...embeddingResults.map((r) => r.similarity))
@@ -1728,14 +1800,27 @@ export default function FlowchartPickerPage() {
                   )
                 }
 
-                // Render each cluster with a header
+                // First pass: separate singleton clusters from multi-item clusters
+                const singletonFlowcharts: PublishedFlowchart[] = []
+                const multiItemClusters: { ci: number; flowcharts: PublishedFlowchart[] }[] = []
+
                 for (let ci = 0; ci < clusterAssignments.k; ci++) {
-                  const color = CLUSTER_COLORS[ci % CLUSTER_COLORS.length]
-                  const emojis = clusterAssignments.clusterEmojis[ci]
                   const clusterFlowcharts = publishedFlowcharts.filter(
                     (fc) => clusterAssignments.map.get(fc.id) === ci
                   )
                   if (clusterFlowcharts.length === 0) continue
+
+                  if (clusterFlowcharts.length === 1) {
+                    singletonFlowcharts.push(clusterFlowcharts[0])
+                  } else {
+                    multiItemClusters.push({ ci, flowcharts: clusterFlowcharts })
+                  }
+                }
+
+                // Render multi-item clusters with headers
+                for (const { ci, flowcharts: clusterFlowcharts } of multiItemClusters) {
+                  const color = CLUSTER_COLORS[ci % CLUSTER_COLORS.length]
+                  const emojis = clusterAssignments.clusterEmojis[ci]
 
                   // Section header with insights
                   const topicLabel = clusterAssignments.clusterLabels[ci]
@@ -1880,6 +1965,37 @@ export default function FlowchartPickerPage() {
                   })
                   for (const fc of sortedClusterFlowcharts) {
                     elements.push(renderPublishedCard(fc, ci))
+                  }
+                }
+
+                // Render singletons under "Other topics" section
+                if (singletonFlowcharts.length > 0) {
+                  elements.push(
+                    <div
+                      key="cluster-header-singletons"
+                      className={css({
+                        gridColumn: '1 / -1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3',
+                        color: { base: 'gray.500', _dark: 'gray.400' },
+                        fontSize: 'sm',
+                        marginTop: multiItemClusters.length > 0 ? '4' : '0',
+                        marginBottom: '2',
+                      })}
+                    >
+                      <span>Other topics</span>
+                      <div
+                        className={css({
+                          flex: 1,
+                          height: '1px',
+                          backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                        })}
+                      />
+                    </div>
+                  )
+                  for (const fc of singletonFlowcharts) {
+                    elements.push(renderPublishedCard(fc))
                   }
                 }
 
