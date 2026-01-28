@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { css } from '../../../styled-system/css'
+import { css, cx } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
 import { AnimatedBackgroundTiles } from './AnimatedBackgroundTiles'
 import { DiagnosticBadge } from './FlowchartDiagnostics'
@@ -42,7 +42,20 @@ export interface FlowchartCardProps {
   examples?: GeneratedExample[]
   /** Optional diagnostic report to show health badge */
   diagnosticReport?: DiagnosticReport
+  /** Optional cluster color index (0-3) for colored left border */
+  clusterColorIndex?: number
 }
+
+/**
+ * Pre-built static CSS classes for cluster border colors.
+ * These must be statically extractable by Panda CSS — no runtime interpolation.
+ */
+const CLUSTER_BORDER_CLASSES = [
+  css({ borderLeftWidth: '4px', borderLeftColor: { base: 'purple.400', _dark: 'purple.500' } }),
+  css({ borderLeftWidth: '4px', borderLeftColor: { base: 'teal.400', _dark: 'teal.500' } }),
+  css({ borderLeftWidth: '4px', borderLeftColor: { base: 'orange.400', _dark: 'orange.500' } }),
+  css({ borderLeftWidth: '4px', borderLeftColor: { base: 'pink.400', _dark: 'pink.500' } }),
+]
 
 /**
  * Shared card component for displaying flowcharts in lists.
@@ -60,11 +73,17 @@ export function FlowchartCard({
   flowchart,
   examples,
   diagnosticReport,
+  clusterColorIndex,
 }: FlowchartCardProps) {
   const hasActions = actions && actions.length > 0
   // Only show animated background if flowchart has examples AND is healthy (cleared by doctor)
   const isHealthy = !diagnosticReport || diagnosticReport.isHealthy
   const hasExamples = flowchart && examples && examples.length > 0 && isHealthy
+
+  const clusterBorderClass =
+    clusterColorIndex != null
+      ? CLUSTER_BORDER_CLASSES[clusterColorIndex % CLUSTER_BORDER_CLASSES.length]
+      : undefined
 
   const cardContent = (
     <div className={hstack({ gap: '4', alignItems: 'flex-start', flex: 1, minWidth: 0 })}>
@@ -147,19 +166,23 @@ export function FlowchartCard({
     return (
       <div
         data-component="flowchart-card"
-        className={css({
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '3',
-          padding: '4',
-          backgroundColor: { base: 'white', _dark: 'gray.800' },
-          borderRadius: 'xl',
-          boxShadow: 'md',
-          border: '2px solid',
-          borderColor: { base: 'gray.200', _dark: 'gray.700' },
-          overflow: 'hidden',
-        })}
+        className={cx(
+          css({
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '3',
+            padding: '4',
+            backgroundColor: { base: 'white', _dark: 'gray.800' },
+            borderRadius: 'xl',
+            boxShadow: 'md',
+            borderWidth: '2px',
+            borderStyle: 'solid',
+            borderColor: { base: 'gray.200', _dark: 'gray.700' },
+            overflow: 'hidden',
+          }),
+          clusterBorderClass,
+        )}
       >
         {/* Animated background tiles */}
         {hasExamples && <AnimatedBackgroundTiles examples={examples} flowchart={flowchart} />}
@@ -289,28 +312,32 @@ export function FlowchartCard({
 
       <button
         onClick={onClick}
-        className={css({
-          position: 'relative',
-          zIndex: 1,
-          display: 'block',
-          width: '100%',
-          minWidth: 0,
-          padding: '6',
-          backgroundColor: { base: 'white', _dark: 'gray.800' },
-          borderRadius: 'xl',
-          boxShadow: 'md',
-          border: '2px solid',
-          borderColor: { base: 'gray.200', _dark: 'gray.700' },
-          transition: 'all 0.2s',
-          textDecoration: 'none',
-          textAlign: 'left',
-          cursor: 'pointer',
-          _hover: {
-            borderColor: { base: 'blue.400', _dark: 'blue.500' },
-            transform: 'translateY(-2px)',
-            boxShadow: 'lg',
-          },
-        })}
+        className={cx(
+          css({
+            position: 'relative',
+            zIndex: 1,
+            display: 'block',
+            width: '100%',
+            minWidth: 0,
+            padding: '6',
+            backgroundColor: { base: 'white', _dark: 'gray.800' },
+            borderRadius: 'xl',
+            boxShadow: 'md',
+            borderWidth: '2px',
+            borderStyle: 'solid',
+            borderColor: { base: 'gray.200', _dark: 'gray.700' },
+            transition: 'all 0.2s',
+            textDecoration: 'none',
+            textAlign: 'left',
+            cursor: 'pointer',
+            _hover: {
+              borderColor: { base: 'blue.400', _dark: 'blue.500' },
+              transform: 'translateY(-2px)',
+              boxShadow: 'lg',
+            },
+          }),
+          clusterBorderClass,
+        )}
       >
         {cardContent}
       </button>

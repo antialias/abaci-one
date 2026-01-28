@@ -36,3 +36,4 @@ export {
 export { MermaidViewer } from './MermaidViewer'
 export { WorksheetDebugPanel } from './WorksheetDebugPanel'
 export { SeedManagerPanel } from './SeedManagerPanel'
+export { TaxonomyBrowserPanel } from './TaxonomyBrowserPanel'

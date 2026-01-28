@@ -13,11 +13,10 @@ import {
   FlowchartModal,
   FlowchartCard,
   DeleteToastContainer,
-  SeedManagerPanel,
   type PendingDeletion,
 } from '@/components/flowchart'
 import { useCreateWorkshopSession } from '@/hooks/useWorkshopSession'
-import { useVisualDebug } from '@/contexts/VisualDebugContext'
+import { agglomerativeClustering, subsetDistanceMatrix, distIndex } from '@/lib/flowcharts/clustering'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 
@@ -69,12 +68,19 @@ interface PublishedFlowchart {
   source: 'hardcoded' | 'database'
   authorId?: string // Only for database flowcharts
   publishedAt: string | null
+  hasEmbedding?: boolean
 }
+
+const CLUSTER_COLORS = [
+  { border: { base: 'purple.400', _dark: 'purple.500' }, bg: { base: 'purple.50', _dark: 'purple.950' }, text: { base: 'purple.600', _dark: 'purple.400' }, line: { base: 'purple.200', _dark: 'purple.800' } },
+  { border: { base: 'teal.400', _dark: 'teal.500' }, bg: { base: 'teal.50', _dark: 'teal.950' }, text: { base: 'teal.600', _dark: 'teal.400' }, line: { base: 'teal.200', _dark: 'teal.800' } },
+  { border: { base: 'orange.400', _dark: 'orange.500' }, bg: { base: 'orange.50', _dark: 'orange.950' }, text: { base: 'orange.600', _dark: 'orange.400' }, line: { base: 'orange.200', _dark: 'orange.800' } },
+  { border: { base: 'pink.400', _dark: 'pink.500' }, bg: { base: 'pink.50', _dark: 'pink.950' }, text: { base: 'pink.600', _dark: 'pink.400' }, line: { base: 'pink.200', _dark: 'pink.800' } },
+]
 
 export default function FlowchartPickerPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { isVisualDebugEnabled } = useVisualDebug()
 
   // The selected flowchart ID from URL query param
   const selectedId = searchParams.get('select')
@@ -97,11 +103,18 @@ export default function FlowchartPickerPage() {
   const [draftSessions, setDraftSessions] = useState<WorkshopSession[]>([])
   const [isLoadingDrafts, setIsLoadingDrafts] = useState(true)
 
+  // Distance matrix for clustering (from browse API)
+  const [distanceData, setDistanceData] = useState<{ ids: string[]; matrix: number[] } | null>(null)
+
   // Pending deletions for undo functionality
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([])
 
   // PDF download state (tracks which flowchart is currently being exported)
   const [exportingPdfId, setExportingPdfId] = useState<string | null>(null)
+
+  // Embedding generation state
+  const [isGeneratingEmbeddings, setIsGeneratingEmbeddings] = useState(false)
+  const [generatingEmbeddingIds, setGeneratingEmbeddingIds] = useState<Set<string>>(new Set())
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
@@ -143,6 +156,164 @@ export default function FlowchartPickerPage() {
     return diagnosticsMap
   }, [draftSessions])
 
+  // Memoized clustering: recompute when filter or distance data changes
+  const clusterAssignments = useMemo(() => {
+    if (!distanceData) return null
+
+    // Partition IDs into flowchart IDs and label IDs
+    const LABEL_PREFIX = 'label:'
+    const flowchartDistIds = distanceData.ids.filter((id) => !id.startsWith(LABEL_PREFIX))
+    const labelDistIds = distanceData.ids.filter((id) => id.startsWith(LABEL_PREFIX))
+
+    // Only cluster published flowcharts (drafts don't have embeddings)
+    const visibleIds = filter === 'drafts' ? [] : publishedFlowcharts.map((fc) => fc.id)
+
+    // Subset distance matrix to visible flowchart IDs that have embeddings
+    const subset = subsetDistanceMatrix(distanceData.ids, distanceData.matrix, visibleIds)
+    if (subset.ids.length < 2) return null
+
+    const result = agglomerativeClustering(subset.ids.length, subset.matrix)
+
+    // Build Map<flowchartId, clusterIndex> for O(1) lookup
+    const map = new Map<string, number>()
+    subset.ids.forEach((id, i) => map.set(id, result.assignments[i]))
+
+    // Collect unique emojis per cluster (max 5)
+    const clusterEmojis: string[][] = Array.from({ length: result.k }, () => [])
+    subset.ids.forEach((id, i) => {
+      const ci = result.assignments[i]
+      const fc = publishedFlowcharts.find((f) => f.id === id)
+      const emoji = fc?.emoji || '📊'
+      if (!clusterEmojis[ci].includes(emoji) && clusterEmojis[ci].length < 5) {
+        clusterEmojis[ci].push(emoji)
+      }
+    })
+
+    // Assign topic labels to clusters using the full distance matrix
+    const clusterLabels: (string | null)[] = Array.from({ length: result.k }, () => null)
+    if (labelDistIds.length > 0) {
+      const fullN = distanceData.ids.length
+      const fullIdxMap = new Map<string, number>()
+      distanceData.ids.forEach((id, i) => fullIdxMap.set(id, i))
+
+      // For each label, compute MAX distance to cluster members (worst match).
+      // Using max instead of avg ensures that a label must fit ALL members,
+      // which favors broader labels for diverse clusters.
+      type LabelScore = { label: string; clusterIdx: number; maxDist: number }
+      const scores: LabelScore[] = []
+
+      for (const lid of labelDistIds) {
+        const labelIdx = fullIdxMap.get(lid)!
+        for (let ci = 0; ci < result.k; ci++) {
+          // Get members of this cluster (in full matrix indices)
+          const members = subset.ids.filter((_, i) => result.assignments[i] === ci)
+          if (members.length === 0) continue
+
+          let maxDist = 0
+          for (const mid of members) {
+            const memberIdx = fullIdxMap.get(mid)!
+            const dist = distanceData.matrix[distIndex(labelIdx, memberIdx, fullN)]
+            if (dist > maxDist) maxDist = dist
+          }
+          scores.push({ label: lid.slice(LABEL_PREFIX.length), clusterIdx: ci, maxDist })
+        }
+      }
+
+      // Sort by max distance (best matches first = lowest max distance)
+      scores.sort((a, b) => a.maxDist - b.maxDist)
+
+      // Greedy assignment: best label first, no label reuse
+      const usedLabels = new Set<string>()
+      const assignedClusters = new Set<number>()
+      for (const score of scores) {
+        if (usedLabels.has(score.label) || assignedClusters.has(score.clusterIdx)) continue
+        // Only assign if the worst match is still reasonable (threshold 0.75)
+        if (score.maxDist > 0.75) continue
+        clusterLabels[score.clusterIdx] = score.label
+        usedLabels.add(score.label)
+        assignedClusters.add(score.clusterIdx)
+        if (assignedClusters.size === result.k) break
+      }
+    }
+
+    return { map, k: result.k, centroids: result.centroids, ids: subset.ids, clusterEmojis, clusterLabels }
+  }, [distanceData, publishedFlowcharts, filter])
+
+  // Memoized clustering for semantic search results
+  const semanticClusterAssignments = useMemo(() => {
+    if (!distanceData || embeddingResults.length < 2) return null
+
+    const LABEL_PREFIX = 'label:'
+    const labelDistIds = distanceData.ids.filter((id) => id.startsWith(LABEL_PREFIX))
+
+    // Get IDs from embedding results that exist in the distance data
+    const resultIds = embeddingResults.map((r) => r.id)
+
+    // Subset distance matrix to search result IDs
+    const subset = subsetDistanceMatrix(distanceData.ids, distanceData.matrix, resultIds)
+    if (subset.ids.length < 2) return null
+
+    const result = agglomerativeClustering(subset.ids.length, subset.matrix)
+
+    // Build Map<flowchartId, clusterIndex> for O(1) lookup
+    const map = new Map<string, number>()
+    subset.ids.forEach((id, i) => map.set(id, result.assignments[i]))
+
+    // Collect unique emojis per cluster (max 5)
+    const clusterEmojis: string[][] = Array.from({ length: result.k }, () => [])
+    subset.ids.forEach((id, i) => {
+      const ci = result.assignments[i]
+      const sr = embeddingResults.find((r) => r.id === id)
+      const emoji = sr?.emoji || '📊'
+      if (!clusterEmojis[ci].includes(emoji) && clusterEmojis[ci].length < 5) {
+        clusterEmojis[ci].push(emoji)
+      }
+    })
+
+    // Assign topic labels to clusters using max distance
+    const clusterLabels: (string | null)[] = Array.from({ length: result.k }, () => null)
+    if (labelDistIds.length > 0) {
+      const fullN = distanceData.ids.length
+      const fullIdxMap = new Map<string, number>()
+      distanceData.ids.forEach((id, i) => fullIdxMap.set(id, i))
+
+      type LabelScore = { label: string; clusterIdx: number; maxDist: number }
+      const scores: LabelScore[] = []
+
+      for (const lid of labelDistIds) {
+        const labelIdx = fullIdxMap.get(lid)!
+        for (let ci = 0; ci < result.k; ci++) {
+          const members = subset.ids.filter((_, i) => result.assignments[i] === ci)
+          if (members.length === 0) continue
+
+          let maxDist = 0
+          for (const mid of members) {
+            const memberIdx = fullIdxMap.get(mid)
+            if (memberIdx === undefined) continue // Skip if not in distance data
+            const dist = distanceData.matrix[distIndex(labelIdx, memberIdx, fullN)]
+            if (dist > maxDist) maxDist = dist
+          }
+          scores.push({ label: lid.slice(LABEL_PREFIX.length), clusterIdx: ci, maxDist })
+        }
+      }
+
+      scores.sort((a, b) => a.maxDist - b.maxDist)
+
+      const usedLabels = new Set<string>()
+      const assignedClusters = new Set<number>()
+      for (const score of scores) {
+        if (usedLabels.has(score.label) || assignedClusters.has(score.clusterIdx)) continue
+        if (score.maxDist > 0.75) continue
+        clusterLabels[score.clusterIdx] = score.label
+        usedLabels.add(score.label)
+        assignedClusters.add(score.clusterIdx)
+        if (assignedClusters.size === result.k) break
+      }
+    }
+
+    return { map, k: result.k, ids: subset.ids, clusterEmojis, clusterLabels }
+  }, [distanceData, embeddingResults])
+
   // Load published flowcharts (hardcoded + user-created)
   const loadPublished = useCallback(async () => {
     try {
@@ -151,6 +322,7 @@ export default function FlowchartPickerPage() {
         const data = await response.json()
         setPublishedFlowcharts(data.flowcharts || [])
         setCurrentUserId(data.currentUserId || null)
+        setDistanceData(data.distances ?? null)
       }
     } catch (err) {
       console.error('Failed to load published flowcharts:', err)
@@ -158,6 +330,38 @@ export default function FlowchartPickerPage() {
       setIsLoadingPublished(false)
     }
   }, [])
+
+  const handleGenerateEmbeddings = useCallback(async () => {
+    setIsGeneratingEmbeddings(true)
+    try {
+      const res = await fetch('/api/flowcharts/seed-embeddings', { method: 'POST' })
+      if (res.ok) {
+        await loadPublished()
+      }
+    } catch (err) {
+      console.error('Failed to generate embeddings:', err)
+    } finally {
+      setIsGeneratingEmbeddings(false)
+    }
+  }, [loadPublished])
+
+  const handleGenerateCardEmbedding = useCallback(async (id: string) => {
+    setGeneratingEmbeddingIds((prev) => new Set(prev).add(id))
+    try {
+      const res = await fetch(`/api/flowcharts/${id}/embedding`, { method: 'POST' })
+      if (res.ok) {
+        await loadPublished()
+      }
+    } catch (err) {
+      console.error('Failed to generate embedding for', id, err)
+    } finally {
+      setGeneratingEmbeddingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }
+  }, [loadPublished])
 
   useEffect(() => {
     loadPublished()
@@ -582,9 +786,6 @@ export default function FlowchartPickerPage() {
 
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh' })}>
-      {/* Seed Manager Panel - only shown in debug mode */}
-      {isVisualDebugEnabled && <SeedManagerPanel onSeedComplete={loadPublished} />}
-
       {/* Outer wrapper: full-width edge-to-edge */}
       <div
         className={css({
@@ -869,54 +1070,45 @@ export default function FlowchartPickerPage() {
             })()}
 
             {/* Semantic matches (embedding-based) */}
-            {embeddingResults.length > 0 && (
-              <>
-                <div
-                  className={css({
-                    gridColumn: '1 / -1',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '3',
-                    color: { base: 'gray.500', _dark: 'gray.400' },
-                    fontSize: 'sm',
-                    marginBottom: '2',
-                  })}
-                >
-                  <span>🧠</span>
-                  <span>Semantic matches</span>
-                  <div
-                    className={css({
-                      flex: 1,
-                      height: '1px',
-                      backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
-                    })}
-                  />
-                </div>
-                {embeddingResults.map((result) => {
-                  // Check if this is the user's own flowchart by looking up in publishedFlowcharts
-                  const publishedMatch = publishedFlowcharts.find((fc) => fc.id === result.id)
-                  const isOwnFlowchart =
-                    result.source === 'database' &&
-                    currentUserId &&
-                    publishedMatch?.authorId === currentUserId
+            {embeddingResults.length > 0 && (() => {
+              const renderSemanticCard = (result: EmbeddingSearchResult, clusterColorIndex?: number) => {
+                const publishedMatch = publishedFlowcharts.find((fc) => fc.id === result.id)
+                const isOwnFlowchart =
+                  result.source === 'database' &&
+                  currentUserId &&
+                  publishedMatch?.authorId === currentUserId
 
-                  return (
-                    <FlowchartCard
-                      key={result.id}
-                      title={result.title}
-                      description={result.description}
-                      emoji={result.emoji}
-                      difficulty={result.difficulty}
-                      subtitle={`${Math.round(result.similarity * 100)}% match`}
-                      onClick={() => handleCardClick(result.id)}
-                      actions={
-                        result.source === 'hardcoded'
+                return (
+                  <FlowchartCard
+                    key={result.id}
+                    title={result.title}
+                    description={result.description}
+                    emoji={result.emoji}
+                    difficulty={result.difficulty}
+                    subtitle={`${Math.round(result.similarity * 100)}% match`}
+                    clusterColorIndex={clusterColorIndex}
+                    onClick={() => handleCardClick(result.id)}
+                    actions={
+                      result.source === 'hardcoded'
+                        ? [
+                            {
+                              label: exportingPdfId === result.id ? 'Exporting...' : 'PDF',
+                              onClick: () => handleDownloadPDF(result.id),
+                              variant: 'secondary' as const,
+                              disabled: exportingPdfId === result.id,
+                            },
+                            {
+                              label: 'Remix',
+                              onClick: () => handleRemix(result.id),
+                              variant: 'secondary' as const,
+                            },
+                          ]
+                        : isOwnFlowchart
                           ? [
                               {
-                                label: exportingPdfId === result.id ? 'Exporting...' : 'PDF',
-                                onClick: () => handleDownloadPDF(result.id),
-                                variant: 'secondary' as const,
-                                disabled: exportingPdfId === result.id,
+                                label: 'Edit',
+                                onClick: () => handleEditPublished(result.id),
+                                variant: 'primary' as const,
                               },
                               {
                                 label: 'Remix',
@@ -924,32 +1116,128 @@ export default function FlowchartPickerPage() {
                                 variant: 'secondary' as const,
                               },
                             ]
-                          : isOwnFlowchart
-                            ? [
-                                {
-                                  label: 'Edit',
-                                  onClick: () => handleEditPublished(result.id),
-                                  variant: 'primary' as const,
-                                },
-                                {
-                                  label: 'Remix',
-                                  onClick: () => handleRemix(result.id),
-                                  variant: 'secondary' as const,
-                                },
-                              ]
-                            : [
-                                {
-                                  label: 'Remix',
-                                  onClick: () => handleRemix(result.id),
-                                  variant: 'secondary' as const,
-                                },
-                              ]
-                      }
-                    />
+                          : [
+                              {
+                                label: 'Remix',
+                                onClick: () => handleRemix(result.id),
+                                variant: 'secondary' as const,
+                              },
+                            ]
+                    }
+                  />
+                )
+              }
+
+              // If we have clustering data, render by clusters
+              if (semanticClusterAssignments && semanticClusterAssignments.k > 1) {
+                const elements: React.ReactNode[] = []
+                const clusteredIds = new Set(semanticClusterAssignments.ids)
+
+                for (let ci = 0; ci < semanticClusterAssignments.k; ci++) {
+                  const color = CLUSTER_COLORS[ci % CLUSTER_COLORS.length]
+                  const emojis = semanticClusterAssignments.clusterEmojis[ci]
+                  const topicLabel = semanticClusterAssignments.clusterLabels[ci]
+                  const clusterResults = embeddingResults.filter(
+                    (r) => semanticClusterAssignments.map.get(r.id) === ci
                   )
-                })}
-              </>
-            )}
+                  if (clusterResults.length === 0) continue
+
+                  elements.push(
+                    <div
+                      key={`semantic-header-${ci}`}
+                      className={css({
+                        gridColumn: '1 / -1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3',
+                        color: color.text,
+                        fontSize: 'sm',
+                        marginTop: ci > 0 ? '4' : '0',
+                        marginBottom: '2',
+                      })}
+                    >
+                      <span>{emojis.join(' ')}</span>
+                      {topicLabel && (
+                        <span className={css({ fontWeight: 'medium' })}>{topicLabel}</span>
+                      )}
+                      <div
+                        className={css({
+                          flex: 1,
+                          height: '1px',
+                          backgroundColor: color.line,
+                        })}
+                      />
+                    </div>
+                  )
+
+                  for (const result of clusterResults) {
+                    elements.push(renderSemanticCard(result, ci))
+                  }
+                }
+
+                // Render unclustered results (if any)
+                const unclustered = embeddingResults.filter((r) => !clusteredIds.has(r.id))
+                if (unclustered.length > 0) {
+                  elements.push(
+                    <div
+                      key="semantic-header-unclustered"
+                      className={css({
+                        gridColumn: '1 / -1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3',
+                        color: { base: 'gray.500', _dark: 'gray.400' },
+                        fontSize: 'sm',
+                        marginTop: '4',
+                        marginBottom: '2',
+                      })}
+                    >
+                      <span>More</span>
+                      <div
+                        className={css({
+                          flex: 1,
+                          height: '1px',
+                          backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                        })}
+                      />
+                    </div>
+                  )
+                  for (const result of unclustered) {
+                    elements.push(renderSemanticCard(result))
+                  }
+                }
+
+                return elements
+              }
+
+              // Fallback: flat list with header
+              return (
+                <>
+                  <div
+                    className={css({
+                      gridColumn: '1 / -1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3',
+                      color: { base: 'gray.500', _dark: 'gray.400' },
+                      fontSize: 'sm',
+                      marginBottom: '2',
+                    })}
+                  >
+                    <span>🧠</span>
+                    <span>Semantic matches</span>
+                    <div
+                      className={css({
+                        flex: 1,
+                        height: '1px',
+                        backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                      })}
+                    />
+                  </div>
+                  {embeddingResults.map((result) => renderSemanticCard(result))}
+                </>
+              )
+            })()}
 
             {/* Keyword matches */}
             {keywordResults.length > 0 && (
@@ -1082,14 +1370,60 @@ export default function FlowchartPickerPage() {
         ) : (
           <>
             {/* Published flowcharts (hardcoded + user-created) */}
-            {filter !== 'drafts' &&
-              publishedFlowcharts.map((flowchart) => {
+            {filter !== 'drafts' && (() => {
+              const renderPublishedCard = (flowchart: PublishedFlowchart, clusterColorIndex?: number) => {
                 const isOwnFlowchart =
                   flowchart.source === 'database' &&
                   currentUserId &&
                   flowchart.authorId === currentUserId
 
                 const cardData = cardExamples.get(flowchart.id)
+
+                const actions =
+                  flowchart.source === 'hardcoded'
+                    ? [
+                        {
+                          label: exportingPdfId === flowchart.id ? 'Exporting...' : 'PDF',
+                          onClick: () => handleDownloadPDF(flowchart.id),
+                          variant: 'secondary' as const,
+                          disabled: exportingPdfId === flowchart.id,
+                        },
+                        {
+                          label: 'Remix',
+                          onClick: () => handleRemix(flowchart.id),
+                          variant: 'secondary' as const,
+                        },
+                      ]
+                    : isOwnFlowchart
+                      ? [
+                          {
+                            label: 'Edit',
+                            onClick: () => handleEditPublished(flowchart.id),
+                            variant: 'primary' as const,
+                          },
+                          {
+                            label: 'Remix',
+                            onClick: () => handleRemix(flowchart.id),
+                            variant: 'secondary' as const,
+                          },
+                        ]
+                      : [
+                          {
+                            label: 'Remix',
+                            onClick: () => handleRemix(flowchart.id),
+                            variant: 'secondary' as const,
+                          },
+                        ]
+
+                if (flowchart.hasEmbedding === false) {
+                  const isGenerating = generatingEmbeddingIds.has(flowchart.id)
+                  actions.push({
+                    label: isGenerating ? 'Generating...' : 'Generate Embedding',
+                    onClick: () => handleGenerateCardEmbedding(flowchart.id),
+                    variant: 'secondary' as const,
+                    disabled: isGenerating,
+                  })
+                }
 
                 return (
                   <FlowchartCard
@@ -1101,48 +1435,155 @@ export default function FlowchartPickerPage() {
                     flowchart={cardData?.flowchart}
                     examples={cardData?.examples}
                     diagnosticReport={cardData?.diagnosticReport}
+                    clusterColorIndex={clusterColorIndex}
                     onClick={() => handleCardClick(flowchart.id)}
-                    actions={
-                      flowchart.source === 'hardcoded'
-                        ? [
-                            {
-                              label: exportingPdfId === flowchart.id ? 'Exporting...' : 'PDF',
-                              onClick: () => handleDownloadPDF(flowchart.id),
-                              variant: 'secondary' as const,
-                              disabled: exportingPdfId === flowchart.id,
-                            },
-                            {
-                              label: 'Remix',
-                              onClick: () => handleRemix(flowchart.id),
-                              variant: 'secondary' as const,
-                            },
-                          ]
-                        : isOwnFlowchart
-                          ? [
-                              {
-                                label: 'Edit',
-                                onClick: () => handleEditPublished(flowchart.id),
-                                variant: 'primary' as const,
-                              },
-                              {
-                                label: 'Remix',
-                                onClick: () => handleRemix(flowchart.id),
-                                variant: 'secondary' as const,
-                              },
-                            ]
-                          : [
-                              {
-                                label: 'Remix',
-                                onClick: () => handleRemix(flowchart.id),
-                                variant: 'secondary' as const,
-                              },
-                            ]
-                    }
+                    actions={actions}
                   />
                 )
-              })}
+              }
+
+              if (clusterAssignments) {
+                const clusteredIds = new Set(clusterAssignments.ids)
+                const elements: React.ReactNode[] = []
+
+                // Render each cluster with a header
+                for (let ci = 0; ci < clusterAssignments.k; ci++) {
+                  const color = CLUSTER_COLORS[ci % CLUSTER_COLORS.length]
+                  const emojis = clusterAssignments.clusterEmojis[ci]
+                  const clusterFlowcharts = publishedFlowcharts.filter(
+                    (fc) => clusterAssignments.map.get(fc.id) === ci
+                  )
+                  if (clusterFlowcharts.length === 0) continue
+
+                  // Section header
+                  const topicLabel = clusterAssignments.clusterLabels[ci]
+                  elements.push(
+                    <div
+                      key={`cluster-header-${ci}`}
+                      className={css({
+                        gridColumn: '1 / -1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3',
+                        color: color.text,
+                        fontSize: 'sm',
+                        marginTop: ci > 0 ? '4' : '0',
+                        marginBottom: '2',
+                      })}
+                    >
+                      <span>{emojis.join(' ')}</span>
+                      {topicLabel && (
+                        <span className={css({ fontWeight: 'medium' })}>{topicLabel}</span>
+                      )}
+                      <div
+                        className={css({
+                          flex: 1,
+                          height: '1px',
+                          backgroundColor: color.line,
+                        })}
+                      />
+                    </div>
+                  )
+
+                  // Cards in this cluster
+                  for (const fc of clusterFlowcharts) {
+                    elements.push(renderPublishedCard(fc, ci))
+                  }
+                }
+
+                // Unclustered flowcharts (no embedding)
+                const unclustered = publishedFlowcharts.filter((fc) => !clusteredIds.has(fc.id))
+                if (unclustered.length > 0) {
+                  const missingEmbeddings = unclustered.some((fc) => !fc.hasEmbedding)
+                  elements.push(
+                    <div
+                      key="cluster-header-unclustered"
+                      className={css({
+                        gridColumn: '1 / -1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3',
+                        color: { base: 'gray.500', _dark: 'gray.400' },
+                        fontSize: 'sm',
+                        marginTop: '4',
+                        marginBottom: '2',
+                      })}
+                    >
+                      <span>{missingEmbeddings ? 'Unclustered \u2014 missing embeddings' : 'More'}</span>
+                      <div
+                        className={css({
+                          flex: 1,
+                          height: '1px',
+                          backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                        })}
+                      />
+                      {missingEmbeddings && (
+                        <button
+                          onClick={handleGenerateEmbeddings}
+                          disabled={isGeneratingEmbeddings}
+                          className={css({
+                            paddingY: '1',
+                            paddingX: '3',
+                            borderRadius: 'md',
+                            fontSize: 'xs',
+                            fontWeight: 'medium',
+                            border: '1px solid',
+                            borderColor: { base: 'gray.300', _dark: 'gray.600' },
+                            backgroundColor: { base: 'white', _dark: 'gray.800' },
+                            color: { base: 'gray.700', _dark: 'gray.300' },
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            transition: 'all 0.15s',
+                            _hover: {
+                              backgroundColor: { base: 'gray.100', _dark: 'gray.700' },
+                            },
+                            _disabled: {
+                              opacity: 0.5,
+                              cursor: 'not-allowed',
+                            },
+                          })}
+                        >
+                          {isGeneratingEmbeddings ? 'Generating...' : 'Generate Embeddings'}
+                        </button>
+                      )}
+                    </div>
+                  )
+                  for (const fc of unclustered) {
+                    elements.push(renderPublishedCard(fc))
+                  }
+                }
+
+                return elements
+              }
+
+              // Fallback: no clustering data, render flat
+              return publishedFlowcharts.map((fc) => renderPublishedCard(fc))
+            })()}
 
             {/* Draft flowcharts */}
+            {filter !== 'published' && draftSessions.length > 0 && (
+              <div
+                className={css({
+                  gridColumn: '1 / -1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3',
+                  color: { base: 'gray.500', _dark: 'gray.400' },
+                  fontSize: 'sm',
+                  marginTop: filter !== 'drafts' && publishedFlowcharts.length > 0 ? '4' : '0',
+                  marginBottom: '2',
+                })}
+              >
+                <span>Drafts</span>
+                <div
+                  className={css({
+                    flex: 1,
+                    height: '1px',
+                    backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                  })}
+                />
+              </div>
+            )}
             {filter !== 'published' &&
               draftSessions.map((session) => {
                 const cardData = cardExamples.get(session.id)
