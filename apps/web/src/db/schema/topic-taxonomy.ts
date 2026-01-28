@@ -28,6 +28,13 @@ export const topicTaxonomy = sqliteTable('topic_taxonomy', {
 
   /** When this label was created */
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+
+  /**
+   * Breadth score: number of other labels within embedding distance threshold.
+   * Higher = broader label (e.g., "Mathematics" ~25), lower = specific (e.g., "Fraction Addition" ~2).
+   * Computed at taxonomy generation time from label-to-label distances.
+   */
+  breadth: integer('breadth'),
 })
 
 export type TopicTaxonomyLabel = typeof topicTaxonomy.$inferSelect

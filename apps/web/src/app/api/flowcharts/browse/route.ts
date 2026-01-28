@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
 
     // Compute pairwise cosine distance matrix for flowcharts with embeddings
     let distances: { ids: string[]; matrix: number[] } | undefined
+    let labelBreadths: Record<string, number> | undefined
     try {
       const embeddingCache = await getAllFlowchartEmbeddings()
 
@@ -119,9 +120,12 @@ export async function GET(req: NextRequest) {
 
         try {
           const taxonomy = await loadTaxonomy()
+          // Build label breadths map for client-side use
+          labelBreadths = {}
           for (let li = 0; li < taxonomy.labels.length; li++) {
             allIds.push(labelId(taxonomy.labels[li]))
             allEmbeddings.push(taxonomy.embeddings[li])
+            labelBreadths[taxonomy.labels[li]] = taxonomy.breadths[li]
           }
         } catch (err) {
           // Non-fatal: taxonomy is optional (files may not exist yet)
@@ -150,6 +154,7 @@ export async function GET(req: NextRequest) {
       offset,
       currentUserId,
       distances,
+      labelBreadths,
     })
   } catch (error) {
     console.error('Failed to browse flowcharts:', error)

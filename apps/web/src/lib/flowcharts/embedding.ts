@@ -5,17 +5,18 @@ import { LLMClient } from '@soroban/llm-client'
  * Current embedding version - increment when changing embedding strategy
  * (e.g., changing the content format, model, or dimensions)
  */
-export const EMBEDDING_VERSION = '1.0.0'
+export const EMBEDDING_VERSION = '2.0.0'
 
 /**
  * Embedding model to use
+ * Using text-embedding-3-large for better semantic understanding
  */
-export const EMBEDDING_MODEL = 'text-embedding-3-small'
+export const EMBEDDING_MODEL = 'text-embedding-3-large'
 
 /**
- * Embedding dimensions (1536 for text-embedding-3-small)
+ * Embedding dimensions (3072 for text-embedding-3-large)
  */
-export const EMBEDDING_DIMENSIONS = 1536
+export const EMBEDDING_DIMENSIONS = 3072
 
 /**
  * Data structure for building embedding content

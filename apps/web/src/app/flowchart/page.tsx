@@ -15,6 +15,7 @@ import {
   DeleteToastContainer,
   type PendingDeletion,
 } from '@/components/flowchart'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { useCreateWorkshopSession } from '@/hooks/useWorkshopSession'
 import { agglomerativeClustering, subsetDistanceMatrix, distIndex } from '@/lib/flowcharts/clustering'
 import { css } from '../../../styled-system/css'
@@ -106,6 +107,9 @@ export default function FlowchartPickerPage() {
   // Distance matrix for clustering (from browse API)
   const [distanceData, setDistanceData] = useState<{ ids: string[]; matrix: number[] } | null>(null)
 
+  // Label breadth scores for diversity-aware label assignment
+  const [labelBreadths, setLabelBreadths] = useState<Record<string, number> | null>(null)
+
   // Pending deletions for undo functionality
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([])
 
@@ -123,9 +127,49 @@ export default function FlowchartPickerPage() {
   const [isSearching, setIsSearching] = useState(false)
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Taxonomy navigation scope - allows drilling into clusters
-  const [scopedFlowchartIds, setScopedFlowchartIds] = useState<string[] | null>(null)
-  const [scopeLabel, setScopeLabel] = useState<string | null>(null)
+  // Taxonomy navigation path - supports full breadcrumb trail
+  // Stored in URL as JSON-encoded array of {label, ids} objects
+  type ScopeLevel = { label: string; ids: string[] }
+  const scopePath = useMemo<ScopeLevel[]>(() => {
+    const encoded = searchParams.get('scopePath')
+    if (!encoded) return []
+    try {
+      return JSON.parse(decodeURIComponent(encoded))
+    } catch {
+      return []
+    }
+  }, [searchParams])
+
+  // Current scope is the deepest level in the path
+  const scopedFlowchartIds = scopePath.length > 0 ? scopePath[scopePath.length - 1].ids : null
+  const scopeLabel = scopePath.length > 0 ? scopePath[scopePath.length - 1].label : null
+
+  // Helper to navigate deeper into a scope
+  const navigateToScope = useCallback(
+    (ids: string[], label: string) => {
+      const newPath = [...scopePath, { label, ids }]
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('scopePath', encodeURIComponent(JSON.stringify(newPath)))
+      router.push(`?${params.toString()}`, { scroll: false })
+    },
+    [router, searchParams, scopePath]
+  )
+
+  // Navigate to a specific level in the breadcrumb (0 = root/all)
+  const navigateToLevel = useCallback(
+    (level: number) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (level === 0) {
+        params.delete('scopePath')
+      } else {
+        const newPath = scopePath.slice(0, level)
+        params.set('scopePath', encodeURIComponent(JSON.stringify(newPath)))
+      }
+      const queryString = params.toString()
+      router.push(queryString ? `?${queryString}` : '/flowchart', { scroll: false })
+    },
+    [router, searchParams, scopePath]
+  )
 
   // Examples for animated card backgrounds (generated client-side)
   // Unified map for both published flowcharts (keyed by flowchart ID) and drafts (keyed by session ID)
@@ -142,6 +186,27 @@ export default function FlowchartPickerPage() {
 
   // Track IDs currently being generated to prevent duplicate work
   const generatingIdsRef = useRef<Set<string>>(new Set())
+
+  // Grid ref and column count for responsive "Explore" button visibility
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [gridColumnCount, setGridColumnCount] = useState(4) // Default to 4 columns
+
+  // Measure grid column count on resize
+  useEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return
+
+    const measureColumns = () => {
+      const style = window.getComputedStyle(grid)
+      const columns = style.gridTemplateColumns.split(' ').length
+      setGridColumnCount(columns)
+    }
+
+    measureColumns()
+    const observer = new ResizeObserver(measureColumns)
+    observer.observe(grid)
+    return () => observer.disconnect()
+  }, [])
 
   // Compute diagnostics for draft sessions (memoized)
   const draftDiagnostics = useMemo(() => {
@@ -199,21 +264,58 @@ export default function FlowchartPickerPage() {
 
     // Assign topic labels to clusters using the full distance matrix
     const clusterLabels: (string | null)[] = Array.from({ length: result.k }, () => null)
+    const clusterRunnerUps: { label: string; score: number }[][] = Array.from({ length: result.k }, () => [])
+    const clusterDiversityScores: number[] = Array.from({ length: result.k }, () => 0)
+    const flowchartMatchStrengths = new Map<string, number>() // flowchartId -> 0-100 match strength
+
     if (labelDistIds.length > 0) {
       const fullN = distanceData.ids.length
       const fullIdxMap = new Map<string, number>()
       distanceData.ids.forEach((id, i) => fullIdxMap.set(id, i))
 
+
+      // Compute cluster diversity (avg pairwise distance within cluster)
+      // Used to bias toward broader labels for diverse clusters
+      const clusterDiversities: number[] = []
+      for (let ci = 0; ci < result.k; ci++) {
+        const members = subset.ids.filter((_, i) => result.assignments[i] === ci)
+        if (members.length < 2) {
+          clusterDiversities.push(0)
+          continue
+        }
+        let totalDist = 0
+        let pairCount = 0
+        for (let i = 0; i < members.length; i++) {
+          for (let j = i + 1; j < members.length; j++) {
+            const idxI = fullIdxMap.get(members[i])!
+            const idxJ = fullIdxMap.get(members[j])!
+            totalDist += distanceData.matrix[distIndex(idxI, idxJ, fullN)]
+            pairCount++
+          }
+        }
+        const diversity = pairCount > 0 ? totalDist / pairCount : 0
+        clusterDiversities.push(diversity)
+        clusterDiversityScores[ci] = diversity
+      }
+
+      // Find max breadth for normalization
+      const maxBreadth = labelBreadths
+        ? Math.max(1, ...Object.values(labelBreadths))
+        : 1
+
       // For each label, compute MAX distance to cluster members (worst match).
-      // Using max instead of avg ensures that a label must fit ALL members,
-      // which favors broader labels for diverse clusters.
-      type LabelScore = { label: string; clusterIdx: number; maxDist: number }
+      // For diverse clusters, give a bonus to broad labels.
+      type LabelScore = { label: string; clusterIdx: number; maxDist: number; adjustedDist: number }
       const scores: LabelScore[] = []
+      const DIVERSITY_THRESHOLD = 0.35 // Clusters more diverse than this get breadth bonus
 
       for (const lid of labelDistIds) {
         const labelIdx = fullIdxMap.get(lid)!
+        const labelName = lid.slice(LABEL_PREFIX.length)
+        const breadth = labelBreadths?.[labelName] ?? 0
+        const normalizedBreadth = breadth / maxBreadth // 0 to 1
+
         for (let ci = 0; ci < result.k; ci++) {
-          // Get members of this cluster (in full matrix indices)
           const members = subset.ids.filter((_, i) => result.assignments[i] === ci)
           if (members.length === 0) continue
 
@@ -223,12 +325,29 @@ export default function FlowchartPickerPage() {
             const dist = distanceData.matrix[distIndex(labelIdx, memberIdx, fullN)]
             if (dist > maxDist) maxDist = dist
           }
-          scores.push({ label: lid.slice(LABEL_PREFIX.length), clusterIdx: ci, maxDist })
+
+          // For diverse clusters, give bonus to broad labels
+          const isDiverse = clusterDiversities[ci] > DIVERSITY_THRESHOLD
+          const breadthBonus = isDiverse ? normalizedBreadth * 0.15 : 0
+          const adjustedDist = maxDist - breadthBonus
+
+          scores.push({ label: labelName, clusterIdx: ci, maxDist, adjustedDist })
         }
       }
 
-      // Sort by max distance (best matches first = lowest max distance)
-      scores.sort((a, b) => a.maxDist - b.maxDist)
+      // Sort by adjusted distance (best matches first = lowest adjusted distance)
+      scores.sort((a, b) => a.adjustedDist - b.adjustedDist)
+
+      // Collect top 3 labels per cluster (before greedy assignment removes options)
+      const clusterTopLabels: Map<number, { label: string; score: number }[]> = new Map()
+      for (const score of scores) {
+        if (score.maxDist > 0.75) continue // Skip poor matches
+        const existing = clusterTopLabels.get(score.clusterIdx) || []
+        if (existing.length < 4) {
+          existing.push({ label: score.label, score: Math.round((1 - score.adjustedDist) * 100) })
+          clusterTopLabels.set(score.clusterIdx, existing)
+        }
+      }
 
       // Greedy assignment: best label first, no label reuse
       const usedLabels = new Set<string>()
@@ -242,10 +361,44 @@ export default function FlowchartPickerPage() {
         assignedClusters.add(score.clusterIdx)
         if (assignedClusters.size === result.k) break
       }
+
+      // Set runner-ups (exclude the assigned label)
+      for (let ci = 0; ci < result.k; ci++) {
+        const topLabels = clusterTopLabels.get(ci) || []
+        const assignedLabel = clusterLabels[ci]
+        clusterRunnerUps[ci] = topLabels.filter(l => l.label !== assignedLabel).slice(0, 3)
+      }
+
+      // Compute match strength per flowchart (how well it fits its assigned label)
+      for (let ci = 0; ci < result.k; ci++) {
+        const assignedLabel = clusterLabels[ci]
+        if (!assignedLabel) continue
+        const labelIdx = fullIdxMap.get(`${LABEL_PREFIX}${assignedLabel}`)
+        if (labelIdx === undefined) continue
+
+        const members = subset.ids.filter((_, i) => result.assignments[i] === ci)
+        for (const mid of members) {
+          const memberIdx = fullIdxMap.get(mid)!
+          const dist = distanceData.matrix[distIndex(labelIdx, memberIdx, fullN)]
+          // Convert distance (0-1) to match strength (100-0), clamped
+          const strength = Math.round(Math.max(0, Math.min(100, (1 - dist) * 125 - 10)))
+          flowchartMatchStrengths.set(mid, strength)
+        }
+      }
     }
 
-    return { map, k: result.k, centroids: result.centroids, ids: subset.ids, clusterEmojis, clusterLabels }
-  }, [distanceData, publishedFlowcharts, filter, scopedFlowchartIds])
+    return {
+      map,
+      k: result.k,
+      centroids: result.centroids,
+      ids: subset.ids,
+      clusterEmojis,
+      clusterLabels,
+      clusterRunnerUps,
+      clusterDiversityScores,
+      flowchartMatchStrengths,
+    }
+  }, [distanceData, publishedFlowcharts, filter, scopedFlowchartIds, labelBreadths])
 
   // Memoized clustering for semantic search results
   const semanticClusterAssignments = useMemo(() => {
@@ -278,18 +431,48 @@ export default function FlowchartPickerPage() {
       }
     })
 
-    // Assign topic labels to clusters using max distance
+    // Assign topic labels to clusters using diversity-aware scoring
     const clusterLabels: (string | null)[] = Array.from({ length: result.k }, () => null)
     if (labelDistIds.length > 0) {
       const fullN = distanceData.ids.length
       const fullIdxMap = new Map<string, number>()
       distanceData.ids.forEach((id, i) => fullIdxMap.set(id, i))
 
-      type LabelScore = { label: string; clusterIdx: number; maxDist: number }
+      // Compute cluster diversity
+      const clusterDiversities: number[] = []
+      for (let ci = 0; ci < result.k; ci++) {
+        const members = subset.ids.filter((_, i) => result.assignments[i] === ci)
+        if (members.length < 2) {
+          clusterDiversities.push(0)
+          continue
+        }
+        let totalDist = 0
+        let pairCount = 0
+        for (let i = 0; i < members.length; i++) {
+          for (let j = i + 1; j < members.length; j++) {
+            const idxI = fullIdxMap.get(members[i])
+            const idxJ = fullIdxMap.get(members[j])
+            if (idxI !== undefined && idxJ !== undefined) {
+              totalDist += distanceData.matrix[distIndex(idxI, idxJ, fullN)]
+              pairCount++
+            }
+          }
+        }
+        clusterDiversities.push(pairCount > 0 ? totalDist / pairCount : 0)
+      }
+
+      const maxBreadth = labelBreadths ? Math.max(1, ...Object.values(labelBreadths)) : 1
+      const DIVERSITY_THRESHOLD = 0.35
+
+      type LabelScore = { label: string; clusterIdx: number; maxDist: number; adjustedDist: number }
       const scores: LabelScore[] = []
 
       for (const lid of labelDistIds) {
         const labelIdx = fullIdxMap.get(lid)!
+        const labelName = lid.slice(LABEL_PREFIX.length)
+        const breadth = labelBreadths?.[labelName] ?? 0
+        const normalizedBreadth = breadth / maxBreadth
+
         for (let ci = 0; ci < result.k; ci++) {
           const members = subset.ids.filter((_, i) => result.assignments[i] === ci)
           if (members.length === 0) continue
@@ -297,15 +480,20 @@ export default function FlowchartPickerPage() {
           let maxDist = 0
           for (const mid of members) {
             const memberIdx = fullIdxMap.get(mid)
-            if (memberIdx === undefined) continue // Skip if not in distance data
+            if (memberIdx === undefined) continue
             const dist = distanceData.matrix[distIndex(labelIdx, memberIdx, fullN)]
             if (dist > maxDist) maxDist = dist
           }
-          scores.push({ label: lid.slice(LABEL_PREFIX.length), clusterIdx: ci, maxDist })
+
+          const isDiverse = clusterDiversities[ci] > DIVERSITY_THRESHOLD
+          const breadthBonus = isDiverse ? normalizedBreadth * 0.15 : 0
+          const adjustedDist = maxDist - breadthBonus
+
+          scores.push({ label: labelName, clusterIdx: ci, maxDist, adjustedDist })
         }
       }
 
-      scores.sort((a, b) => a.maxDist - b.maxDist)
+      scores.sort((a, b) => a.adjustedDist - b.adjustedDist)
 
       const usedLabels = new Set<string>()
       const assignedClusters = new Set<number>()
@@ -320,7 +508,7 @@ export default function FlowchartPickerPage() {
     }
 
     return { map, k: result.k, ids: subset.ids, clusterEmojis, clusterLabels }
-  }, [distanceData, embeddingResults])
+  }, [distanceData, embeddingResults, labelBreadths])
 
   // Load published flowcharts (hardcoded + user-created)
   const loadPublished = useCallback(async () => {
@@ -331,6 +519,7 @@ export default function FlowchartPickerPage() {
         setPublishedFlowcharts(data.flowcharts || [])
         setCurrentUserId(data.currentUserId || null)
         setDistanceData(data.distances ?? null)
+        setLabelBreadths(data.labelBreadths ?? null)
       }
     } catch (err) {
       console.error('Failed to load published flowcharts:', err)
@@ -978,6 +1167,7 @@ export default function FlowchartPickerPage() {
           })}
         >
         <div
+          ref={gridRef}
           className={css({
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
@@ -1454,8 +1644,8 @@ export default function FlowchartPickerPage() {
                 const clusteredIds = new Set(clusterAssignments.ids)
                 const elements: React.ReactNode[] = []
 
-                // Scope navigation header (back button when drilled in)
-                if (scopedFlowchartIds) {
+                // Breadcrumb navigation (shows full path when drilled in)
+                if (scopePath.length > 0) {
                   elements.push(
                     <div
                       key="scope-nav"
@@ -1465,13 +1655,12 @@ export default function FlowchartPickerPage() {
                         alignItems: 'center',
                         gap: '2',
                         marginBottom: '3',
+                        flexWrap: 'wrap',
                       })}
                     >
+                      {/* Root "All" link */}
                       <button
-                        onClick={() => {
-                          setScopedFlowchartIds(null)
-                          setScopeLabel(null)
-                        }}
+                        onClick={() => navigateToLevel(0)}
                         className={css({
                           display: 'flex',
                           alignItems: 'center',
@@ -1491,25 +1680,50 @@ export default function FlowchartPickerPage() {
                         })}
                       >
                         <span className={css({ fontSize: '12px' })}>←</span>
-                        Back to all
+                        All
                       </button>
-                      <span
-                        className={css({
-                          fontSize: 'sm',
-                          color: { base: 'gray.500', _dark: 'gray.400' },
-                        })}
-                      >
-                        /
-                      </span>
-                      <span
-                        className={css({
-                          fontSize: 'sm',
-                          fontWeight: 'medium',
-                          color: { base: 'gray.700', _dark: 'gray.200' },
-                        })}
-                      >
-                        {scopeLabel}
-                      </span>
+                      {/* Breadcrumb trail */}
+                      {scopePath.map((level, index) => (
+                        <div key={index} className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+                          <span
+                            className={css({
+                              fontSize: 'sm',
+                              color: { base: 'gray.400', _dark: 'gray.500' },
+                            })}
+                          >
+                            /
+                          </span>
+                          {index < scopePath.length - 1 ? (
+                            // Clickable intermediate breadcrumb
+                            <button
+                              onClick={() => navigateToLevel(index + 1)}
+                              className={css({
+                                fontSize: 'sm',
+                                fontWeight: 'medium',
+                                color: { base: 'gray.500', _dark: 'gray.400' },
+                                cursor: 'pointer',
+                                transition: 'color 0.15s',
+                                _hover: {
+                                  color: { base: 'gray.700', _dark: 'gray.200' },
+                                },
+                              })}
+                            >
+                              {level.label}
+                            </button>
+                          ) : (
+                            // Current level (not clickable)
+                            <span
+                              className={css({
+                                fontSize: 'sm',
+                                fontWeight: 'medium',
+                                color: { base: 'gray.700', _dark: 'gray.200' },
+                              })}
+                            >
+                              {level.label}
+                            </span>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )
                 }
@@ -1523,9 +1737,59 @@ export default function FlowchartPickerPage() {
                   )
                   if (clusterFlowcharts.length === 0) continue
 
-                  // Section header
+                  // Section header with insights
                   const topicLabel = clusterAssignments.clusterLabels[ci]
+                  const runnerUps = clusterAssignments.clusterRunnerUps[ci]
+                  const diversity = clusterAssignments.clusterDiversityScores[ci]
+                  const isDiverse = diversity > 0.35
                   const clusterIds = clusterFlowcharts.map((fc) => fc.id)
+
+                  // Build tooltip content
+                  const tooltipContent = (
+                    <div className={css({ display: 'flex', flexDirection: 'column', gap: '2.5' })}>
+                      {/* Diversity indicator */}
+                      <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+                        <span className={css({ fontSize: 'xs', opacity: 0.7 })}>
+                          {isDiverse ? '🌐' : '🎯'}
+                        </span>
+                        <span className={css({ fontSize: 'xs', color: 'gray.300' })}>
+                          {isDiverse ? 'Diverse topics grouped together' : 'Focused on a specific topic'}
+                        </span>
+                      </div>
+
+                      {/* Runner-up labels */}
+                      {runnerUps.length > 0 && (
+                        <div className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+                          <span className={css({ fontSize: 'xs', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' })}>
+                            Also related to
+                          </span>
+                          <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '1.5' })}>
+                            {runnerUps.map((ru, i) => (
+                              <span
+                                key={i}
+                                className={css({
+                                  fontSize: 'xs',
+                                  paddingX: '2',
+                                  paddingY: '0.5',
+                                  borderRadius: 'full',
+                                  backgroundColor: 'rgba(255,255,255,0.1)',
+                                  color: 'gray.300',
+                                })}
+                              >
+                                {ru.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cluster stats */}
+                      <div className={css({ fontSize: 'xs', opacity: 0.5, paddingTop: '1', borderTop: '1px solid rgba(255,255,255,0.1)' })}>
+                        {clusterFlowcharts.length} flowchart{clusterFlowcharts.length !== 1 ? 's' : ''} in this group
+                      </div>
+                    </div>
+                  )
+
                   elements.push(
                     <div
                       key={`cluster-header-${ci}`}
@@ -1542,7 +1806,34 @@ export default function FlowchartPickerPage() {
                     >
                       <span>{emojis.join(' ')}</span>
                       {topicLabel && (
-                        <span className={css({ fontWeight: 'medium' })}>{topicLabel}</span>
+                        <Tooltip content={tooltipContent} side="bottom" align="start" delayDuration={300}>
+                          <button
+                            className={css({
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '1.5',
+                              fontWeight: 'medium',
+                              cursor: 'help',
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              color: 'inherit',
+                              transition: 'opacity 0.15s',
+                              _hover: { opacity: 0.8 },
+                            })}
+                          >
+                            {topicLabel}
+                            <span
+                              className={css({
+                                fontSize: '10px',
+                                opacity: 0.5,
+                                transition: 'opacity 0.15s',
+                              })}
+                            >
+                              {isDiverse ? '🌐' : '🎯'}
+                            </span>
+                          </button>
+                        </Tooltip>
                       )}
                       <div
                         className={css({
@@ -1551,11 +1842,10 @@ export default function FlowchartPickerPage() {
                           backgroundColor: color.line,
                         })}
                       />
-                      {clusterFlowcharts.length > 1 && (
+                      {clusterFlowcharts.length > gridColumnCount && (
                         <button
                           onClick={() => {
-                            setScopedFlowchartIds(clusterIds)
-                            setScopeLabel(topicLabel || `${emojis[0] || ''} Cluster`)
+                            navigateToScope(clusterIds, topicLabel || `${emojis[0] || ''} Cluster`)
                           }}
                           className={css({
                             display: 'flex',
@@ -1582,14 +1872,23 @@ export default function FlowchartPickerPage() {
                     </div>
                   )
 
-                  // Cards in this cluster
-                  for (const fc of clusterFlowcharts) {
+                  // Cards in this cluster, sorted by match strength (best matches first)
+                  const sortedClusterFlowcharts = [...clusterFlowcharts].sort((a, b) => {
+                    const strengthA = clusterAssignments.flowchartMatchStrengths.get(a.id) ?? 0
+                    const strengthB = clusterAssignments.flowchartMatchStrengths.get(b.id) ?? 0
+                    return strengthB - strengthA // Descending order
+                  })
+                  for (const fc of sortedClusterFlowcharts) {
                     elements.push(renderPublishedCard(fc, ci))
                   }
                 }
 
                 // Unclustered flowcharts (no embedding)
-                const unclustered = publishedFlowcharts.filter((fc) => !clusteredIds.has(fc.id))
+                // When scoped, only show unclustered items within the scope
+                const scopeSet = scopedFlowchartIds ? new Set(scopedFlowchartIds) : null
+                const unclustered = publishedFlowcharts.filter(
+                  (fc) => !clusteredIds.has(fc.id) && (!scopeSet || scopeSet.has(fc.id))
+                )
                 if (unclustered.length > 0) {
                   const missingEmbeddings = unclustered.some((fc) => !fc.hasEmbedding)
                   elements.push(

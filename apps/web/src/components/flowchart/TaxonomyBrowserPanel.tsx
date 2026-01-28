@@ -99,10 +99,6 @@ export function TaxonomyBrowserPanel({ onRegenerateComplete }: TaxonomyBrowserPa
 
   // Regenerate taxonomy
   const handleRegenerate = useCallback(async () => {
-    if (!confirm('This will regenerate all topic labels. This costs ~$0.01 in API calls. Continue?')) {
-      return
-    }
-
     try {
       setIsRegenerating(true)
       setError(null)

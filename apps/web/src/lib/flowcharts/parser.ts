@@ -355,13 +355,11 @@ export function parseMermaidFile(content: string): ParsedMermaid {
   const edgePattern = /(\w+)\s+(?:(\w+)@)?-->\s*(?:\|"?([^"|]+)"?\|\s*)?(\w+)/g
   let edgeMatch
   let edgeIndex = 0
-  console.log('[PARSER] Parsing edges from mermaid content...')
   while ((edgeMatch = edgePattern.exec(cleanContent)) !== null) {
-    const [fullMatch, from, edgeId, label, to] = edgeMatch
+    const [, from, edgeId, label, to] = edgeMatch
     // Skip phase-to-phase connections and style definitions
     if (from.startsWith('PHASE') || from === 'style') continue
 
-    console.log(`[PARSER] Edge ${edgeIndex}: from=${from}, to=${to}, edgeId=${edgeId || 'auto'}, label=${label || 'none'}, fullMatch="${fullMatch}"`)
     edges.push({
       from,
       to,
@@ -372,7 +370,6 @@ export function parseMermaidFile(content: string): ParsedMermaid {
     })
     edgeIndex++
   }
-  console.log(`[PARSER] Total edges parsed: ${edges.length}`)
 
   return { nodes, edges, phases }
 }

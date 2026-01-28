@@ -20,6 +20,7 @@ import { bufferToEmbedding, EMBEDDING_DIMENSIONS } from './embedding'
 export interface Taxonomy {
   labels: string[]
   embeddings: Float32Array[]
+  breadths: number[]
 }
 
 interface TaxonomyIndex {
@@ -71,13 +72,15 @@ async function loadTaxonomyFromDb(): Promise<Taxonomy | null> {
 
   const labels: string[] = []
   const embeddings: Float32Array[] = []
+  const breadths: number[] = []
 
   for (const row of rows) {
     labels.push(row.label)
     embeddings.push(bufferToEmbedding(row.embedding))
+    breadths.push(row.breadth ?? 0) // Default to 0 if not set (legacy data)
   }
 
-  return { labels, embeddings }
+  return { labels, embeddings, breadths }
 }
 
 /**
@@ -105,7 +108,10 @@ function loadTaxonomyFromFiles(): Taxonomy {
     embeddings.push(new Float32Array(ab))
   }
 
-  return { labels: index.labels, embeddings }
+  // Static files don't have breadth data - default to 0
+  const breadths = new Array(index.labels.length).fill(0)
+
+  return { labels: index.labels, embeddings, breadths }
 }
 
 /** Build a label ID from a label string (e.g. "label:Fraction Arithmetic") */

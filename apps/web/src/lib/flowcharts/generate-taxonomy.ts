@@ -3,6 +3,7 @@ import { LLMClient } from '@soroban/llm-client'
 import { z } from 'zod'
 import { db, schema } from '@/db'
 import { EMBEDDING_MODEL, embeddingToBuffer } from './embedding'
+import { cosineSimilarity } from './embedding-search'
 import { clearTaxonomyCache } from './taxonomy'
 
 /**
@@ -173,17 +174,64 @@ function deduplicateLabels(labels: string[]): string[] {
 }
 
 /**
- * Embed labels using OpenAI
+ * Build rich context for a taxonomy label to match how flowcharts are embedded.
+ * This ensures labels and flowcharts are in the same semantic space.
+ */
+function buildLabelEmbeddingContent(label: string): string {
+  return `Educational topic category: ${label}
+
+This is a topic label for categorizing educational flowcharts and learning materials. Flowcharts in this category teach concepts related to ${label.toLowerCase()}.`
+}
+
+/**
+ * Embed labels using OpenAI with rich educational context.
+ * Labels are embedded with context to match how flowcharts are embedded,
+ * ensuring they're in the same semantic space.
  */
 async function embedLabels(labels: string[]): Promise<Float32Array[]> {
   const llm = new LLMClient()
 
+  // Build rich context for each label
+  const labelContents = labels.map(buildLabelEmbeddingContent)
+
   const response = await llm.embed({
-    input: labels,
+    input: labelContents,
     model: EMBEDDING_MODEL,
   })
 
   return response.embeddings
+}
+
+/**
+ * Compute breadth scores for each label based on average proximity to all other labels.
+ * Broader labels (e.g., "Mathematics") have lower average distance to all labels
+ * because they're conceptually central. Specific labels (e.g., "Fraction Addition")
+ * have higher average distance because they're in specialized "corners" of the space.
+ *
+ * Returns scores 0-100 where higher = broader.
+ *
+ * @param embeddings - Array of label embeddings
+ * @returns Array of breadth scores (one per label)
+ */
+function computeLabelBreadths(embeddings: Float32Array[]): number[] {
+  const n = embeddings.length
+  const breadths: number[] = []
+
+  for (let i = 0; i < n; i++) {
+    let totalDist = 0
+    for (let j = 0; j < n; j++) {
+      if (i !== j) {
+        totalDist += 1 - cosineSimilarity(embeddings[i], embeddings[j])
+      }
+    }
+    const avgDist = totalDist / (n - 1)
+    // Convert to 0-100 scale where higher = broader (lower avg distance)
+    // Typical distances range from ~0.3 to ~0.7, so scale accordingly
+    const breadth = Math.round(Math.max(0, Math.min(100, (1 - avgDist) * 150 - 20)))
+    breadths.push(breadth)
+  }
+
+  return breadths
 }
 
 export interface TaxonomyGenerationResult {
@@ -213,6 +261,9 @@ export async function regenerateTaxonomy(): Promise<TaxonomyGenerationResult> {
   // Embed all labels
   const embeddings = await embedLabels(labels)
 
+  // Compute breadth scores (how many other labels are nearby)
+  const breadths = computeLabelBreadths(embeddings)
+
   // Replace the entire taxonomy table
   await db.delete(schema.topicTaxonomy)
 
@@ -221,6 +272,7 @@ export async function regenerateTaxonomy(): Promise<TaxonomyGenerationResult> {
     label,
     embedding: embeddingToBuffer(embeddings[i]),
     embeddingModel: EMBEDDING_MODEL,
+    breadth: breadths[i],
     createdAt: now,
   }))
 
