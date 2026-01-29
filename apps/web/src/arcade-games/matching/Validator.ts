@@ -3,7 +3,14 @@
  * Validates all game moves and state transitions
  */
 
-import type { GameCard, MatchingConfig, MatchingMove, MatchingState, Player } from './types'
+import {
+  MatchingStateSchema,
+  type GameCard,
+  type MatchingConfig,
+  type MatchingMove,
+  type MatchingState,
+  type Player,
+} from './types'
 import { generateGameCards } from './utils/cardGeneration'
 import { canFlipCard, validateMatch } from './utils/matchValidation'
 import type {
@@ -34,6 +41,9 @@ const PRACTICE_BREAK_DEFAULTS: MatchingConfig = {
 }
 
 export class MatchingGameValidator implements GameValidator<MatchingState, MatchingMove> {
+  // Zod schema for runtime validation of state loaded from database
+  stateSchema = MatchingStateSchema
+
   validateMove(
     state: MatchingState,
     move: MatchingMove,
@@ -578,8 +588,7 @@ export class MatchingGameValidator implements GameValidator<MatchingState, Match
         gameStartTime: Date.now(),
         gameEndTime: null,
         currentMoveStartTime: null,
-        timerInterval: null,
-        celebrationAnimations: [],
+                celebrationAnimations: [],
         isProcessingMove: false,
         showMismatchFeedback: false,
         lastMatchedPair: null,
@@ -614,8 +623,7 @@ export class MatchingGameValidator implements GameValidator<MatchingState, Match
       gameStartTime: null,
       gameEndTime: null,
       currentMoveStartTime: null,
-      timerInterval: null,
-      celebrationAnimations: [],
+            celebrationAnimations: [],
       isProcessingMove: false,
       showMismatchFeedback: false,
       lastMatchedPair: null,
@@ -684,8 +692,7 @@ export class MatchingGameValidator implements GameValidator<MatchingState, Match
       gameStartTime: Date.now(),
       gameEndTime: null,
       currentMoveStartTime: null,
-      timerInterval: null,
-      celebrationAnimations: [],
+            celebrationAnimations: [],
       isProcessingMove: false,
       showMismatchFeedback: false,
       lastMatchedPair: null,

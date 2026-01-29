@@ -1,161 +1,210 @@
-import type { GameConfig, GameState } from '@/lib/arcade/game-sdk'
+/**
+ * Rithmomachia (Battle of Numbers) - Type Definitions
+ *
+ * This module uses Zod schemas as the single source of truth for types.
+ * TypeScript types are inferred from Zod schemas using z.infer<>.
+ */
 
-// === PIECE TYPES ===
+import { z } from 'zod'
 
-export type PieceType = 'C' | 'T' | 'S' | 'P' // Circle, Triangle, Square, Pyramid
-export type Color = 'W' | 'B' // White, Black
+// ============================================================================
+// Piece Types
+// ============================================================================
 
-export interface Piece {
-  id: string // stable UUID (e.g., "W_C_01")
-  color: Color
-  type: PieceType
-  value?: number // for C/T/S always present
-  pyramidFaces?: number[] // for P only (length 4)
-  activePyramidFace?: number | null // last chosen face for logging/captures
-  square: string // "A1".."P8"
-  captured: boolean
-}
+export const PieceTypeSchema = z.enum(['C', 'T', 'S', 'P']) // Circle, Triangle, Square, Pyramid
+export type PieceType = z.infer<typeof PieceTypeSchema>
 
-// === RELATIONS ===
+export const ColorSchema = z.enum(['W', 'B']) // White, Black
+export type Color = z.infer<typeof ColorSchema>
 
-export type RelationKind =
-  | 'EQUAL' // a == b
-  | 'MULTIPLE' // a % b == 0
-  | 'DIVISOR' // b % a == 0
-  | 'SUM' // a + h == b or b + h == a
-  | 'DIFF' // |a - h| == b or |b - h| == a
-  | 'PRODUCT' // a * h == b or b * h == a
-  | 'RATIO' // a * r == b or b * r == a (r = helper value)
+export const PieceSchema = z.object({
+  id: z.string(), // stable UUID (e.g., "W_C_01")
+  color: ColorSchema,
+  type: PieceTypeSchema,
+  value: z.number().optional(), // for C/T/S always present
+  pyramidFaces: z.array(z.number()).optional(), // for P only (length 4)
+  activePyramidFace: z.number().nullable().optional(), // last chosen face for logging/captures
+  square: z.string(), // "A1".."P8"
+  captured: z.boolean(),
+})
+export type Piece = z.infer<typeof PieceSchema>
 
-export interface CaptureContext {
-  relation: RelationKind
-  moverPieceId: string
-  targetPieceId: string
-  helperPieceId?: string // required for SUM/DIFF/PRODUCT/RATIO
-  moverFaceUsed?: number | null // if mover was a Pyramid
-}
+// ============================================================================
+// Relations
+// ============================================================================
 
-export interface AmbushContext {
-  relation: RelationKind
-  enemyPieceId: string
-  helper1Id: string
-  helper2Id: string // two helpers for ambush
-}
+export const RelationKindSchema = z.enum([
+  'EQUAL', // a == b
+  'MULTIPLE', // a % b == 0
+  'DIVISOR', // b % a == 0
+  'SUM', // a + h == b or b + h == a
+  'DIFF', // |a - h| == b or |b - h| == a
+  'PRODUCT', // a * h == b or b * h == a
+  'RATIO', // a * r == b or b * r == a (r = helper value)
+])
+export type RelationKind = z.infer<typeof RelationKindSchema>
 
-// === HARMONY ===
+export const CaptureContextSchema = z.object({
+  relation: RelationKindSchema,
+  moverPieceId: z.string(),
+  targetPieceId: z.string(),
+  helperPieceId: z.string().optional(), // required for SUM/DIFF/PRODUCT/RATIO
+  moverFaceUsed: z.number().nullable().optional(), // if mover was a Pyramid
+})
+export type CaptureContext = z.infer<typeof CaptureContextSchema>
 
-export type HarmonyType = 'ARITH' | 'GEOM' | 'HARM'
+export const AmbushContextSchema = z.object({
+  relation: RelationKindSchema,
+  enemyPieceId: z.string(),
+  helper1Id: z.string(),
+  helper2Id: z.string(), // two helpers for ambush
+})
+export type AmbushContext = z.infer<typeof AmbushContextSchema>
 
-export interface HarmonyDeclaration {
-  by: Color
-  pieceIds: string[] // exactly 3 for classical three-piece proportions
-  type: HarmonyType
-  params: {
-    a?: string // first value in proportion (A-M-B structure)
-    m?: string // middle value in proportion
-    b?: string // last value in proportion
-  }
-  declaredAtPly: number
-}
+// ============================================================================
+// Harmony
+// ============================================================================
 
-// === MOVE RECORDS ===
+export const HarmonyTypeSchema = z.enum(['ARITH', 'GEOM', 'HARM'])
+export type HarmonyType = z.infer<typeof HarmonyTypeSchema>
 
-export interface MoveRecord {
-  ply: number
-  color: Color
-  from: string // e.g., "C2"
-  to: string // e.g., "C6"
-  pieceId: string
-  pyramidFaceUsed?: number | null
-  capture?: CaptureContext | null
-  ambush?: AmbushContext | null
-  harmonyDeclared?: HarmonyDeclaration | null
-  pointsCapturedThisMove?: number // if point scoring is on
-  fenLikeHash?: string // for repetition detection
-  noProgressCount?: number // for 50-move rule
-  resultAfter?: 'ONGOING' | 'WINS_W' | 'WINS_B' | 'DRAW'
-}
+export const HarmonyDeclarationSchema = z.object({
+  by: ColorSchema,
+  pieceIds: z.array(z.string()), // exactly 3 for classical three-piece proportions
+  type: HarmonyTypeSchema,
+  params: z.object({
+    a: z.string().optional(), // first value in proportion (A-M-B structure)
+    m: z.string().optional(), // middle value in proportion
+    b: z.string().optional(), // last value in proportion
+  }),
+  declaredAtPly: z.number(),
+})
+export type HarmonyDeclaration = z.infer<typeof HarmonyDeclarationSchema>
 
-// === GAME STATE ===
+// ============================================================================
+// Move Records
+// ============================================================================
 
-export interface RithmomachiaState extends GameState {
-  // Configuration (stored in state per arcade pattern)
-  pointWinEnabled: boolean
-  pointWinThreshold: number
-  repetitionRule: boolean
-  fiftyMoveRule: boolean
-  allowAnySetOnRecheck: boolean
-  timeControlMs: number | null
-  whitePlayerId?: string | null
-  blackPlayerId?: string | null
+export const WinConditionSchema = z.enum([
+  'HARMONY',
+  'EXHAUSTION',
+  'RESIGNATION',
+  'POINTS',
+  'AGREEMENT',
+  'REPETITION',
+  'FIFTY',
+])
 
-  // Game phase
-  gamePhase: 'setup' | 'playing' | 'results'
+export const GameResultSchema = z.enum(['ONGOING', 'WINS_W', 'WINS_B', 'DRAW'])
 
-  // Board dimensions
-  boardCols: number // 16
-  boardRows: number // 8
+export const MoveRecordSchema = z.object({
+  ply: z.number(),
+  color: ColorSchema,
+  from: z.string(), // e.g., "C2"
+  to: z.string(), // e.g., "C6"
+  pieceId: z.string(),
+  pyramidFaceUsed: z.number().nullable().optional(),
+  capture: CaptureContextSchema.nullable().optional(),
+  ambush: AmbushContextSchema.nullable().optional(),
+  harmonyDeclared: HarmonyDeclarationSchema.nullable().optional(),
+  pointsCapturedThisMove: z.number().optional(), // if point scoring is on
+  fenLikeHash: z.string().optional(), // for repetition detection
+  noProgressCount: z.number().optional(), // for 50-move rule
+  resultAfter: GameResultSchema.optional(),
+})
+export type MoveRecord = z.infer<typeof MoveRecordSchema>
 
-  // Current turn
-  turn: Color // 'W' or 'B'
+// ============================================================================
+// Game Configuration
+// ============================================================================
 
-  // Pieces (key = piece.id)
-  pieces: Record<string, Piece>
-
-  // Captured pieces
-  capturedPieces: {
-    W: Piece[]
-    B: Piece[]
-  }
-
-  // Move history
-  history: MoveRecord[]
-
-  // Pending harmony (declared last turn, awaiting validation)
-  pendingHarmony: HarmonyDeclaration | null
-
-  // Draw/repetition tracking
-  noProgressCount: number // for 50-move rule
-  stateHashes: string[] // Zobrist hashes for repetition detection
-
-  // Victory state
-  winner: Color | null
-  winCondition:
-    | 'HARMONY'
-    | 'EXHAUSTION'
-    | 'RESIGNATION'
-    | 'POINTS'
-    | 'AGREEMENT'
-    | 'REPETITION'
-    | 'FIFTY'
-    | null
-
-  // Points (if enabled by config)
-  pointsCaptured?: {
-    W: number
-    B: number
-  }
-}
-
-// === GAME CONFIG ===
-
-export interface RithmomachiaConfig extends GameConfig {
+export const RithmomachiaConfigSchema = z.object({
   // Rule toggles
-  pointWinEnabled: boolean // default: false
-  pointWinThreshold: number // default: 30
-  repetitionRule: boolean // default: true
-  fiftyMoveRule: boolean // default: true
-  allowAnySetOnRecheck: boolean // default: true (harmony revalidation)
+  pointWinEnabled: z.boolean(), // default: false
+  pointWinThreshold: z.number(), // default: 30
+  repetitionRule: z.boolean(), // default: true
+  fiftyMoveRule: z.boolean(), // default: true
+  allowAnySetOnRecheck: z.boolean(), // default: true (harmony revalidation)
 
   // Optional time controls (not implemented in v1)
-  timeControlMs?: number | null
+  timeControlMs: z.number().nullable(),
 
   // Player assignments (null = auto-assign)
-  whitePlayerId?: string | null // default: null (auto-assign first active player)
-  blackPlayerId?: string | null // default: null (auto-assign second active player)
+  whitePlayerId: z.string().nullable().optional(), // default: null (auto-assign first active player)
+  blackPlayerId: z.string().nullable().optional(), // default: null (auto-assign second active player)
+})
+export type RithmomachiaConfig = z.infer<typeof RithmomachiaConfigSchema> & {
+  [key: string]: unknown // Index signature for GameConfig constraint
 }
 
-// === GAME MOVES ===
+// ============================================================================
+// Game Phase
+// ============================================================================
+
+export const GamePhaseSchema = z.enum(['setup', 'playing', 'results'])
+export type GamePhase = z.infer<typeof GamePhaseSchema>
+
+// ============================================================================
+// Game State
+// ============================================================================
+
+export const RithmomachiaStateSchema = z.object({
+  // Configuration (stored in state per arcade pattern)
+  pointWinEnabled: z.boolean(),
+  pointWinThreshold: z.number(),
+  repetitionRule: z.boolean(),
+  fiftyMoveRule: z.boolean(),
+  allowAnySetOnRecheck: z.boolean(),
+  timeControlMs: z.number().nullable(),
+  whitePlayerId: z.string().nullable().optional(),
+  blackPlayerId: z.string().nullable().optional(),
+
+  // Game phase
+  gamePhase: GamePhaseSchema,
+
+  // Board dimensions
+  boardCols: z.number(), // 16
+  boardRows: z.number(), // 8
+
+  // Current turn
+  turn: ColorSchema, // 'W' or 'B'
+
+  // Pieces (key = piece.id)
+  pieces: z.record(z.string(), PieceSchema),
+
+  // Captured pieces
+  capturedPieces: z.object({
+    W: z.array(PieceSchema),
+    B: z.array(PieceSchema),
+  }),
+
+  // Move history
+  history: z.array(MoveRecordSchema),
+
+  // Pending harmony (declared last turn, awaiting validation)
+  pendingHarmony: HarmonyDeclarationSchema.nullable(),
+
+  // Draw/repetition tracking
+  noProgressCount: z.number(), // for 50-move rule
+  stateHashes: z.array(z.string()), // Zobrist hashes for repetition detection
+
+  // Victory state
+  winner: ColorSchema.nullable(),
+  winCondition: WinConditionSchema.nullable(),
+
+  // Points (if enabled by config)
+  pointsCaptured: z
+    .object({
+      W: z.number(),
+      B: z.number(),
+    })
+    .optional(),
+})
+export type RithmomachiaState = z.infer<typeof RithmomachiaStateSchema>
+
+// ============================================================================
+// Game Moves
+// ============================================================================
 
 export type RithmomachiaMove =
   | {
@@ -237,7 +286,7 @@ export type RithmomachiaMove =
       timestamp: number
       data: {
         field: string
-        value: any
+        value: unknown
       }
     }
   | {
@@ -255,7 +304,9 @@ export type RithmomachiaMove =
       data: Record<string, never>
     }
 
-// === HELPER TYPES ===
+// ============================================================================
+// Helper Types & Constants
+// ============================================================================
 
 // Square notation helpers
 export type File =

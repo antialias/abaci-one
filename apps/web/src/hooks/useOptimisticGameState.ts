@@ -97,6 +97,17 @@ export function useOptimisticGameState<TState>(
 ): UseOptimisticGameStateReturn<TState> {
   const { initialState, applyMove, onMoveAccepted, onMoveRejected } = options
 
+  // Debug: Log initial state on mount
+  useEffect(() => {
+    const stateObj = initialState as Record<string, unknown>
+    console.log('[OptimisticState] Initialized with:', {
+      gameCardsLength: Array.isArray(stateObj?.gameCards) ? (stateObj.gameCards as unknown[]).length : 'not-array',
+      flippedCardsLength: Array.isArray(stateObj?.flippedCards) ? (stateObj.flippedCards as unknown[]).length : 'not-array',
+      gamePhase: stateObj?.gamePhase,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Server-confirmed state and version
   const [serverState, setServerState] = useState<TState>(initialState)
   const [serverVersion, setServerVersion] = useState(1)
@@ -192,7 +203,14 @@ export function useOptimisticGameState<TState>(
   }, [])
 
   const syncWithServer = useCallback((newServerState: TState, newServerVersion: number) => {
-    console.log(`[ErrorState] SYNC_WITH_SERVER version=${newServerVersion}`)
+    const stateObj = newServerState as Record<string, unknown>
+    console.log('[OptimisticState] syncWithServer:', {
+      version: newServerVersion,
+      gameCardsLength: Array.isArray(stateObj?.gameCards) ? (stateObj.gameCards as unknown[]).length : 'not-array',
+      flippedCardsLength: Array.isArray(stateObj?.flippedCards) ? (stateObj.flippedCards as unknown[]).length : 'not-array',
+      gamePhase: stateObj?.gamePhase,
+      stateKeys: stateObj ? Object.keys(stateObj).slice(0, 10) : [],
+    })
     setServerState(newServerState)
     setServerVersion(newServerVersion)
     // Clear pending moves on sync (new authoritative state from server)

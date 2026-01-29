@@ -4,15 +4,16 @@
  */
 
 import type { GameValidator, ValidationResult } from '@/lib/arcade/game-sdk'
-import type {
-  ComplementRaceState,
-  ComplementRaceMove,
-  ComplementRaceConfig,
-  ComplementQuestion,
-  Passenger,
-  Station,
-  PlayerState,
-  AnswerValidation,
+import {
+  ComplementRaceStateSchema,
+  type ComplementRaceState,
+  type ComplementRaceMove,
+  type ComplementRaceConfig,
+  type ComplementQuestion,
+  type Passenger,
+  type Station,
+  type PlayerState,
+  type AnswerValidation,
 } from './types'
 
 // ============================================================================
@@ -81,6 +82,9 @@ const PASSENGER_AVATARS = [
 export class ComplementRaceValidator
   implements GameValidator<ComplementRaceState, ComplementRaceMove>
 {
+  // Zod schema for runtime validation of state loaded from database
+  stateSchema = ComplementRaceStateSchema
+
   validateMove(state: ComplementRaceState, move: ComplementRaceMove): ValidationResult {
     switch (move.type) {
       case 'START_GAME':

@@ -4,14 +4,15 @@
  */
 
 import type { GameValidator, PracticeBreakOptions, ValidationResult } from '@/lib/arcade/game-sdk'
-import type {
-  DifficultyLevel,
-  MemoryQuizConfig,
-  MemoryQuizState,
-  MemoryQuizMove,
-  MemoryQuizSetConfigMove,
+import {
+  MemoryQuizStateSchema,
+  DIFFICULTY_LEVELS,
+  type DifficultyLevel,
+  type MemoryQuizConfig,
+  type MemoryQuizState,
+  type MemoryQuizMove,
+  type MemoryQuizSetConfigMove,
 } from './types'
-import { DIFFICULTY_LEVELS } from './types'
 
 // Default config for practice breaks (quick games)
 const PRACTICE_BREAK_DEFAULTS: MemoryQuizConfig = {
@@ -41,6 +42,10 @@ function generateQuizNumbers(count: number, difficulty: DifficultyLevel): number
 }
 
 export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, MemoryQuizMove> {
+  // Zod schema for runtime validation of state loaded from database
+  // Cast needed because MemoryQuizState includes runtime-only properties not in schema
+  stateSchema = MemoryQuizStateSchema as unknown as import('zod').ZodType<MemoryQuizState>
+
   validateMove(
     state: MemoryQuizState,
     move: MemoryQuizMove,

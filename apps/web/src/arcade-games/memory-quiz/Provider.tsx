@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
-import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
+import { useRoomData, useUpdateGameConfig, useClearRoomGame } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
 import {
   buildPlayerMetadata as buildPlayerMetadataUtil,
@@ -239,6 +239,7 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
   const { roomData } = useRoomData()
   const { activePlayers: activePlayerIds, players } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
+  const clearRoomGame = useClearRoomGame()
 
   const activePlayers = Array.from(activePlayerIds)
 
@@ -514,22 +515,49 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
           There's a mismatch between game types in this room. This usually happens when room members
           are playing different games.
         </p>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          style={{
-            padding: '10px 20px',
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          Refresh Page
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (roomData?.id) {
+                clearRoomGame.mutate(roomData.id, {
+                  onError: () => {
+                    // If clearing fails, at least reload
+                    window.location.reload()
+                  },
+                })
+              }
+            }}
+            style={{
+              padding: '10px 20px',
+              background: '#6b7280',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Back to Game Selection
+          </button>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '10px 20px',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Refresh Page
+          </button>
+        </div>
       </div>
     )
   }

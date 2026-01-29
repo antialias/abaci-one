@@ -1,157 +1,202 @@
 /**
  * Matching Pairs Battle - Type Definitions
  *
- * SDK-compatible types for the matching game.
+ * This module uses Zod schemas as the single source of truth for types.
+ * TypeScript types are inferred from Zod schemas using z.infer<>.
  */
 
-import type { GameConfig, GameState } from '@/lib/arcade/game-sdk/types'
+import { z } from 'zod'
 
 // ============================================================================
-// Core Types
+// Core Types (Zod Schemas)
 // ============================================================================
 
-export type GameMode = 'single' | 'multiplayer'
-export type GameType = 'abacus-numeral' | 'complement-pairs'
-export type GamePhase = 'setup' | 'playing' | 'results'
-export type CardType = 'abacus' | 'number' | 'complement'
-export type Difficulty = 6 | 8 | 12 | 15 // Number of pairs
-export type Player = string // Player ID (UUID)
-export type TargetSum = 5 | 10 | 20
+export const GameModeSchema = z.enum(['single', 'multiplayer'])
+export type GameMode = z.infer<typeof GameModeSchema>
+
+export const GameTypeSchema = z.enum(['abacus-numeral', 'complement-pairs'])
+export type GameType = z.infer<typeof GameTypeSchema>
+
+export const GamePhaseSchema = z.enum(['setup', 'playing', 'results'])
+export type GamePhase = z.infer<typeof GamePhaseSchema>
+
+export const CardTypeSchema = z.enum(['abacus', 'number', 'complement'])
+export type CardType = z.infer<typeof CardTypeSchema>
+
+export const DifficultySchema = z.union([
+  z.literal(6),
+  z.literal(8),
+  z.literal(12),
+  z.literal(15),
+])
+export type Difficulty = z.infer<typeof DifficultySchema>
+
+export const TargetSumSchema = z.union([z.literal(5), z.literal(10), z.literal(20)])
+export type TargetSum = z.infer<typeof TargetSumSchema>
+
+// Player is just a string (Player ID / UUID)
+export type Player = string
 
 // ============================================================================
-// Game Configuration (SDK-compatible)
+// Game Configuration (Zod Schema)
 // ============================================================================
 
-/**
- * Configuration for matching game
- * Extends GameConfig for SDK compatibility
- */
-export interface MatchingConfig extends GameConfig {
-  gameType: GameType
-  difficulty: Difficulty
-  turnTimer: number
+export const MatchingConfigSchema = z.object({
+  gameType: GameTypeSchema,
+  difficulty: DifficultySchema,
+  turnTimer: z.number(),
   /**
    * Skip the setup phase and start directly in playing phase.
    * When true, getInitialState() will generate cards immediately
    * and set gamePhase to 'playing' instead of 'setup'.
    */
-  skipSetupPhase?: boolean
-}
+  skipSetupPhase: z.boolean().optional(),
+})
+export type MatchingConfig = z.infer<typeof MatchingConfigSchema>
 
 // ============================================================================
-// Game Entities
+// Game Entities (Zod Schemas)
 // ============================================================================
 
-export interface GameCard {
-  id: string
-  type: CardType
-  number: number
-  complement?: number // For complement pairs
-  targetSum?: TargetSum // For complement pairs
-  matched: boolean
-  matchedBy?: Player // For two-player mode
-  element?: HTMLElement | null // For animations
+export const GameCardSchema = z.object({
+  id: z.string(),
+  type: CardTypeSchema,
+  number: z.number(),
+  complement: z.number().optional(),
+  targetSum: TargetSumSchema.optional(),
+  matched: z.boolean(),
+  matchedBy: z.string().optional(), // Player ID for two-player mode
+  // element is runtime-only (HTMLElement), not serialized
+})
+export type GameCard = z.infer<typeof GameCardSchema> & {
+  element?: HTMLElement | null // For animations (runtime only)
 }
 
-export interface PlayerMetadata {
-  id: string // Player ID (UUID)
-  name: string
-  emoji: string
-  userId: string // Which user owns this player
-  color?: string
-}
+export const PlayerMetadataSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  emoji: z.string(),
+  userId: z.string(),
+  color: z.string().optional(),
+})
+export type PlayerMetadata = z.infer<typeof PlayerMetadataSchema>
 
-export interface PlayerScore {
-  [playerId: string]: number
-}
+export const PlayerScoreSchema = z.record(z.string(), z.number())
+export type PlayerScore = z.infer<typeof PlayerScoreSchema>
 
-export interface CelebrationAnimation {
-  id: string
-  type: 'match' | 'win' | 'confetti'
-  x: number
-  y: number
-  timestamp: number
-}
+export const CelebrationAnimationSchema = z.object({
+  id: z.string(),
+  type: z.enum(['match', 'win', 'confetti']),
+  x: z.number(),
+  y: z.number(),
+  timestamp: z.number(),
+})
+export type CelebrationAnimation = z.infer<typeof CelebrationAnimationSchema>
 
-export interface GameStatistics {
-  totalMoves: number
-  matchedPairs: number
-  totalPairs: number
-  gameTime: number
-  accuracy: number // Percentage of successful matches
-  averageTimePerMove: number
-}
+export const GameStatisticsSchema = z.object({
+  totalMoves: z.number(),
+  matchedPairs: z.number(),
+  totalPairs: z.number(),
+  gameTime: z.number(),
+  accuracy: z.number(),
+  averageTimePerMove: z.number(),
+})
+export type GameStatistics = z.infer<typeof GameStatisticsSchema>
 
 // ============================================================================
-// Game State (SDK-compatible)
+// Original Config (for pause/resume)
 // ============================================================================
 
-/**
- * Main game state for matching pairs battle
- * Extends GameState for SDK compatibility
- */
-export interface MatchingState extends GameState {
+export const OriginalConfigSchema = z.object({
+  gameType: GameTypeSchema,
+  difficulty: DifficultySchema,
+  turnTimer: z.number(),
+})
+export type OriginalConfig = z.infer<typeof OriginalConfigSchema>
+
+// ============================================================================
+// Paused Game State (for pause/resume)
+// ============================================================================
+
+export const PausedGameStateSchema = z.object({
+  gameCards: z.array(GameCardSchema),
+  currentPlayer: z.string(),
+  matchedPairs: z.number(),
+  moves: z.number(),
+  scores: PlayerScoreSchema,
+  activePlayers: z.array(z.string()),
+  playerMetadata: z.record(z.string(), PlayerMetadataSchema),
+  consecutiveMatches: z.record(z.string(), z.number()),
+  gameStartTime: z.number().nullable(),
+})
+export type PausedGameState = z.infer<typeof PausedGameStateSchema>
+
+// ============================================================================
+// Game State (Zod Schema)
+// ============================================================================
+
+export const MatchingStateSchema = z.object({
   // Core game data
-  cards: GameCard[]
-  gameCards: GameCard[]
-  flippedCards: GameCard[]
+  cards: z.array(GameCardSchema),
+  gameCards: z.array(GameCardSchema),
+  flippedCards: z.array(GameCardSchema),
 
   // Game configuration
-  gameType: GameType
-  difficulty: Difficulty
-  turnTimer: number // Seconds for turn timer
+  gameType: GameTypeSchema,
+  difficulty: DifficultySchema,
+  turnTimer: z.number(),
 
   // Game progression
-  gamePhase: GamePhase
-  currentPlayer: Player
-  matchedPairs: number
-  totalPairs: number
-  moves: number
-  scores: PlayerScore
-  activePlayers: Player[] // Track active player IDs
-  playerMetadata: Record<string, PlayerMetadata> // Player metadata for cross-user visibility
-  consecutiveMatches: Record<string, number> // Track consecutive matches per player
+  gamePhase: GamePhaseSchema,
+  currentPlayer: z.string(),
+  matchedPairs: z.number(),
+  totalPairs: z.number(),
+  moves: z.number(),
+  scores: PlayerScoreSchema,
+  activePlayers: z.array(z.string()),
+  playerMetadata: z.record(z.string(), PlayerMetadataSchema),
+  consecutiveMatches: z.record(z.string(), z.number()),
 
   // Timing
-  gameStartTime: number | null
-  gameEndTime: number | null
-  currentMoveStartTime: number | null
-  timerInterval: NodeJS.Timeout | null
+  gameStartTime: z.number().nullable(),
+  gameEndTime: z.number().nullable(),
+  currentMoveStartTime: z.number().nullable(),
+  // timerInterval is runtime-only (NodeJS.Timeout), not serialized
 
   // UI state
-  celebrationAnimations: CelebrationAnimation[]
-  isProcessingMove: boolean
-  showMismatchFeedback: boolean
-  lastMatchedPair: [string, string] | null
+  celebrationAnimations: z.array(CelebrationAnimationSchema),
+  isProcessingMove: z.boolean(),
+  showMismatchFeedback: z.boolean(),
+  lastMatchedPair: z.tuple([z.string(), z.string()]).nullable(),
 
   // PAUSE/RESUME: Paused game state
-  originalConfig?: {
-    gameType: GameType
-    difficulty: Difficulty
-    turnTimer: number
-  }
-  pausedGamePhase?: GamePhase
-  pausedGameState?: {
-    gameCards: GameCard[]
-    currentPlayer: Player
-    matchedPairs: number
-    moves: number
-    scores: PlayerScore
-    activePlayers: Player[]
-    playerMetadata: Record<string, PlayerMetadata>
-    consecutiveMatches: Record<string, number>
-    gameStartTime: number | null
-  }
+  originalConfig: OriginalConfigSchema.optional(),
+  pausedGamePhase: GamePhaseSchema.optional(),
+  pausedGameState: PausedGameStateSchema.optional(),
 
   // HOVER: Networked hover state
-  playerHovers: Record<string, string | null> // playerId -> cardId (or null if not hovering)
+  playerHovers: z.record(z.string(), z.string().nullable()),
+})
+
+/**
+ * Core game state type - inferred from Zod schema
+ * This is what gets serialized/synchronized
+ */
+export type MatchingState = z.infer<typeof MatchingStateSchema>
+
+/**
+ * Extended state with runtime-only properties
+ * Used in React components that need timer functionality
+ */
+export type MatchingStateWithTimer = MatchingState & {
+  timerInterval: NodeJS.Timeout | null
 }
 
 // For backwards compatibility with existing code
 export type MemoryPairsState = MatchingState
 
 // ============================================================================
-// Context Value
+// Context Value (TypeScript only - not serialized)
 // ============================================================================
 
 /**
@@ -187,7 +232,7 @@ export interface MatchingContextValue {
 }
 
 // ============================================================================
-// Game Moves (SDK-compatible)
+// Game Moves (TypeScript union - could be Zod later if needed)
 // ============================================================================
 
 /**
@@ -257,7 +302,7 @@ export type MatchingMove =
     }
 
 // ============================================================================
-// Component Props
+// Component Props (TypeScript only - not serialized)
 // ============================================================================
 
 export interface GameCardProps {
@@ -282,7 +327,7 @@ export interface GameGridProps {
 }
 
 // ============================================================================
-// Validation
+// Validation (TypeScript only)
 // ============================================================================
 
 export interface MatchValidationResult {

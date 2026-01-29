@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useMemo, createContext, useContext } from 'react'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
-import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
+import { useRoomData, useUpdateGameConfig, useClearRoomGame } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
 import {
   buildPlayerMetadata as buildPlayerMetadataUtil,
@@ -42,8 +42,7 @@ const initialState: MatchingState = {
   gameStartTime: null,
   gameEndTime: null,
   currentMoveStartTime: null,
-  timerInterval: null,
-  celebrationAnimations: [],
+    celebrationAnimations: [],
   isProcessingMove: false,
   showMismatchFeedback: false,
   lastMatchedPair: null,
@@ -253,6 +252,7 @@ export function MatchingProvider({ children }: { children: ReactNode }) {
   const { roomData } = useRoomData() // Fetch room data for room-based play
   const { activePlayerCount, activePlayers: activePlayerIds, players } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
+  const clearRoomGame = useClearRoomGame()
 
   // Get active player IDs directly as strings (UUIDs)
   const activePlayers = Array.from(activePlayerIds) as string[]
@@ -332,6 +332,17 @@ export function MatchingProvider({ children }: { children: ReactNode }) {
     return merged
   }, [roomData?.gameConfig])
 
+  // Debug: Log what initial state is being used
+  useEffect(() => {
+    console.log('[MatchingProvider] Using initialState:', {
+      gameCardsLength: mergedInitialState.gameCards?.length ?? 'undefined',
+      flippedCardsLength: mergedInitialState.flippedCards?.length ?? 'undefined',
+      gamePhase: mergedInitialState.gamePhase,
+      gameType: mergedInitialState.gameType,
+      roomId: roomData?.id,
+    })
+  }, [mergedInitialState, roomData?.id])
+
   // Arcade session integration WITH room sync
   const {
     state,
@@ -348,6 +359,21 @@ export function MatchingProvider({ children }: { children: ReactNode }) {
   // Detect state corruption/mismatch (e.g., game type mismatch between sessions)
   const hasStateCorruption =
     !state.gameCards || !state.flippedCards || !Array.isArray(state.gameCards)
+
+  // Debug: Log corruption check details
+  if (hasStateCorruption) {
+    console.error('[MatchingProvider] STATE_CORRUPTION detected:', {
+      hasGameCards: !!state.gameCards,
+      hasFlippedCards: !!state.flippedCards,
+      gameCardsIsArray: Array.isArray(state.gameCards),
+      gameCardsValue: state.gameCards,
+      flippedCardsValue: state.flippedCards,
+      stateKeys: Object.keys(state).slice(0, 15),
+      gamePhase: state.gamePhase,
+      gameType: state.gameType,
+      roomId: roomData?.id,
+    })
+  }
 
   // Debug: Track state changes relevant to mismatch handling (only log when cards are flipped)
   useEffect(() => {
@@ -871,21 +897,49 @@ export function MatchingProvider({ children }: { children: ReactNode }) {
             <li>If the issue persists, leave and rejoin the room</li>
           </ol>
         </div>
-        <button
-          onClick={() => window.location.reload()}
-          style={{
-            padding: '10px 20px',
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          Refresh Page
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (roomData?.id) {
+                clearRoomGame.mutate(roomData.id, {
+                  onError: () => {
+                    // If clearing fails, at least reload
+                    window.location.reload()
+                  },
+                })
+              }
+            }}
+            style={{
+              padding: '10px 20px',
+              background: '#6b7280',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Back to Game Selection
+          </button>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '10px 20px',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Refresh Page
+          </button>
+        </div>
       </div>
     )
   }

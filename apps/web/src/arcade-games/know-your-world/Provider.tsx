@@ -278,7 +278,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   }, [roomData])
 
   const {
-    state,
+    state: rawState,
     sendMove,
     exitSession,
     lastError,
@@ -291,6 +291,47 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     initialState,
     applyMove: (state) => state, // Server handles all state updates
   })
+
+  // Detect and log incomplete state from server (backward compatibility with old sessions)
+  // This helps us track when the database contains sessions created before certain fields were added
+  const state = useMemo<KnowYourWorldState>(() => {
+    // Check for missing required array fields
+    const missingFields: string[] = []
+    if (rawState.regionsFound === undefined) missingFields.push('regionsFound')
+    if (rawState.regionsToFind === undefined) missingFields.push('regionsToFind')
+    if (rawState.regionsGivenUp === undefined) missingFields.push('regionsGivenUp')
+    if (rawState.guessHistory === undefined) missingFields.push('guessHistory')
+    if (rawState.activePlayers === undefined) missingFields.push('activePlayers')
+    if (rawState.activeUserIds === undefined) missingFields.push('activeUserIds')
+    if (rawState.giveUpVotes === undefined) missingFields.push('giveUpVotes')
+
+    // Log when we detect incomplete state (indicates old session data in DB)
+    if (missingFields.length > 0) {
+      console.warn(
+        '[KnowYourWorld] INCOMPLETE_STATE_DETECTED: Session is missing required fields.',
+        {
+          missingFields,
+          gamePhase: rawState.gamePhase,
+          hasRawState: Object.keys(rawState).length > 0,
+          rawStateKeys: Object.keys(rawState),
+        }
+      )
+    }
+
+    // Merge with defaults for backward compatibility
+    return {
+      ...initialState,
+      ...rawState,
+      // Ensure arrays are never undefined (backward compatibility with old sessions)
+      regionsFound: rawState.regionsFound ?? [],
+      regionsToFind: rawState.regionsToFind ?? [],
+      regionsGivenUp: rawState.regionsGivenUp ?? [],
+      guessHistory: rawState.guessHistory ?? [],
+      activePlayers: rawState.activePlayers ?? [],
+      activeUserIds: rawState.activeUserIds ?? [],
+      giveUpVotes: rawState.giveUpVotes ?? [],
+    }
+  }, [rawState, initialState])
 
   // Update promptStartTime when currentPrompt changes (for celebration timing)
   useEffect(() => {

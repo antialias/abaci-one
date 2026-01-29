@@ -10,6 +10,8 @@ import {
   getArcadeSessionByRoom,
   updateSessionActivity,
   updateSessionActivePlayers,
+  getGameStateFromSession,
+  setGameStateInNamespace,
 } from './lib/arcade/session-manager'
 import { createRoom, getRoomById } from './lib/arcade/room-manager'
 import { getRoomMembers, getUserRooms, setMemberOnline } from './lib/arcade/room-membership'
@@ -383,64 +385,150 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             ? await getArcadeSessionByRoom(roomId)
             : await getArcadeSession(userId)
 
+          // Get the room to determine the CURRENT game type
+          const room = roomId ? await getRoomById(roomId) : null
+          const currentGameName = room?.gameName as GameName | null
+
           // If no session exists for this room, create one in setup phase
           // This allows users to send SET_CONFIG moves before starting the game
-          if (!session && roomId) {
-            // Get the room to determine game type and config
-            const room = await getRoomById(roomId)
-            if (room) {
-              // Fetch all active player IDs from room members (respects isActive flag)
-              let roomPlayerIds = await getRoomPlayerIds(roomId)
+          if (!session && roomId && room && currentGameName) {
+            // Fetch all active player IDs from room members (respects isActive flag)
+            let roomPlayerIds = await getRoomPlayerIds(roomId)
 
-              // PRACTICE MODE FIX: If no players found in database but we have a userId,
-              // use the userId as a fallback player. This handles practice sessions where
-              // the student isn't in the players table.
-              if (roomPlayerIds.length === 0 && userId) {
-                roomPlayerIds = [userId]
-              }
+            // PRACTICE MODE FIX: If no players found in database but we have a userId,
+            // use the userId as a fallback player. This handles practice sessions where
+            // the student isn't in the players table.
+            if (roomPlayerIds.length === 0 && userId) {
+              roomPlayerIds = [userId]
+            }
 
-              // Get initial state from the correct validator based on game type
-              const validator = await getValidator(room.gameName as GameName)
+            // Get initial state from the correct validator based on game type
+            const validator = await getValidator(currentGameName)
 
-              // Get game-specific config from database (type-safe)
-              const gameConfig = await getGameConfig(roomId, room.gameName as GameName)
-              const initialState = validator.getInitialState(gameConfig) as Record<string, unknown>
+            // Get game-specific config from database (type-safe)
+            const gameConfig = await getGameConfig(roomId, currentGameName)
+            const initialState = validator.getInitialState(gameConfig) as Record<string, unknown>
 
-              // CRITICAL: Update the game state's activePlayers and currentPlayer
-              // The initialState from validator has empty activePlayers, so we need to
-              // set them before creating the session. Without this, moves will fail
-              // with "playerId is required" errors.
-              if (roomPlayerIds.length > 0) {
-                initialState.activePlayers = roomPlayerIds
-                initialState.currentPlayer = roomPlayerIds[0]
-                // Also initialize playerMetadata for the players
-                const existingMetadata =
-                  (initialState.playerMetadata as Record<string, unknown>) || {}
-                for (const playerId of roomPlayerIds) {
-                  if (!existingMetadata[playerId]) {
-                    existingMetadata[playerId] = {
-                      id: playerId,
-                      name: 'Player',
-                      emoji: '🎮',
-                      userId: playerId,
-                    }
+            // CRITICAL: Update the game state's activePlayers and currentPlayer
+            // The initialState from validator has empty activePlayers, so we need to
+            // set them before creating the session. Without this, moves will fail
+            // with "playerId is required" errors.
+            if (roomPlayerIds.length > 0) {
+              initialState.activePlayers = roomPlayerIds
+              initialState.currentPlayer = roomPlayerIds[0]
+              // Also initialize playerMetadata for the players
+              const existingMetadata =
+                (initialState.playerMetadata as Record<string, unknown>) || {}
+              for (const playerId of roomPlayerIds) {
+                if (!existingMetadata[playerId]) {
+                  existingMetadata[playerId] = {
+                    id: playerId,
+                    name: 'Player',
+                    emoji: '🎮',
+                    userId: playerId,
                   }
                 }
-                initialState.playerMetadata = existingMetadata
               }
-
-              session = await createArcadeSession({
-                userId,
-                gameName: room.gameName as GameName,
-                gameUrl: '/arcade',
-                initialState,
-                activePlayers: roomPlayerIds, // Include all room members' active players
-                roomId: room.id,
-              })
+              initialState.playerMetadata = existingMetadata
             }
+
+            session = await createArcadeSession({
+              userId,
+              gameName: currentGameName,
+              gameUrl: '/arcade',
+              initialState,
+              activePlayers: roomPlayerIds, // Include all room members' active players
+              roomId: room.id,
+            })
           }
 
-          if (session) {
+          if (session && currentGameName) {
+            // Extract the game-specific state from the namespaced storage
+            let gameStateForClient = getGameStateFromSession(session, currentGameName)
+            const validator = await getValidator(currentGameName)
+            const gameConfig = await getGameConfig(roomId!, currentGameName)
+            let needsUpdate = false
+
+            // CRITICAL: Always update session.currentGame to match room.gameName
+            // This ensures moves are processed for the correct game
+            if (session.currentGame !== currentGameName) {
+              console.log(
+                `[SocketServer] Game mismatch: session.currentGame='${session.currentGame}' but room.gameName='${currentGameName}'. Updating session.`
+              )
+              needsUpdate = true
+            }
+
+            // Debug logging to help diagnose state issues
+            const stateObj = gameStateForClient as Record<string, unknown> | undefined
+            console.log(`[SocketServer] join-arcade-session: room=${roomId} game=${currentGameName}`, {
+              sessionCurrentGame: session.currentGame,
+              hasStateForGame: gameStateForClient !== undefined,
+              gameStateKeys: stateObj ? Object.keys(stateObj).slice(0, 10) : [],
+              // Log critical matching game fields for debugging
+              gameCardsLength: Array.isArray(stateObj?.gameCards) ? (stateObj.gameCards as unknown[]).length : 'not-array',
+              flippedCardsLength: Array.isArray(stateObj?.flippedCards) ? (stateObj.flippedCards as unknown[]).length : 'not-array',
+              gamePhase: stateObj?.gamePhase,
+              hasValidator: !!validator,
+              hasStateSchema: !!(validator as any).stateSchema,
+            })
+
+            // If no state exists for the current game (e.g., game was just switched),
+            // initialize it now
+            if (gameStateForClient === undefined) {
+              console.log(
+                `[SocketServer] No state for ${currentGameName} in session, initializing...`
+              )
+              gameStateForClient = validator.getInitialState(gameConfig)
+              needsUpdate = true
+            } else if (validator.stateSchema) {
+              // Validate state against schema if validator provides one
+              const parseResult = validator.stateSchema.safeParse(gameStateForClient)
+              if (!parseResult.success) {
+                console.warn(
+                  `[SocketServer] INVALID_STATE: State for ${currentGameName} failed schema validation, reinitializing.`,
+                  {
+                    roomId,
+                    issues: parseResult.error.issues.slice(0, 5), // Log first 5 issues
+                  }
+                )
+                gameStateForClient = validator.getInitialState(gameConfig)
+                needsUpdate = true
+              } else {
+                // Use the parsed (and potentially coerced) state
+                gameStateForClient = parseResult.data
+              }
+            }
+
+            // Update session with new/fixed namespaced state if needed
+            if (needsUpdate) {
+              const { db, schema } = await import('@/db')
+              const { eq } = await import('drizzle-orm')
+              const updatedNamespacedState = setGameStateInNamespace(
+                session.gameState,
+                currentGameName,
+                gameStateForClient
+              )
+              await db
+                .update(schema.arcadeSessions)
+                .set({
+                  gameState: updatedNamespacedState as any,
+                  currentGame: currentGameName, // Update currentGame to match
+                  version: session.version + 1,
+                })
+                .where(eq(schema.arcadeSessions.roomId, session.roomId))
+
+              session.version += 1
+            }
+
+            socket.emit('session-state', {
+              gameState: gameStateForClient, // Send only the current game's state
+              currentGame: currentGameName, // Use room's game, not session's (might be stale)
+              gameUrl: session.gameUrl,
+              activePlayers: session.activePlayers,
+              version: session.version,
+            })
+          } else if (session) {
+            // No room context, send as-is (legacy solo game support)
             socket.emit('session-state', {
               gameState: session.gameState,
               currentGame: session.currentGame,
@@ -535,8 +623,13 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             // Notify all connected clients about the new session
             const newSession = await getArcadeSession(data.userId)
             if (newSession) {
+              // Extract game-specific state from namespaced storage
+              const gameStateForClient = getGameStateFromSession(
+                newSession,
+                newSession.currentGame
+              )
               io!.to(`arcade:${data.userId}`).emit('session-state', {
-                gameState: newSession.gameState,
+                gameState: gameStateForClient, // Send only the current game's state
                 currentGame: newSession.currentGame,
                 gameUrl: newSession.gameUrl,
                 activePlayers: newSession.activePlayers,
@@ -550,8 +643,12 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         const result = await applyGameMove(data.userId, data.move, data.roomId)
 
         if (result.success && result.session) {
+          // Extract game-specific state from namespaced storage
+          const gameName = result.session.currentGame
+          const gameStateForClient = getGameStateFromSession(result.session, gameName)
+
           const moveAcceptedData = {
-            gameState: result.session.gameState,
+            gameState: gameStateForClient, // Send only the current game's state
             version: result.session.version,
             move: data.move,
           }
@@ -638,10 +735,18 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         if (sessionUpdated) {
           // Broadcast updated session state to all users in the game room
           const updatedSession = await getArcadeSessionByRoom(roomId)
-          if (updatedSession) {
+          // Get the room's CURRENT game name (not the session's potentially stale one)
+          const roomForJoinEvent = await getRoomById(roomId)
+          const currentRoomGameForJoin = roomForJoinEvent?.gameName as string | undefined
+          if (updatedSession && currentRoomGameForJoin) {
+            // Extract game-specific state from namespaced storage using ROOM's game name
+            const gameStateForClient = getGameStateFromSession(
+              updatedSession,
+              currentRoomGameForJoin
+            )
             io!.to(`game:${roomId}`).emit('session-state', {
-              gameState: updatedSession.gameState,
-              currentGame: updatedSession.currentGame,
+              gameState: gameStateForClient, // Send only the current game's state
+              currentGame: currentRoomGameForJoin, // Use room's game, not session's
               gameUrl: updatedSession.gameUrl,
               activePlayers: updatedSession.activePlayers,
               version: updatedSession.version,
@@ -731,10 +836,18 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         if (sessionUpdated) {
           // Broadcast updated session state to all users in the game room
           const updatedSession = await getArcadeSessionByRoom(roomId)
-          if (updatedSession) {
+          // Get the room's CURRENT game name (not the session's potentially stale one)
+          const roomForPlayersUpdate = await getRoomById(roomId)
+          const currentRoomGameForPlayers = roomForPlayersUpdate?.gameName as string | undefined
+          if (updatedSession && currentRoomGameForPlayers) {
+            // Extract game-specific state from namespaced storage using ROOM's game name
+            const gameStateForClient = getGameStateFromSession(
+              updatedSession,
+              currentRoomGameForPlayers
+            )
             io!.to(`game:${roomId}`).emit('session-state', {
-              gameState: updatedSession.gameState,
-              currentGame: updatedSession.currentGame,
+              gameState: gameStateForClient, // Send only the current game's state
+              currentGame: currentRoomGameForPlayers, // Use room's game, not session's
               gameUrl: updatedSession.gameUrl,
               activePlayers: updatedSession.activePlayers,
               version: updatedSession.version,

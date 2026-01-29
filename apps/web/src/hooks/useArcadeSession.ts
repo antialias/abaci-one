@@ -204,6 +204,18 @@ export function useArcadeSession<TState>(
     sendCursorUpdate: socketSendCursorUpdate,
   } = useArcadeSocket({
     onSessionState: (data) => {
+      // Debug: Log the full state received from server
+      const stateObj = data.gameState as Record<string, unknown>
+      console.log('[ArcadeSession] onSessionState received:', {
+        currentGame: data.currentGame,
+        version: data.version,
+        stateKeys: stateObj ? Object.keys(stateObj).slice(0, 10) : [],
+        // Log critical matching game fields
+        gameCardsLength: Array.isArray(stateObj?.gameCards) ? (stateObj.gameCards as unknown[]).length : 'not-array',
+        flippedCardsLength: Array.isArray(stateObj?.flippedCards) ? (stateObj.flippedCards as unknown[]).length : 'not-array',
+        gamePhase: stateObj?.gamePhase,
+        gameType: stateObj?.gameType,
+      })
       optimistic.syncWithServer(data.gameState as TState, data.version)
     },
 
@@ -314,6 +326,7 @@ export function useArcadeSession<TState>(
   // Auto-join session when connected
   useEffect(() => {
     if (connected && autoJoin && userId) {
+      console.log('[ArcadeSession] Auto-joining session:', { userId, roomId: roomId || 'none' })
       joinSession(userId, roomId)
     }
   }, [connected, autoJoin, userId, roomId, joinSession])

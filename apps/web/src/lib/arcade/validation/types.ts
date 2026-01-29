@@ -3,6 +3,7 @@
  * Used on both client and server for arcade session validation
  */
 
+import type { z } from 'zod'
 import type { MemoryPairsState } from '@/arcade-games/matching/types'
 import type { MemoryQuizState as SorobanQuizState } from '@/arcade-games/memory-quiz/types'
 
@@ -78,6 +79,15 @@ export interface PracticeBreakOptions {
  * Base validator interface that all games must implement
  */
 export interface GameValidator<TState = unknown, TMove extends GameMove = GameMove> {
+  /**
+   * Zod schema for runtime validation of game state.
+   * Used to validate state loaded from database or received from clients.
+   *
+   * Optional for backward compatibility - games without this will skip
+   * runtime validation (less safe but allows gradual migration).
+   */
+  stateSchema?: z.ZodType<TState>
+
   /**
    * Validate a game move and return the new state if valid
    * Can be async to support lazy-loaded dependencies (e.g., ES modules)

@@ -47,7 +47,6 @@ const manifest: GameManifest = {
 
 const defaultConfig: CardSortingConfig = {
   cardCount: 8,
-  showNumbers: true,
   timeLimit: null,
   gameMode: 'solo',
 }

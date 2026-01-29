@@ -1,12 +1,13 @@
 import type { GameValidator, ValidationResult } from '@/lib/arcade/game-sdk'
-import type {
-  KnowYourWorldConfig,
-  KnowYourWorldMove,
-  KnowYourWorldState,
-  GuessRecord,
-  AssistanceLevel,
+import {
+  KnowYourWorldStateSchema,
+  type KnowYourWorldConfig,
+  type KnowYourWorldMove,
+  type KnowYourWorldState,
+  type GuessRecord,
+  type AssistanceLevel,
+  type RegionSize,
 } from './types'
-import type { RegionSize } from './maps'
 
 /**
  * Get the nth non-space letter from a string.
@@ -75,6 +76,9 @@ async function getFilteredMapDataBySizesLazy(
 export class KnowYourWorldValidator
   implements GameValidator<KnowYourWorldState, KnowYourWorldMove>
 {
+  // Zod schema for runtime state validation
+  stateSchema = KnowYourWorldStateSchema
+
   async validateMove(
     state: KnowYourWorldState,
     move: KnowYourWorldMove

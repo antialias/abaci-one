@@ -1,16 +1,17 @@
 import type { GameValidator, ValidationContext, ValidationResult } from '@/lib/arcade/game-sdk'
-import type {
-  AmbushContext,
-  CaptureContext,
-  Color,
-  HarmonyDeclaration,
-  MoveRecord,
-  Piece,
-  RithmomachiaConfig,
-  RithmomachiaMove,
-  RithmomachiaState,
+import {
+  RithmomachiaStateSchema,
+  opponentColor,
+  type AmbushContext,
+  type CaptureContext,
+  type Color,
+  type HarmonyDeclaration,
+  type MoveRecord,
+  type Piece,
+  type RithmomachiaConfig,
+  type RithmomachiaMove,
+  type RithmomachiaState,
 } from './types'
-import { opponentColor } from './types'
 import { hasAnyValidHarmony, isHarmonyStillValid, validateHarmony } from './utils/harmonyValidator'
 import { validateMove } from './utils/pathValidator'
 import {
@@ -29,6 +30,9 @@ import { computeZobristHash, isThreefoldRepetition } from './utils/zobristHash'
  * Implements all rules: movement, captures, harmony, victory conditions.
  */
 export class RithmomachiaValidator implements GameValidator<RithmomachiaState, RithmomachiaMove> {
+  // Zod schema for runtime validation of state loaded from database
+  stateSchema = RithmomachiaStateSchema
+
   /**
    * Get initial game state from config.
    */

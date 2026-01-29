@@ -1,114 +1,271 @@
-import type { GameConfig, GameMove, GameState } from '@/lib/arcade/game-sdk'
-import type { ContinentId } from './continents'
-import type { MapDifficultyConfig, RegionSize } from './maps'
+/**
+ * Know Your World - Type Definitions
+ *
+ * This module uses Zod schemas as the single source of truth for types.
+ * TypeScript types are inferred from Zod schemas using z.infer<>.
+ *
+ * This enables:
+ * - Compile-time type checking (TypeScript)
+ * - Runtime validation (Zod) for client-server state sync
+ * - Automatic detection of schema mismatches when loading from database
+ */
+
+import { z } from 'zod'
+
+// =============================================================================
+// Shared Enums (Zod schemas that can be reused)
+// =============================================================================
 
 /**
  * Assistance level - controls gameplay features (hints, hot/cold, etc.)
  * Separate from region filtering
  */
-export type AssistanceLevel = 'learning' | 'guided' | 'helpful' | 'standard' | 'none'
+export const AssistanceLevelSchema = z.enum([
+  'learning',
+  'guided',
+  'helpful',
+  'standard',
+  'none',
+])
+export type AssistanceLevel = z.infer<typeof AssistanceLevelSchema>
 
-// Game configuration (persisted to database)
-export interface KnowYourWorldConfig extends GameConfig {
-  selectedMap: 'world' | 'usa'
-  gameMode: 'cooperative' | 'race' | 'turn-based'
-  // Region filtering (which regions to include by size)
-  includeSizes: RegionSize[] // e.g., ['huge', 'large'] for major regions only
-  // Assistance level (gameplay features)
-  assistanceLevel: AssistanceLevel
-  // Legacy field - kept for backwards compatibility
-  difficulty?: string // @deprecated Use includeSizes + assistanceLevel instead
-  selectedContinent: ContinentId | 'all' // continent filter for world map ('all' = no filter)
-}
+/**
+ * Region size categories for filtering
+ */
+export const RegionSizeSchema = z.enum(['huge', 'large', 'medium', 'small', 'tiny'])
+export type RegionSize = z.infer<typeof RegionSizeSchema>
 
-// Map data structures
-export interface MapRegion {
-  id: string // Unique identifier (e.g., "france", "california")
-  name: string // Display name (e.g., "France", "California")
-  path: string // SVG path data for the region boundary
-  center: [number, number] // [x, y] coordinates for label placement
-}
+/**
+ * Continent identifiers for world map filtering
+ */
+export const ContinentIdSchema = z.enum([
+  'africa',
+  'asia',
+  'europe',
+  'north-america',
+  'south-america',
+  'oceania',
+  'antarctica',
+])
+export type ContinentId = z.infer<typeof ContinentIdSchema>
 
-export interface MapData {
-  id: string // "world" or "usa"
-  name: string // "World" or "USA States"
-  viewBox: string // SVG viewBox attribute - may be cropped (e.g., "346.40 53.73 247.56 360.70" for Europe)
-  originalViewBox: string // Original full map viewBox (e.g., "0 0 1000 500") - used for fit-crop-with-fill
-  customCrop: string | null // Custom crop region if any, null if no custom crop applied
-  regions: MapRegion[]
-  difficultyConfig?: MapDifficultyConfig // Optional per-map difficulty config (uses global default if not provided)
-}
+/**
+ * Map selection
+ */
+export const MapSelectionSchema = z.enum(['world', 'usa'])
+export type MapSelection = z.infer<typeof MapSelectionSchema>
 
-// Individual guess record
-export interface GuessRecord {
-  playerId: string
-  regionId: string
-  regionName: string
-  correct: boolean
-  attempts: number // How many tries before getting it right
-  timestamp: number
-}
+/**
+ * Game mode
+ */
+export const GameModeSchema = z.enum(['cooperative', 'race', 'turn-based'])
+export type GameMode = z.infer<typeof GameModeSchema>
 
-// Game state (synchronized across clients)
-export interface KnowYourWorldState extends GameState {
-  gamePhase: 'setup' | 'playing' | 'results'
+/**
+ * Game phase
+ */
+export const GamePhaseSchema = z.enum(['setup', 'playing', 'results'])
+export type GamePhase = z.infer<typeof GamePhaseSchema>
+
+// =============================================================================
+// Game Configuration Schema
+// =============================================================================
+
+export const KnowYourWorldConfigSchema = z.object({
+  selectedMap: MapSelectionSchema,
+  gameMode: GameModeSchema,
+  includeSizes: z.array(RegionSizeSchema),
+  assistanceLevel: AssistanceLevelSchema,
+  difficulty: z.string().optional(), // @deprecated - kept for backwards compatibility
+  selectedContinent: z.union([ContinentIdSchema, z.literal('all')]),
+  studyDuration: z.number().optional(), // Duration in seconds for study mode
+})
+
+/**
+ * Game configuration type - inferred from Zod schema
+ * Compatible with GameConfig (Record<string, unknown>)
+ */
+export type KnowYourWorldConfig = z.infer<typeof KnowYourWorldConfigSchema>
+
+// =============================================================================
+// Map Data Structures
+// =============================================================================
+
+/**
+ * Basic region data from map
+ */
+export const MapRegionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  path: z.string(),
+  center: z.tuple([z.number(), z.number()]), // SVG coordinates of region centroid
+})
+export type MapRegion = z.infer<typeof MapRegionSchema>
+
+/**
+ * Hints mode for difficulty levels
+ */
+export const HintsModeSchema = z.enum(['onRequest', 'limited', 'none'])
+export type HintsMode = z.infer<typeof HintsModeSchema>
+
+/**
+ * Give up behavior mode
+ */
+export const GiveUpModeSchema = z.enum(['reaskSoon', 'reaskEnd', 'countsAgainst', 'skipEntirely'])
+export type GiveUpMode = z.infer<typeof GiveUpModeSchema>
+
+/**
+ * Difficulty level configuration
+ */
+export const DifficultyLevelSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  emoji: z.string().optional(),
+  description: z.string().optional(),
+  detailedDescription: z.string().optional(),
+  includeSizes: z.array(RegionSizeSchema).optional(),
+  excludeRegions: z.array(z.string()).optional(),
+  keepPercentile: z.number().optional(),
+  hotColdEnabled: z.boolean().optional(),
+  hintsMode: HintsModeSchema.optional(),
+  hintLimit: z.number().optional(),
+  autoHintDefault: z.boolean().optional(),
+  struggleHintEnabled: z.boolean().optional(),
+  giveUpMode: GiveUpModeSchema.optional(),
+  wrongClickShowsName: z.boolean().optional(),
+})
+export type DifficultyLevel = z.infer<typeof DifficultyLevelSchema>
+
+/**
+ * Per-map difficulty configuration
+ */
+export const MapDifficultyConfigSchema = z.object({
+  levels: z.array(DifficultyLevelSchema),
+  defaultLevel: z.string(),
+})
+export type MapDifficultyConfig = z.infer<typeof MapDifficultyConfigSchema>
+
+/**
+ * Map data structure containing all information about a map
+ */
+export const MapDataSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  viewBox: z.string(),
+  originalViewBox: z.string(),
+  customCrop: z.string().nullable(),
+  regions: z.array(MapRegionSchema),
+  difficultyConfig: MapDifficultyConfigSchema.optional(),
+})
+export type MapData = z.infer<typeof MapDataSchema>
+
+// =============================================================================
+// Game State Schema (synchronized across clients - NEEDS runtime validation)
+// =============================================================================
+
+/**
+ * Individual guess record
+ */
+export const GuessRecordSchema = z.object({
+  playerId: z.string(),
+  regionId: z.string(),
+  regionName: z.string(),
+  correct: z.boolean(),
+  attempts: z.number(),
+  timestamp: z.number(),
+})
+export type GuessRecord = z.infer<typeof GuessRecordSchema>
+
+/**
+ * Give up reveal state (for animation)
+ */
+export const GiveUpRevealSchema = z
+  .object({
+    regionId: z.string(),
+    regionName: z.string(),
+    timestamp: z.number(),
+  })
+  .nullable()
+
+/**
+ * Hint active state
+ */
+export const HintActiveSchema = z
+  .object({
+    regionId: z.string(),
+    timestamp: z.number(),
+  })
+  .nullable()
+
+/**
+ * Player metadata schema - flexible record for player info
+ */
+export const PlayerMetadataSchema = z.record(z.string(), z.any())
+
+/**
+ * Game state schema - the main synchronized state
+ * This is the single source of truth for what KnowYourWorldState contains
+ */
+export const KnowYourWorldStateSchema = z.object({
+  // Game phase
+  gamePhase: GamePhaseSchema,
 
   // Setup configuration
-  selectedMap: 'world' | 'usa'
-  gameMode: 'cooperative' | 'race' | 'turn-based'
-  // Region filtering (which regions to include by size)
-  includeSizes: RegionSize[] // e.g., ['huge', 'large'] for major regions only
-  // Assistance level (gameplay features)
-  assistanceLevel: AssistanceLevel
-  // Legacy field - kept for backwards compatibility during migration
-  difficulty?: string // @deprecated Use includeSizes + assistanceLevel instead
-  selectedContinent: ContinentId | 'all' // continent filter for world map ('all' = no filter)
+  selectedMap: MapSelectionSchema,
+  gameMode: GameModeSchema,
+  includeSizes: z.array(RegionSizeSchema),
+  assistanceLevel: AssistanceLevelSchema,
+  difficulty: z.string().optional(), // @deprecated
+  selectedContinent: z.union([ContinentIdSchema, z.literal('all')]),
 
   // Game progression
-  currentPrompt: string | null // Region name to find (e.g., "France")
-  regionsToFind: string[] // Queue of region IDs still to find
-  regionsFound: string[] // Region IDs already found
-  regionsGivenUp: string[] // Region IDs that were given up (for re-asking and scoring)
-  currentPlayer: string // For turn-based mode
+  currentPrompt: z.string().nullable(),
+  regionsToFind: z.array(z.string()),
+  regionsFound: z.array(z.string()),
+  regionsGivenUp: z.array(z.string()),
+  currentPlayer: z.string(),
 
   // Scoring
-  scores: Record<string, number> // playerId -> points
-  attempts: Record<string, number> // playerId -> total wrong clicks
-  guessHistory: GuessRecord[] // Complete history of all guesses
+  scores: z.record(z.string(), z.number()),
+  attempts: z.record(z.string(), z.number()),
+  guessHistory: z.array(GuessRecordSchema),
 
   // Timing
-  startTime: number
-  endTime?: number
+  startTime: z.number(),
+  endTime: z.number().optional(),
 
   // Multiplayer
-  activePlayers: string[]
-  activeUserIds: string[] // Unique session/viewer IDs participating in the game
-  playerMetadata: Record<string, any>
+  activePlayers: z.array(z.string()),
+  activeUserIds: z.array(z.string()),
+  playerMetadata: PlayerMetadataSchema,
 
-  // Give up reveal state (for animation)
-  giveUpReveal: {
-    regionId: string
-    regionName: string
-    timestamp: number // For animation timing key
-  } | null
+  // Give up reveal state
+  giveUpReveal: GiveUpRevealSchema,
 
-  // Unanimous give-up voting (for cooperative multiplayer)
-  giveUpVotes: string[] // Session/viewer IDs (userIds) who have voted to give up on current prompt
+  // Unanimous give-up voting
+  giveUpVotes: z.array(z.string()),
 
   // Hint system
-  hintsUsed: number // Total hints used this game
-  hintActive: {
-    regionId: string
-    timestamp: number // For animation timing
-  } | null
+  hintsUsed: z.number(),
+  hintActive: HintActiveSchema,
 
-  // Name confirmation progress (learning mode - type first N letters)
-  // Tracks how many letters have been confirmed for the current prompt
-  // Resets to 0 when currentPrompt changes
-  nameConfirmationProgress: number
-}
+  // Name confirmation progress (learning mode)
+  nameConfirmationProgress: z.number(),
+})
 
-// Move types
+/**
+ * Game state type - inferred from schema
+ * Use this type for compile-time checking
+ */
+export type KnowYourWorldState = z.infer<typeof KnowYourWorldStateSchema>
+
+// =============================================================================
+// Move Types (could also be validated, but less critical than state)
+// =============================================================================
+
+// For now, keep moves as TypeScript types. They could be converted to Zod later
+// if we want to validate incoming moves on the server.
+
 export type KnowYourWorldMove =
   | {
       type: 'START_GAME'
@@ -120,8 +277,8 @@ export type KnowYourWorldMove =
         playerMetadata: Record<string, any>
         selectedMap: 'world' | 'usa'
         gameMode: 'cooperative' | 'race' | 'turn-based'
-        includeSizes: RegionSize[] // Which region sizes to include
-        assistanceLevel: AssistanceLevel // Gameplay assistance level
+        includeSizes: RegionSize[]
+        assistanceLevel: AssistanceLevel
       }
     }
   | {
@@ -172,7 +329,7 @@ export type KnowYourWorldMove =
       userId: string
       timestamp: number
       data: {
-        includeSizes: RegionSize[] // Which region sizes to include
+        includeSizes: RegionSize[]
       }
     }
   | {
@@ -220,7 +377,7 @@ export type KnowYourWorldMove =
       userId: string
       timestamp: number
       data: {
-        letter: string // The letter being confirmed (lowercase)
-        letterIndex: number // Which letter position (0-indexed)
+        letter: string
+        letterIndex: number
       }
     }

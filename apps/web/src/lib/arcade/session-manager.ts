@@ -9,6 +9,92 @@ import { buildPlayerOwnershipMap, type PlayerOwnershipMap } from './player-owner
 import { getValidator, type GameName } from './validators'
 import type { GameMove } from './validation/types'
 
+/**
+ * Namespaced game state structure.
+ * Each game's state is stored under its game name key.
+ * This allows switching games without losing state.
+ */
+export type NamespacedGameState = {
+  [gameName: string]: unknown
+}
+
+/**
+ * Check if gameState is in the new namespaced format.
+ * Old format: flat state object
+ * New format: { [gameName]: state }
+ */
+function isNamespacedState(gameState: unknown): gameState is NamespacedGameState {
+  if (!gameState || typeof gameState !== 'object') return false
+  // Check if it looks like a namespaced state (has game name keys)
+  // The old format would have keys like 'gamePhase', 'regionsFound', etc.
+  // The new format has keys like 'know-your-world', 'matching', etc.
+  const keys = Object.keys(gameState)
+  // If it has typical game state keys, it's the old format
+  const oldFormatKeys = ['gamePhase', 'currentPrompt', 'cards', 'board', 'score']
+  return !keys.some((key) => oldFormatKeys.includes(key))
+}
+
+/**
+ * Extract a game's state from the session, handling both old and new formats.
+ * @param session - The arcade session
+ * @param gameName - The game to extract state for
+ * @returns The game-specific state, or undefined if not found
+ */
+export function getGameStateFromSession(
+  session: schema.ArcadeSession,
+  gameName: string
+): unknown | undefined {
+  const gameState = session.gameState as unknown
+
+  const isNamespaced = isNamespacedState(gameState)
+  console.log('[getGameStateFromSession]', {
+    gameName,
+    isNamespaced,
+    topLevelKeys: gameState ? Object.keys(gameState as object).slice(0, 10) : [],
+    sessionCurrentGame: session.currentGame,
+    roomId: session.roomId,
+  })
+
+  if (isNamespaced) {
+    // New format: extract from namespace
+    const extracted = (gameState as NamespacedGameState)[gameName]
+    console.log('[getGameStateFromSession] Extracted namespaced state:', {
+      gameName,
+      hasState: extracted !== undefined,
+      extractedKeys: extracted ? Object.keys(extracted as object).slice(0, 10) : [],
+    })
+    return extracted
+  }
+
+  // Old format: if currentGame matches, return the flat state
+  // This provides backward compatibility during migration
+  if (session.currentGame === gameName) {
+    console.log('[getGameStateFromSession] Using old format flat state')
+    return gameState
+  }
+
+  // Game mismatch with old format - no state available
+  console.log('[getGameStateFromSession] Old format but game mismatch, returning undefined')
+  return undefined
+}
+
+/**
+ * Create a namespaced game state object with the given game's state.
+ * Preserves existing game states when updating.
+ */
+export function setGameStateInNamespace(
+  existingState: unknown,
+  gameName: string,
+  newState: unknown
+): NamespacedGameState {
+  const namespaced: NamespacedGameState = isNamespacedState(existingState)
+    ? { ...existingState }
+    : {}
+
+  namespaced[gameName] = newState
+  return namespaced
+}
+
 export interface CreateSessionOptions {
   userId: string // User who owns/created the session (typically room creator)
   gameName: GameName
@@ -102,12 +188,18 @@ export async function createArcadeSession(
   // This ensures the user can start a new game session
   await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.userId, user.id))
 
+  // Store game state in namespaced format: { [gameName]: state }
+  // This allows switching games without losing state
+  const namespacedState: NamespacedGameState = {
+    [options.gameName]: options.initialState,
+  }
+
   const newSession: schema.NewArcadeSession = {
     roomId: options.roomId, // PRIMARY KEY - one session per room
     userId: user.id, // Use the actual database ID, not the guestId
     currentGame: options.gameName,
     gameUrl: options.gameUrl,
-    gameState: options.initialState as any,
+    gameState: namespacedState as any,
     activePlayers: options.activePlayers as any,
     startedAt: now,
     lastActivityAt: now,
@@ -202,7 +294,20 @@ export async function applyGameMove(
   }
 
   // Get the validator for this game
-  const validator = await getValidator(session.currentGame as GameName)
+  const gameName = session.currentGame as GameName
+  const validator = await getValidator(gameName)
+
+  // Extract the current game's state from the namespaced storage
+  const currentGameState = getGameStateFromSession(session, gameName)
+  if (currentGameState === undefined) {
+    console.error(
+      `[SessionManager] No state found for game ${gameName} in session ${session.roomId}`
+    )
+    return {
+      success: false,
+      error: `No state found for game ${gameName}`,
+    }
+  }
 
   // Fetch player ownership for authorization checks (room-based games)
   let playerOwnership: PlayerOwnershipMap | undefined
@@ -227,7 +332,8 @@ export async function applyGameMove(
   }
 
   // Validate the move with authorization context (use internal userId, not guestId)
-  const validationResult = await validator.validateMove(session.gameState, move, {
+  // Pass the extracted game-specific state, not the full namespaced object
+  const validationResult = await validator.validateMove(currentGameState, move, {
     userId: internalUserId || userId, // Use internal userId for room-based games
     playerOwnership,
   })
@@ -240,6 +346,13 @@ export async function applyGameMove(
   }
 
   // Update the session with new state (using optimistic locking)
+  // Store the new state in the namespaced format, preserving other games' states
+  const updatedNamespacedState = setGameStateInNamespace(
+    session.gameState,
+    gameName,
+    validationResult.newState
+  )
+
   const now = new Date()
   const expiresAt = new Date(now.getTime() + TTL_HOURS * 60 * 60 * 1000)
 
@@ -247,7 +360,7 @@ export async function applyGameMove(
     const [updatedSession] = await db
       .update(schema.arcadeSessions)
       .set({
-        gameState: validationResult.newState as any,
+        gameState: updatedNamespacedState as any,
         lastActivityAt: now,
         expiresAt,
         version: session.version + 1,
@@ -350,24 +463,41 @@ export async function updateSessionActivePlayers(
   const session = await getArcadeSessionByRoom(roomId)
   if (!session) return false
 
-  // Only update if game is in setup phase (not started yet)
-  const gameState = session.gameState as any
-  if (gameState.gamePhase !== 'setup') {
+  // Extract the current game's state
+  const gameName = session.currentGame as string
+  const currentGameState = getGameStateFromSession(session, gameName) as Record<string, unknown>
+
+  if (!currentGameState) {
+    console.error(
+      `[SessionManager] No state found for game ${gameName} when updating active players`
+    )
     return false
   }
 
-  // Update both the session's activePlayers field AND the game state
+  // Only update if game is in setup phase (not started yet)
+  if (currentGameState.gamePhase !== 'setup') {
+    return false
+  }
+
+  // Update the game state with new player IDs
   const updatedGameState = {
-    ...gameState,
+    ...currentGameState,
     activePlayers: playerIds,
   }
+
+  // Store back in namespaced format
+  const updatedNamespacedState = setGameStateInNamespace(
+    session.gameState,
+    gameName,
+    updatedGameState
+  )
 
   const now = new Date()
   await db
     .update(schema.arcadeSessions)
     .set({
       activePlayers: playerIds as any,
-      gameState: updatedGameState as any,
+      gameState: updatedNamespacedState as any,
       lastActivityAt: now,
       version: session.version + 1,
     })

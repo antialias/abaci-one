@@ -1,117 +1,159 @@
-import type { GameConfig, GameState } from '@/lib/arcade/game-sdk/types'
+/**
+ * Card Sorting Game - Type Definitions
+ *
+ * This module uses Zod schemas as the single source of truth for types.
+ * TypeScript types are inferred from Zod schemas using z.infer<>.
+ */
+
+import { z } from 'zod'
 
 // ============================================================================
 // Player Metadata
 // ============================================================================
 
-export interface PlayerMetadata {
-  id: string // Player ID (UUID)
-  name: string
-  emoji: string
-  userId: string
-}
+export const PlayerMetadataSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  emoji: z.string(),
+  userId: z.string(),
+})
+export type PlayerMetadata = z.infer<typeof PlayerMetadataSchema>
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-export type GameMode = 'solo' | 'collaborative' | 'competitive' | 'relay'
+export const GameModeSchema = z.enum(['solo', 'collaborative', 'competitive', 'relay'])
+export type GameMode = z.infer<typeof GameModeSchema>
 
-export interface CardSortingConfig extends GameConfig {
-  cardCount: 5 | 8 | 12 | 15 // Difficulty (number of cards)
-  timeLimit: number | null // Optional time limit (seconds), null = unlimited
-  gameMode: GameMode // Game mode (solo, collaborative, competitive, relay)
-}
+export const CardCountSchema = z.union([
+  z.literal(5),
+  z.literal(8),
+  z.literal(12),
+  z.literal(15),
+])
+export type CardCount = z.infer<typeof CardCountSchema>
+
+export const CardSortingConfigSchema = z.object({
+  cardCount: CardCountSchema,
+  timeLimit: z.number().nullable(),
+  gameMode: GameModeSchema,
+})
+export type CardSortingConfig = z.infer<typeof CardSortingConfigSchema>
 
 // ============================================================================
 // Core Data Types
 // ============================================================================
 
-export type GamePhase = 'setup' | 'playing' | 'results'
+export const GamePhaseSchema = z.enum(['setup', 'playing', 'results'])
+export type GamePhase = z.infer<typeof GamePhaseSchema>
 
-export interface SortingCard {
-  id: string // Unique ID for this card instance
-  number: number // The abacus value (0-99+)
-  svgContent: string // Serialized AbacusReact SVG
-}
+export const SortingCardSchema = z.object({
+  id: z.string(),
+  number: z.number(),
+  svgContent: z.string(),
+})
+export type SortingCard = z.infer<typeof SortingCardSchema>
 
-export interface CardPosition {
-  cardId: string
-  x: number // % of viewport width (0-100)
-  y: number // % of viewport height (0-100)
-  rotation: number // degrees (-15 to 15)
-  zIndex: number
-  draggedByPlayerId?: string // ID of player currently dragging this card
-  draggedByWindowId?: string // ID of specific window/tab doing the drag
-}
+export const CardPositionSchema = z.object({
+  cardId: z.string(),
+  x: z.number(),
+  y: z.number(),
+  rotation: z.number(),
+  zIndex: z.number(),
+  draggedByPlayerId: z.string().optional(),
+  draggedByWindowId: z.string().optional(),
+})
+export type CardPosition = z.infer<typeof CardPositionSchema>
 
-export interface PlacedCard {
-  card: SortingCard // The card data
-  position: number // Which slot it's in (0-indexed)
-}
+export const PlacedCardSchema = z.object({
+  card: SortingCardSchema,
+  position: z.number(),
+})
+export type PlacedCard = z.infer<typeof PlacedCardSchema>
 
-export interface ScoreBreakdown {
-  finalScore: number // 0-100 weighted average
-  exactMatches: number // Cards in exactly correct position
-  lcsLength: number // Longest common subsequence length
-  inversions: number // Number of out-of-order pairs
-  relativeOrderScore: number // 0-100 based on LCS
-  exactPositionScore: number // 0-100 based on exact matches
-  inversionScore: number // 0-100 based on inversions
-  elapsedTime: number // Seconds taken
-}
+export const ScoreBreakdownSchema = z.object({
+  finalScore: z.number(),
+  exactMatches: z.number(),
+  lcsLength: z.number(),
+  inversions: z.number(),
+  relativeOrderScore: z.number(),
+  exactPositionScore: z.number(),
+  inversionScore: z.number(),
+  elapsedTime: z.number(),
+})
+export type ScoreBreakdown = z.infer<typeof ScoreBreakdownSchema>
+
+export const CursorPositionSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+})
+export type CursorPosition = z.infer<typeof CursorPositionSchema>
+
+// ============================================================================
+// Paused Game State
+// ============================================================================
+
+export const PausedGameStateSchema = z.object({
+  selectedCards: z.array(SortingCardSchema),
+  availableCards: z.array(SortingCardSchema),
+  placedCards: z.array(SortingCardSchema.nullable()),
+  cardPositions: z.array(CardPositionSchema),
+  gameStartTime: z.number(),
+})
+export type PausedGameState = z.infer<typeof PausedGameStateSchema>
 
 // ============================================================================
 // Game State
 // ============================================================================
 
-export interface CardSortingState extends GameState {
+export const CardSortingStateSchema = z.object({
   // Configuration
-  cardCount: 5 | 8 | 12 | 15
-  timeLimit: number | null
-  gameMode: GameMode
+  cardCount: CardCountSchema,
+  timeLimit: z.number().nullable(),
+  gameMode: GameModeSchema,
 
   // Game phase
-  gamePhase: GamePhase
+  gamePhase: GamePhaseSchema,
 
   // Player & timing
-  playerId: string // Single player ID (primary player in solo/collaborative)
-  playerMetadata: PlayerMetadata // Player display info
-  activePlayers: string[] // All active player IDs (for collaborative mode)
-  allPlayerMetadata: Map<string, PlayerMetadata> // Metadata for all players
-  gameStartTime: number | null
-  gameEndTime: number | null
+  playerId: z.string(),
+  playerMetadata: PlayerMetadataSchema,
+  activePlayers: z.array(z.string()),
+  allPlayerMetadata: z.record(z.string(), PlayerMetadataSchema), // Was Map, now Record for serialization
+  gameStartTime: z.number().nullable(),
+  gameEndTime: z.number().nullable(),
 
   // Cards
-  selectedCards: SortingCard[] // The N cards for this game
-  correctOrder: SortingCard[] // Sorted by number (answer key)
-  availableCards: SortingCard[] // Cards not yet placed
-  placedCards: (SortingCard | null)[] // Array of N slots (null = empty)
-  cardPositions: CardPosition[] // Viewport-relative positions for all cards
+  selectedCards: z.array(SortingCardSchema),
+  correctOrder: z.array(SortingCardSchema),
+  availableCards: z.array(SortingCardSchema),
+  placedCards: z.array(SortingCardSchema.nullable()),
+  cardPositions: z.array(CardPositionSchema),
 
-  // Multiplayer cursors (collaborative mode)
-  cursorPositions: Map<string, { x: number; y: number }> // Player ID -> cursor position
+  // Multiplayer cursors (collaborative mode) - was Map, now Record for serialization
+  cursorPositions: z.record(z.string(), CursorPositionSchema),
 
-  // UI state (client-only, not in server state)
-  selectedCardId: string | null // Currently selected card
+  // UI state
+  selectedCardId: z.string().nullable(),
 
   // Results
-  scoreBreakdown: ScoreBreakdown | null // Final score details
+  scoreBreakdown: ScoreBreakdownSchema.nullable(),
 
-  // Pause/Resume (standard pattern)
-  originalConfig?: CardSortingConfig
-  pausedGamePhase?: GamePhase
-  pausedGameState?: {
-    selectedCards: SortingCard[]
-    availableCards: SortingCard[]
-    placedCards: (SortingCard | null)[]
-    cardPositions: CardPosition[]
-    gameStartTime: number
-  }
-}
+  // Pause/Resume
+  originalConfig: CardSortingConfigSchema.optional(),
+  pausedGamePhase: GamePhaseSchema.optional(),
+  pausedGameState: PausedGameStateSchema.optional(),
+})
+
+/**
+ * Core game state type - inferred from Zod schema
+ * Note: allPlayerMetadata and cursorPositions were Map in old code, now Record for serialization
+ */
+export type CardSortingState = z.infer<typeof CardSortingStateSchema>
 
 // ============================================================================
-// Game Moves
+// Game Moves (TypeScript union - could be Zod later if needed)
 // ============================================================================
 
 export type CardSortingMove =
@@ -122,7 +164,7 @@ export type CardSortingMove =
       timestamp: number
       data: {
         playerMetadata: PlayerMetadata
-        selectedCards: SortingCard[] // Pre-selected random cards
+        selectedCards: SortingCard[]
       }
     }
   | {
@@ -131,8 +173,8 @@ export type CardSortingMove =
       userId: string
       timestamp: number
       data: {
-        cardId: string // Which card to place
-        position: number // Which slot (0-indexed)
+        cardId: string
+        position: number
       }
     }
   | {
@@ -141,8 +183,8 @@ export type CardSortingMove =
       userId: string
       timestamp: number
       data: {
-        cardId: string // Which card to insert
-        insertPosition: number // Where to insert (0-indexed, can be 0 to cardCount)
+        cardId: string
+        insertPosition: number
       }
     }
   | {
@@ -151,7 +193,7 @@ export type CardSortingMove =
       userId: string
       timestamp: number
       data: {
-        position: number // Which slot to remove from
+        position: number
       }
     }
   | {
@@ -160,7 +202,7 @@ export type CardSortingMove =
       userId: string
       timestamp: number
       data: {
-        finalSequence?: SortingCard[] // Optional - if provided, use this as the final placement
+        finalSequence?: SortingCard[]
       }
     }
   | {
@@ -218,28 +260,28 @@ export type CardSortingMove =
       userId: string
       timestamp: number
       data: {
-        x: number // % of viewport width (0-100)
-        y: number // % of viewport height (0-100)
+        x: number
+        y: number
       }
     }
 
 // ============================================================================
-// Component Props
+// Component Props (TypeScript only - not serialized)
 // ============================================================================
 
 export interface SortingCardProps {
   card: SortingCard
   isSelected: boolean
   isPlaced: boolean
-  isCorrect?: boolean // After checking solution
+  isCorrect?: boolean
   onClick: () => void
 }
 
 export interface PositionSlotProps {
   position: number
   card: SortingCard | null
-  isActive: boolean // If slot is clickable
-  isCorrect?: boolean // After checking solution
+  isActive: boolean
+  isCorrect?: boolean
   gradientStyle: React.CSSProperties
   onClick: () => void
 }

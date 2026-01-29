@@ -4,12 +4,13 @@ import type {
   ValidationContext,
   ValidationResult,
 } from '@/lib/arcade/validation/types'
-import type {
-  CardSortingConfig,
-  CardSortingMove,
-  CardSortingState,
-  CardPosition,
-  SortingCard,
+import {
+  CardSortingStateSchema,
+  type CardSortingConfig,
+  type CardSortingMove,
+  type CardSortingState,
+  type CardPosition,
+  type SortingCard,
 } from './types'
 import { calculateScore } from './utils/scoringAlgorithm'
 import { placeCardAtPosition, insertCardAtPosition, removeCardAtPosition } from './utils/validation'
@@ -17,7 +18,6 @@ import { placeCardAtPosition, insertCardAtPosition, removeCardAtPosition } from 
 // Default config for practice breaks (quick games)
 const PRACTICE_BREAK_DEFAULTS: CardSortingConfig = {
   cardCount: 5,
-  showNumbers: false,
   timeLimit: null,
   gameMode: 'solo',
 }
@@ -46,6 +46,9 @@ function generatePracticeBreakCards(count: number): SortingCard[] {
 }
 
 export class CardSortingValidator implements GameValidator<CardSortingState, CardSortingMove> {
+  // Zod schema for runtime validation of state loaded from database
+  stateSchema = CardSortingStateSchema
+
   validateMove(
     state: CardSortingState,
     move: CardSortingMove,
@@ -560,7 +563,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       playerId,
       playerMetadata,
       activePlayers: [playerId],
-      allPlayerMetadata: new Map([[playerId, playerMetadata]]),
+      allPlayerMetadata: { [playerId]: playerMetadata },
       gameStartTime: Date.now(),
       gameEndTime: null,
       selectedCards,
@@ -568,7 +571,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       availableCards: selectedCards, // Cards start in available pool
       placedCards: new Array(fullConfig.cardCount).fill(null),
       cardPositions: [],
-      cursorPositions: new Map(),
+      cursorPositions: {},
       selectedCardId: null,
       scoreBreakdown: null,
     }
@@ -588,7 +591,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         userId: '',
       },
       activePlayers: [],
-      allPlayerMetadata: new Map(),
+      allPlayerMetadata: {},
       gameStartTime: null,
       gameEndTime: null,
       selectedCards: [],
@@ -596,7 +599,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       availableCards: [],
       placedCards: new Array(config.cardCount).fill(null),
       cardPositions: [],
-      cursorPositions: new Map(),
+      cursorPositions: {},
       selectedCardId: null,
       scoreBreakdown: null,
     }
