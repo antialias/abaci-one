@@ -4,10 +4,16 @@
 
 **The MCP sqlite tools query the LOCAL dev database, NOT production.**
 
-To query the production k3s database, use kubectl:
+To query the production database via libSQL:
 ```bash
-kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n abaci exec abaci-app-0 -- sqlite3 /litefs/sqlite.db "YOUR QUERY HERE"
+# Port-forward to libSQL server
+kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n abaci port-forward svc/libsql 8080:8080
+
+# Then use curl or any HTTP client
+curl -X POST http://localhost:8080/v2/pipeline -d '{"requests":[{"type":"execute","stmt":{"sql":"SELECT * FROM users LIMIT 5"}}]}'
 ```
+
+Or exec into an app pod and use sqlite3 tools if needed for debugging.
 
 NEVER use `mcp__sqlite__read_query` or similar when you need production data.
 
@@ -18,6 +24,19 @@ kubeconfig location: `~/.kube/k3s-config`
 ```bash
 kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n abaci get pods
 ```
+
+## Database Architecture
+
+**libSQL Server** - All app pods connect to a single libSQL server for database access.
+
+- **Dev**: `DATABASE_URL=file:./data/sqlite.db` (local SQLite file, no server needed)
+- **Prod**: `DATABASE_URL=http://libsql.abaci.svc.cluster.local:8080`
+
+This replaces the previous LiteFS setup. Benefits:
+- Any pod can handle reads AND writes
+- No write routing complexity
+- No primary/replica distinction for the app
+- Simple client-server model
 
 ## Network Architecture
 
@@ -34,132 +53,59 @@ kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n abaci get pods
 
 ## Deployment Workflow
 
-**NEVER build Docker images locally.** Gitea Actions handles all builds.
+**NEVER build Docker images locally.** GitHub Actions handles all builds.
 
 ### CI/CD Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│              MacBook Runner (ARM64)                      │
-│  Fast builds (~5 min) for:                              │
-│  - Storybook deployment                                  │
-│  - Tests, linting, releases                             │
-│  - npm publish                                           │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          │ fallback if offline
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│              k3s Runner (x86_64)                         │
-│  Required for (~30 min, slower but reliable):           │
-│  - Docker image builds (must be x86_64 for k3s)         │
-│  - Fallback for all JS/TS workflows                     │
-└─────────────────────────────────────────────────────────┘
+GitHub Actions → ghcr.io → Keel → k3s Deployment
 ```
 
-### Automatic Deployment (via Keel)
-
-Fully automatic, no GitHub dependency:
-
-1. Commit and push to Gitea (main branch)
-2. Gitea Actions builds image → pushes to local registry
+1. Push to GitHub (main branch)
+2. GitHub Actions builds image → pushes to ghcr.io
 3. **Keel detects new image** (polls every 2 minutes)
 4. Keel triggers rolling restart of pods
 5. No manual intervention required!
 
-**Registry**: `registry.gitea.svc.cluster.local:5000/abaci-app:latest`
+**Registry**: `ghcr.io/antialias/soroban-abacus-flashcards:latest`
 
 To verify Keel is working:
 ```bash
 kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n keel logs -l app=keel --tail=50
 ```
 
-### Gitea Workflows
-
-| Workflow | Purpose | Runner |
-|----------|---------|--------|
-| `deploy.yml` | Docker image build | k3s only (x86_64) |
-| `smoke-tests.yml` | Smoke tests image | k3s only (x86_64) |
-| `deploy-storybook.yml` | Static site build | MacBook + fallback |
-| `release.yml` | Semantic release | MacBook + fallback |
-| `templates-test.yml` | Package tests | MacBook + fallback |
-
-### MacBook Runner Management
-
-```bash
-# Check status
-launchctl list | grep gitea
-
-# View logs
-tail -f ~/gitea-runner/runner.log
-
-# Restart
-launchctl unload ~/Library/LaunchAgents/com.gitea.act-runner.plist
-launchctl load ~/Library/LaunchAgents/com.gitea.act-runner.plist
-```
-
 ### Manual Rollout (quick restart)
 
 To force pods to pull the latest image:
 ```bash
-kubectl --kubeconfig=~/.kube/k3s-config -n abaci rollout restart statefulset abaci-app
+kubectl --kubeconfig=~/.kube/k3s-config -n abaci rollout restart deployment abaci-app
 ```
-
-## Reference Docs
-
-| Topic | Doc |
-|-------|-----|
-| LiteFS on K8s | `.claude/LITEFS_K8S.md` |
-| Infrastructure README | `README.md` |
 
 ## Key Resources
 
-- **StatefulSet**: `abaci-app` (app pods with LiteFS)
-- **Headless Service**: `abaci-app-headless` (pod-to-pod DNS)
-- **Main Service**: `abaci-app` (load balancer for GET requests)
-- **Primary Service**: `abaci-app-primary` (routes to pod-0 only for writes)
+- **Deployment**: `abaci-app` (app pods)
+- **Deployment**: `libsql` (database server)
+- **Service**: `abaci-app` (load balancer across all app pods)
+- **Service**: `libsql` (internal access to database)
 - **Ingress**: Routes `abaci.one` to app service
-- **IngressRoute**: Routes POST/PUT/DELETE/PATCH to primary service
-
-## CRITICAL: LiteFS Write Routing on k8s
-
-**LiteFS proxy only works properly on Fly.io.** On replicas, it returns a `fly-replay` header expecting Fly.io's infrastructure to re-route to the primary. k8s Traefik doesn't understand this header.
-
-**Symptoms of broken write routing:**
-- POST requests return 200 with empty body (~60-80% of the time)
-- Server logs show `http: proxy response error: context canceled`
-- Works when hitting primary pod directly, fails through load balancer
-
-**Solution implemented:**
-- `abaci-app-primary` service targets only pod-0 (LiteFS primary)
-- Traefik IngressRoute routes POST/PUT/DELETE/PATCH to primary service
-- GET requests still load-balance across all replicas
-
-**Do NOT:**
-- Add API paths to LiteFS `passthrough` config as a workaround
-- Expect LiteFS proxy to forward writes on non-Fly.io deployments
+- **IngressRoute**: Socket.IO sticky sessions for `/api/socket`
 
 ## Common Operations
 
-### Restart pods (rolling)
+### Restart app pods (rolling)
 ```bash
-kubectl --kubeconfig=~/.kube/k3s-config -n abaci rollout restart statefulset abaci-app
+kubectl --kubeconfig=~/.kube/k3s-config -n abaci rollout restart deployment abaci-app
 ```
 
-### Check LiteFS replication
+### Check libSQL server status
 ```bash
-# Primary should show "stream connected"
-kubectl --kubeconfig=~/.kube/k3s-config -n abaci logs abaci-app-0 | grep stream
-
-# Replica should show "connected to cluster"
-kubectl --kubeconfig=~/.kube/k3s-config -n abaci logs abaci-app-1 | grep connected
+kubectl --kubeconfig=~/.kube/k3s-config -n abaci logs -l app=libsql --tail=50
 ```
 
-### Force replica to re-sync (cluster ID mismatch)
+### Run migrations manually
 ```bash
-kubectl --kubeconfig=~/.kube/k3s-config -n abaci scale statefulset abaci-app --replicas=1
-kubectl --kubeconfig=~/.kube/k3s-config -n abaci delete pvc litefs-data-abaci-app-1
-kubectl --kubeconfig=~/.kube/k3s-config -n abaci scale statefulset abaci-app --replicas=2
+# Exec into an app pod
+kubectl --kubeconfig=~/.kube/k3s-config -n abaci exec -it deployment/abaci-app -- node dist/db/migrate.js
 ```
 
 ## Debugging Gitea Actions Runner Performance
@@ -181,12 +127,6 @@ Access via: https://grafana.abaci.one (or use port-forward to localhost)
 | Node CPU Usage | `1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))` | Total CPU with I/O wait |
 | Disk Throughput | `rate(node_disk_read_bytes_total[5m])` | Disk read/write rates |
 | Disk I/O Utilization | `rate(node_disk_io_time_seconds_total[5m])` | Disk saturation (>90% = bottleneck) |
-
-**Known findings from prior investigation:**
-- Gitea runner container uses ~1.3GB memory when idle
-- Node has 15.6GB RAM, ~30% used at baseline
-- Node CPU at ~10% baseline
-- Docker storage on containerd: 54GB at `/var/lib/rancher/k3s/agent/containerd`
 
 **Quick Prometheus queries for debugging:**
 ```promql

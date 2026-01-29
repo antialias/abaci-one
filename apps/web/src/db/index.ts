@@ -1,21 +1,25 @@
-import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { createClient } from '@libsql/client'
+import { drizzle } from 'drizzle-orm/libsql'
 import * as schema from './schema'
 
 /**
  * Database connection and client
  *
- * Creates a singleton SQLite connection with Drizzle ORM.
- * Enables foreign key constraints (required for cascading deletes).
+ * Creates a singleton libSQL connection with Drizzle ORM.
+ *
+ * Connection URL formats:
+ * - Dev: file:./data/sqlite.db (local SQLite file, no server needed)
+ * - Prod: http://libsql.abaci.svc.cluster.local:8080 (libSQL server in k8s)
  *
  * IMPORTANT: The database connection is lazy-loaded to avoid accessing
  * the database at module import time, which would cause build failures
  * when the database doesn't exist (e.g., in CI/CD environments).
  */
 
-const databaseUrl = process.env.DATABASE_URL || './data/sqlite.db'
+const databaseUrl = process.env.DATABASE_URL || 'file:./data/sqlite.db'
+const authToken = process.env.DATABASE_AUTH_TOKEN
 
-let _sqlite: Database.Database | null = null
+let _client: ReturnType<typeof createClient> | null = null
 let _db: ReturnType<typeof drizzle<typeof schema>> | null = null
 
 /**
@@ -24,15 +28,12 @@ let _db: ReturnType<typeof drizzle<typeof schema>> | null = null
  */
 function getDb() {
   if (!_db) {
-    _sqlite = new Database(databaseUrl)
+    _client = createClient({
+      url: databaseUrl,
+      authToken: authToken,
+    })
 
-    // Enable foreign keys (SQLite requires explicit enable)
-    _sqlite.pragma('foreign_keys = ON')
-
-    // Enable WAL mode for better concurrency
-    _sqlite.pragma('journal_mode = WAL')
-
-    _db = drizzle(_sqlite, { schema })
+    _db = drizzle(_client, { schema })
   }
   return _db
 }

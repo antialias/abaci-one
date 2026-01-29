@@ -1,7 +1,7 @@
 # Multi-stage build for Soroban Abacus Flashcards
 FROM node:20-alpine AS base
 
-# Install Python, build tools for better-sqlite3, and canvas native dependencies
+# Install Python, build tools for native dependencies, and canvas dependencies
 # canvas is an optional dep of jsdom (used by vitest) and requires cairo/pango
 RUN apk add --no-cache \
     python3 \
@@ -62,16 +62,9 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN turbo build --filter=@soroban/web
 
 # Production dependencies stage - install only runtime dependencies
-# IMPORTANT: Must use same base as runner stage for binary compatibility (better-sqlite3)
+# @libsql/client is pure JavaScript, no native compilation needed
 FROM node:20-slim AS deps
 WORKDIR /app
-
-# Install build tools temporarily for better-sqlite3 installation
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
 RUN npm install -g pnpm@9.15.4
@@ -117,13 +110,10 @@ RUN ARCH=$(uname -m) && \
 FROM node:20-slim AS runner
 WORKDIR /app
 
-# Build argument to enable LiteFS for distributed SQLite
-ARG ENABLE_LITEFS=false
-
-# Install ONLY runtime dependencies (no build tools)
+# Install ONLY runtime dependencies (no build tools, no LiteFS)
 # python3-venv is needed for creating virtual environments for ML training
 # ffmpeg is needed for encoding vision recording frames to MP4
-# fuse3 and sqlite3 are needed for LiteFS
+# sqlite3 is for debugging only
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
@@ -131,12 +121,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     qpdf \
     ca-certificates \
     ffmpeg \
-    fuse3 \
     sqlite3 \
     && rm -rf /var/lib/apt/lists/*
-
-# Copy LiteFS binary (only used when ENABLE_LITEFS=true)
-COPY --from=flyio/litefs:0.5 /usr/local/bin/litefs /usr/local/bin/litefs
 
 # Copy typst binary from typst-builder stage
 COPY --from=typst-builder /usr/local/bin/typst /usr/local/bin/typst
@@ -189,27 +175,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/package.json ./apps/web/
 # Set up environment
 WORKDIR /app/apps/web
 
-# Create data directory for SQLite database, uploads, and vision training
+# Create data directory for uploads and vision training
 RUN mkdir -p data/uploads data/vision-training/collected data/vision-training/.venv && chown -R nextjs:nodejs data
 
-# Copy LiteFS configuration (used when LITEFS_ENABLED=true at runtime)
-COPY --chown=nextjs:nodejs apps/web/litefs.yml ./litefs.yml
-
-# Create LiteFS directories (used when running with LiteFS)
-RUN mkdir -p /litefs /var/lib/litefs && chown -R nextjs:nodejs /litefs /var/lib/litefs
-
-# Note: When running with LiteFS, the container must run as root (for FUSE mount)
-# and use the litefs mount command as entrypoint. The app will run as nextjs via exec.
-# Without LiteFS, run as nextjs user directly.
+# Run as non-root user
 USER nextjs
 EXPOSE 3000
-# LiteFS proxy listens on 8080, app on 3000
-EXPOSE 8080
 ENV PORT=3000
-# Note: Don't set HOSTNAME here - LiteFS needs the pod's actual hostname
 ENV NODE_ENV=production
 
-# Default: run without LiteFS (for local dev and Docker Compose)
-# For k8s with LiteFS: override with command "litefs mount" and run as root
+# Start the server directly (no LiteFS wrapper)
 # Use --require to load OpenTelemetry instrumentation before any other modules
 CMD ["node", "--require", "./instrumentation.js", "server.js"]
