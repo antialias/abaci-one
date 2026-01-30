@@ -35,6 +35,7 @@ import {
   defaultAdditionConfig,
   type AdditionConfigV4Custom,
 } from '@/app/create/worksheets/config-schemas'
+import type { DisplayRules, RuleMode } from '@/app/create/worksheets/displayRules'
 
 // Tool definitions for MCP tools/list response
 export const MCP_TOOLS = [
@@ -339,6 +340,52 @@ export const MCP_TOOLS = [
           type: 'string',
           enum: ['beginner', 'earlyLearner', 'practice', 'intermediate', 'advanced', 'expert'],
           description: 'Preset difficulty profile that controls regrouping and scaffolding',
+        },
+        scaffolding: {
+          type: 'object',
+          description:
+            'Custom scaffolding overrides. When provided, these values override the difficulty profile defaults.',
+          properties: {
+            carryBoxes: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'whenMultipleRegroups', 'never'],
+              description: 'When to show carry boxes for addition',
+            },
+            answerBoxes: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'whenMultipleRegroups', 'never'],
+              description: 'When to show answer digit boxes',
+            },
+            placeValueColors: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'whenMultipleRegroups', 'when3PlusDigits', 'never'],
+              description: 'When to color-code place values',
+            },
+            tenFrames: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'whenMultipleRegroups', 'never'],
+              description: 'When to show ten frames for visual support',
+            },
+            borrowNotation: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'never'],
+              description: 'When to show borrow notation for subtraction',
+            },
+            borrowingHints: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'whenMultipleRegroups', 'never'],
+              description: 'When to show borrowing hints for subtraction',
+            },
+          },
+        },
+        show_problem_numbers: {
+          type: 'boolean',
+          description: 'Show problem numbers (1, 2, 3...) next to each problem (default: true)',
+        },
+        progressive_difficulty: {
+          type: 'boolean',
+          description:
+            'Increase difficulty across pages. Page 1 has lowest regrouping %, last page has highest. Only applies when pages > 1. (default: false)',
         },
         include_answer_key: {
           type: 'boolean',
@@ -866,6 +913,18 @@ export async function listObservationLinks(playerId: string, sessionId: string) 
 // ============================================================================
 
 /**
+ * Scaffolding override options for MCP tool
+ */
+export interface ScaffoldingOverrides {
+  carryBoxes?: RuleMode
+  answerBoxes?: RuleMode
+  placeValueColors?: RuleMode
+  tenFrames?: RuleMode
+  borrowNotation?: RuleMode
+  borrowingHints?: RuleMode
+}
+
+/**
  * Generate a worksheet with the given configuration
  * Returns share and download URLs
  */
@@ -875,6 +934,9 @@ export async function generateWorksheet(options: {
   problemsPerPage?: number
   pages?: number
   difficultyProfile?: string
+  scaffolding?: ScaffoldingOverrides
+  showProblemNumbers?: boolean
+  progressiveDifficulty?: boolean
   includeAnswerKey?: boolean
   title?: string
   orientation?: 'portrait' | 'landscape'
@@ -889,6 +951,9 @@ export async function generateWorksheet(options: {
     problemsPerPage = 20,
     pages = 1,
     difficultyProfile = 'earlyLearner',
+    scaffolding,
+    showProblemNumbers = true,
+    progressiveDifficulty = false,
     includeAnswerKey = false,
     title = '',
     orientation = 'landscape',
@@ -907,6 +972,25 @@ export async function generateWorksheet(options: {
   // Get difficulty profile settings
   const profile = DIFFICULTY_PROFILES[difficultyProfile] || DIFFICULTY_PROFILES.earlyLearner
 
+  // Build display rules by merging profile defaults with custom scaffolding overrides
+  // Ensure all required fields from DisplayRules interface are present
+  const displayRules: DisplayRules = {
+    // Start with profile defaults
+    carryBoxes: scaffolding?.carryBoxes ?? profile.displayRules.carryBoxes,
+    answerBoxes: scaffolding?.answerBoxes ?? profile.displayRules.answerBoxes,
+    placeValueColors: scaffolding?.placeValueColors ?? profile.displayRules.placeValueColors,
+    tenFrames: scaffolding?.tenFrames ?? profile.displayRules.tenFrames,
+    borrowNotation: scaffolding?.borrowNotation ?? profile.displayRules.borrowNotation,
+    borrowingHints: scaffolding?.borrowingHints ?? profile.displayRules.borrowingHints,
+    // Cell borders from profile or default to 'always'
+    cellBorders: profile.displayRules.cellBorders ?? 'always',
+    // Problem numbers controlled by explicit parameter
+    problemNumbers: showProblemNumbers ? 'always' : 'never',
+  }
+
+  // Validate pages for progressive difficulty
+  const validPages = Math.max(1, Math.min(20, pages))
+
   // Build worksheet config
   const config: AdditionConfigV4Custom = {
     version: 4,
@@ -914,19 +998,22 @@ export async function generateWorksheet(options: {
     operator,
     digitRange: validDigitRange,
     problemsPerPage: Math.max(1, Math.min(40, problemsPerPage)),
-    pages: Math.max(1, Math.min(20, pages)),
+    pages: validPages,
     cols: Math.max(1, Math.min(6, cols)),
     orientation,
     name: title,
     fontSize: 16,
     pAnyStart: profile.regrouping.pAnyStart,
     pAllStart: profile.regrouping.pAllStart,
-    interpolate: true,
-    displayRules: profile.displayRules,
+    // Use interpolate for progressive difficulty (problems get harder through worksheet)
+    interpolate: progressiveDifficulty,
+    displayRules,
     difficultyProfile: profile.name,
     includeAnswerKey,
     includeQRCode: true, // Always include QR code for MCP-generated worksheets
     seed: Math.floor(Math.random() * 1000000), // Random seed for unique problems
+    // Store progressive difficulty flag for per-page regrouping calculation
+    ...(progressiveDifficulty && validPages > 1 && { progressiveDifficulty: true }),
   }
 
   // Generate unique share ID
@@ -985,11 +1072,16 @@ export async function generateWorksheet(options: {
     difficultyLabel: profile.label,
     regroupingPercent: Math.round(profile.regrouping.pAnyStart * 100),
     includeAnswerKey: config.includeAnswerKey,
+    progressiveDifficulty: progressiveDifficulty && validPages > 1,
+    showProblemNumbers,
     scaffolding: {
-      carryBoxes: profile.displayRules.carryBoxes,
-      answerBoxes: profile.displayRules.answerBoxes,
-      placeValueColors: profile.displayRules.placeValueColors,
-      tenFrames: profile.displayRules.tenFrames,
+      carryBoxes: displayRules.carryBoxes,
+      answerBoxes: displayRules.answerBoxes,
+      placeValueColors: displayRules.placeValueColors,
+      tenFrames: displayRules.tenFrames,
+      borrowNotation: displayRules.borrowNotation,
+      borrowingHints: displayRules.borrowingHints,
+      problemNumbers: displayRules.problemNumbers,
     },
   }
 

@@ -286,6 +286,240 @@ describe('MCP Worksheet Tools', () => {
 
       expect(result.summary.difficultyProfile).toBe('earlyLearner')
     })
+
+    // Tests for new features: custom scaffolding, problem numbers, progressive difficulty
+
+    it('applies custom scaffolding overrides', async () => {
+      const result = await generateWorksheet({
+        difficultyProfile: 'earlyLearner', // Has carryBoxes: 'whenRegrouping' by default
+        scaffolding: {
+          carryBoxes: 'never',
+          answerBoxes: 'never',
+          placeValueColors: 'never',
+          tenFrames: 'whenRegrouping',
+        },
+      })
+
+      // Custom scaffolding should override profile defaults
+      expect(result.summary.scaffolding.carryBoxes).toBe('never')
+      expect(result.summary.scaffolding.answerBoxes).toBe('never')
+      expect(result.summary.scaffolding.placeValueColors).toBe('never')
+      expect(result.summary.scaffolding.tenFrames).toBe('whenRegrouping')
+    })
+
+    it('partial scaffolding overrides merge with profile defaults', async () => {
+      const result = await generateWorksheet({
+        difficultyProfile: 'beginner', // Has all scaffolding 'always'
+        scaffolding: {
+          carryBoxes: 'never', // Only override this one
+        },
+      })
+
+      // carryBoxes should be overridden
+      expect(result.summary.scaffolding.carryBoxes).toBe('never')
+      // Other scaffolding should keep profile defaults
+      expect(result.summary.scaffolding.answerBoxes).toBe('always')
+      expect(result.summary.scaffolding.placeValueColors).toBe('always')
+      expect(result.summary.scaffolding.tenFrames).toBe('always')
+    })
+
+    it('shows problem numbers by default', async () => {
+      const result = await generateWorksheet({})
+
+      expect(result.summary.showProblemNumbers).toBe(true)
+      expect(result.summary.scaffolding.problemNumbers).toBe('always')
+    })
+
+    it('hides problem numbers when showProblemNumbers is false', async () => {
+      const result = await generateWorksheet({ showProblemNumbers: false })
+
+      expect(result.summary.showProblemNumbers).toBe(false)
+      expect(result.summary.scaffolding.problemNumbers).toBe('never')
+    })
+
+    it('progressive difficulty is false by default', async () => {
+      const result = await generateWorksheet({ pages: 3 })
+
+      expect(result.summary.progressiveDifficulty).toBe(false)
+    })
+
+    it('sets progressive difficulty when enabled with multiple pages', async () => {
+      const result = await generateWorksheet({
+        pages: 3,
+        progressiveDifficulty: true,
+      })
+
+      expect(result.summary.progressiveDifficulty).toBe(true)
+    })
+
+    it('progressive difficulty requires multiple pages', async () => {
+      const result = await generateWorksheet({
+        pages: 1,
+        progressiveDifficulty: true,
+      })
+
+      // With only 1 page, progressive difficulty is not meaningful
+      expect(result.summary.progressiveDifficulty).toBe(false)
+    })
+
+    it('includes borrowNotation and borrowingHints in scaffolding summary', async () => {
+      const result = await generateWorksheet({
+        operator: 'subtraction',
+        difficultyProfile: 'earlyLearner',
+      })
+
+      expect(result.summary.scaffolding.borrowNotation).toBeDefined()
+      expect(result.summary.scaffolding.borrowingHints).toBeDefined()
+    })
+
+    it('allows overriding subtraction-specific scaffolding', async () => {
+      const result = await generateWorksheet({
+        operator: 'subtraction',
+        scaffolding: {
+          borrowNotation: 'never',
+          borrowingHints: 'never',
+        },
+      })
+
+      expect(result.summary.scaffolding.borrowNotation).toBe('never')
+      expect(result.summary.scaffolding.borrowingHints).toBe('never')
+    })
+
+    // Integration test: Exact use case from GitHub issue #15
+    it('generates worksheet matching issue #15 use case (Fern\'s routine)', async () => {
+      const result = await generateWorksheet({
+        operator: 'addition',
+        digitRange: { min: 3, max: 3 },
+        problemsPerPage: 15,
+        pages: 3,
+        includeAnswerKey: true,
+        orientation: 'landscape',
+        scaffolding: {
+          carryBoxes: 'never',
+          answerBoxes: 'never',
+          placeValueColors: 'never',
+          tenFrames: 'whenRegrouping',
+        },
+        showProblemNumbers: true,
+        progressiveDifficulty: true,
+      })
+
+      // Verify all settings match the requested configuration
+      expect(result.summary.operator).toBe('addition')
+      expect(result.summary.digitRange).toEqual({ min: 3, max: 3 })
+      expect(result.summary.problemsPerPage).toBe(15)
+      expect(result.summary.pages).toBe(3)
+      expect(result.summary.totalProblems).toBe(45)
+      expect(result.summary.includeAnswerKey).toBe(true)
+      expect(result.summary.orientation).toBe('landscape')
+
+      // Custom scaffolding: only ten frames when regrouping
+      expect(result.summary.scaffolding.carryBoxes).toBe('never')
+      expect(result.summary.scaffolding.answerBoxes).toBe('never')
+      expect(result.summary.scaffolding.placeValueColors).toBe('never')
+      expect(result.summary.scaffolding.tenFrames).toBe('whenRegrouping')
+
+      // Problem numbers visible
+      expect(result.summary.showProblemNumbers).toBe(true)
+      expect(result.summary.scaffolding.problemNumbers).toBe('always')
+
+      // Progressive difficulty across pages
+      expect(result.summary.progressiveDifficulty).toBe(true)
+    })
+
+    // Test that config is serialized correctly with new options
+    it('stores config with custom scaffolding in database', async () => {
+      await generateWorksheet({
+        scaffolding: {
+          carryBoxes: 'never',
+          tenFrames: 'whenRegrouping',
+        },
+        showProblemNumbers: false,
+        progressiveDifficulty: true,
+        pages: 2,
+      })
+
+      // Verify insert was called
+      expect(mockInsert).toHaveBeenCalledWith(worksheetShares)
+      const insertCall = mockInsert.mock.results[0].value
+      expect(insertCall.values).toHaveBeenCalled()
+
+      // Get the values passed to the insert
+      const valuesCall = insertCall.values.mock.calls[0][0]
+      const config = JSON.parse(valuesCall.config)
+
+      // Verify the config contains our custom settings
+      expect(config.displayRules.carryBoxes).toBe('never')
+      expect(config.displayRules.tenFrames).toBe('whenRegrouping')
+      expect(config.displayRules.problemNumbers).toBe('never')
+      expect(config.interpolate).toBe(true) // progressive difficulty enables interpolate
+    })
+
+    // Test scaffolding with 'whenMultipleRegroups' mode
+    it('supports whenMultipleRegroups scaffolding mode', async () => {
+      const result = await generateWorksheet({
+        scaffolding: {
+          answerBoxes: 'whenMultipleRegroups',
+        },
+      })
+
+      expect(result.summary.scaffolding.answerBoxes).toBe('whenMultipleRegroups')
+    })
+
+    // Test scaffolding with 'when3PlusDigits' mode (only valid for placeValueColors)
+    it('supports when3PlusDigits scaffolding mode for placeValueColors', async () => {
+      const result = await generateWorksheet({
+        scaffolding: {
+          placeValueColors: 'when3PlusDigits',
+        },
+      })
+
+      expect(result.summary.scaffolding.placeValueColors).toBe('when3PlusDigits')
+    })
+
+    // Test combining all new features together
+    it('combines custom scaffolding, problem numbers, and progressive difficulty', async () => {
+      const result = await generateWorksheet({
+        operator: 'mixed',
+        digitRange: { min: 2, max: 4 },
+        problemsPerPage: 20,
+        pages: 5,
+        difficultyProfile: 'practice',
+        scaffolding: {
+          carryBoxes: 'whenMultipleRegroups',
+          answerBoxes: 'never',
+          borrowNotation: 'whenRegrouping',
+          borrowingHints: 'never',
+        },
+        showProblemNumbers: true,
+        progressiveDifficulty: true,
+        includeAnswerKey: true,
+      })
+
+      expect(result.summary.operator).toBe('mixed')
+      expect(result.summary.pages).toBe(5)
+      expect(result.summary.totalProblems).toBe(100)
+      expect(result.summary.difficultyProfile).toBe('practice')
+      expect(result.summary.scaffolding.carryBoxes).toBe('whenMultipleRegroups')
+      expect(result.summary.scaffolding.answerBoxes).toBe('never')
+      expect(result.summary.scaffolding.borrowNotation).toBe('whenRegrouping')
+      expect(result.summary.scaffolding.borrowingHints).toBe('never')
+      expect(result.summary.showProblemNumbers).toBe(true)
+      expect(result.summary.progressiveDifficulty).toBe(true)
+      expect(result.summary.includeAnswerKey).toBe(true)
+    })
+
+    // Edge case: empty scaffolding object should use profile defaults
+    it('empty scaffolding object uses profile defaults', async () => {
+      const result = await generateWorksheet({
+        difficultyProfile: 'beginner',
+        scaffolding: {},
+      })
+
+      // Should use beginner profile defaults
+      expect(result.summary.scaffolding.carryBoxes).toBe('always')
+      expect(result.summary.scaffolding.answerBoxes).toBe('always')
+    })
   })
 
   describe('getWorksheetInfo', () => {

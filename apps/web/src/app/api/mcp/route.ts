@@ -330,6 +330,23 @@ async function executeWorksheetTool(
         problemsPerPage: args.problems_per_page as number | undefined,
         pages: args.pages as number | undefined,
         difficultyProfile: args.difficulty_profile as string | undefined,
+        scaffolding: args.scaffolding as
+          | {
+              carryBoxes?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+              answerBoxes?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+              placeValueColors?:
+                | 'always'
+                | 'whenRegrouping'
+                | 'whenMultipleRegroups'
+                | 'when3PlusDigits'
+                | 'never'
+              tenFrames?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+              borrowNotation?: 'always' | 'whenRegrouping' | 'never'
+              borrowingHints?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+            }
+          | undefined,
+        showProblemNumbers: args.show_problem_numbers as boolean | undefined,
+        progressiveDifficulty: args.progressive_difficulty as boolean | undefined,
         includeAnswerKey: args.include_answer_key as boolean | undefined,
         title: args.title as string | undefined,
         orientation: args.orientation as 'portrait' | 'landscape' | undefined,
