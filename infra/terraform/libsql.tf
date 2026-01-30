@@ -9,7 +9,7 @@
 # - Dev: file:./data/sqlite.db (local file, no server)
 # - Prod: http://libsql.abaci.svc.cluster.local:8080
 
-# Persistent volume for libSQL data
+# Persistent volume for libSQL data (local-path on k3s node)
 resource "kubernetes_persistent_volume_claim" "libsql_data" {
   metadata {
     name      = "libsql-data"
