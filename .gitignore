@@ -60,6 +60,18 @@ temp/
 *storybook.log
 storybook-static
 apps/web/data/sqlite.db.backup.*
-# Vision training data
-data/vision-training/
+# Vision training data and ML models
+apps/web/data/vision-training/
+apps/web/data/uploads/
+apps/web/public/models/
+
+# Generated test/demo HTML files
+/test_*.html
+/demo_*.html
+/hero_*.html
+
+# Build output directory
+/out/
+
+# Terraform
 infra/terraform/tfplan
