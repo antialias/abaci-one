@@ -334,6 +334,16 @@ async function executeWorksheetTool(
         title: args.title as string | undefined,
         orientation: args.orientation as 'portrait' | 'landscape' | undefined,
         cols: args.cols as number | undefined,
+        scaffolding: args.scaffolding as {
+          carryBoxes?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+          answerBoxes?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+          placeValueColors?: 'always' | 'whenRegrouping' | 'when3PlusDigits' | 'never'
+          tenFrames?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+          borrowNotation?: 'always' | 'whenRegrouping' | 'never'
+          borrowingHints?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+        } | undefined,
+        showProblemNumbers: args.show_problem_numbers as boolean | undefined,
+        progressiveDifficulty: args.progressive_difficulty as boolean | undefined,
       })
 
     case 'get_worksheet_info':

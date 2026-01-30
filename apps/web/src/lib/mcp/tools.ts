@@ -357,6 +357,52 @@ export const MCP_TOOLS = [
           type: 'number',
           description: 'Number of columns (1-6, default: 5)',
         },
+        scaffolding: {
+          type: 'object',
+          description:
+            'Custom scaffolding overrides. When provided, these override the difficulty_profile settings.',
+          properties: {
+            carryBoxes: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'whenMultipleRegroups', 'never'],
+              description: 'When to show carry boxes (addition)',
+            },
+            answerBoxes: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'whenMultipleRegroups', 'never'],
+              description: 'When to show answer digit boxes',
+            },
+            placeValueColors: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'when3PlusDigits', 'never'],
+              description: 'When to show place value colors',
+            },
+            tenFrames: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'whenMultipleRegroups', 'never'],
+              description: 'When to show ten frames visual aid',
+            },
+            borrowNotation: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'never'],
+              description: 'When to show borrow notation (subtraction)',
+            },
+            borrowingHints: {
+              type: 'string',
+              enum: ['always', 'whenRegrouping', 'whenMultipleRegroups', 'never'],
+              description: 'When to show borrowing hints (subtraction)',
+            },
+          },
+        },
+        show_problem_numbers: {
+          type: 'boolean',
+          description: 'Show problem numbers (1., 2., etc.) next to each problem (default: false)',
+        },
+        progressive_difficulty: {
+          type: 'boolean',
+          description:
+            'Progressively increase regrouping difficulty across pages. Page 1 starts easier, each subsequent page gets harder.',
+        },
       },
       required: [],
     },
@@ -879,6 +925,16 @@ export async function generateWorksheet(options: {
   title?: string
   orientation?: 'portrait' | 'landscape'
   cols?: number
+  scaffolding?: {
+    carryBoxes?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+    answerBoxes?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+    placeValueColors?: 'always' | 'whenRegrouping' | 'when3PlusDigits' | 'never'
+    tenFrames?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+    borrowNotation?: 'always' | 'whenRegrouping' | 'never'
+    borrowingHints?: 'always' | 'whenRegrouping' | 'whenMultipleRegroups' | 'never'
+  }
+  showProblemNumbers?: boolean
+  progressiveDifficulty?: boolean
 }) {
   const baseUrl = getBaseUrl()
 
@@ -893,6 +949,9 @@ export async function generateWorksheet(options: {
     title = '',
     orientation = 'landscape',
     cols = 5,
+    scaffolding: customScaffolding,
+    showProblemNumbers = false,
+    progressiveDifficulty = false,
   } = options
 
   // Validate digit range
@@ -907,6 +966,38 @@ export async function generateWorksheet(options: {
   // Get difficulty profile settings
   const profile = DIFFICULTY_PROFILES[difficultyProfile] || DIFFICULTY_PROFILES.earlyLearner
 
+  // Merge custom scaffolding overrides with profile defaults
+  const displayRules = {
+    ...profile.displayRules,
+    // Apply custom scaffolding overrides if provided
+    ...(customScaffolding?.carryBoxes && { carryBoxes: customScaffolding.carryBoxes }),
+    ...(customScaffolding?.answerBoxes && { answerBoxes: customScaffolding.answerBoxes }),
+    ...(customScaffolding?.placeValueColors && {
+      placeValueColors: customScaffolding.placeValueColors,
+    }),
+    ...(customScaffolding?.tenFrames && { tenFrames: customScaffolding.tenFrames }),
+    ...(customScaffolding?.borrowNotation && { borrowNotation: customScaffolding.borrowNotation }),
+    ...(customScaffolding?.borrowingHints && { borrowingHints: customScaffolding.borrowingHints }),
+    // Handle show_problem_numbers
+    problemNumbers: showProblemNumbers ? 'always' : 'never',
+  }
+
+  // Determine if custom scaffolding was provided (affects difficultyProfile in output)
+  const hasCustomScaffolding = customScaffolding && Object.keys(customScaffolding).length > 0
+
+  // Calculate regrouping settings
+  // For progressive difficulty, we use interpolate=true and set pAnyStart/pAllStart
+  // to represent the range from start to end of worksheet
+  let pAnyStart = profile.regrouping.pAnyStart
+  let pAllStart = profile.regrouping.pAllStart
+
+  if (progressiveDifficulty && pages > 1) {
+    // Progressive: start with low regrouping, end with higher
+    // pAnyStart represents the ending probability (interpolate goes from 0 to pAnyStart)
+    pAnyStart = Math.min(0.9, Math.max(profile.regrouping.pAnyStart, 0.75))
+    pAllStart = Math.min(0.5, Math.max(profile.regrouping.pAllStart, 0.25))
+  }
+
   // Build worksheet config
   const config: AdditionConfigV4Custom = {
     version: 4,
@@ -919,11 +1010,11 @@ export async function generateWorksheet(options: {
     orientation,
     name: title,
     fontSize: 16,
-    pAnyStart: profile.regrouping.pAnyStart,
-    pAllStart: profile.regrouping.pAllStart,
-    interpolate: true,
-    displayRules: profile.displayRules,
-    difficultyProfile: profile.name,
+    pAnyStart,
+    pAllStart,
+    interpolate: progressiveDifficulty, // Enable interpolation for progressive difficulty
+    displayRules,
+    difficultyProfile: hasCustomScaffolding ? undefined : profile.name,
     includeAnswerKey,
     includeQRCode: true, // Always include QR code for MCP-generated worksheets
     seed: Math.floor(Math.random() * 1000000), // Random seed for unique problems
@@ -981,15 +1072,18 @@ export async function generateWorksheet(options: {
     problemsPerPage: config.problemsPerPage,
     cols: config.cols,
     orientation: config.orientation,
-    difficultyProfile: profile.name,
-    difficultyLabel: profile.label,
-    regroupingPercent: Math.round(profile.regrouping.pAnyStart * 100),
+    difficultyProfile: hasCustomScaffolding ? 'custom' : profile.name,
+    difficultyLabel: hasCustomScaffolding ? 'Custom' : profile.label,
+    regroupingPercent: Math.round(pAnyStart * 100),
+    progressiveDifficulty,
+    showProblemNumbers,
     includeAnswerKey: config.includeAnswerKey,
     scaffolding: {
-      carryBoxes: profile.displayRules.carryBoxes,
-      answerBoxes: profile.displayRules.answerBoxes,
-      placeValueColors: profile.displayRules.placeValueColors,
-      tenFrames: profile.displayRules.tenFrames,
+      carryBoxes: displayRules.carryBoxes,
+      answerBoxes: displayRules.answerBoxes,
+      placeValueColors: displayRules.placeValueColors,
+      tenFrames: displayRules.tenFrames,
+      problemNumbers: displayRules.problemNumbers,
     },
   }
 
