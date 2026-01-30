@@ -121,3 +121,10 @@ variable "github_repo_url" {
   type        = string
   default     = "https://github.com/antialias/soroban-abacus-flashcards.git"
 }
+
+# ArgoCD Configuration
+variable "argocd_domain" {
+  description = "Domain for ArgoCD UI (leave empty to use port-forward only)"
+  type        = string
+  default     = ""
+}

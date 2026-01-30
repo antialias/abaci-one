@@ -1,0 +1,79 @@
+# Application Deployment
+#
+# Managed by ArgoCD (replacing Terraform management)
+# ConfigMap and Secret are still managed by Terraform
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: abaci-app
+  namespace: abaci
+  labels:
+    app: abaci-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: abaci-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: abaci-app
+    spec:
+      imagePullSecrets:
+        - name: ghcr-registry
+      securityContext:
+        fsGroup: 1001
+      # Note: No init container - migrations run via ArgoCD PreSync hook
+      containers:
+        - name: app
+          image: ghcr.io/antialias/soroban-abacus-flashcards:latest
+          command: ["node", "--require", "./instrumentation.js", "server.js"]
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-env
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 5
+          volumeMounts:
+            - name: vision-training-data
+              mountPath: /app/apps/web/data/vision-training
+            - name: uploads-data
+              mountPath: /app/apps/web/data/uploads
+      volumes:
+        - name: vision-training-data
+          persistentVolumeClaim:
+            claimName: vision-training-data
+        - name: uploads-data
+          persistentVolumeClaim:
+            claimName: uploads-data

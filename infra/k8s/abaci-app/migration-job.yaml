@@ -1,0 +1,46 @@
+# Database Migration Job - ArgoCD PreSync Hook
+#
+# This Job runs BEFORE ArgoCD syncs the Deployment.
+# It ensures migrations are complete before new pods start.
+#
+# ArgoCD will:
+# 1. Run this Job (PreSync)
+# 2. Wait for it to complete successfully
+# 3. Then sync the Deployment
+# 4. Delete this Job after success (HookSucceeded policy)
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrations
+  namespace: abaci
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: db-migrations
+    spec:
+      imagePullSecrets:
+        - name: ghcr-registry
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: ghcr.io/antialias/soroban-abacus-flashcards:latest
+          command: ["node", "dist/db/migrate.js"]
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-env
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
