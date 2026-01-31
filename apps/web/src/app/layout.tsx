@@ -87,7 +87,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body>
+      <body data-deploy-test="argocd-2026-01-31">
         <ClientProviders initialLocale={locale} initialMessages={messages}>
           {children}
         </ClientProviders>
