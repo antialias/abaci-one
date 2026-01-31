@@ -32,7 +32,7 @@ spec:
       # Note: No init container - migrations run via ArgoCD PreSync hook
       containers:
         - name: app
-          image: ghcr.io/antialias/soroban-abacus-flashcards:latest
+          image: ghcr.io/antialias/abaci-one:latest
           command: ["node", "--require", "./instrumentation.js", "server.js"]
           ports:
             - name: http
@@ -77,4 +77,3 @@ spec:
         - name: uploads-data
           persistentVolumeClaim:
             claimName: uploads-data
-# Deploy test 1769891658
