@@ -28,6 +28,8 @@ export const dynamic = 'force-dynamic'
 interface HealthCheckResult {
   status: 'healthy' | 'degraded' | 'unhealthy'
   timestamp: string
+  /** Unique identifier for this container instance, generated at startup */
+  instanceId: string
   checks: {
     database: {
       status: 'ok' | 'error'
@@ -47,10 +49,14 @@ interface HealthCheckResult {
   buildTimestamp?: string | null
 }
 
+// Generate a unique instance ID at module load time (container startup)
+const INSTANCE_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+
 export async function GET(): Promise<NextResponse<HealthCheckResult>> {
   const result: HealthCheckResult = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
+    instanceId: INSTANCE_ID,
     checks: {
       database: { status: 'ok' },
     },
