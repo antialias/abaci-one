@@ -784,7 +784,19 @@
       "Bash(launchctl unload:*)",
       "mcp__gitea__cancel_repo_action_run",
       "mcp__gitea__list_repo_action_secrets",
-      "mcp__gitea__download_repo_action_job_log"
+      "mcp__gitea__download_repo_action_job_log",
+      "Bash(git gc:*)",
+      "Bash(git count-objects:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git cat-file:*)",
+      "Bash(if [ -e \"$path\" ])",
+      "Bash(then)",
+      "Bash(else)",
+      "Bash(git filter-repo:*)",
+      "Bash(git verify-pack:*)",
+      "Bash(git reflog expire:*)",
+      "Bash(git remote:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": [],
     "ask": []
