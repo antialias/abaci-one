@@ -30,7 +30,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: ghcr.io/antialias/soroban-abacus-flashcards:latest
+          image: ghcr.io/antialias/abaci-one:latest
           command: ["node", "dist/db/migrate.js"]
           envFrom:
             - configMapRef:
