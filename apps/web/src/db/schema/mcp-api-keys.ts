@@ -33,6 +33,9 @@ export const mcpApiKeys = sqliteTable(
     /** Human-readable name for this key (e.g., "Claude Code on MacBook") */
     name: text('name').notNull(),
 
+    /** Optional description of what this key is used for */
+    description: text('description'),
+
     /** Last time this key was used to make an MCP request */
     lastUsedAt: integer('last_used_at', { mode: 'timestamp' }),
 
