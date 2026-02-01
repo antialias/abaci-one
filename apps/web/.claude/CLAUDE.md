@@ -31,7 +31,7 @@ All documentation must be reachable from root README via linked path. Unlinked d
 ### Database Migrations
 **Has caused multiple production outages.** See `.claude/procedures/database-migrations.md`
 
-Quick rules: Never modify schema directly, never modify deployed migrations, always use `npx drizzle-kit generate --custom`, always add `--> statement-breakpoint` between statements.
+Quick rules: Never modify schema directly, never modify deployed migrations, always use `npx drizzle-kit generate --custom`, always add `--> statement-breakpoint` between statements, **always commit entire `drizzle/` directory** (includes meta files required for migration to run).
 
 ### Production Dependencies
 **NEVER add `tsx`, `ts-node` to `dependencies`.** These belong in `devDependencies` only.
