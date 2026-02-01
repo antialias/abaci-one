@@ -1,5 +1,27 @@
 # Infrastructure - Claude Code Instructions
 
+## CRITICAL: Always Use Terraform for Infrastructure
+
+**ALWAYS use Terraform to manage Kubernetes infrastructure. Never use kubectl directly for creating/modifying resources unless there are extenuating circumstances (e.g., emergency debugging).**
+
+Why:
+- Terraform maintains state and tracks what it manages
+- Manual kubectl changes cause drift and conflicts
+- Terraform plans show exactly what will change before applying
+- Changes are version-controlled and auditable
+
+**Before making any infrastructure change:**
+1. Find or create the relevant `.tf` file
+2. Make changes in Terraform code
+3. Run `terraform plan` to preview
+4. Run `terraform apply` to apply
+5. Commit the `.tf` file changes
+
+**If you must use kubectl directly:**
+- Document why in the commit message
+- Create a follow-up task to codify the change in Terraform
+- Expect the change to be reverted on next `terraform apply`
+
 ## CRITICAL: Production Database Access
 
 **The MCP sqlite tools query the LOCAL dev database, NOT production.**

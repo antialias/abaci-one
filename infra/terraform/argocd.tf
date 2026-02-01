@@ -33,6 +33,12 @@ resource "helm_release" "argocd" {
     value = "ClusterIP"
   }
 
+  # Run insecure (no TLS) since Traefik handles TLS termination
+  set {
+    name  = "configs.params.server\\.insecure"
+    value = "true"
+  }
+
   # Disable dex (SSO) - we'll use admin password for now
   set {
     name  = "dex.enabled"
@@ -204,14 +210,13 @@ resource "kubernetes_manifest" "argocd_app" {
         server    = "https://kubernetes.default.svc"
         namespace = "abaci"
       }
-      # Manual sync only - no auto-sync until we're confident
-      # To enable auto-sync later, uncomment:
-      # syncPolicy = {
-      #   automated = {
-      #     prune    = true
-      #     selfHeal = true
-      #   }
-      # }
+      # Auto-sync enabled for GitOps workflow
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
+        }
+      }
     }
   }
 
@@ -227,4 +232,57 @@ output "argocd_admin_password_command" {
 output "argocd_port_forward_command" {
   value       = "kubectl port-forward svc/argocd-server -n argocd 8080:443"
   description = "Command to port-forward ArgoCD UI (access at https://localhost:8080)"
+}
+
+# ArgoCD Image Updater - automatically updates images when new versions are pushed
+resource "helm_release" "argocd_image_updater" {
+  name             = "argocd-image-updater"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argocd-image-updater"
+  version          = "0.9.1"
+  namespace        = kubernetes_namespace.argocd.metadata[0].name
+  create_namespace = false
+
+  # Registry configuration for ghcr.io
+  set {
+    name  = "config.registries[0].name"
+    value = "ghcr.io"
+  }
+
+  set {
+    name  = "config.registries[0].prefix"
+    value = "ghcr.io"
+  }
+
+  set {
+    name  = "config.registries[0].api_url"
+    value = "https://ghcr.io"
+  }
+
+  set {
+    name  = "config.registries[0].credentials"
+    value = "pullsecret:argocd/ghcr-registry"
+  }
+
+  depends_on = [helm_release.argocd]
+}
+
+# Secret for ghcr.io authentication (image-updater needs this to check for new images)
+resource "kubernetes_secret" "ghcr_registry_argocd" {
+  metadata {
+    name      = "ghcr-registry"
+    namespace = kubernetes_namespace.argocd.metadata[0].name
+  }
+
+  type = "kubernetes.io/dockerconfigjson"
+
+  data = {
+    ".dockerconfigjson" = jsonencode({
+      auths = {
+        "ghcr.io" = {
+          auth = base64encode("antialias:${var.ghcr_token}")
+        }
+      }
+    })
+  }
 }
