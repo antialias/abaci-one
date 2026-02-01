@@ -50,6 +50,8 @@ interface HealthCheckResult {
   commit?: string
   buildTimestamp?: string | null
   nodeVersion: string
+  /** Pipeline test marker - change this value to verify auto-deploy */
+  pipelineTest: string
 }
 
 // Generate a unique instance ID at module load time (container startup)
@@ -63,6 +65,7 @@ export async function GET(): Promise<NextResponse<HealthCheckResult>> {
     instanceId: INSTANCE_ID,
     uptimeSeconds: Math.floor((Date.now() - STARTUP_TIME) / 1000),
     nodeVersion: process.version,
+    pipelineTest: 'feb01-test-alpha',
     checks: {
       database: { status: 'ok' },
     },
