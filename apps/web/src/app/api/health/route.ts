@@ -30,6 +30,8 @@ interface HealthCheckResult {
   timestamp: string
   /** Unique identifier for this container instance, generated at startup */
   instanceId: string
+  /** Seconds since container started */
+  uptimeSeconds: number
   checks: {
     database: {
       status: 'ok' | 'error'
@@ -51,12 +53,14 @@ interface HealthCheckResult {
 
 // Generate a unique instance ID at module load time (container startup)
 const INSTANCE_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+const STARTUP_TIME = Date.now()
 
 export async function GET(): Promise<NextResponse<HealthCheckResult>> {
   const result: HealthCheckResult = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     instanceId: INSTANCE_ID,
+    uptimeSeconds: Math.floor((Date.now() - STARTUP_TIME) / 1000),
     checks: {
       database: { status: 'ok' },
     },
