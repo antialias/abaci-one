@@ -146,6 +146,7 @@ function TaskTracker({
 export default function StressTestPage() {
   const [tasks, setTasks] = useState<TaskInfo[]>([])
   const [isRunning, setIsRunning] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [selectedPreset, setSelectedPreset] = useState<StressPreset>(PRESETS[0])
   const [customTaskCount, setCustomTaskCount] = useState(10)
   const [stats, setStats] = useState<AggregateStats>({
@@ -161,6 +162,48 @@ export default function StressTestPage() {
 
   const taskStatsRef = useRef<Map<string, { status: string; eventCount: number }>>(new Map())
   const startTimeRef = useRef<number | null>(null)
+
+  // Load recent tasks on mount (survives page reload)
+  useEffect(() => {
+    async function loadTasks() {
+      try {
+        // Fetch running/pending tasks, plus recent completed ones
+        const res = await fetch('/api/demo/task/list?limit=50')
+        const { tasks: loadedTasks } = await res.json()
+
+        if (loadedTasks && loadedTasks.length > 0) {
+          const taskInfos: TaskInfo[] = loadedTasks.map((t: { id: string; createdAt: string | number; input: TaskConfig | null }) => ({
+            id: t.id,
+            startedAt: typeof t.createdAt === 'string' ? new Date(t.createdAt).getTime() : t.createdAt,
+            config: t.input ?? { duration: 0, eventCount: 0, payloadSizeBytes: 0, shouldFail: false, failAt: 70 },
+          }))
+
+          setTasks(taskInfos)
+
+          // Check if any are still running
+          const hasRunning = loadedTasks.some((t: { status: string }) => t.status === 'running' || t.status === 'pending')
+          if (hasRunning) {
+            setIsRunning(true)
+            // Set start time to earliest task
+            const earliest = Math.min(...taskInfos.map(t => t.startedAt))
+            startTimeRef.current = earliest
+          }
+
+          setStats(prev => ({
+            ...prev,
+            totalTasks: taskInfos.length,
+            startTime: hasRunning ? Math.min(...taskInfos.map(t => t.startedAt)) : null,
+          }))
+        }
+      } catch (err) {
+        console.error('Failed to load tasks:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadTasks()
+  }, [])
 
   // Callback for task trackers to report their status
   const handleTaskStats = useCallback((taskId: string, status: string, eventCount: number) => {
@@ -306,6 +349,12 @@ export default function StressTestPage() {
       <p className={css({ color: '#666', marginBottom: '24px' })}>
         Test system limits with concurrent tasks, rapid events, and large payloads.
       </p>
+
+      {isLoading && (
+        <div className={css({ padding: '20px', textAlign: 'center', color: '#666' })}>
+          Loading tasks...
+        </div>
+      )}
 
       {/* Presets */}
       <div
