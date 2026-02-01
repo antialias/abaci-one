@@ -49,6 +49,7 @@ interface HealthCheckResult {
   version?: string
   commit?: string
   buildTimestamp?: string | null
+  nodeVersion: string
 }
 
 // Generate a unique instance ID at module load time (container startup)
@@ -61,6 +62,7 @@ export async function GET(): Promise<NextResponse<HealthCheckResult>> {
     timestamp: new Date().toISOString(),
     instanceId: INSTANCE_ID,
     uptimeSeconds: Math.floor((Date.now() - STARTUP_TIME) / 1000),
+    nodeVersion: process.version,
     checks: {
       database: { status: 'ok' },
     },
