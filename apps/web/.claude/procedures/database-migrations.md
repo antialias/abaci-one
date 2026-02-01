@@ -27,9 +27,15 @@ pnpm db:migrate
 # 6. Verify with MCP tool
 mcp__sqlite__describe_table table_name
 
-# 7. Commit both schema and migration
+# 7. Commit schema, SQL file, AND meta files (journal + snapshot)
 git add src/db/schema/ drizzle/
 git commit -m "feat: add new column"
+
+# CRITICAL: The drizzle/ directory includes:
+#   - drizzle/XXXX_name.sql (the SQL you wrote)
+#   - drizzle/meta/_journal.json (tracks which migrations exist)
+#   - drizzle/meta/XXXX_snapshot.json (schema state after migration)
+# ALL THREE are required. Drizzle won't run the migration without the journal entry!
 ```
 
 ## CRITICAL: Run Migrations via `pnpm db:migrate`
@@ -194,3 +200,4 @@ git push
 | Manual file creation | Wrong timestamps | Use `drizzle-kit generate` |
 | Missing statement breakpoint | RangeError crash | Add `--> statement-breakpoint` |
 | Unchecked timestamp order | Migration skipped | Verify after generate |
+| Only committing SQL file | Migration not recognized | Use `git add drizzle/` to include meta files |
