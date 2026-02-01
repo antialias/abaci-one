@@ -796,7 +796,16 @@
       "Bash(git verify-pack:*)",
       "Bash(git reflog expire:*)",
       "Bash(git remote:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(git clone:*)",
+      "Bash(argocd app sync:*)",
+      "mcp__kubernetes__kubectl_patch",
+      "Bash(gh repo view:*)",
+      "Bash(docker manifest inspect:*)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards status infra/terraform/)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff infra/terraform/argocd.tf)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff infra/terraform/CLAUDE.md)",
+      "Bash(do echo \"Request $i:\")"
     ],
     "deny": [],
     "ask": []
