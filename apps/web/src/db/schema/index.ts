@@ -8,6 +8,7 @@
 export * from './abacus-settings'
 export * from './app-settings'
 export * from './arcade-rooms'
+export * from './background-tasks'
 export * from './arcade-sessions'
 export * from './classroom-enrollments'
 export * from './classroom-presence'

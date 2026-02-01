@@ -1766,6 +1766,56 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       socket.leave(`flowchart:${sessionId}`)
     })
 
+    // Background Tasks: Subscribe to task updates
+    socket.on('task:subscribe', async (taskId: string) => {
+      const { getTaskState, getTaskEvents } = await import('./lib/task-manager')
+
+      socket.join(`task:${taskId}`)
+
+      // Fetch current task state
+      const task = await getTaskState(taskId)
+
+      if (!task) {
+        socket.emit('task:error', { taskId, error: 'Task not found' })
+        return
+      }
+
+      // Send current state
+      socket.emit('task:state', task)
+
+      // Replay events if task is still running or pending
+      if (task.status === 'running' || task.status === 'pending') {
+        const events = await getTaskEvents(taskId)
+
+        for (const event of events) {
+          socket.emit('task:event', {
+            taskId,
+            eventType: event.eventType,
+            payload: event.payload,
+            createdAt: event.createdAt,
+            replayed: true,
+          })
+        }
+      }
+    })
+
+    // Background Tasks: Unsubscribe from task updates
+    socket.on('task:unsubscribe', (taskId: string) => {
+      socket.leave(`task:${taskId}`)
+    })
+
+    // Background Tasks: Cancel a running task
+    socket.on('task:cancel', async (taskId: string) => {
+      const { cancelTask } = await import('./lib/task-manager')
+      const success = await cancelTask(taskId)
+
+      if (success) {
+        console.log(`[Socket] Task ${taskId} cancelled`)
+      } else {
+        socket.emit('task:error', { taskId, error: 'Cannot cancel task' })
+      }
+    })
+
     socket.on('disconnect', () => {
       // Track Socket.IO disconnection metrics
       socketConnections.dec()

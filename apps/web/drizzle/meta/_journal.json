@@ -575,6 +575,13 @@
       "when": 1769960342070,
       "tag": "0081_add_mcp_key_description",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "6",
+      "when": 1769979508570,
+      "tag": "0082_background_tasks",
+      "breakpoints": true
     }
   ]
 }
