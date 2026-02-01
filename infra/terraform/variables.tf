@@ -19,7 +19,7 @@ variable "app_domain" {
 variable "app_image" {
   description = "Docker image for the application"
   type        = string
-  default     = "ghcr.io/antialias/soroban-abacus-flashcards:latest"
+  default     = "ghcr.io/antialias/abaci-one:main"
 }
 
 variable "app_replicas" {

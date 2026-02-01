@@ -196,7 +196,7 @@ resource "kubernetes_manifest" "argocd_app" {
     spec = {
       project = "default"
       source = {
-        repoURL        = "https://github.com/antialias/soroban-abacus-flashcards"
+        repoURL        = "https://github.com/antialias/abaci-one"
         targetRevision = "main"
         path           = "infra/k8s/abaci-app"
       }
