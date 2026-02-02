@@ -54,11 +54,7 @@ export function recordError(error: Error, attributes?: Record<string, string>): 
 /**
  * Create a custom span for tracing a specific operation
  */
-export function withSpan<T>(
-  name: string,
-  fn: () => T,
-  attributes?: Record<string, string>
-): T {
+export function withSpan<T>(name: string, fn: () => T, attributes?: Record<string, string>): T {
   const tracer = trace.getTracer('abaci-app')
   return tracer.startActiveSpan(name, (span) => {
     try {

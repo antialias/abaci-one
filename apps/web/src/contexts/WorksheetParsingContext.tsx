@@ -32,8 +32,10 @@ import {
   useCallback,
   useRef,
   useMemo,
+  useEffect,
   type ReactNode,
 } from 'react'
+import { io, type Socket } from 'socket.io-client'
 import { useQueryClient } from '@tanstack/react-query'
 import { attachmentKeys, sessionPlanKeys, sessionHistoryKeys } from '@/lib/queryKeys'
 import { api } from '@/lib/queryClient'
@@ -44,14 +46,10 @@ import {
   isAnyParsingActive,
   getStreamingStatus,
   type ParsingContextState,
-  type ParsingAction,
   type StreamingStatus,
   type ParsingStats,
 } from '@/lib/worksheet-parsing/state-machine'
-import {
-  parseSSEStream,
-  extractCompletedProblemsFromPartialJson,
-} from '@/lib/worksheet-parsing/sse-parser'
+import { extractCompletedProblemsFromPartialJson } from '@/lib/worksheet-parsing/sse-parser'
 import type {
   WorksheetParsingResult,
   BoundingBox,
@@ -130,6 +128,9 @@ export interface WorksheetParsingContextValue {
   cancel: () => void
   reset: () => void
 
+  /** Reconnect to an in-progress task (for page reload recovery) */
+  reconnectToTask: (attachmentId: string) => Promise<boolean>
+
   // Non-streaming mutations
   submitCorrection: (
     attachmentId: string,
@@ -163,7 +164,8 @@ export function WorksheetParsingProvider({
 }: WorksheetParsingProviderProps) {
   const queryClient = useQueryClient()
   const [state, dispatch] = useReducer(parsingReducer, initialParsingState)
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const socketRef = useRef<Socket | null>(null)
+  const currentTaskIdRef = useRef<string | null>(null)
 
   // Query key for this session's attachments
   const queryKey = useMemo(() => attachmentKeys.session(playerId, sessionId), [playerId, sessionId])
@@ -199,7 +201,272 @@ export function WorksheetParsingProvider({
   )
 
   // ============================================================================
-  // Streaming Parse
+  // Socket.IO Task Subscription
+  // ============================================================================
+
+  /**
+   * Subscribe to a task via Socket.IO for real-time updates
+   */
+  const subscribeToTask = useCallback(
+    (taskId: string, attachmentId: string) => {
+      // Clean up existing socket
+      if (socketRef.current) {
+        socketRef.current.emit('task:unsubscribe', currentTaskIdRef.current)
+        socketRef.current.disconnect()
+      }
+
+      currentTaskIdRef.current = taskId
+
+      const socket = io({
+        path: '/api/socket',
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5,
+      })
+      socketRef.current = socket
+
+      let accumulatedOutput = ''
+      const dispatchedProblemNumbers = new Set<number>()
+
+      const handleConnect = () => {
+        console.log('[WorksheetParsing] Socket connected, subscribing to task:', taskId)
+        socket.emit('task:subscribe', taskId)
+      }
+
+      socket.on('connect', handleConnect)
+      if (socket.connected) handleConnect()
+
+      socket.on('disconnect', () => {
+        console.log('[WorksheetParsing] Socket disconnected')
+      })
+
+      socket.on('connect_error', (err) => {
+        console.error('[WorksheetParsing] Socket connect error:', err)
+      })
+
+      // Handle initial task state from server
+      socket.on(
+        'task:state',
+        (task: {
+          id: string
+          status: string
+          progress: number
+          progressMessage: string | null
+        }) => {
+          console.log(
+            '[WorksheetParsing] Received task:state:',
+            task.status,
+            task.progress,
+            task.progressMessage
+          )
+          // Update progress if task is already running
+          if (task.progress > 0 || task.progressMessage) {
+            dispatch({
+              type: 'STREAM_PROGRESS_MESSAGE',
+              message: task.progressMessage || `Progress: ${task.progress}%`,
+            })
+          }
+        }
+      )
+
+      // Handle task events
+      socket.on(
+        'task:event',
+        (event: { taskId: string; eventType: string; payload: unknown; replayed?: boolean }) => {
+          if (event.taskId !== taskId) return
+
+          console.log(
+            '[WorksheetParsing] Received task:event:',
+            event.eventType,
+            event.replayed ? '(replayed)' : '',
+            JSON.stringify(event.payload).substring(0, 200)
+          )
+
+          const payload = event.payload as Record<string, unknown>
+
+          switch (event.eventType) {
+            // === Common events ===
+            case 'parsing_started':
+            case 'started':
+              dispatch({
+                type: 'STREAM_PROGRESS_MESSAGE',
+                message: 'AI is analyzing the worksheet...',
+              })
+              break
+
+            case 'reasoning':
+              dispatch({
+                type: 'STREAM_REASONING',
+                text: payload.text as string,
+                append: true,
+              })
+              break
+
+            case 'progress': {
+              const message = payload.message as string | undefined
+              if (message) {
+                dispatch({ type: 'STREAM_PROGRESS_MESSAGE', message })
+              }
+              break
+            }
+
+            case 'error':
+            case 'failed':
+              dispatch({
+                type: 'PARSE_FAILED',
+                error: (payload.error as string) ?? (payload.message as string) ?? 'Unknown error',
+              })
+              updateAttachmentStatus(attachmentId, {
+                parsingStatus: 'failed',
+                parsingError:
+                  (payload.error as string) ?? (payload.message as string) ?? 'Unknown error',
+              })
+              socket.emit('task:unsubscribe', taskId)
+              socket.disconnect()
+              socketRef.current = null
+              currentTaskIdRef.current = null
+              invalidateAttachments()
+              break
+
+            case 'cancelled':
+              dispatch({ type: 'CANCEL' })
+              socket.emit('task:unsubscribe', taskId)
+              socket.disconnect()
+              socketRef.current = null
+              currentTaskIdRef.current = null
+              invalidateAttachments()
+              break
+
+            // === Initial parse events ===
+            case 'output_delta': {
+              accumulatedOutput += payload.text as string
+              dispatch({ type: 'STREAM_OUTPUT', text: payload.text as string })
+
+              // Extract completed problems for progressive highlighting
+              const completedProblems = extractCompletedProblemsFromPartialJson(accumulatedOutput)
+              for (const problem of completedProblems) {
+                if (!dispatchedProblemNumbers.has(problem.problemNumber)) {
+                  dispatchedProblemNumbers.add(problem.problemNumber)
+                  dispatch({ type: 'STREAM_PROBLEM_COMPLETE', problem })
+                }
+              }
+              break
+            }
+
+            case 'partial': {
+              // Update progress message with problem count
+              const partial = payload.data as { problems?: unknown[] }
+              dispatch({
+                type: 'STREAM_PROGRESS_MESSAGE',
+                message: `Found ${partial.problems?.length ?? 0} problems...`,
+              })
+              break
+            }
+
+            case 'complete': {
+              // Handle both parse and reparse complete events
+              const result = payload.data as WorksheetParsingResult | undefined
+              const updatedResult = payload.updatedResult as WorksheetParsingResult | undefined
+              const finalResult = result ?? updatedResult
+
+              if (finalResult) {
+                const stats = payload.stats as ParsingStats | undefined
+                const status = (payload.status as ParsingStatus) ?? 'approved'
+
+                dispatch({ type: 'PARSE_COMPLETE', result: finalResult, stats })
+
+                // Update cache with result
+                updateAttachmentStatus(attachmentId, {
+                  parsingStatus: status,
+                  rawParsingResult: finalResult,
+                  confidenceScore: finalResult.overallConfidence,
+                  needsReview: finalResult.needsReview,
+                  parsedAt: new Date().toISOString(),
+                })
+              }
+
+              // Cleanup
+              socket.emit('task:unsubscribe', taskId)
+              socket.disconnect()
+              socketRef.current = null
+              currentTaskIdRef.current = null
+              invalidateAttachments()
+              break
+            }
+
+            // === Reparse-specific events ===
+            case 'reparse_started':
+              dispatch({
+                type: 'STREAM_PROGRESS_MESSAGE',
+                message: `Re-parsing ${payload.problemCount} problems...`,
+              })
+              break
+
+            case 'problem_start':
+              dispatch({
+                type: 'STREAM_REPARSE_PROGRESS',
+                current: payload.currentIndex as number,
+                total: payload.totalProblems as number,
+              })
+              dispatch({
+                type: 'STREAM_PROGRESS_MESSAGE',
+                message: `Analyzing problem ${(payload.currentIndex as number) + 1} of ${payload.totalProblems}...`,
+              })
+              break
+
+            case 'problem_complete': {
+              const problemResult = payload.result as {
+                problemBoundingBox?: BoundingBox
+              }
+              if (problemResult?.problemBoundingBox) {
+                dispatch({
+                  type: 'STREAM_PROBLEM_COMPLETE',
+                  problem: {
+                    problemNumber: payload.problemNumber as number,
+                    problemBoundingBox: problemResult.problemBoundingBox,
+                  },
+                  problemIndex: payload.problemIndex as number,
+                })
+              }
+              dispatch({
+                type: 'STREAM_PROGRESS_MESSAGE',
+                message: `Completed problem ${(payload.currentIndex as number) + 1} of ${payload.totalProblems}`,
+              })
+              break
+            }
+
+            case 'problem_error':
+              console.error('[WorksheetParsing] Problem error:', payload)
+              // Continue with other problems, don't fail the whole operation
+              break
+          }
+        }
+      )
+
+      socket.on('task:error', (data: { taskId: string; error: string }) => {
+        if (data.taskId === taskId) {
+          dispatch({ type: 'PARSE_FAILED', error: data.error })
+          socket.disconnect()
+          socketRef.current = null
+          currentTaskIdRef.current = null
+        }
+      })
+    },
+    [updateAttachmentStatus, invalidateAttachments]
+  )
+
+  // Cleanup socket on unmount
+  useEffect(() => {
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect()
+        socketRef.current = null
+      }
+    }
+  }, [])
+
+  // ============================================================================
+  // Streaming Parse (via Background Task)
   // ============================================================================
 
   const startParse = useCallback(
@@ -209,19 +476,22 @@ export function WorksheetParsingProvider({
       // If switching to a different attachment, revert the previous one's status
       const previousAttachmentId = state.activeAttachmentId
       if (previousAttachmentId && previousAttachmentId !== attachmentId) {
-        // Revert previous attachment to null status (will be corrected by cache invalidation)
         updateAttachmentStatus(previousAttachmentId, {
           parsingStatus: null,
           parsingError: null,
         })
       }
 
-      // Cancel any existing operation
-      abortControllerRef.current?.abort()
-      const controller = new AbortController()
-      abortControllerRef.current = controller
+      // Cancel any existing task subscription
+      if (socketRef.current && currentTaskIdRef.current) {
+        socketRef.current.emit('task:cancel', currentTaskIdRef.current)
+        socketRef.current.emit('task:unsubscribe', currentTaskIdRef.current)
+        socketRef.current.disconnect()
+        socketRef.current = null
+        currentTaskIdRef.current = null
+      }
 
-      // Start streaming
+      // Start streaming state
       dispatch({
         type: 'START_STREAMING',
         attachmentId,
@@ -235,8 +505,10 @@ export function WorksheetParsingProvider({
       })
 
       try {
+        // Start the background task
+        console.log('[WorksheetParsing] Starting parse task for attachment:', attachmentId)
         const response = await fetch(
-          `/api/curriculum/${playerId}/attachments/${attachmentId}/parse/stream`,
+          `/api/curriculum/${playerId}/attachments/${attachmentId}/parse/task`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -245,12 +517,12 @@ export function WorksheetParsingProvider({
               additionalContext,
               preservedBoundingBoxes,
             }),
-            signal: controller.signal,
           }
         )
 
         if (!response.ok) {
           const error = await response.json()
+          console.error('[WorksheetParsing] Task API error:', error)
           dispatch({
             type: 'PARSE_FAILED',
             error: error.error ?? 'Failed to start parsing',
@@ -258,75 +530,37 @@ export function WorksheetParsingProvider({
           return
         }
 
-        let accumulatedOutput = ''
-        const dispatchedProblemNumbers = new Set<number>()
+        const { taskId, status } = await response.json()
+        console.log('[WorksheetParsing] Task API response:', { taskId, status })
 
-        await parseSSEStream(
-          response,
-          {
-            onStarted: () => {
-              dispatch({
-                type: 'STREAM_PROGRESS_MESSAGE',
-                message: 'AI is analyzing the worksheet...',
-              })
-            },
-            onReasoning: (text, isDelta) => {
-              dispatch({ type: 'STREAM_REASONING', text, append: isDelta })
-            },
-            onOutputDelta: (text) => {
-              accumulatedOutput += text
-              dispatch({ type: 'STREAM_OUTPUT', text })
-
-              // Extract completed problems for progressive highlighting
-              const completedProblems = extractCompletedProblemsFromPartialJson(accumulatedOutput)
-              for (const problem of completedProblems) {
-                // Only dispatch if we haven't already dispatched this problem
-                if (!dispatchedProblemNumbers.has(problem.problemNumber)) {
-                  dispatchedProblemNumbers.add(problem.problemNumber)
-                  dispatch({ type: 'STREAM_PROBLEM_COMPLETE', problem })
-                }
-              }
-            },
-            onComplete: (result, stats, status) => {
-              dispatch({ type: 'PARSE_COMPLETE', result, stats })
-
-              // Update cache with result
-              updateAttachmentStatus(attachmentId, {
-                parsingStatus: (status as ParsingStatus) ?? 'approved',
-                rawParsingResult: result,
-                confidenceScore: result.overallConfidence,
-                needsReview: result.needsReview,
-                parsedAt: new Date().toISOString(),
-              })
-            },
-            onError: (message) => {
-              dispatch({ type: 'PARSE_FAILED', error: message })
-            },
-            onCancelled: () => {
-              dispatch({ type: 'CANCEL' })
-            },
-          },
-          controller.signal
-        )
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          dispatch({ type: 'CANCEL' })
+        if (status === 'already_running') {
+          // Re-subscribe to existing task
+          console.log('[WorksheetParsing] Re-subscribing to existing task')
+          subscribeToTask(taskId, attachmentId)
         } else {
-          dispatch({
-            type: 'PARSE_FAILED',
-            error: error instanceof Error ? error.message : 'Unknown error',
-          })
+          // Subscribe to new task
+          console.log('[WorksheetParsing] Subscribing to new task')
+          subscribeToTask(taskId, attachmentId)
         }
-      } finally {
-        abortControllerRef.current = null
+      } catch (error) {
+        dispatch({
+          type: 'PARSE_FAILED',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
         invalidateAttachments()
       }
     },
-    [playerId, state.activeAttachmentId, updateAttachmentStatus, invalidateAttachments]
+    [
+      playerId,
+      state.activeAttachmentId,
+      updateAttachmentStatus,
+      invalidateAttachments,
+      subscribeToTask,
+    ]
   )
 
   // ============================================================================
-  // Streaming Reparse
+  // Streaming Reparse (via Background Task)
   // ============================================================================
 
   const startReparse = useCallback(
@@ -337,19 +571,22 @@ export function WorksheetParsingProvider({
       // If switching to a different attachment, revert the previous one's status
       const previousAttachmentId = state.activeAttachmentId
       if (previousAttachmentId && previousAttachmentId !== attachmentId) {
-        // Revert previous attachment to null status (will be corrected by cache invalidation)
         updateAttachmentStatus(previousAttachmentId, {
           parsingStatus: null,
           parsingError: null,
         })
       }
 
-      // Cancel any existing operation
-      abortControllerRef.current?.abort()
-      const controller = new AbortController()
-      abortControllerRef.current = controller
+      // Cancel any existing task subscription
+      if (socketRef.current && currentTaskIdRef.current) {
+        socketRef.current.emit('task:cancel', currentTaskIdRef.current)
+        socketRef.current.emit('task:unsubscribe', currentTaskIdRef.current)
+        socketRef.current.disconnect()
+        socketRef.current = null
+        currentTaskIdRef.current = null
+      }
 
-      // Start streaming
+      // Start streaming state
       dispatch({
         type: 'START_STREAMING',
         attachmentId,
@@ -364,8 +601,10 @@ export function WorksheetParsingProvider({
       })
 
       try {
+        // Start the background task
+        console.log('[WorksheetParsing] Starting reparse task for attachment:', attachmentId)
         const response = await fetch(
-          `/api/curriculum/${playerId}/attachments/${attachmentId}/parse-selected/stream`,
+          `/api/curriculum/${playerId}/attachments/${attachmentId}/parse-selected/task`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -375,12 +614,12 @@ export function WorksheetParsingProvider({
               additionalContext,
               modelConfigId,
             }),
-            signal: controller.signal,
           }
         )
 
         if (!response.ok) {
           const error = await response.json()
+          console.error('[WorksheetParsing] Reparse task API error:', error)
           dispatch({
             type: 'PARSE_FAILED',
             error: error.error ?? 'Failed to start re-parsing',
@@ -388,86 +627,33 @@ export function WorksheetParsingProvider({
           return
         }
 
-        await parseSSEStream(
-          response,
-          {
-            onProblemStart: (_problemIndex, _problemNumber, currentIndex, totalProblems) => {
-              dispatch({
-                type: 'STREAM_REPARSE_PROGRESS',
-                current: currentIndex,
-                total: totalProblems,
-              })
-            },
-            onReasoning: (text, isDelta) => {
-              dispatch({ type: 'STREAM_REASONING', text, append: isDelta })
-            },
-            onOutputDelta: () => {
-              // For reparse, we just update progress message
-              dispatch({
-                type: 'STREAM_PROGRESS_MESSAGE',
-                message: 'Extracting problem details...',
-              })
-            },
-            onProblemComplete: (
-              problemIndex,
-              problemNumber,
-              result,
-              currentIndex,
-              totalProblems
-            ) => {
-              const problemResult = result as {
-                problemBoundingBox?: BoundingBox
-              }
-              if (problemResult?.problemBoundingBox) {
-                dispatch({
-                  type: 'STREAM_PROBLEM_COMPLETE',
-                  problem: {
-                    problemNumber,
-                    problemBoundingBox: problemResult.problemBoundingBox,
-                  },
-                  problemIndex,
-                })
-              }
-              dispatch({
-                type: 'STREAM_PROGRESS_MESSAGE',
-                message: `Completed problem ${currentIndex + 1} of ${totalProblems}`,
-              })
-            },
-            onComplete: (result, _stats, status) => {
-              dispatch({ type: 'PARSE_COMPLETE', result })
+        const { taskId, status } = await response.json()
+        console.log('[WorksheetParsing] Reparse task API response:', { taskId, status })
 
-              // Update cache with result
-              updateAttachmentStatus(attachmentId, {
-                parsingStatus: (status as ParsingStatus) ?? 'approved',
-                rawParsingResult: result,
-                confidenceScore: result.overallConfidence,
-                needsReview: result.needsReview,
-              })
-            },
-            onError: (message) => {
-              dispatch({ type: 'PARSE_FAILED', error: message })
-            },
-            onCancelled: () => {
-              dispatch({ type: 'CANCEL' })
-            },
-          },
-          controller.signal
-        )
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          dispatch({ type: 'CANCEL' })
+        if (status === 'already_running') {
+          // Re-subscribe to existing task
+          console.log('[WorksheetParsing] Re-subscribing to existing reparse task')
+          subscribeToTask(taskId, attachmentId)
         } else {
-          dispatch({
-            type: 'PARSE_FAILED',
-            error: error instanceof Error ? error.message : 'Unknown error',
-          })
+          // Subscribe to new task
+          console.log('[WorksheetParsing] Subscribing to new reparse task')
+          subscribeToTask(taskId, attachmentId)
         }
-      } finally {
-        abortControllerRef.current = null
+      } catch (error) {
+        dispatch({
+          type: 'PARSE_FAILED',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
         invalidateAttachments()
       }
     },
-    [playerId, state.activeAttachmentId, updateAttachmentStatus, invalidateAttachments]
+    [
+      playerId,
+      state.activeAttachmentId,
+      updateAttachmentStatus,
+      invalidateAttachments,
+      subscribeToTask,
+    ]
   )
 
   // ============================================================================
@@ -475,14 +661,79 @@ export function WorksheetParsingProvider({
   // ============================================================================
 
   const cancel = useCallback(() => {
-    abortControllerRef.current?.abort()
+    // Cancel task-based parse/reparse
+    if (socketRef.current && currentTaskIdRef.current) {
+      socketRef.current.emit('task:cancel', currentTaskIdRef.current)
+      socketRef.current.emit('task:unsubscribe', currentTaskIdRef.current)
+      socketRef.current.disconnect()
+      socketRef.current = null
+      currentTaskIdRef.current = null
+    }
     dispatch({ type: 'CANCEL' })
   }, [])
 
   const reset = useCallback(() => {
-    abortControllerRef.current?.abort()
+    // Cancel task-based parse/reparse
+    if (socketRef.current && currentTaskIdRef.current) {
+      socketRef.current.emit('task:cancel', currentTaskIdRef.current)
+      socketRef.current.emit('task:unsubscribe', currentTaskIdRef.current)
+      socketRef.current.disconnect()
+      socketRef.current = null
+      currentTaskIdRef.current = null
+    }
     dispatch({ type: 'RESET' })
   }, [])
+
+  // ============================================================================
+  // Reconnect to In-Progress Task (for page reload recovery)
+  // ============================================================================
+
+  const reconnectToTask = useCallback(
+    async (attachmentId: string): Promise<boolean> => {
+      // Don't reconnect if we're already tracking this attachment
+      if (state.activeAttachmentId === attachmentId) {
+        return true
+      }
+
+      // Don't reconnect if we already have an active socket
+      if (socketRef.current && currentTaskIdRef.current) {
+        return false
+      }
+
+      try {
+        // Query for active task
+        const response = await fetch(
+          `/api/curriculum/${playerId}/attachments/${attachmentId}/parse/task`,
+          { method: 'GET' }
+        )
+
+        if (!response.ok) {
+          return false
+        }
+
+        const { taskId, status } = await response.json()
+
+        if (!taskId || status === 'none') {
+          return false
+        }
+
+        // Set up streaming state for reconnection
+        dispatch({
+          type: 'START_STREAMING',
+          attachmentId,
+          streamType: 'initial',
+        })
+
+        // Subscribe to the task
+        subscribeToTask(taskId, attachmentId)
+        return true
+      } catch (error) {
+        console.error('[WorksheetParsing] Failed to reconnect:', error)
+        return false
+      }
+    },
+    [playerId, state.activeAttachmentId, subscribeToTask]
+  )
 
   // ============================================================================
   // Non-Streaming Mutations
@@ -599,11 +850,22 @@ export function WorksheetParsingProvider({
       startReparse,
       cancel,
       reset,
+      reconnectToTask,
       submitCorrection,
       approve,
       unapprove,
     }),
-    [state, startParse, startReparse, cancel, reset, submitCorrection, approve, unapprove]
+    [
+      state,
+      startParse,
+      startReparse,
+      cancel,
+      reset,
+      reconnectToTask,
+      submitCorrection,
+      approve,
+      unapprove,
+    ]
   )
 
   return (

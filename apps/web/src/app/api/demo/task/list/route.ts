@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { desc, inArray } from 'drizzle-orm'
 
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       .limit(limit)
 
     if (statusParam) {
-      const statuses = statusParam.split(',').map(s => s.trim())
+      const statuses = statusParam.split(',').map((s) => s.trim())
       query = query.where(inArray(schema.backgroundTasks.status, statuses)) as typeof query
     }
 

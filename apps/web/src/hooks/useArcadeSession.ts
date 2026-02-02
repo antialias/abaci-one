@@ -211,8 +211,12 @@ export function useArcadeSession<TState>(
         version: data.version,
         stateKeys: stateObj ? Object.keys(stateObj).slice(0, 10) : [],
         // Log critical matching game fields
-        gameCardsLength: Array.isArray(stateObj?.gameCards) ? (stateObj.gameCards as unknown[]).length : 'not-array',
-        flippedCardsLength: Array.isArray(stateObj?.flippedCards) ? (stateObj.flippedCards as unknown[]).length : 'not-array',
+        gameCardsLength: Array.isArray(stateObj?.gameCards)
+          ? (stateObj.gameCards as unknown[]).length
+          : 'not-array',
+        flippedCardsLength: Array.isArray(stateObj?.flippedCards)
+          ? (stateObj.flippedCards as unknown[]).length
+          : 'not-array',
         gamePhase: stateObj?.gamePhase,
         gameType: stateObj?.gameType,
       })

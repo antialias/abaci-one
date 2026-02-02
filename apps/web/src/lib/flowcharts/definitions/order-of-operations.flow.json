@@ -121,9 +121,23 @@
         "values": {
           "expr": "3 + 4 × 2",
           "numSteps": 2,
-          "s1Priority": "MD", "s1Left": 4, "s1Op": "×", "s1Right": 2, "s1Result": 8, "s1Expr": "3 + 8",
-          "s2Priority": "AS", "s2Left": 3, "s2Op": "+", "s2Right": 8, "s2Result": 11, "s2Expr": "11",
-          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "s1Priority": "MD",
+          "s1Left": 4,
+          "s1Op": "×",
+          "s1Right": 2,
+          "s1Result": 8,
+          "s1Expr": "3 + 8",
+          "s2Priority": "AS",
+          "s2Left": 3,
+          "s2Op": "+",
+          "s2Right": 8,
+          "s2Result": 11,
+          "s2Expr": "11",
+          "s3Priority": "none",
+          "s3Left": 0,
+          "s3Op": "",
+          "s3Right": 0,
+          "s3Result": 0,
           "answer": 11
         },
         "expectedAnswer": "11"
@@ -134,9 +148,23 @@
         "values": {
           "expr": "(3 + 4) × 2",
           "numSteps": 2,
-          "s1Priority": "P", "s1Left": 3, "s1Op": "+", "s1Right": 4, "s1Result": 7, "s1Expr": "7 × 2",
-          "s2Priority": "MD", "s2Left": 7, "s2Op": "×", "s2Right": 2, "s2Result": 14, "s2Expr": "14",
-          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "s1Priority": "P",
+          "s1Left": 3,
+          "s1Op": "+",
+          "s1Right": 4,
+          "s1Result": 7,
+          "s1Expr": "7 × 2",
+          "s2Priority": "MD",
+          "s2Left": 7,
+          "s2Op": "×",
+          "s2Right": 2,
+          "s2Result": 14,
+          "s2Expr": "14",
+          "s3Priority": "none",
+          "s3Left": 0,
+          "s3Op": "",
+          "s3Right": 0,
+          "s3Result": 0,
           "answer": 14
         },
         "expectedAnswer": "14"
@@ -147,9 +175,23 @@
         "values": {
           "expr": "2 + 3²",
           "numSteps": 2,
-          "s1Priority": "E", "s1Left": 3, "s1Op": "^", "s1Right": 2, "s1Result": 9, "s1Expr": "2 + 9",
-          "s2Priority": "AS", "s2Left": 2, "s2Op": "+", "s2Right": 9, "s2Result": 11, "s2Expr": "11",
-          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "s1Priority": "E",
+          "s1Left": 3,
+          "s1Op": "^",
+          "s1Right": 2,
+          "s1Result": 9,
+          "s1Expr": "2 + 9",
+          "s2Priority": "AS",
+          "s2Left": 2,
+          "s2Op": "+",
+          "s2Right": 9,
+          "s2Result": 11,
+          "s2Expr": "11",
+          "s3Priority": "none",
+          "s3Left": 0,
+          "s3Op": "",
+          "s3Right": 0,
+          "s3Result": 0,
           "answer": 11
         },
         "expectedAnswer": "11"
@@ -160,9 +202,23 @@
         "values": {
           "expr": "10 - 8 ÷ 2",
           "numSteps": 2,
-          "s1Priority": "MD", "s1Left": 8, "s1Op": "÷", "s1Right": 2, "s1Result": 4, "s1Expr": "10 - 4",
-          "s2Priority": "AS", "s2Left": 10, "s2Op": "-", "s2Right": 4, "s2Result": 6, "s2Expr": "6",
-          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "s1Priority": "MD",
+          "s1Left": 8,
+          "s1Op": "÷",
+          "s1Right": 2,
+          "s1Result": 4,
+          "s1Expr": "10 - 4",
+          "s2Priority": "AS",
+          "s2Left": 10,
+          "s2Op": "-",
+          "s2Right": 4,
+          "s2Result": 6,
+          "s2Expr": "6",
+          "s3Priority": "none",
+          "s3Left": 0,
+          "s3Op": "",
+          "s3Right": 0,
+          "s3Result": 0,
           "answer": 6
         },
         "expectedAnswer": "6"
@@ -173,9 +229,23 @@
         "values": {
           "expr": "12 - 4 + 2",
           "numSteps": 2,
-          "s1Priority": "AS", "s1Left": 12, "s1Op": "-", "s1Right": 4, "s1Result": 8, "s1Expr": "8 + 2",
-          "s2Priority": "AS", "s2Left": 8, "s2Op": "+", "s2Right": 2, "s2Result": 10, "s2Expr": "10",
-          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "s1Priority": "AS",
+          "s1Left": 12,
+          "s1Op": "-",
+          "s1Right": 4,
+          "s1Result": 8,
+          "s1Expr": "8 + 2",
+          "s2Priority": "AS",
+          "s2Left": 8,
+          "s2Op": "+",
+          "s2Right": 2,
+          "s2Result": 10,
+          "s2Expr": "10",
+          "s3Priority": "none",
+          "s3Left": 0,
+          "s3Op": "",
+          "s3Right": 0,
+          "s3Result": 0,
           "answer": 10
         },
         "expectedAnswer": "10"
@@ -186,9 +256,23 @@
         "values": {
           "expr": "2 + 3 × 4 - 5",
           "numSteps": 3,
-          "s1Priority": "MD", "s1Left": 3, "s1Op": "×", "s1Right": 4, "s1Result": 12, "s1Expr": "2 + 12 - 5",
-          "s2Priority": "AS", "s2Left": 2, "s2Op": "+", "s2Right": 12, "s2Result": 14, "s2Expr": "14 - 5",
-          "s3Priority": "AS", "s3Left": 14, "s3Op": "-", "s3Right": 5, "s3Result": 9,
+          "s1Priority": "MD",
+          "s1Left": 3,
+          "s1Op": "×",
+          "s1Right": 4,
+          "s1Result": 12,
+          "s1Expr": "2 + 12 - 5",
+          "s2Priority": "AS",
+          "s2Left": 2,
+          "s2Op": "+",
+          "s2Right": 12,
+          "s2Result": 14,
+          "s2Expr": "14 - 5",
+          "s3Priority": "AS",
+          "s3Left": 14,
+          "s3Op": "-",
+          "s3Right": 5,
+          "s3Result": 9,
           "answer": 9
         },
         "expectedAnswer": "9"
@@ -199,9 +283,23 @@
         "values": {
           "expr": "2² × 3",
           "numSteps": 2,
-          "s1Priority": "E", "s1Left": 2, "s1Op": "^", "s1Right": 2, "s1Result": 4, "s1Expr": "4 × 3",
-          "s2Priority": "MD", "s2Left": 4, "s2Op": "×", "s2Right": 3, "s2Result": 12, "s2Expr": "12",
-          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "s1Priority": "E",
+          "s1Left": 2,
+          "s1Op": "^",
+          "s1Right": 2,
+          "s1Result": 4,
+          "s1Expr": "4 × 3",
+          "s2Priority": "MD",
+          "s2Left": 4,
+          "s2Op": "×",
+          "s2Right": 3,
+          "s2Result": 12,
+          "s2Expr": "12",
+          "s3Priority": "none",
+          "s3Left": 0,
+          "s3Op": "",
+          "s3Right": 0,
+          "s3Result": 0,
           "answer": 12
         },
         "expectedAnswer": "12"
@@ -212,9 +310,23 @@
         "values": {
           "expr": "(2 + 3)²",
           "numSteps": 2,
-          "s1Priority": "P", "s1Left": 2, "s1Op": "+", "s1Right": 3, "s1Result": 5, "s1Expr": "5²",
-          "s2Priority": "E", "s2Left": 5, "s2Op": "^", "s2Right": 2, "s2Result": 25, "s2Expr": "25",
-          "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+          "s1Priority": "P",
+          "s1Left": 2,
+          "s1Op": "+",
+          "s1Right": 3,
+          "s1Result": 5,
+          "s1Expr": "5²",
+          "s2Priority": "E",
+          "s2Left": 5,
+          "s2Op": "^",
+          "s2Right": 2,
+          "s2Result": 25,
+          "s2Expr": "25",
+          "s3Priority": "none",
+          "s3Left": 0,
+          "s3Op": "",
+          "s3Right": 0,
+          "s3Result": 0,
           "answer": 25
         },
         "expectedAnswer": "25"
@@ -252,10 +364,7 @@
       "type": "instruction",
       "advance": "tap",
       "next": "EXPLAIN_PEMDAS",
-      "transform": [
-        { "key": "currentExpr", "expr": "expr" },
-        { "key": "currentStep", "expr": "1" }
-      ]
+      "transform": [{ "key": "currentExpr", "expr": "expr" }, { "key": "currentStep", "expr": "1" }]
     },
     "EXPLAIN_PEMDAS": {
       "type": "instruction",
@@ -276,9 +385,7 @@
       "type": "instruction",
       "advance": "tap",
       "next": "CHECK_STEP1",
-      "transform": [
-        { "key": "opDisplay", "expr": "s1Left + ' ' + s1Op + ' ' + s1Right" }
-      ]
+      "transform": [{ "key": "opDisplay", "expr": "s1Left + ' ' + s1Op + ' ' + s1Right" }]
     },
     "CHECK_STEP1": {
       "type": "checkpoint",
@@ -295,9 +402,7 @@
       "type": "instruction",
       "advance": "tap",
       "next": "CHECK_MORE_STEPS1",
-      "transform": [
-        { "key": "showExpr", "expr": "s1Expr" }
-      ]
+      "transform": [{ "key": "showExpr", "expr": "s1Expr" }]
     },
     "CHECK_MORE_STEPS1": {
       "type": "embellishment",
@@ -319,9 +424,7 @@
       "type": "instruction",
       "advance": "tap",
       "next": "CHECK_STEP2",
-      "transform": [
-        { "key": "opDisplay", "expr": "s2Left + ' ' + s2Op + ' ' + s2Right" }
-      ]
+      "transform": [{ "key": "opDisplay", "expr": "s2Left + ' ' + s2Op + ' ' + s2Right" }]
     },
     "CHECK_STEP2": {
       "type": "checkpoint",
@@ -338,9 +441,7 @@
       "type": "instruction",
       "advance": "tap",
       "next": "CHECK_MORE_STEPS2",
-      "transform": [
-        { "key": "showExpr", "expr": "s2Expr" }
-      ]
+      "transform": [{ "key": "showExpr", "expr": "s2Expr" }]
     },
     "CHECK_MORE_STEPS2": {
       "type": "embellishment",
@@ -362,9 +463,7 @@
       "type": "instruction",
       "advance": "tap",
       "next": "CHECK_STEP3",
-      "transform": [
-        { "key": "opDisplay", "expr": "s3Left + ' ' + s3Op + ' ' + s3Right" }
-      ]
+      "transform": [{ "key": "opDisplay", "expr": "s3Left + ' ' + s3Op + ' ' + s3Right" }]
     },
     "CHECK_STEP3": {
       "type": "checkpoint",
@@ -397,9 +496,23 @@
       "values": {
         "expr": "3 + 4 × 2",
         "numSteps": 2,
-        "s1Priority": "MD", "s1Left": 4, "s1Op": "×", "s1Right": 2, "s1Result": 8, "s1Expr": "3 + 8",
-        "s2Priority": "AS", "s2Left": 3, "s2Op": "+", "s2Right": 8, "s2Result": 11, "s2Expr": "11",
-        "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+        "s1Priority": "MD",
+        "s1Left": 4,
+        "s1Op": "×",
+        "s1Right": 2,
+        "s1Result": 8,
+        "s1Expr": "3 + 8",
+        "s2Priority": "AS",
+        "s2Left": 3,
+        "s2Op": "+",
+        "s2Right": 8,
+        "s2Result": 11,
+        "s2Expr": "11",
+        "s3Priority": "none",
+        "s3Left": 0,
+        "s3Op": "",
+        "s3Right": 0,
+        "s3Result": 0,
         "answer": 11
       },
       "expected": { "result": 11 }
@@ -409,9 +522,23 @@
       "values": {
         "expr": "(3 + 4) × 2",
         "numSteps": 2,
-        "s1Priority": "P", "s1Left": 3, "s1Op": "+", "s1Right": 4, "s1Result": 7, "s1Expr": "7 × 2",
-        "s2Priority": "MD", "s2Left": 7, "s2Op": "×", "s2Right": 2, "s2Result": 14, "s2Expr": "14",
-        "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+        "s1Priority": "P",
+        "s1Left": 3,
+        "s1Op": "+",
+        "s1Right": 4,
+        "s1Result": 7,
+        "s1Expr": "7 × 2",
+        "s2Priority": "MD",
+        "s2Left": 7,
+        "s2Op": "×",
+        "s2Right": 2,
+        "s2Result": 14,
+        "s2Expr": "14",
+        "s3Priority": "none",
+        "s3Left": 0,
+        "s3Op": "",
+        "s3Right": 0,
+        "s3Result": 0,
         "answer": 14
       },
       "expected": { "result": 14 }
@@ -421,9 +548,23 @@
       "values": {
         "expr": "2 + 3²",
         "numSteps": 2,
-        "s1Priority": "E", "s1Left": 3, "s1Op": "^", "s1Right": 2, "s1Result": 9, "s1Expr": "2 + 9",
-        "s2Priority": "AS", "s2Left": 2, "s2Op": "+", "s2Right": 9, "s2Result": 11, "s2Expr": "11",
-        "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+        "s1Priority": "E",
+        "s1Left": 3,
+        "s1Op": "^",
+        "s1Right": 2,
+        "s1Result": 9,
+        "s1Expr": "2 + 9",
+        "s2Priority": "AS",
+        "s2Left": 2,
+        "s2Op": "+",
+        "s2Right": 9,
+        "s2Result": 11,
+        "s2Expr": "11",
+        "s3Priority": "none",
+        "s3Left": 0,
+        "s3Op": "",
+        "s3Right": 0,
+        "s3Result": 0,
         "answer": 11
       },
       "expected": { "result": 11 }
@@ -433,9 +574,23 @@
       "values": {
         "expr": "12 - 4 + 2",
         "numSteps": 2,
-        "s1Priority": "AS", "s1Left": 12, "s1Op": "-", "s1Right": 4, "s1Result": 8, "s1Expr": "8 + 2",
-        "s2Priority": "AS", "s2Left": 8, "s2Op": "+", "s2Right": 2, "s2Result": 10, "s2Expr": "10",
-        "s3Priority": "none", "s3Left": 0, "s3Op": "", "s3Right": 0, "s3Result": 0,
+        "s1Priority": "AS",
+        "s1Left": 12,
+        "s1Op": "-",
+        "s1Right": 4,
+        "s1Result": 8,
+        "s1Expr": "8 + 2",
+        "s2Priority": "AS",
+        "s2Left": 8,
+        "s2Op": "+",
+        "s2Right": 2,
+        "s2Result": 10,
+        "s2Expr": "10",
+        "s3Priority": "none",
+        "s3Left": 0,
+        "s3Op": "",
+        "s3Right": 0,
+        "s3Result": 0,
         "answer": 10
       },
       "expected": { "result": 10 }
@@ -445,9 +600,23 @@
       "values": {
         "expr": "2 + 3 × 4 - 5",
         "numSteps": 3,
-        "s1Priority": "MD", "s1Left": 3, "s1Op": "×", "s1Right": 4, "s1Result": 12, "s1Expr": "2 + 12 - 5",
-        "s2Priority": "AS", "s2Left": 2, "s2Op": "+", "s2Right": 12, "s2Result": 14, "s2Expr": "14 - 5",
-        "s3Priority": "AS", "s3Left": 14, "s3Op": "-", "s3Right": 5, "s3Result": 9,
+        "s1Priority": "MD",
+        "s1Left": 3,
+        "s1Op": "×",
+        "s1Right": 4,
+        "s1Result": 12,
+        "s1Expr": "2 + 12 - 5",
+        "s2Priority": "AS",
+        "s2Left": 2,
+        "s2Op": "+",
+        "s2Right": 12,
+        "s2Result": 14,
+        "s2Expr": "14 - 5",
+        "s3Priority": "AS",
+        "s3Left": 14,
+        "s3Op": "-",
+        "s3Right": 5,
+        "s3Result": 9,
         "answer": 9
       },
       "expected": { "result": 9 }

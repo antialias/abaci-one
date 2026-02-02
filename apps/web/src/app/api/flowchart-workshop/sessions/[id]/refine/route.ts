@@ -15,97 +15,88 @@
  * - error: Error occurred
  */
 
-import { and, eq } from "drizzle-orm";
-import type { z } from "zod";
-import { db, schema } from "@/db";
+import { and, eq } from 'drizzle-orm'
+import type { z } from 'zod'
+import { db, schema } from '@/db'
 import {
   getRefinementSystemPrompt,
   RefinementResultSchema,
   transformLLMDefinitionToInternal,
-} from "@/lib/flowchart-workshop/llm-schemas";
-import { validateTestCasesWithCoverage } from "@/lib/flowchart-workshop/test-case-validator";
-import { llm, type StreamEvent } from "@/lib/llm";
-import { getDbUserId } from "@/lib/viewer";
+} from '@/lib/flowchart-workshop/llm-schemas'
+import { validateTestCasesWithCoverage } from '@/lib/flowchart-workshop/test-case-validator'
+import { llm, type StreamEvent } from '@/lib/llm'
+import { getDbUserId } from '@/lib/viewer'
 
-type RefinementResult = z.infer<typeof RefinementResultSchema>;
+type RefinementResult = z.infer<typeof RefinementResultSchema>
 
 interface RouteParams {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
-  const { id } = await params;
+  const { id } = await params
 
   if (!id) {
-    return new Response(JSON.stringify({ error: "Session ID required" }), {
+    return new Response(JSON.stringify({ error: 'Session ID required' }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   // Authorization check
-  let userId: string;
+  let userId: string
   try {
-    userId = await getDbUserId();
+    userId = await getDbUserId()
   } catch {
-    return new Response(JSON.stringify({ error: "Not authenticated" }), {
+    return new Response(JSON.stringify({ error: 'Not authenticated' }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   // Get the session
   const session = await db.query.workshopSessions.findFirst({
-    where: and(
-      eq(schema.workshopSessions.id, id),
-      eq(schema.workshopSessions.userId, userId),
-    ),
-  });
+    where: and(eq(schema.workshopSessions.id, id), eq(schema.workshopSessions.userId, userId)),
+  })
 
   if (!session) {
-    return new Response(JSON.stringify({ error: "Session not found" }), {
+    return new Response(JSON.stringify({ error: 'Session not found' }), {
       status: 404,
-      headers: { "Content-Type": "application/json" },
-    });
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   // Check we have a draft to refine
   if (!session.draftDefinitionJson || !session.draftMermaidContent) {
-    return new Response(
-      JSON.stringify({ error: "No draft to refine - generate first" }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ error: 'No draft to refine - generate first' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   // Parse request body
-  let refinementRequest: string;
+  let refinementRequest: string
   try {
-    const body = await request.json();
-    refinementRequest = body.request;
+    const body = await request.json()
+    refinementRequest = body.request
     if (!refinementRequest) {
-      return new Response(
-        JSON.stringify({ error: "Refinement request required" }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ error: 'Refinement request required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid request body" }), {
+    return new Response(JSON.stringify({ error: 'Invalid request body' }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   // Parse refinement history
-  let refinementHistory: string[] = [];
+  let refinementHistory: string[] = []
   if (session.refinementHistory) {
     try {
-      refinementHistory = JSON.parse(session.refinementHistory);
+      refinementHistory = JSON.parse(session.refinementHistory)
     } catch {
       // Ignore
     }
@@ -114,61 +105,59 @@ export async function POST(request: Request, { params }: RouteParams) {
   // Create SSE stream with resilient event sending
   // Key design: LLM processing and DB saves happen regardless of client connection
   // Client streaming is best-effort - if they disconnect, we still complete the work
-  const encoder = new TextEncoder();
+  const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
-      let clientConnected = true;
+      let clientConnected = true
 
       // Resilient event sender - catches errors if client disconnected
       // This ensures LLM processing continues even if client closes browser
       const sendEvent = (event: string, data: unknown) => {
-        if (!clientConnected) return;
+        if (!clientConnected) return
         try {
-          controller.enqueue(encoder.encode(`event: ${event}\n`));
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(data)}\n\n`),
-          );
+          controller.enqueue(encoder.encode(`event: ${event}\n`))
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
         } catch {
           // Client disconnected - mark as disconnected but continue processing
-          clientConnected = false;
+          clientConnected = false
           console.log(
-            `[refine] Client disconnected during ${event} event, continuing LLM processing...`,
-          );
+            `[refine] Client disconnected during ${event} event, continuing LLM processing...`
+          )
         }
-      };
+      }
 
       const closeStream = () => {
-        if (!clientConnected) return;
+        if (!clientConnected) return
         try {
-          controller.close();
+          controller.close()
         } catch {
           // Already closed
         }
-      };
+      }
 
       // Track LLM errors separately from client errors
-      let llmError: { message: string; code?: string } | null = null;
-      let finalResult: RefinementResult | null = null;
+      let llmError: { message: string; code?: string } | null = null
+      let finalResult: RefinementResult | null = null
       let usage: {
-        promptTokens: number;
-        completionTokens: number;
-        reasoningTokens?: number;
-      } | null = null;
+        promptTokens: number
+        completionTokens: number
+        reasoningTokens?: number
+      } | null = null
 
       try {
-        sendEvent("progress", {
-          stage: "preparing",
-          message: "Preparing refinement...",
-        });
+        sendEvent('progress', {
+          stage: 'preparing',
+          message: 'Preparing refinement...',
+        })
 
         // Build the prompt
-        const systemPrompt = getRefinementSystemPrompt();
+        const systemPrompt = getRefinementSystemPrompt()
 
         // Build context with history
         const historyContext =
           refinementHistory.length > 0
-            ? `\n\n## Previous Refinements\n${refinementHistory.map((r, i) => `${i + 1}. ${r}`).join("\n")}`
-            : "";
+            ? `\n\n## Previous Refinements\n${refinementHistory.map((r, i) => `${i + 1}. ${r}`).join('\n')}`
+            : ''
 
         const userPrompt = `Here is the current flowchart to refine:
 
@@ -183,33 +172,33 @@ ${session.draftMermaidContent}
 \`\`\`
 
 ## Current Emoji
-${session.draftEmoji || "📊"}
+${session.draftEmoji || '📊'}
 
 ## Topic/Context
-${session.topicDescription || "Not specified"}
+${session.topicDescription || 'Not specified'}
 
 ${historyContext}
 
 ## Refinement Request
 ${refinementRequest}
 
-Please modify the flowchart according to this request. Return the complete updated definition and mermaid content. If the topic changed significantly and the current emoji no longer fits, provide an updated emoji; otherwise set updatedEmoji to null to keep the current one.`;
+Please modify the flowchart according to this request. Return the complete updated definition and mermaid content. If the topic changed significantly and the current emoji no longer fits, provide an updated emoji; otherwise set updatedEmoji to null to keep the current one.`
 
         // Combine system prompt with user prompt
-        const fullPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}`;
+        const fullPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}`
 
         // Stream the LLM response with reasoning
         const llmStream = llm.stream({
-          provider: "openai",
-          model: "gpt-5.2",
+          provider: 'openai',
+          model: 'gpt-5.2',
           prompt: fullPrompt,
           schema: RefinementResultSchema,
           reasoning: {
-            effort: "medium",
-            summary: "auto",
+            effort: 'medium',
+            summary: 'auto',
           },
           timeoutMs: 300_000, // 5 minutes for refinement
-        });
+        })
 
         // Forward all stream events to the client (best-effort)
         // The for-await loop processes all LLM events regardless of client state
@@ -219,93 +208,90 @@ Please modify the flowchart according to this request. Return the complete updat
           unknown
         >) {
           switch (event.type) {
-            case "started":
-              sendEvent("started", {
+            case 'started':
+              sendEvent('started', {
                 responseId: event.responseId,
-                message: "Refining flowchart...",
-              });
-              break;
+                message: 'Refining flowchart...',
+              })
+              break
 
-            case "reasoning":
-              sendEvent("reasoning", {
+            case 'reasoning':
+              sendEvent('reasoning', {
                 text: event.text,
                 summaryIndex: event.summaryIndex,
                 isDelta: event.isDelta,
-              });
-              break;
+              })
+              break
 
-            case "output_delta":
-              sendEvent("output_delta", {
+            case 'output_delta':
+              sendEvent('output_delta', {
                 text: event.text,
                 outputIndex: event.outputIndex,
-              });
-              break;
+              })
+              break
 
-            case "error":
+            case 'error':
               // This is an LLM error, not a client error
-              llmError = { message: event.message, code: event.code };
-              sendEvent("error", {
+              llmError = { message: event.message, code: event.code }
+              sendEvent('error', {
                 message: event.message,
                 code: event.code,
-              });
-              break;
+              })
+              break
 
-            case "complete":
-              finalResult = event.data;
-              usage = event.usage;
-              break;
+            case 'complete':
+              finalResult = event.data
+              usage = event.usage
+              break
           }
         }
       } catch (error) {
         // This catch is for unexpected errors (network issues, etc.)
         // NOT for client disconnect (those are caught in sendEvent)
-        console.error("Flowchart refinement error:", error);
+        console.error('Flowchart refinement error:', error)
         llmError = {
-          message: error instanceof Error ? error.message : "Unknown error",
-        };
+          message: error instanceof Error ? error.message : 'Unknown error',
+        }
       }
 
       // ALWAYS update database based on LLM result, regardless of client connection
       // This is the key fix: DB operations happen outside the try-catch for client errors
       if (llmError) {
         // LLM failed - just send error event (don't update state, keep previous draft)
-        sendEvent("error", { message: llmError.message });
+        sendEvent('error', { message: llmError.message })
       } else if (finalResult) {
         // LLM succeeded - save the result
-        sendEvent("progress", {
-          stage: "validating",
-          message: "Validating changes...",
-        });
+        sendEvent('progress', {
+          stage: 'validating',
+          message: 'Validating changes...',
+        })
 
         // Transform LLM output (array-based) to internal format (record-based)
-        const internalDefinition = transformLLMDefinitionToInternal(
-          finalResult.updatedDefinition,
-        );
+        const internalDefinition = transformLLMDefinitionToInternal(finalResult.updatedDefinition)
 
         // Run test case validation with coverage analysis
         const validationReport = await validateTestCasesWithCoverage(
           internalDefinition,
-          finalResult.updatedMermaidContent,
-        );
+          finalResult.updatedMermaidContent
+        )
 
         // Send validation event (regardless of pass/fail - UI will display results)
-        sendEvent("validation", {
+        sendEvent('validation', {
           passed: validationReport.passed,
-          failedCount:
-            validationReport.summary.failed + validationReport.summary.errors,
+          failedCount: validationReport.summary.failed + validationReport.summary.errors,
           totalCount: validationReport.summary.total,
           coveragePercent: validationReport.coverage.coveragePercent,
-        });
+        })
 
         // Add to refinement history
-        refinementHistory.push(refinementRequest);
+        refinementHistory.push(refinementRequest)
 
         // Determine the emoji (use updated if provided, otherwise keep current)
-        const newEmoji = finalResult.updatedEmoji || session.draftEmoji || "📊";
+        const newEmoji = finalResult.updatedEmoji || session.draftEmoji || '📊'
 
         // Increment version number and save to history
-        const currentVersion = session.currentVersionNumber ?? 0;
-        const newVersion = currentVersion + 1;
+        const currentVersion = session.currentVersionNumber ?? 0
+        const newVersion = currentVersion + 1
 
         // Save version to history
         await db.insert(schema.flowchartVersionHistory).values({
@@ -318,21 +304,19 @@ Please modify the flowchart according to this request. Return the complete updat
           emoji: newEmoji,
           difficulty: session.draftDifficulty,
           notes: JSON.stringify(finalResult.notes),
-          source: "refine",
+          source: 'refine',
           sourceRequest: refinementRequest,
           validationPassed: validationReport.passed,
           coveragePercent: validationReport.coverage.coveragePercent,
-        });
+        })
 
-        console.log(
-          `[refine] Version ${newVersion} saved to history for session ${id}`,
-        );
+        console.log(`[refine] Version ${newVersion} saved to history for session ${id}`)
 
         // Update session with the refined content
         await db
           .update(schema.workshopSessions)
           .set({
-            state: "refining",
+            state: 'refining',
             draftDefinitionJson: JSON.stringify(internalDefinition),
             draftMermaidContent: finalResult.updatedMermaidContent,
             draftEmoji: newEmoji,
@@ -341,31 +325,31 @@ Please modify the flowchart according to this request. Return the complete updat
             currentVersionNumber: newVersion,
             updatedAt: new Date(),
           })
-          .where(eq(schema.workshopSessions.id, id));
+          .where(eq(schema.workshopSessions.id, id))
 
         console.log(
-          `[refine] Flowchart refinement saved to DB for session ${id}${clientConnected ? "" : " (client had disconnected)"}`,
-        );
+          `[refine] Flowchart refinement saved to DB for session ${id}${clientConnected ? '' : ' (client had disconnected)'}`
+        )
 
-        sendEvent("complete", {
+        sendEvent('complete', {
           definition: internalDefinition,
           mermaidContent: finalResult.updatedMermaidContent,
           emoji: newEmoji,
           changesSummary: finalResult.changesSummary,
           notes: finalResult.notes,
           usage,
-        });
+        })
       }
 
-      closeStream();
+      closeStream()
     },
-  });
+  })
 
   return new Response(stream, {
     headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
     },
-  });
+  })
 }

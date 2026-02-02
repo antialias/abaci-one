@@ -8,9 +8,9 @@ import { real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
  */
 export const appSettings = sqliteTable('app_settings', {
   /**
-   * Setting key - use 'global' for the singleton row
+   * Setting ID - use 'default' for the singleton row
    */
-  key: text('key').primaryKey().default('global'),
+  id: text('id').primaryKey().default('default'),
 
   /**
    * BKT confidence threshold for skill classification.
@@ -32,6 +32,6 @@ export type NewAppSettings = typeof appSettings.$inferInsert
  * Default app settings values
  */
 export const DEFAULT_APP_SETTINGS: AppSettings = {
-  key: 'global',
+  id: 'default',
   bktConfidenceThreshold: 0.3,
 }

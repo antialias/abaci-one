@@ -17,6 +17,8 @@ export interface TaskEvent {
 
 /**
  * State of a background task
+ * Note: `input` is intentionally omitted - it can contain large data (e.g., base64 images)
+ * and is not needed by clients for progress tracking
  */
 export interface TaskState<TOutput = unknown> {
   id: string
@@ -24,13 +26,11 @@ export interface TaskState<TOutput = unknown> {
   status: TaskStatus
   progress: number
   progressMessage: string | null
-  input: unknown
   output: TOutput | null
   error: string | null
   createdAt: Date | string
   startedAt: Date | string | null
   completedAt: Date | string | null
-  userId: string | null
   events: TaskEvent[]
 }
 
@@ -146,7 +146,11 @@ export function useBackgroundTask<TOutput = unknown>(
     socket.on('task:event', (event: TaskEvent) => {
       if (event.taskId !== taskId) return
 
-      console.log('[useBackgroundTask] Received event:', event.eventType, event.replayed ? '(replayed)' : '')
+      console.log(
+        '[useBackgroundTask] Received event:',
+        event.eventType,
+        event.replayed ? '(replayed)' : ''
+      )
 
       setState((prev) => {
         if (!prev) return prev

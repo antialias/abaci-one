@@ -380,7 +380,8 @@ export const FLOWCHART_SEEDS: Record<
     meta: {
       id: 'sentence-type',
       title: 'Identify Sentence Types',
-      description: 'Learn to classify declarative, interrogative, imperative, and exclamatory sentences',
+      description:
+        'Learn to classify declarative, interrogative, imperative, and exclamatory sentences',
       emoji: '📝',
       difficulty: 'Beginner',
     },

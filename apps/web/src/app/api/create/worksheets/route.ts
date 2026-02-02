@@ -175,7 +175,10 @@ export async function POST(request: NextRequest) {
     const duration = (Date.now() - startTime) / 1000
     const digits = `${config.digitRange.min}-${config.digitRange.max}`
     metrics.worksheet.generationsTotal.inc({ operator: config.operator, digits, format: 'pdf' })
-    metrics.worksheet.generationDuration.observe({ operator: config.operator, format: 'pdf' }, duration)
+    metrics.worksheet.generationDuration.observe(
+      { operator: config.operator, format: 'pdf' },
+      duration
+    )
     metrics.worksheet.problemsGenerated.inc({ operator: config.operator }, problems.length)
 
     // Return binary PDF directly

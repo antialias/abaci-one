@@ -358,7 +358,13 @@ export const MCP_TOOLS = [
             },
             placeValueColors: {
               type: 'string',
-              enum: ['always', 'whenRegrouping', 'whenMultipleRegroups', 'when3PlusDigits', 'never'],
+              enum: [
+                'always',
+                'whenRegrouping',
+                'whenMultipleRegroups',
+                'when3PlusDigits',
+                'never',
+              ],
               description: 'When to color-code place values',
             },
             tenFrames: {

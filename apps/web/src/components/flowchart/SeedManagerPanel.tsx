@@ -239,7 +239,8 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
               cursor: unseededCount === 0 ? 'not-allowed' : 'pointer',
               opacity: unseededCount === 0 ? 0.5 : 1,
               _hover: {
-                backgroundColor: unseededCount === 0 ? undefined : { base: 'amber.700', _dark: 'amber.600' },
+                backgroundColor:
+                  unseededCount === 0 ? undefined : { base: 'amber.700', _dark: 'amber.600' },
               },
               _disabled: {
                 opacity: 0.5,
@@ -269,100 +270,127 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
       )}
 
       {/* Seed list */}
-      {!isCollapsed && <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
-        {seeds.map((seed) => (
-          <div
-            key={seed.id}
-            className={hstack({
-              justify: 'space-between',
-              padding: '2',
-              borderRadius: 'md',
-              backgroundColor: { base: 'white', _dark: 'gray.800' },
-            })}
-          >
-            <div className={hstack({ gap: '3' })}>
-              <span>{seed.emoji}</span>
-              <div>
-                <div
-                  className={css({
-                    fontWeight: 'medium',
-                    color: { base: 'gray.900', _dark: 'gray.100' },
-                  })}
-                >
-                  {seed.title}
-                </div>
-                <div
-                  className={css({
-                    fontSize: 'xs',
-                    color: { base: 'gray.500', _dark: 'gray.400' },
-                  })}
-                >
-                  {seed.id}
-                </div>
-              </div>
-            </div>
-
-            <div className={hstack({ gap: '2' })}>
-              {/* Status indicator */}
-              <div className={hstack({ gap: '1' })}>
-                <span
-                  className={css({
-                    display: 'inline-block',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: 'full',
-                    backgroundColor: seed.isSeeded
-                      ? { base: 'green.500', _dark: 'green.400' }
-                      : { base: 'gray.300', _dark: 'gray.600' },
-                  })}
-                />
-                <span
-                  className={css({
-                    fontSize: 'sm',
-                    color: { base: 'gray.600', _dark: 'gray.400' },
-                  })}
-                >
-                  {seed.isSeeded ? 'Seeded' : 'Not seeded'}
-                </span>
-              </div>
-
-              {/* Action buttons */}
-              {seed.isSeeded ? (
-                <div className={hstack({ gap: '2' })}>
-                  <a
-                    href={`/flowchart/${seed.id}`}
+      {!isCollapsed && (
+        <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
+          {seeds.map((seed) => (
+            <div
+              key={seed.id}
+              className={hstack({
+                justify: 'space-between',
+                padding: '2',
+                borderRadius: 'md',
+                backgroundColor: { base: 'white', _dark: 'gray.800' },
+              })}
+            >
+              <div className={hstack({ gap: '3' })}>
+                <span>{seed.emoji}</span>
+                <div>
+                  <div
                     className={css({
-                      paddingX: '2',
-                      paddingY: '1',
-                      borderRadius: 'md',
-                      fontSize: 'xs',
                       fontWeight: 'medium',
-                      backgroundColor: { base: 'blue.100', _dark: 'blue.900' },
-                      color: { base: 'blue.700', _dark: 'blue.300' },
-                      textDecoration: 'none',
-                      _hover: {
-                        backgroundColor: { base: 'blue.200', _dark: 'blue.800' },
-                      },
+                      color: { base: 'gray.900', _dark: 'gray.100' },
                     })}
                   >
-                    Walk
-                  </a>
+                    {seed.title}
+                  </div>
+                  <div
+                    className={css({
+                      fontSize: 'xs',
+                      color: { base: 'gray.500', _dark: 'gray.400' },
+                    })}
+                  >
+                    {seed.id}
+                  </div>
+                </div>
+              </div>
+
+              <div className={hstack({ gap: '2' })}>
+                {/* Status indicator */}
+                <div className={hstack({ gap: '1' })}>
+                  <span
+                    className={css({
+                      display: 'inline-block',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: 'full',
+                      backgroundColor: seed.isSeeded
+                        ? { base: 'green.500', _dark: 'green.400' }
+                        : { base: 'gray.300', _dark: 'gray.600' },
+                    })}
+                  />
+                  <span
+                    className={css({
+                      fontSize: 'sm',
+                      color: { base: 'gray.600', _dark: 'gray.400' },
+                    })}
+                  >
+                    {seed.isSeeded ? 'Seeded' : 'Not seeded'}
+                  </span>
+                </div>
+
+                {/* Action buttons */}
+                {seed.isSeeded ? (
+                  <div className={hstack({ gap: '2' })}>
+                    <a
+                      href={`/flowchart/${seed.id}`}
+                      className={css({
+                        paddingX: '2',
+                        paddingY: '1',
+                        borderRadius: 'md',
+                        fontSize: 'xs',
+                        fontWeight: 'medium',
+                        backgroundColor: { base: 'blue.100', _dark: 'blue.900' },
+                        color: { base: 'blue.700', _dark: 'blue.300' },
+                        textDecoration: 'none',
+                        _hover: {
+                          backgroundColor: { base: 'blue.200', _dark: 'blue.800' },
+                        },
+                      })}
+                    >
+                      Walk
+                    </a>
+                    <button
+                      onClick={() => handleReset(seed.id)}
+                      disabled={actionInProgress !== null}
+                      title="Delete and re-seed from code (picks up code changes)"
+                      className={css({
+                        paddingX: '2',
+                        paddingY: '1',
+                        borderRadius: 'md',
+                        fontSize: 'xs',
+                        fontWeight: 'medium',
+                        backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
+                        color: { base: 'gray.700', _dark: 'gray.300' },
+                        border: 'none',
+                        cursor: 'pointer',
+                        _hover: {
+                          backgroundColor: { base: 'gray.300', _dark: 'gray.600' },
+                        },
+                        _disabled: {
+                          opacity: 0.5,
+                          cursor: 'not-allowed',
+                        },
+                      })}
+                    >
+                      {actionInProgress === seed.id ? 'Resetting...' : 'Reset'}
+                    </button>
+                  </div>
+                ) : (
                   <button
-                    onClick={() => handleReset(seed.id)}
+                    onClick={() => handleSeed(seed.id)}
                     disabled={actionInProgress !== null}
-                    title="Delete and re-seed from code (picks up code changes)"
                     className={css({
                       paddingX: '2',
                       paddingY: '1',
                       borderRadius: 'md',
                       fontSize: 'xs',
                       fontWeight: 'medium',
-                      backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
-                      color: { base: 'gray.700', _dark: 'gray.300' },
+                      backgroundColor: { base: 'amber.500', _dark: 'amber.600' },
+                      color: 'white',
                       border: 'none',
                       cursor: 'pointer',
                       _hover: {
-                        backgroundColor: { base: 'gray.300', _dark: 'gray.600' },
+                        backgroundColor: { base: 'amber.600', _dark: 'amber.700' },
                       },
                       _disabled: {
                         opacity: 0.5,
@@ -370,56 +398,40 @@ export function SeedManagerPanel({ onSeedComplete }: SeedManagerPanelProps) {
                       },
                     })}
                   >
-                    {actionInProgress === seed.id ? 'Resetting...' : 'Reset'}
+                    {actionInProgress === seed.id ? 'Seeding...' : 'Seed'}
                   </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => handleSeed(seed.id)}
-                  disabled={actionInProgress !== null}
-                  className={css({
-                    paddingX: '2',
-                    paddingY: '1',
-                    borderRadius: 'md',
-                    fontSize: 'xs',
-                    fontWeight: 'medium',
-                    backgroundColor: { base: 'amber.500', _dark: 'amber.600' },
-                    color: 'white',
-                    border: 'none',
-                    cursor: 'pointer',
-                    _hover: {
-                      backgroundColor: { base: 'amber.600', _dark: 'amber.700' },
-                    },
-                    _disabled: {
-                      opacity: 0.5,
-                      cursor: 'not-allowed',
-                    },
-                  })}
-                >
-                  {actionInProgress === seed.id ? 'Seeding...' : 'Seed'}
-                </button>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>}
+          ))}
+        </div>
+      )}
 
       {/* Help text */}
-      {!isCollapsed && <div
-        className={css({
-          marginTop: '3',
-          fontSize: 'xs',
-          color: { base: 'amber.600', _dark: 'amber.400' },
-          lineHeight: '1.5',
-        })}
-      >
-        <p><strong>Seed:</strong> Copy flowchart from code into database.</p>
-        <p><strong>Reset:</strong> Delete and re-seed from code (use after changing seed files).</p>
-        <p><strong>Walk:</strong> Open the flowchart walker to test it.</p>
-        <p className={css({ marginTop: '2' })}>
-          Seeded flowcharts use their seed ID (e.g., <code>sentence-type</code>) and appear in the list below.
-        </p>
-      </div>}
+      {!isCollapsed && (
+        <div
+          className={css({
+            marginTop: '3',
+            fontSize: 'xs',
+            color: { base: 'amber.600', _dark: 'amber.400' },
+            lineHeight: '1.5',
+          })}
+        >
+          <p>
+            <strong>Seed:</strong> Copy flowchart from code into database.
+          </p>
+          <p>
+            <strong>Reset:</strong> Delete and re-seed from code (use after changing seed files).
+          </p>
+          <p>
+            <strong>Walk:</strong> Open the flowchart walker to test it.
+          </p>
+          <p className={css({ marginTop: '2' })}>
+            Seeded flowcharts use their seed ID (e.g., <code>sentence-type</code>) and appear in the
+            list below.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

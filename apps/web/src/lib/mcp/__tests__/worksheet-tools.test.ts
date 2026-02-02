@@ -386,7 +386,7 @@ describe('MCP Worksheet Tools', () => {
     })
 
     // Integration test: Exact use case from GitHub issue #15
-    it('generates worksheet matching issue #15 use case (Fern\'s routine)', async () => {
+    it("generates worksheet matching issue #15 use case (Fern's routine)", async () => {
       const result = await generateWorksheet({
         operator: 'addition',
         digitRange: { min: 3, max: 3 },

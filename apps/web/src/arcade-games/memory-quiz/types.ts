@@ -65,10 +65,12 @@ export type GamePhase = z.infer<typeof GamePhaseSchema>
 // Game Entities (Zod Schemas)
 // ============================================================================
 
-export const QuizCardSchema = z.object({
-  number: z.number(),
-  // svgComponent and element are runtime-only, not serialized but allowed via passthrough
-}).passthrough()
+export const QuizCardSchema = z
+  .object({
+    number: z.number(),
+    // svgComponent and element are runtime-only, not serialized but allowed via passthrough
+  })
+  .passthrough()
 
 export type QuizCard = {
   number: number
@@ -157,7 +159,10 @@ export const MemoryQuizStateSchema = z.object({
  * Core game state type
  * Includes both serializable fields and runtime-only fields for component use
  */
-export type MemoryQuizState = Omit<z.infer<typeof MemoryQuizStateSchema>, 'cards' | 'quizCards' | 'prefixAcceptanceTimeout'> & {
+export type MemoryQuizState = Omit<
+  z.infer<typeof MemoryQuizStateSchema>,
+  'cards' | 'quizCards' | 'prefixAcceptanceTimeout'
+> & {
   cards: QuizCard[]
   quizCards: QuizCard[]
   prefixAcceptanceTimeout: NodeJS.Timeout | null

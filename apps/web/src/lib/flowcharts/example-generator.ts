@@ -438,7 +438,6 @@ function satisfiesPathConstraints(
   return true
 }
 
-
 // =============================================================================
 // Path Descriptor Generation
 // =============================================================================
@@ -447,10 +446,7 @@ function satisfiesPathConstraints(
  * Generate path descriptor from pathLabel on decision options.
  * Decision nodes must have pathLabel defined on their options for meaningful descriptors.
  */
-function generatePathDescriptorGeneric(
-  flowchart: ExecutableFlowchart,
-  path: string[]
-): string {
+function generatePathDescriptorGeneric(flowchart: ExecutableFlowchart, path: string[]): string {
   const labels: string[] = []
 
   // Collect pathLabel from each decision node in the path

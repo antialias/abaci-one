@@ -185,9 +185,7 @@ export async function loadFlowchart(
   for (const infill of edgeIdInfills) {
     // Build regex to match this specific edge
     // Pattern: FROM -->|"LABEL"| TO  or  FROM --> TO
-    const labelPart = infill.label
-      ? `\\s*\\|"${escapeRegex(infill.label)}"\\|\\s*`
-      : '\\s*'
+    const labelPart = infill.label ? `\\s*\\|"${escapeRegex(infill.label)}"\\|\\s*` : '\\s*'
     const edgeRegex = new RegExp(
       `(${escapeRegex(infill.from)})\\s+-->${labelPart}(${escapeRegex(infill.to)})`,
       'g'
@@ -590,7 +588,11 @@ export function simulateWalk(
     if (node.definition.type === 'terminal') break
 
     // Determine next node based on node type and accumulated state
-    const { nextNodeId, selectedOptionValue, edgeId, edgeIndex } = getNextNodeForSimulation(flowchart, state, nodeId)
+    const { nextNodeId, selectedOptionValue, edgeId, edgeIndex } = getNextNodeForSimulation(
+      flowchart,
+      state,
+      nodeId
+    )
     if (!nextNodeId) break
 
     // Update the last snapshot with decision/transition info
@@ -710,11 +712,11 @@ function getNextNodeForSimulation(
 
       // Determine path based on correctAnswer expression
       // Use pathLabel for edge label matching (fallback), value for edge ID computation
-      const getEdgeLabel = (opt: typeof def.options[0]) => opt.pathLabel || opt.value
+      const getEdgeLabel = (opt: (typeof def.options)[0]) => opt.pathLabel || opt.value
 
       // Helper to build result from an option
       // Edge ID is computed as {nodeId}_{optionValue} - mermaid must use this pattern
-      const buildFromOption = (opt: typeof def.options[0] | undefined) => {
+      const buildFromOption = (opt: (typeof def.options)[0] | undefined) => {
         if (!opt) return buildResult(null)
         const edgeId = computeEdgeId(nodeId, opt.value)
         return buildResult(opt.next, getEdgeLabel(opt), edgeId)

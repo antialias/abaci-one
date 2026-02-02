@@ -26,12 +26,7 @@ export type PlayerMetadata = z.infer<typeof PlayerMetadataSchema>
 export const GameModeSchema = z.enum(['solo', 'collaborative', 'competitive', 'relay'])
 export type GameMode = z.infer<typeof GameModeSchema>
 
-export const CardCountSchema = z.union([
-  z.literal(5),
-  z.literal(8),
-  z.literal(12),
-  z.literal(15),
-])
+export const CardCountSchema = z.union([z.literal(5), z.literal(8), z.literal(12), z.literal(15)])
 export type CardCount = z.infer<typeof CardCountSchema>
 
 export const CardSortingConfigSchema = z.object({

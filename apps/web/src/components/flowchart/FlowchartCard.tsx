@@ -181,7 +181,7 @@ export function FlowchartCard({
             borderColor: { base: 'gray.200', _dark: 'gray.700' },
             overflow: 'hidden',
           }),
-          clusterBorderClass,
+          clusterBorderClass
         )}
       >
         {/* Animated background tiles */}
@@ -336,7 +336,7 @@ export function FlowchartCard({
               boxShadow: 'lg',
             },
           }),
-          clusterBorderClass,
+          clusterBorderClass
         )}
       >
         {cardContent}

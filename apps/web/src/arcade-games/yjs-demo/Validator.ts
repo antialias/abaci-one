@@ -1,5 +1,10 @@
 import type { GameValidator, ValidationResult } from '@/lib/arcade/validation/types'
-import { YjsDemoStateSchema, type YjsDemoConfig, type YjsDemoMove, type YjsDemoState } from './types'
+import {
+  YjsDemoStateSchema,
+  type YjsDemoConfig,
+  type YjsDemoMove,
+  type YjsDemoState,
+} from './types'
 
 export class YjsDemoValidator implements GameValidator<YjsDemoState, YjsDemoMove> {
   // Zod schema for runtime validation of state loaded from database

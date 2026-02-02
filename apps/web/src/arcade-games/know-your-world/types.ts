@@ -20,13 +20,7 @@ import { z } from 'zod'
  * Assistance level - controls gameplay features (hints, hot/cold, etc.)
  * Separate from region filtering
  */
-export const AssistanceLevelSchema = z.enum([
-  'learning',
-  'guided',
-  'helpful',
-  'standard',
-  'none',
-])
+export const AssistanceLevelSchema = z.enum(['learning', 'guided', 'helpful', 'standard', 'none'])
 export type AssistanceLevel = z.infer<typeof AssistanceLevelSchema>
 
 /**

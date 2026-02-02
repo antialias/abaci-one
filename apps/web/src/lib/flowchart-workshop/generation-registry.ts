@@ -56,12 +56,16 @@ async function syncToRedis(sessionId: string, state: GenerationState): Promise<v
   const redis = getRedisClient()
   if (!redis) return
   try {
-    await redis.setex(`${REDIS_KEY_PREFIX}${sessionId}`, REDIS_TTL, JSON.stringify({
-      status: state.status,
-      accumulatedReasoning: state.accumulatedReasoning,
-      accumulatedOutput: state.accumulatedOutput,
-      startedAt: state.startedAt,
-    }))
+    await redis.setex(
+      `${REDIS_KEY_PREFIX}${sessionId}`,
+      REDIS_TTL,
+      JSON.stringify({
+        status: state.status,
+        accumulatedReasoning: state.accumulatedReasoning,
+        accumulatedOutput: state.accumulatedOutput,
+        startedAt: state.startedAt,
+      })
+    )
   } catch (err) {
     console.error('[registry] Failed to sync to Redis:', err)
   }

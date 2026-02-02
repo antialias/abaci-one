@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createTask, type TaskHandle } from '@/lib/task-manager'
 
 // Force dynamic rendering

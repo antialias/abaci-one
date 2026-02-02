@@ -33,9 +33,8 @@ export function useHeartbeat() {
   const getSessionId = useCallback(() => {
     if (!sessionIdRef.current) {
       // Try to get from sessionStorage for tab persistence
-      const stored = typeof window !== 'undefined'
-        ? sessionStorage.getItem('heartbeat_session_id')
-        : null
+      const stored =
+        typeof window !== 'undefined' ? sessionStorage.getItem('heartbeat_session_id') : null
       if (stored) {
         sessionIdRef.current = stored
       } else {

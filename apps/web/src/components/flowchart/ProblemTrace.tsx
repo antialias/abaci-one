@@ -48,7 +48,11 @@ function hasExpandableContent(
  * - Working problem evolution
  * - Hover interaction for mermaid diagram highlighting
  */
-export function ProblemTrace({ snapshots, onHoverStep, defaultExpanded = false }: ProblemTraceProps) {
+export function ProblemTrace({
+  snapshots,
+  onHoverStep,
+  defaultExpanded = false,
+}: ProblemTraceProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(
     defaultExpanded ? new Set(snapshots.map((_, i) => i)) : new Set()
   )
@@ -243,7 +247,9 @@ export function ProblemTrace({ snapshots, onHoverStep, defaultExpanded = false }
                           borderColor: { base: 'amber.200', _dark: 'amber.800/30' },
                         })}
                       >
-                        <div className={hstack({ gap: '2', alignItems: 'center', flexWrap: 'wrap' })}>
+                        <div
+                          className={hstack({ gap: '2', alignItems: 'center', flexWrap: 'wrap' })}
+                        >
                           <span
                             className={css({
                               color: { base: 'gray.500', _dark: 'gray.400' },
@@ -252,7 +258,11 @@ export function ProblemTrace({ snapshots, onHoverStep, defaultExpanded = false }
                           >
                             {prevSnapshot.workingProblem}
                           </span>
-                          <span className={css({ color: { base: 'amber.500', _dark: 'amber.400' } })}>→</span>
+                          <span
+                            className={css({ color: { base: 'amber.500', _dark: 'amber.400' } })}
+                          >
+                            →
+                          </span>
                           <span
                             className={css({
                               fontWeight: 'semibold',
@@ -279,7 +289,9 @@ export function ProblemTrace({ snapshots, onHoverStep, defaultExpanded = false }
                         borderColor: { base: 'blue.200', _dark: 'blue.800/30' },
                       })}
                     >
-                      <span className={css({ color: { base: 'gray.500', _dark: 'gray.400' } })}>Problem: </span>
+                      <span className={css({ color: { base: 'gray.500', _dark: 'gray.400' } })}>
+                        Problem:{' '}
+                      </span>
                       <span
                         className={css({
                           fontWeight: 'semibold',
@@ -294,7 +306,10 @@ export function ProblemTrace({ snapshots, onHoverStep, defaultExpanded = false }
 
                   {/* Transforms */}
                   {snapshot.transforms.length > 0 && (
-                    <div data-element="transforms" className={vstack({ gap: '1', alignItems: 'stretch' })}>
+                    <div
+                      data-element="transforms"
+                      className={vstack({ gap: '1', alignItems: 'stretch' })}
+                    >
                       {snapshot.transforms.map((transform, tIndex) => (
                         <TransformDisplay
                           key={`${transform.key}-${tIndex}`}
@@ -345,7 +360,12 @@ function TransformDisplay({ transform, result }: TransformDisplayProps) {
       })}
     >
       {/* Key name */}
-      <span className={css({ color: { base: 'purple.600', _dark: 'purple.400' }, fontWeight: 'semibold' })}>
+      <span
+        className={css({
+          color: { base: 'purple.600', _dark: 'purple.400' },
+          fontWeight: 'semibold',
+        })}
+      >
         {transform.key}
       </span>
 
@@ -368,7 +388,12 @@ function TransformDisplay({ transform, result }: TransformDisplayProps) {
       <span className={css({ color: { base: 'gray.400', _dark: 'gray.500' } })}>→</span>
 
       {/* Result */}
-      <span className={css({ color: { base: 'green.600', _dark: 'green.400' }, fontWeight: 'semibold' })}>
+      <span
+        className={css({
+          color: { base: 'green.600', _dark: 'green.400' },
+          fontWeight: 'semibold',
+        })}
+      >
         {formatResult(result)}
       </span>
     </div>

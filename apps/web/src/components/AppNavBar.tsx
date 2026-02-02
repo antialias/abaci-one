@@ -414,6 +414,32 @@ function MenuContent({
                   <span style={{ fontSize: '18px' }}>👁️</span>
                   <span>Vision Training</span>
                 </Link>
+                <Link
+                  href="/admin"
+                  data-action="admin-link"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleLinkClick('/admin')
+                  }}
+                  style={linkStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDark
+                      ? 'rgba(234, 179, 8, 0.2)'
+                      : 'rgba(234, 179, 8, 0.1)'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(253, 224, 71, 1)'
+                      : 'rgba(161, 98, 7, 1)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(209, 213, 219, 1)'
+                      : 'rgba(55, 65, 81, 1)'
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>⚙️</span>
+                  <span>Admin</span>
+                </Link>
                 <div
                   data-setting="visual-debug"
                   onClick={() => {
@@ -621,6 +647,30 @@ function MenuContent({
                 >
                   <span style={{ fontSize: '16px' }}>👁️</span>
                   <span>Vision Training</span>
+                </Link>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item asChild>
+                <Link
+                  href="/admin"
+                  data-action="admin-link"
+                  style={linkStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDark
+                      ? 'rgba(234, 179, 8, 0.2)'
+                      : 'rgba(234, 179, 8, 0.1)'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(253, 224, 71, 1)'
+                      : 'rgba(161, 98, 7, 1)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(209, 213, 219, 1)'
+                      : 'rgba(55, 65, 81, 1)'
+                  }}
+                >
+                  <span style={{ fontSize: '16px' }}>⚙️</span>
+                  <span>Admin</span>
                 </Link>
               </DropdownMenu.Item>
               <DropdownMenu.Item

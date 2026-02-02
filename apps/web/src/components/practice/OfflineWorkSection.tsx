@@ -2,7 +2,7 @@
 
 import { useMutation } from '@tanstack/react-query'
 import type { RefObject } from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ParsingStatus } from '@/db/schema/practice-attachments'
 import { useWorksheetParsingContext } from '@/contexts/WorksheetParsingContext'
 import { api } from '@/lib/queryClient'
@@ -167,6 +167,28 @@ export function OfflineWorkSection({
       return () => clearTimeout(timer)
     }
   }, [parsingContext.state.streaming?.status])
+
+  // Reconnect to in-progress tasks on mount (for page reload recovery)
+  // Use refs to avoid re-running on every context change
+  const reconnectToTaskRef = useRef(parsingContext.reconnectToTask)
+  const isParsingAttachmentRef = useRef(parsingContext.isParsingAttachment)
+  reconnectToTaskRef.current = parsingContext.reconnectToTask
+  isParsingAttachmentRef.current = parsingContext.isParsingAttachment
+
+  useEffect(() => {
+    // Find any attachment that's in "processing" state but we're not tracking
+    const processingAttachment = attachments.find(
+      (att) => att.parsingStatus === 'processing' && !isParsingAttachmentRef.current(att.id)
+    )
+
+    if (processingAttachment) {
+      console.log(
+        '[OfflineWorkSection] Found processing attachment, reconnecting:',
+        processingAttachment.id
+      )
+      reconnectToTaskRef.current(processingAttachment.id)
+    }
+  }, [attachments]) // Only depend on attachments, not the entire context
 
   // Check if any parsing operation is active
   const isParsingActive = parsingContext.isAnyParsingActive()

@@ -92,10 +92,9 @@ export function DebugMermaidDiagram({
 
             // Apply path and node highlighting post-render
             // Extract path info from snapshots
-            const highlightedPath = highlightedSnapshots?.map(s => s.nodeId) || []
+            const highlightedPath = highlightedSnapshots?.map((s) => s.nodeId) || []
             const hasPathHighlight = highlightedPath.length > 0
             const hasNodeHighlight = highlightedNodeId && highlightedNodeId !== currentNodeId
-
 
             if (hasPathHighlight || hasNodeHighlight) {
               // Dim all nodes when we have any highlighting
@@ -106,7 +105,9 @@ export function DebugMermaidDiagram({
 
               // Dim all edge paths (the lines) - use multiple selectors for robustness
               // Mermaid v11+ uses .flowchart-link, older versions use .edgePath path
-              const allEdgePathElements = svgElement.querySelectorAll('.flowchart-link, .edgePath path, .edgePaths path')
+              const allEdgePathElements = svgElement.querySelectorAll(
+                '.flowchart-link, .edgePath path, .edgePaths path'
+              )
               allEdgePathElements.forEach((edge) => {
                 ;(edge as SVGElement).style.opacity = '0.2'
                 ;(edge as SVGElement).style.stroke = '#9ca3af' // gray-400
@@ -125,15 +126,17 @@ export function DebugMermaidDiagram({
               const edgePathElements = Array.from(allEdgePaths)
               const edgeLabelElements = Array.from(allEdgeLabels)
 
-
               // Collect path nodes for highlighting
-              const pathNodeSet = new Set(highlightedPath.filter(n => n !== 'initial'))
+              const pathNodeSet = new Set(highlightedPath.filter((n) => n !== 'initial'))
 
               /**
                * Build a graph from SVG edges for BFS traversal.
                * Extracts from/to from L_FROM_TO_INDEX format.
                */
-              const mermaidGraph = new Map<string, Array<{ to: string; edgeId: string; element: Element }>>()
+              const mermaidGraph = new Map<
+                string,
+                Array<{ to: string; edgeId: string; element: Element }>
+              >()
               const allSvgNodeIds = new Set<string>()
 
               for (const edge of edgePathElements) {
@@ -151,7 +154,7 @@ export function DebugMermaidDiagram({
                     const allNodeElements = svgElement.querySelectorAll('[id^="flowchart-"]')
                     const nodeIds = new Set(
                       Array.from(allNodeElements)
-                        .map(e => e.id.match(/flowchart-([^-]+)-/)?.[1])
+                        .map((e) => e.id.match(/flowchart-([^-]+)-/)?.[1])
                         .filter(Boolean) as string[]
                     )
 
@@ -166,7 +169,9 @@ export function DebugMermaidDiagram({
                           if (!mermaidGraph.has(nodeId)) {
                             mermaidGraph.set(nodeId, [])
                           }
-                          mermaidGraph.get(nodeId)!.push({ to: toNode, edgeId: svgEdgeId, element: edge })
+                          mermaidGraph
+                            .get(nodeId)!
+                            .push({ to: toNode, edgeId: svgEdgeId, element: edge })
                           break
                         }
                       }
@@ -182,13 +187,17 @@ export function DebugMermaidDiagram({
                * If direct path not found (due to phase boundaries), falls back to
                * finding all nodes reachable from start + all nodes that can reach end.
                */
-              const findPathBFS = (start: string, end: string): { edges: Element[]; intermediateNodes: string[] } => {
+              const findPathBFS = (
+                start: string,
+                end: string
+              ): { edges: Element[]; intermediateNodes: string[] } => {
                 if (start === end) return { edges: [], intermediateNodes: [] }
 
                 // Try direct BFS first
-                const queue: Array<{ node: string; path: Array<{ to: string; edgeId: string; element: Element }> }> = [
-                  { node: start, path: [] }
-                ]
+                const queue: Array<{
+                  node: string
+                  path: Array<{ to: string; edgeId: string; element: Element }>
+                }> = [{ node: start, path: [] }]
                 const visited = new Set<string>([start])
 
                 while (queue.length > 0) {
@@ -200,8 +209,8 @@ export function DebugMermaidDiagram({
                       // Found the path!
                       const fullPath = [...path, neighbor]
                       return {
-                        edges: fullPath.map(p => p.element),
-                        intermediateNodes: fullPath.slice(0, -1).map(p => p.to)
+                        edges: fullPath.map((p) => p.element),
+                        intermediateNodes: fullPath.slice(0, -1).map((p) => p.to),
                       }
                     }
 
@@ -264,10 +273,9 @@ export function DebugMermaidDiagram({
 
                 return {
                   edges: [...edgesFromStart, ...edgesToEnd],
-                  intermediateNodes: [...intermediateNodes]
+                  intermediateNodes: [...intermediateNodes],
                 }
               }
-
 
               // Find focused node's neighbors in the path for edge highlighting
               let focusedPrevNode: string | undefined
@@ -293,21 +301,21 @@ export function DebugMermaidDiagram({
 
               if (focusedPrevNode && highlightedNodeId) {
                 const { edges } = findPathBFS(focusedPrevNode, highlightedNodeId)
-                edges.forEach(e => focusedIncomingEdges.add(e))
+                edges.forEach((e) => focusedIncomingEdges.add(e))
               }
               if (highlightedNodeId && focusedNextNode) {
                 const { edges } = findPathBFS(highlightedNodeId, focusedNextNode)
-                edges.forEach(e => focusedOutgoingEdges.add(e))
+                edges.forEach((e) => focusedOutgoingEdges.add(e))
               }
 
               // Highlight path nodes and edges
               if (hasPathHighlight) {
                 // Start with path nodes from simulation
-                const nodesToHighlight = new Set(highlightedPath.filter(n => n !== 'initial'))
+                const nodesToHighlight = new Set(highlightedPath.filter((n) => n !== 'initial'))
                 const edgesToHighlight = new Set<Element>()
 
                 // For each consecutive pair of path nodes, find the path through mermaid graph
-                const pathArray = highlightedPath.filter(n => n !== 'initial')
+                const pathArray = highlightedPath.filter((n) => n !== 'initial')
                 for (let i = 0; i < pathArray.length - 1; i++) {
                   const from = pathArray[i]
                   const to = pathArray[i + 1]
@@ -325,7 +333,6 @@ export function DebugMermaidDiagram({
                   }
                 }
 
-
                 // Highlight all nodes (path + intermediate)
                 for (const nodeId of nodesToHighlight) {
                   const nodeElement = svgElement.querySelector(`[id*="flowchart-${nodeId}-"]`)
@@ -334,7 +341,9 @@ export function DebugMermaidDiagram({
                     svgNode.style.opacity = '1'
 
                     // Add light cyan border
-                    const shape = nodeElement.querySelector('rect, polygon, circle, ellipse, path') as SVGElement | null
+                    const shape = nodeElement.querySelector(
+                      'rect, polygon, circle, ellipse, path'
+                    ) as SVGElement | null
                     if (shape) {
                       shape.style.stroke = '#06b6d4' // cyan-500
                       shape.style.strokeWidth = '3px'
@@ -359,13 +368,17 @@ export function DebugMermaidDiagram({
 
               // Highlight the focused node more strongly (overrides path highlight)
               if (hasNodeHighlight) {
-                const nodeElement = svgElement.querySelector(`[id*="flowchart-${highlightedNodeId}-"]`)
+                const nodeElement = svgElement.querySelector(
+                  `[id*="flowchart-${highlightedNodeId}-"]`
+                )
                 if (nodeElement) {
                   const svgNode = nodeElement as SVGElement
                   svgNode.style.opacity = '1'
 
                   // Add thick cyan border with non-scaling stroke
-                  const shape = nodeElement.querySelector('rect, polygon, circle, ellipse, path') as SVGElement | null
+                  const shape = nodeElement.querySelector(
+                    'rect, polygon, circle, ellipse, path'
+                  ) as SVGElement | null
                   if (shape) {
                     shape.style.stroke = '#0891b2' // cyan-600
                     shape.style.strokeWidth = '5px'

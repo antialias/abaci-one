@@ -115,8 +115,8 @@ export async function GET(req: NextRequest) {
 
       if (idsWithEmbeddings.length >= 2) {
         // Load taxonomy labels and include them in the distance matrix
-        let allIds = [...idsWithEmbeddings]
-        let allEmbeddings = [...embeddings]
+        const allIds = [...idsWithEmbeddings]
+        const allEmbeddings = [...embeddings]
 
         try {
           const taxonomy = await loadTaxonomy()

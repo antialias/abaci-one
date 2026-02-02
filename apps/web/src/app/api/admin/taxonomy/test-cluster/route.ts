@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { loadTaxonomy, labelId } from '@/lib/flowcharts/taxonomy'
 import { generateEmbeddings, EMBEDDING_DIMENSIONS } from '@/lib/flowcharts/embedding'
 
@@ -35,10 +35,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (topics.length > 50) {
-      return NextResponse.json(
-        { error: 'Maximum 50 topics allowed' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Maximum 50 topics allowed' }, { status: 400 })
     }
 
     // Filter out empty topics

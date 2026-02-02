@@ -43,13 +43,9 @@ export async function GET() {
     const { db, schema } = await import('@/db')
     const { count } = await import('drizzle-orm')
 
-    const [result] = await db
-      .select({ count: count() })
-      .from(schema.topicTaxonomy)
+    const [result] = await db.select({ count: count() }).from(schema.topicTaxonomy)
 
-    const labels = await db
-      .select({ label: schema.topicTaxonomy.label })
-      .from(schema.topicTaxonomy)
+    const labels = await db.select({ label: schema.topicTaxonomy.label }).from(schema.topicTaxonomy)
 
     return NextResponse.json({
       labelCount: result.count,

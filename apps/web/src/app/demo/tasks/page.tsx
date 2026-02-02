@@ -74,10 +74,15 @@ export default function TaskDemoPage() {
       })}
       data-component="TaskDemoPage"
     >
-      <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' })}>
-        <h1 className={css({ fontSize: '24px', fontWeight: 'bold' })}>
-          Background Task Demo
-        </h1>
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '8px',
+        })}
+      >
+        <h1 className={css({ fontSize: '24px', fontWeight: 'bold' })}>Background Task Demo</h1>
         <Link
           href="/demo/tasks/stress"
           className={css({
@@ -111,7 +116,9 @@ export default function TaskDemoPage() {
       >
         <div className={css({ display: 'flex', gap: '16px', flexWrap: 'wrap' })}>
           <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
-            <label htmlFor="duration" className={labelStyle}>Duration (s):</label>
+            <label htmlFor="duration" className={labelStyle}>
+              Duration (s):
+            </label>
             <input
               id="duration"
               type="number"
@@ -125,7 +132,9 @@ export default function TaskDemoPage() {
           </div>
 
           <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
-            <label htmlFor="eventCount" className={labelStyle}>Events:</label>
+            <label htmlFor="eventCount" className={labelStyle}>
+              Events:
+            </label>
             <input
               id="eventCount"
               type="number"
@@ -139,7 +148,9 @@ export default function TaskDemoPage() {
           </div>
 
           <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
-            <label htmlFor="payloadSize" className={labelStyle}>Payload (KB):</label>
+            <label htmlFor="payloadSize" className={labelStyle}>
+              Payload (KB):
+            </label>
             <input
               id="payloadSize"
               type="number"
@@ -243,13 +254,9 @@ export default function TaskDemoPage() {
           })}
           data-element="task-state"
         >
-          {isLoading && !state && (
-            <p className={css({ color: '#666' })}>Loading task state...</p>
-          )}
+          {isLoading && !state && <p className={css({ color: '#666' })}>Loading task state...</p>}
 
-          {error && (
-            <p className={css({ color: '#f44336', fontWeight: 'bold' })}>Error: {error}</p>
-          )}
+          {error && <p className={css({ color: '#f44336', fontWeight: 'bold' })}>Error: {error}</p>}
 
           {state && (
             <>
@@ -381,16 +388,24 @@ export default function TaskDemoPage() {
                         {event.eventType}
                         {event.replayed && (
                           <span className={css({ color: '#9e9e9e', fontWeight: 'normal' })}>
-                            {' '}(replayed)
+                            {' '}
+                            (replayed)
                           </span>
                         )}
                       </span>
                       {(() => {
                         const payload = event.payload as Record<string, unknown> | null
-                        if (payload && typeof payload === 'object' && Object.keys(payload).length > 0) {
+                        if (
+                          payload &&
+                          typeof payload === 'object' &&
+                          Object.keys(payload).length > 0
+                        ) {
                           // Truncate large data fields for display
                           const displayPayload = { ...payload }
-                          if (typeof displayPayload.data === 'string' && displayPayload.data.length > 100) {
+                          if (
+                            typeof displayPayload.data === 'string' &&
+                            displayPayload.data.length > 100
+                          ) {
                             displayPayload.data = `[${displayPayload.data.length} bytes]`
                           }
                           return (

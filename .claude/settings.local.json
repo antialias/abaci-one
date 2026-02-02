@@ -805,7 +805,10 @@
       "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards status infra/terraform/)",
       "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff infra/terraform/argocd.tf)",
       "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff infra/terraform/CLAUDE.md)",
-      "Bash(do echo \"Request $i:\")"
+      "Bash(do echo \"Request $i:\")",
+      "Skill(db-migrate)",
+      "Bash(git config:*)",
+      "Bash(rsync:*)"
     ],
     "deny": [],
     "ask": []

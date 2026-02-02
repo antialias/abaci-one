@@ -297,7 +297,6 @@ function checkDisplayAnswer(definition: FlowchartDefinition): FlowchartDiagnosti
   return diagnostics
 }
 
-
 /**
  * Check that generation.preferred has entries for all input fields
  */

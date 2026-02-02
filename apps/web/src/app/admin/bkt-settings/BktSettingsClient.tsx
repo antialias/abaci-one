@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { PageWithNav } from '@/components/PageWithNav'
+import { AdminNav } from '@/components/AdminNav'
 import { BktProvider, useBktConfig, useSkillsByClassification } from '@/contexts/BktContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useBktSettings, useUpdateBktSettings } from '@/hooks/useBktSettings'
@@ -110,9 +111,12 @@ export function BktSettingsClient({ students }: BktSettingsClientProps) {
 
   return (
     <PageWithNav>
+      <div className={css({ paddingTop: '56px' })}>
+        <AdminNav />
+      </div>
       <main
         className={css({
-          minHeight: '100vh',
+          minHeight: 'calc(100vh - 110px)',
           backgroundColor: isDark ? 'gray.900' : 'gray.50',
           padding: '2rem',
         })}
@@ -120,19 +124,6 @@ export function BktSettingsClient({ students }: BktSettingsClientProps) {
         <div className={css({ maxWidth: '800px', margin: '0 auto' })}>
           {/* Header */}
           <header className={css({ marginBottom: '2rem' })}>
-            <Link
-              href="/practice"
-              className={css({
-                fontSize: '0.875rem',
-                color: isDark ? 'blue.400' : 'blue.600',
-                textDecoration: 'none',
-                _hover: { textDecoration: 'underline' },
-                marginBottom: '0.5rem',
-                display: 'inline-block',
-              })}
-            >
-              ← Back to Practice
-            </Link>
             <h1
               className={css({
                 fontSize: '1.5rem',
@@ -148,7 +139,9 @@ export function BktSettingsClient({ students }: BktSettingsClientProps) {
                 marginTop: '0.5rem',
               })}
             >
-              Configure how much evidence is required before trusting skill classifications.
+              Controls how students' skills are classified as Weak, Developing, or Strong. This
+              affects skill maps, practice recommendations, teacher reports, and student progress
+              views.
             </p>
           </header>
 

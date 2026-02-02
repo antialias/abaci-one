@@ -43,13 +43,25 @@ const PRESETS: StressPreset[] = [
     name: 'Large Payloads',
     description: '3 tasks, 20 events each, 50KB payload',
     taskCount: 3,
-    config: { duration: 10, eventCount: 20, payloadSizeBytes: 50 * 1024, shouldFail: false, failAt: 70 },
+    config: {
+      duration: 10,
+      eventCount: 20,
+      payloadSizeBytes: 50 * 1024,
+      shouldFail: false,
+      failAt: 70,
+    },
   },
   {
     name: 'Event Replay Stress',
     description: '1 task, 1000 events (test replay performance)',
     taskCount: 1,
-    config: { duration: 20, eventCount: 1000, payloadSizeBytes: 100, shouldFail: false, failAt: 70 },
+    config: {
+      duration: 20,
+      eventCount: 1000,
+      payloadSizeBytes: 100,
+      shouldFail: false,
+      failAt: 70,
+    },
   },
   {
     name: 'Mixed Failures',
@@ -79,7 +91,7 @@ interface AggregateStats {
 // Mini component to track a single task
 function TaskTracker({
   taskId,
-  onStats
+  onStats,
 }: {
   taskId: string
   onStats: (taskId: string, status: string, eventCount: number) => void
@@ -92,8 +104,10 @@ function TaskTracker({
       const currentStatus = state.status
       const currentEventCount = state.events?.length ?? 0
 
-      if (currentStatus !== lastReportedRef.current.status ||
-          currentEventCount !== lastReportedRef.current.eventCount) {
+      if (
+        currentStatus !== lastReportedRef.current.status ||
+        currentEventCount !== lastReportedRef.current.eventCount
+      ) {
         lastReportedRef.current = { status: currentStatus, eventCount: currentEventCount }
         onStats(taskId, currentStatus, currentEventCount)
       }
@@ -102,13 +116,14 @@ function TaskTracker({
 
   if (!state) return null
 
-  const statusColor = {
-    pending: '#666',
-    running: '#2196F3',
-    completed: '#4CAF50',
-    failed: '#f44336',
-    cancelled: '#ff9800',
-  }[state.status] ?? '#666'
+  const statusColor =
+    {
+      pending: '#666',
+      running: '#2196F3',
+      completed: '#4CAF50',
+      failed: '#f44336',
+      cancelled: '#ff9800',
+    }[state.status] ?? '#666'
 
   return (
     <div
@@ -132,13 +147,9 @@ function TaskTracker({
         })}
       />
       <span className={css({ color: '#666' })}>{taskId.slice(0, 8)}</span>
-      <span className={css({ color: statusColor, fontWeight: 'bold' })}>
-        {state.status}
-      </span>
+      <span className={css({ color: statusColor, fontWeight: 'bold' })}>{state.status}</span>
       <span>{state.progress}%</span>
-      <span className={css({ color: '#999' })}>
-        {state.events?.length ?? 0} events
-      </span>
+      <span className={css({ color: '#999' })}>{state.events?.length ?? 0} events</span>
     </div>
   )
 }
@@ -172,27 +183,38 @@ export default function StressTestPage() {
         const { tasks: loadedTasks } = await res.json()
 
         if (loadedTasks && loadedTasks.length > 0) {
-          const taskInfos: TaskInfo[] = loadedTasks.map((t: { id: string; createdAt: string | number; input: TaskConfig | null }) => ({
-            id: t.id,
-            startedAt: typeof t.createdAt === 'string' ? new Date(t.createdAt).getTime() : t.createdAt,
-            config: t.input ?? { duration: 0, eventCount: 0, payloadSizeBytes: 0, shouldFail: false, failAt: 70 },
-          }))
+          const taskInfos: TaskInfo[] = loadedTasks.map(
+            (t: { id: string; createdAt: string | number; input: TaskConfig | null }) => ({
+              id: t.id,
+              startedAt:
+                typeof t.createdAt === 'string' ? new Date(t.createdAt).getTime() : t.createdAt,
+              config: t.input ?? {
+                duration: 0,
+                eventCount: 0,
+                payloadSizeBytes: 0,
+                shouldFail: false,
+                failAt: 70,
+              },
+            })
+          )
 
           setTasks(taskInfos)
 
           // Check if any are still running
-          const hasRunning = loadedTasks.some((t: { status: string }) => t.status === 'running' || t.status === 'pending')
+          const hasRunning = loadedTasks.some(
+            (t: { status: string }) => t.status === 'running' || t.status === 'pending'
+          )
           if (hasRunning) {
             setIsRunning(true)
             // Set start time to earliest task
-            const earliest = Math.min(...taskInfos.map(t => t.startedAt))
+            const earliest = Math.min(...taskInfos.map((t) => t.startedAt))
             startTimeRef.current = earliest
           }
 
-          setStats(prev => ({
+          setStats((prev) => ({
             ...prev,
             totalTasks: taskInfos.length,
-            startTime: hasRunning ? Math.min(...taskInfos.map(t => t.startedAt)) : null,
+            startTime: hasRunning ? Math.min(...taskInfos.map((t) => t.startedAt)) : null,
           }))
         }
       } catch (err) {
@@ -210,21 +232,33 @@ export default function StressTestPage() {
     taskStatsRef.current.set(taskId, { status, eventCount })
 
     // Recalculate aggregate stats
-    let running = 0, completed = 0, failed = 0, cancelled = 0, totalEvents = 0
+    let running = 0,
+      completed = 0,
+      failed = 0,
+      cancelled = 0,
+      totalEvents = 0
     for (const [, taskStat] of taskStatsRef.current) {
       totalEvents += taskStat.eventCount
       switch (taskStat.status) {
-        case 'running': running++; break
-        case 'completed': completed++; break
-        case 'failed': failed++; break
-        case 'cancelled': cancelled++; break
+        case 'running':
+          running++
+          break
+        case 'completed':
+          completed++
+          break
+        case 'failed':
+          failed++
+          break
+        case 'cancelled':
+          cancelled++
+          break
       }
     }
 
     const elapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 1
     const eventsPerSecond = Math.round(totalEvents / elapsed)
 
-    setStats(prev => ({
+    setStats((prev) => ({
       ...prev,
       running,
       completed,
@@ -235,8 +269,11 @@ export default function StressTestPage() {
     }))
 
     // Check if all tasks are done
-    if (running === 0 && taskStatsRef.current.size > 0 &&
-        taskStatsRef.current.size === completed + failed + cancelled) {
+    if (
+      running === 0 &&
+      taskStatsRef.current.size > 0 &&
+      taskStatsRef.current.size === completed + failed + cancelled
+    ) {
       setIsRunning(false)
     }
   }, [])
@@ -277,11 +314,11 @@ export default function StressTestPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(config),
         })
-          .then(res => res.json())
+          .then((res) => res.json())
           .then(({ taskId }) => {
             newTasks.push({ id: taskId, startedAt: Date.now(), config })
           })
-          .catch(err => console.error('Failed to start task:', err))
+          .catch((err) => console.error('Failed to start task:', err))
       )
     }
 
@@ -330,7 +367,14 @@ export default function StressTestPage() {
       })}
       data-component="StressTestPage"
     >
-      <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' })}>
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '8px',
+        })}
+      >
         <h1 className={css({ fontSize: '24px', fontWeight: 'bold' })}>
           Background Task Stress Test
         </h1>
@@ -374,7 +418,8 @@ export default function StressTestPage() {
             className={css({
               padding: '12px',
               background: selectedPreset.name === preset.name ? '#e3f2fd' : '#f5f5f5',
-              border: selectedPreset.name === preset.name ? '2px solid #2196F3' : '2px solid transparent',
+              border:
+                selectedPreset.name === preset.name ? '2px solid #2196F3' : '2px solid transparent',
               borderRadius: '8px',
               textAlign: 'left',
               cursor: isRunning ? 'not-allowed' : 'pointer',
@@ -526,18 +571,38 @@ export default function StressTestPage() {
       >
         <strong>Stress Test Scenarios:</strong>
         <ul className={css({ marginTop: '8px', paddingLeft: '20px' })}>
-          <li><strong>Concurrent Light/Heavy</strong> - Tests database write contention and Socket.IO room management</li>
-          <li><strong>Rapid Fire</strong> - Tests event throughput (high events/second)</li>
-          <li><strong>Large Payloads</strong> - Tests serialization and memory pressure</li>
-          <li><strong>Event Replay</strong> - Tests replay performance when subscribing to task with many events</li>
-          <li><strong>Mixed Failures</strong> - Tests error handling under load</li>
+          <li>
+            <strong>Concurrent Light/Heavy</strong> - Tests database write contention and Socket.IO
+            room management
+          </li>
+          <li>
+            <strong>Rapid Fire</strong> - Tests event throughput (high events/second)
+          </li>
+          <li>
+            <strong>Large Payloads</strong> - Tests serialization and memory pressure
+          </li>
+          <li>
+            <strong>Event Replay</strong> - Tests replay performance when subscribing to task with
+            many events
+          </li>
+          <li>
+            <strong>Mixed Failures</strong> - Tests error handling under load
+          </li>
         </ul>
       </div>
     </div>
   )
 }
 
-function StatCard({ label, value, color }: { label: string; value: number | string; color: string }) {
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string
+  value: number | string
+  color: string
+}) {
   return (
     <div
       className={css({

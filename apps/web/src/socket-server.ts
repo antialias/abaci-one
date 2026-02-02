@@ -27,10 +27,7 @@ import {
   markPhoneDisconnected,
 } from './lib/remote-camera/session-manager'
 import { createRedisClient } from './lib/redis'
-import {
-  getGeneration,
-  getGenerationFromRedis,
-} from './lib/flowchart-workshop/generation-registry'
+import { getGeneration, getGenerationFromRedis } from './lib/flowchart-workshop/generation-registry'
 import { VisionRecorder, type VisionFrame, type PracticeStateInput } from './lib/vision/recording'
 import { socketConnections, socketConnectionsTotal } from './lib/metrics'
 
@@ -460,17 +457,24 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
             // Debug logging to help diagnose state issues
             const stateObj = gameStateForClient as Record<string, unknown> | undefined
-            console.log(`[SocketServer] join-arcade-session: room=${roomId} game=${currentGameName}`, {
-              sessionCurrentGame: session.currentGame,
-              hasStateForGame: gameStateForClient !== undefined,
-              gameStateKeys: stateObj ? Object.keys(stateObj).slice(0, 10) : [],
-              // Log critical matching game fields for debugging
-              gameCardsLength: Array.isArray(stateObj?.gameCards) ? (stateObj.gameCards as unknown[]).length : 'not-array',
-              flippedCardsLength: Array.isArray(stateObj?.flippedCards) ? (stateObj.flippedCards as unknown[]).length : 'not-array',
-              gamePhase: stateObj?.gamePhase,
-              hasValidator: !!validator,
-              hasStateSchema: !!(validator as any).stateSchema,
-            })
+            console.log(
+              `[SocketServer] join-arcade-session: room=${roomId} game=${currentGameName}`,
+              {
+                sessionCurrentGame: session.currentGame,
+                hasStateForGame: gameStateForClient !== undefined,
+                gameStateKeys: stateObj ? Object.keys(stateObj).slice(0, 10) : [],
+                // Log critical matching game fields for debugging
+                gameCardsLength: Array.isArray(stateObj?.gameCards)
+                  ? (stateObj.gameCards as unknown[]).length
+                  : 'not-array',
+                flippedCardsLength: Array.isArray(stateObj?.flippedCards)
+                  ? (stateObj.flippedCards as unknown[]).length
+                  : 'not-array',
+                gamePhase: stateObj?.gamePhase,
+                hasValidator: !!validator,
+                hasStateSchema: !!(validator as any).stateSchema,
+              }
+            )
 
             // If no state exists for the current game (e.g., game was just switched),
             // initialize it now
@@ -624,10 +628,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             const newSession = await getArcadeSession(data.userId)
             if (newSession) {
               // Extract game-specific state from namespaced storage
-              const gameStateForClient = getGameStateFromSession(
-                newSession,
-                newSession.currentGame
-              )
+              const gameStateForClient = getGameStateFromSession(newSession, newSession.currentGame)
               io!.to(`arcade:${data.userId}`).emit('session-state', {
                 gameState: gameStateForClient, // Send only the current game's state
                 currentGame: newSession.currentGame,
@@ -1768,24 +1769,29 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // Background Tasks: Subscribe to task updates
     socket.on('task:subscribe', async (taskId: string) => {
-      const { getTaskState, getTaskEvents } = await import('./lib/task-manager')
+      console.log(`[SocketServer] task:subscribe received for task ${taskId}`)
+      const { getTaskStateForClient, getTaskEvents } = await import('./lib/task-manager')
 
       socket.join(`task:${taskId}`)
+      console.log(`[SocketServer] Socket ${socket.id} joined room task:${taskId}`)
 
-      // Fetch current task state
-      const task = await getTaskState(taskId)
+      // Fetch current task state (lightweight version without large input data)
+      const task = await getTaskStateForClient(taskId)
 
       if (!task) {
+        console.log(`[SocketServer] Task ${taskId} not found`)
         socket.emit('task:error', { taskId, error: 'Task not found' })
         return
       }
 
+      console.log(`[SocketServer] Task ${taskId} state: ${task.status}, progress: ${task.progress}`)
       // Send current state
       socket.emit('task:state', task)
 
       // Replay events if task is still running or pending
       if (task.status === 'running' || task.status === 'pending') {
         const events = await getTaskEvents(taskId)
+        console.log(`[SocketServer] Replaying ${events.length} events for task ${taskId}`)
 
         for (const event of events) {
           socket.emit('task:event', {

@@ -42,7 +42,7 @@ const initialState: MatchingState = {
   gameStartTime: null,
   gameEndTime: null,
   currentMoveStartTime: null,
-    celebrationAnimations: [],
+  celebrationAnimations: [],
   isProcessingMove: false,
   showMismatchFeedback: false,
   lastMatchedPair: null,

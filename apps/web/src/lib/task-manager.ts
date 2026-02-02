@@ -49,6 +49,23 @@ export interface TaskState<TOutput = unknown> {
 }
 
 /**
+ * Lightweight task state for sending to clients via Socket.IO
+ * Omits the `input` field which can contain large data (e.g., base64 images)
+ */
+export interface TaskStateForClient<TOutput = unknown> {
+  id: string
+  type: TaskType
+  status: TaskStatus
+  progress: number
+  progressMessage: string | null
+  output: TOutput | null
+  error: string | null
+  createdAt: Date
+  startedAt: Date | null
+  completedAt: Date | null
+}
+
+/**
  * Task event for replay
  */
 export interface TaskEvent {
@@ -68,6 +85,7 @@ const cancelledTasks = new Set<string>()
  */
 async function emitTaskEvent(taskId: string, eventType: string, payload: unknown): Promise<void> {
   const now = new Date()
+  console.log(`[TaskManager] Emitting event: ${eventType} for task ${taskId}`)
 
   // Persist event for replay
   await db.insert(schema.backgroundTaskEvents).values({
@@ -80,12 +98,17 @@ async function emitTaskEvent(taskId: string, eventType: string, payload: unknown
   // Broadcast via Socket.IO
   const io = getSocketIO()
   if (io) {
-    io.to(`task:${taskId}`).emit('task:event', {
+    const room = `task:${taskId}`
+    const sockets = io.sockets.adapter.rooms.get(room)
+    console.log(`[TaskManager] Broadcasting to room ${room}, subscribers: ${sockets?.size ?? 0}`)
+    io.to(room).emit('task:event', {
       taskId,
       eventType,
       payload,
       createdAt: now,
     })
+  } else {
+    console.log('[TaskManager] WARNING: Socket.IO not available!')
   }
 }
 
@@ -195,6 +218,31 @@ export async function getTaskState(taskId: string): Promise<TaskState | null> {
 }
 
 /**
+ * Get lightweight task state for sending to clients via Socket.IO
+ * Omits the `input` field which can contain large data (e.g., base64 images)
+ */
+export async function getTaskStateForClient(taskId: string): Promise<TaskStateForClient | null> {
+  const task = await db.query.backgroundTasks.findFirst({
+    where: eq(schema.backgroundTasks.id, taskId),
+  })
+
+  if (!task) return null
+
+  return {
+    id: task.id,
+    type: task.type as TaskType,
+    status: task.status as TaskStatus,
+    progress: task.progress ?? 0,
+    progressMessage: task.progressMessage,
+    output: task.output,
+    error: task.error,
+    createdAt: task.createdAt,
+    startedAt: task.startedAt,
+    completedAt: task.completedAt,
+  }
+}
+
+/**
  * Get all events for a task (for replay)
  */
 export async function getTaskEvents(taskId: string): Promise<TaskEvent[]> {
@@ -275,7 +323,9 @@ export async function createTask<TInput, TOutput>(
   }
 
   // Start task asynchronously (don't block the return)
+  console.log(`[TaskManager] Task ${id} created, scheduling handler via setImmediate`)
   setImmediate(async () => {
+    console.log(`[TaskManager] Task ${id} handler starting`)
     // Update status to running
     await db
       .update(schema.backgroundTasks)
@@ -285,8 +335,11 @@ export async function createTask<TInput, TOutput>(
     await emitTaskEvent(id, 'started', {})
 
     try {
+      console.log(`[TaskManager] Task ${id} calling handler function`)
       await handler(handle, input)
+      console.log(`[TaskManager] Task ${id} handler completed`)
     } catch (err) {
+      console.error(`[TaskManager] Task ${id} handler error:`, err)
       // Don't fail if already completed/failed/cancelled
       const task = await db.query.backgroundTasks.findFirst({
         where: eq(schema.backgroundTasks.id, id),

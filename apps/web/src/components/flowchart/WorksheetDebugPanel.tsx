@@ -1,7 +1,12 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import type { ExecutableFlowchart, ProblemValue, MixedNumberValue, StateSnapshot } from '@/lib/flowcharts/schema'
+import type {
+  ExecutableFlowchart,
+  ProblemValue,
+  MixedNumberValue,
+  StateSnapshot,
+} from '@/lib/flowcharts/schema'
 import type { GeneratedExample } from '@/lib/flowcharts/loader'
 import { generateExamplesAsync } from '@/lib/flowcharts/example-generator-client'
 import { formatProblemDisplay } from '@/lib/flowcharts/formatting'
@@ -28,7 +33,12 @@ type DifficultyTier = 'easy' | 'medium' | 'hard'
  * Debug panel for testing worksheet generation.
  * Shows generated problems with their computed answers, raw values, and difficulty tiers.
  */
-export function WorksheetDebugPanel({ flowchart, problemCount = 10, onHoverSnapshots, onHoverNode }: WorksheetDebugPanelProps) {
+export function WorksheetDebugPanel({
+  flowchart,
+  problemCount = 10,
+  onHoverSnapshots,
+  onHoverNode,
+}: WorksheetDebugPanelProps) {
   const [examples, setExamples] = useState<GeneratedExample[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

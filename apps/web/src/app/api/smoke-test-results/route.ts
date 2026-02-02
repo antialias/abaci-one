@@ -21,56 +21,54 @@
  * }
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { desc, eq, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import { smokeTestRuns } from "@/db/schema";
+import { type NextRequest, NextResponse } from 'next/server'
+import { desc, eq, inArray } from 'drizzle-orm'
+import { db } from '@/db'
+import { smokeTestRuns } from '@/db/schema'
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic'
 
 interface SmokeTestResultsRequest {
-  id: string;
-  startedAt: string;
-  completedAt?: string;
-  status: "running" | "passed" | "failed" | "error";
-  totalTests?: number;
-  passedTests?: number;
-  failedTests?: number;
-  durationMs?: number;
-  resultsJson?: string;
-  errorMessage?: string;
+  id: string
+  startedAt: string
+  completedAt?: string
+  status: 'running' | 'passed' | 'failed' | 'error'
+  totalTests?: number
+  passedTests?: number
+  failedTests?: number
+  durationMs?: number
+  resultsJson?: string
+  errorMessage?: string
 }
 
 interface SmokeTestResultsResponse {
-  success: boolean;
-  id: string;
-  message?: string;
+  success: boolean
+  id: string
+  message?: string
 }
 
-export async function POST(
-  request: NextRequest,
-): Promise<NextResponse<SmokeTestResultsResponse>> {
+export async function POST(request: NextRequest): Promise<NextResponse<SmokeTestResultsResponse>> {
   try {
-    const body = (await request.json()) as SmokeTestResultsRequest;
+    const body = (await request.json()) as SmokeTestResultsRequest
 
     // Validate required fields
     if (!body.id || !body.startedAt || !body.status) {
       return NextResponse.json(
         {
           success: false,
-          id: "",
-          message: "Missing required fields: id, startedAt, status",
+          id: '',
+          message: 'Missing required fields: id, startedAt, status',
         },
-        { status: 400 },
-      );
+        { status: 400 }
+      )
     }
 
     // Validate status
-    if (!["running", "passed", "failed", "error"].includes(body.status)) {
+    if (!['running', 'passed', 'failed', 'error'].includes(body.status)) {
       return NextResponse.json(
-        { success: false, id: "", message: "Invalid status value" },
-        { status: 400 },
-      );
+        { success: false, id: '', message: 'Invalid status value' },
+        { status: 400 }
+      )
     }
 
     // Insert or update the test run
@@ -100,7 +98,7 @@ export async function POST(
           resultsJson: body.resultsJson ?? null,
           errorMessage: body.errorMessage ?? null,
         },
-      });
+      })
 
     // Clean up old test runs (keep last 100)
     // Get IDs to keep (newest 100)
@@ -108,40 +106,34 @@ export async function POST(
       .select({ id: smokeTestRuns.id })
       .from(smokeTestRuns)
       .orderBy(desc(smokeTestRuns.startedAt))
-      .limit(100);
+      .limit(100)
 
     if (runsToKeep.length >= 100) {
       // Get all run IDs
-      const allRuns = await db
-        .select({ id: smokeTestRuns.id })
-        .from(smokeTestRuns);
+      const allRuns = await db.select({ id: smokeTestRuns.id }).from(smokeTestRuns)
 
-      const keepIds = new Set(runsToKeep.map((r) => r.id));
-      const idsToDelete = allRuns
-        .filter((r) => !keepIds.has(r.id))
-        .map((r) => r.id);
+      const keepIds = new Set(runsToKeep.map((r) => r.id))
+      const idsToDelete = allRuns.filter((r) => !keepIds.has(r.id)).map((r) => r.id)
 
       if (idsToDelete.length > 0) {
-        await db
-          .delete(smokeTestRuns)
-          .where(inArray(smokeTestRuns.id, idsToDelete));
+        await db.delete(smokeTestRuns).where(inArray(smokeTestRuns.id, idsToDelete))
       }
     }
 
     return NextResponse.json({
       success: true,
       id: body.id,
-      message: "Test results recorded",
-    });
+      message: 'Test results recorded',
+    })
   } catch (error) {
-    console.error("Error storing smoke test results:", error);
+    console.error('Error storing smoke test results:', error)
     return NextResponse.json(
       {
         success: false,
-        id: "",
-        message: error instanceof Error ? error.message : "Unknown error",
+        id: '',
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 },
-    );
+      { status: 500 }
+    )
   }
 }

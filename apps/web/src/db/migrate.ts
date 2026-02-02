@@ -23,7 +23,9 @@ async function runMigrations() {
   const db = drizzle(client)
 
   console.log('🔄 Running migrations...')
-  console.log(`📍 Database URL: ${databaseUrl.startsWith('file:') ? databaseUrl : databaseUrl.replace(/\/\/.*@/, '//<redacted>@')}`)
+  console.log(
+    `📍 Database URL: ${databaseUrl.startsWith('file:') ? databaseUrl : databaseUrl.replace(/\/\/.*@/, '//<redacted>@')}`
+  )
 
   await migrate(db, { migrationsFolder: './drizzle' })
 

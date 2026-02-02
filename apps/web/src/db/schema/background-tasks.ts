@@ -112,6 +112,7 @@ export type NewBackgroundTaskEvent = typeof backgroundTaskEvents.$inferInsert
 export type TaskType =
   | 'vision-training'
   | 'worksheet-parse'
+  | 'worksheet-reparse'
   | 'worksheet-generate'
   | 'flowchart-embed'
   | 'demo'

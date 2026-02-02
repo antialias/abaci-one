@@ -50,6 +50,7 @@ interface MockWorksheetParsingProviderProps {
     startReparse: WorksheetParsingContextValue['startReparse']
     cancel: WorksheetParsingContextValue['cancel']
     reset: WorksheetParsingContextValue['reset']
+    reconnectToTask: WorksheetParsingContextValue['reconnectToTask']
     submitCorrection: WorksheetParsingContextValue['submitCorrection']
     approve: WorksheetParsingContextValue['approve']
     unapprove: WorksheetParsingContextValue['unapprove']
@@ -89,6 +90,7 @@ export function MockWorksheetParsingProvider({
     startReparse: actions.startReparse ?? (async () => {}),
     cancel: actions.cancel ?? (() => {}),
     reset: actions.reset ?? (() => {}),
+    reconnectToTask: actions.reconnectToTask ?? (async () => false),
     submitCorrection: actions.submitCorrection ?? (async () => {}),
     approve:
       actions.approve ??

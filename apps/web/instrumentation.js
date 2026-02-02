@@ -31,7 +31,9 @@ if (isEnabled) {
   const environment = process.env.NODE_ENV || 'development'
   const podName = process.env.HOSTNAME || 'unknown'
 
-  console.log(`[Tracing] Initializing OpenTelemetry - endpoint: ${endpoint}, service: ${serviceName}, pod: ${podName}`)
+  console.log(
+    `[Tracing] Initializing OpenTelemetry - endpoint: ${endpoint}, service: ${serviceName}, pod: ${podName}`
+  )
 
   const resource = resourceFromAttributes({
     [ATTR_SERVICE_NAME]: serviceName,

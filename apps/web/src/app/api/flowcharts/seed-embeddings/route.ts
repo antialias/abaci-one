@@ -1,10 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import {
-  generateFlowchartEmbeddings,
-  EMBEDDING_VERSION,
-} from '@/lib/flowcharts/embedding'
+import { generateFlowchartEmbeddings, EMBEDDING_VERSION } from '@/lib/flowcharts/embedding'
 import { invalidateEmbeddingCache } from '@/lib/flowcharts/embedding-search'
 
 /**

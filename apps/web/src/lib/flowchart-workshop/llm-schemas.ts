@@ -111,7 +111,9 @@ export const VariableEntrySchema = z.object({
  */
 export const TransformEntrySchema = z.object({
   key: z.string().describe('Variable name to create/update'),
-  expr: z.string().describe('Expression to evaluate (can reference input fields, prior transforms)'),
+  expr: z
+    .string()
+    .describe('Expression to evaluate (can reference input fields, prior transforms)'),
 })
 
 /**
@@ -139,8 +141,12 @@ export const DisplayTemplateSchema = z.object({
 export const AnswerDefinitionSchema = z.object({
   values: z
     .array(StringKeyValueSchema)
-    .describe('Map answer component names to variable references (e.g., [{ key: "result", value: "finalAnswer" }])'),
-  display: DisplayTemplateSchema.describe('Templates for displaying the answer (supports {{name}} and {{=expr}} interpolation)'),
+    .describe(
+      'Map answer component names to variable references (e.g., [{ key: "result", value: "finalAnswer" }])'
+    ),
+  display: DisplayTemplateSchema.describe(
+    'Templates for displaying the answer (supports {{name}} and {{=expr}} interpolation)'
+  ),
 })
 
 /**
@@ -154,7 +160,9 @@ export const StructuredTestValueSchema = z.object({
 export const StructuredTestCaseSchema = z.object({
   name: z.string().describe('Test case name'),
   values: z.array(ExampleValueSchema).describe('Input values for the test'),
-  expected: z.array(StructuredTestValueSchema).describe('Expected answer values (primitives, not strings)'),
+  expected: z
+    .array(StructuredTestValueSchema)
+    .describe('Expected answer values (primitives, not strings)'),
 })
 
 /**
@@ -165,7 +173,11 @@ export const StructuredTestCaseSchema = z.object({
  */
 export const DecisionOptionSchema = z.object({
   label: z.string().describe('Text shown on the button (e.g., "Yes! Top is bigger")'),
-  value: z.string().describe('Unique identifier for this option (e.g., "direct", "borrow"). Also used to compute edge ID as {nodeId}_{value}'),
+  value: z
+    .string()
+    .describe(
+      'Unique identifier for this option (e.g., "direct", "borrow"). Also used to compute edge ID as {nodeId}_{value}'
+    ),
   next: z.string().describe('Node ID to navigate to when selected'),
   pathLabel: z
     .string()
@@ -201,7 +213,10 @@ export const FlowchartNodeSchema = z.discriminatedUnion('type', [
     workingProblemUpdate: WorkingProblemUpdateSchema.nullable().describe(
       'Optional update to working problem display'
     ),
-    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
+    transform: z
+      .array(TransformEntrySchema)
+      .nullable()
+      .describe('Transforms to apply when entering this node'),
   }),
   z.object({
     type: z.literal('decision'),
@@ -218,7 +233,10 @@ export const FlowchartNodeSchema = z.discriminatedUnion('type', [
       .describe(
         'If true, exclude from path enumeration in example grid. Use for verification/confirmation decisions that do not represent meaningfully different problem types.'
       ),
-    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
+    transform: z
+      .array(TransformEntrySchema)
+      .nullable()
+      .describe('Transforms to apply when entering this node'),
   }),
   z.object({
     type: z.literal('checkpoint'),
@@ -252,22 +270,34 @@ export const FlowchartNodeSchema = z.discriminatedUnion('type', [
       .boolean()
       .nullable()
       .describe('If true, skip path not included in enumeration'),
-    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
+    transform: z
+      .array(TransformEntrySchema)
+      .nullable()
+      .describe('Transforms to apply when entering this node'),
   }),
   z.object({
     type: z.literal('milestone'),
     next: z.string().describe('Node ID to navigate to next'),
-    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
+    transform: z
+      .array(TransformEntrySchema)
+      .nullable()
+      .describe('Transforms to apply when entering this node'),
   }),
   z.object({
     type: z.literal('embellishment'),
     next: z.string().describe('Node ID to navigate to next'),
-    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
+    transform: z
+      .array(TransformEntrySchema)
+      .nullable()
+      .describe('Transforms to apply when entering this node'),
   }),
   z.object({
     type: z.literal('terminal'),
     celebration: z.boolean().nullable().describe('Whether to show celebration animation'),
-    transform: z.array(TransformEntrySchema).nullable().describe('Transforms to apply when entering this node'),
+    transform: z
+      .array(TransformEntrySchema)
+      .nullable()
+      .describe('Transforms to apply when entering this node'),
   }),
 ])
 
@@ -306,9 +336,14 @@ export const FlowchartDefinitionSchema = z.object({
   title: z.string().describe('Human-readable title (e.g., "Subtraction with Regrouping")'),
   mermaidFile: z.string().describe('Filename for mermaid content (e.g., "flowchart.mmd")'),
   problemInput: ProblemInputSchema.describe('Schema for problem inputs'),
-  variables: z.array(VariableEntrySchema).nullable().describe('DEPRECATED: Use node transforms instead. Computed variables derived from inputs.'),
+  variables: z
+    .array(VariableEntrySchema)
+    .nullable()
+    .describe('DEPRECATED: Use node transforms instead. Computed variables derived from inputs.'),
   entryNode: z.string().describe('ID of the first node to display'),
-  nodes: z.array(NodeEntrySchema).describe('All nodes in the flowchart - use transform on nodes to compute values'),
+  nodes: z
+    .array(NodeEntrySchema)
+    .describe('All nodes in the flowchart - use transform on nodes to compute values'),
   edges: z.array(EdgeEntrySchema).nullable().describe('Optional explicit edge definitions'),
   workingProblem: z
     .object({

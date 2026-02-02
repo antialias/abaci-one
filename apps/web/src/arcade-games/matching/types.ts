@@ -23,12 +23,7 @@ export type GamePhase = z.infer<typeof GamePhaseSchema>
 export const CardTypeSchema = z.enum(['abacus', 'number', 'complement'])
 export type CardType = z.infer<typeof CardTypeSchema>
 
-export const DifficultySchema = z.union([
-  z.literal(6),
-  z.literal(8),
-  z.literal(12),
-  z.literal(15),
-])
+export const DifficultySchema = z.union([z.literal(6), z.literal(8), z.literal(12), z.literal(15)])
 export type Difficulty = z.infer<typeof DifficultySchema>
 
 export const TargetSumSchema = z.union([z.literal(5), z.literal(10), z.literal(20)])

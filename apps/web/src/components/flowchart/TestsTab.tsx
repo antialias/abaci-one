@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
-import type { FlowchartDefinition, ProblemExample, ProblemValue, StateSnapshot } from '@/lib/flowcharts/schema'
+import type {
+  FlowchartDefinition,
+  ProblemExample,
+  ProblemValue,
+  StateSnapshot,
+} from '@/lib/flowcharts/schema'
 import {
   validateTestCases,
   formatTestFailure,
@@ -620,7 +625,11 @@ function TestResultRow({
               >
                 Computation Trace
               </h4>
-              <ProblemTrace snapshots={snapshots} defaultExpanded={false} onHoverStep={onHoverNode} />
+              <ProblemTrace
+                snapshots={snapshots}
+                defaultExpanded={false}
+                onHoverStep={onHoverNode}
+              />
             </div>
           )}
         </div>
@@ -926,7 +935,9 @@ function EditTestForm({
     const initialValues: Record<string, string> = {}
     for (const field of definition.problemInput.fields) {
       if (field.type === 'mixed-number') {
-        const val = example.values[field.name] as { whole?: number; num?: number; denom?: number } | undefined
+        const val = example.values[field.name] as
+          | { whole?: number; num?: number; denom?: number }
+          | undefined
         initialValues[`${field.name}Whole`] = String(val?.whole ?? '')
         initialValues[`${field.name}Num`] = String(val?.num ?? '')
         initialValues[`${field.name}Denom`] = String(val?.denom ?? '')

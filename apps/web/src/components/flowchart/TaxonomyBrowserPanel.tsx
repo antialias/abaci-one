@@ -3,7 +3,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
-import { agglomerativeClustering, subsetDistanceMatrix, distIndex } from '@/lib/flowcharts/clustering'
+import {
+  agglomerativeClustering,
+  subsetDistanceMatrix,
+  distIndex,
+} from '@/lib/flowcharts/clustering'
 
 interface TaxonomyStatus {
   labelCount: number
@@ -26,12 +30,54 @@ interface ClusterAssignment {
 }
 
 const CLUSTER_COLORS = [
-  { bg: 'purple.100', text: 'purple.700', border: 'purple.300', darkBg: 'purple.900', darkText: 'purple.300', darkBorder: 'purple.700' },
-  { bg: 'teal.100', text: 'teal.700', border: 'teal.300', darkBg: 'teal.900', darkText: 'teal.300', darkBorder: 'teal.700' },
-  { bg: 'orange.100', text: 'orange.700', border: 'orange.300', darkBg: 'orange.900', darkText: 'orange.300', darkBorder: 'orange.700' },
-  { bg: 'pink.100', text: 'pink.700', border: 'pink.300', darkBg: 'pink.900', darkText: 'pink.300', darkBorder: 'pink.700' },
-  { bg: 'blue.100', text: 'blue.700', border: 'blue.300', darkBg: 'blue.900', darkText: 'blue.300', darkBorder: 'blue.700' },
-  { bg: 'green.100', text: 'green.700', border: 'green.300', darkBg: 'green.900', darkText: 'green.300', darkBorder: 'green.700' },
+  {
+    bg: 'purple.100',
+    text: 'purple.700',
+    border: 'purple.300',
+    darkBg: 'purple.900',
+    darkText: 'purple.300',
+    darkBorder: 'purple.700',
+  },
+  {
+    bg: 'teal.100',
+    text: 'teal.700',
+    border: 'teal.300',
+    darkBg: 'teal.900',
+    darkText: 'teal.300',
+    darkBorder: 'teal.700',
+  },
+  {
+    bg: 'orange.100',
+    text: 'orange.700',
+    border: 'orange.300',
+    darkBg: 'orange.900',
+    darkText: 'orange.300',
+    darkBorder: 'orange.700',
+  },
+  {
+    bg: 'pink.100',
+    text: 'pink.700',
+    border: 'pink.300',
+    darkBg: 'pink.900',
+    darkText: 'pink.300',
+    darkBorder: 'pink.700',
+  },
+  {
+    bg: 'blue.100',
+    text: 'blue.700',
+    border: 'blue.300',
+    darkBg: 'blue.900',
+    darkText: 'blue.300',
+    darkBorder: 'blue.700',
+  },
+  {
+    bg: 'green.100',
+    text: 'green.700',
+    border: 'green.300',
+    darkBg: 'green.900',
+    darkText: 'green.300',
+    darkBorder: 'green.700',
+  },
 ]
 
 // Helper to check if an ID is a label
@@ -192,13 +238,15 @@ export function TaxonomyBrowserPanel({ onRegenerateComplete }: TaxonomyBrowserPa
           }
         }
 
-        return [{
-          topic: topics[0],
-          topicIndex: 0,
-          clusterIndex: 0,
-          clusterLabel: bestLabel,
-          clusterEmojis: '',
-        }]
+        return [
+          {
+            topic: topics[0],
+            topicIndex: 0,
+            clusterIndex: 0,
+            clusterLabel: bestLabel,
+            clusterEmojis: '',
+          },
+        ]
       }
       return null
     }
@@ -353,7 +401,13 @@ export function TaxonomyBrowserPanel({ onRegenerateComplete }: TaxonomyBrowserPa
       })}
     >
       {/* Header with tabs */}
-      <div className={css({ padding: '3', borderBottom: '1px solid', borderColor: { base: 'purple.200', _dark: 'purple.800' } })}>
+      <div
+        className={css({
+          padding: '3',
+          borderBottom: '1px solid',
+          borderColor: { base: 'purple.200', _dark: 'purple.800' },
+        })}
+      >
         <div className={hstack({ justify: 'space-between', marginBottom: '2' })}>
           <span
             className={css({
@@ -385,12 +439,11 @@ export function TaxonomyBrowserPanel({ onRegenerateComplete }: TaxonomyBrowserPa
               fontWeight: 'medium',
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'browse'
-                ? { base: 'purple.600', _dark: 'purple.500' }
-                : { base: 'purple.200', _dark: 'purple.800' },
-              color: activeTab === 'browse'
-                ? 'white'
-                : { base: 'purple.700', _dark: 'purple.300' },
+              backgroundColor:
+                activeTab === 'browse'
+                  ? { base: 'purple.600', _dark: 'purple.500' }
+                  : { base: 'purple.200', _dark: 'purple.800' },
+              color: activeTab === 'browse' ? 'white' : { base: 'purple.700', _dark: 'purple.300' },
             })}
           >
             Browse
@@ -405,12 +458,11 @@ export function TaxonomyBrowserPanel({ onRegenerateComplete }: TaxonomyBrowserPa
               fontWeight: 'medium',
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'test'
-                ? { base: 'purple.600', _dark: 'purple.500' }
-                : { base: 'purple.200', _dark: 'purple.800' },
-              color: activeTab === 'test'
-                ? 'white'
-                : { base: 'purple.700', _dark: 'purple.300' },
+              backgroundColor:
+                activeTab === 'test'
+                  ? { base: 'purple.600', _dark: 'purple.500' }
+                  : { base: 'purple.200', _dark: 'purple.800' },
+              color: activeTab === 'test' ? 'white' : { base: 'purple.700', _dark: 'purple.300' },
             })}
           >
             Test Clustering
@@ -521,7 +573,13 @@ export function TaxonomyBrowserPanel({ onRegenerateComplete }: TaxonomyBrowserPa
             </div>
 
             {filteredLabels.length === 0 && (
-              <div className={css({ color: { base: 'gray.500', _dark: 'gray.400' }, fontSize: 'sm', textAlign: 'center' })}>
+              <div
+                className={css({
+                  color: { base: 'gray.500', _dark: 'gray.400' },
+                  fontSize: 'sm',
+                  textAlign: 'center',
+                })}
+              >
                 No labels match your filter
               </div>
             )}
@@ -668,8 +726,8 @@ export function TaxonomyBrowserPanel({ onRegenerateComplete }: TaxonomyBrowserPa
               })}
             >
               <p>
-                This uses the same agglomerative clustering algorithm as the /flowchart page.
-                Topics are embedded and compared against the taxonomy labels.
+                This uses the same agglomerative clustering algorithm as the /flowchart page. Topics
+                are embedded and compared against the taxonomy labels.
               </p>
               <p className={css({ marginTop: '1' })}>
                 Tip: Click on a label in the Browse tab to add it to the test input.
