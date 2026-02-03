@@ -46,7 +46,7 @@ const nextConfig = {
       '@tanstack/react-form',
       '@tanstack/react-virtual',
     ],
-    serverComponentsExternalPackages: ['@myriaddreamin/typst.ts'],
+    serverComponentsExternalPackages: ['@myriaddreamin/typst.ts', 'sharp'],
   },
   transpilePackages: ['@soroban/core', '@soroban/client', '@svg-maps/world', '@svg-maps/usa'],
   webpack: (config, { isServer }) => {
