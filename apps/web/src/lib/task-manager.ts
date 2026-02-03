@@ -18,9 +18,11 @@ export type { TaskType, TaskStatus, TaskEventType, BackgroundTask, BackgroundTas
 export interface TaskHandle<TOutput = unknown> {
   /** The task ID */
   id: string
-  /** Emit a custom event to all subscribers */
+  /** Emit a custom event to all subscribers (persisted to DB for replay) */
   emit(eventType: TaskEventType | string, payload: unknown): void
-  /** Update progress (0-100) with optional message */
+  /** Emit a transient event (Socket.IO only, NOT persisted to DB) */
+  emitTransient(eventType: string, payload: unknown): void
+  /** Update progress (0-100) with optional message. DB writes are throttled. */
   setProgress(progress: number, message?: string): void
   /** Mark task as completed with output */
   complete(output: TOutput): void
@@ -81,50 +83,68 @@ export interface TaskEvent {
 const cancelledTasks = new Set<string>()
 
 /**
- * Emit a task event to all subscribers and persist it for replay
+ * Emit a task event to all subscribers
+ * @param persist - If true (default), persists to DB for replay. If false, Socket.IO only.
  */
-async function emitTaskEvent(taskId: string, eventType: string, payload: unknown): Promise<void> {
+async function emitTaskEvent(
+  taskId: string,
+  eventType: string,
+  payload: unknown,
+  persist = true
+): Promise<void> {
   const now = new Date()
-  console.log(`[TaskManager] Emitting event: ${eventType} for task ${taskId}`)
 
-  // Persist event for replay
-  await db.insert(schema.backgroundTaskEvents).values({
-    taskId,
-    eventType,
-    payload: payload as any,
-    createdAt: now,
-  })
+  // Persist event for replay (skip for transient events like streaming tokens)
+  if (persist) {
+    await db.insert(schema.backgroundTaskEvents).values({
+      taskId,
+      eventType,
+      payload: payload as any,
+      createdAt: now,
+    })
+  }
 
   // Broadcast via Socket.IO
   const io = getSocketIO()
   if (io) {
-    const room = `task:${taskId}`
-    const sockets = io.sockets.adapter.rooms.get(room)
-    console.log(`[TaskManager] Broadcasting to room ${room}, subscribers: ${sockets?.size ?? 0}`)
-    io.to(room).emit('task:event', {
+    io.to(`task:${taskId}`).emit('task:event', {
       taskId,
       eventType,
       payload,
       createdAt: now,
     })
-  } else {
-    console.log('[TaskManager] WARNING: Socket.IO not available!')
   }
 }
 
+/** Throttle interval for progress DB writes (ms) */
+const PROGRESS_DB_THROTTLE_MS = 3000
+
+/** Track last DB write time per task for throttling */
+const lastProgressDbWrite = new Map<string, number>()
+
 /**
- * Update task progress and broadcast to subscribers
+ * Update task progress and broadcast to subscribers.
+ * DB writes are throttled to avoid hammering libsql during streaming.
+ * Socket.IO broadcasts happen on every call for real-time UI updates.
  */
 async function updateProgress(taskId: string, progress: number, message?: string): Promise<void> {
-  await db
-    .update(schema.backgroundTasks)
-    .set({
-      progress,
-      progressMessage: message ?? null,
-    })
-    .where(eq(schema.backgroundTasks.id, taskId))
+  const now = Date.now()
+  const lastWrite = lastProgressDbWrite.get(taskId) ?? 0
+  const shouldPersist = now - lastWrite >= PROGRESS_DB_THROTTLE_MS || progress >= 100
 
-  await emitTaskEvent(taskId, 'progress', { progress, message })
+  if (shouldPersist) {
+    lastProgressDbWrite.set(taskId, now)
+    await db
+      .update(schema.backgroundTasks)
+      .set({
+        progress,
+        progressMessage: message ?? null,
+      })
+      .where(eq(schema.backgroundTasks.id, taskId))
+  }
+
+  // Always broadcast to Socket.IO for real-time UI, but don't persist every progress event
+  await emitTaskEvent(taskId, 'progress', { progress, message }, shouldPersist)
 }
 
 /**
@@ -307,8 +327,12 @@ export async function createTask<TInput, TOutput>(
   const handle: TaskHandle<TOutput> = {
     id,
     emit: (eventType, payload) => {
-      // Fire and forget - don't block the handler
-      void emitTaskEvent(id, eventType, payload)
+      // Fire and forget - don't block the handler (persisted to DB)
+      void emitTaskEvent(id, eventType, payload, true)
+    },
+    emitTransient: (eventType, payload) => {
+      // Fire and forget - Socket.IO only, no DB write
+      void emitTaskEvent(id, eventType, payload, false)
     },
     setProgress: (progress, message) => {
       void updateProgress(id, progress, message)
@@ -323,9 +347,8 @@ export async function createTask<TInput, TOutput>(
   }
 
   // Start task asynchronously (don't block the return)
-  console.log(`[TaskManager] Task ${id} created, scheduling handler via setImmediate`)
+  console.log(`[TaskManager] Task ${id} (${type}) created`)
   setImmediate(async () => {
-    console.log(`[TaskManager] Task ${id} handler starting`)
     // Update status to running
     await db
       .update(schema.backgroundTasks)
@@ -335,11 +358,10 @@ export async function createTask<TInput, TOutput>(
     await emitTaskEvent(id, 'started', {})
 
     try {
-      console.log(`[TaskManager] Task ${id} calling handler function`)
       await handler(handle, input)
-      console.log(`[TaskManager] Task ${id} handler completed`)
+      console.log(`[TaskManager] Task ${id} completed`)
     } catch (err) {
-      console.error(`[TaskManager] Task ${id} handler error:`, err)
+      console.error(`[TaskManager] Task ${id} failed:`, err)
       // Don't fail if already completed/failed/cancelled
       const task = await db.query.backgroundTasks.findFirst({
         where: eq(schema.backgroundTasks.id, id),
@@ -348,8 +370,9 @@ export async function createTask<TInput, TOutput>(
         handle.fail(err instanceof Error ? err.message : String(err))
       }
     } finally {
-      // Clean up cancellation tracking
+      // Clean up tracking state
       cancelledTasks.delete(id)
+      lastProgressDbWrite.delete(id)
     }
   })
 

@@ -126,12 +126,10 @@ export async function startWorksheetParsing(input: WorksheetParseInput): Promise
     'worksheet-parse',
     input,
     async (handle, config) => {
-      console.log('[WorksheetParseTask] Handler started for attachment:', config.attachmentId)
       const { imageDataUrl, modelConfigId, promptOptions, attachmentId, preservedBoundingBoxes } =
         config
 
       handle.setProgress(5, 'Initializing parser...')
-      console.log('[WorksheetParseTask] Emitting parsing_started event')
       handle.emit('parsing_started', {
         modelConfigId: modelConfigId ?? 'default',
         useStreaming,
@@ -188,7 +186,6 @@ async function runStreamingParse(
   imageDataUrl: string,
   options: ParseOptions
 ): Promise<void> {
-  console.log('[WorksheetParseTask] runStreamingParse started')
   const { attachmentId, preservedBoundingBoxes, modelConfig } = options
   const streamOptions: StreamParseWorksheetOptions = {
     modelConfigId: options.modelConfigId,
@@ -201,12 +198,9 @@ async function runStreamingParse(
   let reasoningText = ''
   let outputText = ''
 
-  console.log('[WorksheetParseTask] Starting streamParseWorksheetImage')
   const stream = streamParseWorksheetImage(imageDataUrl, streamOptions)
 
-  console.log('[WorksheetParseTask] Starting to iterate stream events')
   for await (const event of stream) {
-    console.log('[WorksheetParseTask] Stream event:', event.type)
     // Check for cancellation
     if (handle.isCancelled()) {
       handle.emit('cancelled', { reason: 'User cancelled' })
@@ -237,10 +231,9 @@ async function runStreamingParse(
 
       case 'reasoning': {
         reasoningText += event.text
-        // Only emit the delta text - don't store accumulated (O(n²) storage)
-        // Clients can reconstruct accumulated text from deltas
-        handle.emit('reasoning', { text: event.text })
-        // Update progress based on reasoning length (rough estimate)
+        // Transient: Socket.IO only, no DB write (these come at 20-100+/sec)
+        handle.emitTransient('reasoning', { text: event.text })
+        // setProgress is throttled in task-manager (DB write every ~3s)
         const reasoningProgress = Math.min(15 + Math.floor(reasoningText.length / 100), 50)
         handle.setProgress(reasoningProgress, 'AI reasoning about worksheet...')
         break
@@ -248,8 +241,8 @@ async function runStreamingParse(
 
       case 'output_delta':
         outputText += event.text
-        // Only emit the delta text - don't store accumulated (O(n²) storage)
-        handle.emit('output_delta', { text: event.text })
+        // Transient: Socket.IO only, no DB write (these come at 20-100+/sec)
+        handle.emitTransient('output_delta', { text: event.text })
         handle.setProgress(60, 'Generating structured output...')
         break
 

@@ -345,8 +345,8 @@ async function runReparse(
 
         switch (event.type) {
           case 'reasoning':
-            // Only emit delta text, not accumulated
-            handle.emit('reasoning', {
+            // Transient: Socket.IO only, no DB write (high-frequency streaming tokens)
+            handle.emitTransient('reasoning', {
               problemIndex,
               text: event.text,
               summaryIndex: event.summaryIndex,
@@ -355,7 +355,8 @@ async function runReparse(
             break
 
           case 'output_delta':
-            handle.emit('output_delta', {
+            // Transient: Socket.IO only, no DB write (high-frequency streaming tokens)
+            handle.emitTransient('output_delta', {
               problemIndex,
               text: event.text,
               outputIndex: event.outputIndex,
