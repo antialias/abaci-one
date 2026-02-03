@@ -12,7 +12,7 @@
 # 1. git push → Gitea (primary)
 # 2. Gitea Actions runs .github/workflows/*.yml
 # 3. Built images pushed to local registry
-# 4. Keel detects new images and updates app pods
+# 4. Argo CD image updater detects new images and updates app pods
 # 5. Gitea mirrors to GitHub (backup)
 
 # ===========================================================================

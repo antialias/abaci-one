@@ -62,9 +62,8 @@ This directory contains Terraform configuration for deploying the Abaci.one appl
 - Replicas maintain read-only copies for load distribution
 - **Important:** LiteFS proxy's `fly-replay` header only works on Fly.io, not k8s
 
-### Keel (Auto-Deployment)
-- Watches `ghcr.io` for new images
-- Polls every 2 minutes for `:latest` tag changes
+### Argo CD (Auto-Deployment)
+- Argo CD with argocd-image-updater watches `ghcr.io` for new images
 - Automatically triggers rolling updates when new images are detected
 - **No manual deployment steps required after pushing to main**
 
@@ -86,7 +85,7 @@ This directory contains Terraform configuration for deploying the Abaci.one appl
 infra/terraform/
 ├── main.tf           # Providers and namespace
 ├── app.tf            # Main app StatefulSet, Services, Ingress
-├── keel.tf           # Keel auto-deployment
+├── argocd.tf         # Argo CD GitOps deployment
 ├── redis.tf          # Redis deployment for sessions/cache
 ├── cert-manager.tf   # SSL certificate management
 ├── storage.tf        # PVC for vision training data
@@ -105,7 +104,7 @@ infra/terraform/
 
 1. **Push code to main** → GitHub Actions builds Docker image
 2. **Image pushed to ghcr.io** with `:latest` tag
-3. **Keel detects new image** (within 2 minutes)
+3. **Argo CD image updater detects new image**
 4. **Rolling update triggered** automatically
 
 ### Manual Infrastructure Changes
@@ -120,7 +119,7 @@ terraform apply       # Apply changes
 
 ### Manual Pod Restart
 
-To force an immediate rollout without waiting for Keel:
+To force an immediate rollout without waiting for Argo CD:
 
 ```bash
 kubectl --kubeconfig=~/.kube/k3s-config -n abaci rollout restart statefulset abaci-app
@@ -138,8 +137,8 @@ kubectl --kubeconfig=~/.kube/k3s-config -n abaci get pods
 # App logs
 kubectl --kubeconfig=~/.kube/k3s-config -n abaci logs abaci-app-0 -f
 
-# Keel logs (auto-deployment)
-kubectl --kubeconfig=~/.kube/k3s-config -n keel logs -l app=keel
+# Argo CD image updater logs (auto-deployment)
+kubectl --kubeconfig=~/.kube/k3s-config -n argocd logs -l app.kubernetes.io/name=argocd-image-updater
 ```
 
 ### Check LiteFS Replication
@@ -181,9 +180,9 @@ kubectl --kubeconfig=~/.kube/k3s-config -n abaci delete pvc litefs-data-abaci-ap
 kubectl --kubeconfig=~/.kube/k3s-config -n abaci scale statefulset abaci-app --replicas=3
 ```
 
-### Keel Not Updating
-1. Check Keel logs for errors
-2. Verify annotations on StatefulSet: `keel.sh/policy=force`
+### Argo CD Not Updating
+1. Check argocd-image-updater logs for errors
+2. Verify Argo CD Application is synced: `kubectl get applications -n argocd`
 3. Check if image digest actually changed in ghcr.io
 
 ## Environment Variables

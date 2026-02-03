@@ -1,17 +1,11 @@
 # ArgoCD - GitOps Continuous Delivery
 #
 # ArgoCD watches a Git repo for Kubernetes manifests and syncs them to the cluster.
-# Unlike Keel (which just updates images), ArgoCD provides:
 # - PreSync hooks for running migrations before deployments
 # - Full GitOps workflow
 # - Rollback capabilities
 # - Sync status visibility
-#
-# Phase 1: Install ArgoCD (parallel to Keel for testing)
-# Phase 2: Create Application manifests in infra/k8s/
-# Phase 3: Test manual syncs
-# Phase 4: Enable auto-sync + image updater
-# Phase 5: Disable Keel
+# - argocd-image-updater for automatic image deployments
 
 resource "kubernetes_namespace" "argocd" {
   metadata {

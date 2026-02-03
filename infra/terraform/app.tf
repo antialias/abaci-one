@@ -19,7 +19,7 @@ resource "kubernetes_secret" "app_env" {
 }
 
 # Docker registry secret for ghcr.io access
-# Used by Keel to poll for new image versions and by pods to pull images
+# Used by pods to pull images from ghcr.io
 resource "kubernetes_secret" "ghcr_registry" {
   count = var.ghcr_token != "" ? 1 : 0
 
@@ -72,13 +72,7 @@ resource "kubernetes_deployment" "app" {
     labels = {
       app = "abaci-app"
     }
-    # Keel annotations for automatic image updates
-    annotations = {
-      "keel.sh/policy"       = "force"     # Update even for same tags (:latest)
-      "keel.sh/trigger"      = "poll"      # Use registry polling
-      "keel.sh/pollSchedule" = "@every 2m" # Check every 2 minutes
-      "keel.sh/match-tag"    = "true"      # Only track the current tag (:latest)
-    }
+    # Argo CD manages automatic image updates via argocd-image-updater
   }
 
   spec {

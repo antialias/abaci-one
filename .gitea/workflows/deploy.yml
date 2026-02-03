@@ -65,6 +65,6 @@ jobs:
           echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
           echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}"
           echo ""
-          echo "Keel will automatically deploy the new image."
+          echo "Argo CD will automatically deploy the new image."
 
 # v5 - Explicit DOCKER_HOST for DinD sidecar

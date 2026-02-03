@@ -10,7 +10,7 @@ The project runs on a k3s cluster accessible via the Kubernetes MCP.
 - **monitoring**: Prometheus stack (Grafana, Prometheus, node-exporter), Tempo (tracing)
 - **kube-system**: Traefik ingress, CoreDNS, metrics-server
 - **cert-manager**: TLS certificate management (letsencrypt-staging issuer)
-- **keel**: Automatic deployment updates
+- **argocd**: Argo CD for GitOps deployments (with argocd-image-updater for auto-deploys)
 
 ### Key Services
 | Service | Namespace | External URL |
@@ -48,7 +48,7 @@ kubectl exec -n gitea $(kubectl get pod -n gitea -l app=gitea -o jsonpath='{.ite
 ## CI/CD Pipeline
 
 - **Gitea Actions**: Runs in `gitea-runner` pod
-- **Keel**: Watches for new container images and auto-deploys
+- **Argo CD Image Updater**: Watches for new container images and auto-deploys
 - **Registry**: Internal registry at `registry.gitea.svc.cluster.local`
 
 ## Application Architecture

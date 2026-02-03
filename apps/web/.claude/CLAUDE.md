@@ -74,56 +74,22 @@ SQLite + Drizzle ORM. Location: `./data/sqlite.db`
 
 ---
 
-## Kubernetes Deployment (Keel Auto-Updates)
+## Kubernetes Deployment (Argo CD Auto-Updates)
 
-**Production runs on k3s with Keel for automatic image updates.**
+**Production runs on k3s with Argo CD + argocd-image-updater for automatic image deployments.**
 
-### Keel Annotation Placement (CRITICAL)
-Keel annotations MUST be on the **workload metadata**, NOT the pod template:
+- When a new image is pushed to ghcr.io, argocd-image-updater detects it and triggers a rollout
+- Do NOT manually trigger `kubectl rollout restart` - Argo CD handles this automatically
+- Argo CD runs in the `argocd` namespace
 
-```hcl
-# CORRECT - on StatefulSet/Deployment metadata
-resource "kubernetes_stateful_set" "app" {
-  metadata {
-    annotations = {
-      "keel.sh/policy" = "force"
-      "keel.sh/trigger" = "poll"
-      "keel.sh/pollSchedule" = "@every 2m"
-    }
-  }
-}
-
-# WRONG - on pod template (Keel ignores these)
-spec {
-  template {
-    metadata {
-      annotations = { ... }  # Keel won't see these!
-    }
-  }
-}
-```
-
-### Keel Namespace Watching
-Keel must watch all namespaces (not just its own). Verify with:
+### Debugging Argo CD
 ```bash
-kubectl get deployment keel -n keel -o jsonpath='{.spec.template.spec.containers[0].env}' | jq .
+# Check Argo CD image updater logs
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-image-updater --tail=50
+
+# Check Argo CD app status
+kubectl get applications -n argocd
 ```
-`NAMESPACE` should be empty or unset. If set to "keel", it only watches the keel namespace.
-
-### Debugging Keel
-```bash
-# Check if Keel sees your workload
-kubectl logs -n keel -l app=keel | grep -i "watch\|poll\|digest"
-
-# Should see: "new watch tag digest job added"
-# If not: annotations are wrong or namespace issue
-
-# Check for DNS issues
-kubectl logs -n keel -l app=keel | grep -i "error"
-```
-
-### LiteFS Replica Migrations
-Replicas are read-only. server.js checks `LITEFS_CANDIDATE` env var and skips migrations on replicas. If pods crash with "read only replica" error, this check is missing.
 
 ---
 

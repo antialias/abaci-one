@@ -80,20 +80,20 @@ This replaces the previous LiteFS setup. Benefits:
 ### CI/CD Architecture
 
 ```
-GitHub Actions → ghcr.io → Keel → k3s Deployment
+GitHub Actions → ghcr.io → Argo CD Image Updater → k3s Deployment
 ```
 
 1. Push to GitHub (main branch)
 2. GitHub Actions builds image → pushes to ghcr.io
-3. **Keel detects new image** (polls every 2 minutes)
-4. Keel triggers rolling restart of pods
+3. **Argo CD image updater detects new image**
+4. Argo CD triggers rolling restart of pods
 5. No manual intervention required!
 
 **Registry**: `ghcr.io/antialias/soroban-abacus-flashcards:latest`
 
-To verify Keel is working:
+To verify Argo CD image updater is working:
 ```bash
-kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n keel logs -l app=keel --tail=50
+kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n argocd logs -l app.kubernetes.io/name=argocd-image-updater --tail=50
 ```
 
 ### Manual Rollout (quick restart)

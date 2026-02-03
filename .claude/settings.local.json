@@ -808,7 +808,16 @@
       "Bash(do echo \"Request $i:\")",
       "Skill(db-migrate)",
       "Bash(git config:*)",
-      "Bash(rsync:*)"
+      "Bash(rsync:*)",
+      "Bash(gh run:*)",
+      "WebFetch(domain:skills.sh)",
+      "Bash(gh workflow run:*)",
+      "Bash(/tmp/monitor-github-actions.sh)",
+      "WebFetch(domain:jishi.github.io)",
+      "WebFetch(domain:www.music-assistant.io)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI3MTAwOGFlZmQ2ZjM0OWMwOTVlZDhmNzA1ZWRmMDUzZCIsImlhdCI6MTc3MDA2Nzc1NywiZXhwIjoyMDg1NDI3NzU3fQ.5bRn0sJ4obY2aJv8S8f2da_ecN3u-tw8PxdQnZECBc4\")",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npx next build:*)",
+      "Bash(nc:*)"
     ],
     "deny": [],
     "ask": []

@@ -59,7 +59,7 @@ variable "nfs_server" {
 }
 
 variable "ghcr_token" {
-  description = "GitHub Personal Access Token with read:packages scope for ghcr.io registry access (used by Keel for polling)"
+  description = "GitHub Personal Access Token with read:packages scope for ghcr.io registry access"
   type        = string
   sensitive   = true
   default     = ""
