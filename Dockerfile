@@ -62,9 +62,16 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN turbo build --filter=@soroban/web
 
 # Production dependencies stage - install only runtime dependencies
-# @libsql/client is pure JavaScript, no native compilation needed
+# Sharp requires native compilation, so we need build tools
 FROM node:20-slim AS deps
 WORKDIR /app
+
+# Install build tools needed for sharp and other native modules
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
 RUN npm install -g pnpm@9.15.4
