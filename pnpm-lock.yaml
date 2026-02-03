@@ -345,6 +345,9 @@ importers:
       remark-html:
         specifier: ^16.0.1
         version: 16.0.1
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
       simplify-js:
         specifier: ^1.2.4
         version: 1.2.4
@@ -451,9 +454,6 @@ importers:
       next-openapi-gen:
         specifier: ^0.9.4
         version: 0.9.4
-      sharp:
-        specifier: ^0.34.5
-        version: 0.34.5
       storybook:
         specifier: ^9.1.7
         version: 9.1.10(@testing-library/dom@9.3.4)(prettier@3.6.2)(vite@5.4.20(@types/node@20.19.19)(lightningcss@1.30.2)(terser@5.44.0))
@@ -24608,7 +24608,7 @@ snapshots:
 
   node-abi@3.78.0:
     dependencies:
-      semver: 7.7.2
+      semver: 7.7.3
     optional: true
 
   node-abort-controller@3.1.1: {}
