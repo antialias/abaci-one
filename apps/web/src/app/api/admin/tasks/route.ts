@@ -53,30 +53,33 @@ export async function GET(request: Request) {
     })
   }
 
-  // Task list (no events — fast)
+  // Task list (no events, no input/output blobs — fast)
   const limit = parseInt(url.searchParams.get('limit') ?? '50', 10)
 
-  const tasks = await db
-    .select()
+  const taskList = await db
+    .select({
+      id: schema.backgroundTasks.id,
+      type: schema.backgroundTasks.type,
+      status: schema.backgroundTasks.status,
+      progress: schema.backgroundTasks.progress,
+      progressMessage: schema.backgroundTasks.progressMessage,
+      error: schema.backgroundTasks.error,
+      createdAt: schema.backgroundTasks.createdAt,
+      startedAt: schema.backgroundTasks.startedAt,
+      completedAt: schema.backgroundTasks.completedAt,
+    })
     .from(schema.backgroundTasks)
     .orderBy(desc(schema.backgroundTasks.createdAt))
     .limit(Math.min(limit, 100))
     .all()
 
-  const taskList = tasks.map((task) => ({
-    id: task.id,
-    type: task.type,
-    status: task.status,
-    progress: task.progress ?? 0,
-    progressMessage: task.progressMessage,
-    error: task.error,
-    createdAt: task.createdAt,
-    startedAt: task.startedAt,
-    completedAt: task.completedAt,
+  const tasks = taskList.map((t) => ({
+    ...t,
+    progress: t.progress ?? 0,
     events: [],
   }))
 
-  return NextResponse.json({ tasks: taskList })
+  return NextResponse.json({ tasks })
 }
 
 /**
