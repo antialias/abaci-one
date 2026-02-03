@@ -1,18 +1,61 @@
 /**
  * Admin Tasks API
  *
- * GET /api/admin/tasks - List recent background tasks with their events
+ * GET /api/admin/tasks - List recent background tasks (without events for fast loading)
+ * GET /api/admin/tasks?taskId=xxx - Get a single task with its events
  */
 
 import { NextResponse } from 'next/server'
-import { desc, eq, inArray } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
+  const taskId = url.searchParams.get('taskId')
+
+  // Single task with events
+  if (taskId) {
+    const task = await db.query.backgroundTasks.findFirst({
+      where: eq(schema.backgroundTasks.id, taskId),
+    })
+
+    if (!task) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+    }
+
+    const events = await db
+      .select({
+        id: schema.backgroundTaskEvents.id,
+        taskId: schema.backgroundTaskEvents.taskId,
+        eventType: schema.backgroundTaskEvents.eventType,
+        payload: schema.backgroundTaskEvents.payload,
+        createdAt: schema.backgroundTaskEvents.createdAt,
+      })
+      .from(schema.backgroundTaskEvents)
+      .where(eq(schema.backgroundTaskEvents.taskId, taskId))
+      .orderBy(schema.backgroundTaskEvents.id)
+      .limit(200)
+      .all()
+
+    return NextResponse.json({
+      task: {
+        id: task.id,
+        type: task.type,
+        status: task.status,
+        progress: task.progress ?? 0,
+        progressMessage: task.progressMessage,
+        error: task.error,
+        createdAt: task.createdAt,
+        startedAt: task.startedAt,
+        completedAt: task.completedAt,
+        events: events.map((e) => ({ ...e, payload: sanitizePayload(e.payload) })),
+      },
+    })
+  }
+
+  // Task list (no events — fast)
   const limit = parseInt(url.searchParams.get('limit') ?? '50', 10)
 
-  // Fetch recent tasks
   const tasks = await db
     .select()
     .from(schema.backgroundTasks)
@@ -20,55 +63,20 @@ export async function GET(request: Request) {
     .limit(Math.min(limit, 100))
     .all()
 
-  if (tasks.length === 0) {
-    return NextResponse.json({ tasks: [] })
-  }
+  const taskList = tasks.map((task) => ({
+    id: task.id,
+    type: task.type,
+    status: task.status,
+    progress: task.progress ?? 0,
+    progressMessage: task.progressMessage,
+    error: task.error,
+    createdAt: task.createdAt,
+    startedAt: task.startedAt,
+    completedAt: task.completedAt,
+    events: [],
+  }))
 
-  // Fetch all events in a single query instead of N+1
-  const taskIds = tasks.map((t) => t.id)
-  const allEvents = await db
-    .select({
-      id: schema.backgroundTaskEvents.id,
-      taskId: schema.backgroundTaskEvents.taskId,
-      eventType: schema.backgroundTaskEvents.eventType,
-      payload: schema.backgroundTaskEvents.payload,
-      createdAt: schema.backgroundTaskEvents.createdAt,
-    })
-    .from(schema.backgroundTaskEvents)
-    .where(inArray(schema.backgroundTaskEvents.taskId, taskIds))
-    .orderBy(schema.backgroundTaskEvents.id)
-    .all()
-
-  // Group events by task ID
-  const eventsByTask = new Map<string, typeof allEvents>()
-  for (const event of allEvents) {
-    const existing = eventsByTask.get(event.taskId) ?? []
-    existing.push(event)
-    eventsByTask.set(event.taskId, existing)
-  }
-
-  const tasksWithEvents = tasks.map((task) => {
-    const events = (eventsByTask.get(task.id) ?? []).slice(-100) // Keep last 100 per task
-    const sanitizedEvents = events.map((event) => ({
-      ...event,
-      payload: sanitizePayload(event.payload),
-    }))
-
-    return {
-      id: task.id,
-      type: task.type,
-      status: task.status,
-      progress: task.progress ?? 0,
-      progressMessage: task.progressMessage,
-      error: task.error,
-      createdAt: task.createdAt,
-      startedAt: task.startedAt,
-      completedAt: task.completedAt,
-      events: sanitizedEvents,
-    }
-  })
-
-  return NextResponse.json({ tasks: tasksWithEvents })
+  return NextResponse.json({ tasks: taskList })
 }
 
 /**

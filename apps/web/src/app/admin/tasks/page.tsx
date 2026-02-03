@@ -173,6 +173,28 @@ export default function AdminTasksPage() {
     activeTasks.forEach((task) => subscribeToTask(task.id))
   }, [tasks, subscribeToTask])
 
+  // Fetch events on-demand when a task is selected
+  useEffect(() => {
+    if (!selectedTaskId) return
+
+    const task = tasks.find((t) => t.id === selectedTaskId)
+    // Only fetch if we don't already have events (e.g., from Socket.IO)
+    if (task && task.events.length === 0) {
+      fetch(`/api/admin/tasks?taskId=${selectedTaskId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.task?.events) {
+            setTasks((prev) =>
+              prev.map((t) => (t.id === selectedTaskId ? { ...t, events: data.task.events } : t))
+            )
+          }
+        })
+        .catch(() => {
+          // Silently fail — events are supplementary
+        })
+    }
+  }, [selectedTaskId, tasks])
+
   const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null
 
   const getStatusColor = (status: string) => {
