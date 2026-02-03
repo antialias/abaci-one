@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { desc, eq } from 'drizzle-orm'
+import { desc, eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
 
 export async function GET(request: Request) {
@@ -20,43 +20,53 @@ export async function GET(request: Request) {
     .limit(Math.min(limit, 100))
     .all()
 
-  // Fetch events for each task (limit per task to avoid huge payloads)
-  const tasksWithEvents = await Promise.all(
-    tasks.map(async (task) => {
-      const events = await db
-        .select({
-          id: schema.backgroundTaskEvents.id,
-          taskId: schema.backgroundTaskEvents.taskId,
-          eventType: schema.backgroundTaskEvents.eventType,
-          payload: schema.backgroundTaskEvents.payload,
-          createdAt: schema.backgroundTaskEvents.createdAt,
-        })
-        .from(schema.backgroundTaskEvents)
-        .where(eq(schema.backgroundTaskEvents.taskId, task.id))
-        .orderBy(desc(schema.backgroundTaskEvents.id))
-        .limit(100)
-        .all()
+  if (tasks.length === 0) {
+    return NextResponse.json({ tasks: [] })
+  }
 
-      // Filter out large payloads for the list view
-      const sanitizedEvents = events.reverse().map((event) => ({
-        ...event,
-        payload: sanitizePayload(event.payload),
-      }))
-
-      return {
-        id: task.id,
-        type: task.type,
-        status: task.status,
-        progress: task.progress ?? 0,
-        progressMessage: task.progressMessage,
-        error: task.error,
-        createdAt: task.createdAt,
-        startedAt: task.startedAt,
-        completedAt: task.completedAt,
-        events: sanitizedEvents,
-      }
+  // Fetch all events in a single query instead of N+1
+  const taskIds = tasks.map((t) => t.id)
+  const allEvents = await db
+    .select({
+      id: schema.backgroundTaskEvents.id,
+      taskId: schema.backgroundTaskEvents.taskId,
+      eventType: schema.backgroundTaskEvents.eventType,
+      payload: schema.backgroundTaskEvents.payload,
+      createdAt: schema.backgroundTaskEvents.createdAt,
     })
-  )
+    .from(schema.backgroundTaskEvents)
+    .where(inArray(schema.backgroundTaskEvents.taskId, taskIds))
+    .orderBy(schema.backgroundTaskEvents.id)
+    .all()
+
+  // Group events by task ID
+  const eventsByTask = new Map<string, typeof allEvents>()
+  for (const event of allEvents) {
+    const existing = eventsByTask.get(event.taskId) ?? []
+    existing.push(event)
+    eventsByTask.set(event.taskId, existing)
+  }
+
+  const tasksWithEvents = tasks.map((task) => {
+    const events = (eventsByTask.get(task.id) ?? []).slice(-100) // Keep last 100 per task
+    const sanitizedEvents = events.map((event) => ({
+      ...event,
+      payload: sanitizePayload(event.payload),
+    }))
+
+    return {
+      id: task.id,
+      type: task.type,
+      status: task.status,
+      progress: task.progress ?? 0,
+      progressMessage: task.progressMessage,
+      error: task.error,
+      createdAt: task.createdAt,
+      startedAt: task.startedAt,
+      completedAt: task.completedAt,
+      events: sanitizedEvents,
+    }
+  })
 
   return NextResponse.json({ tasks: tasksWithEvents })
 }
