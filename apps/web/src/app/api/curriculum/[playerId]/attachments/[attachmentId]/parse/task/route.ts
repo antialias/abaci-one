@@ -19,7 +19,7 @@ import { practiceAttachments } from '@/db/schema/practice-attachments'
 import { backgroundTasks } from '@/db/schema/background-tasks'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-import { startWorksheetParsing } from '@/lib/tasks'
+import { startWorksheetParsing } from '@/lib/tasks/worksheet-parse'
 import { getModelConfig, getDefaultModelConfig } from '@/lib/worksheet-parsing'
 
 interface RouteParams {
