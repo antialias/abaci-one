@@ -64,8 +64,6 @@ import {
   useApproveAndCreateSession,
   useCancelParsing,
   useInitializeReview,
-  useReparseSelected,
-  useStartParsing,
   useSubmitCorrections,
   useUnapproveWorksheet,
   useUpdateReviewProgress,
@@ -191,7 +189,6 @@ export function SummaryClient({
   }))
 
   // Worksheet parsing mutations
-  const startParsing = useStartParsing(studentId, session?.id ?? '')
   const cancelParsing = useCancelParsing(studentId, session?.id ?? '')
 
   // Approve and create session mutation
@@ -199,9 +196,6 @@ export function SummaryClient({
 
   // Submit corrections mutation
   const submitCorrections = useSubmitCorrections(studentId, session?.id ?? '')
-
-  // Re-parse selected problems mutation (non-streaming fallback)
-  const reparseSelected = useReparseSelected(studentId, session?.id ?? '')
 
   // Initialize review progress mutation (for starting the review workflow)
   const initializeReview = useInitializeReview(studentId, session?.id ?? '')
@@ -460,7 +454,7 @@ export function SummaryClient({
                           isUploading={photoManagement.isUploading}
                           uploadError={photoManagement.uploadError}
                           deletingId={photoManagement.deletingId}
-                          parsingId={getPendingAttachmentId(startParsing)}
+                          parsingId={null}
                           dragOver={photoManagement.dragOver}
                           isDark={isDark}
                           canUpload={canUpload}
@@ -475,7 +469,7 @@ export function SummaryClient({
                           onOpenViewer={photoViewer.open}
                           onDeletePhoto={photoManagement.deletePhoto}
                           onCancelParsing={(attachmentId) => cancelParsing.mutate(attachmentId)}
-                          reparsingPhotoId={getPendingAttachmentId(reparseSelected)}
+                          reparsingPhotoId={null}
                           onInitializeReview={async (attachmentId) => {
                             await initializeReview.mutateAsync(attachmentId)
                           }}
