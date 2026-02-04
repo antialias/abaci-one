@@ -150,6 +150,8 @@ export type FlowchartGenerateEvent =
   | { type: 'generate_progress'; stage: string; message: string }
   | { type: 'reasoning'; text: string; isDelta: boolean; summaryIndex?: number }
   | { type: 'output_delta'; text: string; outputIndex?: number }
+  | { type: 'reasoning_snapshot'; text: string }
+  | { type: 'output_snapshot'; text: string }
   | {
       type: 'generate_validation'
       passed: boolean
@@ -181,6 +183,8 @@ export type FlowchartRefineEvent =
   | { type: 'refine_progress'; stage: string; message: string }
   | { type: 'reasoning'; text: string; isDelta: boolean; summaryIndex?: number }
   | { type: 'output_delta'; text: string; outputIndex?: number }
+  | { type: 'reasoning_snapshot'; text: string }
+  | { type: 'output_snapshot'; text: string }
   | {
       type: 'refine_validation'
       passed: boolean

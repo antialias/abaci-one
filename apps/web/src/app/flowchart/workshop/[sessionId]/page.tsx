@@ -426,11 +426,29 @@ export default function WorkshopPage() {
             })
             break
 
+          case 'reasoning_snapshot':
+            // Persisted snapshot of accumulated reasoning — used on replay after page reload
+            dispatch({
+              type: 'STREAM_REASONING',
+              text: payload.text as string,
+              append: false,
+            })
+            break
+
           case 'output_delta':
             dispatch({
               type: 'STREAM_OUTPUT',
               text: payload.text as string,
               append: true,
+            })
+            break
+
+          case 'output_snapshot':
+            // Persisted snapshot of accumulated output — used on replay after page reload
+            dispatch({
+              type: 'STREAM_OUTPUT',
+              text: payload.text as string,
+              append: false,
             })
             break
 
