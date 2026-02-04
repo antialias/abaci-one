@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import {
   isOpenCVReady,
   loadOpenCV,
@@ -145,8 +146,7 @@ export function useRemoteCameraPhone(
   // Initialize socket connection with reconnection support
   useEffect(() => {
     console.log('[RemoteCameraPhone] Initializing socket connection...')
-    const socketInstance = io({
-      path: '/api/socket',
+    const socketInstance = createSocket({
       autoConnect: true,
       reconnection: true,
       reconnectionDelay: 1000,

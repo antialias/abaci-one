@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { ArcadeErrorContext } from '@/contexts/ArcadeErrorContext'
 import type { GameMove } from '@/lib/arcade/validation'
 
@@ -66,8 +67,7 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
 
   // Initialize socket connection
   useEffect(() => {
-    const socketInstance = io({
-      path: '/api/socket',
+    const socketInstance = createSocket({
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,

@@ -12,6 +12,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { practiceAttachments, type ParsingStatus } from '@/db/schema/practice-attachments'
 import { createTask, type TaskHandle } from '../task-manager'
+import type { WorksheetParseEvent } from './events'
 import {
   streamParseWorksheetImage,
   parseWorksheetImage,
@@ -122,7 +123,7 @@ export async function startWorksheetParsing(input: WorksheetParseInput): Promise
     })
     .where(eq(practiceAttachments.id, input.attachmentId))
 
-  return createTask<WorksheetParseInput, WorksheetParseOutput>(
+  return createTask<WorksheetParseInput, WorksheetParseOutput, WorksheetParseEvent>(
     'worksheet-parse',
     input,
     async (handle, config) => {
@@ -130,7 +131,8 @@ export async function startWorksheetParsing(input: WorksheetParseInput): Promise
         config
 
       handle.setProgress(5, 'Initializing parser...')
-      handle.emit('parsing_started', {
+      handle.emit({
+        type: 'parse_started',
         modelConfigId: modelConfigId ?? 'default',
         useStreaming,
         attachmentId,
@@ -182,7 +184,7 @@ interface ParseOptions {
  * Run streaming parse with real-time events
  */
 async function runStreamingParse(
-  handle: TaskHandle<WorksheetParseOutput>,
+  handle: TaskHandle<WorksheetParseOutput, WorksheetParseEvent>,
   imageDataUrl: string,
   options: ParseOptions
 ): Promise<void> {
@@ -203,7 +205,7 @@ async function runStreamingParse(
   for await (const event of stream) {
     // Check for cancellation
     if (handle.isCancelled()) {
-      handle.emit('cancelled', { reason: 'User cancelled' })
+      handle.emit({ type: 'cancelled', reason: 'User cancelled' })
       // Reset DB status on cancel
       await db
         .update(practiceAttachments)
@@ -216,13 +218,13 @@ async function runStreamingParse(
     switch (event.type) {
       case 'progress':
         handle.setProgress(10, event.message)
-        handle.emit('progress', { stage: event.stage, message: event.message })
+        handle.emit({ type: 'parse_progress', stage: event.stage, message: event.message })
         break
 
       case 'started':
         handle.setProgress(15, 'AI analyzing worksheet...')
-        // 'started' event has responseId, provider/model come from config
-        handle.emit('started', {
+        handle.emit({
+          type: 'parse_llm_started',
           responseId: event.responseId,
           model: modelConfig?.model ?? 'gpt-5.2',
           provider: modelConfig?.provider ?? 'openai',
@@ -232,7 +234,7 @@ async function runStreamingParse(
       case 'reasoning': {
         reasoningText += event.text
         // Transient: Socket.IO only, no DB write (these come at 20-100+/sec)
-        handle.emitTransient('reasoning', { text: event.text })
+        handle.emitTransient({ type: 'reasoning', text: event.text })
         // setProgress is throttled in task-manager (DB write every ~3s)
         const reasoningProgress = Math.min(15 + Math.floor(reasoningText.length / 100), 50)
         handle.setProgress(reasoningProgress, 'AI reasoning about worksheet...')
@@ -242,7 +244,7 @@ async function runStreamingParse(
       case 'output_delta':
         outputText += event.text
         // Transient: Socket.IO only, no DB write (these come at 20-100+/sec)
-        handle.emitTransient('output_delta', { text: event.text })
+        handle.emitTransient({ type: 'output_delta', text: event.text })
         handle.setProgress(60, 'Generating structured output...')
         break
 
@@ -293,7 +295,7 @@ async function runStreamingParse(
           })
           .where(eq(practiceAttachments.id, attachmentId))
 
-        handle.emit('complete', { data: parsingResult, stats, status })
+        handle.emit({ type: 'parse_complete', data: parsingResult, stats, status })
 
         handle.complete({
           data: parsingResult,
@@ -310,7 +312,7 @@ async function runStreamingParse(
       }
 
       case 'error':
-        handle.emit('error', { error: event.message, reasoningText })
+        handle.emit({ type: 'parse_error', error: event.message, reasoningText })
         throw new Error(event.message)
     }
   }
@@ -323,7 +325,7 @@ async function runStreamingParse(
  * Run synchronous parse (for non-streaming providers)
  */
 async function runSyncParse(
-  handle: TaskHandle<WorksheetParseOutput>,
+  handle: TaskHandle<WorksheetParseOutput, WorksheetParseEvent>,
   imageDataUrl: string,
   options: ParseOptions
 ): Promise<void> {
@@ -341,7 +343,7 @@ async function runSyncParse(
       if (handle.isCancelled()) {
         throw new Error('Parsing cancelled')
       }
-      handle.emit('llm_progress', progress)
+      handle.emit({ type: 'llm_progress', stage: progress.stage, message: progress.message })
       // Map LLM stage to task progress (20-80 range)
       const stageProgress: Record<string, number> = {
         preparing: 20,
@@ -398,7 +400,7 @@ async function runSyncParse(
     })
     .where(eq(practiceAttachments.id, attachmentId))
 
-  handle.emit('complete', { data: parsingResult, stats, status })
+  handle.emit({ type: 'parse_complete', data: parsingResult, stats, status })
   handle.complete({
     data: parsingResult,
     stats,

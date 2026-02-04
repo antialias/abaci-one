@@ -35,7 +35,8 @@ import {
   useEffect,
   type ReactNode,
 } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { useQueryClient } from '@tanstack/react-query'
 import { attachmentKeys, sessionPlanKeys, sessionHistoryKeys } from '@/lib/queryKeys'
 import { api } from '@/lib/queryClient'
@@ -217,8 +218,7 @@ export function WorksheetParsingProvider({
 
       currentTaskIdRef.current = taskId
 
-      const socket = io({
-        path: '/api/socket',
+      const socket = createSocket({
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: 5,
@@ -285,23 +285,7 @@ export function WorksheetParsingProvider({
           const payload = event.payload as Record<string, unknown>
 
           switch (event.eventType) {
-            // === Common events ===
-            case 'parsing_started':
-            case 'started':
-              dispatch({
-                type: 'STREAM_PROGRESS_MESSAGE',
-                message: 'AI is analyzing the worksheet...',
-              })
-              break
-
-            case 'reasoning':
-              dispatch({
-                type: 'STREAM_REASONING',
-                text: payload.text as string,
-                append: true,
-              })
-              break
-
+            // === Lifecycle events (emitted by task-manager) ===
             case 'progress': {
               const message = payload.message as string | undefined
               if (message) {
@@ -310,7 +294,6 @@ export function WorksheetParsingProvider({
               break
             }
 
-            case 'error':
             case 'failed':
               dispatch({
                 type: 'PARSE_FAILED',
@@ -337,7 +320,30 @@ export function WorksheetParsingProvider({
               invalidateAttachments()
               break
 
-            // === Initial parse events ===
+            // === Initial parse domain events ===
+            case 'parse_started':
+            case 'parse_llm_started':
+              dispatch({
+                type: 'STREAM_PROGRESS_MESSAGE',
+                message: 'AI is analyzing the worksheet...',
+              })
+              break
+
+            case 'parse_progress':
+              dispatch({
+                type: 'STREAM_PROGRESS_MESSAGE',
+                message: (payload.message as string) ?? 'Processing...',
+              })
+              break
+
+            case 'reasoning':
+              dispatch({
+                type: 'STREAM_REASONING',
+                text: payload.text as string,
+                append: true,
+              })
+              break
+
             case 'output_delta': {
               accumulatedOutput += payload.text as string
               dispatch({ type: 'STREAM_OUTPUT', text: payload.text as string })
@@ -353,37 +359,37 @@ export function WorksheetParsingProvider({
               break
             }
 
-            case 'partial': {
-              // Update progress message with problem count
-              const partial = payload.data as { problems?: unknown[] }
+            case 'parse_error':
               dispatch({
-                type: 'STREAM_PROGRESS_MESSAGE',
-                message: `Found ${partial.problems?.length ?? 0} problems...`,
+                type: 'PARSE_FAILED',
+                error: (payload.error as string) ?? 'Unknown error',
               })
+              updateAttachmentStatus(attachmentId, {
+                parsingStatus: 'failed',
+                parsingError: (payload.error as string) ?? 'Unknown error',
+              })
+              socket.emit('task:unsubscribe', taskId)
+              socket.disconnect()
+              socketRef.current = null
+              currentTaskIdRef.current = null
+              invalidateAttachments()
               break
-            }
 
-            case 'complete': {
-              // Handle both parse and reparse complete events
-              const result = payload.data as WorksheetParsingResult | undefined
-              const updatedResult = payload.updatedResult as WorksheetParsingResult | undefined
-              const finalResult = result ?? updatedResult
+            case 'parse_complete': {
+              const result = payload.data as WorksheetParsingResult
+              const stats = payload.stats as ParsingStats | undefined
+              const status = (payload.status as ParsingStatus) ?? 'approved'
 
-              if (finalResult) {
-                const stats = payload.stats as ParsingStats | undefined
-                const status = (payload.status as ParsingStatus) ?? 'approved'
+              dispatch({ type: 'PARSE_COMPLETE', result, stats })
 
-                dispatch({ type: 'PARSE_COMPLETE', result: finalResult, stats })
-
-                // Update cache with result
-                updateAttachmentStatus(attachmentId, {
-                  parsingStatus: status,
-                  rawParsingResult: finalResult,
-                  confidenceScore: finalResult.overallConfidence,
-                  needsReview: finalResult.needsReview,
-                  parsedAt: new Date().toISOString(),
-                })
-              }
+              // Update cache with result
+              updateAttachmentStatus(attachmentId, {
+                parsingStatus: status,
+                rawParsingResult: result,
+                confidenceScore: result.overallConfidence,
+                needsReview: result.needsReview,
+                parsedAt: new Date().toISOString(),
+              })
 
               // Cleanup
               socket.emit('task:unsubscribe', taskId)
@@ -394,7 +400,7 @@ export function WorksheetParsingProvider({
               break
             }
 
-            // === Reparse-specific events ===
+            // === Reparse domain events ===
             case 'reparse_started':
               dispatch({
                 type: 'STREAM_PROGRESS_MESSAGE',
@@ -439,6 +445,34 @@ export function WorksheetParsingProvider({
               console.error('[WorksheetParsing] Problem error:', payload)
               // Continue with other problems, don't fail the whole operation
               break
+
+            case 'reparse_complete': {
+              // Reparse results are already saved to DB by the handler.
+              // Transition state machine to complete, then cleanup.
+              dispatch({ type: 'PARSE_COMPLETE', result: null, stats: undefined })
+              socket.emit('task:unsubscribe', taskId)
+              socket.disconnect()
+              socketRef.current = null
+              currentTaskIdRef.current = null
+              invalidateAttachments()
+              break
+            }
+
+            // === Lifecycle safety net ===
+            case 'completed': {
+              // The task-manager emits 'completed' after the handler calls handle.complete().
+              // Domain events (parse_complete / reparse_complete) normally handle this first,
+              // but if they were missed (race, reconnect), this ensures state is cleaned up.
+              if (state.activeAttachmentId) {
+                dispatch({ type: 'PARSE_COMPLETE', result: null, stats: undefined })
+                socket.emit('task:unsubscribe', taskId)
+                socket.disconnect()
+                socketRef.current = null
+                currentTaskIdRef.current = null
+                invalidateAttachments()
+              }
+              break
+            }
           }
         }
       )

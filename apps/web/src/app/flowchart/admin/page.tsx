@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import Link from 'next/link'
 import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
@@ -242,31 +244,123 @@ function TaxonomyBrowserInline({ onRegenerateComplete }: { onRegenerateComplete?
  */
 function EmbeddingsManagerInline({ onComplete }: { onComplete?: () => void }) {
   const [isRegenerating, setIsRegenerating] = useState(false)
+  const [progressMessage, setProgressMessage] = useState<string | null>(null)
   const [result, setResult] = useState<{ seeded: number; skipped: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const socketRef = useRef<Socket | null>(null)
+
+  // Clean up socket on unmount
+  useEffect(() => {
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect()
+        socketRef.current = null
+      }
+    }
+  }, [])
 
   const handleRegenerate = useCallback(async () => {
     try {
       setIsRegenerating(true)
       setError(null)
       setResult(null)
+      setProgressMessage('Starting...')
 
-      const response = await fetch('/api/flowcharts/seed-embeddings', {
+      const response = await fetch('/api/flowcharts/seed-embeddings/task', {
         method: 'POST',
       })
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || 'Failed to regenerate embeddings')
+        throw new Error(data.error || 'Failed to start embedding')
       }
 
-      const data = await response.json()
-      setResult({ seeded: data.seeded?.length || 0, skipped: data.skipped || 0 })
-      onComplete?.()
+      const { taskId } = await response.json()
+
+      // Subscribe to task events via Socket.IO
+      const socket = createSocket()
+      socketRef.current = socket
+
+      socket.on('connect', () => {
+        socket.emit('task:subscribe', taskId)
+      })
+
+      // Handle task already completed/failed before socket connected
+      socket.on(
+        'task:state',
+        (state: { id: string; status: string; output?: unknown }) => {
+          if (state.id !== taskId) return
+          if (state.status === 'completed') {
+            const output = state.output as
+              | { embeddedCount?: number; skippedCount?: number }
+              | undefined
+            setResult({
+              seeded: output?.embeddedCount ?? 0,
+              skipped: output?.skippedCount ?? 0,
+            })
+            setIsRegenerating(false)
+            setProgressMessage(null)
+            socket.disconnect()
+            socketRef.current = null
+            onComplete?.()
+          } else if (state.status === 'failed' || state.status === 'cancelled') {
+            setIsRegenerating(false)
+            setProgressMessage(null)
+            socket.disconnect()
+            socketRef.current = null
+          }
+        }
+      )
+
+      socket.on(
+        'task:event',
+        (event: { taskId: string; eventType: string; payload: Record<string, unknown> }) => {
+          if (event.taskId !== taskId) return
+          const { eventType, payload } = event
+
+          switch (eventType) {
+            case 'embed_progress': {
+              const current = (payload.currentIndex as number) + 1
+              const total = payload.totalFlowcharts as number
+              const title = payload.flowchartTitle as string
+              setProgressMessage(`Embedding ${current}/${total}: ${title}`)
+              break
+            }
+            case 'embed_complete': {
+              const embeddedCount = payload.embeddedCount as number
+              const skippedCount = payload.skippedCount as number
+              setResult({ seeded: embeddedCount, skipped: skippedCount })
+              setIsRegenerating(false)
+              setProgressMessage(null)
+              socket.emit('task:unsubscribe', taskId)
+              socket.disconnect()
+              socketRef.current = null
+              onComplete?.()
+              break
+            }
+            case 'failed': {
+              setError((payload.error as string) || 'Embedding failed')
+              setIsRegenerating(false)
+              setProgressMessage(null)
+              socket.emit('task:unsubscribe', taskId)
+              socket.disconnect()
+              socketRef.current = null
+              break
+            }
+            case 'cancelled': {
+              setIsRegenerating(false)
+              setProgressMessage(null)
+              socket.disconnect()
+              socketRef.current = null
+              break
+            }
+          }
+        }
+      )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to regenerate')
-    } finally {
+      setError(err instanceof Error ? err.message : 'Failed to start embedding')
       setIsRegenerating(false)
+      setProgressMessage(null)
     }
   }, [onComplete])
 
@@ -348,7 +442,7 @@ function EmbeddingsManagerInline({ onComplete }: { onComplete?: () => void }) {
           },
         })}
       >
-        {isRegenerating ? 'Regenerating...' : 'Regenerate All Embeddings'}
+        {isRegenerating ? (progressMessage || 'Regenerating...') : 'Regenerate All Embeddings'}
       </button>
 
       <p

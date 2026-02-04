@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { useViewerId } from './useViewerId'
 
 export interface RoomMember {
@@ -260,7 +261,7 @@ export function useRoomData() {
       return
     }
 
-    const sock = io({ path: '/api/socket' })
+    const sock = createSocket()
 
     sock.on('connect', () => {
       // Always join user-specific channel for personal notifications (invitations, bans, kicks)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { createSocket } from '@/lib/socket'
 import { useRouter, useSearchParams } from 'next/navigation'
 import * as Dialog from '@radix-ui/react-dialog'
 import { loadFlowchart, type GeneratedExample } from '@/lib/flowcharts/loader'
@@ -555,13 +556,57 @@ export default function FlowchartPickerPage() {
   const handleGenerateEmbeddings = useCallback(async () => {
     setIsGeneratingEmbeddings(true)
     try {
-      const res = await fetch('/api/flowcharts/seed-embeddings', { method: 'POST' })
-      if (res.ok) {
-        await loadPublished()
+      const res = await fetch('/api/flowcharts/seed-embeddings/task', { method: 'POST' })
+      if (!res.ok) {
+        console.error('Failed to start embedding task')
+        setIsGeneratingEmbeddings(false)
+        return
       }
+
+      const { taskId } = await res.json()
+      const socket = createSocket()
+
+      socket.on('connect', () => {
+        socket.emit('task:subscribe', taskId)
+      })
+
+      // Handle task already completed/failed before socket connected
+      socket.on(
+        'task:state',
+        (state: { id: string; status: string }) => {
+          if (state.id !== taskId) return
+          if (state.status === 'completed' || state.status === 'failed' || state.status === 'cancelled') {
+            setIsGeneratingEmbeddings(false)
+            socket.disconnect()
+            if (state.status === 'completed') {
+              loadPublished()
+            }
+          }
+        }
+      )
+
+      socket.on(
+        'task:event',
+        (event: { taskId: string; eventType: string; payload: Record<string, unknown> }) => {
+          if (event.taskId !== taskId) return
+
+          if (
+            event.eventType === 'embed_complete' ||
+            event.eventType === 'completed' ||
+            event.eventType === 'failed' ||
+            event.eventType === 'cancelled'
+          ) {
+            setIsGeneratingEmbeddings(false)
+            socket.emit('task:unsubscribe', taskId)
+            socket.disconnect()
+            if (event.eventType === 'embed_complete' || event.eventType === 'completed') {
+              loadPublished()
+            }
+          }
+        }
+      )
     } catch (err) {
       console.error('Failed to generate embeddings:', err)
-    } finally {
       setIsGeneratingEmbeddings(false)
     }
   }, [loadPublished])

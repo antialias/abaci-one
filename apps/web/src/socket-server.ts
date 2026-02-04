@@ -27,7 +27,6 @@ import {
   markPhoneDisconnected,
 } from './lib/remote-camera/session-manager'
 import { createRedisClient } from './lib/redis'
-import { getGeneration, getGenerationFromRedis } from './lib/flowchart-workshop/generation-registry'
 import { VisionRecorder, type VisionFrame, type PracticeStateInput } from './lib/vision/recording'
 import { socketConnections, socketConnectionsTotal } from './lib/metrics'
 
@@ -1724,49 +1723,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
-    // Flowchart Workshop: Join generation room (for watching live generation across pods)
-    socket.on('join-flowchart', async ({ sessionId }: { sessionId: string }) => {
-      try {
-        await socket.join(`flowchart:${sessionId}`)
-        console.log(`[Socket] Client joined flowchart room: ${sessionId}`)
-
-        // Try local in-memory first (if this is the generating pod)
-        const localGeneration = getGeneration(sessionId)
-        if (localGeneration && localGeneration.status === 'generating') {
-          socket.emit('flowchart:state', {
-            state: 'generating',
-            reasoningText: localGeneration.accumulatedReasoning,
-            outputText: localGeneration.accumulatedOutput,
-            isLive: true,
-          })
-          return
-        }
-
-        // Try Redis (generation is on another pod)
-        const redisGeneration = await getGenerationFromRedis(sessionId)
-        if (redisGeneration && redisGeneration.status === 'generating') {
-          socket.emit('flowchart:state', {
-            state: 'generating',
-            reasoningText: redisGeneration.accumulatedReasoning,
-            outputText: redisGeneration.accumulatedOutput,
-            isLive: true,
-          })
-          return
-        }
-
-        // No active generation found
-        socket.emit('flowchart:state', { state: 'idle' })
-      } catch (error) {
-        console.error('Error joining flowchart room:', error)
-        socket.emit('flowchart:state', { state: 'idle' })
-      }
-    })
-
-    // Flowchart Workshop: Leave generation room
-    socket.on('leave-flowchart', ({ sessionId }: { sessionId: string }) => {
-      socket.leave(`flowchart:${sessionId}`)
-    })
-
     // Background Tasks: Subscribe to task updates
     socket.on('task:subscribe', async (taskId: string) => {
       console.log(`[SocketServer] task:subscribe received for task ${taskId}`)
@@ -1842,5 +1798,30 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
   // Store in globalThis to make accessible across module boundaries
   globalThis.__socketIO = io
+
+  // Clean up zombie tasks from previous server instance
+  import('./lib/task-manager').then(({ cleanupZombieTasks, registerTaskHooks }) => {
+    // Register lifecycle hooks for monitoring
+    registerTaskHooks({
+      onTaskCreated: (taskId, type) => {
+        console.log(`[TaskManager] TASK_CREATED id=${taskId} type=${type}`)
+      },
+      onTaskFailed: (taskId, type, error) => {
+        console.error(`[TaskManager] TASK_FAILED id=${taskId} type=${type} error=${error}`)
+      },
+    })
+
+    // Mark any running/pending tasks from before this restart as failed
+    cleanupZombieTasks().then((count) => {
+      if (count > 0) {
+        console.log(`[TaskManager] Cleaned up ${count} zombie task(s) from previous instance`)
+      }
+    }).catch((err) => {
+      console.error('[TaskManager] Failed to clean up zombie tasks:', err)
+    })
+  }).catch((err) => {
+    console.error('[TaskManager] Failed to import task-manager for cleanup:', err)
+  })
+
   return io
 }

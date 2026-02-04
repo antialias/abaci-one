@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { css } from '../../../../styled-system/css'
 
 interface LogEntry {
@@ -51,8 +52,7 @@ export default function SocketDebugPage() {
 
   // Connect to Socket.IO
   useEffect(() => {
-    const newSocket = io({
-      path: '/api/socket',
+    const newSocket = createSocket({
       transports: ['websocket', 'polling'],
     })
 

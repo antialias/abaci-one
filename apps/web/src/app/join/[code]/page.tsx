@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { io } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { useGetRoomByCode, useJoinRoom, useRoomData } from '@/hooks/useRoomData'
 import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
@@ -354,7 +354,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
 
     console.log('[Join Page] Setting up approval listener for room:', targetRoomData.id)
 
-    let socket: ReturnType<typeof io> | null = null
+    let socket: ReturnType<typeof createSocket> | null = null
 
     // Fetch viewer ID and set up socket
     const setupSocket = async () => {
@@ -370,7 +370,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
         console.log('[Join Page] Got viewer ID:', viewerId)
 
         // Connect socket
-        socket = io({ path: '/api/socket' })
+        socket = createSocket()
 
         socket.on('connect', () => {
           console.log('[Join Page] Socket connected, joining user channel')

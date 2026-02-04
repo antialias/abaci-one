@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { css } from '../../../../styled-system/css'
 import { useToast } from '@/components/common/ToastContext'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -61,7 +62,7 @@ export default function RoomDetailPage() {
     if (!guestId || !roomId) return
 
     // Connect to socket
-    const sock = io({ path: '/api/socket' })
+    const sock = createSocket()
     setSocket(sock)
 
     sock.on('connect', () => {

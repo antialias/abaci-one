@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useEffect, useState, useRef } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { css } from '../../../styled-system/css'
 import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
@@ -90,7 +91,7 @@ export default function AdminDashboardPage() {
     const pollInterval = setInterval(fetchTasks, 3000)
 
     // Socket.IO for live updates
-    const socket = io({ path: '/api/socket', reconnection: true })
+    const socket = createSocket({ reconnection: true })
     socketRef.current = socket
 
     socket.on('connect', () => {

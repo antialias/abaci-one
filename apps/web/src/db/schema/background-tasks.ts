@@ -75,8 +75,8 @@ export const backgroundTaskEvents = sqliteTable(
       .notNull()
       .references(() => backgroundTasks.id, { onDelete: 'cascade' }),
 
-    /** Type of event */
-    eventType: text('event_type').notNull(), // 'started' | 'progress' | 'log' | 'output' | 'error' | 'completed' | 'failed' | 'cancelled'
+    /** Type of event (see src/lib/tasks/events.ts for per-task-type definitions) */
+    eventType: text('event_type').notNull(),
 
     /** JSON payload for the event (event-specific data) */
     payload: text('payload', { mode: 'json' }),
@@ -115,14 +115,13 @@ export type TaskType =
   | 'worksheet-reparse'
   | 'worksheet-generate'
   | 'flowchart-embed'
+  | 'flowchart-generate'
+  | 'flowchart-refine'
   | 'demo'
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
-export type TaskEventType =
-  | 'started'
-  | 'progress'
-  | 'log'
-  | 'output'
-  | 'error'
-  | 'completed'
-  | 'failed'
-  | 'cancelled'
+/**
+ * Event types are defined per task type in `src/lib/tasks/events.ts`.
+ * The DB column `event_type` stores the string discriminant from those unions.
+ * Lifecycle events (started, progress, completed, failed, cancelled) are
+ * emitted by the task manager; domain events are emitted by handlers.
+ */

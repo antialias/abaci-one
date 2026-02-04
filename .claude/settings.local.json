@@ -817,7 +817,14 @@
       "WebFetch(domain:www.music-assistant.io)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI3MTAwOGFlZmQ2ZjM0OWMwOTVlZDhmNzA1ZWRmMDUzZCIsImlhdCI6MTc3MDA2Nzc1NywiZXhwIjoyMDg1NDI3NzU3fQ.5bRn0sJ4obY2aJv8S8f2da_ecN3u-tw8PxdQnZECBc4\")",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npx next build:*)",
-      "Bash(nc:*)"
+      "Bash(nc:*)",
+      "mcp__gitea__search_repos",
+      "Bash(host:*)",
+      "Bash(md5:*)",
+      "Bash(gh workflow list)",
+      "WebFetch(domain:www.githubstatus.com)",
+      "Bash(do kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n abaci exec deployment/abaci-app -- node -e \"const s=Date.now\\(\\); require\\(''dns''\\).lookup\\(''api.openai.com'',\\(e,a\\)=>console.log\\(''$i:'',e||a,\\(Date.now\\(\\)-s\\)+''ms''\\)\\)\")",
+      "mcp__chrome-devtools__get_console_message"
     ],
     "deny": [],
     "ask": []

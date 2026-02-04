@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { useQueryClient } from '@tanstack/react-query'
 import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
 import type {
@@ -36,8 +37,7 @@ export function useParentSocket(userId: string | undefined): {
     if (!userId) return
 
     // Create socket connection
-    const socket = io({
-      path: '/api/socket',
+    const socket = createSocket({
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,

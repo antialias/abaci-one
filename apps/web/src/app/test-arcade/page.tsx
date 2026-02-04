@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 
 export default function TestArcadePage() {
   const [socket, setSocket] = useState<Socket | null>(null)
@@ -15,9 +16,7 @@ export default function TestArcadePage() {
 
   useEffect(() => {
     // Initialize socket connection
-    const socketInstance = io({
-      path: '/api/socket',
-    })
+    const socketInstance = createSocket()
 
     socketInstance.on('connect', () => {
       setConnected(true)

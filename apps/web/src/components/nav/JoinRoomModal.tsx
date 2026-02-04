@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { io } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { Modal } from '@/components/common/Modal'
 import type { RoomData } from '@/hooks/useRoomData'
 import { useGetRoomByCode, useJoinRoom } from '@/hooks/useRoomData'
@@ -146,7 +146,7 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
 
     console.log('[JoinRoomModal] Setting up approval listener for room:', roomInfo.id)
 
-    let socket: ReturnType<typeof io> | null = null
+    let socket: ReturnType<typeof createSocket> | null = null
 
     // Fetch viewer ID and set up socket
     const setupSocket = async () => {
@@ -162,7 +162,7 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
         console.log('[JoinRoomModal] Got viewer ID:', viewerId)
 
         // Connect socket
-        socket = io({ path: '/api/socket' })
+        socket = createSocket()
 
         socket.on('connect', () => {
           console.log('[JoinRoomModal] Socket connected, joining user channel')

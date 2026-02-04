@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import type { BroadcastState } from '@/components/practice'
 import type { SessionPartType } from '@/db/schema/session-plans'
 import type {
@@ -163,8 +164,7 @@ export function useSessionBroadcast(
     }
 
     // Create socket connection
-    const socket = io({
-      path: '/api/socket',
+    const socket = createSocket({
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,

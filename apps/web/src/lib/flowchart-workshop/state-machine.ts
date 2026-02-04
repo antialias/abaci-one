@@ -8,7 +8,54 @@
  */
 
 import type { FlowchartDefinition } from '../flowcharts/schema'
-import type { FlowchartCompleteResult } from './sse-parser'
+
+/**
+ * Result from a successful generation
+ */
+export interface FlowchartGenerateResult {
+  definition: FlowchartDefinition
+  mermaidContent: string
+  title: string
+  description: string
+  emoji: string
+  difficulty: string
+  notes: string[]
+  usage?: {
+    promptTokens: number
+    completionTokens: number
+    reasoningTokens?: number
+  }
+}
+
+/**
+ * Result from a successful refinement
+ */
+export interface FlowchartRefineResult {
+  definition: FlowchartDefinition
+  mermaidContent: string
+  emoji: string
+  changesSummary: string
+  notes: string[]
+  usage?: {
+    promptTokens: number
+    completionTokens: number
+    reasoningTokens?: number
+  }
+}
+
+/**
+ * Union type for complete results
+ */
+export type FlowchartCompleteResult = FlowchartGenerateResult | FlowchartRefineResult
+
+/**
+ * Check if result is a generation result (has title/description)
+ */
+export function isGenerateResult(
+  result: FlowchartCompleteResult
+): result is FlowchartGenerateResult {
+  return 'title' in result && 'description' in result
+}
 
 /**
  * Possible streaming statuses

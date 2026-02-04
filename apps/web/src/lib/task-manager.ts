@@ -1,27 +1,90 @@
 import { createId } from '@paralleldrive/cuid2'
-import { eq, asc } from 'drizzle-orm'
+import { eq, asc, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getSocketIO } from '../socket-server'
 import type {
   TaskType,
   TaskStatus,
-  TaskEventType,
   BackgroundTask,
   BackgroundTaskEvent,
 } from '@/db/schema/background-tasks'
+import type { TaskEventBase } from './tasks/events'
 
-export type { TaskType, TaskStatus, TaskEventType, BackgroundTask, BackgroundTaskEvent }
+export type { TaskType, TaskStatus, BackgroundTask, BackgroundTaskEvent }
+
+// ============================================================================
+// Lifecycle Hooks
+// ============================================================================
 
 /**
- * Handle provided to task handlers for reporting progress and completion
+ * Hooks called at key points in a task's lifecycle.
+ * Register via `registerTaskHooks()` at app startup.
  */
-export interface TaskHandle<TOutput = unknown> {
+export interface TaskLifecycleHooks {
+  onTaskCreated?(taskId: string, type: TaskType): void
+  onTaskCompleted?(taskId: string, type: TaskType): void
+  onTaskFailed?(taskId: string, type: TaskType, error: string): void
+}
+
+let lifecycleHooks: TaskLifecycleHooks = {}
+
+/**
+ * Register lifecycle hooks for task events.
+ * Call once at app startup (e.g., in socket-server initialization).
+ */
+export function registerTaskHooks(hooks: TaskLifecycleHooks): void {
+  lifecycleHooks = hooks
+}
+
+// ============================================================================
+// Task Timeouts
+// ============================================================================
+
+/** Default timeout per task type (ms). Override with `setTaskTimeout()`. */
+const taskTimeouts: Partial<Record<TaskType, number>> = {
+  'worksheet-parse': 5 * 60 * 1000, // 5 minutes
+  'worksheet-reparse': 5 * 60 * 1000, // 5 minutes
+  'vision-training': 30 * 60 * 1000, // 30 minutes (training can be long)
+  'flowchart-embed': 5 * 60 * 1000, // 5 minutes
+  'flowchart-generate': 6 * 60 * 1000, // 6 minutes (LLM + validation)
+  'flowchart-refine': 6 * 60 * 1000, // 6 minutes (LLM + validation)
+  demo: 2 * 60 * 1000, // 2 minutes
+}
+
+const DEFAULT_TASK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
+
+/** Active timeout timers, keyed by task ID */
+const activeTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+
+/** Get the timeout for a task type */
+function getTaskTimeout(type: TaskType): number {
+  return taskTimeouts[type] ?? DEFAULT_TASK_TIMEOUT_MS
+}
+
+/** Clear an active timeout for a task */
+function clearTaskTimeout(taskId: string): void {
+  const timer = activeTimeouts.get(taskId)
+  if (timer) {
+    clearTimeout(timer)
+    activeTimeouts.delete(taskId)
+  }
+}
+
+/**
+ * Handle provided to task handlers for reporting progress and completion.
+ *
+ * @typeParam TOutput - The type of the task's completion output
+ * @typeParam TEvent - The discriminated union of domain events this task can emit.
+ *   Must extend `TaskEventBase` (i.e., have a `type` field).
+ *   See `src/lib/tasks/events.ts` for per-task event definitions.
+ */
+export interface TaskHandle<TOutput = unknown, TEvent extends TaskEventBase = TaskEventBase> {
   /** The task ID */
   id: string
-  /** Emit a custom event to all subscribers (persisted to DB for replay) */
-  emit(eventType: TaskEventType | string, payload: unknown): void
-  /** Emit a transient event (Socket.IO only, NOT persisted to DB) */
-  emitTransient(eventType: string, payload: unknown): void
+  /** Emit a domain event to all subscribers (persisted to DB for replay) */
+  emit(event: TEvent): void
+  /** Emit a transient domain event (Socket.IO only, NOT persisted to DB) */
+  emitTransient(event: TEvent): void
   /** Update progress (0-100) with optional message. DB writes are throttled. */
   setProgress(progress: number, message?: string): void
   /** Mark task as completed with output */
@@ -150,7 +213,12 @@ async function updateProgress(taskId: string, progress: number, message?: string
 /**
  * Complete a task with output
  */
-async function completeTask<TOutput>(taskId: string, output: TOutput): Promise<void> {
+async function completeTask<TOutput>(
+  taskId: string,
+  output: TOutput,
+  type?: TaskType
+): Promise<void> {
+  clearTaskTimeout(taskId)
   const now = new Date()
 
   await db
@@ -164,12 +232,21 @@ async function completeTask<TOutput>(taskId: string, output: TOutput): Promise<v
     .where(eq(schema.backgroundTasks.id, taskId))
 
   await emitTaskEvent(taskId, 'completed', { output })
+
+  if (type) {
+    try {
+      lifecycleHooks.onTaskCompleted?.(taskId, type)
+    } catch (err) {
+      console.error(`[TaskManager] Lifecycle hook onTaskCompleted error:`, err)
+    }
+  }
 }
 
 /**
  * Fail a task with error message
  */
-async function failTask(taskId: string, error: string): Promise<void> {
+async function failTask(taskId: string, error: string, type?: TaskType): Promise<void> {
+  clearTaskTimeout(taskId)
   const now = new Date()
 
   await db
@@ -182,6 +259,14 @@ async function failTask(taskId: string, error: string): Promise<void> {
     .where(eq(schema.backgroundTasks.id, taskId))
 
   await emitTaskEvent(taskId, 'failed', { error })
+
+  if (type) {
+    try {
+      lifecycleHooks.onTaskFailed?.(taskId, type, error)
+    } catch (err) {
+      console.error(`[TaskManager] Lifecycle hook onTaskFailed error:`, err)
+    }
+  }
 }
 
 /**
@@ -194,6 +279,8 @@ export async function cancelTask(taskId: string): Promise<boolean> {
 
   if (!task) return false
   if (task.status !== 'pending' && task.status !== 'running') return false
+
+  clearTaskTimeout(taskId)
 
   // Mark as cancelled in memory for same-pod handler check
   cancelledTasks.add(taskId)
@@ -291,23 +378,28 @@ export async function getTaskEvents(taskId: string): Promise<TaskEvent[]> {
  *
  * @example
  * ```typescript
- * const taskId = await createTask<DemoInput, DemoOutput>(
+ * const taskId = await createTask<DemoInput, DemoOutput, DemoTaskEvent>(
  *   'demo',
  *   { duration: 10 },
  *   async (handle, input) => {
  *     for (let i = 1; i <= 10; i++) {
  *       await sleep(input.duration * 100)
  *       handle.setProgress(i * 10, `Step ${i}/10`)
+ *       handle.emit({ type: 'log', step: i, timestamp: new Date().toISOString() })
  *     }
  *     handle.complete({ message: 'Done!' })
  *   }
  * )
  * ```
  */
-export async function createTask<TInput, TOutput>(
+export async function createTask<
+  TInput,
+  TOutput,
+  TEvent extends TaskEventBase = TaskEventBase,
+>(
   type: TaskType,
   input: TInput,
-  handler: (handle: TaskHandle<TOutput>, input: TInput) => Promise<void>,
+  handler: (handle: TaskHandle<TOutput, TEvent>, input: TInput) => Promise<void>,
   userId?: string
 ): Promise<string> {
   const id = createId()
@@ -324,13 +416,16 @@ export async function createTask<TInput, TOutput>(
   })
 
   // Create handle for the handler
-  const handle: TaskHandle<TOutput> = {
+  const handle: TaskHandle<TOutput, TEvent> = {
     id,
-    emit: (eventType, payload) => {
+    emit: (event) => {
+      // Destructure the typed event: `type` becomes the eventType, rest is the payload
+      const { type: eventType, ...payload } = event
       // Fire and forget - don't block the handler (persisted to DB)
       void emitTaskEvent(id, eventType, payload, true)
     },
-    emitTransient: (eventType, payload) => {
+    emitTransient: (event) => {
+      const { type: eventType, ...payload } = event
       // Fire and forget - Socket.IO only, no DB write
       void emitTaskEvent(id, eventType, payload, false)
     },
@@ -338,16 +433,23 @@ export async function createTask<TInput, TOutput>(
       void updateProgress(id, progress, message)
     },
     complete: (output) => {
-      void completeTask(id, output)
+      void completeTask(id, output, type)
     },
     fail: (error) => {
-      void failTask(id, error)
+      void failTask(id, error, type)
     },
     isCancelled: () => cancelledTasks.has(id),
   }
 
   // Start task asynchronously (don't block the return)
   console.log(`[TaskManager] Task ${id} (${type}) created`)
+
+  try {
+    lifecycleHooks.onTaskCreated?.(id, type)
+  } catch (err) {
+    console.error(`[TaskManager] Lifecycle hook onTaskCreated error:`, err)
+  }
+
   setImmediate(async () => {
     // Update status to running
     await db
@@ -356,6 +458,21 @@ export async function createTask<TInput, TOutput>(
       .where(eq(schema.backgroundTasks.id, id))
 
     await emitTaskEvent(id, 'started', {})
+
+    // Start timeout timer
+    const timeoutMs = getTaskTimeout(type)
+    const timer = setTimeout(async () => {
+      const task = await db.query.backgroundTasks.findFirst({
+        where: eq(schema.backgroundTasks.id, id),
+      })
+      if (task && task.status === 'running') {
+        console.error(
+          `[TaskManager] Task ${id} (${type}) timed out after ${timeoutMs / 1000}s`
+        )
+        await failTask(id, `Task timed out after ${timeoutMs / 1000}s`, type)
+      }
+    }, timeoutMs)
+    activeTimeouts.set(id, timer)
 
     try {
       await handler(handle, input)
@@ -367,16 +484,74 @@ export async function createTask<TInput, TOutput>(
         where: eq(schema.backgroundTasks.id, id),
       })
       if (task && task.status === 'running') {
-        handle.fail(err instanceof Error ? err.message : String(err))
+        await failTask(id, err instanceof Error ? err.message : String(err), type)
       }
     } finally {
       // Clean up tracking state
+      clearTaskTimeout(id)
       cancelledTasks.delete(id)
       lastProgressDbWrite.delete(id)
     }
   })
 
   return id
+}
+
+// ============================================================================
+// Zombie Task Cleanup
+// ============================================================================
+
+/**
+ * Mark any tasks stuck in 'running' or 'pending' status as failed.
+ *
+ * This should be called on server startup to clean up tasks that were
+ * interrupted by a pod restart or crash. Without this, those tasks
+ * would appear as "running" forever in the UI.
+ *
+ * @returns Number of zombie tasks cleaned up
+ */
+export async function cleanupZombieTasks(): Promise<number> {
+  const zombies = await db.query.backgroundTasks.findMany({
+    where: inArray(schema.backgroundTasks.status, ['running', 'pending']),
+  })
+
+  if (zombies.length === 0) {
+    return 0
+  }
+
+  console.log(`[TaskManager] Found ${zombies.length} zombie task(s), marking as failed`)
+
+  const now = new Date()
+  for (const task of zombies) {
+    await db
+      .update(schema.backgroundTasks)
+      .set({
+        status: 'failed',
+        error: 'Task interrupted by server restart',
+        completedAt: now,
+      })
+      .where(eq(schema.backgroundTasks.id, task.id))
+
+    await emitTaskEvent(task.id, 'failed', {
+      error: 'Task interrupted by server restart',
+    })
+
+    console.log(
+      `[TaskManager] Zombie task ${task.id} (${task.type}) marked as failed`
+    )
+
+    try {
+      lifecycleHooks.onTaskFailed?.(
+        task.id,
+        task.type as TaskType,
+        'Task interrupted by server restart'
+      )
+    } catch (err) {
+      console.error(`[TaskManager] Lifecycle hook onTaskFailed error during cleanup:`, err)
+    }
+  }
+
+  return zombies.length
 }
 
 /**

@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import type { QuadCorners } from '@/types/vision'
 
 /** Frame mode: raw sends uncropped frames, cropped applies calibration */
@@ -116,8 +117,7 @@ export function useRemoteCameraDesktop(): UseRemoteCameraDesktopReturn {
   // Initialize socket connection with reconnection support
   useEffect(() => {
     console.log('[RemoteCameraDesktop] Initializing socket connection...')
-    const socketInstance = io({
-      path: '/api/socket',
+    const socketInstance = createSocket({
       autoConnect: true,
       reconnection: true,
       reconnectionDelay: 1000,

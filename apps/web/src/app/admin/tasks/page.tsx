@@ -8,7 +8,8 @@
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { css } from '../../../../styled-system/css'
 import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
@@ -40,6 +41,8 @@ export default function AdminTasksPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const socketRef = useRef<Socket | null>(null)
   const subscribedTasksRef = useRef<Set<string>>(new Set())
 
@@ -77,8 +80,7 @@ export default function AdminTasksPage() {
     const pollInterval = setInterval(fetchTasks, 5000)
 
     // Set up Socket.IO
-    const socket = io({
-      path: '/api/socket',
+    const socket = createSocket({
       reconnection: true,
       reconnectionDelay: 1000,
     })
@@ -195,6 +197,25 @@ export default function AdminTasksPage() {
     }
   }, [selectedTaskId, tasks])
 
+  // Derive unique task types for filter dropdown
+  const taskTypes = Array.from(new Set(tasks.map((t) => t.type))).sort()
+
+  // Filter tasks
+  const filteredTasks = tasks.filter((t) => {
+    if (statusFilter && t.status !== statusFilter) return false
+    if (typeFilter && t.type !== typeFilter) return false
+    return true
+  })
+
+  // Failure stats (last 24h)
+  const now24h = Date.now() - 24 * 60 * 60 * 1000
+  const recentTasks = tasks.filter((t) => new Date(t.createdAt).getTime() > now24h)
+  const failureStats = taskTypes.map((type) => {
+    const ofType = recentTasks.filter((t) => t.type === type)
+    const failed = ofType.filter((t) => t.status === 'failed').length
+    return { type, total: ofType.length, failed, rate: ofType.length > 0 ? failed / ofType.length : 0 }
+  })
+
   const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null
 
   const getStatusColor = (status: string) => {
@@ -296,17 +317,110 @@ export default function AdminTasksPage() {
             })}
           >
             <div className={css({ fontWeight: 'bold', fontSize: '14px' })}>
-              Background Tasks ({tasks.length})
+              Background Tasks ({filteredTasks.length}
+              {filteredTasks.length !== tasks.length ? ` / ${tasks.length}` : ''})
             </div>
             <div className={css({ fontSize: '11px', color: '#8b949e', marginTop: '4px' })}>
               Worksheet parsing, vision training, and other async jobs
             </div>
+
+            {/* Filters */}
+            <div
+              className={css({
+                display: 'flex',
+                gap: '8px',
+                marginTop: '8px',
+              })}
+            >
+              <select
+                data-element="status-filter"
+                value={statusFilter ?? ''}
+                onChange={(e) => setStatusFilter(e.target.value || null)}
+                className={css({
+                  backgroundColor: '#0d1117',
+                  color: '#eee',
+                  border: '1px solid #333',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  flex: 1,
+                })}
+              >
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="running">Running</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <select
+                data-element="type-filter"
+                value={typeFilter ?? ''}
+                onChange={(e) => setTypeFilter(e.target.value || null)}
+                className={css({
+                  backgroundColor: '#0d1117',
+                  color: '#eee',
+                  border: '1px solid #333',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  flex: 1,
+                })}
+              >
+                <option value="">All types</option>
+                {taskTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Failure stats (24h) */}
+            {failureStats.some((s) => s.total > 0) && (
+              <div
+                className={css({
+                  marginTop: '8px',
+                  padding: '6px 8px',
+                  backgroundColor: '#0d1117',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                })}
+              >
+                <div className={css({ color: '#8b949e', marginBottom: '4px' })}>
+                  Last 24h failure rates:
+                </div>
+                {failureStats
+                  .filter((s) => s.total > 0)
+                  .map((s) => (
+                    <div
+                      key={s.type}
+                      className={css({
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '2px 0',
+                      })}
+                    >
+                      <span>{s.type}</span>
+                      <span
+                        className={css({
+                          color: s.rate > 0.2 ? '#f44336' : s.rate > 0 ? '#FF9800' : '#4CAF50',
+                        })}
+                      >
+                        {s.failed}/{s.total} ({(s.rate * 100).toFixed(0)}%)
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
 
-          {tasks.length === 0 ? (
-            <div className={css({ padding: '16px', color: '#888' })}>No tasks found</div>
+          {filteredTasks.length === 0 ? (
+            <div className={css({ padding: '16px', color: '#888' })}>
+              {tasks.length === 0 ? 'No tasks found' : 'No tasks match filters'}
+            </div>
           ) : (
-            tasks.map((task) => (
+            filteredTasks.map((task) => (
               <div
                 key={task.id}
                 onClick={() => setSelectedTaskId(task.id)}
@@ -555,10 +669,13 @@ export default function AdminTasksPage() {
 function getEventColor(eventType: string): string {
   switch (eventType) {
     case 'started':
-    case 'parsing_started':
+    case 'parse_started':
+    case 'parse_llm_started':
     case 'reparse_started':
       return '#2196F3'
     case 'progress':
+    case 'parse_progress':
+    case 'llm_progress':
       return '#888'
     case 'reasoning':
       return '#9c27b0'
@@ -568,10 +685,11 @@ function getEventColor(eventType: string): string {
       return '#00bcd4'
     case 'problem_complete':
       return '#8bc34a'
-    case 'complete':
+    case 'parse_complete':
+    case 'reparse_complete':
     case 'completed':
       return '#4CAF50'
-    case 'error':
+    case 'parse_error':
     case 'failed':
     case 'problem_error':
       return '#f44336'

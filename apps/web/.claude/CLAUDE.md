@@ -43,6 +43,14 @@ Quick rules: Never modify schema directly, never modify deployed migrations, alw
 - **Gotcha**: `padding: '1 2'` doesn't work - use `padding: '4px 8px'` or `paddingX/paddingY`
 - **Fix broken CSS**: Run `/fix-css`
 
+### Socket.IO Connections
+**NEVER import `io` from `socket.io-client` directly.** Use `createSocket()` from `@/lib/socket` instead. It provides the correct server path (`/api/socket`). Calling `io()` directly will silently fail to connect.
+
+```typescript
+import { createSocket } from '@/lib/socket'
+const socket = createSocket({ reconnection: true })
+```
+
 ### Data Attributes
 All new elements MUST have data attributes: `data-component`, `data-element`, `data-action`, etc.
 
@@ -112,6 +120,7 @@ kubectl get applications -n argocd
 | Vision components | `src/components/vision/VISION_COMPONENTS.md` |
 | Flowchart system | `src/lib/flowcharts/README.md` |
 | Daily practice | `docs/DAILY_PRACTICE_SYSTEM.md` |
+| Background tasks | `.claude/reference/background-tasks.md` |
 
 ---
 

@@ -7,6 +7,7 @@ import { db } from '@/db'
 import { visionTrainingSessions } from '@/db/schema/vision-training-sessions'
 import { eq, and } from 'drizzle-orm'
 import { createTask, type TaskHandle } from '../task-manager'
+import type { VisionTrainingEvent } from './events'
 import {
   ensureVenvReady,
   isPlatformSupported,
@@ -177,7 +178,7 @@ export async function startVisionTraining(input: VisionTrainingInput): Promise<s
     }
   }
 
-  return createTask<VisionTrainingInput, VisionTrainingOutput>(
+  return createTask<VisionTrainingInput, VisionTrainingOutput, VisionTrainingEvent>(
     'vision-training',
     input,
     async (handle, config) => {
@@ -210,7 +211,8 @@ export async function startVisionTraining(input: VisionTrainingInput): Promise<s
       }
 
       // Emit initial event
-      handle.emit('training_started', {
+      handle.emit({
+        type: 'train_started',
         sessionId,
         modelType,
         config: {
@@ -250,34 +252,57 @@ export async function startVisionTraining(input: VisionTrainingInput): Promise<s
               const event = JSON.parse(line)
               const eventType = event.event || 'progress'
 
-              // Emit to subscribers
-              handle.emit(eventType, event)
-
-              // Track data for session saving
-              if (eventType === 'training_started') {
-                hardware = event.hardware || null
-                environment = event.environment || null
-              } else if (eventType === 'dataset_loaded' || eventType === 'dataset_info') {
-                datasetInfo = { type: modelType, ...event }
-              } else if (eventType === 'epoch') {
-                epochHistory.push(event)
-                // Update progress based on epoch
-                const totalEpochs = config.epochs ?? 50
-                const currentEpoch = event.epoch || epochHistory.length
-                const progress = Math.round((currentEpoch / totalEpochs) * 100)
-                handle.setProgress(progress, `Epoch ${currentEpoch}/${totalEpochs}`)
-              } else if (eventType === 'complete') {
-                completeData = { type: modelType, ...event }
-                if (event.epoch_history && Array.isArray(event.epoch_history)) {
-                  epochHistory.length = 0
-                  epochHistory.push(...event.epoch_history)
+              // Emit typed events for known Python event types,
+              // use subprocess_event catch-all for unknown ones
+              switch (eventType) {
+                case 'training_started':
+                  hardware = event.hardware || null
+                  environment = event.environment || null
+                  // Already emitted train_started above; skip duplicate
+                  break
+                case 'dataset_loaded':
+                  datasetInfo = { type: modelType, ...event }
+                  handle.emit({ type: 'dataset_loaded', data: event })
+                  break
+                case 'dataset_info':
+                  datasetInfo = { type: modelType, ...event }
+                  handle.emit({ type: 'dataset_info', data: event })
+                  break
+                case 'epoch': {
+                  epochHistory.push(event)
+                  const totalEpochs = config.epochs ?? 50
+                  const currentEpoch = event.epoch || epochHistory.length
+                  const progress = Math.round((currentEpoch / totalEpochs) * 100)
+                  handle.setProgress(progress, `Epoch ${currentEpoch}/${totalEpochs}`)
+                  handle.emit({
+                    type: 'epoch',
+                    epoch: currentEpoch,
+                    totalEpochs,
+                    loss: event.loss ?? 0,
+                    accuracy: event.accuracy ?? 0,
+                    valLoss: event.val_loss,
+                    valAccuracy: event.val_accuracy,
+                  })
+                  break
                 }
-                if (!hardware && event.hardware) hardware = event.hardware
-                if (!environment && event.environment) environment = event.environment
+                case 'complete':
+                  completeData = { type: modelType, ...event }
+                  if (event.epoch_history && Array.isArray(event.epoch_history)) {
+                    epochHistory.length = 0
+                    epochHistory.push(...event.epoch_history)
+                  }
+                  if (!hardware && event.hardware) hardware = event.hardware
+                  if (!environment && event.environment) environment = event.environment
+                  handle.emit({ type: 'train_complete', data: event })
+                  break
+                default:
+                  // Forward unknown Python events via catch-all
+                  handle.emit({ type: 'subprocess_event', eventType, data: event })
+                  break
               }
             } catch {
               // Non-JSON output, emit as log
-              handle.emit('log', { message: line })
+              handle.emit({ type: 'log', message: line })
             }
           }
         })
@@ -290,7 +315,7 @@ export async function startVisionTraining(input: VisionTrainingInput): Promise<s
             !message.includes('successful NUMA node') &&
             !message.includes('StreamExecutor')
           ) {
-            handle.emit('log', { message, type: 'stderr' })
+            handle.emit({ type: 'log', message, source: 'stderr' })
           }
         })
 

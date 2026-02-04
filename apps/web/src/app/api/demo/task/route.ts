@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createTask, type TaskHandle } from '@/lib/task-manager'
+import type { DemoTaskEvent } from '@/lib/tasks/events'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -60,10 +61,10 @@ export async function POST(request: NextRequest) {
   try {
     const input: DemoTaskInput = await request.json()
 
-    const taskId = await createTask<DemoTaskInput, DemoTaskOutput>(
+    const taskId = await createTask<DemoTaskInput, DemoTaskOutput, DemoTaskEvent>(
       'demo',
       input,
-      async (handle: TaskHandle<DemoTaskOutput>, options) => {
+      async (handle: TaskHandle<DemoTaskOutput, DemoTaskEvent>, options) => {
         const {
           duration,
           shouldFail,
@@ -93,18 +94,11 @@ export async function POST(request: NextRequest) {
           const progress = Math.round((i / eventCount) * 100)
           handle.setProgress(progress, `Step ${i}/${eventCount}`)
 
-          const eventPayload: Record<string, unknown> = {
-            step: i,
-            timestamp: new Date().toISOString(),
-            message: `Completed step ${i} of ${eventCount}`,
-          }
-
           if (payload) {
-            eventPayload.data = payload
             totalPayloadBytes += payloadSizeBytes
           }
 
-          handle.emit('log', eventPayload)
+          handle.emit({ type: 'log', step: i, timestamp: new Date().toISOString() })
 
           // Fail at specified percentage if shouldFail
           if (shouldFail && i === failAtStep) {

@@ -115,7 +115,7 @@ export type ParsingAction =
   // Completion
   | {
       type: 'PARSE_COMPLETE'
-      result: WorksheetParsingResult
+      result: WorksheetParsingResult | null
       stats?: ParsingStats
     }
   | { type: 'PARSE_FAILED'; error: string }

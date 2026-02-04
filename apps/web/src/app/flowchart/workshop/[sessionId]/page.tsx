@@ -16,18 +16,16 @@ import {
   DEFAULT_CONSTRAINTS,
 } from '@/lib/flowcharts/example-generator'
 import { GenerationProgressPanel } from '@/components/flowchart-workshop/GenerationProgressPanel'
-import {
-  isGenerateResult,
-  parseFlowchartSSE,
-  type FlowchartCompleteResult,
-} from '@/lib/flowchart-workshop/sse-parser'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import {
   getStatusMessage,
   initialStreamingState,
   isStreaming,
   streamingReducer,
+  type FlowchartCompleteResult,
 } from '@/lib/flowchart-workshop/state-machine'
+import type { TaskEvent } from '@/hooks/useBackgroundTask'
 import { loadFlowchart } from '@/lib/flowcharts/loader'
 import { downloadFlowchartPDF } from '@/lib/flowcharts/pdf-export'
 import {
@@ -66,6 +64,7 @@ interface WorkshopSession {
   refinementHistory: string[]
   currentReasoningText: string | null
   currentVersionNumber: number | null
+  currentTaskId: string | null
 }
 
 type TabType = 'worksheet' | 'tests' | 'history'
@@ -87,7 +86,8 @@ export default function WorkshopPage() {
 
   // Streaming state management
   const [streamingState, dispatch] = useReducer(streamingReducer, initialStreamingState)
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
+  const socketRef = useRef<Socket | null>(null)
   const [isProgressPanelExpanded, setIsProgressPanelExpanded] = useState(false)
 
   // Version history invalidation (refresh history tab when new version is created)
@@ -327,317 +327,354 @@ export default function WorkshopPage() {
     loadSession()
   }, [loadSession])
 
-  // Connect to watch endpoint if:
-  // 1. Session is in 'generating' state (reconnection case), or
-  // 2. Session is in 'initial' state with topicDescription but no draft (auto-generation case)
-  // This handles both reconnection and the auto-start flow
-  const shouldAutoConnect =
-    session &&
-    (session.state === 'generating' ||
-      (session.state === 'initial' && session.topicDescription && !session.draftDefinitionJson))
-
-  useEffect(() => {
-    if (!shouldAutoConnect || !session) return
-
-    // Start streaming state to show progress
-    dispatch({ type: 'START_STREAMING', streamType: 'generate' })
-    setIsProgressPanelExpanded(true)
-
-    // If there's already accumulated reasoning, show it
-    if (session.currentReasoningText) {
-      dispatch({
-        type: 'STREAM_REASONING',
-        text: session.currentReasoningText,
-        append: false,
-      })
-    }
-
-    // Determine if we need to trigger generation (session is 'initial' with topic but no draft)
-    const needsGeneration =
-      session.state === 'initial' && session.topicDescription && !session.draftDefinitionJson
-
-    // If session needs generation, trigger it (fire-and-forget)
-    if (needsGeneration) {
-      console.log(`[workshop-client] Triggering generation for session ${sessionId}`)
-      fetch(`/api/flowchart-workshop/sessions/${sessionId}/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topicDescription: session.topicDescription,
-        }),
-      }).catch((err) => {
-        console.error('[workshop-client] Generate request failed:', err)
-      })
-    }
-
-    // Connect to Socket.IO for watching generation progress (works cross-pod)
-    console.log(`[workshop-client] Connecting Socket.IO for session ${sessionId}`)
-    const socket: Socket = io({
-      path: '/api/socket',
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 10,
-    })
-
-    const handleConnect = () => {
-      console.log(`[workshop-client] Socket connected, joining flowchart room: ${sessionId}`)
-      socket.emit('join-flowchart', { sessionId })
-    }
-
-    // Handle accumulated state on join (served from Redis — works cross-pod)
-    const handleState = (data: {
-      state: string
-      reasoningText?: string
-      outputText?: string
-      isLive?: boolean
-    }) => {
-      console.log(`[workshop-client] flowchart:state received`, {
-        state: data.state,
-        reasoningLength: data.reasoningText?.length,
-      })
-      if (data.state === 'generating' && data.reasoningText) {
-        dispatch({
-          type: 'STREAM_REASONING',
-          text: data.reasoningText,
-          append: false,
-        })
-      }
-      // state === 'idle' means no active generation — page will show DB state from initial fetch
-    }
-
-    // Handle live events (cross-pod via Redis adapter)
-    let watchEventCount = 0
-    const handleEvent = (event: { type: string; data: Record<string, unknown> }) => {
-      watchEventCount++
-      if (watchEventCount <= 5 || watchEventCount % 50 === 0) {
-        console.log(`[workshop-client] flowchart:event #${watchEventCount}:`, event.type)
+  // Helper to subscribe to a task via Socket.IO and map events to streamingReducer
+  const subscribeToTask = useCallback(
+    (taskId: string, streamType: 'generate' | 'refine') => {
+      // Clean up any existing socket
+      if (socketRef.current) {
+        socketRef.current.disconnect()
+        socketRef.current = null
       }
 
-      switch (event.type) {
-        case 'reasoning': {
-          const data = event.data as { text: string; isDelta: boolean }
-          dispatch({
-            type: 'STREAM_REASONING',
-            text: data.text,
-            append: data.isDelta,
-          })
-          break
-        }
-        case 'output_delta': {
-          const data = event.data as { text: string }
-          dispatch({ type: 'STREAM_OUTPUT', text: data.text, append: true })
-          break
-        }
-        case 'progress': {
-          const data = event.data as { stage: string; message: string }
-          dispatch({
-            type: 'STREAM_PROGRESS',
-            stage: data.stage,
-            message: data.message,
-          })
-          break
-        }
-        case 'complete': {
-          // Live path: data contains definition (object), mermaidContent, etc.
-          const data = event.data as Record<string, unknown>
-          const parsedDefinition = data.definition ?? null
-          const parsedNotes = (data.notes as string[]) || []
-          const mermaidContent = data.mermaidContent as string | undefined
-          const title = data.title as string | undefined
-          const description = data.description as string | undefined
-          const emoji = data.emoji as string | undefined
-          const difficulty = data.difficulty as string | undefined
+      setActiveTaskId(taskId)
+      dispatch({ type: 'START_STREAMING', streamType })
+      setIsProgressPanelExpanded(true)
 
-          if (parsedDefinition) {
+      const socket: Socket = createSocket({
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 10,
+      })
+      socketRef.current = socket
+
+      const handleConnect = () => {
+        console.log(`[workshop-client] Socket connected, subscribing to task: ${taskId}`)
+        socket.emit('task:subscribe', taskId)
+      }
+
+      // Handle initial task state on subscription
+      socket.on('task:state', (task: { status: string; progress: number; progressMessage: string | null }) => {
+        console.log(`[workshop-client] task:state received:`, task.status, task.progressMessage)
+        if (task.status === 'running') {
+          dispatch({ type: 'STREAM_STARTED', responseId: taskId })
+          // If we have a progress message from the DB, show it immediately
+          // so reconnecting clients see "AI is thinking..." or "Generating flowchart..."
+          // instead of the generic "Starting generation..." message
+          if (task.progressMessage) {
             dispatch({
-              type: 'STREAM_COMPLETE',
-              result: {
-                definition: parsedDefinition,
-                mermaidContent: mermaidContent || '',
-                title: title || 'Untitled',
-                description: description || '',
-                emoji: emoji || '📊',
-                difficulty: difficulty || 'Beginner',
-                notes: parsedNotes,
-              } as FlowchartCompleteResult,
+              type: 'STREAM_PROGRESS',
+              stage: 'reconnecting',
+              message: task.progressMessage,
             })
           }
+        } else if (task.status === 'completed') {
+          // Task already finished — reload session to get final state
+          setActiveTaskId(null)
+          loadSession()
+        } else if (task.status === 'failed') {
+          dispatch({ type: 'STREAM_ERROR', message: 'Task failed' })
+          setActiveTaskId(null)
+        }
+      })
 
-          // Update session state to refining
-          setSession((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  state: 'refining',
-                  draftDefinitionJson: JSON.stringify(parsedDefinition),
-                  draftMermaidContent: mermaidContent ?? null,
-                  draftTitle: title ?? null,
-                  draftDescription: description ?? null,
-                  draftDifficulty: difficulty ?? null,
-                  draftEmoji: emoji ?? null,
-                  draftNotes: JSON.stringify(parsedNotes),
-                  currentReasoningText: null,
-                }
-              : null
-          )
-          break
+      // Handle task events (real-time and replayed)
+      let eventCount = 0
+      socket.on('task:event', (event: TaskEvent) => {
+        if (event.taskId !== taskId) return
+        eventCount++
+        if (eventCount <= 5 || eventCount % 50 === 0) {
+          console.log(`[workshop-client] task:event #${eventCount}:`, event.eventType, event.replayed ? '(replayed)' : '')
         }
-        case 'error': {
-          const data = event.data as { message: string }
-          dispatch({ type: 'STREAM_ERROR', message: data.message })
-          setError(data.message)
-          break
+
+        const payload = event.payload as Record<string, unknown>
+
+        switch (event.eventType) {
+          case 'started':
+            dispatch({ type: 'STREAM_STARTED', responseId: taskId })
+            break
+
+          case 'generate_started':
+          case 'refine_started':
+            dispatch({ type: 'STREAM_STARTED', responseId: taskId })
+            break
+
+          case 'progress':
+            // Lifecycle progress event from task-manager (persisted, replayed on reconnect)
+            if (payload.message) {
+              dispatch({
+                type: 'STREAM_PROGRESS',
+                stage: 'progress',
+                message: payload.message as string,
+              })
+            }
+            break
+
+          case 'generate_progress':
+          case 'refine_progress':
+            dispatch({
+              type: 'STREAM_PROGRESS',
+              stage: payload.stage as string,
+              message: payload.message as string,
+            })
+            break
+
+          case 'reasoning':
+            dispatch({
+              type: 'STREAM_REASONING',
+              text: payload.text as string,
+              append: payload.isDelta as boolean,
+            })
+            break
+
+          case 'output_delta':
+            dispatch({
+              type: 'STREAM_OUTPUT',
+              text: payload.text as string,
+              append: true,
+            })
+            break
+
+          case 'generate_validation':
+          case 'refine_validation':
+            dispatch({
+              type: 'STREAM_PROGRESS',
+              stage: 'validating',
+              message: `Validation: ${payload.passed ? 'passed' : 'issues found'} (${payload.coveragePercent}% coverage)`,
+            })
+            break
+
+          case 'generate_complete': {
+            const result: FlowchartCompleteResult = {
+              definition: payload.definition as FlowchartDefinition,
+              mermaidContent: payload.mermaidContent as string,
+              title: (payload.title as string) || 'Untitled',
+              description: (payload.description as string) || '',
+              emoji: (payload.emoji as string) || '📊',
+              difficulty: (payload.difficulty as string) || 'Beginner',
+              notes: (payload.notes as string[]) || [],
+              usage: payload.usage as FlowchartCompleteResult['usage'],
+            }
+            dispatch({ type: 'STREAM_COMPLETE', result })
+            // Update session state
+            setSession((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    state: 'refining',
+                    draftDefinitionJson: JSON.stringify(result.definition),
+                    draftMermaidContent: result.mermaidContent,
+                    draftTitle: result.title,
+                    draftDescription: result.description,
+                    draftDifficulty: result.difficulty,
+                    draftEmoji: result.emoji,
+                    draftNotes: JSON.stringify(result.notes),
+                    currentReasoningText: null,
+                    currentTaskId: null,
+                  }
+                : null
+            )
+            invalidateVersionHistory(sessionId)
+            setPreviewingVersion(null)
+            setActiveTaskId(null)
+            break
+          }
+
+          case 'refine_complete': {
+            const result: FlowchartCompleteResult = {
+              definition: payload.definition as FlowchartDefinition,
+              mermaidContent: payload.mermaidContent as string,
+              emoji: (payload.emoji as string) || '📊',
+              changesSummary: payload.changesSummary as string,
+              notes: (payload.notes as string[]) || [],
+              usage: payload.usage as FlowchartCompleteResult['usage'],
+            }
+            dispatch({ type: 'STREAM_COMPLETE', result })
+            setSession((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    draftDefinitionJson: JSON.stringify(result.definition),
+                    draftMermaidContent: result.mermaidContent,
+                    draftEmoji: result.emoji,
+                    draftNotes: JSON.stringify(result.notes),
+                    currentTaskId: null,
+                  }
+                : null
+            )
+            setRefinementText('')
+            setSelectedDiagnostics([])
+            invalidateVersionHistory(sessionId)
+            setPreviewingVersion(null)
+            setActiveTaskId(null)
+            break
+          }
+
+          case 'generate_error':
+          case 'refine_error':
+            dispatch({ type: 'STREAM_ERROR', message: payload.message as string })
+            setError(payload.message as string)
+            setActiveTaskId(null)
+            break
+
+          // Lifecycle events from task-manager
+          case 'completed': {
+            // Safety net: reload session to get latest DB state
+            // The domain complete event (generate_complete/refine_complete) should
+            // have already been handled above, but reload ensures consistency
+            setActiveTaskId(null)
+            loadSession()
+            break
+          }
+
+          case 'failed': {
+            const errorMsg = (payload.error as string) || 'Task failed'
+            dispatch({ type: 'STREAM_ERROR', message: errorMsg })
+            setError(errorMsg)
+            setActiveTaskId(null)
+            break
+          }
+
+          case 'cancelled':
+            dispatch({ type: 'STREAM_CANCELLED' })
+            setActiveTaskId(null)
+            break
         }
+      })
+
+      socket.on('connect', handleConnect)
+
+      // If already connected, subscribe immediately
+      if (socket.connected) {
+        handleConnect()
+      }
+
+      return () => {
+        socket.off('connect', handleConnect)
+        socket.emit('task:unsubscribe', taskId)
+        socket.disconnect()
+        socketRef.current = null
+      }
+    },
+    [sessionId, invalidateVersionHistory, loadSession]
+  )
+
+  // Determine if we should auto-connect to an existing task or auto-start generation
+  const shouldAutoGenerate =
+    session &&
+    !activeTaskId &&
+    session.state === 'initial' &&
+    session.topicDescription &&
+    !session.draftDefinitionJson
+
+  const shouldReconnectToTask =
+    session &&
+    !activeTaskId &&
+    session.currentTaskId &&
+    streamingState.status === 'idle'
+
+  // Reconnect to in-progress task on page load
+  useEffect(() => {
+    if (!shouldReconnectToTask || !session?.currentTaskId) return
+
+    console.log(`[workshop-client] Reconnecting to task: ${session.currentTaskId}`)
+    // Determine stream type based on session state
+    const streamType = session.state === 'generating' ? 'generate' : 'refine'
+    subscribeToTask(session.currentTaskId, streamType)
+    // Note: NOT returning cleanup here. subscribeToTask sets activeTaskId which
+    // flips shouldReconnectToTask to false, causing this effect to re-run.
+    // If we returned cleanup, React would disconnect the socket immediately.
+    // Socket lifecycle is managed by subscribeToTask (cleans up previous) and handleCancel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReconnectToTask, session?.currentTaskId])
+
+  // Clean up socket on unmount (e.g., navigating away during generation)
+  useEffect(() => {
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect()
+        socketRef.current = null
       }
     }
-
-    socket.on('connect', handleConnect)
-    socket.on('flowchart:state', handleState)
-    socket.on('flowchart:event', handleEvent)
-
-    // If already connected (reconnection), join immediately
-    if (socket.connected) {
-      handleConnect()
-    }
-
-    return () => {
-      socket.off('connect', handleConnect)
-      socket.off('flowchart:state', handleState)
-      socket.off('flowchart:event', handleEvent)
-      socket.emit('leave-flowchart', { sessionId })
-      socket.disconnect()
-    }
-    // Depend on shouldAutoConnect (which encapsulates the connection criteria)
-    // Not reasoning text (that would cause reconnection loops)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldAutoConnect, sessionId])
-
-  // Handle cancellation
-  const handleCancel = useCallback(() => {
-    abortControllerRef.current?.abort()
-    dispatch({ type: 'STREAM_CANCELLED' })
   }, [])
 
-  // Handle initial generation
+  // Auto-start generation for new sessions
+  useEffect(() => {
+    if (!shouldAutoGenerate || !session?.topicDescription) return
+
+    console.log(`[workshop-client] Auto-starting generation for session ${sessionId}`)
+    fetch(`/api/flowchart-workshop/sessions/${sessionId}/generate/task`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topicDescription: session.topicDescription }),
+    })
+      .then((res) => res.json())
+      .then((data: { taskId: string }) => {
+        if (data.taskId) {
+          subscribeToTask(data.taskId, 'generate')
+        }
+      })
+      .catch((err) => {
+        console.error('[workshop-client] Auto-generate request failed:', err)
+        dispatch({ type: 'STREAM_ERROR', message: 'Failed to start generation' })
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldAutoGenerate, sessionId])
+
+  // Handle cancellation via task API
+  const handleCancel = useCallback(async () => {
+    if (!activeTaskId) return
+
+    dispatch({ type: 'STREAM_CANCELLED' })
+
+    // Determine which endpoint to call based on stream type
+    const endpoint = streamingState.streamType === 'refine'
+      ? `/api/flowchart-workshop/sessions/${sessionId}/refine/task`
+      : `/api/flowchart-workshop/sessions/${sessionId}/generate/task`
+
+    try {
+      await fetch(endpoint, { method: 'DELETE' })
+    } catch (err) {
+      console.error('[workshop-client] Cancel request failed:', err)
+    }
+
+    // Clean up socket
+    if (socketRef.current) {
+      socketRef.current.disconnect()
+      socketRef.current = null
+    }
+    setActiveTaskId(null)
+  }, [activeTaskId, sessionId, streamingState.streamType])
+
+  // Handle initial generation via task API
   const handleGenerate = useCallback(async () => {
     if (!session?.topicDescription) return
 
     console.log(`[workshop-client] handleGenerate called for session ${sessionId}`)
 
-    // Reset and start
-    dispatch({ type: 'START_STREAMING', streamType: 'generate' })
-    setIsProgressPanelExpanded(true)
-
-    // Create new abort controller
-    abortControllerRef.current = new AbortController()
-
     try {
-      console.log(`[workshop-client] Fetching generate endpoint`)
-      const response = await fetch(`/api/flowchart-workshop/sessions/${sessionId}/generate`, {
+      const response = await fetch(`/api/flowchart-workshop/sessions/${sessionId}/generate/task`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topicDescription: session.topicDescription }),
-        signal: abortControllerRef.current.signal,
       })
 
-      console.log(`[workshop-client] Generate response received:`, {
-        status: response.status,
-        ok: response.ok,
-      })
-
-      // Track events for logging
-      let generateEventCount = 0
-
-      // Parse the SSE stream
-      await parseFlowchartSSE(
-        response,
-        {
-          onStarted: (responseId) => {
-            generateEventCount++
-            console.log(`[workshop-client] Generate onStarted:`, responseId)
-            dispatch({ type: 'STREAM_STARTED', responseId })
-          },
-          onProgress: (stage, message) => {
-            generateEventCount++
-            console.log(`[workshop-client] Generate onProgress:`, stage, message)
-            dispatch({ type: 'STREAM_PROGRESS', stage, message })
-          },
-          onReasoning: (text, isDelta) => {
-            generateEventCount++
-            if (generateEventCount <= 5 || generateEventCount % 50 === 0) {
-              console.log(`[workshop-client] Generate onReasoning #${generateEventCount}:`, {
-                textLength: text?.length,
-                isDelta,
-              })
-            }
-            dispatch({ type: 'STREAM_REASONING', text, append: isDelta })
-          },
-          onOutputDelta: (text) => {
-            generateEventCount++
-            if (generateEventCount <= 5 || generateEventCount % 50 === 0) {
-              console.log(`[workshop-client] Generate onOutputDelta #${generateEventCount}:`, {
-                textLength: text?.length,
-              })
-            }
-            dispatch({ type: 'STREAM_OUTPUT', text, append: true })
-          },
-          onComplete: (result) => {
-            generateEventCount++
-            console.log(`[workshop-client] Generate onComplete`, {
-              totalEvents: generateEventCount,
-              hasResult: !!result,
-            })
-            dispatch({ type: 'STREAM_COMPLETE', result })
-            // Update session with the generated content
-            if (isGenerateResult(result)) {
-              setSession((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      state: 'refining',
-                      draftDefinitionJson: JSON.stringify(result.definition),
-                      draftMermaidContent: result.mermaidContent,
-                      draftTitle: result.title,
-                      draftDescription: result.description,
-                      draftDifficulty: result.difficulty,
-                      draftEmoji: result.emoji,
-                      draftNotes: JSON.stringify(result.notes),
-                    }
-                  : null
-              )
-              // Refresh version history to show the new version
-              invalidateVersionHistory(sessionId)
-              // Clear any preview since we have a new current version
-              setPreviewingVersion(null)
-            }
-          },
-          onError: (message) => {
-            console.error(`[workshop-client] Generate onError:`, message)
-            dispatch({ type: 'STREAM_ERROR', message })
-            setError(message)
-          },
-          onCancelled: () => {
-            console.log(`[workshop-client] Generate onCancelled`)
-            dispatch({ type: 'STREAM_CANCELLED' })
-          },
-        },
-        abortControllerRef.current.signal
-      )
-      console.log(`[workshop-client] parseFlowchartSSE completed`)
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        console.log(`[workshop-client] Generate aborted`)
-        dispatch({ type: 'STREAM_CANCELLED' })
-      } else {
-        console.error('[workshop-client] Generation failed:', err)
-        const message = err instanceof Error ? err.message : 'Generation failed'
-        dispatch({ type: 'STREAM_ERROR', message })
-        setError(message)
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to start generation')
       }
-    }
-  }, [session?.topicDescription, sessionId])
 
-  // Handle refinement
+      const data = await response.json()
+      console.log(`[workshop-client] Generation task started:`, data.taskId)
+      subscribeToTask(data.taskId, 'generate')
+    } catch (err) {
+      console.error('[workshop-client] Generation failed:', err)
+      const message = err instanceof Error ? err.message : 'Generation failed'
+      dispatch({ type: 'STREAM_ERROR', message })
+      setError(message)
+    }
+  }, [session?.topicDescription, sessionId, subscribeToTask])
+
+  // Handle refinement via task API
   const handleRefine = useCallback(async () => {
     // Build the full refinement request from text + selected diagnostics
     const parts: string[] = []
@@ -651,81 +688,28 @@ export default function WorkshopPage() {
     const fullRequest = parts.join('\n\n')
     if (!fullRequest) return
 
-    // Reset and start
-    dispatch({ type: 'START_STREAMING', streamType: 'refine' })
-    setIsProgressPanelExpanded(true)
-
-    // Create new abort controller
-    abortControllerRef.current = new AbortController()
-    const currentRefinementText = fullRequest
-
     try {
-      const response = await fetch(`/api/flowchart-workshop/sessions/${sessionId}/refine`, {
+      const response = await fetch(`/api/flowchart-workshop/sessions/${sessionId}/refine/task`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ request: fullRequest }),
-        signal: abortControllerRef.current.signal,
       })
 
-      // Parse the SSE stream
-      await parseFlowchartSSE(
-        response,
-        {
-          onStarted: (responseId) => {
-            dispatch({ type: 'STREAM_STARTED', responseId })
-          },
-          onProgress: (stage, message) => {
-            dispatch({ type: 'STREAM_PROGRESS', stage, message })
-          },
-          onReasoning: (text, isDelta) => {
-            dispatch({ type: 'STREAM_REASONING', text, append: isDelta })
-          },
-          onOutputDelta: (text) => {
-            dispatch({ type: 'STREAM_OUTPUT', text, append: true })
-          },
-          onComplete: (result) => {
-            dispatch({ type: 'STREAM_COMPLETE', result })
-            // Update session with the refined content
-            setSession((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    draftDefinitionJson: JSON.stringify(result.definition),
-                    draftMermaidContent: result.mermaidContent,
-                    draftEmoji: result.emoji,
-                    draftNotes: JSON.stringify(result.notes),
-                    refinementHistory: [...(prev.refinementHistory || []), currentRefinementText],
-                  }
-                : null
-            )
-            setRefinementText('')
-            setSelectedDiagnostics([])
-            // Refresh version history to show the new version
-            invalidateVersionHistory(sessionId)
-            // Clear any preview since we have a new current version
-            setPreviewingVersion(null)
-          },
-          onError: (message) => {
-            dispatch({ type: 'STREAM_ERROR', message })
-            setError(message)
-          },
-          onCancelled: () => {
-            dispatch({ type: 'STREAM_CANCELLED' })
-          },
-        },
-        abortControllerRef.current.signal
-      )
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        dispatch({ type: 'STREAM_CANCELLED' })
-      } else {
-        console.error('Refinement failed:', err)
-        const message = err instanceof Error ? err.message : 'Refinement failed'
-        dispatch({ type: 'STREAM_ERROR', message })
-        setError(message)
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to start refinement')
       }
+
+      const data = await response.json()
+      console.log(`[workshop-client] Refinement task started:`, data.taskId)
+      subscribeToTask(data.taskId, 'refine')
+    } catch (err) {
+      console.error('Refinement failed:', err)
+      const message = err instanceof Error ? err.message : 'Refinement failed'
+      dispatch({ type: 'STREAM_ERROR', message })
+      setError(message)
     }
-  }, [refinementText, selectedDiagnostics, sessionId])
+  }, [refinementText, selectedDiagnostics, sessionId, subscribeToTask])
 
   // Handler for updating the definition directly (e.g., adding test cases)
   const handleUpdateDefinition = useCallback((updatedDefinition: FlowchartDefinition) => {
@@ -1203,8 +1187,8 @@ export default function WorkshopPage() {
               >
                 Topic: <strong>{session.topicDescription}</strong>
               </p>
-              {/* Show progress panel when auto-generating or manually generating */}
-              {shouldAutoConnect || isGenerating ? (
+              {/* Show progress panel when generating */}
+              {isGenerating || (activeTaskId && streamingState.streamType === 'generate') ? (
                 <div className={css({ width: '100%', maxWidth: '500px' })}>
                   <GenerationProgressPanel
                     isExpanded={isProgressPanelExpanded}

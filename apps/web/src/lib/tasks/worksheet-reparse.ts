@@ -16,6 +16,7 @@ import { z } from 'zod'
 import { db } from '@/db'
 import { practiceAttachments, type ParsingStatus } from '@/db/schema/practice-attachments'
 import { createTask, type TaskHandle } from '../task-manager'
+import type { WorksheetReparseEvent } from './events'
 import { llm } from '@/lib/llm'
 import {
   type ParsedProblem,
@@ -183,7 +184,7 @@ export async function startWorksheetReparse(input: WorksheetReparseInput): Promi
     })
     .where(eq(practiceAttachments.id, input.attachmentId))
 
-  return createTask<WorksheetReparseInput, WorksheetReparseOutput>(
+  return createTask<WorksheetReparseInput, WorksheetReparseOutput, WorksheetReparseEvent>(
     'worksheet-reparse',
     input,
     async (handle, config) => {
@@ -198,7 +199,8 @@ export async function startWorksheetReparse(input: WorksheetReparseInput): Promi
       } = config
 
       handle.setProgress(5, 'Initializing re-parser...')
-      handle.emit('reparse_started', {
+      handle.emit({
+        type: 'reparse_started',
         attachmentId,
         problemCount: problemIndices.length,
         problemIndices,
@@ -233,7 +235,7 @@ export async function startWorksheetReparse(input: WorksheetReparseInput): Promi
  * Run the re-parsing process
  */
 async function runReparse(
-  handle: TaskHandle<WorksheetReparseOutput>,
+  handle: TaskHandle<WorksheetReparseOutput, WorksheetReparseEvent>,
   config: WorksheetReparseInput
 ): Promise<void> {
   const {
@@ -284,7 +286,7 @@ async function runReparse(
   for (let i = 0; i < problemIndices.length; i++) {
     // Check for cancellation
     if (handle.isCancelled()) {
-      handle.emit('cancelled', { reason: 'User cancelled' })
+      handle.emit({ type: 'cancelled', reason: 'User cancelled' })
       await db
         .update(practiceAttachments)
         .set({ parsingStatus: null, parsingError: null })
@@ -304,7 +306,8 @@ async function runReparse(
     // Notify starting this problem
     const progressPercent = 10 + Math.floor((i / problemIndices.length) * 70)
     handle.setProgress(progressPercent, `Analyzing problem ${i + 1} of ${problemIndices.length}...`)
-    handle.emit('problem_start', {
+    handle.emit({
+      type: 'problem_start',
       problemIndex,
       problemNumber: originalProblem.problemNumber,
       currentIndex: i,
@@ -335,7 +338,7 @@ async function runReparse(
       for await (const event of llmStream) {
         // Check for cancellation during streaming
         if (handle.isCancelled()) {
-          handle.emit('cancelled', { reason: 'User cancelled' })
+          handle.emit({ type: 'cancelled', reason: 'User cancelled' })
           await db
             .update(practiceAttachments)
             .set({ parsingStatus: null, parsingError: null })
@@ -346,7 +349,8 @@ async function runReparse(
         switch (event.type) {
           case 'reasoning':
             // Transient: Socket.IO only, no DB write (high-frequency streaming tokens)
-            handle.emitTransient('reasoning', {
+            handle.emitTransient({
+              type: 'reasoning',
               problemIndex,
               text: event.text,
               summaryIndex: event.summaryIndex,
@@ -356,7 +360,8 @@ async function runReparse(
 
           case 'output_delta':
             // Transient: Socket.IO only, no DB write (high-frequency streaming tokens)
-            handle.emitTransient('output_delta', {
+            handle.emitTransient({
+              type: 'output_delta',
               problemIndex,
               text: event.text,
               outputIndex: event.outputIndex,
@@ -364,7 +369,8 @@ async function runReparse(
             break
 
           case 'error':
-            handle.emit('problem_error', {
+            handle.emit({
+              type: 'problem_error',
               problemIndex,
               message: event.message,
               code: event.code,
@@ -385,7 +391,8 @@ async function runReparse(
         })
 
         // Notify client this problem is done
-        handle.emit('problem_complete', {
+        handle.emit({
+          type: 'problem_complete',
           problemIndex,
           problemNumber: originalProblem.problemNumber,
           result: problemResult,
@@ -395,7 +402,8 @@ async function runReparse(
       }
     } catch (err) {
       console.error(`[WorksheetReparseTask] Failed to re-parse problem ${problemIndex}:`, err)
-      handle.emit('problem_error', {
+      handle.emit({
+        type: 'problem_error',
         problemIndex,
         message: err instanceof Error ? err.message : 'Unknown error',
       })
@@ -405,7 +413,7 @@ async function runReparse(
 
   // Final cancellation check
   if (handle.isCancelled()) {
-    handle.emit('cancelled', { reason: 'User cancelled' })
+    handle.emit({ type: 'cancelled', reason: 'User cancelled' })
     await db
       .update(practiceAttachments)
       .set({ parsingStatus: null, parsingError: null })
@@ -464,7 +472,8 @@ async function runReparse(
     })
     .where(eq(practiceAttachments.id, attachmentId))
 
-  handle.emit('complete', {
+  handle.emit({
+    type: 'reparse_complete',
     reparsedCount: reparsedProblems.length,
     reparsedIndices: reparsedProblems.map((p) => p.index),
     status,

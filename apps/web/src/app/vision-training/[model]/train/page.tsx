@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { css } from '../../../../../styled-system/css'
 import { TrainingDiagnosticsProvider } from '../../train/components/TrainingDiagnosticsContext'
 import { TrainingWizard } from '../../train/components/wizard/TrainingWizard'
@@ -205,7 +207,8 @@ export default function TrainModelPage() {
   const [samplesLoading, setSamplesLoading] = useState(true)
 
   // Refs
-  const eventSourceRef = useRef<EventSource | null>(null)
+  const socketRef = useRef<Socket | null>(null)
+  const currentTaskIdRef = useRef<string | null>(null)
   // Track stderr logs for error messages
   const stderrLogsRef = useRef<string[]>([])
 
@@ -320,7 +323,10 @@ export default function TrainModelPage() {
 
   useEffect(() => {
     return () => {
-      eventSourceRef.current?.close()
+      if (socketRef.current) {
+        socketRef.current.disconnect()
+        socketRef.current = null
+      }
     }
   }, [])
 
@@ -331,6 +337,228 @@ export default function TrainModelPage() {
       data.tilePaths.map((src) => ({ src, digit: parseInt(digit, 10) }))
     )
   }, [samples])
+
+  /**
+   * Subscribe to a training task via Socket.IO
+   */
+  const subscribeToTask = useCallback(
+    (taskId: string) => {
+      // Clean up existing socket
+      if (socketRef.current) {
+        socketRef.current.emit('task:unsubscribe', currentTaskIdRef.current)
+        socketRef.current.disconnect()
+      }
+
+      currentTaskIdRef.current = taskId
+
+      const socket = createSocket({
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5,
+      })
+      socketRef.current = socket
+
+      const handleConnect = () => {
+        console.log('[Training] Socket connected, subscribing to task:', taskId)
+        socket.emit('task:subscribe', taskId)
+      }
+
+      socket.on('connect', handleConnect)
+      if (socket.connected) handleConnect()
+
+      // Handle task state (for reconnection)
+      socket.on(
+        'task:state',
+        (task: { id: string; status: string; progress: number; progressMessage: string | null }) => {
+          if (task.progress > 0 || task.progressMessage) {
+            setStatusMessage(task.progressMessage || `Progress: ${task.progress}%`)
+          }
+        }
+      )
+
+      // Handle task events
+      socket.on(
+        'task:event',
+        (event: { taskId: string; eventType: string; payload: unknown; replayed?: boolean }) => {
+          if (event.taskId !== taskId) return
+
+          const payload = event.payload as Record<string, unknown>
+
+          switch (event.eventType) {
+            // === Lifecycle events ===
+            case 'started':
+              setServerPhase('setup')
+              setStatusMessage('Training started')
+              stderrLogsRef.current = []
+              break
+
+            case 'progress':
+              if (payload.message) {
+                setStatusMessage(payload.message as string)
+              }
+              break
+
+            case 'failed': {
+              setServerPhase('error')
+              const stderrText = stderrLogsRef.current.join('\n')
+              const errorMatch = stderrText.match(/(ValueError|Exception|Error):\s*(.+?)(?:\n|$)/s)
+              if (errorMatch) {
+                setError(errorMatch[0].trim())
+              } else if (stderrLogsRef.current.length > 0) {
+                setError(stderrLogsRef.current.slice(-3).join('\n'))
+              } else {
+                setError((payload.error as string) ?? 'Training failed')
+              }
+              socket.emit('task:unsubscribe', taskId)
+              socket.disconnect()
+              socketRef.current = null
+              currentTaskIdRef.current = null
+              break
+            }
+
+            case 'cancelled':
+              setServerPhase('idle')
+              socket.emit('task:unsubscribe', taskId)
+              socket.disconnect()
+              socketRef.current = null
+              currentTaskIdRef.current = null
+              break
+
+            // === Domain events ===
+            case 'train_started':
+              setServerPhase('setup')
+              setStatusMessage('Training initialized')
+              break
+
+            case 'log':
+              if (payload.source === 'stderr' && payload.message) {
+                stderrLogsRef.current.push(payload.message as string)
+                if (stderrLogsRef.current.length > 20) {
+                  stderrLogsRef.current.shift()
+                }
+              }
+              break
+
+            case 'dataset_loaded':
+            case 'dataset_info': {
+              setLoadingProgress(null)
+              const d = (payload.data as Record<string, unknown>) ?? payload
+              if (modelType === 'column-classifier') {
+                setDatasetInfo({
+                  type: 'column-classifier',
+                  total_images: d.total_images as number,
+                  digit_counts: d.digit_counts as Record<number, number>,
+                })
+              } else if (modelType === 'boundary-detector') {
+                setDatasetInfo({
+                  type: 'boundary-detector',
+                  total_frames: (d.total_frames as number) || (d.total_images as number) || 0,
+                  device_count: (d.device_count as number) || 1,
+                  color_augmentation_enabled: d.color_augmentation_enabled as boolean | undefined,
+                  raw_frames: d.raw_frames as number | undefined,
+                })
+              }
+              break
+            }
+
+            case 'epoch': {
+              const epochData: EpochData = {
+                epoch: (payload.epoch as number) ?? 0,
+                total_epochs: (payload.totalEpochs as number) ?? 0,
+                loss: (payload.loss as number) ?? 0,
+                accuracy: (payload.accuracy as number) ?? 0,
+                val_loss: (payload.valLoss as number) ?? 0,
+                val_accuracy: (payload.valAccuracy as number) ?? 0,
+              }
+              setCurrentEpoch(epochData)
+              setEpochHistory((prev) => [...prev, epochData])
+              setServerPhase('training')
+              break
+            }
+
+            case 'train_complete': {
+              // Session is saved server-side by the task handler.
+              // Just update UI state.
+              const d = (payload.data as Record<string, unknown>) ?? payload
+              setServerPhase('complete')
+              setResult(d as unknown as TrainingResult)
+              socket.emit('task:unsubscribe', taskId)
+              socket.disconnect()
+              socketRef.current = null
+              currentTaskIdRef.current = null
+              break
+            }
+
+            case 'completed':
+              // Lifecycle safety net — if train_complete was missed
+              socket.emit('task:unsubscribe', taskId)
+              socket.disconnect()
+              socketRef.current = null
+              currentTaskIdRef.current = null
+              break
+
+            case 'subprocess_event': {
+              // Catch-all for Python events not explicitly handled
+              const subType = payload.eventType as string
+              const subData = (payload.data as Record<string, unknown>) ?? {}
+              if (subType === 'loading_progress') {
+                setLoadingProgress({
+                  step: subData.step as LoadingProgress['step'],
+                  current: subData.current as number,
+                  total: subData.total as number,
+                  message: subData.message as string,
+                })
+                setStatusMessage(subData.message as string)
+              } else if (subType === 'exported') {
+                setServerPhase('exporting')
+              } else if (subType === 'status') {
+                setStatusMessage(subData.message as string)
+                if (subData.phase) setServerPhase(subData.phase as ServerPhase)
+              } else {
+                console.log(`[Training] Unhandled subprocess event: ${subType}`, subData)
+              }
+              break
+            }
+
+            default:
+              console.log(`[Training] Unhandled event: ${event.eventType}`, payload)
+          }
+        }
+      )
+
+      socket.on('task:error', (data: { taskId: string; error: string }) => {
+        if (data.taskId === taskId) {
+          setServerPhase('error')
+          setError(data.error)
+          socket.disconnect()
+          socketRef.current = null
+          currentTaskIdRef.current = null
+        }
+      })
+    },
+    [modelType]
+  )
+
+  // Reconnect to in-progress training task on page load
+  useEffect(() => {
+    async function checkForActiveTask() {
+      try {
+        const response = await fetch('/api/vision-training/train/task')
+        if (!response.ok) return
+
+        const { taskId, status } = await response.json()
+        if (taskId && (status === 'running' || status === 'pending')) {
+          console.log('[Training] Reconnecting to active task:', taskId)
+          setServerPhase('setup')
+          setStatusMessage('Reconnecting to training...')
+          subscribeToTask(taskId)
+        }
+      } catch {
+        // Silently fail — not critical
+      }
+    }
+    checkForActiveTask()
+  }, [subscribeToTask])
 
   // Start training
   const startTraining = useCallback(async () => {
@@ -343,8 +571,17 @@ export default function TrainModelPage() {
     setResult(null)
     setError(null)
 
+    // Cancel any existing socket subscription
+    if (socketRef.current && currentTaskIdRef.current) {
+      socketRef.current.emit('task:cancel', currentTaskIdRef.current)
+      socketRef.current.emit('task:unsubscribe', currentTaskIdRef.current)
+      socketRef.current.disconnect()
+      socketRef.current = null
+      currentTaskIdRef.current = null
+    }
+
     try {
-      const response = await fetch('/api/vision-training/train', {
+      const response = await fetch('/api/vision-training/train/task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -353,7 +590,6 @@ export default function TrainModelPage() {
           batchSize: config.batchSize,
           validationSplit: config.validationSplit,
           colorAugmentation: config.colorAugmentation,
-          // Include manifest ID if training on filtered data
           manifestId: manifest?.id,
         }),
       })
@@ -363,211 +599,24 @@ export default function TrainModelPage() {
         throw new Error(errorData.error || 'Failed to start training')
       }
 
-      const reader = response.body?.getReader()
-      if (!reader) throw new Error('No response body')
+      const { taskId, status } = await response.json()
+      console.log('[Training] Task API response:', { taskId, status })
 
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        let eventType = ''
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            eventType = line.slice(7)
-          } else if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.slice(6))
-            handleEvent(eventType, data)
-          }
-        }
-      }
+      // Subscribe to task events via Socket.IO
+      subscribeToTask(taskId)
     } catch (err) {
       setServerPhase('error')
       setError(err instanceof Error ? err.message : 'Unknown error')
     }
-  }, [config, modelType, manifest])
-
-  const handleEvent = useCallback(
-    (eventType: string, data: Record<string, unknown>) => {
-      switch (eventType) {
-        case 'started':
-          setServerPhase('setup')
-          setStatusMessage('Training started')
-          // Reset stderr logs on new training
-          stderrLogsRef.current = []
-          break
-        case 'status':
-          setStatusMessage(data.message as string)
-          if (data.phase) setServerPhase(data.phase as ServerPhase)
-          break
-        case 'log':
-          // Track stderr logs for error messages
-          if (data.type === 'stderr' && data.message) {
-            stderrLogsRef.current.push(data.message as string)
-            // Keep only last 20 lines to avoid memory issues
-            if (stderrLogsRef.current.length > 20) {
-              stderrLogsRef.current.shift()
-            }
-          }
-          break
-        case 'loading_progress':
-          setLoadingProgress({
-            step: data.step as LoadingProgress['step'],
-            current: data.current as number,
-            total: data.total as number,
-            message: data.message as string,
-          })
-          setStatusMessage(data.message as string)
-          break
-        case 'dataset_loaded':
-          // Clear loading progress when done
-          setLoadingProgress(null)
-          // Different fields depending on model type
-          if (modelType === 'column-classifier') {
-            setDatasetInfo({
-              type: 'column-classifier',
-              total_images: data.total_images as number,
-              digit_counts: data.digit_counts as Record<number, number>,
-            })
-          } else if (modelType === 'boundary-detector') {
-            setDatasetInfo({
-              type: 'boundary-detector',
-              total_frames: (data.total_frames as number) || (data.total_images as number) || 0,
-              device_count: (data.device_count as number) || 1,
-              color_augmentation_enabled: data.color_augmentation_enabled as boolean | undefined,
-              raw_frames: data.raw_frames as number | undefined,
-            })
-          }
-          break
-        case 'epoch': {
-          const epochData = data as unknown as EpochData
-          setCurrentEpoch(epochData)
-          setEpochHistory((prev) => [...prev, epochData])
-          setServerPhase('training')
-          break
-        }
-        case 'exported':
-          setServerPhase('exporting')
-          break
-        case 'complete': {
-          setServerPhase('complete')
-          const completeResult = data as unknown as TrainingResult
-          setResult(completeResult)
-
-          // Debug logging to diagnose session save issues
-          console.log('[Training] Complete event received:', {
-            modelType,
-            hasDatasetInfo: !!datasetInfo,
-            hasConfig: !!config,
-            session_id: completeResult.session_id,
-            tfjs_exported: completeResult.tfjs_exported,
-            output_dir: (completeResult as { output_dir?: string }).output_dir,
-            rawData: data,
-          })
-
-          // Save session to database if we have all required data
-          if (
-            modelType &&
-            datasetInfo &&
-            config &&
-            completeResult.session_id &&
-            completeResult.tfjs_exported
-          ) {
-            // Get model path relative to data/vision-training/models/
-            // The output_dir from the script is e.g. "data/vision-training/models/boundary-detector/abc123"
-            // We want just "boundary-detector/abc123" for the modelPath field
-            const outputDir = (completeResult as { output_dir?: string }).output_dir || ''
-            const modelPath = outputDir.replace(/^\.?\/?(data\/vision-training\/models\/)?/, '')
-
-            // Create a display name from model type and date
-            const now = new Date()
-            const displayName = `${modelType === 'column-classifier' ? 'Column Classifier' : 'Boundary Detector'} - ${now.toLocaleDateString()}`
-
-            // Prepare epoch history with required fields
-            const epochHistoryForSession = epochHistory.map((e) => ({
-              epoch: e.epoch,
-              total_epochs: e.total_epochs,
-              loss: e.loss,
-              val_loss: e.val_loss,
-              accuracy: e.accuracy,
-              val_accuracy: e.val_accuracy,
-              val_pixel_error: e.val_pixel_error,
-              val_heaven_accuracy: e.val_heaven_accuracy,
-              val_earth_accuracy: e.val_earth_accuracy,
-            }))
-
-            // POST to sessions API
-            fetch('/api/vision/sessions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                modelType,
-                displayName,
-                config,
-                datasetInfo,
-                result: completeResult,
-                epochHistory: epochHistoryForSession,
-                modelPath,
-                setActive: true, // Auto-activate on successful training
-              }),
-            })
-              .then((res) => {
-                if (!res.ok) {
-                  console.error('[Training] Failed to save session:', res.statusText)
-                } else {
-                  console.log('[Training] Session saved successfully')
-                }
-              })
-              .catch((err) => {
-                console.error('[Training] Error saving session:', err)
-              })
-          } else {
-            console.warn('[Training] Skipping session save - missing required data:', {
-              modelType: !!modelType,
-              datasetInfo: !!datasetInfo,
-              config: !!config,
-              session_id: !!completeResult.session_id,
-              tfjs_exported: !!completeResult.tfjs_exported,
-            })
-          }
-          break
-        }
-        case 'error': {
-          setServerPhase('error')
-          // Extract meaningful error from stderr logs
-          const stderrText = stderrLogsRef.current.join('\n')
-          // Look for Python ValueError, Exception, or Error messages
-          const errorMatch = stderrText.match(/(ValueError|Exception|Error):\s*(.+?)(?:\n|$)/s)
-          if (errorMatch) {
-            setError(errorMatch[0].trim())
-          } else if (stderrLogsRef.current.length > 0) {
-            // Use last few stderr lines if no specific error pattern found
-            setError(stderrLogsRef.current.slice(-3).join('\n'))
-          } else {
-            setError(data.message as string)
-          }
-          break
-        }
-        case 'cancelled':
-          setServerPhase('idle')
-          break
-        default:
-          // Log unhandled events for debugging
-          console.log(`[Training] Event: ${eventType}`, data)
-      }
-    },
-    [modelType]
-  )
+  }, [config, modelType, manifest, subscribeToTask])
 
   const cancelTraining = useCallback(async () => {
     try {
-      await fetch('/api/vision-training/train', { method: 'DELETE' })
+      // Cancel via task system
+      if (currentTaskIdRef.current && socketRef.current) {
+        socketRef.current.emit('task:cancel', currentTaskIdRef.current)
+      }
+      await fetch('/api/vision-training/train/task', { method: 'DELETE' })
     } catch {
       // Ignore
     }
@@ -575,7 +624,7 @@ export default function TrainModelPage() {
 
   const handleStopAndSave = useCallback(async () => {
     try {
-      const response = await fetch('/api/vision-training/train', {
+      const response = await fetch('/api/vision-training/train/task', {
         method: 'PUT',
       })
       if (!response.ok) {

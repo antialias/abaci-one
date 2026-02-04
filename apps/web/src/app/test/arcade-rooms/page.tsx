@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 
 interface TestResult {
   name: string
@@ -83,7 +84,7 @@ export default function ArcadeRoomsTestPage() {
 
     updateResult(testName, { status: 'running' })
 
-    const sock = io({ path: '/api/socket' })
+    const sock = createSocket()
     setSocket1(sock)
 
     sock.on('connect', () => {
@@ -121,7 +122,7 @@ export default function ArcadeRoomsTestPage() {
     })
 
     // Connect socket2
-    const sock2 = io({ path: '/api/socket' })
+    const sock2 = createSocket()
     setSocket2(sock2)
 
     sock2.on('connect', () => {
@@ -187,7 +188,7 @@ export default function ArcadeRoomsTestPage() {
     const testName = 'Solo Play'
     updateResult(testName, { status: 'running' })
 
-    const soloSocket = io({ path: '/api/socket' })
+    const soloSocket = createSocket()
 
     soloSocket.on('connect', () => {
       log(testName, `Solo connected: ${soloSocket.id}`)
@@ -246,7 +247,7 @@ export default function ArcadeRoomsTestPage() {
     })
 
     // Create solo session
-    const soloSocket = io({ path: '/api/socket' })
+    const soloSocket = createSocket()
     soloSocket.on('connect', () => {
       const soloUserId = `solo-guest-${Date.now()}`
       soloSocket.emit('join-arcade-session', { userId: soloUserId })

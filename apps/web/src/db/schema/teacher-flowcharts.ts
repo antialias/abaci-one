@@ -175,6 +175,9 @@ export const workshopSessions = sqliteTable(
     /** Current version number for version history tracking */
     currentVersionNumber: integer('current_version_number').default(0),
 
+    /** Active background task ID (for reconnection on page reload) */
+    currentTaskId: text('current_task_id'),
+
     // Timestamps
     /** When this session was created */
     createdAt: integer('created_at', { mode: 'timestamp' })

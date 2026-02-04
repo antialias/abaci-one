@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import type { SkillTutorialStateEvent } from '@/lib/classroom/socket-events'
 
 /**
@@ -39,8 +40,7 @@ export function useClassroomTutorialStates(
     }
 
     // Create socket connection
-    const socket: Socket = io({
-      path: '/api/socket',
+    const socket: Socket = createSocket({
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,

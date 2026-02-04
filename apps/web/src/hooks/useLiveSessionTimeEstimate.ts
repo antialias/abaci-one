@@ -9,7 +9,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import type { PracticeStateEvent } from '@/lib/classroom/socket-events'
 import {
@@ -117,8 +118,7 @@ export function useLiveSessionTimeEstimate({
     }
 
     // Create socket connection
-    const socket = io({
-      path: '/api/socket',
+    const socket = createSocket({
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,

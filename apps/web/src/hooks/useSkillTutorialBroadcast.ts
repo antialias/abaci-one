@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { createSocket } from '@/lib/socket'
 import { useStudentPresence } from './useClassroom'
 import type {
   SkillTutorialStateEvent,
@@ -127,8 +128,7 @@ export function useSkillTutorialBroadcast(
       '[SkillTutorialBroadcast] Creating new socket connection for classroom:',
       classroomId
     )
-    const socket = io({
-      path: '/api/socket',
+    const socket = createSocket({
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
