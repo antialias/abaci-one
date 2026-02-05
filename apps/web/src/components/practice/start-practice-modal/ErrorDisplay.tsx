@@ -4,7 +4,11 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../../styled-system/css'
 import { useStartPracticeModal } from '../StartPracticeModalContext'
 
-export function ErrorDisplay() {
+interface ErrorDisplayProps {
+  onOpenSkillSelector?: () => void
+}
+
+export function ErrorDisplay({ onOpenSkillSelector }: ErrorDisplayProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const { displayError, isNoSkillsError } = useStartPracticeModal()
@@ -53,11 +57,33 @@ export function ErrorDisplay() {
             ⚠️ No skills enabled
           </p>
           <p
-            className={css({ fontSize: '0.75rem' })}
+            className={css({ fontSize: '0.75rem', marginBottom: '0.75rem' })}
             style={{ color: isDark ? '#d4d4d4' : '#525252' }}
           >
-            Please enable at least one skill in the skill selector before starting a session.
+            Enable at least one skill to start practicing.
           </p>
+          {onOpenSkillSelector && (
+            <button
+              type="button"
+              onClick={onOpenSkillSelector}
+              className={css({
+                padding: '0.5rem 1rem',
+                fontSize: '0.8125rem',
+                fontWeight: '600',
+                color: 'white',
+                backgroundColor: isDark ? '#d97706' : '#f59e0b',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                _hover: {
+                  backgroundColor: isDark ? '#b45309' : '#d97706',
+                },
+              })}
+            >
+              Open Skill Selector
+            </button>
+          )}
         </>
       ) : (
         <p

@@ -44,6 +44,8 @@ interface StartPracticeModalProps {
   problemHistory?: ProblemResultWithContext[]
   onClose: () => void
   onStarted?: () => void
+  /** Callback to open the skill selector (for "no skills" error remediation) */
+  onOpenSkillSelector?: () => void
   open?: boolean
   /** Initial expanded state for settings panel (for Storybook) */
   initialExpanded?: boolean
@@ -61,6 +63,7 @@ export function StartPracticeModal({
   existingPlan,
   onClose,
   onStarted,
+  onOpenSkillSelector,
   open = true,
   initialExpanded,
   practiceApprovedGamesOverride,
@@ -83,6 +86,7 @@ export function StartPracticeModal({
         studentName={studentName}
         focusDescription={focusDescription}
         onClose={onClose}
+        onOpenSkillSelector={onOpenSkillSelector}
         open={open}
       />
     </StartPracticeModalProvider>
@@ -94,6 +98,7 @@ interface StartPracticeModalContentProps {
   studentName: string
   focusDescription: string
   onClose: () => void
+  onOpenSkillSelector?: () => void
   open: boolean
 }
 
@@ -102,6 +107,7 @@ function StartPracticeModalContent({
   studentName,
   focusDescription,
   onClose,
+  onOpenSkillSelector,
   open,
 }: StartPracticeModalContentProps) {
   const { resolvedTheme } = useTheme()
@@ -462,7 +468,7 @@ function StartPracticeModalContent({
               {/* CTAs and actions */}
               <TutorialCTA onStartTutorial={handleStartTutorial} />
               <RemediationCTA />
-              <ErrorDisplay />
+              <ErrorDisplay onOpenSkillSelector={onOpenSkillSelector} />
               <StartButton />
             </div>
           </div>
