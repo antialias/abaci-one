@@ -171,11 +171,10 @@ export async function startWorksheetReparse(input: WorksheetReparseInput): Promi
     throw new Error('problemIndices and boundingBoxes must have the same length')
   }
 
-  // Mark attachment as processing
+  // Clear any previous error (status will be set on completion)
   await db
     .update(practiceAttachments)
     .set({
-      parsingStatus: 'processing',
       parsingError: null,
     })
     .where(eq(practiceAttachments.id, input.attachmentId))

@@ -97,11 +97,10 @@ export async function startWorksheetParsing(input: WorksheetParseInput): Promise
     throw new Error('Player ID is required')
   }
 
-  // Mark attachment as processing
+  // Clear any previous error and update timestamp (status will be set on completion)
   await db
     .update(practiceAttachments)
     .set({
-      parsingStatus: 'processing',
       parsingError: null,
       parsedAt: new Date().toISOString(),
     })

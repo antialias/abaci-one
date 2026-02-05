@@ -7,6 +7,10 @@ import type { WorksheetParsingResult, ReviewProgress } from '@/lib/worksheet-par
 
 /**
  * Parsing workflow status
+ *
+ * Note: 'processing' is deprecated - in-progress state is now tracked via
+ * background_tasks table. This value is kept for backwards compatibility
+ * but should not be set by new code.
  */
 export type ParsingStatus = 'pending' | 'processing' | 'needs_review' | 'approved' | 'failed'
 

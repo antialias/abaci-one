@@ -65,34 +65,26 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
     }
 
-    // Check if already processing (but allow retry if stuck for > 5 minutes)
-    if (attachment.parsingStatus === 'processing') {
-      const STUCK_THRESHOLD_MS = 5 * 60 * 1000
-      const parsedAt = attachment.parsedAt ? new Date(attachment.parsedAt).getTime() : 0
-      const timeSinceUpdate = Date.now() - parsedAt
+    // Check if there's already an active task for this attachment
+    // The background_tasks table is the source of truth for in-progress tasks
+    const existingTask = await db
+      .select()
+      .from(backgroundTasks)
+      .where(eq(backgroundTasks.status, 'running'))
+      .all()
+      .then((tasks) =>
+        tasks.find((t) => {
+          const input = t.input as { attachmentId?: string } | null
+          return input?.attachmentId === attachmentId
+        })
+      )
 
-      if (parsedAt > 0 && timeSinceUpdate < STUCK_THRESHOLD_MS) {
-        // Check if there's an active task for this attachment
-        const existingTask = await db
-          .select()
-          .from(backgroundTasks)
-          .where(eq(backgroundTasks.status, 'running'))
-          .all()
-          .then((tasks) =>
-            tasks.find((t) => {
-              const input = t.input as { attachmentId?: string } | null
-              return input?.attachmentId === attachmentId
-            })
-          )
-
-        if (existingTask) {
-          return NextResponse.json({
-            taskId: existingTask.id,
-            status: 'already_running',
-            message: 'Parsing already in progress',
-          })
-        }
-      }
+    if (existingTask) {
+      return NextResponse.json({
+        taskId: existingTask.id,
+        status: 'already_running',
+        message: 'Parsing already in progress',
+      })
     }
 
     // Parse request body

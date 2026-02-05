@@ -188,20 +188,28 @@ export function OfflineWorkSection({
   reconnectToTaskRef.current = parsingContext.reconnectToTask
   isParsingAttachmentRef.current = parsingContext.isParsingAttachment
 
-  useEffect(() => {
-    // Find any attachment that's in "processing" state but we're not tracking
-    const processingAttachment = attachments.find(
-      (att) => att.parsingStatus === 'processing' && !isParsingAttachmentRef.current(att.id)
-    )
+  // Track which attachments we've already checked for active tasks
+  const checkedAttachmentsRef = useRef<Set<string>>(new Set())
 
-    if (processingAttachment) {
-      console.log(
-        '[OfflineWorkSection] Found processing attachment, reconnecting:',
-        processingAttachment.id
-      )
-      reconnectToTaskRef.current(processingAttachment.id)
+  useEffect(() => {
+    // Try to reconnect to any active tasks for attachments we haven't checked yet
+    // This handles page reloads and new tabs - the task system is the source of truth
+    const checkForActiveTasks = async () => {
+      for (const att of attachments) {
+        // Skip if we've already checked this attachment or are already tracking it
+        if (checkedAttachmentsRef.current.has(att.id) || isParsingAttachmentRef.current(att.id)) {
+          continue
+        }
+        checkedAttachmentsRef.current.add(att.id)
+
+        const reconnected = await reconnectToTaskRef.current(att.id)
+        if (reconnected) {
+          console.log('[OfflineWorkSection] Reconnected to active task for:', att.id.slice(-6))
+        }
+      }
     }
-  }, [attachments]) // Only depend on attachments, not the entire context
+    checkForActiveTasks()
+  }, [attachments])
 
   // Helper to check if a specific attachment is being parsed
   const isAttachmentParsing = parsingContext.isParsingAttachment
@@ -378,10 +386,9 @@ export function OfflineWorkSection({
             (streamingState?.status === 'connecting' ||
               streamingState?.status === 'reasoning' ||
               streamingState?.status === 'generating')
-          // "Processing" status should only show if there's an active stream
-          // This prevents showing stale "processing" badge after cancellation
-          const isActuallyProcessing =
-            (att.parsingStatus === 'processing' && isStreaming) || reparsingPhotoId === att.id
+          // Processing is determined by active streams, not database status
+          // The task system (background_tasks table) is the source of truth
+          const isActuallyProcessing = isStreaming || reparsingPhotoId === att.id
 
           return (
             <div
@@ -583,12 +590,11 @@ export function OfflineWorkSection({
                     </button>
                   )}
 
-                {/* Parsing status badge - don't show for 'failed' since retry button is shown instead */}
-                {/* Also show re-parsing indicator when reparsingPhotoId matches */}
-                {/* Don't show 'processing' badge if there's no active stream (e.g., after cancellation) */}
+                {/* Parsing status badge - show result status or active processing indicator */}
+                {/* Don't show for 'failed' since retry button is shown instead */}
                 {(att.parsingStatus &&
                   att.parsingStatus !== 'failed' &&
-                  (att.parsingStatus !== 'processing' || isActuallyProcessing)) ||
+                  att.parsingStatus !== 'processing') ||
                 isActuallyProcessing ? (
                   <div
                     data-element="parsing-status"

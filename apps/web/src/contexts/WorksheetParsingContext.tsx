@@ -523,9 +523,8 @@ export function WorksheetParsingProvider({
         streamType: 'initial',
       })
 
-      // Optimistic update
+      // Clear any previous error (streaming state tracks in-progress)
       updateAttachmentStatus(attachmentId, {
-        parsingStatus: 'processing',
         parsingError: null,
       })
 
@@ -597,9 +596,8 @@ export function WorksheetParsingProvider({
         totalProblems: problemIndices.length,
       })
 
-      // Optimistic update
+      // Clear any previous error (streaming state tracks in-progress)
       updateAttachmentStatus(attachmentId, {
-        parsingStatus: 'processing',
         parsingError: null,
       })
 
