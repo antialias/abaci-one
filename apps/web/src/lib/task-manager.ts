@@ -1,7 +1,9 @@
 import { createId } from '@paralleldrive/cuid2'
-import { eq, asc, inArray } from 'drizzle-orm'
+import { hostname } from 'os'
+import { eq, asc, inArray, and, lt, or, isNull } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getSocketIO } from '../socket-server'
+import { createRedisClient, getRedisClient } from './redis'
 import type {
   TaskType,
   TaskStatus,
@@ -9,8 +11,29 @@ import type {
   BackgroundTaskEvent,
 } from '@/db/schema/background-tasks'
 import type { TaskEventBase } from './tasks/events'
+import type Redis from 'ioredis'
 
 export type { TaskType, TaskStatus, BackgroundTask, BackgroundTaskEvent }
+
+// ============================================================================
+// Runner Identity & Constants
+// ============================================================================
+
+/**
+ * Unique identifier for this pod/process.
+ * K8s StatefulSets give predictable names: abaci-app-0, abaci-app-1, abaci-app-2
+ * Falls back to random ID for dev/testing
+ */
+const RUNNER_ID = process.env.HOSTNAME || hostname() || `runner-${createId()}`
+
+/** How often to update task heartbeat (ms) */
+const HEARTBEAT_INTERVAL_MS = 10_000 // 10 seconds
+
+/** How long before a task is considered a zombie (ms) - 3 missed heartbeats */
+const ZOMBIE_THRESHOLD_MS = 30_000 // 30 seconds
+
+/** How often to sync cancelled tasks from DB (fallback for missed Redis messages) */
+const DB_CANCELLATION_SYNC_INTERVAL_MS = 5_000 // 5 seconds
 
 // ============================================================================
 // Lifecycle Hooks
@@ -68,6 +91,100 @@ function clearTaskTimeout(taskId: string): void {
     clearTimeout(timer)
     activeTimeouts.delete(taskId)
   }
+}
+
+// ============================================================================
+// Heartbeat Management
+// ============================================================================
+
+/** Active heartbeat timers, keyed by task ID */
+const activeHeartbeats = new Map<string, ReturnType<typeof setInterval>>()
+
+/** Start heartbeat timer for a task */
+function startHeartbeat(taskId: string): void {
+  // Don't start duplicate heartbeats
+  if (activeHeartbeats.has(taskId)) return
+
+  const timer = setInterval(async () => {
+    try {
+      await db
+        .update(schema.backgroundTasks)
+        .set({ lastHeartbeat: new Date() })
+        .where(eq(schema.backgroundTasks.id, taskId))
+    } catch (err) {
+      console.error(`[TaskManager] Heartbeat failed for ${taskId}:`, err)
+    }
+  }, HEARTBEAT_INTERVAL_MS)
+
+  activeHeartbeats.set(taskId, timer)
+}
+
+/** Stop heartbeat timer for a task */
+function stopHeartbeat(taskId: string): void {
+  const timer = activeHeartbeats.get(taskId)
+  if (timer) {
+    clearInterval(timer)
+    activeHeartbeats.delete(taskId)
+  }
+}
+
+// ============================================================================
+// Redis Cancellation Pub/Sub
+// ============================================================================
+
+/** Dedicated Redis client for cancellation subscription */
+let cancellationSubscriber: Redis | null = null
+
+/** DB sync interval for cancellation fallback */
+let dbSyncInterval: ReturnType<typeof setInterval> | null = null
+
+/**
+ * Initialize Redis subscriber for cross-pod task cancellation.
+ * Call once at app startup.
+ */
+export function initCancellationSubscriber(): void {
+  const redis = createRedisClient()
+  if (!redis) {
+    console.log('[TaskManager] Redis unavailable, cancellation relies on DB sync only')
+    return
+  }
+
+  cancellationSubscriber = redis
+
+  redis.psubscribe('task:cancel:*').catch((err) => {
+    console.error('[TaskManager] Failed to subscribe to task cancellation channel:', err)
+  })
+
+  redis.on('pmessage', (_pattern, channel, _message) => {
+    const taskId = channel.replace('task:cancel:', '')
+    cancelledTasks.add(taskId)
+    console.log(`[TaskManager] Received cancellation for ${taskId} via Redis`)
+  })
+
+  console.log(`[TaskManager] Redis cancellation subscriber initialized (runner: ${RUNNER_ID})`)
+}
+
+/**
+ * Initialize DB sync fallback for cancellation.
+ * Catches cases where Redis messages are missed (network issues, late subscriber, etc.)
+ * Call once at app startup.
+ */
+export function initCancellationDbSync(): void {
+  dbSyncInterval = setInterval(async () => {
+    try {
+      const cancelledInDb = await db.query.backgroundTasks.findMany({
+        where: eq(schema.backgroundTasks.status, 'cancelled'),
+        columns: { id: true },
+      })
+      for (const task of cancelledInDb) {
+        cancelledTasks.add(task.id)
+      }
+    } catch (err) {
+      console.error('[TaskManager] DB cancellation sync failed:', err)
+    }
+  }, DB_CANCELLATION_SYNC_INTERVAL_MS)
+
+  console.log('[TaskManager] DB cancellation sync initialized')
 }
 
 /**
@@ -281,9 +398,21 @@ export async function cancelTask(taskId: string): Promise<boolean> {
   if (task.status !== 'pending' && task.status !== 'running') return false
 
   clearTaskTimeout(taskId)
+  stopHeartbeat(taskId)
 
   // Mark as cancelled in memory for same-pod handler check
   cancelledTasks.add(taskId)
+
+  // Publish to Redis for cross-pod cancellation
+  const redis = getRedisClient()
+  if (redis) {
+    try {
+      await redis.publish(`task:cancel:${taskId}`, 'cancelled')
+    } catch (err) {
+      console.error(`[TaskManager] Failed to publish cancellation to Redis:`, err)
+      // Continue anyway - DB update will be picked up by sync
+    }
+  }
 
   const now = new Date()
   await db
@@ -405,7 +534,7 @@ export async function createTask<
   const id = createId()
   const now = new Date()
 
-  // Persist task
+  // Persist task with runner ID
   await db.insert(schema.backgroundTasks).values({
     id,
     type,
@@ -413,6 +542,7 @@ export async function createTask<
     input: input as any,
     createdAt: now,
     userId: userId ?? null,
+    runnerId: RUNNER_ID,
   })
 
   // Create handle for the handler
@@ -451,13 +581,27 @@ export async function createTask<
   }
 
   setImmediate(async () => {
-    // Update status to running
+    // Check if already cancelled before we start
+    if (cancelledTasks.has(id)) {
+      console.log(`[TaskManager] Task ${id} cancelled before start`)
+      return
+    }
+
+    // Update status to running with initial heartbeat
+    const startTime = new Date()
     await db
       .update(schema.backgroundTasks)
-      .set({ status: 'running', startedAt: new Date() })
+      .set({
+        status: 'running',
+        startedAt: startTime,
+        lastHeartbeat: startTime,
+      })
       .where(eq(schema.backgroundTasks.id, id))
 
     await emitTaskEvent(id, 'started', {})
+
+    // Start heartbeat timer
+    startHeartbeat(id)
 
     // Start timeout timer
     const timeoutMs = getTaskTimeout(type)
@@ -489,6 +633,7 @@ export async function createTask<
     } finally {
       // Clean up tracking state
       clearTaskTimeout(id)
+      stopHeartbeat(id)
       cancelledTasks.delete(id)
       lastProgressDbWrite.delete(id)
     }
@@ -502,56 +647,62 @@ export async function createTask<
 // ============================================================================
 
 /**
- * Mark any tasks stuck in 'running' or 'pending' status as failed.
+ * Mark zombie tasks as failed - pod-aware version.
  *
- * This should be called on server startup to clean up tasks that were
- * interrupted by a pod restart or crash. Without this, those tasks
- * would appear as "running" forever in the UI.
+ * This should be called on server startup. It only cleans up tasks that:
+ * 1. Belong to this runner (we crashed and restarted)
+ * 2. Have no runner assigned (legacy or orphaned)
+ * 3. Have stale heartbeats (runner died without cleanup)
+ *
+ * Tasks with recent heartbeats and different runner IDs are left alone -
+ * they're running on other pods.
  *
  * @returns Number of zombie tasks cleaned up
  */
 export async function cleanupZombieTasks(): Promise<number> {
-  const zombies = await db.query.backgroundTasks.findMany({
+  const now = new Date()
+  const staleThreshold = new Date(now.getTime() - ZOMBIE_THRESHOLD_MS)
+
+  const potentialZombies = await db.query.backgroundTasks.findMany({
     where: inArray(schema.backgroundTasks.status, ['running', 'pending']),
   })
 
-  if (zombies.length === 0) {
+  if (potentialZombies.length === 0) {
     return 0
   }
 
-  console.log(`[TaskManager] Found ${zombies.length} zombie task(s), marking as failed`)
+  console.log(
+    `[TaskManager] Found ${potentialZombies.length} running/pending task(s), checking for zombies (runner: ${RUNNER_ID})...`
+  )
 
-  const now = new Date()
-  for (const task of zombies) {
-    await db
-      .update(schema.backgroundTasks)
-      .set({
-        status: 'failed',
-        error: 'Task interrupted by server restart',
-        completedAt: now,
-      })
-      .where(eq(schema.backgroundTasks.id, task.id))
+  let cleaned = 0
+  for (const task of potentialZombies) {
+    const isOurTask = task.runnerId === RUNNER_ID
+    const hasNoRunner = !task.runnerId // Legacy task or never started
+    const isStale = task.lastHeartbeat && task.lastHeartbeat < staleThreshold
 
-    await emitTaskEvent(task.id, 'failed', {
-      error: 'Task interrupted by server restart',
-    })
+    // Only clean up if:
+    // 1. It's our own task (we crashed and restarted)
+    // 2. It has no runner ID (legacy or orphaned)
+    // 3. Heartbeat is stale (runner died)
+    if (isOurTask || hasNoRunner || isStale) {
+      const reason = isOurTask
+        ? 'Task interrupted by runner restart'
+        : hasNoRunner
+          ? 'Task had no runner assigned'
+          : `Runner heartbeat stale (last: ${task.lastHeartbeat?.toISOString()})`
 
-    console.log(
-      `[TaskManager] Zombie task ${task.id} (${task.type}) marked as failed`
-    )
-
-    try {
-      lifecycleHooks.onTaskFailed?.(
-        task.id,
-        task.type as TaskType,
-        'Task interrupted by server restart'
+      await failTask(task.id, reason, task.type as TaskType)
+      console.log(`[TaskManager] Cleaned zombie ${task.id} (${task.type}): ${reason}`)
+      cleaned++
+    } else {
+      console.log(
+        `[TaskManager] Skipping task ${task.id} - running on ${task.runnerId} with recent heartbeat`
       )
-    } catch (err) {
-      console.error(`[TaskManager] Lifecycle hook onTaskFailed error during cleanup:`, err)
     }
   }
 
-  return zombies.length
+  return cleaned
 }
 
 /**

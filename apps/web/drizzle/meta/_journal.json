@@ -589,6 +589,13 @@
       "when": 1770234901757,
       "tag": "0083_add_workshop_session_current_task_id",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "6",
+      "when": 1770508800000,
+      "tag": "0084_add_task_runner_tracking",
+      "breakpoints": true
     }
   ]
 }

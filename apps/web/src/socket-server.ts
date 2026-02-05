@@ -1799,8 +1799,19 @@ export function initializeSocketServer(httpServer: HTTPServer) {
   // Store in globalThis to make accessible across module boundaries
   globalThis.__socketIO = io
 
-  // Clean up zombie tasks from previous server instance
-  import('./lib/task-manager').then(({ cleanupZombieTasks, registerTaskHooks }) => {
+  // Initialize task manager for distributed operation
+  import('./lib/task-manager').then(({
+    cleanupZombieTasks,
+    registerTaskHooks,
+    initCancellationSubscriber,
+    initCancellationDbSync,
+  }) => {
+    // Initialize Redis subscriber for cross-pod cancellation
+    initCancellationSubscriber()
+
+    // Initialize DB sync fallback for cancellation
+    initCancellationDbSync()
+
     // Register lifecycle hooks for monitoring
     registerTaskHooks({
       onTaskCreated: (taskId, type) => {
@@ -1811,16 +1822,16 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       },
     })
 
-    // Mark any running/pending tasks from before this restart as failed
+    // Clean up zombie tasks (now pod-aware)
     cleanupZombieTasks().then((count) => {
       if (count > 0) {
-        console.log(`[TaskManager] Cleaned up ${count} zombie task(s) from previous instance`)
+        console.log(`[TaskManager] Cleaned up ${count} zombie task(s)`)
       }
     }).catch((err) => {
       console.error('[TaskManager] Failed to clean up zombie tasks:', err)
     })
   }).catch((err) => {
-    console.error('[TaskManager] Failed to import task-manager for cleanup:', err)
+    console.error('[TaskManager] Failed to import task-manager for initialization:', err)
   })
 
   return io

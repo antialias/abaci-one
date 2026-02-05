@@ -10,6 +10,53 @@ const nextConfig = {
   // Enable source maps in production for easier debugging
   productionBrowserSourceMaps: true,
 
+  // Generate unique build ID for cache busting
+  generateBuildId: async () => {
+    // Use git commit hash if available, otherwise timestamp
+    const { execSync } = require('child_process')
+    try {
+      return execSync('git rev-parse --short HEAD').toString().trim()
+    } catch {
+      return `build-${Date.now()}`
+    }
+  },
+
+  // Configure cache headers for static assets
+  async headers() {
+    return [
+      {
+        // Static assets with content hash - cache forever (immutable)
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // Build manifest and other _next files without hash
+        source: '/_next/:path((?!static).*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      {
+        // HTML pages - don't cache (or very short cache)
+        source: '/:path((?!_next|api).*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+    ]
+  },
+
   eslint: {
     ignoreDuringBuilds: true,
   },

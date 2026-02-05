@@ -50,6 +50,12 @@ export const backgroundTasks = sqliteTable(
 
     /** Optional user ID association */
     userId: text('user_id'),
+
+    /** Runner ID - identifies which pod/process owns this task */
+    runnerId: text('runner_id'),
+
+    /** Last heartbeat timestamp - updated periodically while task is running */
+    lastHeartbeat: integer('last_heartbeat', { mode: 'timestamp' }),
   },
   (table) => ({
     statusIdx: index('background_tasks_status_idx').on(table.status),
