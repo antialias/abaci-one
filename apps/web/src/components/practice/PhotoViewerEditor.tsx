@@ -180,6 +180,9 @@ export function PhotoViewerEditor({
   const isReparsing =
     streamingState?.streamType === 'reparse' &&
     (streamingState.status === 'connecting' || streamingState.status === 'processing')
+  // "Processing" status should only show if there's an active stream
+  // This prevents showing stale "processing" badge after cancellation
+  const isActuallyProcessing = streamingState !== undefined
 
   // Handlers using context directly
   const handleParse = useCallback(
@@ -1830,41 +1833,44 @@ export function PhotoViewerEditor({
         )}
 
         {/* Parsing status badge - don't show for 'failed' since retry button is shown instead */}
-        {currentPhoto.parsingStatus && currentPhoto.parsingStatus !== 'failed' && (
-          <div
-            data-element="parsing-status-badge"
-            className={css({
-              px: 4,
-              py: 2,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              borderRadius: 'lg',
-              backgroundColor:
-                currentPhoto.parsingStatus === 'processing'
-                  ? 'blue.500'
-                  : currentPhoto.parsingStatus === 'needs_review'
-                    ? 'yellow.500'
-                    : currentPhoto.parsingStatus === 'approved'
-                      ? 'green.500'
-                      : 'gray.500',
-              color: currentPhoto.parsingStatus === 'needs_review' ? 'yellow.900' : 'white',
-            })}
-          >
-            {currentPhoto.parsingStatus === 'processing' && '⏳'}
-            {currentPhoto.parsingStatus === 'needs_review' && '⚠️'}
-            {currentPhoto.parsingStatus === 'approved' && '✓'}
-            {currentPhoto.parsingStatus === 'processing'
-              ? 'Analyzing...'
-              : currentPhoto.parsingStatus === 'needs_review'
-                ? `${currentPhoto.problemCount ?? '?'} problems (needs review)`
-                : currentPhoto.parsingStatus === 'approved'
-                  ? `${currentPhoto.problemCount ?? '?'} problems`
-                  : currentPhoto.parsingStatus}
-            {/* Cancel button for processing state */}
-            {currentPhoto.parsingStatus === 'processing' && onCancelParsing && (
+        {/* Don't show 'processing' badge if there's no active stream (e.g., after cancellation) */}
+        {currentPhoto.parsingStatus &&
+          currentPhoto.parsingStatus !== 'failed' &&
+          (currentPhoto.parsingStatus !== 'processing' || isActuallyProcessing) && (
+            <div
+              data-element="parsing-status-badge"
+              className={css({
+                px: 4,
+                py: 2,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                borderRadius: 'lg',
+                backgroundColor:
+                  currentPhoto.parsingStatus === 'processing' && isActuallyProcessing
+                    ? 'blue.500'
+                    : currentPhoto.parsingStatus === 'needs_review'
+                      ? 'yellow.500'
+                      : currentPhoto.parsingStatus === 'approved'
+                        ? 'green.500'
+                        : 'gray.500',
+                color: currentPhoto.parsingStatus === 'needs_review' ? 'yellow.900' : 'white',
+              })}
+            >
+              {currentPhoto.parsingStatus === 'processing' && isActuallyProcessing && '⏳'}
+              {currentPhoto.parsingStatus === 'needs_review' && '⚠️'}
+              {currentPhoto.parsingStatus === 'approved' && '✓'}
+              {currentPhoto.parsingStatus === 'processing' && isActuallyProcessing
+                ? 'Analyzing...'
+                : currentPhoto.parsingStatus === 'needs_review'
+                  ? `${currentPhoto.problemCount ?? '?'} problems (needs review)`
+                  : currentPhoto.parsingStatus === 'approved'
+                    ? `${currentPhoto.problemCount ?? '?'} problems`
+                    : currentPhoto.parsingStatus}
+              {/* Cancel button for processing state */}
+              {currentPhoto.parsingStatus === 'processing' && isActuallyProcessing && onCancelParsing && (
               <button
                 type="button"
                 onClick={(e) => {

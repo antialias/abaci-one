@@ -378,6 +378,10 @@ export function OfflineWorkSection({
             (streamingState?.status === 'connecting' ||
               streamingState?.status === 'reasoning' ||
               streamingState?.status === 'generating')
+          // "Processing" status should only show if there's an active stream
+          // This prevents showing stale "processing" badge after cancellation
+          const isActuallyProcessing =
+            (att.parsingStatus === 'processing' && isStreaming) || reparsingPhotoId === att.id
 
           return (
             <div
@@ -581,8 +585,11 @@ export function OfflineWorkSection({
 
                 {/* Parsing status badge - don't show for 'failed' since retry button is shown instead */}
                 {/* Also show re-parsing indicator when reparsingPhotoId matches */}
-                {(att.parsingStatus && att.parsingStatus !== 'failed') ||
-                reparsingPhotoId === att.id ? (
+                {/* Don't show 'processing' badge if there's no active stream (e.g., after cancellation) */}
+                {(att.parsingStatus &&
+                  att.parsingStatus !== 'failed' &&
+                  (att.parsingStatus !== 'processing' || isActuallyProcessing)) ||
+                isActuallyProcessing ? (
                   <div
                     data-element="parsing-status"
                     className={css({
@@ -597,24 +604,23 @@ export function OfflineWorkSection({
                       borderRadius: 'full',
                       fontSize: '0.6875rem',
                       fontWeight: '600',
-                      backgroundColor:
-                        att.parsingStatus === 'processing' || reparsingPhotoId === att.id
-                          ? 'blue.500'
-                          : att.parsingStatus === 'needs_review'
-                            ? 'yellow.500'
-                            : att.parsingStatus === 'approved'
-                              ? 'green.500'
-                              : 'gray.500',
+                      backgroundColor: isActuallyProcessing
+                        ? 'blue.500'
+                        : att.parsingStatus === 'needs_review'
+                          ? 'yellow.500'
+                          : att.parsingStatus === 'approved'
+                            ? 'green.500'
+                            : 'gray.500',
                       color:
-                        att.parsingStatus === 'needs_review' && reparsingPhotoId !== att.id
+                        att.parsingStatus === 'needs_review' && !isActuallyProcessing
                           ? 'yellow.900'
                           : 'white',
                     })}
                   >
-                    {(att.parsingStatus === 'processing' || reparsingPhotoId === att.id) && '⏳'}
-                    {att.parsingStatus === 'needs_review' && reparsingPhotoId !== att.id && '⚠️'}
-                    {att.parsingStatus === 'approved' && reparsingPhotoId !== att.id && '✓'}
-                    {att.parsingStatus === 'processing' || reparsingPhotoId === att.id
+                    {isActuallyProcessing && '⏳'}
+                    {att.parsingStatus === 'needs_review' && !isActuallyProcessing && '⚠️'}
+                    {att.parsingStatus === 'approved' && !isActuallyProcessing && '✓'}
+                    {isActuallyProcessing
                       ? reparsingPhotoId === att.id
                         ? 'Re-parsing...'
                         : 'Analyzing...'
@@ -624,8 +630,7 @@ export function OfflineWorkSection({
                           ? `${att.rawParsingResult?.problems?.length ?? '?'} problems`
                           : att.parsingStatus}
                     {/* Cancel button for processing or re-parsing state */}
-                    {(att.parsingStatus === 'processing' || reparsingPhotoId === att.id) &&
-                      onCancelParsing && (
+                    {isActuallyProcessing && onCancelParsing && (
                         <button
                           type="button"
                           onClick={(e) => {
