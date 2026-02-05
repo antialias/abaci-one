@@ -8,7 +8,7 @@ import {
   transformLLMDefinitionToInternal,
 } from '@/lib/flowchart-workshop/llm-schemas'
 import { validateTestCasesWithCoverage } from '@/lib/flowchart-workshop/test-case-validator'
-import { llm, type StreamEvent } from '@/lib/llm'
+import { createTaskLLM } from '@/lib/llm'
 import { createTask } from '../task-manager'
 import type { FlowchartGenerateEvent } from './events'
 
@@ -131,7 +131,13 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
           })
         }
 
-        const llmStream = llm.stream({
+        // Create task-aware LLM client that handles streaming events
+        // Middleware automatically:
+        // - Emits transient reasoning/output_delta events to Socket.IO
+        // - Persists reasoning/output snapshots every 3s for page-reload recovery
+        const taskLLM = createTaskLLM(handle)
+
+        const llmStream = taskLLM.stream({
           provider: 'openai',
           model: 'gpt-5.2',
           prompt: fullPrompt,
@@ -146,67 +152,22 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
 
         handle.setProgress(10, 'AI is thinking...')
 
-        // Accumulate streaming text for periodic snapshots (enables page-reload recovery)
-        let accumulatedReasoning = ''
-        let accumulatedOutput = ''
-        let lastSnapshotTime = Date.now()
-        const SNAPSHOT_INTERVAL_MS = 3000
-
-        for await (const event of llmStream as AsyncGenerator<
-          StreamEvent<GeneratedFlowchart>,
-          void,
-          unknown
-        >) {
+        for await (const event of llmStream) {
           if (handle.isCancelled()) {
             console.log(`[flowchart-generate] Task cancelled, breaking LLM loop`)
             break
           }
 
+          // Middleware handles reasoning, output_delta, and snapshots automatically
           switch (event.type) {
             case 'started':
               handle.setProgress(15, 'AI is thinking...')
               break
 
-            case 'reasoning': {
-              // Transient: no DB write per reasoning delta
-              handle.emitTransient({
-                type: 'reasoning',
-                text: event.text,
-                isDelta: event.isDelta,
-                summaryIndex: event.summaryIndex,
-              })
-              // Accumulate for snapshot
-              if (event.isDelta) {
-                accumulatedReasoning += event.text
-              } else {
-                accumulatedReasoning = event.text
-              }
-              // Periodic snapshot for page-reload recovery
-              const now = Date.now()
-              if (now - lastSnapshotTime >= SNAPSHOT_INTERVAL_MS) {
-                lastSnapshotTime = now
-                handle.emit({ type: 'reasoning_snapshot', text: accumulatedReasoning })
-              }
-              break
-            }
-
-            case 'output_delta': {
+            case 'output_delta':
+              // Just update progress - middleware handles event emission
               handle.setProgress(50, 'Generating flowchart...')
-              // Transient: no DB write per output delta
-              handle.emitTransient({
-                type: 'output_delta',
-                text: event.text,
-                outputIndex: event.outputIndex,
-              })
-              // Accumulate for snapshot
-              accumulatedOutput += event.text
-              const nowOut = Date.now()
-              if (nowOut - lastSnapshotTime >= SNAPSHOT_INTERVAL_MS) {
-                lastSnapshotTime = nowOut
-                handle.emit({ type: 'output_snapshot', text: accumulatedOutput })
-              }
               break
-            }
 
             case 'error':
               console.error('[flowchart-generate] LLM error:', event.message, event.code)

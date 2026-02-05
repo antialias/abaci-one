@@ -8,25 +8,23 @@
  * - Database persistence of results
  */
 
+import { eq } from 'drizzle-orm'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
-import { eq } from 'drizzle-orm'
 import sharp from 'sharp'
 import { z } from 'zod'
 import { db } from '@/db'
-import { practiceAttachments, type ParsingStatus } from '@/db/schema/practice-attachments'
+import { type ParsingStatus, practiceAttachments } from '@/db/schema/practice-attachments'
+import { createPersistenceMiddleware, LLM_SNAPSHOT_INTERVAL_MS, llm } from '@/lib/llm'
 import { createTask, type TaskHandle } from '../task-manager'
-import type { WorksheetReparseEvent } from './events'
-import { llm } from '@/lib/llm'
 import {
-  type ParsedProblem,
   type BoundingBox,
-  type WorksheetParsingResult,
-  getModelConfig,
-  getDefaultModelConfig,
-  calculateCropRegion,
   CROP_PADDING,
+  calculateCropRegion,
+  type ParsedProblem,
+  type WorksheetParsingResult,
 } from '../worksheet-parsing'
+import type { WorksheetReparseEvent } from './events'
 
 /**
  * Input for worksheet re-parsing task
@@ -42,8 +40,6 @@ export interface WorksheetReparseInput {
   boundingBoxes: BoundingBox[]
   /** Additional context for the LLM */
   additionalContext?: string
-  /** Model config ID to use */
-  modelConfigId?: string
 }
 
 /**
@@ -189,14 +185,7 @@ export async function startWorksheetReparse(input: WorksheetReparseInput): Promi
     input,
     async (handle, config) => {
       console.log('[WorksheetReparseTask] Handler started for attachment:', config.attachmentId)
-      const {
-        attachmentId,
-        playerId,
-        problemIndices,
-        boundingBoxes,
-        additionalContext,
-        modelConfigId,
-      } = config
+      const { attachmentId, playerId, problemIndices, boundingBoxes, additionalContext } = config
 
       handle.setProgress(5, 'Initializing re-parser...')
       handle.emit({
@@ -213,7 +202,6 @@ export async function startWorksheetReparse(input: WorksheetReparseInput): Promi
           problemIndices,
           boundingBoxes,
           additionalContext,
-          modelConfigId,
         })
       } catch (error) {
         // Update DB with error
@@ -238,14 +226,7 @@ async function runReparse(
   handle: TaskHandle<WorksheetReparseOutput, WorksheetReparseEvent>,
   config: WorksheetReparseInput
 ): Promise<void> {
-  const {
-    attachmentId,
-    playerId,
-    problemIndices,
-    boundingBoxes,
-    additionalContext,
-    modelConfigId,
-  } = config
+  const { attachmentId, playerId, problemIndices, boundingBoxes, additionalContext } = config
 
   // Get attachment record
   const attachment = await db
@@ -269,9 +250,6 @@ async function runReparse(
   const filepath = join(uploadDir, attachment.filename)
   const imageBuffer = await readFile(filepath)
   const mimeType = attachment.mimeType || 'image/jpeg'
-
-  // Resolve model config
-  const modelConfig = modelConfigId ? getModelConfig(modelConfigId) : getDefaultModelConfig()
 
   // Build the prompt
   const prompt = buildSingleProblemPrompt(additionalContext)
@@ -320,13 +298,49 @@ async function runReparse(
       const base64Cropped = croppedBuffer.toString('base64')
       const croppedDataUrl = `data:${mimeType};base64,${base64Cropped}`
 
+      // Create per-problem middleware-enhanced client (captures problemIndex in closure)
+      const problemLLM = llm.with(
+        createPersistenceMiddleware({
+          snapshotIntervalMs: LLM_SNAPSHOT_INTERVAL_MS,
+          onReasoning: (text, isDelta) => {
+            handle.emitTransient({
+              type: 'reasoning',
+              problemIndex,
+              text,
+              isDelta,
+            } as WorksheetReparseEvent)
+          },
+          onOutputDelta: (text) => {
+            handle.emitTransient({
+              type: 'output_delta',
+              problemIndex,
+              text,
+            } as WorksheetReparseEvent)
+          },
+          onReasoningSnapshot: (text) => {
+            handle.emit({
+              type: 'reasoning_snapshot',
+              problemIndex,
+              text,
+            } as WorksheetReparseEvent)
+          },
+          onOutputSnapshot: (text) => {
+            handle.emit({
+              type: 'output_snapshot',
+              problemIndex,
+              text,
+            } as WorksheetReparseEvent)
+          },
+        })
+      )
+
       // Stream the LLM call for this problem
-      const llmStream = llm.stream({
+      const llmStream = problemLLM.stream({
         prompt,
         images: [croppedDataUrl],
         schema: SingleProblemSchema,
         provider: 'openai',
-        model: modelConfig?.model,
+        model: 'gpt-5.2',
         reasoning: {
           effort: 'medium',
           summary: 'auto',
@@ -346,41 +360,18 @@ async function runReparse(
           return
         }
 
-        switch (event.type) {
-          case 'reasoning':
-            // Transient: Socket.IO only, no DB write (high-frequency streaming tokens)
-            handle.emitTransient({
-              type: 'reasoning',
-              problemIndex,
-              text: event.text,
-              summaryIndex: event.summaryIndex,
-              isDelta: event.isDelta,
-            })
-            break
-
-          case 'output_delta':
-            // Transient: Socket.IO only, no DB write (high-frequency streaming tokens)
-            handle.emitTransient({
-              type: 'output_delta',
-              problemIndex,
-              text: event.text,
-              outputIndex: event.outputIndex,
-            })
-            break
-
-          case 'error':
-            handle.emit({
-              type: 'problem_error',
-              problemIndex,
-              message: event.message,
-              code: event.code,
-            })
-            break
-
-          case 'complete':
-            problemResult = event.data
-            break
+        // Handle domain-specific events (reasoning/output_delta handled by middleware)
+        if (event.type === 'error') {
+          handle.emit({
+            type: 'problem_error',
+            problemIndex,
+            message: event.message,
+            code: event.code,
+          })
+        } else if (event.type === 'complete') {
+          problemResult = event.data
         }
+        // reasoning and output_delta events are handled by middleware
       }
 
       if (problemResult) {

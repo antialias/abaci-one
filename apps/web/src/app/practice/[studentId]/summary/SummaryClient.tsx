@@ -20,12 +20,14 @@ import type { ScrollspySection } from '@/components/practice/ScrollspyNav'
 import { ScrollspyNav } from '@/components/practice/ScrollspyNav'
 import { SessionHero } from '@/components/practice/SessionHero'
 import { SkillsPanel } from '@/components/practice/SkillsPanel'
+
 // Dynamic import: StartPracticeModal → SkillTutorialLauncher → TutorialPlayer → @soroban/abacus-react
 // This breaks the dependency chain that pulls the entire abacus library into page.js
 const StartPracticeModal = dynamic(
   () => import('@/components/practice/StartPracticeModal').then((m) => m.StartPracticeModal),
   { ssr: false }
 )
+
 import {
   filterProblemsNeedingAttention,
   getProblemsWithContext,
@@ -50,13 +52,13 @@ import {
   SessionModeBannerProvider,
   useSessionModeBanner,
 } from '@/contexts/SessionModeBannerContext'
-import { WorksheetParsingProvider } from '@/contexts/WorksheetParsingContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { WorksheetParsingProvider } from '@/contexts/WorksheetParsingContext'
 import type { Player } from '@/db/schema/players'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
-import { canUploadPhotos, usePlayerAccess } from '@/hooks/usePlayerAccess'
 import { usePhotoManagement } from '@/hooks/usePhotoManagement'
 import { usePhotoViewer } from '@/hooks/usePhotoViewer'
+import { canUploadPhotos, usePlayerAccess } from '@/hooks/usePlayerAccess'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import { useSessionRecording } from '@/hooks/useSessionRecording'
 import {
@@ -72,7 +74,6 @@ import { computeBktFromHistory, type SkillBktResult } from '@/lib/curriculum/bkt
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { api } from '@/lib/queryClient'
 import { attachmentKeys } from '@/lib/queryKeys'
-import { PARSING_MODEL_CONFIGS } from '@/lib/worksheet-parsing'
 import type { SessionAttachmentResponse } from '@/types/attachments'
 import { css } from '../../../../../styled-system/css'
 
@@ -590,7 +591,6 @@ export function SummaryClient({
             isOpen={photoViewer.isOpen}
             onClose={photoViewer.close}
             onEditConfirm={photoManagement.handlePhotoEditConfirm}
-            modelConfigs={PARSING_MODEL_CONFIGS}
             onApprove={async (attachmentId) => {
               try {
                 const result = await approveAndCreateSession.mutateAsync(attachmentId)

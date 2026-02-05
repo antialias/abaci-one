@@ -25,38 +25,38 @@
  * ```
  */
 
+import { useQueryClient } from '@tanstack/react-query'
 import {
   createContext,
-  useContext,
-  useReducer,
-  useCallback,
-  useRef,
-  useMemo,
-  useEffect,
   type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
 } from 'react'
 import type { Socket } from 'socket.io-client'
-import { createSocket } from '@/lib/socket'
-import { useQueryClient } from '@tanstack/react-query'
-import { attachmentKeys, sessionPlanKeys, sessionHistoryKeys } from '@/lib/queryKeys'
+import type { ParsingStatus } from '@/db/schema/practice-attachments'
 import { api } from '@/lib/queryClient'
-import {
-  parsingReducer,
-  initialParsingState,
-  isParsingAttachment,
-  isAnyParsingActive,
-  getStreamingStatus,
-  type ParsingContextState,
-  type StreamingStatus,
-  type ParsingStats,
-} from '@/lib/worksheet-parsing/state-machine'
-import { extractCompletedProblemsFromPartialJson } from '@/lib/worksheet-parsing/sse-parser'
+import { attachmentKeys, sessionHistoryKeys, sessionPlanKeys } from '@/lib/queryKeys'
+import { createSocket } from '@/lib/socket'
 import type {
-  WorksheetParsingResult,
   BoundingBox,
   ProblemCorrection,
+  WorksheetParsingResult,
 } from '@/lib/worksheet-parsing'
-import type { ParsingStatus } from '@/db/schema/practice-attachments'
+import { extractCompletedProblemsFromPartialJson } from '@/lib/worksheet-parsing/sse-parser'
+import {
+  getStreamingStatus,
+  initialParsingState,
+  isAnyParsingActive,
+  isParsingAttachment,
+  type ParsingContextState,
+  type ParsingStats,
+  parsingReducer,
+  type StreamingStatus,
+} from '@/lib/worksheet-parsing/state-machine'
 
 // ============================================================================
 // Types
@@ -65,8 +65,6 @@ import type { ParsingStatus } from '@/db/schema/practice-attachments'
 /** Options for starting a parse operation */
 export interface StartParseOptions {
   attachmentId: string
-  /** Optional model config ID - uses default if not specified */
-  modelConfigId?: string
   /** Optional additional context/hints for the LLM */
   additionalContext?: string
   /** Optional bounding boxes to preserve from user adjustments */
@@ -82,8 +80,6 @@ export interface StartReparseOptions {
   boundingBoxes: BoundingBox[]
   /** Optional additional context/hints for the LLM */
   additionalContext?: string
-  /** Optional model config ID */
-  modelConfigId?: string
 }
 
 /** Response from approve API */
@@ -505,7 +501,7 @@ export function WorksheetParsingProvider({
 
   const startParse = useCallback(
     async (options: StartParseOptions) => {
-      const { attachmentId, modelConfigId, additionalContext, preservedBoundingBoxes } = options
+      const { attachmentId, additionalContext, preservedBoundingBoxes } = options
 
       // If switching to a different attachment, revert the previous one's status
       const previousAttachmentId = state.activeAttachmentId
@@ -547,7 +543,6 @@ export function WorksheetParsingProvider({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              modelConfigId,
               additionalContext,
               preservedBoundingBoxes,
             }),
@@ -599,8 +594,7 @@ export function WorksheetParsingProvider({
 
   const startReparse = useCallback(
     async (options: StartReparseOptions) => {
-      const { attachmentId, problemIndices, boundingBoxes, additionalContext, modelConfigId } =
-        options
+      const { attachmentId, problemIndices, boundingBoxes, additionalContext } = options
 
       // If switching to a different attachment, revert the previous one's status
       const previousAttachmentId = state.activeAttachmentId
@@ -646,7 +640,6 @@ export function WorksheetParsingProvider({
               problemIndices,
               boundingBoxes,
               additionalContext,
-              modelConfigId,
             }),
           }
         )

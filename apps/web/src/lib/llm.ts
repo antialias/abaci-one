@@ -20,7 +20,16 @@
  * @see packages/llm-client/README.md for full documentation
  */
 
-import { LLMClient } from '@soroban/llm-client'
+import { createPersistenceMiddleware, LLMClient } from '@soroban/llm-client'
+import type { TaskHandle } from './task-manager'
+import type { TaskEventBase } from './tasks/events'
+
+// Re-export LLMClient class for use in other modules
+export { LLMClient }
+
+// Configurable snapshot interval for LLM streaming persistence
+// Can be adjusted or moved to env config if needed
+export const LLM_SNAPSHOT_INTERVAL_MS = 3000
 
 // Create singleton instance
 // Configuration is automatically loaded from environment variables:
@@ -32,40 +41,97 @@ import { LLMClient } from '@soroban/llm-client'
 // - LLM_ANTHROPIC_BASE_URL: Anthropic base URL (optional)
 export const llm = new LLMClient()
 
+/**
+ * Create an LLM client bound to a task handle.
+ *
+ * Automatically:
+ * - Emits transient reasoning/output events to Socket.IO (real-time UI)
+ * - Persists reasoning/output snapshots every 3s (page-reload recovery)
+ *
+ * @param handle - The task handle for emitting events
+ * @returns A derived LLM client with persistence middleware
+ *
+ * @example
+ * ```typescript
+ * const taskLLM = createTaskLLM(handle)
+ * for await (const event of taskLLM.stream({ prompt, schema })) {
+ *   // Middleware handles reasoning, output_delta, and snapshots automatically
+ *   if (event.type === 'complete') {
+ *     finalResult = event.data
+ *   } else if (event.type === 'error') {
+ *     llmError = { message: event.message, code: event.code }
+ *   }
+ * }
+ * ```
+ */
+export function createTaskLLM<
+  TOutput,
+  TEvent extends TaskEventBase & {
+    type: string
+    text?: string
+    isDelta?: boolean
+    summaryIndex?: number
+    outputIndex?: number
+  },
+>(handle: TaskHandle<TOutput, TEvent>) {
+  return llm.with(
+    createPersistenceMiddleware({
+      snapshotIntervalMs: LLM_SNAPSHOT_INTERVAL_MS,
+      onReasoning: (text, isDelta, _accumulated) => {
+        handle.emitTransient({ type: 'reasoning', text, isDelta } as TEvent)
+      },
+      onOutputDelta: (text, _accumulated) => {
+        handle.emitTransient({ type: 'output_delta', text } as TEvent)
+      },
+      onReasoningSnapshot: (text) => {
+        handle.emit({ type: 'reasoning_snapshot', text } as TEvent)
+      },
+      onOutputSnapshot: (text) => {
+        handle.emit({ type: 'output_snapshot', text } as TEvent)
+      },
+    })
+  )
+}
+
 // Re-export types and utilities for convenience
 export type {
   LLMClientConfig,
-  LLMRequest,
-  LLMResponse,
   LLMProgress,
   LLMProvider,
+  LLMRequest,
+  LLMResponse,
+  // Streaming types
+  LLMStreamRequest,
+  LoggerFn,
+  LoggingConfig,
+  // Logging types
+  LogLevel,
+  PersistenceOptions,
   ProviderConfig,
   ProviderRequest,
   ProviderResponse,
-  ValidationFeedback,
-  ReasoningEffort,
-  // Streaming types
-  LLMStreamRequest,
   ReasoningConfig,
+  ReasoningEffort,
   StreamEvent,
-  StreamEventStarted,
-  StreamEventReasoning,
-  StreamEventOutputDelta,
-  StreamEventError,
   StreamEventComplete,
-  // Logging types
-  LogLevel,
-  LoggerFn,
-  LoggingConfig,
+  StreamEventError,
+  StreamEventOutputDelta,
+  StreamEventReasoning,
+  StreamEventStarted,
+  // Middleware types
+  StreamMiddleware,
+  ValidationFeedback,
 } from '@soroban/llm-client'
 
 export {
-  LLMValidationError,
+  // Middleware
+  createPersistenceMiddleware,
+  defaultLogger,
   LLMApiError,
-  LLMTimeoutError,
   LLMNetworkError,
-  ProviderNotConfiguredError,
+  LLMTimeoutError,
+  LLMValidationError,
   // Logging
   Logger,
-  defaultLogger,
+  ProviderNotConfiguredError,
 } from '@soroban/llm-client'

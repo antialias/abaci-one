@@ -4,9 +4,15 @@
  * Uses the LLM client to parse abacus workbook page images
  * into structured problem data.
  */
-import { llm, type LLMProgress, type ReasoningEffort, type StreamEvent } from '@/lib/llm'
-import { WorksheetParsingResultSchema, type WorksheetParsingResult } from './schemas'
+import {
+  type LLMClient,
+  type LLMProgress,
+  llm,
+  type ReasoningEffort,
+  type StreamEvent,
+} from '@/lib/llm'
 import { buildWorksheetParsingPrompt, type PromptOptions } from './prompt-builder'
+import { type WorksheetParsingResult, WorksheetParsingResultSchema } from './schemas'
 
 /**
  * Available model configurations for worksheet parsing
@@ -236,18 +242,19 @@ export interface StreamParseWorksheetOptions {
  *
  * @param imageDataUrl - Base64-encoded data URL of the worksheet image
  * @param options - Parsing options
+ * @param llmClient - LLM client to use (typically with middleware for task integration)
  * @returns AsyncGenerator yielding stream events
  *
  * @example
  * ```typescript
  * import { streamParseWorksheetImage } from '@/lib/worksheet-parsing'
+ * import { createTaskLLM } from '@/lib/llm'
  *
- * const stream = streamParseWorksheetImage(imageDataUrl)
+ * const taskLLM = createTaskLLM(handle)
+ * const stream = streamParseWorksheetImage(imageDataUrl, {}, taskLLM)
  *
  * for await (const event of stream) {
- *   if (event.type === 'reasoning') {
- *     console.log('Thinking:', event.text)
- *   } else if (event.type === 'complete') {
+ *   if (event.type === 'complete') {
  *     console.log('Found', event.data.problems.length, 'problems')
  *   }
  * }
@@ -255,7 +262,8 @@ export interface StreamParseWorksheetOptions {
  */
 export async function* streamParseWorksheetImage(
   imageDataUrl: string,
-  options: StreamParseWorksheetOptions = {}
+  options: StreamParseWorksheetOptions,
+  llmClient: LLMClient
 ): AsyncGenerator<WorksheetParseStreamEvent, void, unknown> {
   const {
     promptOptions = {},
@@ -300,8 +308,8 @@ export async function* streamParseWorksheetImage(
   // Build the prompt
   const prompt = buildWorksheetParsingPrompt(promptOptions)
 
-  // Stream the response
-  const stream = llm.stream({
+  // Stream the response using provided client (with middleware)
+  const stream = llmClient.stream({
     prompt,
     images: [imageDataUrl],
     schema: WorksheetParsingResultSchema,

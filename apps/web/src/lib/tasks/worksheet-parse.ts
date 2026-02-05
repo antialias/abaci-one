@@ -10,19 +10,17 @@
 
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { practiceAttachments, type ParsingStatus } from '@/db/schema/practice-attachments'
+import { type ParsingStatus, practiceAttachments } from '@/db/schema/practice-attachments'
+import { createTaskLLM } from '../llm'
 import { createTask, type TaskHandle } from '../task-manager'
-import type { WorksheetParseEvent } from './events'
 import {
-  streamParseWorksheetImage,
-  parseWorksheetImage,
-  computeParsingStats,
-  getModelConfig,
-  getDefaultModelConfig,
   buildWorksheetParsingPrompt,
+  computeParsingStats,
   type StreamParseWorksheetOptions,
+  streamParseWorksheetImage,
 } from '../worksheet-parsing'
-import type { WorksheetParsingResult, BoundingBox } from '../worksheet-parsing/schemas'
+import type { BoundingBox, WorksheetParsingResult } from '../worksheet-parsing/schemas'
+import type { WorksheetParseEvent } from './events'
 
 /**
  * Input for worksheet parsing task
@@ -30,10 +28,6 @@ import type { WorksheetParsingResult, BoundingBox } from '../worksheet-parsing/s
 export interface WorksheetParseInput {
   /** Base64-encoded image data URL */
   imageDataUrl: string
-  /** Model config ID to use */
-  modelConfigId?: string
-  /** Whether to use streaming mode (default: true for supported providers) */
-  useStreaming?: boolean
   /** Additional prompt options */
   promptOptions?: {
     focusProblemNumbers?: number[]
@@ -80,7 +74,6 @@ export interface WorksheetParseOutput {
  *   imageDataUrl: 'data:image/jpeg;base64,...',
  *   attachmentId: 'abc123',
  *   playerId: 'player456',
- *   modelConfigId: 'gpt-5.2-thinking',
  * })
  *
  * // Client subscribes via Socket.IO
@@ -104,15 +97,6 @@ export async function startWorksheetParsing(input: WorksheetParseInput): Promise
     throw new Error('Player ID is required')
   }
 
-  // Determine if we should use streaming
-  const modelConfig = input.modelConfigId
-    ? getModelConfig(input.modelConfigId)
-    : getDefaultModelConfig()
-
-  // Only OpenAI supports streaming with reasoning
-  const canStream = !modelConfig || modelConfig.provider === 'openai'
-  const useStreaming = input.useStreaming !== false && canStream
-
   // Mark attachment as processing
   await db
     .update(practiceAttachments)
@@ -127,35 +111,22 @@ export async function startWorksheetParsing(input: WorksheetParseInput): Promise
     'worksheet-parse',
     input,
     async (handle, config) => {
-      const { imageDataUrl, modelConfigId, promptOptions, attachmentId, preservedBoundingBoxes } =
-        config
+      const { imageDataUrl, promptOptions, attachmentId, preservedBoundingBoxes } = config
 
       handle.setProgress(5, 'Initializing parser...')
       handle.emit({
         type: 'parse_started',
-        modelConfigId: modelConfigId ?? 'default',
-        useStreaming,
+        modelConfigId: 'gpt-5.2-thinking',
+        useStreaming: true,
         attachmentId,
       })
 
       try {
-        if (useStreaming) {
-          await runStreamingParse(handle, imageDataUrl, {
-            modelConfigId,
-            promptOptions,
-            attachmentId,
-            preservedBoundingBoxes,
-            modelConfig,
-          })
-        } else {
-          await runSyncParse(handle, imageDataUrl, {
-            modelConfigId,
-            promptOptions,
-            attachmentId,
-            preservedBoundingBoxes,
-            modelConfig,
-          })
-        }
+        await runStreamingParse(handle, imageDataUrl, {
+          promptOptions,
+          attachmentId,
+          preservedBoundingBoxes,
+        })
       } catch (error) {
         // Update DB with error
         const errorMessage = error instanceof Error ? error.message : String(error)
@@ -173,40 +144,39 @@ export async function startWorksheetParsing(input: WorksheetParseInput): Promise
 }
 
 interface ParseOptions {
-  modelConfigId?: string
   promptOptions?: WorksheetParseInput['promptOptions']
   attachmentId: string
   preservedBoundingBoxes?: Record<number, BoundingBox>
-  modelConfig: ReturnType<typeof getModelConfig>
 }
 
 /**
  * Run streaming parse with real-time events
+ *
+ * Uses middleware-enhanced LLM client that automatically:
+ * - Emits transient reasoning/output_delta events via Socket.IO
+ * - Persists reasoning/output snapshots every 3s for page-reload recovery
  */
 async function runStreamingParse(
   handle: TaskHandle<WorksheetParseOutput, WorksheetParseEvent>,
   imageDataUrl: string,
   options: ParseOptions
 ): Promise<void> {
-  const { attachmentId, preservedBoundingBoxes, modelConfig } = options
+  const { attachmentId, preservedBoundingBoxes } = options
   const streamOptions: StreamParseWorksheetOptions = {
-    modelConfigId: options.modelConfigId,
     promptOptions: options.promptOptions,
   }
 
   // Build prompt for metadata
   const promptUsed = buildWorksheetParsingPrompt(options.promptOptions ?? {})
 
-  let reasoningText = ''
-  let outputText = ''
-
-  const stream = streamParseWorksheetImage(imageDataUrl, streamOptions)
+  // Create task-aware LLM client (middleware handles reasoning/output streaming & snapshots)
+  const taskLLM = createTaskLLM(handle)
+  const stream = streamParseWorksheetImage(imageDataUrl, streamOptions, taskLLM)
 
   for await (const event of stream) {
     // Check for cancellation
     if (handle.isCancelled()) {
       handle.emit({ type: 'cancelled', reason: 'User cancelled' })
-      // Reset DB status on cancel
       await db
         .update(practiceAttachments)
         .set({ parsingStatus: null, parsingError: null })
@@ -214,198 +184,80 @@ async function runStreamingParse(
       return
     }
 
-    // Process stream events
-    switch (event.type) {
-      case 'progress':
-        handle.setProgress(10, event.message)
-        handle.emit({ type: 'parse_progress', stage: event.stage, message: event.message })
-        break
+    // Handle domain-specific events (reasoning/output_delta handled by middleware)
+    if (event.type === 'progress') {
+      handle.setProgress(10, event.message)
+      handle.emit({ type: 'parse_progress', stage: event.stage, message: event.message })
+    } else if (event.type === 'started') {
+      handle.setProgress(15, 'AI analyzing worksheet...')
+      handle.emit({
+        type: 'parse_llm_started',
+        responseId: event.responseId,
+        model: 'gpt-5.2',
+        provider: 'openai',
+      })
+    } else if (event.type === 'complete') {
+      handle.setProgress(90, 'Validating results...')
 
-      case 'started':
-        handle.setProgress(15, 'AI analyzing worksheet...')
-        handle.emit({
-          type: 'parse_llm_started',
-          responseId: event.responseId,
-          model: modelConfig?.model ?? 'gpt-5.2',
-          provider: modelConfig?.provider ?? 'openai',
-        })
-        break
-
-      case 'reasoning': {
-        reasoningText += event.text
-        // Transient: Socket.IO only, no DB write (these come at 20-100+/sec)
-        handle.emitTransient({ type: 'reasoning', text: event.text })
-        // setProgress is throttled in task-manager (DB write every ~3s)
-        const reasoningProgress = Math.min(15 + Math.floor(reasoningText.length / 100), 50)
-        handle.setProgress(reasoningProgress, 'AI reasoning about worksheet...')
-        break
-      }
-
-      case 'output_delta':
-        outputText += event.text
-        // Transient: Socket.IO only, no DB write (these come at 20-100+/sec)
-        handle.emitTransient({ type: 'output_delta', text: event.text })
-        handle.setProgress(60, 'Generating structured output...')
-        break
-
-      case 'complete': {
-        handle.setProgress(90, 'Validating results...')
-
-        // Merge preserved bounding boxes
-        let parsingResult = event.data
-        if (preservedBoundingBoxes && Object.keys(preservedBoundingBoxes).length > 0) {
-          parsingResult = {
-            ...parsingResult,
-            problems: parsingResult.problems.map((problem, index) => {
-              const preservedBox = preservedBoundingBoxes[index]
-              if (preservedBox) {
-                return { ...problem, problemBoundingBox: preservedBox }
-              }
-              return problem
-            }),
-          }
+      // Merge preserved bounding boxes
+      let parsingResult = event.data
+      if (preservedBoundingBoxes && Object.keys(preservedBoundingBoxes).length > 0) {
+        parsingResult = {
+          ...parsingResult,
+          problems: parsingResult.problems.map((problem, index) => {
+            const preservedBox = preservedBoundingBoxes[index]
+            return preservedBox ? { ...problem, problemBoundingBox: preservedBox } : problem
+          }),
         }
-
-        const stats = computeParsingStats(parsingResult)
-        const status: ParsingStatus = parsingResult.needsReview ? 'needs_review' : 'approved'
-        const provider = modelConfig?.provider ?? 'openai'
-        const model = modelConfig?.model ?? 'gpt-5.2'
-
-        // Save results to database
-        await db
-          .update(practiceAttachments)
-          .set({
-            parsingStatus: status,
-            parsedAt: new Date().toISOString(),
-            rawParsingResult: parsingResult,
-            confidenceScore: parsingResult.overallConfidence,
-            needsReview: parsingResult.needsReview,
-            parsingError: null,
-            // LLM metadata
-            llmProvider: provider,
-            llmModel: model,
-            llmPromptUsed: promptUsed,
-            llmRawResponse: null, // Not available in streaming mode
-            llmJsonSchema: null,
-            llmImageSource: 'cropped',
-            llmAttempts: 1,
-            llmPromptTokens: event.usage.promptTokens,
-            llmCompletionTokens: event.usage.completionTokens,
-            llmTotalTokens: event.usage.promptTokens + event.usage.completionTokens,
-          })
-          .where(eq(practiceAttachments.id, attachmentId))
-
-        handle.emit({ type: 'parse_complete', data: parsingResult, stats, status })
-
-        handle.complete({
-          data: parsingResult,
-          stats,
-          provider,
-          model,
-          usage: {
-            promptTokens: event.usage.promptTokens,
-            completionTokens: event.usage.completionTokens,
-            totalTokens: event.usage.promptTokens + event.usage.completionTokens,
-          },
-        })
-        return
       }
 
-      case 'error':
-        handle.emit({ type: 'parse_error', error: event.message, reasoningText })
-        throw new Error(event.message)
+      const stats = computeParsingStats(parsingResult)
+      const status: ParsingStatus = parsingResult.needsReview ? 'needs_review' : 'approved'
+
+      // Save results to database
+      await db
+        .update(practiceAttachments)
+        .set({
+          parsingStatus: status,
+          parsedAt: new Date().toISOString(),
+          rawParsingResult: parsingResult,
+          confidenceScore: parsingResult.overallConfidence,
+          needsReview: parsingResult.needsReview,
+          parsingError: null,
+          llmProvider: 'openai',
+          llmModel: 'gpt-5.2',
+          llmPromptUsed: promptUsed,
+          llmRawResponse: null,
+          llmJsonSchema: null,
+          llmImageSource: 'cropped',
+          llmAttempts: 1,
+          llmPromptTokens: event.usage.promptTokens,
+          llmCompletionTokens: event.usage.completionTokens,
+          llmTotalTokens: event.usage.promptTokens + event.usage.completionTokens,
+        })
+        .where(eq(practiceAttachments.id, attachmentId))
+
+      handle.emit({ type: 'parse_complete', data: parsingResult, stats, status })
+      handle.complete({
+        data: parsingResult,
+        stats,
+        provider: 'openai',
+        model: 'gpt-5.2',
+        usage: {
+          promptTokens: event.usage.promptTokens,
+          completionTokens: event.usage.completionTokens,
+          totalTokens: event.usage.promptTokens + event.usage.completionTokens,
+        },
+      })
+      return
+    } else if (event.type === 'error') {
+      // Reasoning text already available to clients via snapshots
+      handle.emit({ type: 'parse_error', error: event.message, reasoningText: '' })
+      throw new Error(event.message)
     }
+    // reasoning and output_delta events are handled by middleware
   }
 
   // Stream ended without complete event
   throw new Error('Parsing stream ended unexpectedly')
-}
-
-/**
- * Run synchronous parse (for non-streaming providers)
- */
-async function runSyncParse(
-  handle: TaskHandle<WorksheetParseOutput, WorksheetParseEvent>,
-  imageDataUrl: string,
-  options: ParseOptions
-): Promise<void> {
-  const { attachmentId, preservedBoundingBoxes, modelConfig } = options
-  const promptUsed = buildWorksheetParsingPrompt(options.promptOptions ?? {})
-
-  handle.setProgress(20, 'Sending to AI for analysis...')
-
-  const result = await parseWorksheetImage(imageDataUrl, {
-    modelConfigId: options.modelConfigId,
-    promptOptions: options.promptOptions,
-    maxRetries: 2,
-    onProgress: (progress) => {
-      // Check for cancellation
-      if (handle.isCancelled()) {
-        throw new Error('Parsing cancelled')
-      }
-      handle.emit({ type: 'llm_progress', stage: progress.stage, message: progress.message })
-      // Map LLM stage to task progress (20-80 range)
-      const stageProgress: Record<string, number> = {
-        preparing: 20,
-        calling: 40,
-        validating: 70,
-        retrying: 30,
-      }
-      const taskProgress = stageProgress[progress.stage] ?? 50
-      handle.setProgress(taskProgress, progress.message)
-    },
-  })
-
-  handle.setProgress(90, 'Computing statistics...')
-
-  // Merge preserved bounding boxes
-  let parsingResult = result.data
-  if (preservedBoundingBoxes && Object.keys(preservedBoundingBoxes).length > 0) {
-    parsingResult = {
-      ...parsingResult,
-      problems: parsingResult.problems.map((problem, index) => {
-        const preservedBox = preservedBoundingBoxes[index]
-        if (preservedBox) {
-          return { ...problem, problemBoundingBox: preservedBox }
-        }
-        return problem
-      }),
-    }
-  }
-
-  const stats = computeParsingStats(parsingResult)
-  const status: ParsingStatus = parsingResult.needsReview ? 'needs_review' : 'approved'
-
-  // Save results to database
-  await db
-    .update(practiceAttachments)
-    .set({
-      parsingStatus: status,
-      parsedAt: new Date().toISOString(),
-      rawParsingResult: parsingResult,
-      confidenceScore: parsingResult.overallConfidence,
-      needsReview: parsingResult.needsReview,
-      parsingError: null,
-      // LLM metadata
-      llmProvider: result.provider,
-      llmModel: result.model,
-      llmPromptUsed: promptUsed,
-      llmRawResponse: result.rawResponse,
-      llmJsonSchema: result.jsonSchema,
-      llmImageSource: 'cropped',
-      llmAttempts: result.attempts,
-      llmPromptTokens: result.usage.promptTokens,
-      llmCompletionTokens: result.usage.completionTokens,
-      llmTotalTokens: result.usage.promptTokens + result.usage.completionTokens,
-    })
-    .where(eq(practiceAttachments.id, attachmentId))
-
-  handle.emit({ type: 'parse_complete', data: parsingResult, stats, status })
-  handle.complete({
-    data: parsingResult,
-    stats,
-    provider: result.provider,
-    model: result.model,
-    usage: result.usage,
-  })
 }

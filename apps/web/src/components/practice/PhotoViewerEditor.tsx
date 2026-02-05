@@ -6,14 +6,13 @@ import {
   BoundingBoxOverlay,
   DebugContentModal,
   EditableProblemRow,
-  ProblemReviewFlow,
   type ProblemCorrection,
+  ProblemReviewFlow,
 } from '@/components/worksheet-parsing'
-import type { ReviewProgress } from '@/lib/worksheet-parsing'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useVisualDebug } from '@/contexts/VisualDebugContext'
 import { useWorksheetParsingContext } from '@/contexts/WorksheetParsingContext'
-import type { ModelConfig, WorksheetParsingResult } from '@/lib/worksheet-parsing'
+import type { ReviewProgress, WorksheetParsingResult } from '@/lib/worksheet-parsing'
 import { cropImageWithCanvas } from '@/lib/worksheet-parsing'
 import { css } from '../../../styled-system/css'
 import { DocumentAdjuster } from './DocumentAdjuster'
@@ -76,8 +75,6 @@ export interface PhotoViewerEditorProps {
     corners: Array<{ x: number; y: number }>,
     rotation: 0 | 90 | 180 | 270
   ) => Promise<void>
-  /** Available model configurations for parsing */
-  modelConfigs?: ModelConfig[]
   /** Callback to approve parsed worksheet and create session */
   onApprove?: (photoId: string) => void
   /** ID of photo currently being approved (null if none) */
@@ -112,7 +109,6 @@ export function PhotoViewerEditor({
   isOpen,
   onClose,
   onEditConfirm,
-  modelConfigs = [],
   onApprove,
   approvingPhotoId = null,
   onSubmitCorrection,
@@ -128,9 +124,7 @@ export function PhotoViewerEditor({
   const [reviewSubMode, setReviewSubMode] = useState<'list' | 'focus'>('list')
   const [selectedProblemIndex, setSelectedProblemIndex] = useState<number | null>(null)
   const [isLoadingOriginal, setIsLoadingOriginal] = useState(false)
-  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false)
   const { isVisualDebugEnabled } = useVisualDebug()
-  const modelDropdownRef = useRef<HTMLDivElement>(null)
   const reviewImageRef = useRef<HTMLImageElement>(null)
   const [editState, setEditState] = useState<{
     sourceCanvas: HTMLCanvasElement
@@ -189,7 +183,6 @@ export function PhotoViewerEditor({
   const handleParse = useCallback(
     (
       photoId: string,
-      modelConfigId?: string,
       additionalContext?: string,
       preservedBoundingBoxes?: Record<
         number,
@@ -198,7 +191,6 @@ export function PhotoViewerEditor({
     ) => {
       parsingContext.startParse({
         attachmentId: photoId,
-        modelConfigId,
         additionalContext,
         preservedBoundingBoxes,
       })
@@ -740,19 +732,6 @@ export function PhotoViewerEditor({
     handleEnterEditMode,
     currentPhoto,
   ])
-
-  // Close model dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
-        setIsModelDropdownOpen(false)
-      }
-    }
-    if (isModelDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isModelDropdownOpen])
 
   // Prevent body scroll when open
   useEffect(() => {
@@ -1549,7 +1528,7 @@ export function PhotoViewerEditor({
               // Pass adjusted bounding boxes if any exist
               const preserved =
                 adjustedBoxes.size > 0 ? Object.fromEntries(adjustedBoxes.entries()) : undefined
-              handleParse(currentPhoto.id, undefined, hints, preserved)
+              handleParse(currentPhoto.id, hints, preserved)
               setShowReparseModal(false)
             }
           }}
@@ -1659,241 +1638,77 @@ export function PhotoViewerEditor({
           )}
         </button>
 
-        {/* Parse button - split button with model selection dropdown */}
+        {/* Parse button */}
         {(!currentPhoto.parsingStatus || currentPhoto.parsingStatus === 'failed') &&
           !currentPhoto.sessionCreated && (
-            <div
-              ref={modelDropdownRef}
-              data-element="parse-split-button"
-              className={css({ position: 'relative', display: 'flex' })}
-            >
-              {/* Main parse button */}
-              <button
-                type="button"
-                data-action="parse-worksheet"
-                onClick={() => {
-                  setIsModelDropdownOpen(false)
-                  // Pass adjusted bounding boxes if any exist
-                  const preserved =
-                    adjustedBoxes.size > 0 ? Object.fromEntries(adjustedBoxes.entries()) : undefined
-                  handleParse(currentPhoto.id, undefined, undefined, preserved)
-                }}
-                disabled={isInitialParsing}
-                className={css({
-                  px: 4,
-                  py: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2,
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'white',
+            <button
+              type="button"
+              data-action="parse-worksheet"
+              onClick={() => {
+                const preserved =
+                  adjustedBoxes.size > 0 ? Object.fromEntries(adjustedBoxes.entries()) : undefined
+                handleParse(currentPhoto.id, undefined, preserved)
+              }}
+              disabled={isInitialParsing}
+              className={css({
+                px: 4,
+                py: 2,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: 'white',
+                backgroundColor:
+                  currentPhoto.parsingStatus === 'failed' ? 'orange.500' : 'blue.500',
+                border: 'none',
+                borderRadius: 'lg',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+                _hover: {
                   backgroundColor:
-                    currentPhoto.parsingStatus === 'failed' ? 'orange.500' : 'blue.500',
-                  border: 'none',
-                  borderRadius: modelConfigs.length > 0 ? '8px 0 0 8px' : 'lg',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                  _hover: {
-                    backgroundColor:
-                      currentPhoto.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
-                  },
-                  _disabled: {
-                    backgroundColor: 'gray.500',
-                    cursor: 'wait',
-                  },
-                })}
-                aria-label={
-                  currentPhoto.parsingStatus === 'failed' ? 'Retry parsing' : 'Parse worksheet'
-                }
-              >
-                {isInitialParsing ? (
-                  <>
-                    <span
-                      className={css({
-                        animation: 'spin 1s linear infinite',
-                      })}
-                    >
-                      ⏳
-                    </span>
-                    <span>
-                      {streamingState?.status === 'connecting'
-                        ? 'Connecting...'
-                        : streamingState?.status === 'reasoning'
-                          ? 'Thinking...'
-                          : streamingState?.status === 'generating'
-                            ? 'Extracting...'
-                            : 'Analyzing...'}
-                    </span>
-                  </>
-                ) : currentPhoto.parsingStatus === 'failed' ? (
-                  <>
-                    <span>🔄</span>
-                    <span>Retry Parse</span>
-                  </>
-                ) : (
-                  <>
-                    <span>🔍</span>
-                    <span>Parse Worksheet</span>
-                  </>
-                )}
-              </button>
-
-              {/* Dropdown toggle button - only show if we have model configs */}
-              {modelConfigs.length > 0 && (
+                    currentPhoto.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
+                },
+                _disabled: {
+                  backgroundColor: 'gray.500',
+                  cursor: 'wait',
+                },
+              })}
+              aria-label={
+                currentPhoto.parsingStatus === 'failed' ? 'Retry parsing' : 'Parse worksheet'
+              }
+            >
+              {isInitialParsing ? (
                 <>
-                  <button
-                    type="button"
-                    data-action="toggle-model-dropdown"
-                    onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-                    disabled={isInitialParsing}
+                  <span
                     className={css({
-                      px: 2,
-                      py: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 'sm',
-                      color: 'white',
-                      backgroundColor:
-                        currentPhoto.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
-                      borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
-                      border: 'none',
-                      borderRadius: '0 8px 8px 0',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s',
-                      _hover: {
-                        backgroundColor:
-                          currentPhoto.parsingStatus === 'failed' ? 'orange.700' : 'blue.700',
-                      },
-                      _disabled: {
-                        backgroundColor: 'gray.500',
-                        cursor: 'wait',
-                      },
+                      animation: 'spin 1s linear infinite',
                     })}
-                    aria-label="Select model"
-                    aria-expanded={isModelDropdownOpen}
                   >
-                    <span
-                      className={css({
-                        transform: isModelDropdownOpen ? 'rotate(180deg)' : 'none',
-                        transition: 'transform 0.2s',
-                      })}
-                    >
-                      ▾
-                    </span>
-                  </button>
-
-                  {/* Dropdown menu */}
-                  {isModelDropdownOpen && (
-                    <div
-                      data-element="model-dropdown"
-                      className={css({
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        marginTop: 1,
-                        minWidth: '280px',
-                        backgroundColor: 'gray.800',
-                        borderRadius: 'lg',
-                        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
-                        border: '1px solid',
-                        borderColor: 'gray.700',
-                        overflow: 'hidden',
-                        zIndex: 10,
-                      })}
-                    >
-                      <div
-                        className={css({
-                          px: 3,
-                          py: 2,
-                          fontSize: 'xs',
-                          fontWeight: 'semibold',
-                          color: 'gray.400',
-                          textTransform: 'uppercase',
-                          letterSpacing: 'wide',
-                          borderBottom: '1px solid',
-                          borderColor: 'gray.700',
-                        })}
-                      >
-                        Select Model
-                      </div>
-                      {modelConfigs.map((config) => (
-                        <button
-                          key={config.id}
-                          type="button"
-                          data-action={`parse-with-model-${config.id}`}
-                          onClick={() => {
-                            setIsModelDropdownOpen(false)
-                            // Pass adjusted bounding boxes if any exist
-                            const preserved =
-                              adjustedBoxes.size > 0
-                                ? Object.fromEntries(adjustedBoxes.entries())
-                                : undefined
-                            handleParse(currentPhoto.id, config.id, undefined, preserved)
-                          }}
-                          className={css({
-                            width: '100%',
-                            px: 3,
-                            py: 3,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'flex-start',
-                            gap: 1,
-                            textAlign: 'left',
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.1s',
-                            _hover: { backgroundColor: 'gray.700' },
-                          })}
-                        >
-                          <div
-                            className={css({
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 2,
-                              width: '100%',
-                            })}
-                          >
-                            <span
-                              className={css({
-                                color: 'white',
-                                fontWeight: 'medium',
-                              })}
-                            >
-                              {config.name}
-                            </span>
-                            {config.isDefault && (
-                              <span
-                                className={css({
-                                  px: 2,
-                                  py: 0.5,
-                                  fontSize: 'xs',
-                                  backgroundColor: 'blue.600',
-                                  color: 'white',
-                                  borderRadius: 'md',
-                                })}
-                              >
-                                Default
-                              </span>
-                            )}
-                          </div>
-                          <span
-                            className={css({
-                              fontSize: 'xs',
-                              color: 'gray.400',
-                            })}
-                          >
-                            {config.description}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                    ⏳
+                  </span>
+                  <span>
+                    {streamingState?.status === 'connecting'
+                      ? 'Connecting...'
+                      : streamingState?.status === 'reasoning'
+                        ? 'Thinking...'
+                        : streamingState?.status === 'generating'
+                          ? 'Extracting...'
+                          : 'Analyzing...'}
+                  </span>
+                </>
+              ) : currentPhoto.parsingStatus === 'failed' ? (
+                <>
+                  <span>🔄</span>
+                  <span>Retry Parse</span>
+                </>
+              ) : (
+                <>
+                  <span>🔍</span>
+                  <span>Parse Worksheet</span>
                 </>
               )}
-            </div>
+            </button>
           )}
 
         {/* Streaming Parse Progress Panel */}

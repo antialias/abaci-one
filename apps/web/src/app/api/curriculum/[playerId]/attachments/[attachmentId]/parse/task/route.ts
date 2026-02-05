@@ -10,17 +10,16 @@
  *   - Get task ID for an attachment (if parsing is in progress)
  */
 
+import { eq } from 'drizzle-orm'
 import { readFile } from 'fs/promises'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
-import { eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { practiceAttachments } from '@/db/schema/practice-attachments'
 import { backgroundTasks } from '@/db/schema/background-tasks'
+import { practiceAttachments } from '@/db/schema/practice-attachments'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
 import { startWorksheetParsing } from '@/lib/tasks/worksheet-parse'
-import { getModelConfig, getDefaultModelConfig } from '@/lib/worksheet-parsing'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
   params: Promise<{ playerId: string; attachmentId: string }>
@@ -30,7 +29,6 @@ interface RouteParams {
  * POST - Start worksheet parsing as a background task
  *
  * Body (optional):
- *   - modelConfigId: string - ID of the model config to use
  *   - additionalContext: string - Additional context/hints for the LLM
  *   - preservedBoundingBoxes: Record<number, BoundingBox> - Bounding boxes to preserve
  *
@@ -98,22 +96,17 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     // Parse request body
-    let modelConfigId: string | undefined
     let additionalContext: string | undefined
     let preservedBoundingBoxes:
       | Record<number, { x: number; y: number; width: number; height: number }>
       | undefined
     try {
       const body = await request.json()
-      modelConfigId = body?.modelConfigId
       additionalContext = body?.additionalContext
       preservedBoundingBoxes = body?.preservedBoundingBoxes
     } catch {
       // No body or invalid JSON is fine
     }
-
-    // Resolve model config
-    const modelConfig = modelConfigId ? getModelConfig(modelConfigId) : getDefaultModelConfig()
 
     // Read the image file
     const uploadDir = join(process.cwd(), 'data', 'uploads', 'players', playerId)
@@ -129,7 +122,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       imageDataUrl,
       attachmentId,
       playerId,
-      modelConfigId: modelConfig?.id,
       promptOptions: additionalContext ? { additionalContext } : undefined,
       preservedBoundingBoxes,
     })

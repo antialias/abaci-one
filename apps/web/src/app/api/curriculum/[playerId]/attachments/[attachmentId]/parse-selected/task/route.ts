@@ -10,15 +10,15 @@
  *   - Returns taskId if a task is running/pending
  */
 
+import { and, desc, eq, or } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { eq, and, or, desc } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
-import { practiceAttachments } from '@/db/schema/practice-attachments'
 import { backgroundTasks } from '@/db/schema/background-tasks'
+import { practiceAttachments } from '@/db/schema/practice-attachments'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
 import { startWorksheetReparse, type WorksheetReparseInput } from '@/lib/tasks/worksheet-reparse'
+import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
   params: Promise<{ playerId: string; attachmentId: string }>
@@ -36,7 +36,6 @@ const RequestBodySchema = z.object({
     })
   ),
   additionalContext: z.string().optional(),
-  modelConfigId: z.string().optional(),
 })
 
 /**
@@ -64,7 +63,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     )
   }
 
-  const { problemIndices, boundingBoxes, additionalContext, modelConfigId } = body
+  const { problemIndices, boundingBoxes, additionalContext } = body
 
   if (problemIndices.length !== boundingBoxes.length) {
     return NextResponse.json(
@@ -141,7 +140,6 @@ export async function POST(request: Request, { params }: RouteParams) {
     problemIndices,
     boundingBoxes,
     additionalContext,
-    modelConfigId,
   })
   console.log('[ReparseTaskAPI] Task created with ID:', taskId)
 

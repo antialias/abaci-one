@@ -43,6 +43,8 @@ export type WorksheetParseEvent =
   | { type: 'parse_llm_started'; responseId?: string; model: string; provider: string }
   | { type: 'reasoning'; text: string }
   | { type: 'output_delta'; text: string }
+  | { type: 'reasoning_snapshot'; text: string }
+  | { type: 'output_snapshot'; text: string }
   | {
       type: 'parse_complete'
       data: unknown
@@ -79,6 +81,8 @@ export type WorksheetReparseEvent =
       isDelta?: boolean
     }
   | { type: 'output_delta'; problemIndex: number; text: string; outputIndex?: number }
+  | { type: 'reasoning_snapshot'; problemIndex: number; text: string }
+  | { type: 'output_snapshot'; problemIndex: number; text: string }
   | {
       type: 'problem_complete'
       problemIndex: number
@@ -107,7 +111,15 @@ export type VisionTrainingEvent =
       modelType: string
       config: Record<string, unknown>
     }
-  | { type: 'epoch'; epoch: number; totalEpochs: number; loss: number; accuracy: number; valLoss?: number; valAccuracy?: number }
+  | {
+      type: 'epoch'
+      epoch: number
+      totalEpochs: number
+      loss: number
+      accuracy: number
+      valLoss?: number
+      valAccuracy?: number
+    }
   | { type: 'train_complete'; data: Record<string, unknown> }
   | { type: 'dataset_info'; data: Record<string, unknown> }
   | { type: 'dataset_loaded'; data: Record<string, unknown> }
@@ -209,8 +221,7 @@ export type FlowchartRefineEvent =
 // Demo task events
 // ============================================================================
 
-export type DemoTaskEvent =
-  | { type: 'log'; step: number; timestamp: string }
+export type DemoTaskEvent = { type: 'log'; step: number; timestamp: string }
 
 // ============================================================================
 // Event type map — maps task type string to its domain event union

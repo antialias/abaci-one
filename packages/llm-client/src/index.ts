@@ -30,72 +30,72 @@
 
 // Main client
 export { LLMClient } from "./client";
-
-// Types
-export type {
-  LLMClientConfig,
-  LLMRequest,
-  LLMResponse,
-  LLMProgress,
-  LLMProvider,
-  ProviderConfig,
-  ProviderRequest,
-  ProviderResponse,
-  ValidationFeedback,
-  ReasoningEffort,
-  // Streaming types
-  LLMStreamRequest,
-  ReasoningConfig,
-  StreamEvent,
-  StreamEventStarted,
-  StreamEventReasoning,
-  StreamEventOutputDelta,
-  StreamEventError,
-  StreamEventComplete,
-  // Embedding types
-  EmbeddingRequest,
-  EmbeddingResponse,
-  // Logging types
-  LogLevel,
-  LoggerFn,
-  LoggingConfig,
-} from "./types";
-
-// Logging utilities
-export { defaultLogger } from "./types";
-export { Logger } from "./logger";
-
-// Errors
-export {
-  LLMValidationError,
-  LLMApiError,
-  LLMTruncationError,
-  LLMContentFilterError,
-  LLMJsonParseError,
-  LLMTimeoutError,
-  LLMNetworkError,
-  ProviderNotConfiguredError,
-} from "./types";
-
 // Config utilities
 export {
-  loadConfigFromEnv,
-  getProviderConfig,
-  getConfiguredProviders,
-  isProviderConfigured,
+	getConfiguredProviders,
+	getProviderConfig,
+	isProviderConfigured,
+	loadConfigFromEnv,
 } from "./config";
-
-// Retry utilities (for advanced usage)
+export { Logger } from "./logger";
+// Middleware
+export type { StreamMiddleware } from "./middleware";
 export {
-  executeWithRetry,
-  buildFeedbackPrompt,
-  isRetryableError,
-  getRetryDelay,
-} from "./retry";
-export type { RetryOptions } from "./retry";
-
+	createPersistenceMiddleware,
+	type PersistenceOptions,
+} from "./middleware/persistence";
+export { AnthropicProvider } from "./providers/anthropic";
 // Providers (for advanced usage / custom providers)
 export { BaseProvider } from "./providers/base";
 export { OpenAIProvider } from "./providers/openai";
-export { AnthropicProvider } from "./providers/anthropic";
 export { OpenAIResponsesProvider } from "./providers/openai-responses";
+export type { RetryOptions } from "./retry";
+// Retry utilities (for advanced usage)
+export {
+	buildFeedbackPrompt,
+	executeWithRetry,
+	getRetryDelay,
+	isRetryableError,
+} from "./retry";
+// Types
+export type {
+	// Embedding types
+	EmbeddingRequest,
+	EmbeddingResponse,
+	LLMClientConfig,
+	LLMProgress,
+	LLMProvider,
+	LLMRequest,
+	LLMResponse,
+	// Streaming types
+	LLMStreamRequest,
+	LoggerFn,
+	LoggingConfig,
+	// Logging types
+	LogLevel,
+	ProviderConfig,
+	ProviderRequest,
+	ProviderResponse,
+	ReasoningConfig,
+	ReasoningEffort,
+	StreamEvent,
+	StreamEventComplete,
+	StreamEventError,
+	StreamEventOutputDelta,
+	StreamEventReasoning,
+	StreamEventStarted,
+	ValidationFeedback,
+} from "./types";
+// Logging utilities
+// Errors
+export {
+	defaultLogger,
+	LLMApiError,
+	LLMContentFilterError,
+	LLMJsonParseError,
+	LLMNetworkError,
+	LLMTimeoutError,
+	LLMTruncationError,
+	LLMValidationError,
+	ProviderNotConfiguredError,
+} from "./types";
