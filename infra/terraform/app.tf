@@ -274,43 +274,58 @@ resource "kubernetes_service" "app" {
   }
 }
 
-# Ingress with SSL via cert-manager
-resource "kubernetes_ingress_v1" "app" {
-  metadata {
-    name      = "abaci-app"
-    namespace = kubernetes_namespace.abaci.metadata[0].name
-    annotations = {
-      "cert-manager.io/cluster-issuer"                    = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
-      "traefik.ingress.kubernetes.io/router.entrypoints"  = "websecure"
-      "traefik.ingress.kubernetes.io/router.middlewares"  = "${kubernetes_namespace.abaci.metadata[0].name}-hsts@kubernetescrd,${kubernetes_namespace.abaci.metadata[0].name}-rate-limit@kubernetescrd,${kubernetes_namespace.abaci.metadata[0].name}-in-flight-req@kubernetescrd"
+# IngressRoute with sticky sessions for all traffic
+# Using IngressRoute instead of standard Ingress to enable sticky sessions
+# This ensures users stay on the same pod across page reloads and Socket.IO connections
+resource "kubernetes_manifest" "app_ingressroute" {
+  manifest = {
+    apiVersion = "traefik.io/v1alpha1"
+    kind       = "IngressRoute"
+    metadata = {
+      name      = "abaci-app"
+      namespace = kubernetes_namespace.abaci.metadata[0].name
+      annotations = {
+        "cert-manager.io/cluster-issuer" = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
+      }
     }
-  }
-
-  spec {
-    ingress_class_name = "traefik"
-
-    tls {
-      hosts       = [var.app_domain]
-      secret_name = "abaci-tls"
-    }
-
-    rule {
-      host = var.app_domain
-
-      http {
-        path {
-          path      = "/"
-          path_type = "Prefix"
-
-          backend {
-            service {
-              name = kubernetes_service.app.metadata[0].name
-              port {
-                number = 80
+    spec = {
+      entryPoints = ["websecure"]
+      routes = [
+        {
+          match = "Host(`${var.app_domain}`)"
+          kind  = "Rule"
+          middlewares = [
+            {
+              name      = "hsts"
+              namespace = kubernetes_namespace.abaci.metadata[0].name
+            },
+            {
+              name      = "rate-limit"
+              namespace = kubernetes_namespace.abaci.metadata[0].name
+            },
+            {
+              name      = "in-flight-req"
+              namespace = kubernetes_namespace.abaci.metadata[0].name
+            }
+          ]
+          services = [
+            {
+              name   = kubernetes_service.app.metadata[0].name
+              port   = 80
+              sticky = {
+                cookie = {
+                  name     = "abaci_sticky"
+                  secure   = true
+                  httpOnly = true
+                  sameSite = "lax"
+                }
               }
             }
-          }
+          ]
         }
+      ]
+      tls = {
+        secretName = "abaci-tls"
       }
     }
   }
@@ -426,48 +441,3 @@ resource "kubernetes_manifest" "redirect_https_middleware" {
   }
 }
 
-# IngressRoute for Socket.IO - requires sticky sessions for multi-pod support
-# Socket.IO HTTP long-polling requires all requests from a client to hit the same pod
-resource "kubernetes_manifest" "app_socketio_ingressroute" {
-  manifest = {
-    apiVersion = "traefik.io/v1alpha1"
-    kind       = "IngressRoute"
-    metadata = {
-      name      = "abaci-app-socketio"
-      namespace = kubernetes_namespace.abaci.metadata[0].name
-    }
-    spec = {
-      entryPoints = ["websecure"]
-      routes = [
-        {
-          match    = "Host(`${var.app_domain}`) && PathPrefix(`/api/socket`)"
-          kind     = "Rule"
-          priority = 150
-          middlewares = [
-            {
-              name      = "hsts"
-              namespace = kubernetes_namespace.abaci.metadata[0].name
-            }
-          ]
-          services = [
-            {
-              name   = kubernetes_service.app.metadata[0].name
-              port   = 80
-              sticky = {
-                cookie = {
-                  name     = "io"
-                  secure   = true
-                  httpOnly = true
-                  sameSite = "none"
-                }
-              }
-            }
-          ]
-        }
-      ]
-      tls = {
-        secretName = "abaci-tls"
-      }
-    }
-  }
-}
