@@ -97,7 +97,7 @@ describe('WorksheetParsingContext', () => {
       expect(typeof result.current.startParse).toBe('function')
       expect(typeof result.current.startReparse).toBe('function')
       expect(typeof result.current.cancel).toBe('function')
-      expect(typeof result.current.reset).toBe('function')
+      expect(typeof result.current.cancelAll).toBe('function')
       expect(typeof result.current.submitCorrection).toBe('function')
       expect(typeof result.current.approve).toBe('function')
       expect(typeof result.current.unapprove).toBe('function')
@@ -129,13 +129,12 @@ describe('WorksheetParsingContext', () => {
         wrapper: createWrapper(),
       })
 
-      expect(result.current.state).toEqual({
-        activeAttachmentId: null,
-        streaming: null,
-        lastResult: null,
-        lastStats: null,
-        lastError: null,
-      })
+      // State uses Maps for concurrent parsing support
+      expect(result.current.state.activeStreams).toBeInstanceOf(Map)
+      expect(result.current.state.activeStreams.size).toBe(0)
+      expect(result.current.state.lastResults).toBeInstanceOf(Map)
+      expect(result.current.state.lastStats).toBeInstanceOf(Map)
+      expect(result.current.state.lastErrors).toBeInstanceOf(Map)
     })
 
     it('should report no parsing active initially', () => {
@@ -150,61 +149,43 @@ describe('WorksheetParsingContext', () => {
   })
 
   describe('cancel', () => {
-    it('should dispatch CANCEL action', () => {
+    it('should dispatch CANCEL action for specific attachment', () => {
       const { result } = renderHook(() => useWorksheetParsingContext(), {
         wrapper: createWrapper(),
       })
 
       act(() => {
-        result.current.cancel()
+        result.current.cancel('attachment-1')
       })
 
       // After cancel on initial state, state should be unchanged (no streaming to cancel)
-      expect(result.current.state.streaming).toBeNull()
+      expect(result.current.state.activeStreams.size).toBe(0)
     })
   })
 
-  describe('reset', () => {
-    it('should dispatch RESET action', () => {
+  describe('cancelAll', () => {
+    it('should dispatch CANCEL_ALL action', () => {
       const { result } = renderHook(() => useWorksheetParsingContext(), {
         wrapper: createWrapper(),
       })
 
       act(() => {
-        result.current.reset()
+        result.current.cancelAll()
       })
 
-      expect(result.current.state).toEqual({
-        activeAttachmentId: null,
-        streaming: null,
-        lastResult: null,
-        lastStats: null,
-        lastError: null,
-      })
+      expect(result.current.state.activeStreams.size).toBe(0)
+      expect(result.current.state.lastResults.size).toBe(0)
+      expect(result.current.state.lastStats.size).toBe(0)
+      expect(result.current.state.lastErrors.size).toBe(0)
     })
   })
 
   describe('startParse', () => {
-    it('should update state to streaming on successful fetch', async () => {
-      // Mock a successful SSE response that completes immediately
-      const mockReader = {
-        read: vi
-          .fn()
-          .mockResolvedValueOnce({
-            done: false,
-            value: new TextEncoder().encode(
-              'event: complete\ndata: {"result": {"problems": [], "pageMetadata": {}, "overallConfidence": 0.9, "warnings": [], "needsReview": false}, "status": "approved"}\n\n'
-            ),
-          })
-          .mockResolvedValueOnce({ done: true, value: undefined }),
-        releaseLock: vi.fn(),
-      }
-
+    it('should update state to streaming when task starts', async () => {
+      // Mock successful task creation
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        body: {
-          getReader: () => mockReader,
-        },
+        json: () => Promise.resolve({ taskId: 'task-123', status: 'started' }),
       })
 
       const { result } = renderHook(() => useWorksheetParsingContext(), {
@@ -215,9 +196,10 @@ describe('WorksheetParsingContext', () => {
         await result.current.startParse({ attachmentId: 'attachment-1' })
       })
 
-      // After completion, streaming state should have status "complete"
-      expect(result.current.state.streaming?.status).toBe('complete')
-      expect(result.current.state.lastResult).toBeDefined()
+      // After starting, there should be an active stream for this attachment
+      expect(result.current.state.activeStreams.has('attachment-1')).toBe(true)
+      const stream = result.current.state.activeStreams.get('attachment-1')
+      expect(stream?.streamType).toBe('initial')
     })
 
     it('should handle fetch error', async () => {
@@ -234,32 +216,18 @@ describe('WorksheetParsingContext', () => {
         await result.current.startParse({ attachmentId: 'attachment-1' })
       })
 
-      expect(result.current.state.streaming?.status).toBe('error')
-      expect(result.current.state.lastError).toBe('Server error')
+      // After error, the stream should be removed and error stored
+      expect(result.current.state.activeStreams.has('attachment-1')).toBe(false)
+      expect(result.current.state.lastErrors.get('attachment-1')).toBe('Server error')
     })
   })
 
   describe('startReparse', () => {
     it('should update state for reparse operation', async () => {
-      // Mock a successful SSE response for reparse
-      const mockReader = {
-        read: vi
-          .fn()
-          .mockResolvedValueOnce({
-            done: false,
-            value: new TextEncoder().encode(
-              'event: complete\ndata: {"updatedResult": {"problems": [], "pageMetadata": {}, "overallConfidence": 0.95, "warnings": [], "needsReview": false}, "status": "approved"}\n\n'
-            ),
-          })
-          .mockResolvedValueOnce({ done: true, value: undefined }),
-        releaseLock: vi.fn(),
-      }
-
+      // Mock successful task creation
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        body: {
-          getReader: () => mockReader,
-        },
+        json: () => Promise.resolve({ taskId: 'task-456', status: 'started' }),
       })
 
       const { result } = renderHook(() => useWorksheetParsingContext(), {
@@ -277,91 +245,83 @@ describe('WorksheetParsingContext', () => {
         })
       })
 
-      expect(result.current.state.streaming?.status).toBe('complete')
-      expect(result.current.state.lastResult).toBeDefined()
+      // After starting, there should be an active stream for this attachment
+      expect(result.current.state.activeStreams.has('attachment-1')).toBe(true)
+      const stream = result.current.state.activeStreams.get('attachment-1')
+      expect(stream?.streamType).toBe('reparse')
+      expect(stream?.totalProblems).toBe(2)
     })
   })
 
   describe('derived helpers', () => {
     it('isParsingAttachment should return true during parsing', async () => {
-      // Create a stream that doesn't complete immediately
-      let resolveRead: () => void
-      const readPromise = new Promise<{ done: boolean; value: undefined }>((resolve) => {
-        resolveRead = () => resolve({ done: true, value: undefined })
-      })
-
-      const mockReader = {
-        read: vi
-          .fn()
-          .mockResolvedValueOnce({
-            done: false,
-            value: new TextEncoder().encode('event: started\ndata: {"responseId": "resp-1"}\n\n'),
-          })
-          .mockImplementationOnce(() => readPromise),
-        releaseLock: vi.fn(),
-      }
-
+      // Mock successful task creation
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        body: {
-          getReader: () => mockReader,
-        },
+        json: () => Promise.resolve({ taskId: 'task-123', status: 'started' }),
       })
 
       const { result } = renderHook(() => useWorksheetParsingContext(), {
         wrapper: createWrapper(),
       })
 
-      // Start parsing without waiting for completion
-      let parsePromise: Promise<void>
-      act(() => {
-        parsePromise = result.current.startParse({
+      // Start parsing
+      await act(async () => {
+        await result.current.startParse({
           attachmentId: 'attachment-1',
         })
-      })
-
-      // Wait for the streaming to start
-      await waitFor(() => {
-        expect(result.current.state.streaming).not.toBeNull()
       })
 
       // Check that isParsingAttachment returns true for the active attachment
       expect(result.current.isParsingAttachment('attachment-1')).toBe(true)
       expect(result.current.isParsingAttachment('attachment-2')).toBe(false)
       expect(result.current.isAnyParsingActive()).toBe(true)
-
-      // Cleanup: complete the read and wait for parse to finish
-      resolveRead!()
-      await act(async () => {
-        await parsePromise
-      })
     })
 
-    it('getStreamingStatus should return null after completion (activeAttachmentId is cleared)', async () => {
-      const mockReader = {
-        read: vi
-          .fn()
-          .mockResolvedValueOnce({
-            done: false,
-            value: new TextEncoder().encode(
-              'event: reasoning\ndata: {"text": "Thinking...", "isDelta": true}\n\n'
-            ),
-          })
-          .mockResolvedValueOnce({
-            done: false,
-            value: new TextEncoder().encode(
-              'event: complete\ndata: {"result": {"problems": [], "pageMetadata": {}, "overallConfidence": 0.9, "warnings": [], "needsReview": false}}\n\n'
-            ),
-          })
-          .mockResolvedValueOnce({ done: true, value: undefined }),
-        releaseLock: vi.fn(),
-      }
+    it('supports concurrent parsing of multiple attachments', async () => {
+      // Mock successful task creation for both
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ taskId: 'task-1', status: 'started' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ taskId: 'task-2', status: 'started' }),
+        })
 
+      const { result } = renderHook(() => useWorksheetParsingContext(), {
+        wrapper: createWrapper(),
+      })
+
+      // Start parsing two attachments
+      await act(async () => {
+        await result.current.startParse({ attachmentId: 'attachment-1' })
+      })
+      await act(async () => {
+        await result.current.startParse({ attachmentId: 'attachment-2' })
+      })
+
+      // Both should be active
+      expect(result.current.isParsingAttachment('attachment-1')).toBe(true)
+      expect(result.current.isParsingAttachment('attachment-2')).toBe(true)
+      expect(result.current.state.activeStreams.size).toBe(2)
+
+      // Cancel one - the other should still be active
+      act(() => {
+        result.current.cancel('attachment-1')
+      })
+
+      expect(result.current.isParsingAttachment('attachment-1')).toBe(false)
+      expect(result.current.isParsingAttachment('attachment-2')).toBe(true)
+      expect(result.current.state.activeStreams.size).toBe(1)
+    })
+
+    it('getStreamingStatus should return status during parsing', async () => {
+      // Mock successful task creation
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        body: {
-          getReader: () => mockReader,
-        },
+        json: () => Promise.resolve({ taskId: 'task-123', status: 'started' }),
       })
 
       const { result } = renderHook(() => useWorksheetParsingContext(), {
@@ -372,13 +332,9 @@ describe('WorksheetParsingContext', () => {
         await result.current.startParse({ attachmentId: 'attachment-1' })
       })
 
-      // After completion, activeAttachmentId is cleared, so getStreamingStatus returns null
-      // This is correct behavior - the attachment is no longer "actively" being parsed
-      expect(result.current.getStreamingStatus('attachment-1')).toBeNull()
+      // During parsing, getStreamingStatus should return the current status
+      expect(result.current.getStreamingStatus('attachment-1')).toBe('connecting')
       expect(result.current.getStreamingStatus('attachment-2')).toBeNull()
-
-      // The streaming state is still available with "complete" status for UI reference
-      expect(result.current.state.streaming?.status).toBe('complete')
     })
   })
 })

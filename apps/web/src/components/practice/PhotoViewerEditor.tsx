@@ -167,8 +167,11 @@ export function PhotoViewerEditor({
   // Use the worksheet parsing context (required)
   const parsingContext = useWorksheetParsingContext()
 
-  // Derive streaming state from context
-  const streamingState = parsingContext.state.streaming
+  // Derive streaming state from context for the current photo
+  // Note: currentPhoto is defined later, but we need these for conditional checks
+  // so we'll derive them based on photos[currentIndex]
+  const currentPhotoId = photos[currentIndex]?.id
+  const streamingState = currentPhotoId ? parsingContext.state.activeStreams.get(currentPhotoId) : undefined
   const isInitialParsing =
     streamingState?.streamType === 'initial' &&
     (streamingState.status === 'connecting' ||
@@ -177,7 +180,6 @@ export function PhotoViewerEditor({
   const isReparsing =
     streamingState?.streamType === 'reparse' &&
     (streamingState.status === 'connecting' || streamingState.status === 'processing')
-  const activeAttachmentId = parsingContext.state.activeAttachmentId
 
   // Handlers using context directly
   const handleParse = useCallback(
@@ -199,12 +201,16 @@ export function PhotoViewerEditor({
   )
 
   const handleCancelStreaming = useCallback(() => {
-    parsingContext.cancel()
-  }, [parsingContext])
+    if (currentPhotoId) {
+      parsingContext.cancel(currentPhotoId)
+    }
+  }, [parsingContext, currentPhotoId])
 
   const handleCancelStreamingReparse = useCallback(() => {
-    parsingContext.cancel()
-  }, [parsingContext])
+    if (currentPhotoId) {
+      parsingContext.cancel(currentPhotoId)
+    }
+  }, [parsingContext, currentPhotoId])
 
   const handleApprove = useCallback(
     (photoId: string) => {
@@ -838,8 +844,8 @@ export function PhotoViewerEditor({
           showReparsePreview={showReparsePreview}
           selectedForReparseCount={selectedForReparse.size}
           canParse={true}
-          isParsing={activeAttachmentId === currentPhoto.id && isInitialParsing}
-          isReparsing={activeAttachmentId === currentPhoto.id && isReparsing}
+          isParsing={isInitialParsing}
+          isReparsing={isReparsing}
           isApproving={approvingPhotoId === currentPhoto.id}
           canApprove={true}
           onBack={() => {
@@ -1532,7 +1538,7 @@ export function PhotoViewerEditor({
               setShowReparseModal(false)
             }
           }}
-          isProcessing={activeAttachmentId === currentPhoto.id && isInitialParsing}
+          isProcessing={isInitialParsing}
         />
       </div>
     )

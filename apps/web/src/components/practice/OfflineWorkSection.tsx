@@ -124,8 +124,8 @@ export function OfflineWorkSection({
   // ============================================================================
   const parsingContext = useWorksheetParsingContext()
 
-  // Local state for streaming panel expansion
-  const [isStreamingPanelExpanded, setIsStreamingPanelExpanded] = useState(false)
+  // Local state for streaming panel expansion (per-attachment)
+  const [expandedStreamingPanels, setExpandedStreamingPanels] = useState<Set<string>>(new Set())
 
   // Handlers that delegate to context
   const handleParse = useCallback(
@@ -135,9 +135,12 @@ export function OfflineWorkSection({
     [parsingContext]
   )
 
-  const handleCancelStreaming = useCallback(() => {
-    parsingContext.cancel()
-  }, [parsingContext])
+  const handleCancelStreaming = useCallback(
+    (attachmentId: string) => {
+      parsingContext.cancel(attachmentId)
+    },
+    [parsingContext]
+  )
 
   const handleApproveAll = useCallback(
     async (attachmentId: string) => {
@@ -153,20 +156,30 @@ export function OfflineWorkSection({
     [parsingContext]
   )
 
-  const handleToggleStreamingPanel = useCallback(() => {
-    setIsStreamingPanelExpanded((prev) => !prev)
+  const handleToggleStreamingPanel = useCallback((attachmentId: string) => {
+    setExpandedStreamingPanels((prev) => {
+      const next = new Set(prev)
+      if (next.has(attachmentId)) {
+        next.delete(attachmentId)
+      } else {
+        next.add(attachmentId)
+      }
+      return next
+    })
   }, [])
 
-  // Reset panel expansion when streaming completes
+  // Clean up expanded panels for attachments that are no longer streaming
   useEffect(() => {
-    const status = parsingContext.state.streaming?.status
-    if (status === 'complete' || status === 'error' || status === 'cancelled') {
-      const timer = setTimeout(() => {
-        setIsStreamingPanelExpanded(false)
-      }, 2000)
-      return () => clearTimeout(timer)
-    }
-  }, [parsingContext.state.streaming?.status])
+    const activeStreamIds = new Set(parsingContext.state.activeStreams.keys())
+    setExpandedStreamingPanels((prev) => {
+      // Remove any expanded panels for attachments that are no longer streaming
+      const toRemove = [...prev].filter((id) => !activeStreamIds.has(id))
+      if (toRemove.length === 0) return prev
+      const next = new Set(prev)
+      toRemove.forEach((id) => next.delete(id))
+      return next
+    })
+  }, [parsingContext.state.activeStreams])
 
   // Reconnect to in-progress tasks on mount (for page reload recovery)
   // Use refs to avoid re-running on every context change
@@ -190,8 +203,8 @@ export function OfflineWorkSection({
     }
   }, [attachments]) // Only depend on attachments, not the entire context
 
-  // Check if any parsing operation is active
-  const isParsingActive = parsingContext.isAnyParsingActive()
+  // Helper to check if a specific attachment is being parsed
+  const isAttachmentParsing = parsingContext.isParsingAttachment
 
   // ============================================================================
   // Original Component Logic
@@ -358,9 +371,8 @@ export function OfflineWorkSection({
         {/* Existing photos */}
         {attachments.map((att, index) => {
           // Check if this tile is currently streaming
-          const streamingState = parsingContext.state.streaming
-          const isStreaming =
-            parsingContext.state.activeAttachmentId === att.id && streamingState !== null
+          const streamingState = parsingContext.state.activeStreams.get(att.id)
+          const isStreaming = streamingState !== undefined
           const streamingActive =
             isStreaming &&
             (streamingState?.status === 'connecting' ||
@@ -530,7 +542,7 @@ export function OfflineWorkSection({
                         e.stopPropagation()
                         handleParse(att.id)
                       }}
-                      disabled={parsingId === att.id || isParsingActive}
+                      disabled={parsingId === att.id || isAttachmentParsing(att.id)}
                       className={css({
                         position: 'absolute',
                         bottom: '0.5rem',
@@ -717,9 +729,9 @@ export function OfflineWorkSection({
                   <ParsingProgressOverlay
                     progressMessage={streamingState.progressMessage}
                     completedCount={streamingState.completedProblems.length}
-                    isPanelExpanded={isStreamingPanelExpanded}
-                    onTogglePanel={handleToggleStreamingPanel}
-                    onCancel={handleCancelStreaming}
+                    isPanelExpanded={expandedStreamingPanels.has(att.id)}
+                    onTogglePanel={() => handleToggleStreamingPanel(att.id)}
+                    onCancel={() => handleCancelStreaming(att.id)}
                     hasReasoningText={streamingState.reasoningText.length > 0}
                   />
                 )}
@@ -728,7 +740,7 @@ export function OfflineWorkSection({
               {/* Streaming: Reasoning panel below tile */}
               {isStreaming && streamingState && (
                 <ParsingProgressPanel
-                  isExpanded={isStreamingPanelExpanded}
+                  isExpanded={expandedStreamingPanels.has(att.id)}
                   reasoningText={streamingState.reasoningText}
                   status={streamingState.status}
                   isDark={isDark}

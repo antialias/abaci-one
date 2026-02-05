@@ -12,13 +12,12 @@
  * // In a Storybook story
  * <MockWorksheetParsingProvider
  *   state={{
- *     activeAttachmentId: "photo-1",
- *     streaming: {
+ *     activeStreams: new Map([["photo-1", {
  *       status: "generating",
  *       streamType: "initial",
  *       reasoningText: "Analyzing worksheet...",
  *       // ...
- *     },
+ *     }]]),
  *   }}
  * >
  *   <OfflineWorkSection {...props} />
@@ -33,7 +32,10 @@ import {
   isAnyParsingActive as isAnyParsingActiveHelper,
   getStreamingStatus as getStreamingStatusHelper,
   type ParsingContextState,
+  type StreamingState,
+  type ParsingStats,
 } from '@/lib/worksheet-parsing/state-machine'
+import type { WorksheetParsingResult } from '@/lib/worksheet-parsing'
 import type { WorksheetParsingContextValue, ApproveResponse } from './WorksheetParsingContext'
 
 // ============================================================================
@@ -49,7 +51,7 @@ interface MockWorksheetParsingProviderProps {
     startParse: WorksheetParsingContextValue['startParse']
     startReparse: WorksheetParsingContextValue['startReparse']
     cancel: WorksheetParsingContextValue['cancel']
-    reset: WorksheetParsingContextValue['reset']
+    cancelAll: WorksheetParsingContextValue['cancelAll']
     reconnectToTask: WorksheetParsingContextValue['reconnectToTask']
     submitCorrection: WorksheetParsingContextValue['submitCorrection']
     approve: WorksheetParsingContextValue['approve']
@@ -70,10 +72,12 @@ export function MockWorksheetParsingProvider({
   state: stateOverrides = {},
   actions = {},
 }: MockWorksheetParsingProviderProps) {
-  // Merge overrides with initial state
+  // Merge overrides with initial state (Maps need special handling)
   const state: ParsingContextState = {
-    ...initialParsingState,
-    ...stateOverrides,
+    activeStreams: stateOverrides.activeStreams ?? new Map(),
+    lastResults: stateOverrides.lastResults ?? new Map(),
+    lastStats: stateOverrides.lastStats ?? new Map(),
+    lastErrors: stateOverrides.lastErrors ?? new Map(),
   }
 
   // Create mock context value with no-op defaults for actions
@@ -89,7 +93,7 @@ export function MockWorksheetParsingProvider({
     startParse: actions.startParse ?? (async () => {}),
     startReparse: actions.startReparse ?? (async () => {}),
     cancel: actions.cancel ?? (() => {}),
-    reset: actions.reset ?? (() => {}),
+    cancelAll: actions.cancelAll ?? (() => {}),
     reconnectToTask: actions.reconnectToTask ?? (async () => false),
     submitCorrection: actions.submitCorrection ?? (async () => {}),
     approve:
@@ -139,6 +143,21 @@ export function useMockWorksheetParsingContext(): WorksheetParsingContextValue {
 // Storybook Helpers
 // ============================================================================
 
+/**
+ * Create a streaming state for an attachment
+ */
+function createStreamingState(overrides: Partial<StreamingState> = {}): StreamingState {
+  return {
+    status: 'generating',
+    streamType: 'initial',
+    reasoningText: '',
+    outputText: '',
+    progressMessage: null,
+    completedProblems: [],
+    ...overrides,
+  }
+}
+
 /** Pre-configured states for common Storybook scenarios */
 export const mockParsingStates = {
   /** Initial idle state - no parsing activity */
@@ -146,22 +165,23 @@ export const mockParsingStates = {
 
   /** Actively parsing a worksheet */
   parsing: (attachmentId: string): Partial<ParsingContextState> => ({
-    activeAttachmentId: attachmentId,
-    streaming: {
-      status: 'generating',
-      streamType: 'initial',
-      reasoningText: 'I can see a worksheet with arithmetic problems...',
-      outputText: '{"problems": [',
-      progressMessage: 'Extracting problems... 5 found',
-      completedProblems: [],
-    },
+    activeStreams: new Map([
+      [
+        attachmentId,
+        createStreamingState({
+          status: 'generating',
+          streamType: 'initial',
+          reasoningText: 'I can see a worksheet with arithmetic problems...',
+          outputText: '{"problems": [',
+          progressMessage: 'Extracting problems... 5 found',
+        }),
+      ],
+    ]),
   }),
 
   /** Parsing complete with results */
-  complete: (attachmentId: string): Partial<ParsingContextState> => ({
-    activeAttachmentId: null,
-    streaming: null,
-    lastResult: {
+  complete: (attachmentId: string): Partial<ParsingContextState> => {
+    const result: WorksheetParsingResult = {
       problems: [],
       pageMetadata: {
         lessonId: null,
@@ -174,25 +194,31 @@ export const mockParsingStates = {
       overallConfidence: 0.95,
       needsReview: false,
       warnings: [],
-    },
-    lastStats: {
+    }
+
+    const stats: ParsingStats = {
       totalProblems: 10,
       correctCount: 8,
       incorrectCount: 2,
       unansweredCount: 0,
       accuracy: 0.8,
       skillsDetected: ['add-1-digit'],
-    },
-    lastError: null,
-  }),
+    }
+
+    return {
+      activeStreams: new Map(),
+      lastResults: new Map([[attachmentId, result]]),
+      lastStats: new Map([[attachmentId, stats]]),
+      lastErrors: new Map(),
+    }
+  },
 
   /** Parsing failed with error */
   error: (attachmentId: string, errorMessage: string): Partial<ParsingContextState> => ({
-    activeAttachmentId: null,
-    streaming: null,
-    lastResult: null,
-    lastStats: null,
-    lastError: errorMessage,
+    activeStreams: new Map(),
+    lastResults: new Map(),
+    lastStats: new Map(),
+    lastErrors: new Map([[attachmentId, errorMessage]]),
   }),
 
   /** Re-parsing specific problems */
@@ -201,17 +227,20 @@ export const mockParsingStates = {
     currentIndex: number,
     total: number
   ): Partial<ParsingContextState> => ({
-    activeAttachmentId: attachmentId,
-    streaming: {
-      status: 'processing',
-      streamType: 'reparse',
-      reasoningText: 'Re-analyzing this problem more carefully...',
-      outputText: '',
-      progressMessage: `Re-parsing problem ${currentIndex + 1} of ${total}`,
-      completedProblems: [],
-      currentProblemIndex: currentIndex,
-      totalProblems: total,
-      completedIndices: Array.from({ length: currentIndex }, (_, i) => i),
-    },
+    activeStreams: new Map([
+      [
+        attachmentId,
+        createStreamingState({
+          status: 'processing',
+          streamType: 'reparse',
+          reasoningText: 'Re-analyzing this problem more carefully...',
+          outputText: '',
+          progressMessage: `Re-parsing problem ${currentIndex + 1} of ${total}`,
+          currentProblemIndex: currentIndex,
+          totalProblems: total,
+          completedIndices: Array.from({ length: currentIndex }, (_, i) => i),
+        }),
+      ],
+    ]),
   }),
 }
