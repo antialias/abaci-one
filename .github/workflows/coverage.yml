@@ -34,6 +34,7 @@ jobs:
         run: pnpm --filter @soroban/web run test:coverage
 
       - name: Upload coverage HTML report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -41,8 +42,12 @@ jobs:
           retention-days: 30
 
       - name: Post coverage results to API
-        if: success()
+        if: always()
         run: |
+          if [ ! -f apps/web/coverage/coverage-summary.json ]; then
+            echo "No coverage summary found, skipping"
+            exit 0
+          fi
           SUMMARY=$(cat apps/web/coverage/coverage-summary.json)
           LINES=$(echo "$SUMMARY" | jq '.total.lines.pct')
           BRANCHES=$(echo "$SUMMARY" | jq '.total.branches.pct')
