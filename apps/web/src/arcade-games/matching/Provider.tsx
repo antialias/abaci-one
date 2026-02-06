@@ -316,29 +316,10 @@ export function MatchingProvider({ children }: { children: ReactNode }) {
   const hasStateCorruption =
     !state.gameCards || !state.flippedCards || !Array.isArray(state.gameCards)
 
-  // Handle mismatch feedback timeout
-  useEffect(() => {
-    if (state.showMismatchFeedback && state.flippedCards?.length === 2) {
-      // After 1.5 seconds, send CLEAR_MISMATCH
-      // Server will validate that cards are still in mismatch state before clearing
-      const timeout = setTimeout(() => {
-        sendMove({
-          type: 'CLEAR_MISMATCH',
-          playerId: state.currentPlayer,
-          userId: viewerId || '',
-          data: {},
-        })
-      }, 1500)
-
-      return () => clearTimeout(timeout)
-    }
-  }, [
-    state.showMismatchFeedback,
-    state.flippedCards?.length,
-    sendMove,
-    state.currentPlayer,
-    viewerId,
-  ])
+  // NOTE: CLEAR_MISMATCH is now handled server-side (socket-server.ts) to avoid
+  // race conditions between CLEAR_MISMATCH and FLIP_CARD on multi-replica deployments.
+  // The server detects mismatches after FLIP_CARD and schedules CLEAR_MISMATCH through
+  // the same applyGameMove pipeline, ensuring proper serialization.
 
   // Computed values
   const isGameActive = state.gamePhase === 'playing'

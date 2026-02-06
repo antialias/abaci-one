@@ -8,7 +8,7 @@
  * 1. Play matching game to completion (with deliberate mismatches)
  * 2. Skip game break (tests the skip path)
  *
- * Uses React fiber tree to read correct answers and card data,
+ * Uses data attributes to read correct answers and card data,
  * and keyboard input for answer submission.
  */
 
@@ -36,23 +36,13 @@ async function setupDebugSession(page: Page) {
 }
 
 /**
- * Read the correct answer from the React fiber tree of the vertical problem component.
+ * Read the correct answer from the data-correct-answer attribute on the vertical problem component.
  */
 async function getCorrectAnswer(page: Page): Promise<number> {
-  return page.evaluate(() => {
-    const el = document.querySelector('[data-component="vertical-problem"]')
-    if (!el) throw new Error('No vertical-problem element found')
-    const fiberKey = Object.keys(el).find((k) => k.startsWith('__reactFiber'))
-    if (!fiberKey) throw new Error('No React fiber found')
-    let fiber = (el as any)[fiberKey]
-    for (let i = 0; i < 50 && fiber; i++) {
-      if (fiber.memoizedProps?.correctAnswer != null) {
-        return fiber.memoizedProps.correctAnswer as number
-      }
-      fiber = fiber.return
-    }
-    throw new Error('correctAnswer not found in fiber tree')
-  })
+  const value = await page.locator('[data-component="vertical-problem"]')
+    .getAttribute('data-correct-answer')
+  if (!value) throw new Error('No data-correct-answer attribute found')
+  return parseInt(value, 10)
 }
 
 /**

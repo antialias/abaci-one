@@ -110,6 +110,7 @@ export function VerticalProblem({
     <div
       data-component="vertical-problem"
       data-status={isCompleted ? (isCorrect ? 'correct' : 'incorrect') : 'active'}
+      data-correct-answer={correctAnswer}
       className={css({
         display: 'flex',
         flexDirection: 'column',

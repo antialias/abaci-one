@@ -33,6 +33,9 @@ import { socketConnections, socketConnectionsTotal } from './lib/metrics'
 // Throttle map for DVR buffer info emissions (sessionId -> last emit timestamp)
 const lastDvrBufferInfoEmit = new Map<string, number>()
 
+// Server-side mismatch timers for matching game (keyed by roomId or solo-userId)
+const activeMismatchTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
 // Yjs server-side imports
 import * as Y from 'yjs'
 import * as awarenessProtocol from 'y-protocols/awareness'
@@ -638,6 +641,54 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
           // Update activity timestamp
           await updateSessionActivity(data.userId)
+
+          // Server-side mismatch timer for matching game
+          // When a FLIP_CARD results in a mismatch, schedule CLEAR_MISMATCH server-side
+          // to avoid client-server race conditions on multi-replica deployments
+          const matchingState = gameStateForClient as Record<string, unknown> | undefined
+          if (data.move.type === 'FLIP_CARD' && matchingState?.showMismatchFeedback) {
+            const sessionKey = result.session.roomId || data.userId
+            const existingTimer = activeMismatchTimers.get(sessionKey)
+            if (existingTimer) clearTimeout(existingTimer)
+
+            // Capture values for the async closure
+            const capturedUserId = data.userId
+            const capturedRoomId = data.roomId
+            const capturedCurrentPlayer = matchingState.currentPlayer as string
+
+            const timer = setTimeout(async () => {
+              activeMismatchTimers.delete(sessionKey)
+              try {
+                const clearMove: GameMove = {
+                  type: 'CLEAR_MISMATCH' as const,
+                  playerId: capturedCurrentPlayer,
+                  userId: capturedUserId,
+                  timestamp: Date.now(),
+                  data: {},
+                }
+                const clearResult = await applyGameMove(capturedUserId, clearMove, capturedRoomId)
+                if (clearResult.success && clearResult.session) {
+                  const clearGameState = getGameStateFromSession(
+                    clearResult.session,
+                    clearResult.session.currentGame!
+                  )
+                  const clearAccepted = {
+                    gameState: clearGameState,
+                    version: clearResult.session.version,
+                    move: clearMove,
+                  }
+                  if (clearResult.session.roomId) {
+                    io!.to(`game:${clearResult.session.roomId}`).emit('move-accepted', clearAccepted)
+                  } else {
+                    io!.to(`arcade:${capturedUserId}`).emit('move-accepted', clearAccepted)
+                  }
+                }
+              } catch (err) {
+                console.error('[mismatch-timer] Failed to clear mismatch:', err)
+              }
+            }, 1500)
+            activeMismatchTimers.set(sessionKey, timer)
+          }
         } else {
           // Send rejection only to the requesting socket
           if (result.versionConflict) {
