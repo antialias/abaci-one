@@ -1,85 +1,89 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { GameMove } from '@/lib/arcade/validation'
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { GameMove } from "@/lib/arcade/validation";
 
 export interface PendingMove<TState> {
-  move: GameMove
-  optimisticState: TState
-  timestamp: number
+  move: GameMove;
+  optimisticState: TState;
+  timestamp: number;
 }
 
 export interface UseOptimisticGameStateOptions<TState> {
   /**
    * Initial game state
    */
-  initialState: TState
+  initialState: TState;
 
   /**
    * Apply a move to the state optimistically (client-side)
    * This should be the same logic that runs on the server
    */
-  applyMove: (state: TState, move: GameMove) => TState
+  applyMove: (state: TState, move: GameMove) => TState;
 
   /**
    * Called when server accepts a move
    */
-  onMoveAccepted?: (state: TState, move: GameMove) => void
+  onMoveAccepted?: (state: TState, move: GameMove) => void;
 
   /**
    * Called when server rejects a move
    */
-  onMoveRejected?: (error: string, move: GameMove) => void
+  onMoveRejected?: (error: string, move: GameMove) => void;
 }
 
 export interface UseOptimisticGameStateReturn<TState> {
   /**
    * Current game state (includes optimistic updates)
    */
-  state: TState
+  state: TState;
 
   /**
    * Server-confirmed version number
    */
-  version: number
+  version: number;
 
   /**
    * Whether there are pending moves awaiting server confirmation
    */
-  hasPendingMoves: boolean
+  hasPendingMoves: boolean;
 
   /**
    * Last error from server (move rejection)
    */
-  lastError: string | null
+  lastError: string | null;
 
   /**
    * Apply a move optimistically and send to server
    */
-  applyOptimisticMove: (move: GameMove) => void
+  applyOptimisticMove: (move: GameMove) => void;
 
   /**
    * Handle server accepting a move
    */
-  handleMoveAccepted: (serverState: TState, serverVersion: number, acceptedMove: GameMove) => void
+  handleMoveAccepted: (
+    serverState: TState,
+    serverVersion: number,
+    acceptedMove: GameMove,
+  ) => void;
 
   /**
    * Handle server rejecting a move
    */
-  handleMoveRejected: (error: string, rejectedMove: GameMove) => void
+  handleMoveRejected: (error: string, rejectedMove: GameMove) => void;
 
   /**
    * Sync state with server (on reconnect or initial load)
    */
-  syncWithServer: (serverState: TState, serverVersion: number) => void
+  syncWithServer: (serverState: TState, serverVersion: number) => void;
 
   /**
    * Clear the last error
    */
-  clearError: () => void
+  clearError: () => void;
 
   /**
    * Reset to initial state
    */
-  reset: () => void
+  reset: () => void;
 }
 
 /**
@@ -93,52 +97,49 @@ export interface UseOptimisticGameStateReturn<TState> {
  * @returns Game state and update methods
  */
 export function useOptimisticGameState<TState>(
-  options: UseOptimisticGameStateOptions<TState>
+  options: UseOptimisticGameStateOptions<TState>,
 ): UseOptimisticGameStateReturn<TState> {
-  const { initialState, applyMove, onMoveAccepted, onMoveRejected } = options
-
-  // Debug: Log initial state on mount
-  useEffect(() => {
-    const stateObj = initialState as Record<string, unknown>
-    console.log('[OptimisticState] Initialized with:', {
-      gameCardsLength: Array.isArray(stateObj?.gameCards)
-        ? (stateObj.gameCards as unknown[]).length
-        : 'not-array',
-      flippedCardsLength: Array.isArray(stateObj?.flippedCards)
-        ? (stateObj.flippedCards as unknown[]).length
-        : 'not-array',
-      gamePhase: stateObj?.gamePhase,
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const { initialState, applyMove, onMoveAccepted, onMoveRejected } = options;
 
   // Server-confirmed state and version
-  const [serverState, setServerState] = useState<TState>(initialState)
-  const [serverVersion, setServerVersion] = useState(1)
+  const [serverState, setServerState] = useState<TState>(initialState);
+  const [serverVersion, setServerVersion] = useState(1);
 
   // Pending moves that haven't been confirmed by server yet
-  const [pendingMoves, setPendingMoves] = useState<PendingMove<TState>[]>([])
+  const [pendingMoves, setPendingMoves] = useState<PendingMove<TState>[]>([]);
 
   // Last error from move rejection
-  const [lastError, setLastError] = useState<string | null>(null)
+  const [lastError, setLastError] = useState<string | null>(null);
+
+  // Track last processed version to deduplicate move-accepted events
+  const lastProcessedVersionRef = useRef(0);
 
   // Ref for callbacks to avoid stale closures
-  const callbacksRef = useRef({ onMoveAccepted, onMoveRejected })
+  const callbacksRef = useRef({ onMoveAccepted, onMoveRejected });
   useEffect(() => {
-    callbacksRef.current = { onMoveAccepted, onMoveRejected }
-  }, [onMoveAccepted, onMoveRejected])
+    callbacksRef.current = { onMoveAccepted, onMoveRejected };
+  }, [onMoveAccepted, onMoveRejected]);
+
+  // Ref for serverState so applyOptimisticMove doesn't depend on it directly
+  const serverStateRef = useRef(serverState);
+  useEffect(() => {
+    serverStateRef.current = serverState;
+  }, [serverState]);
 
   // Current state = server state + all pending moves applied
   const currentState = pendingMoves.reduce(
     (_state, pending) => pending.optimisticState,
-    serverState
-  )
+    serverState,
+  );
 
   const applyOptimisticMove = useCallback(
     (move: GameMove) => {
       setPendingMoves((prev) => {
-        const baseState = prev.length > 0 ? prev[prev.length - 1].optimisticState : serverState
-        const optimisticState = applyMove(baseState, move)
+        const baseState =
+          prev.length > 0
+            ? prev[prev.length - 1].optimisticState
+            : serverStateRef.current;
+        const optimisticState = applyMove(baseState, move);
 
         return [
           ...prev,
@@ -147,95 +148,100 @@ export function useOptimisticGameState<TState>(
             optimisticState,
             timestamp: Date.now(),
           },
-        ]
-      })
+        ];
+      });
     },
-    [serverState, applyMove]
-  )
+    [applyMove],
+  );
 
   const handleMoveAccepted = useCallback(
-    (newServerState: TState, newServerVersion: number, acceptedMove: GameMove) => {
-      // Debug: Log key state values from server
-      const stateForLog = newServerState as Record<string, unknown>
-      console.log(
-        `[OptimisticState] handleMoveAccepted: move=${acceptedMove.type} version=${newServerVersion} showMismatchFeedback=${stateForLog.showMismatchFeedback} flippedCards=${Array.isArray(stateForLog.flippedCards) ? stateForLog.flippedCards.length : 'undefined'} isProcessingMove=${stateForLog.isProcessingMove}`
-      )
+    (
+      newServerState: TState,
+      newServerVersion: number,
+      acceptedMove: GameMove,
+    ) => {
+      // Deduplicate: skip if we've already processed this version (safety net for double delivery)
+      if (newServerVersion <= lastProcessedVersionRef.current) {
+        console.log(
+          `[OptimisticState] DEDUP: skipping version ${newServerVersion} (already processed ${lastProcessedVersionRef.current})`,
+        );
+        return;
+      }
+      lastProcessedVersionRef.current = newServerVersion;
+
       // Update server state
-      setServerState(newServerState)
-      setServerVersion(newServerVersion)
+      setServerState(newServerState);
+      setServerVersion(newServerVersion);
 
       // Remove the accepted move from pending queue
       setPendingMoves((prev) => {
         const index = prev.findIndex(
-          (p) => p.move.type === acceptedMove.type && p.move.timestamp === acceptedMove.timestamp
-        )
+          (p) =>
+            p.move.type === acceptedMove.type &&
+            p.move.timestamp === acceptedMove.timestamp,
+        );
 
         if (index !== -1) {
-          return prev.slice(index + 1)
+          return prev.slice(index + 1);
         }
 
-        // Move not found in pending queue - might be from another tab
+        // Move not found in pending queue - might be from another tab/device
         // Clear all pending moves since server state is now authoritative
-        return []
-      })
+        return [];
+      });
 
-      callbacksRef.current.onMoveAccepted?.(newServerState, acceptedMove)
+      callbacksRef.current.onMoveAccepted?.(newServerState, acceptedMove);
     },
-    []
-  )
+    [],
+  );
 
-  const handleMoveRejected = useCallback((error: string, rejectedMove: GameMove) => {
-    // Set the error for UI display
-    console.warn(`[ErrorState] SET_ERROR error="${error}" move=${rejectedMove.type}`)
-    setLastError(error)
+  const handleMoveRejected = useCallback(
+    (error: string, rejectedMove: GameMove) => {
+      setLastError(error);
 
-    // Remove the rejected move and all subsequent moves from pending queue
-    setPendingMoves((prev) => {
-      const index = prev.findIndex(
-        (p) => p.move.type === rejectedMove.type && p.move.timestamp === rejectedMove.timestamp
-      )
+      // Remove the rejected move and all subsequent moves from pending queue
+      setPendingMoves((prev) => {
+        const index = prev.findIndex(
+          (p) =>
+            p.move.type === rejectedMove.type &&
+            p.move.timestamp === rejectedMove.timestamp,
+        );
 
-      if (index !== -1) {
-        // Rollback: remove rejected move and everything after it
-        return prev.slice(0, index)
-      }
+        if (index !== -1) {
+          // Rollback: remove rejected move and everything after it
+          return prev.slice(0, index);
+        }
 
-      return prev
-    })
+        return prev;
+      });
 
-    callbacksRef.current.onMoveRejected?.(error, rejectedMove)
-  }, [])
+      callbacksRef.current.onMoveRejected?.(error, rejectedMove);
+    },
+    [],
+  );
 
-  const syncWithServer = useCallback((newServerState: TState, newServerVersion: number) => {
-    const stateObj = newServerState as Record<string, unknown>
-    console.log('[OptimisticState] syncWithServer:', {
-      version: newServerVersion,
-      gameCardsLength: Array.isArray(stateObj?.gameCards)
-        ? (stateObj.gameCards as unknown[]).length
-        : 'not-array',
-      flippedCardsLength: Array.isArray(stateObj?.flippedCards)
-        ? (stateObj.flippedCards as unknown[]).length
-        : 'not-array',
-      gamePhase: stateObj?.gamePhase,
-      stateKeys: stateObj ? Object.keys(stateObj).slice(0, 10) : [],
-    })
-    setServerState(newServerState)
-    setServerVersion(newServerVersion)
-    // Clear pending moves on sync (new authoritative state from server)
-    setPendingMoves([])
-  }, [])
+  const syncWithServer = useCallback(
+    (newServerState: TState, newServerVersion: number) => {
+      setServerState(newServerState);
+      setServerVersion(newServerVersion);
+      // Update dedup tracker so subsequent move-accepted events are correctly compared
+      lastProcessedVersionRef.current = newServerVersion;
+      // Clear pending moves on sync (new authoritative state from server)
+      setPendingMoves([]);
+    },
+    [],
+  );
 
   const clearError = useCallback(() => {
-    console.log('[ErrorState] CLEAR_ERROR')
-    setLastError(null)
-  }, [])
+    setLastError(null);
+  }, []);
 
   const reset = useCallback(() => {
-    setServerState(initialState)
-    setServerVersion(1)
-    setPendingMoves([])
-    setLastError(null)
-  }, [initialState])
+    setServerState(initialState);
+    setServerVersion(1);
+    setPendingMoves([]);
+    setLastError(null);
+  }, [initialState]);
 
   return {
     state: currentState,
@@ -248,5 +254,5 @@ export function useOptimisticGameState<TState>(
     syncWithServer,
     clearError,
     reset,
-  }
+  };
 }

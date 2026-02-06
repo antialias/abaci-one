@@ -40,7 +40,7 @@ export function GamePhase() {
           state={state}
           gridConfig={gridConfig}
           flipCard={flipCard}
-          enableMultiplayerPresence={true}
+          enableMultiplayerPresence={gameMode === 'multiplayer'}
           hoverCard={hoverCard}
           viewerId={viewerId}
           gameMode={gameMode}
