@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-// @ts-expect-error - Known TypeScript module resolution issue, works at runtime
 import { AbacusReact, useAbacusDisplay } from '@soroban/abacus-react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../styled-system/css'
@@ -326,7 +325,7 @@ export function InteractiveNotFound() {
                 value={abacusValue}
                 columns={3}
                 showNumbers={false}
-                onValueChange={setAbacusValue}
+                onValueChange={(v) => setAbacusValue(Number(v))}
               />
             </div>
           </div>

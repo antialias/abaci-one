@@ -33,7 +33,7 @@ async function loadFlowchartById(id: string) {
 describe('fraction-add-sub path enumeration', () => {
   it('enumerates all expected paths', async () => {
     const flowchart = await loadFlowchartById('fraction-add-sub')
-    const paths = enumerateAllPaths(flowchart)
+    const { paths } = enumerateAllPaths(flowchart)
 
     // Log all path signatures for debugging
     console.log('All paths:')
@@ -51,7 +51,7 @@ describe('fraction-add-sub path enumeration', () => {
 
   it('finds the Divides + borrow path', async () => {
     const flowchart = await loadFlowchartById('fraction-add-sub')
-    const paths = enumerateAllPaths(flowchart)
+    const { paths } = enumerateAllPaths(flowchart)
 
     // Find path that goes through CONV1A (multiplier) and BORROW
     const dividesBorrowPath = paths.find(
@@ -69,7 +69,7 @@ describe('fraction-add-sub path enumeration', () => {
 
   it('finds the LCD + borrow path', async () => {
     const flowchart = await loadFlowchartById('fraction-add-sub')
-    const paths = enumerateAllPaths(flowchart)
+    const { paths } = enumerateAllPaths(flowchart)
 
     // Find path that goes through: STEP2 (NO) -> ... -> BORROW
     const lcdBorrowPath = paths.find(
@@ -169,7 +169,7 @@ describe('example generation coverage', () => {
 
   it('analyzes why LCD + borrow path might fail generation', async () => {
     const flowchart = await loadFlowchartById('fraction-add-sub')
-    const paths = enumerateAllPaths(flowchart)
+    const { paths } = enumerateAllPaths(flowchart)
 
     // Find the LCD + borrow path
     const lcdBorrowPath = paths.find(

@@ -29,6 +29,7 @@ describe('player-ownership utilities', () => {
     name: 'Test Room',
     code: 'ABCD',
     gameName: 'memory-pairs',
+    accessMode: 'open',
     members: [
       {
         id: 'member-1',

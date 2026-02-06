@@ -200,6 +200,7 @@ function createSessionHud(config: {
         pausedBy: null,
         pauseReason: null,
         retryState: null,
+        remoteCameraSessionId: null,
         gameBreakSettings: {
           enabled: true,
           maxDurationMinutes: 5,

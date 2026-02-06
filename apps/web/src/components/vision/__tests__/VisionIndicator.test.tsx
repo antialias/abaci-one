@@ -7,7 +7,17 @@ import { VisionIndicator } from '../VisionIndicator'
 
 // Mock the MyAbacusContext
 const mockOpenVisionSetup = vi.fn()
-const mockVisionConfig = {
+const mockVisionConfig: {
+  enabled: boolean
+  cameraDeviceId: string | null
+  calibration: {
+    roi: { x: number; y: number; width: number; height: number }
+    columnCount: number
+    columnDividers: never[]
+    rotation: number
+  } | null
+  remoteCameraSessionId: string | null
+} = {
   enabled: false,
   cameraDeviceId: null,
   calibration: null,

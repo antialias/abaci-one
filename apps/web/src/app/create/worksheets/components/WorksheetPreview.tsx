@@ -155,13 +155,6 @@ function PreviewContent({
       formState.pAnyStart,
       formState.pAllStart,
       formState.interpolate,
-      formState.showCarryBoxes,
-      formState.showAnswerBoxes,
-      formState.showPlaceValueColors,
-      formState.showProblemNumbers,
-      formState.showCellBorder,
-      formState.showTenFrames,
-      formState.showTenFramesForAll,
       formState.seed, // Include seed to bust cache when problem set regenerates
       formState.includeQRCode, // Include QR code setting to regenerate preview when toggled
       formState.includeAnswerKey, // Include answer key setting to regenerate preview when toggled

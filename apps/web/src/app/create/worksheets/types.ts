@@ -78,9 +78,11 @@ export type WorksheetConfig = AdditionConfigV4 & {
  *
  * See `.claude/WORKSHEET_CONFIG_PERSISTENCE.md` for full architecture.
  */
-export type WorksheetFormState = Partial<Omit<AdditionConfigV4Custom, 'version'>> &
-  Partial<Omit<AdditionConfigV4Manual, 'version'>> &
-  Partial<Omit<AdditionConfigV4Mastery, 'version'>> & {
+export type WorksheetFormState = Partial<Omit<AdditionConfigV4Custom, 'version' | 'mode'>> &
+  Partial<Omit<AdditionConfigV4Manual, 'version' | 'mode'>> &
+  Partial<Omit<AdditionConfigV4Mastery, 'version' | 'mode'>> & {
+    /** Mode discriminator — kept as broad union during form editing */
+    mode?: 'custom' | 'manual' | 'mastery'
     // ========================================
     // DERIVED STATE (never persisted)
     // ========================================

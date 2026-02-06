@@ -166,7 +166,6 @@ export function useDeskViewCamera(): UseDeskViewCameraReturn {
             // @ts-expect-error - zoom is valid but not in TS types
             zoom: { ideal: 1 },
             // Try to disable face-tracking auto-focus (not all cameras support this)
-            // @ts-expect-error - focusMode is valid but not in TS types
             focusMode: 'continuous',
             ...(targetDeviceId
               ? { deviceId: { exact: targetDeviceId } }

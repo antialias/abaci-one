@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { KnowYourWorldValidator } from './Validator'
 import type { KnowYourWorldState, KnowYourWorldMove } from './types'
 
+// Helper to cast ValidationResult.newState to KnowYourWorldState
+const asState = (newState: unknown) => newState as KnowYourWorldState | undefined
+
 // Mock the maps module
 vi.mock('./maps', () => ({
   getFilteredMapData: vi.fn().mockResolvedValue({
@@ -51,6 +54,7 @@ describe('KnowYourWorldValidator', () => {
     giveUpVotes: [],
     hintsUsed: 0,
     hintActive: null,
+    nameConfirmationProgress: 0,
     ...overrides,
   })
 
@@ -123,7 +127,7 @@ describe('KnowYourWorldValidator', () => {
         const result = await validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.regionsGivenUp).toContain('region-1')
+        expect(asState(result.newState)?.regionsGivenUp).toContain('region-1')
       })
 
       it('does not duplicate region in regionsGivenUp if already tracked', async () => {
@@ -136,8 +140,8 @@ describe('KnowYourWorldValidator', () => {
         const result = await validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.regionsGivenUp).toEqual(['region-1'])
-        expect(result.newState?.regionsGivenUp?.length).toBe(1)
+        expect(asState(result.newState)?.regionsGivenUp).toEqual(['region-1'])
+        expect(asState(result.newState)?.regionsGivenUp?.length).toBe(1)
       })
 
       it('preserves existing regionsGivenUp entries', async () => {
@@ -150,8 +154,8 @@ describe('KnowYourWorldValidator', () => {
         const result = await validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.regionsGivenUp).toContain('region-1')
-        expect(result.newState?.regionsGivenUp).toContain('region-2')
+        expect(asState(result.newState)?.regionsGivenUp).toContain('region-1')
+        expect(asState(result.newState)?.regionsGivenUp).toContain('region-2')
       })
     })
 
@@ -168,12 +172,12 @@ describe('KnowYourWorldValidator', () => {
 
         expect(result.valid).toBe(true)
         // Next prompt should be region-2 (first in queue)
-        expect(result.newState?.currentPrompt).toBe('region-2')
+        expect(asState(result.newState)?.currentPrompt).toBe('region-2')
         // region-1 re-inserted at position 3 in queue, then first element becomes currentPrompt
         // Queue after insert: [region-2, region-3, region-4, region-1, region-5, region-6]
         // After slice(1): [region-3, region-4, region-1, region-5, region-6]
         // So user will see: region-2, region-3, region-4, then region-1 comes back
-        expect(result.newState?.regionsToFind).toEqual([
+        expect(asState(result.newState)?.regionsToFind).toEqual([
           'region-3',
           'region-4',
           'region-1',
@@ -193,9 +197,9 @@ describe('KnowYourWorldValidator', () => {
         const result = await validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.currentPrompt).toBe('region-2')
+        expect(asState(result.newState)?.currentPrompt).toBe('region-2')
         // region-1 should be at the end
-        expect(result.newState?.regionsToFind).toEqual([
+        expect(asState(result.newState)?.regionsToFind).toEqual([
           'region-3',
           'region-4',
           'region-5',
@@ -214,9 +218,9 @@ describe('KnowYourWorldValidator', () => {
         const result = await validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.currentPrompt).toBe('region-2')
+        expect(asState(result.newState)?.currentPrompt).toBe('region-2')
         // region-1 should be inserted at end (min of 3, queue length)
-        expect(result.newState?.regionsToFind).toEqual(['region-1'])
+        expect(asState(result.newState)?.regionsToFind).toEqual(['region-1'])
       })
 
       it('handles only one region (the current prompt) remaining', async () => {
@@ -231,8 +235,8 @@ describe('KnowYourWorldValidator', () => {
 
         expect(result.valid).toBe(true)
         // The given-up region becomes the next prompt again
-        expect(result.newState?.currentPrompt).toBe('region-1')
-        expect(result.newState?.regionsToFind).toEqual([])
+        expect(asState(result.newState)?.currentPrompt).toBe('region-1')
+        expect(asState(result.newState)?.regionsToFind).toEqual([])
       })
     })
 
@@ -248,7 +252,7 @@ describe('KnowYourWorldValidator', () => {
         const result = await validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.currentPlayer).toBe('player-2')
+        expect(asState(result.newState)?.currentPlayer).toBe('player-2')
       })
 
       it('wraps around to first player after last player', async () => {
@@ -262,7 +266,7 @@ describe('KnowYourWorldValidator', () => {
         const result = await validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.currentPlayer).toBe('player-1')
+        expect(asState(result.newState)?.currentPlayer).toBe('player-1')
       })
 
       it('does not rotate player in cooperative mode', async () => {
@@ -276,7 +280,7 @@ describe('KnowYourWorldValidator', () => {
         const result = await validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.currentPlayer).toBe('player-1')
+        expect(asState(result.newState)?.currentPlayer).toBe('player-1')
       })
     })
 
@@ -290,10 +294,10 @@ describe('KnowYourWorldValidator', () => {
         const result = await validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.giveUpReveal).not.toBeNull()
-        expect(result.newState?.giveUpReveal?.regionId).toBe('region-1')
-        expect(result.newState?.giveUpReveal?.regionName).toBe('Region 1')
-        expect(result.newState?.giveUpReveal?.timestamp).toBeGreaterThan(0)
+        expect(asState(result.newState)?.giveUpReveal).not.toBeNull()
+        expect(asState(result.newState)?.giveUpReveal?.regionId).toBe('region-1')
+        expect(asState(result.newState)?.giveUpReveal?.regionName).toBe('Region 1')
+        expect(asState(result.newState)?.giveUpReveal?.timestamp).toBeGreaterThan(0)
       })
     })
 
@@ -309,17 +313,17 @@ describe('KnowYourWorldValidator', () => {
 
         let result = await validator.validateMove(state, move)
         expect(result.valid).toBe(true)
-        expect(result.newState?.regionsGivenUp).toEqual(['region-1'])
+        expect(asState(result.newState)?.regionsGivenUp).toEqual(['region-1'])
 
         // Second give up (on region-2)
-        state = result.newState!
+        state = result.newState as KnowYourWorldState
         move = createGiveUpMove()
 
         result = await validator.validateMove(state, move)
         expect(result.valid).toBe(true)
-        expect(result.newState?.regionsGivenUp).toContain('region-1')
-        expect(result.newState?.regionsGivenUp).toContain('region-2')
-        expect(result.newState?.currentPrompt).toBe('region-3')
+        expect(asState(result.newState)?.regionsGivenUp).toContain('region-1')
+        expect(asState(result.newState)?.regionsGivenUp).toContain('region-2')
+        expect(asState(result.newState)?.currentPrompt).toBe('region-3')
       })
 
       it('handles giving up on same region twice (after it comes back)', async () => {
@@ -340,9 +344,9 @@ describe('KnowYourWorldValidator', () => {
 
         expect(result.valid).toBe(true)
         // Should not duplicate in regionsGivenUp
-        expect(result.newState?.regionsGivenUp).toEqual(['region-1'])
+        expect(asState(result.newState)?.regionsGivenUp).toEqual(['region-1'])
         // region-1 should still be re-inserted
-        expect(result.newState?.regionsToFind).toContain('region-1')
+        expect(asState(result.newState)?.regionsToFind).toContain('region-1')
       })
     })
   })

@@ -20,7 +20,7 @@ function generateTestWorksheet() {
   const width = 1275
   const height = 1650
   const canvas = createCanvas(width, height)
-  const ctx = canvas.getContext('2d')
+  const ctx = canvas.getContext('2d')!
 
   // White background
   ctx.fillStyle = '#ffffff'

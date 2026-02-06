@@ -220,8 +220,7 @@ function ScrubberDemo({ sessionMode, darkMode = false }: ScrubberDemoProps) {
             onAction={() => alert('Action clicked!')}
             isLoading={false}
             isDark={darkMode}
-            layoutProgress={layoutProgress}
-            celebrationProgress={celebrationProgress}
+            progress={layoutProgress}
             containerWidth={containerWidth}
             containerHeight={containerHeight}
           />
@@ -430,8 +429,7 @@ function TwoAxisDemo({ sessionMode, darkMode = false }: ScrubberDemoProps) {
             onAction={() => alert('Action clicked!')}
             isLoading={false}
             isDark={darkMode}
-            layoutProgress={layoutProgress}
-            celebrationProgress={celebrationProgress}
+            progress={layoutProgress}
             containerWidth={containerWidth}
             containerHeight={containerHeight}
           />

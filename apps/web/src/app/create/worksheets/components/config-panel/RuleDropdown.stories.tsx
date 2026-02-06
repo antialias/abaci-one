@@ -16,7 +16,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 // Wrapper to handle state
-function DropdownWrapper(args: React.ComponentProps<typeof RuleDropdown>) {
+function DropdownWrapper(args: Omit<React.ComponentProps<typeof RuleDropdown>, 'onChange'> & { onChange?: (value: RuleMode) => void }) {
   const [value, setValue] = useState<RuleMode>(args.value)
   return <RuleDropdown {...args} value={value} onChange={setValue} />
 }
@@ -78,6 +78,7 @@ export const NeverSelectedDark: Story = {
 }
 
 export const MultipleDropdowns: Story = {
+  args: { label: 'Display Rules', description: 'Multiple dropdowns', value: 'always' },
   render: () => {
     const [rules, setRules] = useState({
       tenFrames: 'always' as RuleMode,
@@ -146,6 +147,7 @@ export const MultipleDropdowns: Story = {
 }
 
 export const AllOptions: Story = {
+  args: { label: 'All Options', description: 'All rule modes', value: 'always' },
   render: () => {
     const options: Array<{ value: RuleMode; label: string }> = [
       { value: 'always', label: 'Always' },

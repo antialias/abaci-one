@@ -502,9 +502,6 @@ function MoodContent({
             currentTimeMs={currentElapsedMs}
             isDark={isDark}
             compact={false}
-            averageLabel="your usual"
-            fastLabel="🐇 fast"
-            slowLabel="🐢 slow"
           />
         )}
       </div>

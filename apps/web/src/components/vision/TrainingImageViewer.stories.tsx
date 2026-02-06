@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
-// @ts-expect-error - AbacusStatic exists but TypeScript module resolution issue (documented in CLAUDE.md)
 import { AbacusStatic } from '@soroban/abacus-react'
 import { css } from '../../../styled-system/css'
 import { TrainingImageViewer, type TrainingImageMeta, type GroupBy } from './TrainingImageViewer'
@@ -91,14 +90,15 @@ function AbacusColumnPreview({ digit }: { digit: number }) {
         frameVisible={false}
         showNumbers={false}
         customStyles={{
-          beads: {
+          earthBeads: {
             fill: '#9ca3af',
             stroke: '#6b7280',
             strokeWidth: 1,
           },
-          frame: {
-            fill: 'transparent',
-            stroke: 'transparent',
+          heavenBeads: {
+            fill: '#9ca3af',
+            stroke: '#6b7280',
+            strokeWidth: 1,
           },
           reckoningBar: {
             fill: '#374151',

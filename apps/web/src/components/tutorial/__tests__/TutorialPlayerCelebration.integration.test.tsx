@@ -45,6 +45,15 @@ const mockTutorial: Tutorial = {
   id: 'integration-test-tutorial',
   title: 'Integration Test Tutorial',
   description: 'Testing celebration tooltip integration',
+  category: 'test',
+  difficulty: 'beginner',
+  estimatedDuration: 5,
+  tags: ['test'],
+  author: 'test',
+  version: '1.0.0',
+  isPublished: false,
+  createdAt: new Date(),
+  updatedAt: new Date(),
   steps: [
     {
       id: 'step-1',

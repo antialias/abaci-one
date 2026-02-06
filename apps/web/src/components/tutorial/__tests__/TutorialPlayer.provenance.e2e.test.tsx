@@ -26,6 +26,13 @@ describe('TutorialPlayer Provenance E2E Test', () => {
     id: 'provenance-test',
     title: 'Provenance Test Tutorial',
     description: 'Testing provenance information in tooltips',
+    category: 'test',
+    difficulty: 'beginner',
+    estimatedDuration: 5,
+    tags: ['test'],
+    author: 'test',
+    version: '1.0.0',
+    isPublished: false,
     steps: [
       {
         id: 'provenance-step',

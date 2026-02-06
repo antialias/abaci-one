@@ -4,6 +4,7 @@ import { useCallback, useMemo } from 'react'
 import { css } from '../../../../../../styled-system/css'
 import { TimelineRangeSelector } from '@/components/vision/TimelineRangeSelector'
 import {
+  type AnyDataItem,
   type DataPanelItem,
   type DataPanelFilters as FilterState,
   type CaptureTypeFilter,
@@ -89,7 +90,7 @@ export function DataPanelFilters<T extends DataPanelItem>({
     return count
   }, [filters])
 
-  const filteredCount = useMemo(() => applyFilters(items, filters).length, [items, filters])
+  const filteredCount = useMemo(() => applyFilters(items as unknown as AnyDataItem[], filters).length, [items, filters])
 
   const handleTimeRangeChange = useCallback(
     (before?: number, after?: number) => {

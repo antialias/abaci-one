@@ -14,6 +14,24 @@ export {
 import type { BeadDiffOutput, BeadDiffResult, AbacusState } from '@soroban/abacus-react'
 import { calculateBeadDiffFromValues } from '@soroban/abacus-react'
 
+// Local type for use in filter callbacks when BeadDiffResult can't resolve from package
+type BeadChange = {
+  placeValue: number
+  beadType: 'heaven' | 'earth'
+  position?: number
+  direction: 'activate' | 'deactivate'
+  order: number
+}
+
+/** A single step in a multi-step bead diff sequence */
+type StepDiff = {
+  stepIndex: number
+  instruction: string
+  diff: BeadDiffOutput
+  fromValue: number
+  toValue: number
+}
+
 /**
  * Calculate step-by-step bead diffs for multi-step operations
  * This is used for tutorial multi-step instructions where we want to show
@@ -24,14 +42,8 @@ import { calculateBeadDiffFromValues } from '@soroban/abacus-react'
 export function calculateMultiStepBeadDiffs(
   startValue: number,
   steps: Array<{ expectedValue: number; instruction: string }>
-): Array<{
-  stepIndex: number
-  instruction: string
-  diff: BeadDiffOutput
-  fromValue: number
-  toValue: number
-}> {
-  const stepDiffs = []
+): StepDiff[] {
+  const stepDiffs: StepDiff[] = []
   let currentValue = startValue
 
   steps.forEach((step, index) => {
@@ -63,7 +75,7 @@ export function validateBeadDiff(diff: BeadDiffOutput): {
   const errors: string[] = []
 
   // Check for impossible earth bead counts
-  const earthChanges = diff.changes.filter((c) => c.beadType === 'earth')
+  const earthChanges = diff.changes.filter((c: BeadChange) => c.beadType === 'earth')
   const earthByPlace = groupByPlace(earthChanges)
 
   Object.entries(earthByPlace).forEach(([place, changes]) => {

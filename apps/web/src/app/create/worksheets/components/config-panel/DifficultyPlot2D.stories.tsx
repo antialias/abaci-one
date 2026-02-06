@@ -55,7 +55,7 @@ export const CustomConfiguration: Story = {
     pAnyStart: 0.5,
     pAllStart: 0.1,
     displayRules: {
-      carryBoxes: 'sometimes',
+      carryBoxes: 'whenRegrouping',
       answerBoxes: 'always',
       placeValueColors: 'never',
       tenFrames: 'never',
@@ -91,7 +91,7 @@ export const MasteryProgressionView: Story = {
     pAnyStart: 0.5,
     pAllStart: 0.1,
     displayRules: {
-      carryBoxes: 'sometimes',
+      carryBoxes: 'whenRegrouping',
       answerBoxes: 'always',
       placeValueColors: 'never',
       tenFrames: 'never',

@@ -6,7 +6,7 @@ import {
   findScaffoldingIndex,
   REGROUPING_PROGRESSION,
   SCAFFOLDING_PROGRESSION,
-} from '../src/app/create/worksheets/addition/difficultyProfiles'
+} from '../src/app/create/worksheets/difficultyProfiles'
 
 // Start from beginner
 let state = {

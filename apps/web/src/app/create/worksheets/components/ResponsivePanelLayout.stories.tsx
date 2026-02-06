@@ -173,6 +173,11 @@ const mockConfig: Partial<WorksheetFormState> = {
 }
 
 export const DesktopLayout: Story = {
+  args: {
+    config: mockConfig,
+    sidebarContent: <MockSidebar />,
+    previewContent: <MockPreviewWithVirtualLoading pages={5} />,
+  },
   render: () => (
     <div style={{ height: '100vh', width: '100vw' }}>
       <ResponsivePanelLayout
@@ -185,6 +190,11 @@ export const DesktopLayout: Story = {
 }
 
 export const WithVirtualLoading: Story = {
+  args: {
+    config: mockConfig,
+    sidebarContent: <MockSidebar />,
+    previewContent: <MockPreviewWithVirtualLoading pages={20} />,
+  },
   render: () => {
     return (
       <div style={{ height: '100vh', width: '100vw' }}>
@@ -218,6 +228,11 @@ export const WithVirtualLoading: Story = {
 }
 
 export const SinglePage: Story = {
+  args: {
+    config: { ...mockConfig, pages: 1 },
+    sidebarContent: <MockSidebar />,
+    previewContent: <MockPreviewWithVirtualLoading pages={1} />,
+  },
   render: () => (
     <div style={{ height: '100vh', width: '100vw' }}>
       <ResponsivePanelLayout
@@ -230,6 +245,11 @@ export const SinglePage: Story = {
 }
 
 export const ManyPages: Story = {
+  args: {
+    config: { ...mockConfig, pages: 50 },
+    sidebarContent: <MockSidebar />,
+    previewContent: <MockPreviewWithVirtualLoading pages={50} />,
+  },
   render: () => (
     <div style={{ height: '100vh', width: '100vw' }}>
       <div
@@ -259,6 +279,11 @@ export const ManyPages: Story = {
 }
 
 export const LandscapeOrientation: Story = {
+  args: {
+    config: { ...mockConfig, orientation: 'landscape' },
+    sidebarContent: <MockSidebar />,
+    previewContent: <MockPreviewWithVirtualLoading pages={5} />,
+  },
   render: () => {
     function LandscapePreview() {
       const [loadedPages, setLoadedPages] = useState(new Set([0]))
@@ -327,6 +352,11 @@ export const LandscapeOrientation: Story = {
 }
 
 export const ResizablePanels: Story = {
+  args: {
+    config: mockConfig,
+    sidebarContent: <MockSidebar />,
+    previewContent: <MockPreviewWithVirtualLoading pages={5} />,
+  },
   render: () => (
     <div style={{ height: '100vh', width: '100vw' }}>
       <div

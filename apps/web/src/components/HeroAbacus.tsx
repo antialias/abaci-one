@@ -137,7 +137,7 @@ export function HeroAbacus() {
             interactive={true}
             animated={true}
             customStyles={structuralStyles}
-            onValueChange={setAbacusValue}
+            onValueChange={(v) => setAbacusValue(Number(v))}
           />
         </div>
       </div>

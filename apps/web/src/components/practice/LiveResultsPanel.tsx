@@ -545,7 +545,7 @@ export function LiveResultsPanel({
           ) : (
             (showAllProblems ? results : incorrectResults).map((result, index) => (
               <ObservedResultItem
-                key={`${result.partNumber}-${result.slotIndex}-${result.epochNumber ?? 0}-${index}`}
+                key={`${result.problemNumber}-${result.recordedAt}-${index}`}
                 result={result}
                 isDark={isDark}
               />

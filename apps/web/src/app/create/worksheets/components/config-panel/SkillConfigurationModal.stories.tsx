@@ -45,6 +45,7 @@ function ModalWrapper(args: React.ComponentProps<typeof SkillConfigurationModal>
 export const CreateMode: Story = {
   render: (args) => <ModalWrapper {...args} />,
   args: {
+    open: true,
     mode: 'create',
     operator: 'addition',
     onSave: (config) => {
@@ -56,6 +57,7 @@ export const CreateMode: Story = {
 export const EditModeEarlyLearner: Story = {
   render: (args) => <ModalWrapper {...args} />,
   args: {
+    open: true,
     mode: 'edit',
     operator: 'addition',
     existingConfig: {
@@ -74,6 +76,7 @@ export const EditModeEarlyLearner: Story = {
 export const EditModeIntermediate: Story = {
   render: (args) => <ModalWrapper {...args} />,
   args: {
+    open: true,
     mode: 'edit',
     operator: 'addition',
     existingConfig: {
@@ -92,6 +95,7 @@ export const EditModeIntermediate: Story = {
 export const EditModeExpert: Story = {
   render: (args) => <ModalWrapper {...args} />,
   args: {
+    open: true,
     mode: 'edit',
     operator: 'subtraction',
     existingConfig: {
@@ -110,6 +114,7 @@ export const EditModeExpert: Story = {
 export const CustomConfiguration: Story = {
   render: (args) => <ModalWrapper {...args} />,
   args: {
+    open: true,
     mode: 'edit',
     operator: 'addition',
     existingConfig: {
@@ -121,9 +126,9 @@ export const CustomConfiguration: Story = {
         pAllStart: 0.1,
       },
       displayRules: {
-        carryBoxes: 'sometimes',
+        carryBoxes: 'whenRegrouping',
         answerBoxes: 'always',
-        placeValueColors: 'sometimes',
+        placeValueColors: 'whenRegrouping',
         tenFrames: 'never',
         problemNumbers: 'always',
         cellBorders: 'always',

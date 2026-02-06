@@ -3,35 +3,58 @@ import { render, screen } from '@testing-library/react'
 import { PlayingPhase } from './PlayingPhase'
 import type { MapData } from '../types'
 
-// Mock dependencies
-vi.mock('../Provider', () => ({
-  useKnowYourWorld: () => ({
+// Hoisted mocks so they can be overridden per-test
+const mockUseKnowYourWorld = vi.hoisted(() =>
+  vi.fn((): {
     state: {
-      selectedMap: 'world' as const,
+      selectedMap: 'world' | 'usa'
+      selectedContinent: string
+      includeSizes: string[]
+      assistanceLevel: string
+      regionsFound: string[]
+      currentPrompt: string | null
+      gameMode: 'cooperative' | 'race' | 'turn-based'
+      regionsToFind: string[]
+    }
+    clickRegion: ReturnType<typeof vi.fn>
+  } => ({
+    state: {
+      selectedMap: 'world',
       selectedContinent: 'all',
       includeSizes: ['huge', 'large', 'medium'],
       assistanceLevel: 'helpful',
       regionsFound: ['france', 'germany'],
       currentPrompt: 'spain',
-      gameMode: 'cooperative' as const,
+      gameMode: 'cooperative',
       regionsToFind: ['spain', 'italy', 'portugal'],
     },
     clickRegion: vi.fn(),
-  }),
+  }))
+)
+
+const mockGetFilteredMapDataBySizesSync = vi.hoisted(() =>
+  vi.fn(
+    () =>
+      ({
+        id: 'world',
+        name: 'World Map',
+        viewBox: '0 0 1000 500',
+        regions: [
+          { id: 'spain', name: 'Spain', path: 'M 100 100 L 200 200' },
+          { id: 'italy', name: 'Italy', path: 'M 300 300 L 400 400' },
+          { id: 'portugal', name: 'Portugal', path: 'M 500 500 L 600 600' },
+        ],
+      }) as MapData
+  )
+)
+
+// Mock dependencies
+vi.mock('../Provider', () => ({
+  useKnowYourWorld: () => mockUseKnowYourWorld(),
 }))
 
 vi.mock('../maps', () => ({
-  getFilteredMapDataBySizesSync: () =>
-    ({
-      id: 'world',
-      name: 'World Map',
-      viewBox: '0 0 1000 500',
-      regions: [
-        { id: 'spain', name: 'Spain', path: 'M 100 100 L 200 200' },
-        { id: 'italy', name: 'Italy', path: 'M 300 300 L 400 400' },
-        { id: 'portugal', name: 'Portugal', path: 'M 500 500 L 600 600' },
-      ],
-    }) as MapData,
+  getFilteredMapDataBySizesSync: mockGetFilteredMapDataBySizesSync,
 }))
 
 vi.mock('./MapRenderer', () => ({
@@ -104,7 +127,7 @@ describe('PlayingPhase', () => {
   })
 
   it('handles null currentPrompt gracefully', () => {
-    vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
+    mockUseKnowYourWorld.mockReturnValue({
       state: {
         selectedMap: 'world' as const,
         selectedContinent: 'all',
@@ -140,7 +163,7 @@ describe('PlayingPhase', () => {
   it('passes clickRegion handler to MapRenderer', async () => {
     const mockClickRegion = vi.fn()
 
-    vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
+    mockUseKnowYourWorld.mockReturnValue({
       state: {
         selectedMap: 'world' as const,
         selectedContinent: 'all',
@@ -163,7 +186,7 @@ describe('PlayingPhase', () => {
   })
 
   it('uses correct map data from getFilteredMapDataBySizesSync', () => {
-    const mockGetFilteredMapDataBySizesSync = vi.fn().mockReturnValue({
+    mockGetFilteredMapDataBySizesSync.mockReturnValue({
       id: 'usa',
       name: 'USA Map',
       viewBox: '0 0 2000 1000',
@@ -171,10 +194,7 @@ describe('PlayingPhase', () => {
         { id: 'california', name: 'California', path: 'M 0 0' },
         { id: 'texas', name: 'Texas', path: 'M 100 100' },
       ],
-    })
-
-    vi.mocked(vi.importActual('../maps')).getFilteredMapDataBySizesSync =
-      mockGetFilteredMapDataBySizesSync
+    } as MapData)
 
     render(<PlayingPhase />)
 
@@ -188,7 +208,7 @@ describe('PlayingPhase', () => {
 
 describe('PlayingPhase - Different Scenarios', () => {
   it('handles empty regionsFound array', () => {
-    vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
+    mockUseKnowYourWorld.mockReturnValue({
       state: {
         selectedMap: 'world' as const,
         selectedContinent: 'all',
@@ -208,7 +228,7 @@ describe('PlayingPhase - Different Scenarios', () => {
   })
 
   it('handles all regions found scenario', () => {
-    vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
+    mockUseKnowYourWorld.mockReturnValue({
       state: {
         selectedMap: 'world' as const,
         selectedContinent: 'all',
@@ -228,7 +248,7 @@ describe('PlayingPhase - Different Scenarios', () => {
   })
 
   it('renders with no assistance mode', () => {
-    vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
+    mockUseKnowYourWorld.mockReturnValue({
       state: {
         selectedMap: 'world' as const,
         selectedContinent: 'all',

@@ -54,7 +54,7 @@ export async function updateMasteryFromGrading(
         correctAttempts: newCorrectAttempts,
         lastAccuracy: accuracy,
         lastPracticedAt: now,
-        isMastered: isMastered ? 1 : 0,
+        isMastered,
         masteredAt: isMastered && !existing.isMastered ? now : existing.masteredAt,
         updatedAt: now,
       })
@@ -77,7 +77,7 @@ export async function updateMasteryFromGrading(
       lastAccuracy: accuracy,
       firstAttemptAt: now,
       lastPracticedAt: now,
-      isMastered: isMastered ? 1 : 0,
+      isMastered,
       masteredAt: isMastered ? now : null,
       createdAt: now,
       updatedAt: now,

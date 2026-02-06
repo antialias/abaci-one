@@ -1015,7 +1015,7 @@ interface FamilyCodeSuccessProps {
   player: PlayerPreview
   isDark: boolean
   onAddAnother: () => void
-  onDone: () => void
+  onDone?: () => void
 }
 
 function FamilyCodeSuccess({ player, isDark, onAddAnother, onDone }: FamilyCodeSuccessProps) {

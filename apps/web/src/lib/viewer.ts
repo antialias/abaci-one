@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import type { Session } from 'next-auth'
 import { cookies, headers } from 'next/headers'
 import { auth } from '@/auth'
 import { db, schema } from '@/db'
@@ -13,7 +14,7 @@ import { GUEST_COOKIE_NAME, verifyGuestToken } from './guest-token'
  * @returns Viewer information with discriminated union type
  */
 export async function getViewer(): Promise<
-  | { kind: 'user'; session: Awaited<ReturnType<typeof auth>> }
+  | { kind: 'user'; session: Session }
   | { kind: 'guest'; guestId: string }
   | { kind: 'unknown' }
 > {

@@ -26,21 +26,12 @@ interface TeacherEnrollmentSectionProps {
  */
 function requestToStudent(
   request: EnrollmentRequestWithRelations,
-  enrollmentStatus: 'pending_teacher' | 'pending_parent'
+  enrollmentStatus: 'pending-teacher' | 'pending-parent'
 ): StudentWithProgress | null {
   if (!request.player) return null
 
   return {
-    id: request.player.id,
-    name: request.player.name,
-    emoji: request.player.emoji,
-    color: request.player.color,
-    userId: request.player.userId,
-    createdAt: request.player.createdAt,
-    updatedAt: request.player.updatedAt,
-    isArchived: request.player.isArchived,
-    notes: request.player.notes,
-    familyCode: request.player.familyCode,
+    ...request.player,
     // Mark as enrollment request for the action buttons
     enrollmentRequestId: request.id,
     // Set relationship data so action menu knows this is a pending enrollment
@@ -81,7 +72,7 @@ export function TeacherEnrollmentSection({ classroomId }: TeacherEnrollmentSecti
   const pendingStudents = useMemo(
     () =>
       pendingRequests
-        .map((r) => requestToStudent(r, 'pending_teacher'))
+        .map((r) => requestToStudent(r, 'pending-teacher'))
         .filter((s): s is StudentWithProgress => s !== null),
     [pendingRequests]
   )
@@ -90,7 +81,7 @@ export function TeacherEnrollmentSection({ classroomId }: TeacherEnrollmentSecti
   const awaitingStudents = useMemo(
     () =>
       awaitingParent
-        .map((r) => requestToStudent(r, 'pending_parent'))
+        .map((r) => requestToStudent(r, 'pending-parent'))
         .filter((s): s is StudentWithProgress => s !== null),
     [awaitingParent]
   )

@@ -70,6 +70,8 @@ interface SessionModeBannerContextValue {
   // Action callbacks
   onAction: () => void
   setOnAction: (callback: () => void) => void
+  onDefer: () => void
+  setOnDefer: (callback: () => void) => void
   onResume: () => void
   setOnResume: (callback: () => void) => void
   onStartFresh: () => void
@@ -183,6 +185,7 @@ export function SessionModeBannerProvider({
 
   // Action callback refs (to avoid re-renders when callbacks change)
   const onActionRef = useRef<() => void>(() => {})
+  const onDeferRef = useRef<() => void>(() => {})
   const onResumeRef = useRef<() => void>(() => {})
   const onStartFreshRef = useRef<() => void>(() => {})
 
@@ -192,6 +195,14 @@ export function SessionModeBannerProvider({
 
   const setOnAction = useCallback((callback: () => void) => {
     onActionRef.current = callback
+  }, [])
+
+  const onDefer = useCallback(() => {
+    onDeferRef.current()
+  }, [])
+
+  const setOnDefer = useCallback((callback: () => void) => {
+    onDeferRef.current = callback
   }, [])
 
   const onResume = useCallback(() => {
@@ -230,6 +241,8 @@ export function SessionModeBannerProvider({
       activeSession,
       onAction,
       setOnAction,
+      onDefer,
+      setOnDefer,
       onResume,
       setOnResume,
       onStartFresh,
@@ -255,6 +268,8 @@ export function SessionModeBannerProvider({
       activeSession,
       onAction,
       setOnAction,
+      onDefer,
+      setOnDefer,
       onResume,
       setOnResume,
       onStartFresh,

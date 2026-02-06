@@ -24,6 +24,15 @@ const mockTutorial: Tutorial = {
   id: 'integration-test',
   title: 'Integration Test Tutorial',
   description: 'Testing TutorialPlayer integration',
+  category: 'test',
+  difficulty: 'beginner',
+  estimatedDuration: 5,
+  tags: ['test'],
+  author: 'test',
+  version: '1.0.0',
+  isPublished: false,
+  createdAt: new Date(),
+  updatedAt: new Date(),
   steps: [
     {
       id: 'step-1',
@@ -32,6 +41,9 @@ const mockTutorial: Tutorial = {
       description: 'Add 3 to 5',
       startValue: 5,
       targetValue: 8,
+      expectedAction: 'multi-step',
+      actionDescription: 'Add 3 to 5',
+      tooltip: { content: 'Add 3', explanation: 'Add 3 to the abacus' },
       multiStepInstructions: [
         'First, show 5 on the abacus',
         'Then add 3 more',
@@ -45,6 +57,9 @@ const mockTutorial: Tutorial = {
       description: 'Subtract 2 from 10',
       startValue: 10,
       targetValue: 8,
+      expectedAction: 'remove',
+      actionDescription: 'Subtract 2 from 10',
+      tooltip: { content: 'Subtract 2', explanation: 'Remove 2 from the abacus' },
     },
   ],
 }

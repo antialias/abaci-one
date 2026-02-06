@@ -138,6 +138,7 @@ function createMockSessionPlan(config: {
     pauseReason: null,
     retryState: null,
     gameBreakSettings: null,
+    remoteCameraSessionId: null,
   }
 }
 

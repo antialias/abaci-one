@@ -105,10 +105,14 @@ const mockValidate = async (tutorial: any): Promise<TutorialValidation> => {
   }
 }
 
+const mockOnSave = async (tutorial: any) => {
+  action('save-tutorial')(tutorial)
+}
+
 export const Default: Story = {
   args: {
     tutorial: mockTutorial,
-    onSave: action('save-tutorial'),
+    onSave: mockOnSave,
     onValidate: mockValidate,
     onPreview: action('preview-step'),
   },
@@ -163,7 +167,7 @@ export const WithValidationErrors: Story = {
         startValue: step.targetValue, // This will trigger warnings
       })),
     },
-    onSave: action('save-tutorial'),
+    onSave: mockOnSave,
     onValidate: mockValidate,
     onPreview: action('preview-step'),
   },
@@ -183,7 +187,7 @@ export const MinimalTutorial: Story = {
       ...mockTutorial,
       steps: mockTutorial.steps.slice(0, 2), // Only 2 steps for easier editing demo
     },
-    onSave: action('save-tutorial'),
+    onSave: mockOnSave,
     onValidate: mockValidate,
     onPreview: action('preview-step'),
   },
@@ -240,6 +244,9 @@ export const WithPracticeSteps: Story = {
               directAddition: true,
               heavenBead: true,
               simpleCombinations: true,
+              directSubtraction: false,
+              heavenBeadSubtraction: false,
+              simpleCombinationsSub: false,
             },
             fiveComplements: {
               '4=5-1': true,
@@ -258,11 +265,34 @@ export const WithPracticeSteps: Story = {
               '2=10-8': false,
               '1=10-9': false,
             },
+            fiveComplementsSub: {
+              '-4=-5+1': false,
+              '-3=-5+2': false,
+              '-2=-5+3': false,
+              '-1=-5+4': false,
+            },
+            tenComplementsSub: {
+              '-9=+1-10': false,
+              '-8=+2-10': false,
+              '-7=+3-10': false,
+              '-6=+4-10': false,
+              '-5=+5-10': false,
+              '-4=+6-10': false,
+              '-3=+7-10': false,
+              '-2=+8-10': false,
+              '-1=+9-10': false,
+            },
+            advanced: {
+              cascadingCarry: false,
+              cascadingBorrow: false,
+            },
           },
           targetSkills: {
             fiveComplements: {
               '4=5-1': true,
               '3=5-2': true,
+              '2=5-3': false,
+              '1=5-4': false,
             },
           },
           numberRange: { min: 1, max: 9 },
@@ -270,7 +300,7 @@ export const WithPracticeSteps: Story = {
         },
       ],
     },
-    onSave: action('save-tutorial'),
+    onSave: mockOnSave,
     onValidate: mockValidate,
     onPreview: action('preview-step'),
   },
@@ -302,17 +332,12 @@ export const CustomTutorial: Story = {
           description: 'Add 5 to 5 using the heaven bead',
           startValue: 5,
           targetValue: 10,
-          highlightBeads: [{ columnIndex: 4, beadType: 'heaven' as const }],
+          highlightBeads: [{ placeValue: 1, beadType: 'heaven' as const }],
           expectedAction: 'add' as const,
           actionDescription: 'Click the heaven bead',
           tooltip: {
             content: 'Using heaven bead for 10',
             explanation: 'When adding 5 to 5, use the tens place heaven bead',
-          },
-          errorMessages: {
-            wrongBead: 'Click the tens place heaven bead',
-            wrongAction: 'Move the bead down to activate',
-            hint: 'Think about place value',
           },
         },
         {
@@ -323,8 +348,8 @@ export const CustomTutorial: Story = {
           startValue: 7,
           targetValue: 15,
           highlightBeads: [
-            { columnIndex: 1, beadType: 'heaven' as const },
-            { columnIndex: 4, beadType: 'heaven' as const },
+            { placeValue: 10, beadType: 'heaven' as const },
+            { placeValue: 1, beadType: 'heaven' as const },
           ],
           expectedAction: 'multi-step' as const,
           actionDescription: 'Activate both heaven beads for 15',
@@ -336,11 +361,6 @@ export const CustomTutorial: Story = {
             content: 'Complex addition',
             explanation: '7 + 8 = 15, which needs both tens and ones heaven beads',
           },
-          errorMessages: {
-            wrongBead: 'Follow the two-step process',
-            wrongAction: 'Activate both heaven beads',
-            hint: '15 = 10 + 5',
-          },
         },
       ],
       tags: ['custom', 'demo', 'advanced'],
@@ -350,7 +370,7 @@ export const CustomTutorial: Story = {
       updatedAt: new Date(),
       isPublished: false,
     },
-    onSave: action('save-tutorial'),
+    onSave: mockOnSave,
     onValidate: mockValidate,
     onPreview: action('preview-step'),
   },

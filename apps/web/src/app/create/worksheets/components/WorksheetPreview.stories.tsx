@@ -103,9 +103,9 @@ const mockFormState: WorksheetFormState = {
   orientation: 'portrait',
   name: 'Student Name',
   displayRules: {
-    tenFrames: 'sometimes',
-    carryBoxes: 'sometimes',
-    placeValueColors: 'sometimes',
+    tenFrames: 'whenRegrouping',
+    carryBoxes: 'whenRegrouping',
+    placeValueColors: 'whenRegrouping',
     answerBoxes: 'always',
     problemNumbers: 'always',
     cellBorders: 'always',

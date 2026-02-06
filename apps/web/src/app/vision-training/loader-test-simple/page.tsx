@@ -23,7 +23,7 @@ export default function LoaderTestSimplePage() {
       const cv = await loadOpenCVSimple()
       console.log('[LoaderTestSimple] loadOpenCVSimple returned:', !!cv)
       setTime(Date.now() - start)
-      setStatus(cv?.imread ? 'success' : 'error')
+      setStatus(cv && typeof cv.imread === 'function' ? 'success' : 'error')
     } catch (err) {
       console.log('[LoaderTestSimple] Error:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')

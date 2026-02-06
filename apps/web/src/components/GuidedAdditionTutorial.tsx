@@ -1,6 +1,8 @@
 'use client'
 
-import { AbacusReact, type EarthBeadPosition, type ValidPlaceValues } from '@soroban/abacus-react'
+import { AbacusReact, type ValidPlaceValues } from '@soroban/abacus-react'
+
+type EarthBeadPosition = 0 | 1 | 2 | 3
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { css } from '../../styled-system/css'
 import { hstack, stack } from '../../styled-system/patterns'
@@ -659,13 +661,14 @@ export function GuidedAdditionTutorial() {
   }, [currentStepIndex, isLastStep, isTransitioning])
 
   const checkStep = useCallback(
-    (newValue: number) => {
+    (newValue: number | bigint) => {
       // Only check tutorial steps, not practice steps
       if (!isTutorialStep(currentStep)) return
 
       // Prevent processing the same value multiple times
-      if (lastProcessedValueRef.current === newValue) return
-      lastProcessedValueRef.current = newValue
+      const numValue = Number(newValue)
+      if (lastProcessedValueRef.current === numValue) return
+      lastProcessedValueRef.current = numValue
 
       // Prevent multiple rapid calls during transitions
       if (isTransitioning) return
@@ -684,7 +687,7 @@ export function GuidedAdditionTutorial() {
         }
       }
 
-      if (newValue === currentStep.targetValue) {
+      if (numValue === currentStep.targetValue) {
         setIsCorrect(true)
         setFeedback('Perfect! Well done.')
         setMultiStepProgress(0)
@@ -1155,20 +1158,7 @@ export function GuidedAdditionTutorial() {
             showNumbers={true}
             animated={true}
             onValueChange={checkStep}
-            customStyles={{
-              beadHighlight: currentStep.highlightBeads?.reduce(
-                (acc, bead) => {
-                  const key = `${bead.columnIndex}-${bead.beadType}${bead.position !== undefined ? `-${bead.position}` : ''}`
-                  acc[key] = {
-                    stroke: '#3B82F6',
-                    strokeWidth: 3,
-                    filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))',
-                  }
-                  return acc
-                },
-                {} as Record<string, any>
-              ),
-            }}
+            highlightBeads={currentStep.highlightBeads}
           />
         </div>
       )}

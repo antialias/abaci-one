@@ -67,10 +67,77 @@ export function PracticeProblemPlayer({
     }
   }, [currentProblem, currentSequenceStep, calculateExpectedValue])
 
+  // Complete the practice session
+  const completePractice = useCallback(() => {
+    const totalTime = Date.now() - startTime
+    const correctAnswers = results.filter((r) => r.correct).length
+
+    const practiceResults: PracticeResults = {
+      totalProblems: problems.length,
+      correctAnswers,
+      totalTime,
+      averageTime: totalTime / problems.length,
+      problemResults: results,
+    }
+
+    onComplete?.(practiceResults)
+  }, [results, problems.length, startTime, onComplete])
+
+  // Move to next problem
+  const nextProblem = useCallback(() => {
+    if (currentProblemIndex < problems.length - 1) {
+      setCurrentProblemIndex((prev) => prev + 1)
+      setCurrentSequenceStep(0)
+      setUserAnswer(0)
+      setIsCorrect(null)
+      setShowExplanation(false)
+      setProblemStartTime(Date.now())
+    }
+  }, [currentProblemIndex, problems.length])
+
+  // Skip current problem (mark as incorrect)
+  const skipProblem = useCallback(() => {
+    if (currentProblem) {
+      const timeSpent = Date.now() - problemStartTime
+      const problemResult = {
+        problem: currentProblem,
+        userAnswer: userAnswer,
+        correct: false,
+        timeSpent,
+      }
+
+      setResults((prev) => [...prev, problemResult])
+      onProblemComplete?.(currentProblemIndex, false, timeSpent)
+    }
+
+    if (currentProblemIndex < problems.length - 1) {
+      nextProblem()
+    } else {
+      completePractice()
+    }
+  }, [
+    currentProblem,
+    currentProblemIndex,
+    problems.length,
+    userAnswer,
+    problemStartTime,
+    onProblemComplete,
+    nextProblem,
+    completePractice,
+  ])
+
+  // Reset to start of current problem
+  const resetProblem = useCallback(() => {
+    setCurrentSequenceStep(0)
+    setUserAnswer(0)
+    setIsCorrect(null)
+    setProblemStartTime(Date.now())
+  }, [])
+
   // Check answer when user changes abacus value
   const handleValueChange = useCallback(
-    (newValue: number) => {
-      setUserAnswer(newValue)
+    (newValue: number | bigint) => {
+      setUserAnswer(Number(newValue))
 
       if (currentProblem && newValue === expectedValue) {
         setIsCorrect(true)
@@ -124,73 +191,6 @@ export function PracticeProblemPlayer({
       nextProblem,
     ]
   )
-
-  // Move to next problem
-  const nextProblem = useCallback(() => {
-    if (currentProblemIndex < problems.length - 1) {
-      setCurrentProblemIndex((prev) => prev + 1)
-      setCurrentSequenceStep(0)
-      setUserAnswer(0)
-      setIsCorrect(null)
-      setShowExplanation(false)
-      setProblemStartTime(Date.now())
-    }
-  }, [currentProblemIndex, problems.length])
-
-  // Skip current problem (mark as incorrect)
-  const skipProblem = useCallback(() => {
-    if (currentProblem) {
-      const timeSpent = Date.now() - problemStartTime
-      const problemResult = {
-        problem: currentProblem,
-        userAnswer: userAnswer,
-        correct: false,
-        timeSpent,
-      }
-
-      setResults((prev) => [...prev, problemResult])
-      onProblemComplete?.(currentProblemIndex, false, timeSpent)
-    }
-
-    if (currentProblemIndex < problems.length - 1) {
-      nextProblem()
-    } else {
-      completePractice()
-    }
-  }, [
-    currentProblem,
-    currentProblemIndex,
-    problems.length,
-    userAnswer,
-    problemStartTime,
-    onProblemComplete,
-    nextProblem,
-    completePractice,
-  ])
-
-  // Reset to start of current problem
-  const resetProblem = useCallback(() => {
-    setCurrentSequenceStep(0)
-    setUserAnswer(0)
-    setIsCorrect(null)
-    setProblemStartTime(Date.now())
-  }, [])
-
-  // Complete the practice session
-  const completePractice = useCallback(() => {
-    const totalTime = Date.now() - startTime
-    const correctAnswers = results.filter((r) => r.correct).length
-
-    const practiceResults: PracticeResults = {
-      totalProblems: problems.length,
-      correctAnswers,
-      totalTime,
-      averageTime: totalTime / problems.length,
-      problemResults: results,
-    }
-
-    onComplete?.(practiceResults)
-  }, [results, problems.length, startTime, onComplete])
 
   // Toggle explanation
   const toggleExplanation = useCallback(() => {

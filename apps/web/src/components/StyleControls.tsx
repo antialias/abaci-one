@@ -6,7 +6,7 @@ import * as Switch from '@radix-ui/react-switch'
 import { useAbacusDisplay } from '@soroban/abacus-react'
 import type { FormApi } from '@tanstack/react-form'
 import { useEffect } from 'react'
-import type { FlashcardFormState } from '@/app/create/page'
+import type { FlashcardFormState } from '@/app/create/flashcards/page'
 import { css } from '../../styled-system/css'
 import { grid, hstack, stack } from '../../styled-system/patterns'
 
@@ -20,7 +20,7 @@ export function StyleControls({ form }: StyleControlsProps) {
   // Sync form values with global context
   useEffect(() => {
     form.setFieldValue('colorScheme', config.colorScheme)
-    form.setFieldValue('beadShape', config.beadShape)
+    form.setFieldValue('beadShape', config.beadShape as 'diamond' | 'circle' | 'square')
     form.setFieldValue('hideInactiveBeads', config.hideInactiveBeads)
     form.setFieldValue('coloredNumerals', config.coloredNumerals)
   }, [config, form])

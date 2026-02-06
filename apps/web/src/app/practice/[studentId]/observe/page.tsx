@@ -55,7 +55,7 @@ export default async function PracticeObservationPage({ params }: ObservationPag
         session={{
           sessionId: activeSession.id,
           playerId: activeSession.playerId,
-          startedAt: activeSession.startedAt as string,
+          startedAt: activeSession.startedAt!.toISOString(),
           currentPartIndex: activeSession.currentPartIndex,
           currentSlotIndex: activeSession.currentSlotIndex,
           totalParts: activeSession.parts.length,
@@ -91,7 +91,7 @@ export default async function PracticeObservationPage({ params }: ObservationPag
   const session: ActiveSessionInfo = {
     sessionId: activeSession.id,
     playerId: activeSession.playerId,
-    startedAt: activeSession.startedAt as string,
+    startedAt: activeSession.startedAt!.toISOString(),
     currentPartIndex: activeSession.currentPartIndex,
     currentSlotIndex: activeSession.currentSlotIndex,
     totalParts: activeSession.parts.length,

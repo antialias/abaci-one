@@ -3537,7 +3537,7 @@ async function main() {
       teacherId: user.id,
       name: 'Test Classroom',
     })
-    if (result.success) {
+    if (result.success && result.classroom) {
       classroom = result.classroom
       console.log(`   Created classroom: ${classroom.name} (code: ${classroom.code})`)
     } else {
@@ -3546,6 +3546,10 @@ async function main() {
     }
   } else {
     console.log(`   Using existing classroom: ${classroom.name} (code: ${classroom.code})`)
+  }
+
+  if (!classroom) {
+    throw new Error('No classroom available')
   }
 
   // Create each test profile with iterative tuning (up to 3 rounds)

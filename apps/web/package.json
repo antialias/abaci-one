@@ -135,6 +135,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@auth/core": "0.40.0",
     "@next/bundle-analyzer": "^16.1.1",
     "@pandacss/dev": "^1.8.1",
     "@playwright/test": "^1.55.1",

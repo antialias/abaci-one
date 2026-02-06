@@ -74,6 +74,7 @@ export const FiveColumns: Story = {
 }
 
 export const VirtualScrollSimulation: Story = {
+  args: { pageNumber: 1 },
   render: () => {
     return (
       <div
@@ -219,6 +220,7 @@ export const SparseLayout: Story = {
 }
 
 export const ComparisonView: Story = {
+  args: { pageNumber: 1 },
   render: () => {
     return (
       <div
@@ -257,6 +259,7 @@ export const ComparisonView: Story = {
 }
 
 export const LoadingAnimation: Story = {
+  args: { pageNumber: 7 },
   render: () => {
     return (
       <div>

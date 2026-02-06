@@ -391,19 +391,19 @@ export default function ArcadeRoomsTestPage() {
               1. Create Room
             </button>
             <button
-              onClick={testJoinRoom}
+              onClick={() => testJoinRoom()}
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
             >
               2. Join Room
             </button>
             <button
-              onClick={testMultiUserJoin}
+              onClick={() => testMultiUserJoin()}
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
             >
               3. Multi-User Join
             </button>
             <button
-              onClick={testGameMoveBroadcast}
+              onClick={() => testGameMoveBroadcast()}
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
             >
               4. Game Move Broadcast

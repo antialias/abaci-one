@@ -3,7 +3,11 @@ import { useState } from 'react'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
 import { createBasicSkillSet, type PracticeStep } from '../../types/tutorial'
-import { generateProblems, validatePracticeStepConfiguration } from '../../utils/problemGenerator'
+import {
+  type GeneratedProblem,
+  generateProblems,
+  validatePracticeStepConfiguration,
+} from '../../utils/problemGenerator'
 import { PracticeProblemPlayer } from './PracticeProblemPlayer'
 import { PracticeStepEditor } from './PracticeStepEditor'
 
@@ -19,7 +23,6 @@ export default meta
 // Demo practice step for testing
 const defaultPracticeStep: PracticeStep = {
   id: 'practice-basic-addition',
-  type: 'practice',
   title: 'Basic Addition Practice',
   description: 'Practice basic addition problems using direct addition and heaven bead',
   problemCount: 5,
@@ -30,6 +33,9 @@ const defaultPracticeStep: PracticeStep = {
       directAddition: true,
       heavenBead: true,
       simpleCombinations: false,
+      directSubtraction: false,
+      heavenBeadSubtraction: false,
+      simpleCombinationsSub: false,
     },
   },
   targetSkills: {
@@ -37,6 +43,9 @@ const defaultPracticeStep: PracticeStep = {
       directAddition: true,
       heavenBead: true,
       simpleCombinations: false,
+      directSubtraction: false,
+      heavenBeadSubtraction: false,
+      simpleCombinationsSub: false,
     },
   },
   numberRange: { min: 1, max: 9 },
@@ -45,7 +54,6 @@ const defaultPracticeStep: PracticeStep = {
 
 const advancedPracticeStep: PracticeStep = {
   id: 'practice-five-complements',
-  type: 'practice',
   title: 'Five Complements Practice',
   description: 'Practice problems requiring five complement techniques',
   problemCount: 8,
@@ -56,6 +64,9 @@ const advancedPracticeStep: PracticeStep = {
       directAddition: true,
       heavenBead: true,
       simpleCombinations: true,
+      directSubtraction: false,
+      heavenBeadSubtraction: false,
+      simpleCombinationsSub: false,
     },
     fiveComplements: {
       '4=5-1': true,
@@ -80,7 +91,7 @@ const advancedPracticeStep: PracticeStep = {
 function ProblemGeneratorDemo() {
   const [practiceStep, setPracticeStep] = useState<PracticeStep>(defaultPracticeStep)
   const [mode, setMode] = useState<'editor' | 'player'>('editor')
-  const [generatedProblems, setGeneratedProblems] = useState<any[]>([])
+  const [generatedProblems, setGeneratedProblems] = useState<GeneratedProblem[]>([])
   const [validationResult, setValidationResult] = useState<any>(null)
 
   const handleGenerate = () => {

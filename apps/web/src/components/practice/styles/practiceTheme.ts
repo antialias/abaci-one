@@ -209,9 +209,9 @@ export function getPartTypeColors(
     default:
       // Default colors for new practice types (add specific colors as needed)
       return {
-        bg: themed('neutral', isDark),
-        text: themed('neutralText', isDark),
-        border: themed('neutralBorder', isDark),
+        bg: themed('surfaceMuted', isDark),
+        text: themed('textMuted', isDark),
+        border: themed('borderMuted', isDark),
       }
   }
 }

@@ -3,7 +3,7 @@
 import * as Progress from '@radix-ui/react-progress'
 import { CheckCircle, Sparkles, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type { FlashcardFormState } from '@/app/create/page'
+import type { FlashcardFormState } from '@/app/create/flashcards/page'
 import { css } from '../../styled-system/css'
 import { hstack, stack } from '../../styled-system/patterns'
 

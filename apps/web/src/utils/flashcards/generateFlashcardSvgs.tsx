@@ -29,7 +29,6 @@ export function generateFlashcardFront(
     colorScheme = 'place-value',
     colorPalette = 'default',
     hideInactiveBeads = false,
-    showEmptyColumns = false,
     columns = 'auto',
     scaleFactor = 0.9,
   } = config
@@ -45,7 +44,6 @@ export function generateFlashcardFront(
       showNumbers={false}
       frameVisible={true}
       scaleFactor={scaleFactor}
-      showEmptyColumns={showEmptyColumns}
     />
   )
 }

@@ -102,6 +102,12 @@ export const LongDescription: Story = {
 }
 
 export const InteractiveDemo: Story = {
+  args: {
+    checked: false,
+    onChange: () => {},
+    label: 'Interactive Demo',
+    description: '',
+  },
   render: () => {
     const [options, setOptions] = useState({
       progressive: false,

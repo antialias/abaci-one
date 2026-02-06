@@ -71,7 +71,7 @@ export function LayoutTab() {
       digitRange={formState.digitRange || { min: 2, max: 2 }}
       pAnyStart={formState.pAnyStart ?? 0}
       operator={formState.operator || 'addition'}
-      mode={formState.mode || 'custom'}
+      mode={formState.mode === 'mastery' ? 'mastery' : 'custom'}
       problemNumbers={
         ((formState.displayRules ?? defaultAdditionConfig.displayRules).problemNumbers as
           | 'always'

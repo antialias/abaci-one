@@ -8,7 +8,7 @@ import { GameSelector } from './GameSelector'
 
 interface ChampionArenaProps {
   onGameModeChange?: (mode: 'single' | 'battle' | 'tournament') => void
-  onConfigurePlayer?: (playerId: number) => void
+  onConfigurePlayer?: (playerId: string) => void
   className?: string
 }
 
@@ -17,19 +17,20 @@ export function ChampionArena({
   onConfigurePlayer,
   className,
 }: ChampionArenaProps) {
-  const { profile, updatePlayerEmoji, updatePlayerName } = useUserProfile()
+  const { profile } = useUserProfile()
   const { gameMode, players, updatePlayer, activePlayerCount } = useGameMode()
-  const [draggedPlayer, setDraggedPlayer] = useState<number | null>(null)
+  const [draggedPlayer, setDraggedPlayer] = useState<string | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const [isRosterDragOver, setIsRosterDragOver] = useState(false)
-  const [_configurePlayer, _setConfigurePlayer] = useState<number | null>(null)
+  const [_configurePlayer, _setConfigurePlayer] = useState<string | null>(null)
   const [_tempName, _setTempName] = useState('')
   const arenaRef = useRef<HTMLDivElement>(null)
 
-  const availablePlayers = players.filter((player) => !player.isActive)
-  const arenaPlayers = players.filter((player) => player.isActive)
+  const allPlayers = Array.from(players.values())
+  const availablePlayers = allPlayers.filter((player) => !player.isActive)
+  const arenaPlayers = allPlayers.filter((player) => player.isActive)
 
-  const handleDragStart = (playerId: number) => {
+  const handleDragStart = (playerId: string) => {
     setDraggedPlayer(playerId)
   }
 
@@ -104,7 +105,7 @@ export function ChampionArena({
     }
   }
 
-  const handleAddToArena = (playerId: number) => {
+  const handleAddToArena = (playerId: string) => {
     console.log('Adding player to arena:', playerId)
 
     // Check if player is already in the arena
@@ -136,7 +137,7 @@ export function ChampionArena({
     onGameModeChange?.(newMode)
   }
 
-  const handleRemoveFromArena = (playerId: number) => {
+  const handleRemoveFromArena = (playerId: string) => {
     console.log('Removing player from arena:', playerId)
 
     // Check if player is actually in the arena
@@ -173,17 +174,13 @@ export function ChampionArena({
     onGameModeChange?.(newMode)
   }
 
-  const getPlayerEmoji = (id: number) => {
-    if (id === 1) return profile.player1Emoji
-    if (id === 2) return profile.player2Emoji
-    const player = players.find((p) => p.id === id)
+  const getPlayerEmoji = (id: string) => {
+    const player = players.get(id)
     return player?.emoji || '😀'
   }
 
-  const getPlayerName = (id: number) => {
-    if (id === 1) return profile.player1Name
-    if (id === 2) return profile.player2Name
-    const player = players.find((p) => p.id === id)
+  const getPlayerName = (id: string) => {
+    const player = players.get(id)
     return player?.name || `Player ${id}`
   }
 

@@ -10,6 +10,15 @@ const mockTutorial: Tutorial = {
   id: 'celebration-test-tutorial',
   title: 'Celebration Tooltip Test',
   description: 'Testing celebration tooltip behavior',
+  category: 'test',
+  difficulty: 'beginner',
+  estimatedDuration: 5,
+  tags: ['test'],
+  author: 'Test',
+  version: '1.0.0',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  isPublished: false,
   steps: [
     {
       id: 'step-1',
@@ -18,6 +27,9 @@ const mockTutorial: Tutorial = {
       description: 'Add 2 to 3',
       startValue: 3,
       targetValue: 5,
+      expectedAction: 'add' as const,
+      actionDescription: 'Add 2 to the abacus',
+      tooltip: { content: 'Add 2', explanation: 'Move beads to add 2' },
     },
   ],
 }
@@ -241,6 +253,9 @@ describe('TutorialPlayer Celebration Tooltip', () => {
             description: 'Add 3 to 2',
             startValue: 2,
             targetValue: 5,
+            expectedAction: 'add' as const,
+            actionDescription: 'Add 3 to the abacus',
+            tooltip: { content: 'Add 3', explanation: 'Move beads to add 3' },
           },
         ],
       }

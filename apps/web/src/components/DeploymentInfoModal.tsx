@@ -3,7 +3,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { Info, X } from 'lucide-react'
 import type React from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { css } from '../../styled-system/css'
 
 interface DeploymentInfoModalProps {
@@ -22,13 +22,14 @@ export function DeploymentInfoModal({
   // Use external control if provided, otherwise use internal state
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = onExternalOpenChange || setInternalOpen
+  const toggleOpen = useCallback(() => setOpen(!open), [open, setOpen])
 
   useEffect(() => {
     // Keyboard shortcut: Cmd/Ctrl + Shift + I
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'I') {
         e.preventDefault()
-        setOpen((prev) => !prev)
+        toggleOpen()
       }
     }
 
@@ -111,7 +112,7 @@ export function DeploymentInfoModal({
         minimumDistance >= minimumRequiredDistance &&
         elapsed <= 1500
       ) {
-        setOpen((prev) => !prev)
+        toggleOpen()
       }
     }
 
@@ -128,7 +129,7 @@ export function DeploymentInfoModal({
       window.removeEventListener('touchend', handleTouchEnd)
       window.removeEventListener('touchcancel', handleTouchCancel)
     }
-  }, [])
+  }, [toggleOpen])
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>

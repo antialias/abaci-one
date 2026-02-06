@@ -19,22 +19,25 @@ export function SharedWorksheetSummary({ config }: SharedWorksheetSummaryProps) 
   const isDark = resolvedTheme === 'dark'
 
   // Build human-readable descriptions
-  const operatorLabel = {
+  const operatorLabels: Record<string, string> = {
     addition: 'Addition',
     subtraction: 'Subtraction',
     multiplication: 'Multiplication',
     division: 'Division',
     mixed: 'Mixed Operations',
-  }[config.operator]
+  }
+  const operatorLabel = config.operator ? operatorLabels[config.operator] : 'Addition'
 
+  const digitRangeMin = config.digitRange?.min
+  const digitRangeMax = config.digitRange?.max
   const digitRangeText =
-    config.digitRange?.min === config.digitRange?.max
-      ? `${config.digitRange.min}-digit numbers`
-      : `${config.digitRange?.min || 1} to ${config.digitRange?.max || 2} digit numbers`
+    digitRangeMin === digitRangeMax
+      ? `${digitRangeMin ?? 2}-digit numbers`
+      : `${digitRangeMin ?? 1} to ${digitRangeMax ?? 2} digit numbers`
 
   const difficultyDescription = (() => {
-    if (config.mode === 'smart') {
-      const parts = ['Smart difficulty']
+    if (config.mode === 'custom') {
+      const parts = ['Custom difficulty']
       if (config.interpolate) {
         parts.push('progresses from easy to hard')
       }
@@ -61,7 +64,7 @@ export function SharedWorksheetSummary({ config }: SharedWorksheetSummaryProps) 
   if (config.displayRules?.placeValueColors === 'always') {
     visualAids.push('🌈 Color-coded place values')
   }
-  if (config.showAnswerBoxes) {
+  if (config.displayRules?.answerBoxes === 'always') {
     visualAids.push('✏️ Answer entry boxes')
   }
 
@@ -69,7 +72,6 @@ export function SharedWorksheetSummary({ config }: SharedWorksheetSummaryProps) 
   const layoutText = [
     `${config.problemsPerPage || 20} problems per page`,
     config.cols ? `${config.cols} columns` : null,
-    config.pageSize ? config.pageSize.toUpperCase() : null,
     config.orientation ? config.orientation : null,
   ]
     .filter(Boolean)
@@ -143,7 +145,7 @@ export function SharedWorksheetSummary({ config }: SharedWorksheetSummaryProps) 
 
       {/* Main Content */}
       <InfoCard
-        icon={SETTING_ICONS.operator[config.operator]}
+        icon={SETTING_ICONS.operator[config.operator ?? 'addition']}
         title="What's Being Practiced"
         description={`${operatorLabel} with ${digitRangeText}`}
         isDark={isDark}
@@ -219,7 +221,7 @@ export function SharedWorksheetSummary({ config }: SharedWorksheetSummaryProps) 
       <InfoCard icon="📐" title="Page Layout" description={layoutText} isDark={isDark} />
 
       {/* Additional Features (only if enabled) */}
-      {(config.showDate || config.showNameField || config.includeAnswerKey) && (
+      {config.includeAnswerKey && (
         <div
           className={css({
             p: '4',
@@ -242,12 +244,6 @@ export function SharedWorksheetSummary({ config }: SharedWorksheetSummaryProps) 
             ✨ Extras
           </h3>
           <div className={stack({ gap: '1.5' })}>
-            {config.showDate && (
-              <FeatureBadge icon="📅" label="Includes date field" isDark={isDark} />
-            )}
-            {config.showNameField && (
-              <FeatureBadge icon="👤" label="Includes name field" isDark={isDark} />
-            )}
             {config.includeAnswerKey && (
               <FeatureBadge icon="🔑" label="Answer key provided" isDark={isDark} />
             )}

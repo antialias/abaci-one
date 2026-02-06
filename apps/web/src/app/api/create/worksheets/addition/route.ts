@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate Typst sources (one per page)
-    const typstSources = generateTypstSource(config, problems)
+    const typstSources = await generateTypstSource(config, problems)
 
     // Join pages with pagebreak for PDF
     const typstSource = typstSources.join('\n\n#pagebreak()\n\n')

@@ -31,14 +31,14 @@ vi.mock('@soroban/abacus-react', () => ({
 
 describe('Tutorial Editor Integration Tests', () => {
   let mockTutorial: Tutorial
-  let mockOnSave: ReturnType<typeof vi.fn>
-  let mockOnValidate: ReturnType<typeof vi.fn>
-  let mockOnPreview: ReturnType<typeof vi.fn>
+  let mockOnSave: any
+  let mockOnValidate: any
+  let mockOnPreview: any
 
   beforeEach(() => {
     vi.clearAllMocks()
     mockTutorial = getTutorialForEditor()
-    mockOnSave = vi.fn()
+    mockOnSave = vi.fn().mockResolvedValue(undefined)
     mockOnValidate = vi.fn().mockResolvedValue({
       isValid: true,
       errors: [],

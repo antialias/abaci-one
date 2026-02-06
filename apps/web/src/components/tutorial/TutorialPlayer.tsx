@@ -3,6 +3,7 @@
 import {
   type AbacusOverlay,
   AbacusReact,
+  type BeadHighlight,
   type StepBeadHighlight,
   useAbacusDisplay,
   calculateBeadDiffFromValues,
@@ -426,8 +427,8 @@ function TutorialPlayerContent({
       // Filter to only include beads from columns that exist
       const minValidPlaceValue = Math.max(0, 5 - abacusColumns)
       const stepBeadHighlights: StepBeadHighlight[] = beadDiff.changes
-        .filter((change) => change.placeValue < abacusColumns)
-        .map((change, _index) => ({
+        .filter((change: any) => change.placeValue < abacusColumns)
+        .map((change: any, _index: number) => ({
           placeValue: change.placeValue,
           beadType: change.beadType,
           position: change.position,
@@ -562,14 +563,14 @@ function TutorialPlayerContent({
           placeValue: 0, // Ones place
           beadType: 'heaven' as const,
           position: 0,
-          direction: 'none' as const,
+          direction: 'activate' as const,
           stepIndex: currentMultiStep,
           order: 0,
         }
       }
     } else if (showInstructions) {
       // For instructions, use the topmost bead with arrows
-      topmostBead = findTopmostBeadWithArrows(currentStepBeads)
+      topmostBead = findTopmostBeadWithArrows(currentStepBeads as StepBeadHighlight[])
     }
 
     if (!topmostBead) {
@@ -586,7 +587,7 @@ function TutorialPlayerContent({
     const targetColumnIndex = abacusColumns - 1 - topmostBead.placeValue
     const activeToLeft = hasActiveBeadsToLeft(
       currentValue,
-      currentStepBeads,
+      currentStepBeads as StepBeadHighlight[],
       abacusColumns,
       targetColumnIndex
     )
@@ -824,21 +825,21 @@ function TutorialPlayerContent({
 
   // Wrap context handleValueChange to track user interaction
   const handleValueChange = useCallback(
-    (newValue: number) => {
+    (newValue: number | bigint) => {
       // Mark that user has interacted
       userHasInteracted.current = true
 
       // Try to determine which bead was moved by looking at current step beads
       if (currentStepBeads?.length) {
         // Find the first bead with direction arrows as the likely moved bead
-        const likelyMovedBead = findTopmostBeadWithArrows(currentStepBeads)
+        const likelyMovedBead = findTopmostBeadWithArrows(currentStepBeads as StepBeadHighlight[])
         if (likelyMovedBead) {
           lastMovedBead.current = likelyMovedBead
         }
       }
 
       // Call the context's handleValueChange
-      contextHandleValueChange(newValue)
+      contextHandleValueChange(Number(newValue))
     },
     [contextHandleValueChange, currentStepBeads]
   )
@@ -1624,8 +1625,8 @@ function TutorialPlayerContent({
                   hideInactiveBeads={abacusConfig.hideInactiveBeads}
                   soundEnabled={isObservationMode ? false : abacusConfig.soundEnabled}
                   soundVolume={abacusConfig.soundVolume}
-                  highlightBeads={filteredHighlightBeads}
-                  stepBeadHighlights={currentStepBeads}
+                  highlightBeads={filteredHighlightBeads as BeadHighlight[]}
+                  stepBeadHighlights={currentStepBeads as StepBeadHighlight[]}
                   currentStep={currentMultiStep}
                   showDirectionIndicators={true}
                   customStyles={customStyles}

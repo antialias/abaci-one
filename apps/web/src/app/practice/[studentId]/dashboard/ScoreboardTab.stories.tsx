@@ -265,7 +265,7 @@ const mockSkillMetricsDeclining: StudentSkillMetrics = {
   },
   timing: {
     avgSecondsPerTerm: 3.5,
-    trend: 'slowing',
+    trend: 'declining',
   },
   accuracy: {
     overallPercent: 75,

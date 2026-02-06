@@ -19,7 +19,7 @@ import { execSync } from 'child_process'
 import {
   generateTypstHelpers,
   generateProblemStackFunction,
-} from '../src/app/create/worksheets/addition/typstHelpers'
+} from '../src/app/create/worksheets/typstHelpers'
 
 // Output directory
 const outputDir = path.join(process.cwd(), 'public', 'blog', 'ten-frame-examples')

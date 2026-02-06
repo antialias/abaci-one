@@ -7,8 +7,8 @@ import { useGetRoomByCode, useJoinRoom, useRoomData } from '@/hooks/useRoomData'
 import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
 interface RoomSwitchConfirmationProps {
-  currentRoom: { name: string | null; code: string; gameName: string }
-  targetRoom: { name: string | null; code: string; gameName: string }
+  currentRoom: { name: string | null; code: string; gameName: string | null }
+  targetRoom: { name: string | null; code: string; gameName: string | null }
   onConfirm: () => void
   onCancel: () => void
 }
@@ -89,7 +89,7 @@ function RoomSwitchConfirmation({
               {getRoomDisplayWithEmoji({
                 name: currentRoom.name,
                 code: currentRoom.code,
-                gameName: currentRoom.gameName,
+                gameName: currentRoom.gameName ?? undefined,
               })}
             </div>
             <div
@@ -125,7 +125,7 @@ function RoomSwitchConfirmation({
               {getRoomDisplayWithEmoji({
                 name: targetRoom.name,
                 code: targetRoom.code,
-                gameName: targetRoom.gameName,
+                gameName: targetRoom.gameName ?? undefined,
               })}
             </div>
             <div
@@ -207,7 +207,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
     id: string
     name: string | null
     code: string
-    gameName: string
+    gameName: string | null
     accessMode: string
   } | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
@@ -527,7 +527,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
               {getRoomDisplayWithEmoji({
                 name: targetRoomData.name,
                 code: targetRoomData.code,
-                gameName: targetRoomData.gameName,
+                gameName: targetRoomData.gameName ?? undefined,
               })}
             </div>
             <div
@@ -701,7 +701,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
                   {getRoomDisplayWithEmoji({
                     name: targetRoomData.name,
                     code: targetRoomData.code,
-                    gameName: targetRoomData.gameName,
+                    gameName: targetRoomData.gameName ?? undefined,
                   })}
                 </div>
                 <div
@@ -795,7 +795,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
                   {getRoomDisplayWithEmoji({
                     name: targetRoomData.name,
                     code: targetRoomData.code,
-                    gameName: targetRoomData.gameName,
+                    gameName: targetRoomData.gameName ?? undefined,
                   })}
                 </div>
                 <div

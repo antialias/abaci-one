@@ -31,6 +31,7 @@ describe('Player Ownership Integration Tests', () => {
       name: 'Test Multiplayer Room',
       code: 'TEST',
       gameName: 'memory-pairs',
+      accessMode: 'open',
       members: [
         {
           id: 'member-1',

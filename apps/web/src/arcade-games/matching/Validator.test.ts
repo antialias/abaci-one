@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { MatchingGameValidator } from './Validator'
 import type { MatchingState, MatchingConfig, MatchingMove, GameCard, PlayerMetadata } from './types'
 
+// Helper to cast ValidationResult.newState to MatchingState
+const asState = (newState: unknown) => newState as MatchingState | undefined
+
 describe('MatchingGameValidator', () => {
   let validator: MatchingGameValidator
 
@@ -47,7 +50,6 @@ describe('MatchingGameValidator', () => {
     gameStartTime: Date.now() - 60000,
     gameEndTime: null,
     currentMoveStartTime: null,
-    timerInterval: null,
     celebrationAnimations: [],
     isProcessingMove: false,
     showMismatchFeedback: false,
@@ -559,9 +561,9 @@ describe('MatchingGameValidator', () => {
         const result = validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.matchedPairs).toBe(1)
-        expect(result.newState?.scores['player-1']).toBe(1)
-        expect(result.newState?.consecutiveMatches['player-1']).toBe(1)
+        expect(asState(result.newState)?.matchedPairs).toBe(1)
+        expect(asState(result.newState)?.scores['player-1']).toBe(1)
+        expect(asState(result.newState)?.consecutiveMatches['player-1']).toBe(1)
       })
 
       it('detects game completion when last pair is matched', () => {
@@ -581,8 +583,8 @@ describe('MatchingGameValidator', () => {
         const result = validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.gamePhase).toBe('results')
-        expect(result.newState?.gameEndTime).toBeDefined()
+        expect(asState(result.newState)?.gamePhase).toBe('results')
+        expect(asState(result.newState)?.gameEndTime).toBeDefined()
       })
 
       it('switches player on mismatch in multiplayer', () => {
@@ -603,9 +605,9 @@ describe('MatchingGameValidator', () => {
         const result = validator.validateMove(state, move)
 
         expect(result.valid).toBe(true)
-        expect(result.newState?.currentPlayer).toBe('player-2')
-        expect(result.newState?.showMismatchFeedback).toBe(true)
-        expect(result.newState?.consecutiveMatches['player-1']).toBe(0) // Reset streak
+        expect(asState(result.newState)?.currentPlayer).toBe('player-2')
+        expect(asState(result.newState)?.showMismatchFeedback).toBe(true)
+        expect(asState(result.newState)?.consecutiveMatches['player-1']).toBe(0) // Reset streak
       })
     })
   })
@@ -779,9 +781,9 @@ describe('MatchingGameValidator', () => {
       const result = validator.validateMove(state, move)
 
       expect(result.valid).toBe(true)
-      expect(result.newState?.flippedCards).toEqual([])
-      expect(result.newState?.showMismatchFeedback).toBe(false)
-      expect(result.newState?.isProcessingMove).toBe(false)
+      expect(asState(result.newState)?.flippedCards).toEqual([])
+      expect(asState(result.newState)?.showMismatchFeedback).toBe(false)
+      expect(asState(result.newState)?.isProcessingMove).toBe(false)
     })
 
     it('does nothing when no mismatch is showing', () => {
@@ -822,7 +824,7 @@ describe('MatchingGameValidator', () => {
       const result = validator.validateMove(state, move)
 
       expect(result.valid).toBe(true)
-      expect(result.newState?.gamePhase).toBe('setup')
+      expect(asState(result.newState)?.gamePhase).toBe('setup')
     })
 
     it('saves game state for pause/resume when coming from playing', () => {
@@ -845,9 +847,9 @@ describe('MatchingGameValidator', () => {
       const result = validator.validateMove(state, move)
 
       expect(result.valid).toBe(true)
-      expect(result.newState?.pausedGamePhase).toBe('playing')
-      expect(result.newState?.pausedGameState?.matchedPairs).toBe(3)
-      expect(result.newState?.pausedGameState?.moves).toBe(10)
+      expect(asState(result.newState)?.pausedGamePhase).toBe('playing')
+      expect(asState(result.newState)?.pausedGameState?.matchedPairs).toBe(3)
+      expect(asState(result.newState)?.pausedGameState?.moves).toBe(10)
     })
 
     it('resets visible game state', () => {
@@ -867,10 +869,10 @@ describe('MatchingGameValidator', () => {
       const result = validator.validateMove(state, move)
 
       expect(result.valid).toBe(true)
-      expect(result.newState?.gameCards).toEqual([])
-      expect(result.newState?.matchedPairs).toBe(0)
-      expect(result.newState?.moves).toBe(0)
-      expect(result.newState?.activePlayers).toEqual([])
+      expect(asState(result.newState)?.gameCards).toEqual([])
+      expect(asState(result.newState)?.matchedPairs).toBe(0)
+      expect(asState(result.newState)?.moves).toBe(0)
+      expect(asState(result.newState)?.activePlayers).toEqual([])
     })
   })
 
@@ -892,8 +894,8 @@ describe('MatchingGameValidator', () => {
       const result = validator.validateMove(state, move)
 
       expect(result.valid).toBe(true)
-      expect(result.newState?.difficulty).toBe(8)
-      expect(result.newState?.totalPairs).toBe(8)
+      expect(asState(result.newState)?.difficulty).toBe(8)
+      expect(asState(result.newState)?.totalPairs).toBe(8)
     })
 
     it('rejects config changes during playing phase', () => {
@@ -986,8 +988,8 @@ describe('MatchingGameValidator', () => {
       const result = validator.validateMove(state, move)
 
       expect(result.valid).toBe(true)
-      expect(result.newState?.pausedGamePhase).toBeUndefined()
-      expect(result.newState?.pausedGameState).toBeUndefined()
+      expect(asState(result.newState)?.pausedGamePhase).toBeUndefined()
+      expect(asState(result.newState)?.pausedGameState).toBeUndefined()
     })
   })
 
@@ -1029,9 +1031,9 @@ describe('MatchingGameValidator', () => {
       const result = validator.validateMove(state, move)
 
       expect(result.valid).toBe(true)
-      expect(result.newState?.gamePhase).toBe('playing')
-      expect(result.newState?.matchedPairs).toBe(3)
-      expect(result.newState?.moves).toBe(10)
+      expect(asState(result.newState)?.gamePhase).toBe('playing')
+      expect(asState(result.newState)?.matchedPairs).toBe(3)
+      expect(asState(result.newState)?.moves).toBe(10)
     })
 
     it('rejects resume when no paused game', () => {

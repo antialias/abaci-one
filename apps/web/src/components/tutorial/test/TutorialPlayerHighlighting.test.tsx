@@ -35,11 +35,6 @@ describe('TutorialPlayer Highlighting', () => {
           content: 'Adding earth beads',
           explanation: 'Earth beads are worth 1 each',
         },
-        errorMessages: {
-          wrongBead: 'Click the highlighted earth bead',
-          wrongAction: 'Move the bead UP',
-          hint: 'Earth beads move up when adding',
-        },
       },
       {
         id: 'step-2',
@@ -57,11 +52,6 @@ describe('TutorialPlayer Highlighting', () => {
         tooltip: {
           content: 'Five Complement',
           explanation: '4 = 5 - 1',
-        },
-        errorMessages: {
-          wrongBead: 'Follow the two-step process',
-          wrongAction: 'Add heaven, then remove earth',
-          hint: 'Complement thinking: 4 = 5 - 1',
         },
       },
     ],

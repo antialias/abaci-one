@@ -182,7 +182,8 @@ export function KidNumberInput({
         }}
         className={css({
           fontSize: sizeStyle.fontSize as any,
-          padding: sizeStyle.padding as any,
+          paddingY: sizeStyle.paddingY as any,
+          paddingX: sizeStyle.paddingX as any,
           minWidth: sizeStyle.minWidth,
         })}
       >

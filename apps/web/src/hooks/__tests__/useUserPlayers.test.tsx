@@ -36,7 +36,7 @@ describe('useUserPlayers hooks', () => {
     ...mockPlayer,
     practicingSkills: ['skill-1', 'skill-2'],
     lastPracticedAt: new Date('2024-01-15'),
-    skillCategory: 'addition',
+    skillCategory: 'basic',
     intervention: null,
   }
 

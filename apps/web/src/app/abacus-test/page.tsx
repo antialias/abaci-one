@@ -8,8 +8,8 @@ export default function AbacusTestPage() {
   const [value, setValue] = useState(0)
   const [debugInfo, setDebugInfo] = useState<string>('')
 
-  const handleValueChange = (newValue: number) => {
-    setValue(newValue)
+  const handleValueChange = (newValue: number | bigint) => {
+    setValue(Number(newValue))
     setDebugInfo(`Value changed to: ${newValue}`)
     console.log('Abacus value:', newValue)
   }

@@ -160,6 +160,7 @@ export function SessionFocusInfo() {
 
   // Maintenance mode
   if (sessionMode.type === 'maintenance') {
+    const deferred = sessionMode.deferredProgression
     return (
       <div
         data-element="session-focus-info"
@@ -187,7 +188,9 @@ export function SessionFocusInfo() {
             })}
             style={{ color: isDark ? '#93c5fd' : '#1d4ed8' }}
           >
-            Mixed review ({sessionMode.skillCount} skills)
+            {deferred
+              ? `Working toward: ${deferred.nextSkill.displayName}`
+              : `Mixed review (${sessionMode.skillCount} skills)`}
           </p>
           <p
             className={css({
@@ -196,7 +199,9 @@ export function SessionFocusInfo() {
             })}
             style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
           >
-            All skills mastered - maintaining proficiency
+            {deferred
+              ? 'Building muscle memory before advancing'
+              : 'All skills mastered - maintaining proficiency'}
           </p>
         </div>
       </div>

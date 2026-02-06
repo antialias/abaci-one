@@ -350,24 +350,21 @@ export function createMockCardSortingState(): CardSortingState {
       userId: 'demo-viewer-id',
     },
     activePlayers: ['demo-player-1'],
-    allPlayerMetadata: new Map([
-      [
-        'demo-player-1',
-        {
-          id: 'demo-player-1',
-          name: 'Demo Player',
-          emoji: '🎮',
-          userId: 'demo-viewer-id',
-        },
-      ],
-    ]),
+    allPlayerMetadata: {
+      'demo-player-1': {
+        id: 'demo-player-1',
+        name: 'Demo Player',
+        emoji: '🎮',
+        userId: 'demo-viewer-id',
+      },
+    },
     gameStartTime: Date.now() - 30000, // 30 seconds ago
     selectedCards: mockCards,
     correctOrder,
     availableCards: [mockCards[3], mockCards[4]], // 78 and 56 still available
     placedCards: [mockCards[2], mockCards[0], mockCards[1], null, null], // 12, 23, 45, empty, empty
     cardPositions: [],
-    cursorPositions: new Map(),
+    cursorPositions: {},
   }
 }
 

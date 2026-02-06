@@ -2,7 +2,7 @@
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import type { ReactNode } from 'react'
-import { css } from '../../../../styled-system/css'
+import { css, cx } from '../../../../styled-system/css'
 import { hstack, vstack } from '../../../../styled-system/patterns'
 
 // Shared input styles
@@ -43,8 +43,7 @@ export function EditorLayout({
 }: EditorLayoutProps) {
   return (
     <div
-      className={css(
-        {
+      className={cx(css({
           p: 3,
           bg: 'purple.50',
           border: '1px solid',
@@ -52,7 +51,7 @@ export function EditorLayout({
           rounded: 'lg',
           height: '100%',
           overflowY: 'auto',
-        },
+        }),
         className
       )}
     >

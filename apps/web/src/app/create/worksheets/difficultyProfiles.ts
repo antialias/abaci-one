@@ -22,6 +22,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'always',
     placeValueColors: 'always',
     tenFrames: 'always',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'always',
     borrowingHints: 'always',
   },
@@ -32,6 +34,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'always',
     placeValueColors: 'always',
     tenFrames: 'always',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'whenRegrouping',
     borrowingHints: 'always',
   },
@@ -42,6 +46,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'always',
     placeValueColors: 'whenRegrouping',
     tenFrames: 'always',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'whenRegrouping',
     borrowingHints: 'whenRegrouping',
   },
@@ -52,6 +58,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'whenRegrouping',
     placeValueColors: 'whenRegrouping',
     tenFrames: 'always',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'whenRegrouping',
     borrowingHints: 'whenRegrouping',
   },
@@ -62,6 +70,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'whenMultipleRegroups',
     placeValueColors: 'whenRegrouping',
     tenFrames: 'always',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'whenRegrouping',
     borrowingHints: 'whenMultipleRegroups',
   },
@@ -72,6 +82,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'whenMultipleRegroups',
     placeValueColors: 'whenMultipleRegroups',
     tenFrames: 'always',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'whenRegrouping',
     borrowingHints: 'whenMultipleRegroups',
   },
@@ -82,6 +94,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'whenMultipleRegroups',
     placeValueColors: 'whenMultipleRegroups',
     tenFrames: 'whenRegrouping',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'whenRegrouping',
     borrowingHints: 'whenMultipleRegroups',
   },
@@ -92,6 +106,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'whenMultipleRegroups',
     placeValueColors: 'whenMultipleRegroups',
     tenFrames: 'whenMultipleRegroups',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'whenRegrouping',
     borrowingHints: 'never',
   },
@@ -102,6 +118,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'whenMultipleRegroups',
     placeValueColors: 'whenMultipleRegroups',
     tenFrames: 'whenMultipleRegroups',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'whenRegrouping',
     borrowingHints: 'never',
   },
@@ -112,6 +130,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'never',
     placeValueColors: 'whenMultipleRegroups',
     tenFrames: 'whenMultipleRegroups',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'whenRegrouping',
     borrowingHints: 'never',
   },
@@ -122,6 +142,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'never',
     placeValueColors: 'whenMultipleRegroups',
     tenFrames: 'never',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'whenRegrouping',
     borrowingHints: 'never',
   },
@@ -132,6 +154,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'never',
     placeValueColors: 'when3PlusDigits',
     tenFrames: 'never',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'whenRegrouping',
     borrowingHints: 'never',
   },
@@ -142,6 +166,8 @@ export const SCAFFOLDING_PROGRESSION: DisplayRules[] = [
     answerBoxes: 'never',
     placeValueColors: 'never',
     tenFrames: 'never',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: 'never',
     borrowingHints: 'never',
   },
@@ -252,6 +278,8 @@ function describeScaffoldingChange(
     answerBoxes: 'answer boxes',
     placeValueColors: 'place value colors',
     tenFrames: 'ten frames',
+    problemNumbers: 'problem numbers',
+    cellBorders: 'cell borders',
     borrowNotation: 'borrow notation',
     borrowingHints: 'borrowing hints',
   }
@@ -391,6 +419,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       answerBoxes: 'always', // Guide digit placement
       placeValueColors: 'always', // Reinforce place value concept
       tenFrames: 'always', // Visual aid for understanding place value
+      problemNumbers: 'always',
+      cellBorders: 'always',
       borrowNotation: 'always', // Subtraction: show scratch work
       borrowingHints: 'always', // Subtraction: show visual hints
     },
@@ -406,6 +436,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       answerBoxes: 'always', // Still guide placement
       placeValueColors: 'always', // Reinforce concepts
       tenFrames: 'whenRegrouping', // Visual aid for new concept
+      problemNumbers: 'always',
+      cellBorders: 'always',
       borrowNotation: 'whenRegrouping', // Subtraction: show when borrowing
       borrowingHints: 'always', // Subtraction: keep hints visible
     },
@@ -422,6 +454,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       answerBoxes: 'always', // Keep guiding placement during intensive practice
       placeValueColors: 'always', // Keep visual support during intensive practice
       tenFrames: 'whenRegrouping', // Visual aid for regrouping
+      problemNumbers: 'always',
+      cellBorders: 'always',
       borrowNotation: 'whenRegrouping', // Subtraction: show when borrowing
       borrowingHints: 'whenRegrouping', // Subtraction: show hints during practice
     },
@@ -437,6 +471,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       answerBoxes: 'whenMultipleRegroups', // Only for complex problems
       placeValueColors: 'whenRegrouping', // Only when it matters
       tenFrames: 'whenRegrouping', // Concrete aid when needed
+      problemNumbers: 'always',
+      cellBorders: 'always',
       borrowNotation: 'whenRegrouping', // Subtraction: show when borrowing
       borrowingHints: 'whenMultipleRegroups', // Subtraction: only for complex problems
     },
@@ -452,6 +488,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       answerBoxes: 'never', // Should know alignment
       placeValueColors: 'when3PlusDigits', // Only for larger numbers
       tenFrames: 'never', // Beyond concrete representations
+      problemNumbers: 'always',
+      cellBorders: 'always',
       borrowNotation: 'whenRegrouping', // Subtraction: still helpful
       borrowingHints: 'never', // Subtraction: no hints
     },
@@ -467,6 +505,8 @@ export const DIFFICULTY_PROFILES: Record<string, DifficultyProfile> = {
       answerBoxes: 'never',
       placeValueColors: 'never',
       tenFrames: 'never',
+      problemNumbers: 'always',
+      cellBorders: 'always',
       borrowNotation: 'never', // Subtraction: no scaffolding
       borrowingHints: 'never', // Subtraction: no hints
     },
@@ -650,6 +690,8 @@ function levelToScaffoldingRules(level: number): DisplayRules {
       answerBoxes: 'always',
       placeValueColors: 'always',
       tenFrames: level < 1 ? 'never' : 'whenRegrouping', // Ten-frames only when regrouping introduced
+      problemNumbers: 'always',
+      cellBorders: 'always',
       borrowNotation: 'always',
       borrowingHints: 'always',
     }
@@ -662,6 +704,8 @@ function levelToScaffoldingRules(level: number): DisplayRules {
       answerBoxes: 'always',
       placeValueColors: 'always',
       tenFrames: 'whenRegrouping',
+      problemNumbers: 'always',
+      cellBorders: 'always',
       borrowNotation: 'whenRegrouping',
       borrowingHints: 'always',
     }
@@ -674,6 +718,8 @@ function levelToScaffoldingRules(level: number): DisplayRules {
       answerBoxes: level < 5.5 ? 'always' : 'whenMultipleRegroups',
       placeValueColors: 'whenRegrouping',
       tenFrames: 'whenRegrouping',
+      problemNumbers: 'always',
+      cellBorders: 'always',
       borrowNotation: 'whenRegrouping',
       borrowingHints: level < 5.5 ? 'whenRegrouping' : 'whenMultipleRegroups',
     }
@@ -686,6 +732,8 @@ function levelToScaffoldingRules(level: number): DisplayRules {
       answerBoxes: 'never',
       placeValueColors: level < 7.5 ? 'whenRegrouping' : 'when3PlusDigits',
       tenFrames: 'never',
+      problemNumbers: 'always',
+      cellBorders: 'always',
       borrowNotation: 'whenRegrouping',
       borrowingHints: 'never',
     }
@@ -697,6 +745,8 @@ function levelToScaffoldingRules(level: number): DisplayRules {
     answerBoxes: 'never',
     placeValueColors: level < 9 ? 'when3PlusDigits' : 'never',
     tenFrames: 'never',
+    problemNumbers: 'always',
+    cellBorders: 'always',
     borrowNotation: level < 9 ? 'whenRegrouping' : 'never',
     borrowingHints: 'never',
   }

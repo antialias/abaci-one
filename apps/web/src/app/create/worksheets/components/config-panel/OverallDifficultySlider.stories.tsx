@@ -99,14 +99,18 @@ export const MaximumDifficulty: Story = {
 }
 
 export const InteractiveWithPresets: Story = {
+  args: {
+    currentDifficulty: 5.0,
+    onChange: () => {},
+  },
   render: () => {
     const [difficulty, setDifficulty] = useState(5.0)
     const [pAnyStart, setPAnyStart] = useState(0.5)
     const [pAllStart, setPAllStart] = useState(0.1)
     const [displayRules, setDisplayRules] = useState<DisplayRules>({
-      tenFrames: 'sometimes',
-      carryBoxes: 'sometimes',
-      placeValueColors: 'sometimes',
+      tenFrames: 'whenRegrouping',
+      carryBoxes: 'whenRegrouping',
+      placeValueColors: 'whenRegrouping',
       answerBoxes: 'always',
       problemNumbers: 'always',
       cellBorders: 'always',
@@ -201,6 +205,10 @@ export const InteractiveWithPresets: Story = {
 }
 
 export const SnappingBehavior: Story = {
+  args: {
+    currentDifficulty: 5.0,
+    onChange: () => {},
+  },
   render: () => {
     const [difficulty, setDifficulty] = useState(5.0)
     const [snappedTo, setSnappedTo] = useState<string>('')

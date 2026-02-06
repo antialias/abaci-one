@@ -3,8 +3,10 @@
 import {
   type AbacusOverlay,
   AbacusReact,
+  type AbacusCustomStyles,
   calculateBeadDiffFromValues,
   type StepBeadHighlight,
+  type ValidPlaceValues,
   useAbacusDisplay,
 } from '@soroban/abacus-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -16,7 +18,7 @@ interface BeadChange {
   placeValue: number
   beadType: 'heaven' | 'earth'
   position?: number
-  direction: 'up' | 'down' | 'activate' | 'deactivate' | 'none'
+  direction: 'up' | 'down' | 'activate' | 'deactivate'
   order?: number
 }
 
@@ -150,9 +152,9 @@ export function HelpAbacus({
       const highlights: StepBeadHighlight[] = (beadDiff.changes as BeadChange[])
         .filter((change: BeadChange) => change.placeValue < columns)
         .map((change: BeadChange) => ({
-          placeValue: change.placeValue,
+          placeValue: change.placeValue as ValidPlaceValues,
           beadType: change.beadType,
-          position: change.position,
+          position: change.position as StepBeadHighlight['position'],
           direction: change.direction,
           stepIndex: 0, // All in step 0 for now (could be multi-step later)
           order: change.order,
@@ -178,10 +180,10 @@ export function HelpAbacus({
   }, [stepBeadHighlights])
 
   // Custom styles for help mode - highlight the arrows more prominently
-  const customStyles = useMemo(() => {
+  const customStyles = useMemo((): AbacusCustomStyles => {
+    // 'frame' is not in the official AbacusCustomStyles type but is handled at runtime
     return {
-      // Subtle background to indicate this is a help visualization
-      frame: {
+      reckoningBar: {
         fill: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.05)',
       },
     }

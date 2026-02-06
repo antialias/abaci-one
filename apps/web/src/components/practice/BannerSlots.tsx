@@ -55,6 +55,7 @@ export function ContentBannerSlot({ className, stickyOffset = 0 }: ContentBanner
     isLoading,
     activeSession,
     onAction,
+    onDefer,
     onResume,
     onStartFresh,
   } = useSessionModeBanner()
@@ -154,6 +155,7 @@ export function ContentBannerSlot({ className, stickyOffset = 0 }: ContentBanner
     <SessionModeBanner
       sessionMode={sessionMode}
       onAction={onAction}
+      onDefer={onDefer}
       isLoading={isLoading}
       variant="dashboard"
     />
@@ -417,7 +419,7 @@ export function ProjectingBanner() {
     return null
   }
 
-  const { sessionMode, isLoading, activeSession, onAction, onResume, onStartFresh } = context
+  const { sessionMode, isLoading, activeSession, onAction, onDefer, onResume, onStartFresh } = context
 
   // Render the appropriate banner for the destination slot
   const bannerContent =

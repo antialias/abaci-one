@@ -4,6 +4,7 @@ import type {
   ProgressionMode,
   RemediationMode,
 } from '@/lib/curriculum/session-mode'
+import type { SkillReadinessResult } from '@/lib/curriculum/skill-readiness'
 import { css } from '../../../styled-system/css'
 import { SessionModeBanner } from './SessionModeBanner'
 
@@ -535,6 +536,297 @@ export const MaintenanceManySkills: Story = {
       skillCount: 24,
     } satisfies MaintenanceMode,
     onAction: () => alert('Starting maintenance'),
+    variant: 'dashboard',
+  },
+}
+
+// ============================================================================
+// Progression Soft Nudge (with onDefer)
+// ============================================================================
+
+export const ProgressionSoftNudge: Story = {
+  args: {
+    sessionMode: mockProgressionModeWithTutorial,
+    onAction: () => alert('Action selected'),
+    onDefer: () => alert('Deferred! Will ask again later.'),
+    variant: 'dashboard',
+  },
+}
+
+export const ProgressionSoftNudgeModal: Story = {
+  args: {
+    sessionMode: mockProgressionModeWithTutorial,
+    onAction: () => alert('Action selected'),
+    onDefer: () => alert('Deferred! Will ask again later.'),
+    variant: 'modal',
+  },
+}
+
+// ============================================================================
+// Maintenance with Deferred Progression
+// ============================================================================
+
+const mockDeferredReadinessAllMet: Record<string, SkillReadinessResult> = {
+  'add-3': {
+    skillId: 'add-3',
+    isSolid: true,
+    dimensions: {
+      mastery: { met: true, pKnown: 0.92, confidence: 0.75 },
+      volume: { met: true, opportunities: 35, sessionCount: 5 },
+      speed: { met: true, medianSecondsPerTerm: 2.1 },
+      consistency: { met: true, recentAccuracy: 0.93, lastFiveAllCorrect: true, recentHelpCount: 0 },
+    },
+  },
+}
+
+const mockDeferredReadinessPartial: Record<string, SkillReadinessResult> = {
+  'add-3': {
+    skillId: 'add-3',
+    isSolid: false,
+    dimensions: {
+      mastery: { met: true, pKnown: 0.88, confidence: 0.65 },
+      volume: { met: true, opportunities: 28, sessionCount: 4 },
+      speed: { met: false, medianSecondsPerTerm: 5.3 },
+      consistency: { met: false, recentAccuracy: 0.73, lastFiveAllCorrect: false, recentHelpCount: 2 },
+    },
+  },
+}
+
+const mockMaintenanceModeWithDeferred: MaintenanceMode = {
+  type: 'maintenance',
+  focusDescription: 'Mixed practice',
+  skillCount: 5,
+  deferredProgression: {
+    nextSkill: {
+      skillId: 'sub-5-complement-4',
+      displayName: '+5 - 4',
+      pKnown: 0,
+    },
+    readiness: mockDeferredReadinessAllMet,
+    phase: {
+      id: 'L1.sub.-4.five',
+      levelId: 1,
+      operation: 'subtraction',
+      targetNumber: -4,
+      usesFiveComplement: true,
+      usesTenComplement: false,
+      name: 'Five-Complement Subtraction 4',
+      description: 'Learn to subtract 4 using five-complement technique',
+      primarySkillId: 'sub-5-complement-4',
+      order: 5,
+    },
+  },
+}
+
+const mockMaintenanceModeWithDeferredPartial: MaintenanceMode = {
+  type: 'maintenance',
+  focusDescription: 'Mixed practice',
+  skillCount: 5,
+  deferredProgression: {
+    nextSkill: {
+      skillId: 'sub-5-complement-4',
+      displayName: '+5 - 4',
+      pKnown: 0,
+    },
+    readiness: mockDeferredReadinessPartial,
+    phase: {
+      id: 'L1.sub.-4.five',
+      levelId: 1,
+      operation: 'subtraction',
+      targetNumber: -4,
+      usesFiveComplement: true,
+      usesTenComplement: false,
+      name: 'Five-Complement Subtraction 4',
+      description: 'Learn to subtract 4 using five-complement technique',
+      primarySkillId: 'sub-5-complement-4',
+      order: 5,
+    },
+  },
+}
+
+export const MaintenanceWithDeferredProgression: Story = {
+  args: {
+    sessionMode: mockMaintenanceModeWithDeferred,
+    onAction: () => alert('Starting maintenance practice'),
+    variant: 'dashboard',
+  },
+}
+
+export const MaintenanceWithDeferredProgressionPartialReady: Story = {
+  args: {
+    sessionMode: mockMaintenanceModeWithDeferredPartial,
+    onAction: () => alert('Starting maintenance practice'),
+    variant: 'dashboard',
+  },
+}
+
+export const MaintenanceWithDeferredModal: Story = {
+  args: {
+    sessionMode: mockMaintenanceModeWithDeferred,
+    onAction: () => alert('Starting maintenance practice'),
+    variant: 'modal',
+  },
+}
+
+// ============================================================================
+// All New Modes Comparison
+// ============================================================================
+
+export const AllNewModes: Story = {
+  render: () => (
+    <div
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.5rem',
+      })}
+    >
+      <div>
+        <h3
+          className={css({
+            fontSize: '0.875rem',
+            fontWeight: '600',
+            color: 'gray.500',
+            marginBottom: '0.5rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          })}
+        >
+          Progression Soft Nudge (with defer button)
+        </h3>
+        <SessionModeBanner
+          sessionMode={mockProgressionModeWithTutorial}
+          onAction={() => alert('Action')}
+          onDefer={() => alert('Deferred')}
+          variant="dashboard"
+        />
+      </div>
+
+      <div>
+        <h3
+          className={css({
+            fontSize: '0.875rem',
+            fontWeight: '600',
+            color: 'gray.500',
+            marginBottom: '0.5rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          })}
+        >
+          Maintenance with Deferred (all ready)
+        </h3>
+        <SessionModeBanner
+          sessionMode={mockMaintenanceModeWithDeferred}
+          onAction={() => alert('Practice')}
+          variant="dashboard"
+        />
+      </div>
+
+      <div>
+        <h3
+          className={css({
+            fontSize: '0.875rem',
+            fontWeight: '600',
+            color: 'gray.500',
+            marginBottom: '0.5rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          })}
+        >
+          Maintenance with Deferred (partial readiness)
+        </h3>
+        <SessionModeBanner
+          sessionMode={mockMaintenanceModeWithDeferredPartial}
+          onAction={() => alert('Practice')}
+          variant="dashboard"
+        />
+      </div>
+    </div>
+  ),
+}
+
+// ============================================================================
+// Dark Mode — New Variants
+// ============================================================================
+
+export const DarkModeProgressionSoftNudge: Story = {
+  parameters: {
+    backgrounds: { default: 'dark' },
+  },
+  decorators: [
+    (Story) => (
+      <div
+        className={css({
+          padding: '2rem',
+          maxWidth: '500px',
+          margin: '0 auto',
+          backgroundColor: 'gray.900',
+          borderRadius: '12px',
+        })}
+        data-theme="dark"
+      >
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    sessionMode: mockProgressionModeWithTutorial,
+    onAction: () => alert('Action'),
+    onDefer: () => alert('Deferred'),
+    variant: 'dashboard',
+  },
+}
+
+export const DarkModeMaintenanceWithDeferred: Story = {
+  parameters: {
+    backgrounds: { default: 'dark' },
+  },
+  decorators: [
+    (Story) => (
+      <div
+        className={css({
+          padding: '2rem',
+          maxWidth: '500px',
+          margin: '0 auto',
+          backgroundColor: 'gray.900',
+          borderRadius: '12px',
+        })}
+        data-theme="dark"
+      >
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    sessionMode: mockMaintenanceModeWithDeferred,
+    onAction: () => alert('Practice'),
+    variant: 'dashboard',
+  },
+}
+
+export const DarkModeMaintenanceWithDeferredPartial: Story = {
+  parameters: {
+    backgrounds: { default: 'dark' },
+  },
+  decorators: [
+    (Story) => (
+      <div
+        className={css({
+          padding: '2rem',
+          maxWidth: '500px',
+          margin: '0 auto',
+          backgroundColor: 'gray.900',
+          borderRadius: '12px',
+        })}
+        data-theme="dark"
+      >
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    sessionMode: mockMaintenanceModeWithDeferredPartial,
+    onAction: () => alert('Practice'),
     variant: 'dashboard',
   },
 }

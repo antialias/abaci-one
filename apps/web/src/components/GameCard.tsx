@@ -3,11 +3,23 @@
 import { useRouter } from 'next/navigation'
 import { css } from '../../styled-system/css'
 import { useGameMode } from '../contexts/GameModeContext'
-import type { GAMES_CONFIG, GameType } from './GameSelector'
+import type { GameType } from './GameSelector'
 
 interface GameCardProps {
   gameType: GameType
-  config: (typeof GAMES_CONFIG)[GameType]
+  config: {
+    name: string
+    fullName?: string
+    icon: React.ReactNode
+    description: string
+    url: string
+    maxPlayers: number
+    available?: boolean
+    gradient?: string
+    borderColor?: string
+    color?: string
+    chips?: string[]
+  }
   variant?: 'compact' | 'detailed'
   className?: string
 }
@@ -48,8 +60,7 @@ export function GameCard({ gameType, config, variant = 'detailed', className }: 
   return (
     <div
       onClick={handleGameClick}
-      className={css(
-        {
+      className={`${css({
           background: config.gradient || 'white',
           rounded: variant === 'compact' ? 'xl' : '2xl',
           p: variant === 'compact' ? '3' : { base: '3', md: '4', lg: '6' },
@@ -85,9 +96,7 @@ export function GameCard({ gameType, config, variant = 'detailed', className }: 
                       : 'blue.300',
               }
             : {},
-        },
-        className
-      )}
+        })}${className ? ` ${className}` : ''}`}
     >
       {/* Game icon with enhanced styling */}
       <div
@@ -173,7 +182,7 @@ export function GameCard({ gameType, config, variant = 'detailed', className }: 
                 mb: { base: '2', md: '3' },
               })}
             >
-              {config.chips.slice(0, 2).map((chip, index) => (
+              {config.chips.slice(0, 2).map((chip: string, index: number) => (
                 <span
                   key={index}
                   className={css({

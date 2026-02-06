@@ -788,7 +788,7 @@ export function MyAbacus() {
                 interactive={isOpen || isHeroMode}
                 animated={isOpen || isHeroMode}
                 customStyles={isHeroMode ? structuralStyles : trophyStyles}
-                onValueChange={setAbacusValue}
+                onValueChange={(v) => setAbacusValue(Number(v))}
                 // 3D Enhancement - realistic mode for hero and open states
                 enhanced3d={isOpen || isHeroMode ? 'realistic' : undefined}
                 material3d={

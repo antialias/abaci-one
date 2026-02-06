@@ -89,27 +89,21 @@ export async function GET(request: Request, { params }: RouteParams) {
     const returnSessions = completedSessions.slice(0, limit)
 
     // Transform to match PracticeSession interface expected by client
-    const transformedSessions = returnSessions.map((session) => ({
-      id: session.id,
-      playerId: session.playerId,
-      startedAt: session.startedAt,
-      completedAt: session.completedAt,
-      problemsAttempted: (JSON.parse(session.results) as unknown[]).length,
-      problemsCorrect: (JSON.parse(session.results) as Array<{ isCorrect: boolean }>).filter(
-        (r) => r.isCorrect
-      ).length,
-      totalTimeMs: (JSON.parse(session.results) as Array<{ responseTimeMs?: number }>).reduce(
-        (sum, r) => sum + (r.responseTimeMs ?? 0),
-        0
-      ),
-      skillsUsed: [
-        ...new Set(
-          (JSON.parse(session.results) as Array<{ skillsExercised?: string[] }>).flatMap(
-            (r) => r.skillsExercised ?? []
-          )
-        ),
-      ],
-    }))
+    const transformedSessions = returnSessions.map((session) => {
+      const results = session.results
+      return {
+        id: session.id,
+        playerId: session.playerId,
+        startedAt: session.startedAt,
+        completedAt: session.completedAt,
+        problemsAttempted: results.length,
+        problemsCorrect: results.filter((r) => r.isCorrect).length,
+        totalTimeMs: results.reduce((sum, r) => sum + (r.responseTimeMs ?? 0), 0),
+        skillsUsed: [
+          ...new Set(results.flatMap((r) => r.skillsExercised ?? [])),
+        ],
+      }
+    })
     timings.transform = performance.now() - t
 
     const total = performance.now() - routeStart

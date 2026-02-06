@@ -131,8 +131,13 @@ const createMockSegment = (overrides: Partial<PedagogicalSegment> = {}): Pedagog
     },
   ],
   expression: '50',
+  stepIndices: [0],
   termIndices: [0],
   termRange: { startIndex: 0, endIndex: 2 },
+  startValue: 0,
+  endValue: 50,
+  startState: { 1: { heavenActive: false, earthActive: 0 } },
+  endState: { 1: { heavenActive: true, earthActive: 0 } },
   readable: {
     title: 'Direct Move',
     subtitle: 'Heaven bead helps',
@@ -142,6 +147,7 @@ const createMockSegment = (overrides: Partial<PedagogicalSegment> = {}): Pedagog
       { label: 'Target place', value: 'tens' },
       { label: 'Rod shows', value: '0 (empty)' },
     ],
+    why: [],
     stepsFriendly: ['Press the heaven bead down in tens column'],
     validation: { ok: true, issues: [] },
   },
@@ -163,6 +169,7 @@ function IntegratedDemo() {
           { label: 'Digit', value: '3' },
           { label: 'Place', value: 'ones' },
         ],
+        why: [],
         stepsFriendly: ['Move 3 earth beads down'],
         validation: { ok: true, issues: [] },
       },
@@ -177,6 +184,7 @@ function IntegratedDemo() {
           { label: 'Target', value: '7' },
           { label: 'Strategy', value: '5 + 2' },
         ],
+        why: [],
         stepsFriendly: ['Press heaven bead', 'Lift 2 earth beads'],
         validation: { ok: true, issues: [] },
       },
@@ -191,6 +199,7 @@ function IntegratedDemo() {
           { label: 'Target', value: '8' },
           { label: 'Strategy', value: '10 - 2' },
         ],
+        why: [],
         stepsFriendly: ['Add 1 to tens', 'Subtract 2 from ones'],
         validation: { ok: true, issues: [] },
       },
@@ -443,6 +452,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Complete: Story = {
+  args: {},
   render: () => (
     <TutorialUIProvider>
       <IntegratedDemo />
@@ -451,6 +461,7 @@ export const Complete: Story = {
 }
 
 export const CoachBarOnly: Story = {
+  args: {},
   render: () => (
     <TutorialUIProvider
       initialSegment={createMockSegment({
@@ -463,6 +474,7 @@ export const CoachBarOnly: Story = {
             { label: 'Problem', value: '789 + 456' },
             { label: 'Strategy', value: 'Column by column' },
           ],
+          why: [],
           stepsFriendly: [],
           validation: { ok: true, issues: [] },
         },

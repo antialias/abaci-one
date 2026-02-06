@@ -14,7 +14,7 @@ function AbacusTestComponent() {
         colorScheme="place-value"
         onValueChange={(value) => console.log('Value changed:', value)}
         callbacks={{
-          onBeadClick: (beadInfo) => console.log('Bead clicked:', beadInfo),
+          onBeadClick: (beadInfo: unknown) => console.log('Bead clicked:', beadInfo),
         }}
       />
     </div>
@@ -60,7 +60,7 @@ export const AbacusWithHighlights: Story = {
         }}
         onValueChange={(value) => console.log('Value changed:', value)}
         callbacks={{
-          onBeadClick: (beadInfo) => console.log('Bead clicked:', beadInfo),
+          onBeadClick: (beadInfo: unknown) => console.log('Bead clicked:', beadInfo),
         }}
       />
     </div>

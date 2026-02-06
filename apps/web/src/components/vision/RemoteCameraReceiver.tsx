@@ -133,7 +133,7 @@ export function RemoteCameraReceiver({
 
       // Send calibration to phone
       if (grid.corners) {
-        sendCalibration(grid.corners)
+        sendCalibration(grid.corners, grid.columnCount)
       }
 
       // Notify parent

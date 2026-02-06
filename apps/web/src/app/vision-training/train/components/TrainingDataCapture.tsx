@@ -37,10 +37,10 @@ export function TrainingDataCapture({
   const [calibration, setCalibration] = useState<CalibrationGrid | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
-  const captureElementRef = useRef<HTMLImageElement | HTMLVideoElement | null>(null)
+  const captureElementRef = useRef<HTMLCanvasElement | HTMLImageElement | HTMLVideoElement | null>(null)
 
   // Handle capture from camera
-  const handleCapture = useCallback((element: HTMLImageElement | HTMLVideoElement) => {
+  const handleCapture = useCallback((element: HTMLCanvasElement | HTMLImageElement | HTMLVideoElement) => {
     captureElementRef.current = element
   }, [])
 
@@ -92,13 +92,18 @@ export function TrainingDataCapture({
       const { processImageFrame } = await import('@/lib/vision/frameProcessor')
       const { imageDataToBase64Png } = await import('@/lib/vision/trainingData')
 
-      // For video elements, we need to draw to a temp image first
+      // For video/canvas elements, we need to draw to a temp image first
       let imageElement: HTMLImageElement
-      if (element instanceof HTMLVideoElement) {
-        // Create a canvas to capture the video frame
+      if (element instanceof HTMLVideoElement || element instanceof HTMLCanvasElement) {
+        // Create a canvas to capture the frame
         const canvas = document.createElement('canvas')
-        canvas.width = element.videoWidth
-        canvas.height = element.videoHeight
+        if (element instanceof HTMLVideoElement) {
+          canvas.width = element.videoWidth
+          canvas.height = element.videoHeight
+        } else {
+          canvas.width = element.width
+          canvas.height = element.height
+        }
         const ctx = canvas.getContext('2d')
         if (!ctx) {
           throw new Error('Failed to create canvas context')

@@ -54,7 +54,7 @@ export interface RemoteCameraActions {
   /** Set phone frame mode */
   setPhoneFrameMode: (mode: FrameMode) => void
   /** Send calibration corners to phone */
-  sendCalibration: (corners: QuadCorners) => void
+  sendCalibration: (corners: QuadCorners, columnCount: number, preview?: boolean) => void
   /** Clear calibration on phone */
   clearCalibration: () => void
   /** Toggle phone torch */
@@ -243,10 +243,10 @@ export function AbacusVisionProvider({
       setRemoteEditingDividers(null)
       // Send calibration to phone - phone will auto-switch to cropped mode
       if (grid.corners) {
-        remoteDesktop.sendCalibration(grid.corners)
+        remoteDesktop.sendCalibration(grid.corners, columnCount)
       }
     },
-    [remoteDesktop]
+    [remoteDesktop, columnCount]
   )
 
   const cancelRemoteCalibration = useCallback(() => {

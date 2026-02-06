@@ -35,23 +35,31 @@ type Story = StoryObj<typeof SessionProgressIndicator>
 // Helper to create slots
 function createSlots(count: number): SessionPart['slots'] {
   return Array.from({ length: count }, (_, i) => ({
-    skillId: `skill-${i}`,
-    problem: { operands: [1, 2], operator: '+' as const, answer: 3 },
+    index: i,
+    purpose: 'focus' as const,
+    constraints: {
+      digitRange: { min: 1, max: 2 },
+      termCount: { min: 2, max: 2 },
+    },
+    problem: { terms: [1, 2], answer: 3, skillsRequired: [] },
   }))
 }
 
 // Helper to create a single part
-function createPart(partNumber: number, type: SessionPart['type'], slotCount: number): SessionPart {
+function createPart(partNumber: 1 | 2 | 3, type: SessionPart['type'], slotCount: number): SessionPart {
   return {
     partNumber,
     type,
+    format: 'linear',
+    useAbacus: type === 'abacus',
     slots: createSlots(slotCount),
+    estimatedMinutes: slotCount * 0.5,
   }
 }
 
 // Helper to create results
 function createResults(
-  partNumber: number,
+  partNumber: 1 | 2 | 3,
   count: number,
   pattern: 'all-correct' | 'all-incorrect' | 'mixed' | 'none' = 'none'
 ): SlotResult[] {
@@ -60,9 +68,15 @@ function createResults(
   return Array.from({ length: count }, (_, i) => ({
     partNumber,
     slotIndex: i,
-    isCorrect: pattern === 'all-correct' ? true : pattern === 'all-incorrect' ? false : i % 3 !== 2, // Mixed: 2/3 correct
+    problem: { terms: [1, 2], answer: 3, skillsRequired: [] },
+    studentAnswer: 3,
+    isCorrect: pattern === 'all-correct' ? true : pattern === 'all-incorrect' ? false : i % 3 !== 2,
     responseTimeMs: 1500 + Math.random() * 2000,
-    timestamp: Date.now() - (count - i) * 5000,
+    skillsExercised: [],
+    usedOnScreenAbacus: false,
+    timestamp: new Date(Date.now() - (count - i) * 5000),
+    hadHelp: false,
+    incorrectAttempts: 0,
   }))
 }
 

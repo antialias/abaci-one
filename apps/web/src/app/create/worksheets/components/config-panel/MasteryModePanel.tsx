@@ -480,9 +480,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                   lineHeight: '1.3',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
+                  lineClamp: 2,
                 })}
               >
                 {currentAdditionSkill.description}
@@ -649,9 +647,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
                   lineHeight: '1.3',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
+                  lineClamp: 2,
                 })}
               >
                 {currentSubtractionSkill.description}
@@ -1284,8 +1280,8 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
         onClose={() => setIsCustomizeMixModalOpen(false)}
         currentSkill={currentSkill}
         masteryStates={masteryStates}
-        currentMixRatio={formState.reviewMixRatio ?? 0.25}
-        currentSelectedReviewSkills={formState.selectedReviewSkills as SkillId[] | undefined}
+        currentMixRatio={(formState as any).reviewMixRatio ?? 0.25}
+        currentSelectedReviewSkills={(formState as any).selectedReviewSkills as SkillId[] | undefined}
         onApply={(mixRatio, selectedReviewSkills) => {
           onChange({
             reviewMixRatio: mixRatio,
@@ -1300,7 +1296,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
         open={isConfigureModalOpen}
         onClose={() => setIsConfigureModalOpen(false)}
         mode="edit"
-        operator={operator === 'mixed' ? 'addition' : operator}
+        operator={operator}
         existingConfig={{
           name: currentSkill.name,
           description: currentSkill.description,
@@ -1323,7 +1319,7 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
         open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         mode="create"
-        operator={operator === 'mixed' ? 'addition' : operator}
+        operator={operator}
         onSave={handleCreateCustomSkill}
       />
     </div>

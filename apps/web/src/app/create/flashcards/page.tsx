@@ -129,7 +129,7 @@ export default function CreatePage() {
       showEmptyColumns: false,
       // Use global config for abacus display settings
       hideInactiveBeads: globalConfig.hideInactiveBeads,
-      beadShape: globalConfig.beadShape,
+      beadShape: globalConfig.beadShape as 'diamond' | 'circle' | 'square',
       colorScheme: globalConfig.colorScheme,
       coloredNumerals: globalConfig.coloredNumerals,
       scaleFactor: globalConfig.scaleFactor,

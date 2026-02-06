@@ -44,7 +44,7 @@ const ProgressiveTestComponent: React.FC<{
     const stepIndices = [
       ...new Set(fullInstruction.stepBeadHighlights.map((bead) => bead.stepIndex)),
     ].sort()
-    const steps = []
+    const steps: Array<{ index: number; targetValue: number; description: string }> = []
     let currentAbacusValue = startValue
 
     stepIndices.forEach((stepIndex, i) => {
@@ -123,10 +123,10 @@ const ProgressiveTestComponent: React.FC<{
 
   const currentStepBeads = getCurrentStepBeads()
 
-  const handleValueChange = (newValue: number) => {
+  const handleValueChange = (newValue: number | bigint) => {
     console.log('👆 User clicked, value changed:', currentValue, '→', newValue)
     userHasInteracted.current = true
-    setCurrentValue(newValue)
+    setCurrentValue(Number(newValue))
   }
 
   // Auto-advancement logic (restored from working version)

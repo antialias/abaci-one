@@ -24,7 +24,7 @@ const examples = [
       pAllStart: 0.0,
       pAnyStart: 0.5,
       digitRange: { min: 2, max: 2 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'always' as const,
         answerBoxes: 'always' as const,
@@ -49,7 +49,7 @@ const examples = [
       pAllStart: 0.0,
       pAnyStart: 0.5,
       digitRange: { min: 3, max: 3 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'always' as const,
         answerBoxes: 'always' as const,
@@ -75,7 +75,7 @@ const examples = [
       pAllStart: 0.0,
       pAnyStart: 0.6,
       digitRange: { min: 4, max: 4 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'always' as const,
         answerBoxes: 'always' as const,
@@ -101,7 +101,7 @@ const examples = [
       pAllStart: 0.3,
       pAnyStart: 0.8,
       digitRange: { min: 5, max: 5 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'always' as const,
         answerBoxes: 'always' as const,
@@ -127,7 +127,7 @@ const examples = [
       pAllStart: 0.0,
       pAnyStart: 0.5,
       digitRange: { min: 2, max: 4 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'always' as const,
         answerBoxes: 'always' as const,
@@ -153,7 +153,7 @@ const examples = [
       pAllStart: 0.0,
       pAnyStart: 0.8,
       digitRange: { min: 3, max: 3 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'never' as const,
         answerBoxes: 'always' as const,
@@ -184,7 +184,7 @@ for (const example of examples) {
   }
 
   try {
-    const result = generateWorksheetPreview(config)
+    const result = await generateWorksheetPreview(config)
 
     if (!result.success || !result.pages || result.pages.length === 0) {
       console.error(`Failed to generate ${example.name}:`, result.error)

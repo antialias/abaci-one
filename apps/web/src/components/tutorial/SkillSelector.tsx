@@ -47,43 +47,43 @@ export function SkillSelector({
     [skills, onChange]
   )
 
-  const getModeStyles = (skillMode: SkillMode): string => {
+  const getModeStyles = (skillMode: SkillMode) => {
     switch (skillMode) {
       case 'off':
-        return css({
+        return {
           bg: 'gray.100',
           color: 'gray.400',
           border: '1px solid',
           borderColor: 'gray.200',
-        })
+        } as const
       case 'allowed':
-        return css({
+        return {
           bg: 'green.100',
           color: 'green.800',
           border: '1px solid',
           borderColor: 'green.300',
-        })
+        } as const
       case 'target':
-        return css({
+        return {
           bg: 'blue.100',
           color: 'blue.800',
           border: '1px solid',
           borderColor: 'blue.300',
-        })
+        } as const
       case 'forbidden':
-        return css({
+        return {
           bg: 'red.100',
           color: 'red.800',
           border: '1px solid',
           borderColor: 'red.300',
-        })
+        } as const
       default:
-        return css({
+        return {
           bg: 'gray.100',
           color: 'gray.600',
           border: '1px solid',
           borderColor: 'gray.300',
-        })
+        } as const
     }
   }
 
@@ -146,16 +146,13 @@ export function SkillSelector({
 
   return (
     <div
-      className={css(
-        {
-          p: 4,
-          bg: 'white',
-          border: '1px solid',
-          borderColor: 'gray.200',
-          rounded: 'lg',
-        },
-        className
-      )}
+      className={`${css({
+        p: 4,
+        bg: 'white',
+        border: '1px solid',
+        borderColor: 'gray.200',
+        rounded: 'lg',
+      })} ${className || ''}`}
     >
       <h4
         className={css({

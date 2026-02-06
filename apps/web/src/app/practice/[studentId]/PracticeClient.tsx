@@ -669,7 +669,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     ? {
         startTime: gameBreakStartTime,
         maxDurationMs: (gameBreakSettings?.maxDurationMinutes ?? 5) * 60 * 1000,
-        onSkip: handleGameBreakEnd,
+        onSkip: () => handleGameBreakEnd('skipped'),
       }
     : undefined
 

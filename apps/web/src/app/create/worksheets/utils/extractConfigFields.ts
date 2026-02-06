@@ -94,5 +94,8 @@ export function extractConfigFields(formState: WorksheetFormState): Omit<
     excludedFields: ['rows', 'total', 'date'],
   })
 
-  return config
+  return config as Omit<AdditionConfigV4, 'version'> & {
+    seed?: number
+    prngAlgorithm?: string
+  }
 }

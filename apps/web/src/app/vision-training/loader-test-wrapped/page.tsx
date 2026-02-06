@@ -28,7 +28,7 @@ export default function LoaderTestWrappedPage() {
       const cv = await wrappedLoadOpenCV()
       console.log('[LoaderTestWrapped] wrappedLoadOpenCV returned:', !!cv)
       setTime(Date.now() - start)
-      setStatus(cv?.imread ? 'success' : 'error')
+      setStatus(cv && typeof cv.imread === 'function' ? 'success' : 'error')
     } catch (err) {
       console.log('[LoaderTestWrapped] Error:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')

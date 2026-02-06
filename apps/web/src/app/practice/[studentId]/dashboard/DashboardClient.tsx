@@ -36,7 +36,7 @@ import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { useMyClassroom, useEnrolledClassrooms } from '@/hooks/useClassroom'
 import { usePlayerPresenceSocket } from '@/hooks/usePlayerPresenceSocket'
-import { useSessionMode } from '@/hooks/useSessionMode'
+import { useDeferProgression, useSessionMode } from '@/hooks/useSessionMode'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import { useRefreshSkillRecency, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
 import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
@@ -53,6 +53,7 @@ import {
   ROTATION_MULTIPLIERS,
 } from '@/lib/curriculum/config'
 import type { ProblemResultWithContext } from '@/lib/curriculum/server'
+import { assessSkillReadiness, type SkillReadinessDimensions } from '@/lib/curriculum/skill-readiness'
 import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
 import { api } from '@/lib/queryClient'
 import { curriculumKeys } from '@/lib/queryKeys'
@@ -90,7 +91,7 @@ interface DashboardClientProps {
 }
 
 /** Processed skill with computed metrics (for Skills tab) */
-interface ProcessedSkill {
+export interface ProcessedSkill {
   id: string
   skillId: string
   displayName: string
@@ -112,6 +113,10 @@ interface ProcessedSkill {
   stalenessWarning: string | null
   complexityMultiplier: number
   usingBktMultiplier: boolean
+  /** Readiness dimensions (mastery, volume, speed, consistency) */
+  readiness: SkillReadinessDimensions | null
+  /** Whether all four readiness dimensions are met */
+  isSolid: boolean
 }
 
 interface SkillCategory {
@@ -431,6 +436,11 @@ function processSkills(
       stalenessWarning,
       complexityMultiplier,
       usingBktMultiplier,
+      ...(() => {
+        if (attempts === 0) return { readiness: null, isSolid: false }
+        const r = assessSkillReadiness(skill.skillId, problemHistory, bkt)
+        return { readiness: r.dimensions, isSolid: r.isSolid }
+      })(),
     }
   })
 }
@@ -552,9 +562,52 @@ function getInsufficientDataBadge(reason: InsufficientDataReason): string {
   }
 }
 
-type AttentionBadge = 'weak' | 'stale'
+export type AttentionBadge = 'weak' | 'stale'
 
-function SkillCard({
+export function ReadinessDot({
+  label,
+  met,
+  detail,
+  isDark,
+}: {
+  label: string
+  met: boolean
+  detail: string
+  isDark: boolean
+}) {
+  return (
+    <span
+      data-element="readiness-dot"
+      data-dimension={label.toLowerCase()}
+      data-met={met}
+      title={`${label}: ${detail}`}
+      className={css({
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.125rem',
+        fontSize: '0.5625rem',
+        color: met
+          ? isDark ? 'green.400' : 'green.600'
+          : isDark ? 'gray.500' : 'gray.400',
+      })}
+    >
+      <span
+        className={css({
+          width: '6px',
+          height: '6px',
+          borderRadius: '50%',
+          backgroundColor: met
+            ? isDark ? 'green.400' : 'green.500'
+            : isDark ? 'gray.600' : 'gray.300',
+          flexShrink: 0,
+        })}
+      />
+      <span>{detail}</span>
+    </span>
+  )
+}
+
+export function SkillCard({
   skill,
   isDark,
   onClick,
@@ -774,8 +827,67 @@ function SkillCard({
         </span>
       )}
 
-      {/* Classification badge - either BKT classification or insufficient data indicator */}
-      {skill.bktClassification ? (
+      {/* Readiness dimensions row — shows 4 small indicators for practicing skills */}
+      {skill.readiness && skill.isPracticing && (
+        <div
+          data-element="readiness-dimensions"
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem',
+            marginTop: '0.25rem',
+            flexWrap: 'wrap',
+          })}
+        >
+          <ReadinessDot
+            label="Mastery"
+            met={skill.readiness.mastery.met}
+            detail={`${Math.round(skill.readiness.mastery.pKnown * 100)}%`}
+            isDark={isDark}
+          />
+          <ReadinessDot
+            label="Volume"
+            met={skill.readiness.volume.met}
+            detail={`${skill.readiness.volume.opportunities} probs`}
+            isDark={isDark}
+          />
+          <ReadinessDot
+            label="Speed"
+            met={skill.readiness.speed.met}
+            detail={
+              skill.readiness.speed.medianSecondsPerTerm !== null
+                ? `${skill.readiness.speed.medianSecondsPerTerm.toFixed(1)}s`
+                : '—'
+            }
+            isDark={isDark}
+          />
+          <ReadinessDot
+            label="Consistency"
+            met={skill.readiness.consistency.met}
+            detail={`${Math.round(skill.readiness.consistency.recentAccuracy * 100)}%`}
+            isDark={isDark}
+          />
+        </div>
+      )}
+
+      {/* Classification badge - either Solid, BKT classification, or insufficient data */}
+      {skill.isSolid && skill.isPracticing ? (
+        <span
+          className={css({
+            marginTop: '0.375rem',
+            padding: '0.125rem 0.5rem',
+            borderRadius: '4px',
+            fontSize: '0.625rem',
+            fontWeight: 'bold',
+            textTransform: 'uppercase',
+            backgroundColor: isDark ? 'green.900/40' : 'green.100',
+            color: isDark ? 'green.300' : 'green.700',
+            alignSelf: 'flex-start',
+          })}
+        >
+          Solid
+        </span>
+      ) : skill.bktClassification ? (
         <span
           className={css({
             marginTop: '0.375rem',
@@ -2542,6 +2654,7 @@ function NotesTab({
 
 interface BannerActionRegistrarProps {
   onAction: () => void
+  onDefer: () => void
   onResume: () => void
   onStartFresh: () => void
 }
@@ -2550,12 +2663,16 @@ interface BannerActionRegistrarProps {
  * Helper component that registers the banner action callbacks.
  * Must be used inside SessionModeBannerProvider.
  */
-function BannerActionRegistrar({ onAction, onResume, onStartFresh }: BannerActionRegistrarProps) {
-  const { setOnAction, setOnResume, setOnStartFresh } = useSessionModeBanner()
+function BannerActionRegistrar({ onAction, onDefer, onResume, onStartFresh }: BannerActionRegistrarProps) {
+  const { setOnAction, setOnDefer, setOnResume, setOnStartFresh } = useSessionModeBanner()
 
   useEffect(() => {
     setOnAction(onAction)
   }, [onAction, setOnAction])
+
+  useEffect(() => {
+    setOnDefer(onDefer)
+  }, [onDefer, setOnDefer])
 
   useEffect(() => {
     setOnResume(onResume)
@@ -2813,6 +2930,18 @@ export function DashboardClient({
   // Handlers
   const handleStartPractice = useCallback(() => setShowStartPracticeModal(true), [])
 
+  const deferMutation = useDeferProgression(studentId)
+  const handleDeferProgression = useCallback(() => {
+    // Defer the next skill if progression mode, or deferred progression on maintenance
+    const mode = sessionMode
+    if (!mode) return
+    if (mode.type === 'progression') {
+      deferMutation.mutate(mode.nextSkill.skillId)
+    } else if (mode.type === 'maintenance' && mode.deferredProgression) {
+      deferMutation.mutate(mode.deferredProgression.nextSkill.skillId)
+    }
+  }, [sessionMode, deferMutation])
+
   const handleResumeSession = useCallback(
     () => router.push(`/practice/${studentId}`),
     [studentId, router]
@@ -2838,6 +2967,7 @@ export function DashboardClient({
     >
       <BannerActionRegistrar
         onAction={handleStartPractice}
+        onDefer={handleDeferProgression}
         onResume={handleResumeSession}
         onStartFresh={handleStartPractice}
       />

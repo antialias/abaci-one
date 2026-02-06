@@ -57,7 +57,7 @@ function buildOfflineSessionParts(practiceTypes: SessionPartType[]): SessionPart
     ...part,
     // We can't add 'enabled' to SessionPart, so we check if slots is empty
     // and set estimatedMinutes > 0 to indicate the part was practiced
-    estimatedMinutes: practiceTypes.includes(part.type) ? 1 : 0,
+    estimatedMinutes: practiceTypes.includes(part.type as SessionPartType) ? 1 : 0,
   })) as SessionPart[]
 }
 
@@ -114,7 +114,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       try {
         const parsed = JSON.parse(practiceTypesJson) as string[]
         // Validate types using central definition
-        practiceTypes = parsed.filter(isValidPracticeTypeId)
+        practiceTypes = parsed.filter(isValidPracticeTypeId) as SessionPartType[]
       } catch {
         return NextResponse.json({ error: 'Invalid practiceTypes format' }, { status: 400 })
       }

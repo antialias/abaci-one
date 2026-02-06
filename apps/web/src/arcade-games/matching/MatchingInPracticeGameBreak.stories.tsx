@@ -158,7 +158,6 @@ function createMockMatchingState(phase: 'setup' | 'playing' | 'results'): Matchi
     gameStartTime: phase === 'setup' ? null : Date.now(),
     gameEndTime: null,
     currentMoveStartTime: null,
-    timerInterval: null,
     celebrationAnimations: [],
     isProcessingMove: false,
     showMismatchFeedback: false,

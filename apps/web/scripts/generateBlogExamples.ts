@@ -111,7 +111,7 @@ for (const example of examples) {
   }
 
   try {
-    const result = generateWorksheetPreview(config)
+    const result = await generateWorksheetPreview(config)
 
     if (!result.success || !result.pages || result.pages.length === 0) {
       console.error(`Failed to generate ${example.name}:`, result.error)

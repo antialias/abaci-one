@@ -24,7 +24,7 @@ const examples = [
       pAllStart: 0.0, // No borrowing problems
       pAnyStart: 0.0,
       digitRange: { min: 2, max: 2 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'never' as const,
         answerBoxes: 'always' as const,
@@ -32,9 +32,9 @@ const examples = [
         tenFrames: 'never' as const,
         problemNumbers: 'always' as const,
         cellBorders: 'always' as const,
+        borrowNotation: 'never' as const,
+        borrowingHints: 'never' as const,
       },
-      showBorrowNotation: false,
-      showBorrowingHints: false,
     },
   },
   {
@@ -46,7 +46,7 @@ const examples = [
       pAllStart: 0.0,
       pAnyStart: 1.0, // Some borrowing
       digitRange: { min: 2, max: 2 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'never' as const,
         answerBoxes: 'always' as const,
@@ -54,9 +54,9 @@ const examples = [
         tenFrames: 'never' as const,
         problemNumbers: 'always' as const,
         cellBorders: 'always' as const,
+        borrowNotation: 'always' as const,
+        borrowingHints: 'never' as const,
       },
-      showBorrowNotation: true,
-      showBorrowingHints: false,
     },
   },
   {
@@ -68,7 +68,7 @@ const examples = [
       pAllStart: 0.0,
       pAnyStart: 1.0, // Some borrowing
       digitRange: { min: 2, max: 2 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'never' as const,
         answerBoxes: 'always' as const,
@@ -76,9 +76,9 @@ const examples = [
         tenFrames: 'never' as const,
         problemNumbers: 'always' as const,
         cellBorders: 'always' as const,
+        borrowNotation: 'always' as const,
+        borrowingHints: 'always' as const,
       },
-      showBorrowNotation: true,
-      showBorrowingHints: true,
     },
   },
   {
@@ -90,7 +90,7 @@ const examples = [
       pAllStart: 1.0, // All problems require borrowing
       pAnyStart: 1.0,
       digitRange: { min: 3, max: 3 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'never' as const,
         answerBoxes: 'always' as const,
@@ -98,9 +98,9 @@ const examples = [
         tenFrames: 'never' as const,
         problemNumbers: 'always' as const,
         cellBorders: 'always' as const,
+        borrowNotation: 'always' as const,
+        borrowingHints: 'never' as const,
       },
-      showBorrowNotation: true,
-      showBorrowingHints: false,
     },
   },
   {
@@ -112,7 +112,7 @@ const examples = [
       pAllStart: 0.0,
       pAnyStart: 1.0, // Some borrowing
       digitRange: { min: 2, max: 2 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'never' as const,
         answerBoxes: 'always' as const,
@@ -120,9 +120,9 @@ const examples = [
         tenFrames: 'never' as const,
         problemNumbers: 'always' as const,
         cellBorders: 'always' as const,
+        borrowNotation: 'always' as const,
+        borrowingHints: 'never' as const,
       },
-      showBorrowNotation: true,
-      showBorrowingHints: false,
     },
   },
   {
@@ -134,7 +134,7 @@ const examples = [
       pAllStart: 0.0,
       pAnyStart: 1.0,
       digitRange: { min: 2, max: 2 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'never' as const,
         answerBoxes: 'always' as const,
@@ -142,9 +142,9 @@ const examples = [
         tenFrames: 'never' as const,
         problemNumbers: 'always' as const,
         cellBorders: 'always' as const,
+        borrowNotation: 'never' as const,
+        borrowingHints: 'never' as const,
       },
-      showBorrowNotation: false,
-      showBorrowingHints: false,
     },
   },
   {
@@ -156,7 +156,7 @@ const examples = [
       pAllStart: 0.0,
       pAnyStart: 1.0,
       digitRange: { min: 2, max: 2 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'never' as const,
         answerBoxes: 'always' as const,
@@ -164,9 +164,9 @@ const examples = [
         tenFrames: 'never' as const,
         problemNumbers: 'always' as const,
         cellBorders: 'always' as const,
+        borrowNotation: 'always' as const,
+        borrowingHints: 'never' as const,
       },
-      showBorrowNotation: true,
-      showBorrowingHints: false,
       seed: 12345, // Same seed as above for identical problems
     },
   },
@@ -179,7 +179,7 @@ const examples = [
       pAllStart: 1.0,
       pAnyStart: 1.0,
       digitRange: { min: 4, max: 4 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'never' as const,
         answerBoxes: 'always' as const,
@@ -187,9 +187,9 @@ const examples = [
         tenFrames: 'never' as const,
         problemNumbers: 'always' as const,
         cellBorders: 'always' as const,
+        borrowNotation: 'always' as const,
+        borrowingHints: 'never' as const,
       },
-      showBorrowNotation: true,
-      showBorrowingHints: false,
     },
   },
   {
@@ -201,7 +201,7 @@ const examples = [
       pAllStart: 0.0,
       pAnyStart: 1.0,
       digitRange: { min: 3, max: 3 },
-      mode: 'manual' as const,
+      mode: 'custom' as const,
       displayRules: {
         carryBoxes: 'never' as const,
         answerBoxes: 'always' as const,
@@ -209,9 +209,9 @@ const examples = [
         tenFrames: 'never' as const,
         problemNumbers: 'always' as const,
         cellBorders: 'always' as const,
+        borrowNotation: 'always' as const,
+        borrowingHints: 'always' as const,
       },
-      showBorrowNotation: true,
-      showBorrowingHints: true,
       problemsPerPage: 2, // Fewer problems for detail
       cols: 1,
     },
@@ -232,7 +232,7 @@ for (const example of examples) {
   }
 
   try {
-    const result = generateWorksheetPreview(config)
+    const result = await generateWorksheetPreview(config)
 
     if (!result.success || !result.pages || result.pages.length === 0) {
       console.error(`Failed to generate ${example.name}:`, result.error)

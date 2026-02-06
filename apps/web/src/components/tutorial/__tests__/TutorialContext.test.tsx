@@ -9,6 +9,9 @@ const mockTutorial: Tutorial = {
   id: 'test-tutorial',
   title: 'Test Tutorial',
   description: 'A test tutorial',
+  category: 'test',
+  difficulty: 'beginner',
+  estimatedDuration: 5,
   steps: [
     {
       id: 'step-1',
@@ -17,6 +20,9 @@ const mockTutorial: Tutorial = {
       description: 'Add 3 to 5',
       startValue: 5,
       targetValue: 8,
+      expectedAction: 'add',
+      actionDescription: 'Add 3 to the abacus',
+      tooltip: { content: 'Add 3', explanation: 'Move 3 earth beads down' },
     },
     {
       id: 'step-2',
@@ -25,6 +31,9 @@ const mockTutorial: Tutorial = {
       description: 'Subtract 2 from 10',
       startValue: 10,
       targetValue: 8,
+      expectedAction: 'remove',
+      actionDescription: 'Subtract 2 from the abacus',
+      tooltip: { content: 'Subtract 2', explanation: 'Move 2 earth beads up' },
     },
     {
       id: 'step-3',
@@ -33,8 +42,17 @@ const mockTutorial: Tutorial = {
       description: 'Add 7 to 15',
       startValue: 15,
       targetValue: 22,
+      expectedAction: 'multi-step',
+      actionDescription: 'Add 7 to the abacus',
+      tooltip: { content: 'Add 7', explanation: 'Use complement technique' },
     },
   ],
+  tags: [],
+  author: 'test',
+  version: '1.0.0',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  isPublished: false,
 }
 
 // Test component that uses the context
@@ -427,7 +445,16 @@ describe('TutorialContext', () => {
         id: 'empty',
         title: 'Empty Tutorial',
         description: 'No steps',
+        category: 'test',
+        difficulty: 'beginner',
+        estimatedDuration: 0,
         steps: [],
+        tags: [],
+        author: 'test',
+        version: '1.0.0',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isPublished: false,
       }
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})

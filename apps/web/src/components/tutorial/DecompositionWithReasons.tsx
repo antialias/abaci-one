@@ -7,27 +7,13 @@ import { useTutorialContext } from './TutorialContext'
 import { useTutorialUI } from './TutorialUIContext'
 import './decomposition-reasoning.css'
 
-export type PedagogicalRule = 'Direct' | 'FiveComplement' | 'TenComplement' | 'Cascade'
+import type {
+  PedagogicalRule,
+  SegmentDecision,
+  PedagogicalSegment,
+} from '@/utils/unifiedStepGenerator'
 
-export interface SegmentDecision {
-  rule: PedagogicalRule
-  conditions: string[]
-  explanation: string[]
-}
-
-export interface PedagogicalSegment {
-  id: string
-  place: number
-  digit: number
-  a: number
-  L: number
-  U: 0 | 1
-  goal: string
-  plan: SegmentDecision[]
-  expression: string
-  termIndices: number[]
-  termRange: { startIndex: number; endIndex: number }
-}
+export type { PedagogicalRule, SegmentDecision, PedagogicalSegment }
 
 export interface TermReason {
   termIndex: number

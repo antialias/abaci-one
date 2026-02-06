@@ -4,20 +4,32 @@ import userEvent from '@testing-library/user-event'
 import { GameInfoPanel } from './GameInfoPanel'
 import type { MapData } from '../types'
 
-// Mock the context
-vi.mock('@/contexts/ThemeContext', () => ({
-  useTheme: () => ({ resolvedTheme: 'light' }),
-}))
-
-vi.mock('../Provider', () => ({
-  useKnowYourWorld: () => ({
+// Hoisted mocks so they can be overridden per-test
+const mockUseKnowYourWorld = vi.hoisted(() =>
+  vi.fn((): {
+    state: { gameMode: string; difficulty?: string }
+    lastError: string | null
+    clearError: ReturnType<typeof vi.fn>
+  } => ({
     state: {
-      gameMode: 'cooperative' as const,
-      difficulty: 'easy' as const,
+      gameMode: 'cooperative',
+      difficulty: 'easy',
     },
     lastError: null,
     clearError: vi.fn(),
-  }),
+  }))
+)
+
+const mockUseTheme = vi.hoisted(() =>
+  vi.fn(() => ({ resolvedTheme: 'light' }))
+)
+
+vi.mock('@/contexts/ThemeContext', () => ({
+  useTheme: () => mockUseTheme(),
+}))
+
+vi.mock('../Provider', () => ({
+  useKnowYourWorld: () => mockUseKnowYourWorld(),
 }))
 
 const mockMapData: MapData = {
@@ -121,7 +133,7 @@ describe('GameInfoPanel - Error Display', () => {
   it('shows error banner when lastError is set', () => {
     const mockClearError = vi.fn()
 
-    vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
+    mockUseKnowYourWorld.mockReturnValue({
       state: {
         gameMode: 'cooperative' as const,
         difficulty: 'easy' as const,
@@ -146,7 +158,7 @@ describe('GameInfoPanel - Error Display', () => {
     const user = userEvent.setup()
     const mockClearError = vi.fn()
 
-    vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
+    mockUseKnowYourWorld.mockReturnValue({
       state: {
         gameMode: 'cooperative' as const,
         difficulty: 'easy' as const,
@@ -167,7 +179,7 @@ describe('GameInfoPanel - Error Display', () => {
     vi.useFakeTimers()
     const mockClearError = vi.fn()
 
-    vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
+    mockUseKnowYourWorld.mockReturnValue({
       state: {
         gameMode: 'cooperative' as const,
         difficulty: 'easy' as const,
@@ -201,7 +213,7 @@ describe('GameInfoPanel - Different Game Modes', () => {
   }
 
   it('renders race mode emoji', () => {
-    vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
+    mockUseKnowYourWorld.mockReturnValue({
       state: {
         gameMode: 'race' as const,
         difficulty: 'easy' as const,
@@ -216,7 +228,7 @@ describe('GameInfoPanel - Different Game Modes', () => {
   })
 
   it('renders turn-based mode emoji', () => {
-    vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
+    mockUseKnowYourWorld.mockReturnValue({
       state: {
         gameMode: 'turn-based' as const,
         difficulty: 'easy' as const,
@@ -231,7 +243,7 @@ describe('GameInfoPanel - Different Game Modes', () => {
   })
 
   it('renders hard difficulty emoji', () => {
-    vi.mocked(vi.importActual('../Provider')).useKnowYourWorld = () => ({
+    mockUseKnowYourWorld.mockReturnValue({
       state: {
         gameMode: 'cooperative' as const,
         difficulty: 'hard' as const,
@@ -258,7 +270,7 @@ describe('GameInfoPanel - Dark Mode', () => {
   }
 
   it('applies dark mode styles when theme is dark', () => {
-    vi.mocked(vi.importActual('@/contexts/ThemeContext')).useTheme = () => ({
+    mockUseTheme.mockReturnValue({
       resolvedTheme: 'dark',
     })
 

@@ -273,7 +273,7 @@ export function CalendarConfigPanel({
           <AbacusReact
             value={12}
             columns={2}
-            customStyles={abacusConfig.customStyles}
+            customStyles={undefined}
             scaleFactor={0.5}
             showNumbers={false}
           />

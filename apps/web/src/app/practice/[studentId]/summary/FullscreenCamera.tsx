@@ -208,16 +208,17 @@ export function FullscreenCamera({ onCapture, onClose }: FullscreenCameraProps) 
   const applyPresetConfig = useCallback(
     (presetKey: 'normal' | 'lowLight' | 'bright') => {
       const preset = LIGHTING_PRESETS[presetKey]
-      const config = { ...preset.config }
+      const config: Partial<QuadDetectorConfig> = { ...preset.config }
 
       // Add finger occlusion enhancements if enabled
       if (fingerOcclusionMode) {
         config.enableHoughLines = true
         config.enableMorphGradient = true
         // Slightly lower thresholds to catch partial edges
+        const baseThresholds = preset.config.cannyThresholds
         config.cannyThresholds = [
-          Math.max(20, config.cannyThresholds[0] - 15),
-          Math.max(80, config.cannyThresholds[1] - 30),
+          Math.max(20, baseThresholds[0] - 15),
+          Math.max(80, baseThresholds[1] - 30),
         ] as [number, number]
       }
 

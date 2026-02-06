@@ -93,6 +93,9 @@ export function skillConfigurationToSkillSets(config: SkillConfiguration): {
       directAddition: false,
       heavenBead: false,
       simpleCombinations: false,
+      directSubtraction: false,
+      heavenBeadSubtraction: false,
+      simpleCombinationsSub: false,
     },
     fiveComplements: {
       '4=5-1': false,
@@ -110,6 +113,27 @@ export function skillConfigurationToSkillSets(config: SkillConfiguration): {
       '3=10-7': false,
       '2=10-8': false,
       '1=10-9': false,
+    },
+    fiveComplementsSub: {
+      '-4=-5+1': false,
+      '-3=-5+2': false,
+      '-2=-5+3': false,
+      '-1=-5+4': false,
+    },
+    tenComplementsSub: {
+      '-9=+1-10': false,
+      '-8=+2-10': false,
+      '-7=+3-10': false,
+      '-6=+4-10': false,
+      '-5=+5-10': false,
+      '-4=+6-10': false,
+      '-3=+7-10': false,
+      '-2=+8-10': false,
+      '-1=+9-10': false,
+    },
+    advanced: {
+      cascadingCarry: false,
+      cascadingBorrow: false,
     },
   }
 

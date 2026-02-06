@@ -49,7 +49,7 @@ export function findTopmostBeadWithArrows(
 
   // Filter only beads that have direction arrows
   const beadsWithArrows = stepBeadHighlights.filter(
-    (bead) => bead.direction && bead.direction !== 'none'
+    (bead) => !!bead.direction
   )
 
   if (beadsWithArrows.length === 0) {
@@ -118,7 +118,7 @@ export function hasActiveBeadsToLeft(
     const hasArrowsInColumn =
       stepBeadHighlights?.some((bead) => {
         const beadColumnIndex = abacusColumns - 1 - bead.placeValue
-        return beadColumnIndex === col && bead.direction && bead.direction !== 'none'
+        return beadColumnIndex === col && !!bead.direction
       }) ?? false
 
     if (hasArrowsInColumn) {

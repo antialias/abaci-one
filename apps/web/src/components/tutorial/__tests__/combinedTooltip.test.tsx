@@ -25,6 +25,13 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
     id: `test-${startValue}-${targetValue}`,
     title: `Test ${startValue} + ${targetValue - startValue}`,
     description: 'Testing combined tooltip content',
+    category: 'test',
+    difficulty: 'beginner',
+    estimatedDuration: 5,
+    tags: ['test'],
+    author: 'test',
+    version: '1.0.0',
+    isPublished: false,
     steps: [
       {
         id: 'test-step',

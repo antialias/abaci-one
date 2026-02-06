@@ -11,7 +11,7 @@ import {
   generateMixedProblems,
 } from '@/app/create/worksheets/problemGenerator'
 import { generateTypstSource } from '@/app/create/worksheets/typstGenerator'
-import { serializeAdditionConfig } from '@/app/create/worksheets/config-schemas'
+import { serializeAdditionConfig, type AdditionConfigV4 } from '@/app/create/worksheets/config-schemas'
 import type { WorksheetFormState, WorksheetProblem } from '@/app/create/worksheets/types'
 import { db } from '@/db'
 import { worksheetShares } from '@/db/schema'
@@ -108,7 +108,11 @@ export async function POST(request: NextRequest) {
           }
 
           // Serialize config for sharing
-          const configJson = serializeAdditionConfig(body)
+          // Use validated config (not raw body) — strip 'version' since serializeAdditionConfig adds it
+          const { version: _v, ...configWithoutVersion } = config
+          const configJson = serializeAdditionConfig(
+            configWithoutVersion as Omit<AdditionConfigV4, 'version'>
+          )
 
           // Create share record
           await db.insert(worksheetShares).values({

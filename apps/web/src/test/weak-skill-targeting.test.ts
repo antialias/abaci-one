@@ -13,6 +13,19 @@ import { WEAK_SKILL_THRESHOLDS } from '@/lib/curriculum/config'
 import { generateSingleProblemWithDiagnostics } from '@/utils/problemGenerator'
 import { createBasicSkillSet, type SkillSet } from '@/types/tutorial'
 
+/** Helper to create a SkillBktResult with defaults for required fields */
+function makeBktResult(
+  partial: Pick<SkillBktResult, 'skillId' | 'pKnown' | 'confidence' | 'opportunities'>
+): SkillBktResult {
+  return {
+    ...partial,
+    uncertaintyRange: { low: partial.pKnown - 0.1, high: partial.pKnown + 0.1 },
+    successCount: Math.round(partial.opportunities * partial.pKnown),
+    lastPracticedAt: null,
+    masteryClassification: partial.pKnown >= 0.8 ? 'strong' : partial.pKnown >= 0.5 ? 'developing' : 'weak',
+  }
+}
+
 // We need to access the private functions from session-planner
 // For testing, we'll re-implement the logic here to test it independently
 
@@ -72,32 +85,32 @@ describe('Weak Skill Targeting', () => {
         // Weak: low P(known), high confidence
         [
           'fiveComplements.4=5-1',
-          {
+          makeBktResult({
             skillId: 'fiveComplements.4=5-1',
             pKnown: 0.2,
             confidence: 0.5,
             opportunities: 10,
-          },
+          }),
         ],
         // Strong: high P(known), high confidence
         [
           'basic.directAddition',
-          {
+          makeBktResult({
             skillId: 'basic.directAddition',
             pKnown: 0.9,
             confidence: 0.6,
             opportunities: 15,
-          },
+          }),
         ],
         // Unknown: low confidence (not enough data)
         [
           'tenComplements.9=10-1',
-          {
+          makeBktResult({
             skillId: 'tenComplements.9=10-1',
             pKnown: 0.3,
             confidence: 0.1,
             opportunities: 2,
-          },
+          }),
         ],
       ])
 
@@ -117,32 +130,32 @@ describe('Weak Skill Targeting', () => {
         // Just below threshold - should be weak
         [
           'skill.belowThreshold',
-          {
+          makeBktResult({
             skillId: 'skill.belowThreshold',
             pKnown: 0.49,
             confidence: 0.31,
             opportunities: 8,
-          },
+          }),
         ],
         // Just above threshold - should be strong
         [
           'skill.aboveThreshold',
-          {
+          makeBktResult({
             skillId: 'skill.aboveThreshold',
             pKnown: 0.51,
             confidence: 0.31,
             opportunities: 8,
-          },
+          }),
         ],
         // Confidence just below threshold - should not be identified
         [
           'skill.lowConfidence',
-          {
+          makeBktResult({
             skillId: 'skill.lowConfidence',
             pKnown: 0.2,
             confidence: 0.29,
             opportunities: 5,
-          },
+          }),
         ],
       ])
 
@@ -157,39 +170,39 @@ describe('Weak Skill Targeting', () => {
       const bktResults = new Map<string, SkillBktResult>([
         [
           'fiveComplements.4=5-1',
-          {
+          makeBktResult({
             skillId: 'fiveComplements.4=5-1',
             pKnown: 0.2,
             confidence: 0.5,
             opportunities: 10,
-          },
+          }),
         ],
         [
           'fiveComplements.3=5-2',
-          {
+          makeBktResult({
             skillId: 'fiveComplements.3=5-2',
             pKnown: 0.3,
             confidence: 0.4,
             opportunities: 8,
-          },
+          }),
         ],
         [
           'tenComplements.9=10-1',
-          {
+          makeBktResult({
             skillId: 'tenComplements.9=10-1',
             pKnown: 0.15,
             confidence: 0.6,
             opportunities: 12,
-          },
+          }),
         ],
         [
           'basic.directAddition',
-          {
+          makeBktResult({
             skillId: 'basic.directAddition',
             pKnown: 0.95,
             confidence: 0.8,
             opportunities: 20,
-          },
+          }),
         ],
       ])
 
@@ -214,9 +227,9 @@ describe('Weak Skill Targeting', () => {
     })
 
     it('should preserve existing targetSkills', () => {
-      const baseTargetSkills: Partial<SkillSet> = {
+      const baseTargetSkills = {
         basic: { directAddition: true, heavenBead: false },
-      }
+      } as Partial<SkillSet>
       const weakSkills = ['fiveComplements.4=5-1']
 
       const result = addWeakSkillsToTargets(baseTargetSkills, weakSkills)
@@ -227,9 +240,9 @@ describe('Weak Skill Targeting', () => {
     })
 
     it('should handle skills in same category', () => {
-      const baseTargetSkills: Partial<SkillSet> = {
+      const baseTargetSkills = {
         fiveComplements: { '4=5-1': true },
-      }
+      } as Partial<SkillSet>
       const weakSkills = ['fiveComplements.3=5-2', 'fiveComplements.2=5-3']
 
       const result = addWeakSkillsToTargets(baseTargetSkills, weakSkills)
@@ -250,9 +263,9 @@ describe('Weak Skill Targeting', () => {
       allowedSkills.fiveComplements['3=5-2'] = true
 
       // Target only five complements
-      const targetSkills: Partial<SkillSet> = {
+      const targetSkills = {
         fiveComplements: { '4=5-1': true, '3=5-2': true },
-      }
+      } as Partial<SkillSet>
 
       // Generate many problems and count how many use target skills
       const problemCount = 50
@@ -335,9 +348,9 @@ describe('Weak Skill Targeting', () => {
       allowedSkills.basic.heavenBead = true
       allowedSkills.fiveComplements['4=5-1'] = true
 
-      const targetSkills: Partial<SkillSet> = {
+      const targetSkills = {
         fiveComplements: { '4=5-1': true },
-      }
+      } as Partial<SkillSet>
 
       const problemCount = 100
 
@@ -395,30 +408,30 @@ describe('Weak Skill Targeting', () => {
       const bktResults = new Map<string, SkillBktResult>([
         [
           'basic.directAddition',
-          {
+          makeBktResult({
             skillId: 'basic.directAddition',
             pKnown: 0.9,
             confidence: 0.8,
             opportunities: 20,
-          },
+          }),
         ],
         [
           'basic.heavenBead',
-          {
+          makeBktResult({
             skillId: 'basic.heavenBead',
             pKnown: 0.85,
             confidence: 0.7,
             opportunities: 15,
-          },
+          }),
         ],
         [
           'fiveComplements.4=5-1',
-          {
+          makeBktResult({
             skillId: 'fiveComplements.4=5-1',
             pKnown: 0.2,
             confidence: 0.5,
             opportunities: 10,
-          },
+          }),
         ],
       ])
 

@@ -1,4 +1,4 @@
-import { css } from '@styled/css'
+import { css, cx } from '@styled/css'
 
 export interface OperatorIconProps {
   operator: 'addition' | 'subtraction' | 'mixed'
@@ -33,13 +33,12 @@ export function OperatorIcon({
 
   return (
     <span
-      className={css(
-        {
+      className={cx(css({
           fontSize: sizeMap[size],
           fontWeight: 'bold',
           color: colorValue,
           flexShrink: 0,
-        },
+        }),
         className
       )}
     >

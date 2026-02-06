@@ -62,7 +62,7 @@ async function runTestCategory(category: (typeof TEST_CATEGORIES)[0]) {
 
 async function runAllTests() {
   console.log('🚀 Running Tutorial System Regression Tests')
-  console.log('=' * 60)
+  console.log('='.repeat(60))
 
   const results: boolean[] = []
 

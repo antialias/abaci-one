@@ -82,7 +82,7 @@ function parseSnapshotFile(content: string): SnapshotData {
   }
 
   const masteryCurvesRaw = extractSnapshot('mastery-curves-table') as {
-    table: Array<Record<string, string | number>>
+    table: Array<{ exposures: number; [key: string]: string | number }>
   }
 
   const fiftyPercent = extractSnapshot('fifty-percent-threshold-ratios') as {

@@ -363,8 +363,8 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
           } as any
 
           console.log('[MIXED MODE SCAFFOLDING] Final config (after resolving "auto"):', {
-            additionDisplayRules: config.additionDisplayRules,
-            subtractionDisplayRules: config.subtractionDisplayRules,
+            additionDisplayRules: (config as any).additionDisplayRules,
+            subtractionDisplayRules: (config as any).subtractionDisplayRules,
           })
         } else {
           console.log('[MIXED MODE SCAFFOLDING] Missing recommendedScaffolding', {

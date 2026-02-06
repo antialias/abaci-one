@@ -8,7 +8,7 @@ import type {
   SessionMode,
 } from '@/lib/curriculum/session-mode'
 import { css } from '../../../styled-system/css'
-import { CelebrationProgressionBanner } from './CelebrationProgressionBanner'
+import { ReadinessReport } from './ReadinessReport'
 
 // ============================================================================
 // Types
@@ -19,6 +19,8 @@ interface SessionModeBannerProps {
   sessionMode: SessionMode
   /** Callback when user clicks the action button */
   onAction: () => void
+  /** Callback when user defers progression */
+  onDefer?: () => void
   /** Whether an action is in progress */
   isLoading?: boolean
   /** Variant for different contexts */
@@ -226,12 +228,13 @@ function RemediationBanner({ mode, onAction, isLoading, variant, isDark }: Remed
 interface ProgressionBannerProps {
   mode: ProgressionMode
   onAction: () => void
+  onDefer?: () => void
   isLoading: boolean
   variant: 'dashboard' | 'modal'
   isDark: boolean
 }
 
-function ProgressionBanner({ mode, onAction, isLoading, variant, isDark }: ProgressionBannerProps) {
+function ProgressionBanner({ mode, onAction, onDefer, isLoading, variant, isDark }: ProgressionBannerProps) {
   return (
     <div
       data-element="session-mode-banner"
@@ -257,100 +260,150 @@ function ProgressionBanner({ mode, onAction, isLoading, variant, isDark }: Progr
         className={css({
           padding: variant === 'modal' ? '0.875rem 1rem' : '1rem 1.25rem',
           display: 'flex',
-          gap: '0.75rem',
-          alignItems: 'center',
+          flexDirection: 'column',
+          gap: '0.5rem',
           '@media (max-width: 400px)': {
             padding: '0.75rem',
-            gap: '0.5rem',
           },
         })}
       >
-        <span
-          className={css({
-            fontSize: variant === 'modal' ? '1.5rem' : '2rem',
-            lineHeight: 1,
-            '@media (max-width: 400px)': {
-              fontSize: '1.25rem',
-            },
-          })}
-        >
-          🌟
-        </span>
-        <div className={css({ flex: 1, minWidth: 0 })}>
-          <p
+        <div className={css({ display: 'flex', gap: '0.75rem', alignItems: 'center' })}>
+          <span
             className={css({
-              fontSize: variant === 'modal' ? '0.9375rem' : '1rem',
-              fontWeight: '600',
+              fontSize: variant === 'modal' ? '1.5rem' : '2rem',
+              lineHeight: 1,
               '@media (max-width: 400px)': {
-                fontSize: '0.875rem',
+                fontSize: '1.25rem',
               },
             })}
-            style={{ color: isDark ? '#86efac' : '#166534' }}
           >
-            {mode.tutorialRequired ? "You've unlocked: " : 'Ready to practice: '}
-            <strong>{mode.nextSkill.displayName}</strong>
-          </p>
-          <p
-            className={css({
-              fontSize: variant === 'modal' ? '0.75rem' : '0.8125rem',
-              marginTop: '0.125rem',
-              '@media (max-width: 400px)': {
-                fontSize: '0.6875rem',
-              },
-            })}
-            style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
-          >
-            {mode.tutorialRequired ? 'Start with a quick tutorial' : 'Continue building mastery'}
-          </p>
+            📈
+          </span>
+          <div className={css({ flex: 1, minWidth: 0 })}>
+            <p
+              className={css({
+                fontSize: variant === 'modal' ? '0.9375rem' : '1rem',
+                fontWeight: '600',
+                '@media (max-width: 400px)': {
+                  fontSize: '0.875rem',
+                },
+              })}
+              style={{ color: isDark ? '#86efac' : '#166534' }}
+            >
+              May be ready for: <strong>{mode.nextSkill.displayName}</strong>
+            </p>
+            <p
+              className={css({
+                fontSize: variant === 'modal' ? '0.75rem' : '0.8125rem',
+                marginTop: '0.125rem',
+                '@media (max-width: 400px)': {
+                  fontSize: '0.6875rem',
+                },
+              })}
+              style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
+            >
+              {mode.tutorialRequired ? 'Tutorial available when ready' : 'Continue building mastery'}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Action button */}
-      <button
-        type="button"
-        data-action="start-progression"
-        onClick={onAction}
-        disabled={isLoading}
-        className={css({
-          width: '100%',
-          padding: variant === 'modal' ? '0.875rem' : '1rem',
-          fontSize: variant === 'modal' ? '1rem' : '1.0625rem',
-          fontWeight: 'bold',
-          color: 'white',
-          border: 'none',
-          borderRadius: '0',
-          cursor: isLoading ? 'not-allowed' : 'pointer',
-          transition: 'all 0.2s ease',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.5rem',
-          _hover: {
-            filter: isLoading ? 'none' : 'brightness(1.05)',
-          },
-          '@media (max-width: 400px)': {
-            padding: '0.75rem',
-            fontSize: '0.9375rem',
-            gap: '0.375rem',
-          },
-        })}
-        style={{
-          background: isLoading ? '#9ca3af' : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-          boxShadow: isLoading ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.15)',
-        }}
-      >
-        {isLoading ? (
-          'Starting...'
-        ) : mode.tutorialRequired ? (
-          <>
-            <span>🎓</span>
-            <span>Begin Tutorial</span>
-            <span>→</span>
-          </>
-        ) : (
-          "Let's Go! →"
+      {/* Action buttons */}
+      <div className={css({ display: 'flex', flexDirection: 'column' })}>
+        {/* Primary: Keep practicing */}
+        <button
+          type="button"
+          data-action="start-maintenance"
+          onClick={onAction}
+          disabled={isLoading}
+          className={css({
+            width: '100%',
+            padding: variant === 'modal' ? '0.875rem' : '1rem',
+            fontSize: variant === 'modal' ? '1rem' : '1.0625rem',
+            fontWeight: 'bold',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            _hover: {
+              filter: isLoading ? 'none' : 'brightness(1.05)',
+            },
+            '@media (max-width: 400px)': {
+              padding: '0.75rem',
+              fontSize: '0.9375rem',
+            },
+          })}
+          style={{
+            background: isLoading ? '#9ca3af' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+            boxShadow: isLoading ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.15)',
+          }}
+        >
+          {isLoading ? 'Starting...' : 'Keep practicing current skills'}
+        </button>
+
+        {/* Secondary: Start learning */}
+        <button
+          type="button"
+          data-action="start-progression"
+          onClick={onAction}
+          disabled={isLoading}
+          className={css({
+            width: '100%',
+            padding: variant === 'modal' ? '0.625rem' : '0.75rem',
+            fontSize: variant === 'modal' ? '0.875rem' : '0.9375rem',
+            fontWeight: '600',
+            border: 'none',
+            borderRadius: '0',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s ease',
+            _hover: {
+              filter: isLoading ? 'none' : 'brightness(1.05)',
+            },
+            '@media (max-width: 400px)': {
+              padding: '0.5rem',
+              fontSize: '0.8125rem',
+            },
+          })}
+          style={{
+            background: isLoading ? '#d1d5db' : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+            color: 'white',
+          }}
+        >
+          {isLoading ? 'Starting...' : `Start learning ${mode.nextSkill.displayName} →`}
+        </button>
+
+        {/* Tertiary: Defer */}
+        {onDefer && (
+          <button
+            type="button"
+            data-action="defer-progression"
+            onClick={onDefer}
+            className={css({
+              width: '100%',
+              padding: '0.5rem',
+              fontSize: '0.75rem',
+              border: 'none',
+              borderRadius: '0',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              _hover: {
+                textDecoration: 'underline',
+              },
+            })}
+            style={{
+              background: 'transparent',
+              color: isDark ? '#a1a1aa' : '#6b7280',
+            }}
+          >
+            Not yet, ask again later
+          </button>
         )}
-      </button>
+      </div>
     </div>
   )
 }
@@ -364,6 +417,8 @@ interface MaintenanceBannerProps {
 }
 
 function MaintenanceBanner({ mode, onAction, isLoading, variant, isDark }: MaintenanceBannerProps) {
+  const deferred = mode.deferredProgression
+
   return (
     <div
       data-element="session-mode-banner"
@@ -389,51 +444,61 @@ function MaintenanceBanner({ mode, onAction, isLoading, variant, isDark }: Maint
         className={css({
           padding: variant === 'modal' ? '0.875rem 1rem' : '1rem 1.25rem',
           display: 'flex',
-          gap: '0.75rem',
-          alignItems: 'center',
+          flexDirection: 'column',
+          gap: '0.5rem',
           '@media (max-width: 400px)': {
             padding: '0.75rem',
-            gap: '0.5rem',
           },
         })}
       >
-        <span
-          className={css({
-            fontSize: variant === 'modal' ? '1.5rem' : '2rem',
-            lineHeight: 1,
-            '@media (max-width: 400px)': {
-              fontSize: '1.25rem',
-            },
-          })}
-        >
-          ✨
-        </span>
-        <div className={css({ flex: 1, minWidth: 0 })}>
-          <p
+        <div className={css({ display: 'flex', gap: '0.75rem', alignItems: 'center' })}>
+          <span
             className={css({
-              fontSize: variant === 'modal' ? '0.9375rem' : '1rem',
-              fontWeight: '600',
+              fontSize: variant === 'modal' ? '1.5rem' : '2rem',
+              lineHeight: 1,
               '@media (max-width: 400px)': {
-                fontSize: '0.875rem',
+                fontSize: '1.25rem',
               },
             })}
-            style={{ color: isDark ? '#93c5fd' : '#1d4ed8' }}
           >
-            All skills strong!
-          </p>
-          <p
-            className={css({
-              fontSize: variant === 'modal' ? '0.75rem' : '0.8125rem',
-              marginTop: '0.125rem',
-              '@media (max-width: 400px)': {
-                fontSize: '0.6875rem',
-              },
-            })}
-            style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
-          >
-            Keep practicing to maintain mastery ({mode.skillCount} skills)
-          </p>
+            ✨
+          </span>
+          <div className={css({ flex: 1, minWidth: 0 })}>
+            <p
+              className={css({
+                fontSize: variant === 'modal' ? '0.9375rem' : '1rem',
+                fontWeight: '600',
+                '@media (max-width: 400px)': {
+                  fontSize: '0.875rem',
+                },
+              })}
+              style={{ color: isDark ? '#93c5fd' : '#1d4ed8' }}
+            >
+              {deferred ? `Working toward: ${deferred.nextSkill.displayName}` : 'All skills strong!'}
+            </p>
+            <p
+              className={css({
+                fontSize: variant === 'modal' ? '0.75rem' : '0.8125rem',
+                marginTop: '0.125rem',
+                '@media (max-width: 400px)': {
+                  fontSize: '0.6875rem',
+                },
+              })}
+              style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
+            >
+              {deferred
+                ? 'Building muscle memory before advancing'
+                : `Keep practicing to maintain mastery (${mode.skillCount} skills)`}
+            </p>
+          </div>
         </div>
+
+        {/* Readiness report when deferred progression exists */}
+        {deferred && (
+          <div className={css({ paddingLeft: variant === 'modal' ? '2.125rem' : '2.75rem' })}>
+            <ReadinessReport readiness={deferred.readiness} variant="full" />
+          </div>
+        )}
       </div>
 
       {/* Action button */}
@@ -492,6 +557,7 @@ function MaintenanceBanner({ mode, onAction, isLoading, variant, isDark }: Maint
 export function SessionModeBanner({
   sessionMode,
   onAction,
+  onDefer,
   isLoading = false,
   variant = 'dashboard',
 }: SessionModeBannerProps) {
@@ -510,23 +576,11 @@ export function SessionModeBanner({
         />
       )
     case 'progression':
-      // Use celebration banner for tutorial-required skills (unlocked new skill)
-      // This will show confetti + animate down to normal banner over ~60 seconds
-      if (sessionMode.tutorialRequired) {
-        return (
-          <CelebrationProgressionBanner
-            mode={sessionMode}
-            onAction={onAction}
-            isLoading={isLoading}
-            variant={variant}
-            isDark={isDark}
-          />
-        )
-      }
       return (
         <ProgressionBanner
           mode={sessionMode}
           onAction={onAction}
+          onDefer={onDefer}
           isLoading={isLoading}
           variant={variant}
           isDark={isDark}

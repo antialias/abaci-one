@@ -56,12 +56,13 @@ describe('updateSessionPlanRemoteCamera', () => {
       avgTimePerProblemSeconds: 30,
       parts: [],
       summary: {
+        focusDescription: 'Test session',
         parts: [],
-        totalProblems: 5,
+        totalProblemCount: 5,
         estimatedMinutes: 10,
       },
       masteredSkillIds: [],
-      status: 'active',
+      status: 'in_progress',
       remoteCameraSessionId: null,
     })
   })

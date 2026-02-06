@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { css } from '../../../styled-system/css'
 import { vstack } from '../../../styled-system/patterns'
-import type { PracticeStep } from '../../types/tutorial'
+import type { PracticeStep, SkillSet } from '../../types/tutorial'
 import { validatePracticeStepConfiguration } from '../../utils/problemGenerator'
 import {
   createBasicAllowedConfiguration,
@@ -146,6 +146,9 @@ export function PracticeStepEditor({
       directAddition: step.targetSkills?.basic?.directAddition || false,
       heavenBead: step.targetSkills?.basic?.heavenBead || false,
       simpleCombinations: step.targetSkills?.basic?.simpleCombinations || false,
+      directSubtraction: step.targetSkills?.basic?.directSubtraction || false,
+      heavenBeadSubtraction: step.targetSkills?.basic?.heavenBeadSubtraction || false,
+      simpleCombinationsSub: step.targetSkills?.basic?.simpleCombinationsSub || false,
     },
     fiveComplements: {
       '4=5-1': step.targetSkills?.fiveComplements?.['4=5-1'] || false,
@@ -163,6 +166,27 @@ export function PracticeStepEditor({
       '3=10-7': step.targetSkills?.tenComplements?.['3=10-7'] || false,
       '2=10-8': step.targetSkills?.tenComplements?.['2=10-8'] || false,
       '1=10-9': step.targetSkills?.tenComplements?.['1=10-9'] || false,
+    },
+    fiveComplementsSub: {
+      '-4=-5+1': step.targetSkills?.fiveComplementsSub?.['-4=-5+1'] || false,
+      '-3=-5+2': step.targetSkills?.fiveComplementsSub?.['-3=-5+2'] || false,
+      '-2=-5+3': step.targetSkills?.fiveComplementsSub?.['-2=-5+3'] || false,
+      '-1=-5+4': step.targetSkills?.fiveComplementsSub?.['-1=-5+4'] || false,
+    },
+    tenComplementsSub: {
+      '-9=+1-10': step.targetSkills?.tenComplementsSub?.['-9=+1-10'] || false,
+      '-8=+2-10': step.targetSkills?.tenComplementsSub?.['-8=+2-10'] || false,
+      '-7=+3-10': step.targetSkills?.tenComplementsSub?.['-7=+3-10'] || false,
+      '-6=+4-10': step.targetSkills?.tenComplementsSub?.['-6=+4-10'] || false,
+      '-5=+5-10': step.targetSkills?.tenComplementsSub?.['-5=+5-10'] || false,
+      '-4=+6-10': step.targetSkills?.tenComplementsSub?.['-4=+6-10'] || false,
+      '-3=+7-10': step.targetSkills?.tenComplementsSub?.['-3=+7-10'] || false,
+      '-2=+8-10': step.targetSkills?.tenComplementsSub?.['-2=+8-10'] || false,
+      '-1=+9-10': step.targetSkills?.tenComplementsSub?.['-1=+9-10'] || false,
+    },
+    advanced: {
+      cascadingCarry: step.targetSkills?.advanced?.cascadingCarry || false,
+      cascadingBorrow: step.targetSkills?.advanced?.cascadingBorrow || false,
     },
   }
 
@@ -488,6 +512,7 @@ export function PracticeStepEditor({
               onChange={(value) =>
                 updateStep({
                   sumConstraints: {
+                    maxSum: step.sumConstraints?.maxSum ?? 9,
                     ...step.sumConstraints,
                     minSum: value || undefined,
                   },

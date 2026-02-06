@@ -99,6 +99,7 @@ describe('ReasonTooltip with Provenance', () => {
       ],
       why: ['We can add beads directly to this rod.'],
       stepsFriendly: ['Add 2 earth beads in tens column'],
+      summary: 'Add 2 earth beads directly in the tens column.',
     },
   }
 
@@ -187,6 +188,7 @@ describe('ReasonTooltip with Provenance', () => {
         ...mockSegment.readable,
         title: 'Make 10 — ones',
         subtitle: 'Using pairs that make 10',
+        summary: 'Use pairs that make 10 to add 5 in the ones column.',
       },
     }
 

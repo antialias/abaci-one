@@ -477,11 +477,10 @@ function DetailedVerticalProblem({
             {hasTrace && (
               <InlineSkillList
                 step={
-                  step ?? {
+                  step ?? ({
                     termAdded: term,
                     skillsUsed: [],
-                    runningTotal: term,
-                  }
+                  } as unknown as GenerationTraceStep)
                 }
                 skillMasteryContext={trace.skillMasteryContext}
                 isDark={isDark}

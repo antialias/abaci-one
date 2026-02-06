@@ -8,6 +8,7 @@ import { computeBktFromHistory, type SkillBktResult } from '@/lib/curriculum/bkt
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { css } from '../../../styled-system/css'
 import { calculateAutoPauseInfo } from './autoPauseCalculator'
+import { PerfectSessionCelebration } from './PerfectSessionCelebration'
 import { ProblemsToReviewPanel } from './ProblemsToReviewPanel'
 import { filterProblemsNeedingAttention, getProblemsWithContext } from './sessionSummaryUtils'
 import { SkillsPanel } from './SkillsPanel'
@@ -115,6 +116,21 @@ export function SessionSummary({
     autoPauseInfo.threshold
   )
 
+  // Detect "all eventually correct" — for each original slot, if either the
+  // original attempt or any retry was correct, the problem counts as correct.
+  const allEventuallyCorrect = useMemo(() => {
+    if (results.length === 0) return false
+    // Group by originalSlotIndex (or slotIndex for non-retries)
+    const slotResults = new Map<number, boolean>()
+    for (const r of results) {
+      const key = r.originalSlotIndex ?? r.slotIndex
+      if (slotResults.get(key) !== true) {
+        slotResults.set(key, r.isCorrect)
+      }
+    }
+    return [...slotResults.values()].every(Boolean)
+  }, [results])
+
   return (
     <div
       data-component="session-summary"
@@ -128,7 +144,9 @@ export function SessionSummary({
       {/* Overview section - for scrollspy navigation */}
       <div data-scrollspy-section="overview">
         {/* Header - celebration when just completed, date otherwise */}
-        {justCompleted ? (
+        {justCompleted && allEventuallyCorrect ? (
+          <PerfectSessionCelebration studentName={studentName} />
+        ) : justCompleted ? (
           <div
             data-section="summary-header"
             className={css({

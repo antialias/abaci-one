@@ -7,6 +7,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
 import type { ParsedProblem, WorksheetParsingResult } from '@/lib/worksheet-parsing'
+import type { ProblemCorrection } from './EditableProblemRow'
 import { css } from '../../../styled-system/css'
 import { ProblemReviewFlow } from './ProblemReviewFlow'
 
@@ -294,7 +295,7 @@ const PARSING_RESULT: WorksheetParsingResult = {
       problemBoundingBox: { x: 0.887, y: 0.268, width: 0.083, height: 0.186 },
       answerBoundingBox: { x: 0.876, y: 0.45, width: 0.094, height: 0.05 },
     },
-  ].map(completeProblem),
+  ].map((p) => completeProblem({ ...p, format: p.format as 'vertical' | 'linear' })),
   pageMetadata: {
     lessonId: null,
     weekId: null,
@@ -344,7 +345,7 @@ function ReviewFlowDemo() {
   const handleCorrectProblem = useCallback(
     async (
       problemIndex: number,
-      correction: { terms?: number[]; studentAnswer?: number | null }
+      correction: ProblemCorrection
     ) => {
       log(`Corrected problem #${problemIndex + 1}: ${JSON.stringify(correction)}`)
       await new Promise((r) => setTimeout(r, 300))
@@ -353,9 +354,9 @@ function ReviewFlowDemo() {
           i === problemIndex
             ? {
                 ...p,
-                ...(correction.terms && { terms: correction.terms }),
-                ...(correction.studentAnswer !== undefined && {
-                  studentAnswer: correction.studentAnswer,
+                ...(correction.correctedTerms && { terms: correction.correctedTerms }),
+                ...(correction.correctedStudentAnswer !== undefined && {
+                  studentAnswer: correction.correctedStudentAnswer,
                 }),
                 reviewStatus: 'corrected' as const,
               }

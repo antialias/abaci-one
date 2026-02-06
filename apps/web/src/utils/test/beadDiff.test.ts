@@ -8,6 +8,15 @@ import {
   validateBeadDiff,
 } from '../beadDiff'
 
+// Local type for lambda annotations (mirrors BeadDiffResult from @soroban/abacus-react)
+type Change = {
+  placeValue: number
+  beadType: 'heaven' | 'earth'
+  position?: number
+  direction: 'activate' | 'deactivate'
+  order: number
+}
+
 describe('Bead Diff Algorithm', () => {
   describe('Basic State Transitions', () => {
     it('should calculate diff for simple addition: 0 + 1', () => {
@@ -46,8 +55,8 @@ describe('Bead Diff Algorithm', () => {
       expect(diff.changes).toHaveLength(2) // Remove 1 earth, add heaven
 
       // Should remove 1 earth bead first (pedagogical order)
-      const removals = diff.changes.filter((c) => c.direction === 'deactivate')
-      const additions = diff.changes.filter((c) => c.direction === 'activate')
+      const removals = diff.changes.filter((c: Change) => c.direction === 'deactivate')
+      const additions = diff.changes.filter((c: Change) => c.direction === 'activate')
 
       expect(removals).toHaveLength(1) // Remove 1 earth bead (position 2)
       expect(additions).toHaveLength(1) // Add heaven bead
@@ -65,8 +74,8 @@ describe('Bead Diff Algorithm', () => {
       expect(diff.hasChanges).toBe(true)
 
       // Should remove heaven + 4 earth in ones, add 1 earth in tens
-      const onesChanges = diff.changes.filter((c) => c.placeValue === 0)
-      const tensChanges = diff.changes.filter((c) => c.placeValue === 1)
+      const onesChanges = diff.changes.filter((c: Change) => c.placeValue === 0)
+      const tensChanges = diff.changes.filter((c: Change) => c.placeValue === 1)
 
       expect(onesChanges).toHaveLength(5) // Remove heaven + 4 earth
       expect(tensChanges).toHaveLength(1) // Add 1 earth in tens
@@ -120,7 +129,7 @@ describe('Bead Diff Algorithm', () => {
       expect(diff.changes.length).toBeGreaterThan(0)
 
       // Should have changes in hundreds, tens, and ones places
-      const places = new Set(diff.changes.map((c) => c.placeValue))
+      const places = new Set(diff.changes.map((c: Change) => c.placeValue))
       expect(places).toContain(0) // ones
       expect(places).toContain(1) // tens
       expect(places).toContain(2) // hundreds
@@ -155,13 +164,13 @@ describe('Bead Diff Algorithm', () => {
       // Test a case that requires both removing and adding beads
       const diff = calculateBeadDiffFromValues(7, 2) // 7 → 2: remove heaven, remove 2 earth, add 2 earth
 
-      const removals = diff.changes.filter((c) => c.direction === 'deactivate')
-      const additions = diff.changes.filter((c) => c.direction === 'activate')
+      const removals = diff.changes.filter((c: Change) => c.direction === 'deactivate')
+      const additions = diff.changes.filter((c: Change) => c.direction === 'activate')
 
       if (removals.length > 0 && additions.length > 0) {
         // All removals should have lower order numbers than additions
-        const maxRemovalOrder = Math.max(...removals.map((r) => r.order))
-        const minAdditionOrder = Math.min(...additions.map((a) => a.order))
+        const maxRemovalOrder = Math.max(...removals.map((r: Change) => r.order))
+        const minAdditionOrder = Math.min(...additions.map((a: Change) => a.order))
 
         expect(maxRemovalOrder).toBeLessThan(minAdditionOrder)
       }
@@ -171,7 +180,7 @@ describe('Bead Diff Algorithm', () => {
       const diff = calculateBeadDiffFromValues(0, 23) // Complex operation
 
       // Orders should be consecutive starting from 0
-      const orders = diff.changes.map((c) => c.order).sort((a, b) => a - b)
+      const orders = diff.changes.map((c: Change) => c.order).sort((a: number, b: number) => a - b)
 
       for (let i = 0; i < orders.length; i++) {
         expect(orders[i]).toBe(i)
@@ -192,7 +201,7 @@ describe('Bead Diff Algorithm', () => {
       expect(diff.summary).toBeDefined()
 
       // Should involve both tens and ones places
-      const places = new Set(diff.changes.map((c) => c.placeValue))
+      const places = new Set(diff.changes.map((c: Change) => c.placeValue))
       expect(places).toContain(0) // ones
       expect(places).toContain(1) // tens
     })
@@ -208,7 +217,7 @@ describe('Bead Diff Algorithm', () => {
       expect(diff.hasChanges).toBe(true)
 
       // Should involve both tens and ones places
-      const places = new Set(diff.changes.map((c) => c.placeValue))
+      const places = new Set(diff.changes.map((c: Change) => c.placeValue))
       expect(places).toContain(0) // ones
       expect(places).toContain(1) // tens
     })
@@ -224,7 +233,7 @@ describe('Bead Diff Algorithm', () => {
       expect(diff.hasChanges).toBe(true)
 
       // Should involve ones, tens, and hundreds places
-      const places = new Set(diff.changes.map((c) => c.placeValue))
+      const places = new Set(diff.changes.map((c: Change) => c.placeValue))
       expect(places).toContain(0) // ones
       expect(places).toContain(1) // tens
       expect(places).toContain(2) // hundreds

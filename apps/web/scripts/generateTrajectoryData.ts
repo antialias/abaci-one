@@ -92,15 +92,19 @@ function runSimplifiedJourney(
     // Simulate ~20 problems per session that exercise this skill
     for (let problem = 0; problem < 20; problem++) {
       // Simulate answering a problem with this skill
-      const probability = student.getTrueProbability([skillId])
+      const probability = student.getTrueProbability(skillId)
       const isCorrect = rng.chance(probability)
 
-      // Increment exposure (learning happens from practice)
-      student.incrementExposure(skillId)
+      // Increment exposure by simulating answering a problem with this skill
+      student.answerProblem({
+        terms: [1, 1],
+        answer: 2,
+        skillsRequired: [skillId],
+      })
     }
 
     // Record mastery at end of session
-    const mastery = student.getTrueProbability([skillId])
+    const mastery = student.getTrueProbability(skillId)
     trajectory.push({ session, mastery })
   }
 
@@ -175,8 +179,8 @@ async function main() {
     halfMaxExposure: 10,
     hillCoefficient: 2.0,
     initialExposures: {}, // Start from zero
-    helpUsageProbabilities: [0.7, 0.2, 0.08, 0.02],
-    helpBonuses: [0, 0.05, 0.12, 0.25],
+    helpUsageProbabilities: [0.7, 0.3],
+    helpBonuses: [0, 0.15],
     baseResponseTimeMs: 5000,
     responseTimeVariance: 0.3,
   }

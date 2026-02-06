@@ -24,7 +24,7 @@ export default function LoaderTestDirectPage() {
       const cv = await loadOpenCV()
       console.log('[LoaderTestDirect] loadOpenCV returned:', !!cv)
       setTime(Date.now() - start)
-      setStatus(cv?.imread ? 'success' : 'error')
+      setStatus(cv && typeof cv.imread === 'function' ? 'success' : 'error')
     } catch (err) {
       console.log('[LoaderTestDirect] Error:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')

@@ -506,6 +506,8 @@ export const defaultAdditionConfig: AdditionConfigV4Custom = {
   },
   difficultyProfile: 'earlyLearner',
   fontSize: 16,
+  includeAnswerKey: false,
+  includeQRCode: false,
 }
 
 /**
@@ -622,6 +624,9 @@ function migrateAdditionV3toV4(v3: AdditionConfigV3): AdditionConfigV4 {
     // CRITICAL: Preserve seed/prngAlgorithm for problem reproducibility
     seed: v3.seed,
     prngAlgorithm: v3.prngAlgorithm,
+    // V4: New fields with backward-compatible defaults
+    includeAnswerKey: false,
+    includeQRCode: false,
   }
 
   if (v3.mode === 'custom') {

@@ -13,7 +13,8 @@ const WORKSHEET_URL = '/storybook-assets/worksheets/worksheet-20-problems.jpg'
 
 /** Helper to create complete problem objects */
 function completeProblem(
-  raw: Omit<ParsedProblem, 'notes' | 'excluded' | 'reviewStatus' | 'reviewedAt'> & {
+  raw: Omit<ParsedProblem, 'notes' | 'excluded' | 'reviewStatus' | 'reviewedAt' | 'format'> & {
+    format: string
     notes?: string | null
     excluded?: boolean
     reviewStatus?: 'pending' | 'approved' | 'corrected' | 'flagged'
@@ -22,6 +23,7 @@ function completeProblem(
 ): ParsedProblem {
   return {
     ...raw,
+    format: raw.format as ParsedProblem['format'],
     notes: raw.notes ?? null,
     excluded: raw.excluded ?? false,
     reviewStatus: raw.reviewStatus ?? 'pending',

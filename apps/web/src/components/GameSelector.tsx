@@ -1,5 +1,6 @@
 'use client'
 
+import type React from 'react'
 import { useMemo } from 'react'
 import { css } from '../../styled-system/css'
 import { useGameMode } from '../contexts/GameModeContext'
@@ -13,15 +14,26 @@ export const GAMES_CONFIG = {} as const
 
 export type GameType = keyof typeof GAMES_CONFIG | string
 
+interface GameCardConfig {
+  name: string
+  fullName?: string
+  maxPlayers: number
+  description: string
+  longDescription?: string
+  url: string
+  icon: React.ReactNode
+  chips?: string[]
+  color?: string
+  gradient?: string
+  borderColor?: string
+  difficulty?: string
+  available?: boolean
+}
+
 /**
  * Get all games from both legacy config and new registry
  */
-function getAllGameConfigs() {
-  const legacyGames = Object.entries(GAMES_CONFIG).map(([gameType, config]) => ({
-    gameType,
-    config,
-  }))
-
+function getAllGameConfigs(): Array<{ gameType: string; config: GameCardConfig }> {
   // Get games from registry and transform to legacy format
   const registryGames = getAllGames().map((gameDef) => ({
     gameType: gameDef.manifest.name,
@@ -42,7 +54,7 @@ function getAllGameConfigs() {
     },
   }))
 
-  return [...legacyGames, ...registryGames]
+  return registryGames
 }
 
 interface GameSelectorProps {

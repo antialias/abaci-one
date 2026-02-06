@@ -84,7 +84,7 @@ describe('AppNavBar Nav Slot Integration', () => {
       expect(screen.queryByText('🧩 Memory Pairs')).not.toBeInTheDocument()
     } catch (error) {
       // Expected to fail - lazy components need Suspense boundary
-      expect(error.message).toContain('Suspense')
+      expect((error as Error).message).toContain('Suspense')
     }
 
     consoleSpy.mockRestore()

@@ -49,7 +49,7 @@ export function AbacusSettingsSync() {
       // Only sync abacus-react config fields, not app-specific fields like nativeAbacusNumbers
       const abacusReactFields = {
         colorScheme: config.colorScheme,
-        beadShape: config.beadShape,
+        beadShape: config.beadShape as 'diamond' | 'circle' | 'square',
         colorPalette: config.colorPalette,
         hideInactiveBeads: config.hideInactiveBeads,
         coloredNumerals: config.coloredNumerals,

@@ -86,7 +86,7 @@ describe('Session Targeting Trace', () => {
       for (const part of plan1.parts) {
         for (const slot of part.slots) {
           session1TotalSlots++
-          const hasFiveComplement = slot.problem.skillsRequired?.some((s: string) =>
+          const hasFiveComplement = slot.problem?.skillsRequired?.some((s: string) =>
             s.startsWith('fiveComplements.')
           )
           if (hasFiveComplement) session1FiveComplementCount++
@@ -100,12 +100,18 @@ describe('Session Targeting Trace', () => {
       await approveSessionPlan(plan1.id)
       for (const part of plan1.parts) {
         for (const slot of part.slots) {
+          if (!slot.problem) continue
           const answer = student.answerProblem(slot.problem)
-          await recordSlotResult(plan1.id, part.partNumber, slot.index, {
+          await recordSlotResult(plan1.id, {
+            slotIndex: slot.index,
+            problem: slot.problem,
+            studentAnswer: answer.isCorrect ? slot.problem.answer : slot.problem.answer + 1,
             isCorrect: answer.isCorrect,
             responseTimeMs: answer.responseTimeMs,
-            hadHelp: answer.hadHelp,
             skillsExercised: answer.skillsChallenged,
+            usedOnScreenAbacus: false,
+            hadHelp: answer.hadHelp,
+            incorrectAttempts: 0,
           })
         }
       }
@@ -134,7 +140,7 @@ describe('Session Targeting Trace', () => {
           // Check if slot has targetSkills
           const hasTargets = slot.constraints?.targetSkills
           const targetList = hasTargets
-            ? Object.entries(slot.constraints.targetSkills).flatMap(([cat, skills]) =>
+            ? Object.entries(slot.constraints.targetSkills!).flatMap(([cat, skills]) =>
                 Object.entries(skills as Record<string, boolean>)
                   .filter(([, v]) => v)
                   .map(([s]) => `${cat}.${s}`)
@@ -145,7 +151,7 @@ describe('Session Targeting Trace', () => {
             slotsWithTargeting++
           }
 
-          const hasFiveComplement = slot.problem.skillsRequired?.some((s: string) =>
+          const hasFiveComplement = slot.problem?.skillsRequired?.some((s: string) =>
             s.startsWith('fiveComplements.')
           )
           if (hasFiveComplement) session2FiveComplementCount++
@@ -153,7 +159,7 @@ describe('Session Targeting Trace', () => {
           // Log first few slots in detail
           if (slot.index < 3) {
             console.log(
-              `  Slot ${slot.index} (${slot.purpose}): targets=${targetList.length > 0 ? targetList.join(',') : 'none'} → skills=${slot.problem.skillsRequired?.join(',')}`
+              `  Slot ${slot.index} (${slot.purpose}): targets=${targetList.length > 0 ? targetList.join(',') : 'none'} → skills=${slot.problem?.skillsRequired?.join(',')}`
             )
           }
         }
@@ -185,12 +191,18 @@ describe('Session Targeting Trace', () => {
       await approveSessionPlan(classicPlan1.id)
       for (const part of classicPlan1.parts) {
         for (const slot of part.slots) {
+          if (!slot.problem) continue
           const answer = classicStudent.answerProblem(slot.problem)
-          await recordSlotResult(classicPlan1.id, part.partNumber, slot.index, {
+          await recordSlotResult(classicPlan1.id, {
+            slotIndex: slot.index,
+            problem: slot.problem,
+            studentAnswer: answer.isCorrect ? slot.problem.answer : slot.problem.answer + 1,
             isCorrect: answer.isCorrect,
             responseTimeMs: answer.responseTimeMs,
-            hadHelp: answer.hadHelp,
             skillsExercised: answer.skillsChallenged,
+            usedOnScreenAbacus: false,
+            hadHelp: answer.hadHelp,
+            incorrectAttempts: 0,
           })
         }
       }
@@ -212,7 +224,7 @@ describe('Session Targeting Trace', () => {
 
           const hasTargets = slot.constraints?.targetSkills
           const targetList = hasTargets
-            ? Object.entries(slot.constraints.targetSkills).flatMap(([cat, skills]) =>
+            ? Object.entries(slot.constraints.targetSkills!).flatMap(([cat, skills]) =>
                 Object.entries(skills as Record<string, boolean>)
                   .filter(([, v]) => v)
                   .map(([s]) => `${cat}.${s}`)
@@ -223,7 +235,7 @@ describe('Session Targeting Trace', () => {
             classicSlotsWithTargeting++
           }
 
-          const hasFiveComplement = slot.problem.skillsRequired?.some((s: string) =>
+          const hasFiveComplement = slot.problem?.skillsRequired?.some((s: string) =>
             s.startsWith('fiveComplements.')
           )
           if (hasFiveComplement) classicSession2FiveComplementCount++

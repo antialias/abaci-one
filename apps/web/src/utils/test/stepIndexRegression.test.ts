@@ -1,6 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import { calculateBeadDiffFromValues } from '../beadDiff'
 
+// Local type for lambda annotations (mirrors BeadDiffResult from @soroban/abacus-react)
+type Change = {
+  placeValue: number
+  beadType: 'heaven' | 'earth'
+  position?: number
+  direction: 'activate' | 'deactivate'
+  order: number
+}
+
+type StepHighlight = {
+  placeValue: number
+  beadType: 'heaven' | 'earth'
+  position?: number
+  direction: 'activate' | 'deactivate'
+  stepIndex: number
+  order: number
+}
+
 /**
  * REGRESSION TEST: Prevent stepIndex mismatch in multi-step sequences
  *
@@ -31,7 +49,7 @@ describe('StepIndex Regression Prevention', () => {
 
     // This is the critical test: Simulate how TutorialPlayer.tsx converts
     // bead diff to StepBeadHighlight format
-    const stepBeadHighlights = beadDiff.changes.map((change) => ({
+    const stepBeadHighlights = beadDiff.changes.map((change: Change) => ({
       placeValue: change.placeValue,
       beadType: change.beadType,
       position: change.position,
@@ -41,7 +59,7 @@ describe('StepIndex Regression Prevention', () => {
     }))
 
     // Verify that ALL generated highlights have the correct stepIndex
-    stepBeadHighlights.forEach((highlight) => {
+    stepBeadHighlights.forEach((highlight: StepHighlight) => {
       expect(highlight.stepIndex).toBe(currentMultiStep)
       expect(highlight.stepIndex).not.toBe(0) // Prevent hardcoding to 0
     })
@@ -50,7 +68,7 @@ describe('StepIndex Regression Prevention', () => {
     // This is what was failing before the fix
     const currentStep = currentMultiStep // AbacusReact receives currentStep={currentMultiStep}
 
-    stepBeadHighlights.forEach((highlight) => {
+    stepBeadHighlights.forEach((highlight: StepHighlight) => {
       // This is the exact logic from AbacusReact.tsx:675
       const isCurrentStep = highlight.stepIndex === currentStep
       const shouldShowArrow = isCurrentStep // Only show arrows for current step
@@ -74,7 +92,7 @@ describe('StepIndex Regression Prevention', () => {
 
     const beadDiff = calculateBeadDiffFromValues(fromValue, toValue)
 
-    const stepBeadHighlights = beadDiff.changes.map((change) => ({
+    const stepBeadHighlights = beadDiff.changes.map((change: Change) => ({
       placeValue: change.placeValue,
       beadType: change.beadType,
       position: change.position,
@@ -83,7 +101,7 @@ describe('StepIndex Regression Prevention', () => {
       order: change.order,
     }))
 
-    stepBeadHighlights.forEach((highlight) => {
+    stepBeadHighlights.forEach((highlight: StepHighlight) => {
       expect(highlight.stepIndex).toBe(0) // Should be 0 for first step
 
       // Verify arrows show for first step
@@ -106,7 +124,7 @@ describe('StepIndex Regression Prevention', () => {
       const beadDiff = calculateBeadDiffFromValues(fromValue, toValue)
 
       if (beadDiff.hasChanges) {
-        const stepBeadHighlights = beadDiff.changes.map((change) => ({
+        const stepBeadHighlights = beadDiff.changes.map((change: Change) => ({
           placeValue: change.placeValue,
           beadType: change.beadType,
           position: change.position,
@@ -115,7 +133,7 @@ describe('StepIndex Regression Prevention', () => {
           order: change.order,
         }))
 
-        stepBeadHighlights.forEach((highlight) => {
+        stepBeadHighlights.forEach((highlight: StepHighlight) => {
           expect(highlight.stepIndex).toBe(currentMultiStep)
 
           // Simulate AbacusReact filtering

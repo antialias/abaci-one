@@ -3,7 +3,7 @@
 import { AbacusReact } from '@soroban/abacus-react'
 import { Eye } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import type { FlashcardFormState } from '@/app/create/page'
+import type { FlashcardFormState } from '@/app/create/flashcards/page'
 import { css } from '../../styled-system/css'
 import { grid, hstack, stack } from '../../styled-system/patterns'
 
@@ -183,7 +183,7 @@ function FlashcardPreview({ number, config }: { number: number; config: Flashcar
             colorScheme={(config.colorScheme as any) || 'place-value'}
             scaleFactor={(config.scaleFactor || 1) * 1.2}
             interactive={false}
-            showNumbers="always"
+            showNumbers={true}
             animated={true}
             hideInactiveBeads={config.hideInactiveBeads}
           />

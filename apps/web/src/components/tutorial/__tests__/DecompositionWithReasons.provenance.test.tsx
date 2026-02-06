@@ -66,7 +66,6 @@ describe('DecompositionWithReasons Provenance Test', () => {
         fullDecomposition={result.fullDecomposition}
         termPositions={result.steps.map((step) => step.termPosition)}
         segments={result.segments}
-        steps={result.steps}
       />
     )
 

@@ -122,11 +122,14 @@ export function GameBreakScreen({
       let results: GameResultsReport | undefined
       if (reason === 'gameFinished' && gameState && selectedGameName) {
         const game = getGame(selectedGameName)
-        if (game?.validator?.getResultsReport && gameConfig) {
+        // getResultsReport is defined on concrete validator implementations (e.g. MatchingGameValidator)
+        // but not on the base GameValidator interface, so we need to check dynamically
+        const validator = game?.validator as Record<string, unknown> | undefined
+        if (validator && typeof validator.getResultsReport === 'function' && gameConfig) {
           // Get the config for this specific game
-          const config = gameConfig[selectedGameName] ?? game.defaultConfig
+          const config = gameConfig[selectedGameName] ?? game!.defaultConfig
           try {
-            results = game.validator.getResultsReport(gameState, config)
+            results = (validator.getResultsReport as (state: Record<string, unknown>, config: unknown) => GameResultsReport)(gameState, config)
           } catch (err) {
             console.error('Failed to generate results report:', err)
           }

@@ -8,7 +8,7 @@ import * as Switch from '@radix-ui/react-switch'
 import * as Tabs from '@radix-ui/react-tabs'
 import type { FormApi } from '@tanstack/react-form'
 import { ChevronDown, Sparkles } from 'lucide-react'
-import type { FlashcardFormState } from '@/app/create/page'
+import type { FlashcardFormState } from '@/app/create/flashcards/page'
 import { css } from '../../styled-system/css'
 import { grid, hstack, stack } from '../../styled-system/patterns'
 

@@ -24,6 +24,12 @@ import {
   isSkillTutorialSatisfied,
 } from '@/lib/curriculum/progress-manager'
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
+import {
+  assessAllSkillsReadiness,
+  readinessMapToRecord,
+  type SkillReadinessResult,
+} from '@/lib/curriculum/skill-readiness'
+import { getActiveDeferral } from '@/lib/curriculum/progression-deferrals'
 import { SKILL_TUTORIAL_CONFIGS, getSkillDisplayName } from './skill-tutorial-config'
 
 // ============================================================================
@@ -99,6 +105,12 @@ export interface MaintenanceMode {
   focusDescription: string
   /** Number of skills being maintained */
   skillCount: number
+  /** Present when progression is available but not all dimensions are met or deferred */
+  deferredProgression?: {
+    nextSkill: SkillInfo
+    readiness: Record<string, SkillReadinessResult>
+    phase: CurriculumPhase
+  }
 }
 
 /**
@@ -230,26 +242,53 @@ export async function getSessionMode(playerId: string): Promise<SessionMode> {
   }
 
   if (nextSkillInfo) {
-    // PROGRESSION MODE
     const nextSkillDisplay = getSkillDisplayName(nextSkillInfo.skillId)
+    const nextSkill: SkillInfo = {
+      skillId: nextSkillInfo.skillId,
+      displayName: nextSkillDisplay,
+      pKnown: 0, // Not yet practiced
+    }
 
-    // Student can skip tutorial only if they have other skills to practice.
-    // If this is their first skill (no practicing skills yet), skipping would
-    // result in NoSkillsEnabledClientError - so we must prevent skip.
-    const canSkipTutorial = practicingIds.size > 0
+    // Gate: only offer progression if ALL practicing skills are solid (all 4 dimensions met)
+    // First skill ever (practicingIds.size === 0): skip readiness gate — tutorial is mandatory
+    const readiness = assessAllSkillsReadiness(history, bktResults.skills, practicingIds)
+    const allSolid =
+      practicingIds.size === 0 ||
+      [...practicingIds].every((id) => readiness.get(id)?.isSolid ?? false)
 
+    if (allSolid) {
+      // Check for active deferral
+      const deferral = await getActiveDeferral(playerId, nextSkillInfo.skillId)
+
+      if (!deferral) {
+        // PROGRESSION MODE
+        // Student can skip tutorial only if they have other skills to practice.
+        // If this is their first skill (no practicing skills yet), skipping would
+        // result in NoSkillsEnabledClientError - so we must prevent skip.
+        const canSkipTutorial = practicingIds.size > 0
+
+        return {
+          type: 'progression',
+          nextSkill,
+          phase: nextSkillInfo.phase,
+          tutorialRequired: !nextSkillInfo.tutorialReady,
+          skipCount: nextSkillInfo.skipCount,
+          focusDescription: `Learning: ${nextSkillDisplay}`,
+          canSkipTutorial,
+        }
+      }
+    }
+
+    // MAINTENANCE MODE with deferred progression info
     return {
-      type: 'progression',
-      nextSkill: {
-        skillId: nextSkillInfo.skillId,
-        displayName: nextSkillDisplay,
-        pKnown: 0, // Not yet practiced
+      type: 'maintenance',
+      focusDescription: 'Mixed practice',
+      skillCount: practicingIds.size,
+      deferredProgression: {
+        nextSkill,
+        readiness: readinessMapToRecord(readiness),
+        phase: nextSkillInfo.phase,
       },
-      phase: nextSkillInfo.phase,
-      tutorialRequired: !nextSkillInfo.tutorialReady,
-      skipCount: nextSkillInfo.skipCount,
-      focusDescription: `Learning: ${nextSkillDisplay}`,
-      canSkipTutorial,
     }
   }
 

@@ -1263,7 +1263,7 @@ export function TutorialEditor({
             `  Changes:`,
             beadDiff.changes
               .map(
-                (c) =>
+                (c: { placeValue: number; beadType: string; direction: string; position?: number }) =>
                   `${c.placeValue}:${c.beadType}:${c.direction}${c.position !== undefined ? `:pos${c.position}` : ''}`
               )
               .join(', ')
@@ -1326,8 +1326,6 @@ export function TutorialEditor({
           multiStepInstructions: unifiedSequence.steps.map((step) => step.englishInstruction), // Use unified instructions
           tooltip: visualInstructions.tooltip,
           // errorMessages removed - bead diff tooltip provides better guidance
-          // Store the unified sequence for debugging
-          unifiedSequence: unifiedSequence,
         }
 
         updateStep(stepIndex, instructionUpdates)
@@ -1403,15 +1401,12 @@ export function TutorialEditor({
 
   return (
     <div
-      className={css(
-        {
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          bg: 'gray.50',
-        },
-        className
-      )}
+      className={`${css({
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        bg: 'gray.50',
+      })}${className ? ` ${className}` : ''}`}
     >
       {editorState.isEditing ? (
         <Resizable axis="x" initial={400} min={300} max={800} step={1}>
@@ -1722,7 +1717,7 @@ export function TutorialEditor({
                     {editorState.selectedStepIndex !== null ? (
                       /* Concept Step Editor */
                       <EditorLayout
-                        title={`Edit Step ${editorState.selectedStepIndex + 1}`}
+                        title={`Edit Step ${editorState.selectedStepIndex! + 1}`}
                         onClose={() =>
                           setEditorState((prev) => ({
                             ...prev,
@@ -1734,9 +1729,9 @@ export function TutorialEditor({
                         <FormGroup>
                           <TextInput
                             label="Title"
-                            value={tutorial.steps[editorState.selectedStepIndex].title}
+                            value={tutorial.steps[editorState.selectedStepIndex!].title}
                             onChange={(value) =>
-                              updateStep(editorState.selectedStepIndex, {
+                              updateStep(editorState.selectedStepIndex!, {
                                 title: value,
                               })
                             }
@@ -1744,9 +1739,9 @@ export function TutorialEditor({
 
                           <TextInput
                             label="Problem"
-                            value={tutorial.steps[editorState.selectedStepIndex].problem}
+                            value={tutorial.steps[editorState.selectedStepIndex!].problem}
                             onChange={(value) =>
-                              updateStep(editorState.selectedStepIndex, {
+                              updateStep(editorState.selectedStepIndex!, {
                                 problem: value,
                               })
                             }
@@ -1755,18 +1750,18 @@ export function TutorialEditor({
                           <FormGroup columns={2}>
                             <NumberInput
                               label="Start Value"
-                              value={tutorial.steps[editorState.selectedStepIndex].startValue}
+                              value={tutorial.steps[editorState.selectedStepIndex!].startValue}
                               onChange={(value) =>
-                                updateStep(editorState.selectedStepIndex, {
+                                updateStep(editorState.selectedStepIndex!, {
                                   startValue: value,
                                 })
                               }
                             />
                             <NumberInput
                               label="Target Value"
-                              value={tutorial.steps[editorState.selectedStepIndex].targetValue}
+                              value={tutorial.steps[editorState.selectedStepIndex!].targetValue}
                               onChange={(value) =>
-                                updateStep(editorState.selectedStepIndex, {
+                                updateStep(editorState.selectedStepIndex!, {
                                   targetValue: value,
                                 })
                               }
@@ -1803,7 +1798,7 @@ export function TutorialEditor({
                                 <button
                                   onClick={() =>
                                     generateUnifiedInstructionsForStep(
-                                      editorState.selectedStepIndex
+                                      editorState.selectedStepIndex!
                                     )
                                   }
                                   className={css({
@@ -1835,9 +1830,9 @@ export function TutorialEditor({
 
                           <TextInput
                             label="Description"
-                            value={tutorial.steps[editorState.selectedStepIndex].description}
+                            value={tutorial.steps[editorState.selectedStepIndex!].description}
                             onChange={(value) =>
-                              updateStep(editorState.selectedStepIndex, {
+                              updateStep(editorState.selectedStepIndex!, {
                                 description: value,
                               })
                             }
@@ -1846,7 +1841,7 @@ export function TutorialEditor({
                           />
 
                           {/* Unified Pedagogical Decomposition Display */}
-                          {(tutorial.steps[editorState.selectedStepIndex] as any)
+                          {(tutorial.steps[editorState.selectedStepIndex!] as any)
                             ?.unifiedSequence && (
                             <div
                               className={css({
@@ -1879,7 +1874,7 @@ export function TutorialEditor({
                                 })}
                               >
                                 {
-                                  (tutorial.steps[editorState.selectedStepIndex] as any)
+                                  (tutorial.steps[editorState.selectedStepIndex!] as any)
                                     .unifiedSequence.fullDecomposition
                                 }
                               </div>
@@ -1932,10 +1927,10 @@ export function TutorialEditor({
                                 </label>
                                 <select
                                   value={
-                                    tutorial.steps[editorState.selectedStepIndex].expectedAction
+                                    tutorial.steps[editorState.selectedStepIndex!].expectedAction
                                   }
                                   onChange={(e) =>
-                                    updateStep(editorState.selectedStepIndex, {
+                                    updateStep(editorState.selectedStepIndex!, {
                                       expectedAction: e.target.value as any,
                                     })
                                   }
@@ -1957,10 +1952,10 @@ export function TutorialEditor({
                               <TextInput
                                 label="Action Description"
                                 value={
-                                  tutorial.steps[editorState.selectedStepIndex].actionDescription
+                                  tutorial.steps[editorState.selectedStepIndex!].actionDescription
                                 }
                                 onChange={(value) =>
-                                  updateStep(editorState.selectedStepIndex, {
+                                  updateStep(editorState.selectedStepIndex!, {
                                     actionDescription: value,
                                   })
                                 }
@@ -1971,12 +1966,12 @@ export function TutorialEditor({
                               <TextInput
                                 label="Tooltip Title"
                                 value={
-                                  tutorial.steps[editorState.selectedStepIndex].tooltip.content
+                                  tutorial.steps[editorState.selectedStepIndex!].tooltip.content
                                 }
                                 onChange={(value) =>
-                                  updateStep(editorState.selectedStepIndex, {
+                                  updateStep(editorState.selectedStepIndex!, {
                                     tooltip: {
-                                      ...tutorial.steps[editorState.selectedStepIndex].tooltip,
+                                      ...tutorial.steps[editorState.selectedStepIndex!].tooltip,
                                       content: value,
                                     },
                                   })
@@ -1986,12 +1981,12 @@ export function TutorialEditor({
                               <TextInput
                                 label="Tooltip Explanation"
                                 value={
-                                  tutorial.steps[editorState.selectedStepIndex].tooltip.explanation
+                                  tutorial.steps[editorState.selectedStepIndex!].tooltip.explanation
                                 }
                                 onChange={(value) =>
-                                  updateStep(editorState.selectedStepIndex, {
+                                  updateStep(editorState.selectedStepIndex!, {
                                     tooltip: {
-                                      ...tutorial.steps[editorState.selectedStepIndex].tooltip,
+                                      ...tutorial.steps[editorState.selectedStepIndex!].tooltip,
                                       explanation: value,
                                     },
                                   })
@@ -2002,7 +1997,7 @@ export function TutorialEditor({
                             {/* Error messages form removed - bead diff tooltip provides better guidance */}
 
                             {/* Multi-step Instructions */}
-                            {tutorial.steps[editorState.selectedStepIndex].expectedAction ===
+                            {tutorial.steps[editorState.selectedStepIndex!].expectedAction ===
                               'multi-step' && (
                               <div className={css({ mt: 3 })}>
                                 <div
@@ -2025,7 +2020,7 @@ export function TutorialEditor({
                                   <button
                                     onClick={() =>
                                       generateUnifiedInstructionsForStep(
-                                        editorState.selectedStepIndex
+                                        editorState.selectedStepIndex!
                                       )
                                     }
                                     className={css({
@@ -2042,15 +2037,15 @@ export function TutorialEditor({
                                     ✨ Generate Instructions
                                   </button>
                                 </div>
-                                <div className={css({ space: 2 })}>
+                                <div className={css({ spaceY: 2 })}>
                                   {(() => {
                                     // Use the new bead diff calculation for each step
                                     const stepStatesAndDiffs = calculateStepStatesAndDiffs(
-                                      editorState.selectedStepIndex
+                                      editorState.selectedStepIndex!
                                     )
 
                                     return (
-                                      tutorial.steps[editorState.selectedStepIndex]
+                                      tutorial.steps[editorState.selectedStepIndex!]
                                         .multiStepInstructions || []
                                     ).map((instruction, index) => {
                                       const stepData = stepStatesAndDiffs[index]
@@ -2077,11 +2072,11 @@ export function TutorialEditor({
                                               value={instruction}
                                               onChange={(e) => {
                                                 const newInstructions = [
-                                                  ...(tutorial.steps[editorState.selectedStepIndex]
+                                                  ...(tutorial.steps[editorState.selectedStepIndex!]
                                                     .multiStepInstructions || []),
                                                 ]
                                                 newInstructions[index] = e.target.value
-                                                updateStep(editorState.selectedStepIndex, {
+                                                updateStep(editorState.selectedStepIndex!, {
                                                   multiStepInstructions: newInstructions,
                                                 })
                                               }}
@@ -2154,7 +2149,7 @@ export function TutorialEditor({
                                                     mt: 1,
                                                   })}
                                                 >
-                                                  {beadDiff.changes.map((change, changeIndex) => (
+                                                  {beadDiff.changes.map((change: { placeValue: number; beadType: string; direction: string; position?: number }, changeIndex: number) => (
                                                     <span
                                                       key={changeIndex}
                                                       className={css({
@@ -2192,10 +2187,10 @@ export function TutorialEditor({
                                           <button
                                             onClick={() => {
                                               const newInstructions = (
-                                                tutorial.steps[editorState.selectedStepIndex]
+                                                tutorial.steps[editorState.selectedStepIndex!]
                                                   .multiStepInstructions || []
                                               ).filter((_, i) => i !== index)
-                                              updateStep(editorState.selectedStepIndex, {
+                                              updateStep(editorState.selectedStepIndex!, {
                                                 multiStepInstructions: newInstructions,
                                               })
                                             }}
@@ -2220,11 +2215,11 @@ export function TutorialEditor({
                                   <button
                                     onClick={() => {
                                       const newInstructions = [
-                                        ...(tutorial.steps[editorState.selectedStepIndex]
+                                        ...(tutorial.steps[editorState.selectedStepIndex!]
                                           .multiStepInstructions || []),
                                         '',
                                       ]
-                                      updateStep(editorState.selectedStepIndex, {
+                                      updateStep(editorState.selectedStepIndex!, {
                                         multiStepInstructions: newInstructions,
                                       })
                                     }}
