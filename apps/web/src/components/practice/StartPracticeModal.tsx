@@ -25,6 +25,7 @@ import {
   SessionConfigSummary,
   DurationSelector,
   PracticeModesSelector,
+  PurposeDistributionBar,
   MaxTermsSelector,
   GameBreakSettings,
   SessionFocusInfo,
@@ -477,6 +478,7 @@ function StartPracticeModalContent({
                       >
                         <DurationSelector />
                         <PracticeModesSelector />
+                        <PurposeDistributionBar />
                         <MaxTermsSelector />
                         <GameBreakSettings />
                       </div>

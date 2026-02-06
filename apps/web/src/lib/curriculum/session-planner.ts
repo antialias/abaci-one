@@ -47,7 +47,6 @@ import {
 import { computeBktFromHistory, type SkillBktResult } from './bkt'
 import {
   BKT_INTEGRATION_CONFIG,
-  CHALLENGE_RATIO_BY_PART_TYPE,
   DEFAULT_PROBLEM_GENERATION_MODE,
   MIN_SECONDS_PER_PROBLEM,
   WEAK_SKILL_THRESHOLDS,
@@ -93,6 +92,8 @@ export interface GenerateSessionPlanOptions {
   gameBreakSettings?: GameBreakSettings
   /** Override the number of problems per part (for debug/testing) */
   overrideProblemsPerPart?: number
+  /** When true, shuffle problem purposes within each part (default: true) */
+  shufflePurposes?: boolean
 }
 
 /**
@@ -142,6 +143,7 @@ export async function generateSessionPlan(
     sessionMode,
     gameBreakSettings = DEFAULT_GAME_BREAK_SETTINGS,
     overrideProblemsPerPart,
+    shufflePurposes = true,
   } = options
 
   const config = { ...DEFAULT_PLAN_CONFIG, ...configOverrides }
@@ -318,7 +320,8 @@ export async function generateSessionPlan(
         costCalculator,
         studentMaxSkillCost,
         weakSkills,
-        overrideProblemsPerPart
+        overrideProblemsPerPart,
+        shufflePurposes
       )
     )
     partNumber = (partNumber + 1) as 1 | 2 | 3
@@ -372,7 +375,8 @@ function buildSessionPart(
   costCalculator?: SkillCostCalculator,
   studentMaxSkillCost?: number,
   weakSkills?: string[],
-  overrideProblemsPerPart?: number
+  overrideProblemsPerPart?: number,
+  shufflePurposes = true
 ): SessionPart {
   // Get time allocation for this part (use normalized weight if provided)
   const partWeight = normalizedWeight ?? config.partTimeWeights[type]
@@ -380,30 +384,32 @@ function buildSessionPart(
   const partProblemCount =
     overrideProblemsPerPart ?? Math.max(2, Math.floor((partDurationMinutes * 60) / avgTimeSeconds))
 
-  // Calculate slot distribution with part-type-specific challenge ratios
-  // (See config/slot-distribution.ts for rationale)
+  // Calculate slot distribution using unified 4-weight proportional allocation.
   //
   // IMPORTANT: Challenge slots require min complexity budget of 1.
   // Basic skills have cost 0, so students with ONLY basic skills can't generate challenge problems.
-  // Skip challenge slots for these students and give them more focus/reinforce/review instead.
+  // When canDoChallenge is false, challenge weight is set to 0 and its share
+  // automatically redistributes to the other 3 purposes via normalization.
   const challengeMinBudget = config.purposeComplexityBounds.challenge[type].min ?? 0
   const canDoChallenge =
     studentMaxSkillCost !== undefined && studentMaxSkillCost >= challengeMinBudget
 
-  const challengeRatio = canDoChallenge ? CHALLENGE_RATIO_BY_PART_TYPE[type] : 0
-  const minChallengeCount = canDoChallenge
-    ? Math.max(1, Math.round(partProblemCount * challengeRatio))
-    : 0
-  const availableForOthers = partProblemCount - minChallengeCount
+  const weights = {
+    focus: config.focusWeight,
+    reinforce: config.reinforceWeight,
+    review: config.reviewWeight,
+    challenge: canDoChallenge ? (config.challengeWeight ?? 0.2) : 0,
+  }
+  const totalWeight = weights.focus + weights.reinforce + weights.review + weights.challenge
 
-  const focusCount = Math.round(availableForOthers * config.focusWeight)
-  const reinforceCount = Math.round(availableForOthers * config.reinforceWeight)
-  const reviewCount = Math.round(availableForOthers * config.reviewWeight)
-  // Challenge gets the remainder, but at least minChallengeCount (or 0 if can't do challenge)
+  const focusCount = Math.round(partProblemCount * weights.focus / totalWeight)
+  const reinforceCount = Math.round(partProblemCount * weights.reinforce / totalWeight)
+  const reviewCount = Math.round(partProblemCount * weights.review / totalWeight)
+  // Challenge absorbs rounding remainder (clamped to 0 if canDoChallenge is false)
   const challengeCount = canDoChallenge
-    ? Math.max(minChallengeCount, partProblemCount - focusCount - reinforceCount - reviewCount)
+    ? Math.max(0, partProblemCount - focusCount - reinforceCount - reviewCount)
     : 0
-  // If no challenge, distribute remainder to focus
+  // If no challenge, give remainder to focus
   const adjustedFocusCount =
     focusCount + (canDoChallenge ? 0 : partProblemCount - focusCount - reinforceCount - reviewCount)
 
@@ -490,8 +496,8 @@ function buildSessionPart(
     )
   }
 
-  // Shuffle to interleave purposes
-  const shuffledSlots = intelligentShuffle(slots)
+  // Optionally shuffle to interleave purposes (default: shuffled)
+  const shuffledSlots = shufflePurposes ? intelligentShuffle(slots) : slots
 
   // Generate problems for each slot (persisted in DB for resume capability)
   const slotsWithProblems = shuffledSlots.map((slot) => ({

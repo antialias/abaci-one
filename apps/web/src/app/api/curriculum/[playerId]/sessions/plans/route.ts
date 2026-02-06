@@ -89,6 +89,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       durationMinutes,
       abacusTermCount,
       enabledParts,
+      partTimeWeights,
+      purposeTimeWeights,
+      shufflePurposes,
       problemGenerationMode,
       confidenceThreshold,
       sessionMode,
@@ -111,6 +114,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    const configOverrides: Record<string, unknown> = {}
+    if (abacusTermCount) configOverrides.abacusTermCount = abacusTermCount
+    if (partTimeWeights) configOverrides.partTimeWeights = partTimeWeights
+    if (purposeTimeWeights) {
+      configOverrides.focusWeight = purposeTimeWeights.focus
+      configOverrides.reinforceWeight = purposeTimeWeights.reinforce
+      configOverrides.reviewWeight = purposeTimeWeights.review
+      configOverrides.challengeWeight = purposeTimeWeights.challenge
+    }
+
     const options: GenerateSessionPlanOptions = {
       playerId,
       durationMinutes,
@@ -120,11 +133,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         typeof confidenceThreshold === 'number' ? confidenceThreshold : undefined,
       sessionMode: sessionMode as SessionMode | undefined,
       gameBreakSettings: gameBreakSettings as GameBreakSettings | undefined,
-      ...(abacusTermCount && {
-        config: {
-          abacusTermCount,
-        },
+      ...(Object.keys(configOverrides).length > 0 && {
+        config: configOverrides,
       }),
+      ...(shufflePurposes !== undefined && { shufflePurposes }),
     }
 
     const plan = await generateSessionPlan(options)

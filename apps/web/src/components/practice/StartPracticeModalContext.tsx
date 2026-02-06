@@ -50,6 +50,17 @@ export const PART_TYPES = [
   { type: 'linear' as const, emoji: '💭', label: 'Linear', defaultWeight: 0 },
 ] as const
 
+// Purpose types configuration
+export const PURPOSE_TYPES = [
+  { type: 'focus' as const, emoji: '🎯', label: 'Focus', defaultWeight: 3 },
+  { type: 'reinforce' as const, emoji: '💪', label: 'Reinforce', defaultWeight: 1 },
+  { type: 'review' as const, emoji: '🔄', label: 'Review', defaultWeight: 1 },
+  { type: 'challenge' as const, emoji: '⭐', label: 'Challenge', defaultWeight: 1 },
+] as const
+
+export type PurposeWeightType = 'focus' | 'reinforce' | 'review' | 'challenge'
+export type PurposeWeights = Record<PurposeWeightType, number>
+
 export type EnabledParts = {
   abacus: boolean
   visualization: boolean
@@ -98,6 +109,18 @@ interface StartPracticeModalContextValue {
   disablePart: (partType: keyof PartWeights) => void
   abacusMaxTerms: number
   setAbacusMaxTerms: (terms: number) => void
+
+  // Purpose weight config
+  purposeWeights: PurposeWeights
+  /** Tap on segment: 0→1, 1↔2 (no-op if sole active) */
+  cyclePurposeWeight: (purposeType: PurposeWeightType) => void
+  /** Explicit disable via × button (blocked if last active) */
+  disablePurpose: (purposeType: PurposeWeightType) => void
+  /** Normalized 0-1 weights for API call */
+  purposeTimeWeights: Record<PurposeWeightType, number>
+  /** Whether to shuffle purposes within each part (true = interleaved, false = grouped in order) */
+  shufflePurposes: boolean
+  setShufflePurposes: (shuffle: boolean) => void
 
   // Game break config (state + setters)
   gameBreakEnabled: boolean
@@ -279,6 +302,50 @@ export function StartPracticeModalProvider({
       return { ...prev, [partType]: 0 }
     })
   }, [])
+
+  // Purpose weight state
+  const [purposeWeights, setPurposeWeights] = useState<PurposeWeights>({
+    focus: 3,
+    reinforce: 1,
+    review: 1,
+    challenge: 1,
+  })
+  const [shufflePurposes, setShufflePurposes] = useState(true)
+
+  // Tap on segment: 0→1, 1↔2 (no-op if sole active)
+  const cyclePurposeWeight = useCallback((purposeType: PurposeWeightType) => {
+    setPurposeWeights((prev) => {
+      const current = prev[purposeType]
+      if (current === 0) return { ...prev, [purposeType]: 1 }
+      const activeCount = Object.values(prev).filter((w) => w > 0).length
+      if (activeCount === 1) return prev
+      if (current === 1) return { ...prev, [purposeType]: 2 }
+      return { ...prev, [purposeType]: 1 }
+    })
+  }, [])
+
+  // Explicit disable via × button (blocked if last active)
+  const disablePurpose = useCallback((purposeType: PurposeWeightType) => {
+    setPurposeWeights((prev) => {
+      const othersTotal = Object.entries(prev)
+        .filter(([k]) => k !== purposeType)
+        .reduce((sum, [, v]) => sum + v, 0)
+      if (othersTotal === 0) return prev
+      return { ...prev, [purposeType]: 0 }
+    })
+  }, [])
+
+  // Normalized 0-1 weights for API call
+  const purposeTimeWeights = useMemo(() => {
+    const total = purposeWeights.focus + purposeWeights.reinforce + purposeWeights.review + purposeWeights.challenge
+    if (total === 0) return { focus: 1, reinforce: 0, review: 0, challenge: 0 }
+    return {
+      focus: purposeWeights.focus / total,
+      reinforce: purposeWeights.reinforce / total,
+      review: purposeWeights.review / total,
+      challenge: purposeWeights.challenge / total,
+    }
+  }, [purposeWeights])
 
   // Derived values
   const secondsPerTerm = useMemo(() => {
@@ -476,6 +543,8 @@ export function StartPracticeModalProvider({
             abacusTermCount: { min: 3, max: abacusMaxTerms },
             enabledParts,
             partTimeWeights,
+            purposeTimeWeights,
+            shufflePurposes,
             problemGenerationMode: 'adaptive-bkt',
             sessionMode,
             gameBreakSettings: {
@@ -519,6 +588,8 @@ export function StartPracticeModalProvider({
     abacusMaxTerms,
     enabledParts,
     partTimeWeights,
+    purposeTimeWeights,
+    shufflePurposes,
     existingPlan,
     sessionMode,
     gameBreakEnabled,
@@ -552,6 +623,14 @@ export function StartPracticeModalProvider({
     disablePart,
     abacusMaxTerms,
     setAbacusMaxTerms,
+
+    // Purpose weight config
+    purposeWeights,
+    cyclePurposeWeight,
+    disablePurpose,
+    purposeTimeWeights,
+    shufflePurposes,
+    setShufflePurposes,
 
     // Game break config
     gameBreakEnabled,

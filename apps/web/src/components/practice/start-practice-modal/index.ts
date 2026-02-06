@@ -1,6 +1,7 @@
 export { SessionConfigSummary } from './SessionConfigSummary'
 export { DurationSelector } from './DurationSelector'
 export { PracticeModesSelector } from './PracticeModesSelector'
+export { PurposeDistributionBar } from './PurposeDistributionBar'
 export { MaxTermsSelector } from './MaxTermsSelector'
 export { GameBreakSettings } from './GameBreakSettings'
 export { SessionFocusInfo } from './SessionFocusInfo'

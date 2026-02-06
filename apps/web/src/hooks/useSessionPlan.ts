@@ -56,6 +56,8 @@ async function generateSessionPlan({
   durationMinutes,
   abacusTermCount,
   enabledParts,
+  partTimeWeights,
+  purposeTimeWeights,
   problemGenerationMode,
   confidenceThreshold,
   sessionMode,
@@ -65,6 +67,9 @@ async function generateSessionPlan({
   durationMinutes: number
   abacusTermCount?: { min: number; max: number }
   enabledParts?: EnabledParts
+  partTimeWeights?: { abacus: number; visualization: number; linear: number }
+  purposeTimeWeights?: { focus: number; reinforce: number; review: number; challenge: number }
+  shufflePurposes?: boolean
   problemGenerationMode?: ProblemGenerationMode
   confidenceThreshold?: number
   sessionMode?: SessionMode
@@ -77,6 +82,9 @@ async function generateSessionPlan({
       durationMinutes,
       abacusTermCount,
       enabledParts,
+      partTimeWeights,
+      purposeTimeWeights,
+      shufflePurposes,
       problemGenerationMode,
       confidenceThreshold,
       sessionMode,

@@ -702,10 +702,10 @@ export function calculateSessionHealth(plan: SessionPlan, elapsedTimeMs: number)
  */
 export const DEFAULT_PLAN_CONFIG = {
   // Slot purpose distribution (from config/slot-distribution.ts)
-  // Note: Challenge slots use CHALLENGE_RATIO_BY_PART_TYPE instead of a fixed weight
   focusWeight: PURPOSE_WEIGHTS.focus,
   reinforceWeight: PURPOSE_WEIGHTS.reinforce,
   reviewWeight: PURPOSE_WEIGHTS.review,
+  challengeWeight: 0.2,
 
   // Session part time distribution (from config/slot-distribution.ts)
   partTimeWeights: PART_TIME_WEIGHTS,

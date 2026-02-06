@@ -7,6 +7,7 @@ import { StartPracticeModalProvider } from '../StartPracticeModalContext'
 import {
   DurationSelector,
   PracticeModesSelector,
+  PurposeDistributionBar,
   GameBreakSettings,
   SessionFocusInfo,
 } from '../start-practice-modal'
@@ -18,6 +19,11 @@ vi.mock('@/contexts/ThemeContext', () => ({
     resolvedTheme: 'light',
     setTheme: vi.fn(),
   }),
+}))
+
+// Mock useIsTouchDevice (window.matchMedia not available in test env)
+vi.mock('@/hooks/useDeviceCapabilities', () => ({
+  useIsTouchDevice: () => false,
 }))
 
 // Mock hooks and dependencies
@@ -254,6 +260,66 @@ describe('PracticeModesSelector', () => {
     const badge = abacusButton.querySelector('[data-element="remove-hint"]')
     expect(badge).toBeInTheDocument()
     expect(badge).toHaveAttribute('data-action', 'disable-mode')
+  })
+})
+
+describe('PurposeDistributionBar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should render all 4 purpose segments', () => {
+    render(<PurposeDistributionBar />, { wrapper: createWrapper() })
+
+    expect(screen.getByText('Focus')).toBeInTheDocument()
+    expect(screen.getByText('Reinforce')).toBeInTheDocument()
+    expect(screen.getByText('Review')).toBeInTheDocument()
+    expect(screen.getByText('Challenge')).toBeInTheDocument()
+  })
+
+  it('should show all purposes as enabled by default', () => {
+    const { container } = render(<PurposeDistributionBar />, { wrapper: createWrapper() })
+
+    const focusSegment = container.querySelector('[data-option="segment-focus"]')
+    const reinforceSegment = container.querySelector('[data-option="segment-reinforce"]')
+    const reviewSegment = container.querySelector('[data-option="segment-review"]')
+    const challengeSegment = container.querySelector('[data-option="segment-challenge"]')
+
+    expect(focusSegment).toHaveAttribute('data-enabled', 'true')
+    expect(reinforceSegment).toHaveAttribute('data-enabled', 'true')
+    expect(reviewSegment).toHaveAttribute('data-enabled', 'true')
+    expect(challengeSegment).toHaveAttribute('data-enabled', 'true')
+  })
+
+  it('should show focus with weight 3 and others with weight 1', () => {
+    const { container } = render(<PurposeDistributionBar />, { wrapper: createWrapper() })
+
+    expect(container.querySelector('[data-option="segment-focus"]')).toHaveAttribute('data-weight', '3')
+    expect(container.querySelector('[data-option="segment-reinforce"]')).toHaveAttribute('data-weight', '1')
+    expect(container.querySelector('[data-option="segment-review"]')).toHaveAttribute('data-weight', '1')
+    expect(container.querySelector('[data-option="segment-challenge"]')).toHaveAttribute('data-weight', '1')
+  })
+
+  it('should display Problem Mix label', () => {
+    render(<PurposeDistributionBar />, { wrapper: createWrapper() })
+
+    expect(screen.getByText('Problem Mix')).toBeInTheDocument()
+  })
+
+  it('should render as a proportion bar', () => {
+    const { container } = render(<PurposeDistributionBar />, { wrapper: createWrapper() })
+
+    const bar = container.querySelector('[data-element="proportion-bar"]')
+    expect(bar).toBeInTheDocument()
+  })
+
+  it('should cycle reinforce weight when clicking (1 → 2)', () => {
+    const { container } = render(<PurposeDistributionBar />, { wrapper: createWrapper() })
+
+    const reinforceSegment = container.querySelector('[data-option="segment-reinforce"]') as HTMLElement
+    fireEvent.click(reinforceSegment)
+
+    expect(reinforceSegment).toHaveAttribute('data-weight', '2')
   })
 })
 

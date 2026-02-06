@@ -7,6 +7,7 @@ import {
   StartPracticeModalProvider,
   useStartPracticeModal,
   PART_TYPES,
+  PURPOSE_TYPES,
 } from '../StartPracticeModalContext'
 
 // Mock hooks and dependencies
@@ -568,6 +569,190 @@ describe('StartPracticeModalContext', () => {
         emoji: '💭',
         label: 'Linear',
         defaultWeight: 0,
+      })
+    })
+  })
+
+  describe('Purpose Weights', () => {
+    it('should initialize with default purpose weights (focus=3, reinforce=1, review=1, challenge=1)', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      expect(result.current.purposeWeights).toEqual({
+        focus: 3,
+        reinforce: 1,
+        review: 1,
+        challenge: 1,
+      })
+    })
+
+    it('should cycle purpose weight: 1 → 2', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      expect(result.current.purposeWeights.reinforce).toBe(1)
+
+      act(() => {
+        result.current.cyclePurposeWeight('reinforce')
+      })
+
+      expect(result.current.purposeWeights.reinforce).toBe(2)
+    })
+
+    it('should cycle purpose weight: 2 → 1', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      act(() => {
+        result.current.cyclePurposeWeight('reinforce') // 1→2
+      })
+      act(() => {
+        result.current.cyclePurposeWeight('reinforce') // 2→1
+      })
+
+      expect(result.current.purposeWeights.reinforce).toBe(1)
+    })
+
+    it('should cycle purpose weight: 0 → 1 (enable)', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      // Disable reinforce first
+      act(() => {
+        result.current.disablePurpose('reinforce')
+      })
+      expect(result.current.purposeWeights.reinforce).toBe(0)
+
+      // Cycle: 0 → 1
+      act(() => {
+        result.current.cyclePurposeWeight('reinforce')
+      })
+      expect(result.current.purposeWeights.reinforce).toBe(1)
+    })
+
+    it('should no-op cycle when sole active purpose', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      // Disable all except focus
+      act(() => {
+        result.current.disablePurpose('reinforce')
+      })
+      act(() => {
+        result.current.disablePurpose('review')
+      })
+      act(() => {
+        result.current.disablePurpose('challenge')
+      })
+
+      expect(result.current.purposeWeights.focus).toBe(3)
+
+      // Cycle should be a no-op (sole active)
+      act(() => {
+        result.current.cyclePurposeWeight('focus')
+      })
+
+      expect(result.current.purposeWeights.focus).toBe(3)
+    })
+
+    it('should disable a purpose via disablePurpose', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      act(() => {
+        result.current.disablePurpose('challenge')
+      })
+
+      expect(result.current.purposeWeights.challenge).toBe(0)
+    })
+
+    it('should not allow disabling the last active purpose', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      // Disable all except focus
+      act(() => {
+        result.current.disablePurpose('reinforce')
+      })
+      act(() => {
+        result.current.disablePurpose('review')
+      })
+      act(() => {
+        result.current.disablePurpose('challenge')
+      })
+
+      // Try to disable focus — should be blocked
+      act(() => {
+        result.current.disablePurpose('focus')
+      })
+
+      expect(result.current.purposeWeights.focus).toBe(3)
+    })
+
+    it('should derive normalized purposeTimeWeights', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      // Default: {focus: 3, reinforce: 1, review: 1, challenge: 1} → total = 6
+      const { purposeTimeWeights } = result.current
+      expect(purposeTimeWeights.focus).toBeCloseTo(3 / 6)
+      expect(purposeTimeWeights.reinforce).toBeCloseTo(1 / 6)
+      expect(purposeTimeWeights.review).toBeCloseTo(1 / 6)
+      expect(purposeTimeWeights.challenge).toBeCloseTo(1 / 6)
+    })
+
+    it('should update purposeTimeWeights when weights change', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      act(() => {
+        result.current.disablePurpose('challenge')
+      })
+
+      // Now {focus: 3, reinforce: 1, review: 1, challenge: 0} → total = 5
+      const { purposeTimeWeights } = result.current
+      expect(purposeTimeWeights.focus).toBeCloseTo(3 / 5)
+      expect(purposeTimeWeights.reinforce).toBeCloseTo(1 / 5)
+      expect(purposeTimeWeights.review).toBeCloseTo(1 / 5)
+      expect(purposeTimeWeights.challenge).toBeCloseTo(0)
+    })
+  })
+
+  describe('PURPOSE_TYPES Constant', () => {
+    it('should export PURPOSE_TYPES with correct structure', () => {
+      expect(PURPOSE_TYPES).toHaveLength(4)
+      expect(PURPOSE_TYPES[0]).toEqual({
+        type: 'focus',
+        emoji: '🎯',
+        label: 'Focus',
+        defaultWeight: 3,
+      })
+      expect(PURPOSE_TYPES[1]).toEqual({
+        type: 'reinforce',
+        emoji: '💪',
+        label: 'Reinforce',
+        defaultWeight: 1,
+      })
+      expect(PURPOSE_TYPES[2]).toEqual({
+        type: 'review',
+        emoji: '🔄',
+        label: 'Review',
+        defaultWeight: 1,
+      })
+      expect(PURPOSE_TYPES[3]).toEqual({
+        type: 'challenge',
+        emoji: '⭐',
+        label: 'Challenge',
+        defaultWeight: 1,
       })
     })
   })

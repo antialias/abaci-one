@@ -8,7 +8,7 @@ import { useStartPracticeModal, PART_TYPES } from '../StartPracticeModalContext'
 export function DurationSelector() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { durationMinutes, setDurationMinutes, enabledParts, avgTermsPerProblem, secondsPerTerm } =
+  const { durationMinutes, setDurationMinutes, partWeights, avgTermsPerProblem, secondsPerTerm } =
     useStartPracticeModal()
 
   return (
@@ -41,17 +41,21 @@ export function DurationSelector() {
         })}
       >
         {[5, 10, 15, 20].map((min) => {
-          // Estimate problems for this duration using current settings
-          const enabledPartTypes = PART_TYPES.filter((p) => enabledParts[p.type]).map((p) => p.type)
-          const minutesPerPart = enabledPartTypes.length > 0 ? min / enabledPartTypes.length : min
+          // Estimate problems for this duration using weight-based time allocation
+          const totalWeight = PART_TYPES.reduce((sum, p) => sum + partWeights[p.type], 0)
           let problems = 0
-          for (const partType of enabledPartTypes) {
-            problems += estimateSessionProblemCount(
-              minutesPerPart,
-              avgTermsPerProblem,
-              secondsPerTerm,
-              partType
-            )
+          if (totalWeight > 0) {
+            for (const { type } of PART_TYPES) {
+              if (partWeights[type] > 0) {
+                const minutesForType = min * (partWeights[type] / totalWeight)
+                problems += estimateSessionProblemCount(
+                  minutesForType,
+                  avgTermsPerProblem,
+                  secondsPerTerm,
+                  type
+                )
+              }
+            }
           }
           const isSelected = durationMinutes === min
           return (
