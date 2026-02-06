@@ -427,6 +427,53 @@ export const uniqueVisitorsDaily = new Gauge({
 })
 
 // =============================================================================
+// E2E SMOKE TEST METRICS
+// =============================================================================
+
+export const smokeTestLastStatus = new Gauge({
+  name: 'smoke_test_last_status',
+  help: 'Status of the last smoke test run (1=passed, 0=failed/error)',
+  registers: [metricsRegistry],
+})
+
+export const smokeTestLastRunTimestamp = new Gauge({
+  name: 'smoke_test_last_run_timestamp_seconds',
+  help: 'Unix timestamp of the last completed smoke test run',
+  registers: [metricsRegistry],
+})
+
+export const smokeTestLastDuration = new Gauge({
+  name: 'smoke_test_last_duration_seconds',
+  help: 'Duration of the last smoke test run in seconds',
+  registers: [metricsRegistry],
+})
+
+export const smokeTestLastTotal = new Gauge({
+  name: 'smoke_test_last_total_count',
+  help: 'Total number of tests in the last smoke test run',
+  registers: [metricsRegistry],
+})
+
+export const smokeTestLastPassed = new Gauge({
+  name: 'smoke_test_last_passed_count',
+  help: 'Number of passed tests in the last smoke test run',
+  registers: [metricsRegistry],
+})
+
+export const smokeTestLastFailed = new Gauge({
+  name: 'smoke_test_last_failed_count',
+  help: 'Number of failed tests in the last smoke test run',
+  registers: [metricsRegistry],
+})
+
+export const smokeTestRunsTotal = new Counter({
+  name: 'smoke_test_runs_total',
+  help: 'Total number of completed smoke test runs',
+  labelNames: ['status'], // 'passed', 'failed', 'error'
+  registers: [metricsRegistry],
+})
+
+// =============================================================================
 // ERROR METRICS
 // =============================================================================
 
@@ -517,6 +564,15 @@ export const metrics = {
     requestsTotal: llmRequestsTotal,
     requestDuration: llmRequestDuration,
     tokensUsed: llmTokensUsed,
+  },
+  smokeTest: {
+    lastStatus: smokeTestLastStatus,
+    lastRunTimestamp: smokeTestLastRunTimestamp,
+    lastDuration: smokeTestLastDuration,
+    lastTotal: smokeTestLastTotal,
+    lastPassed: smokeTestLastPassed,
+    lastFailed: smokeTestLastFailed,
+    runsTotal: smokeTestRunsTotal,
   },
   errors: {
     total: errorsTotal,

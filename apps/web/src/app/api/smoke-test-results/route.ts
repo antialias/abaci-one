@@ -22,11 +22,69 @@
  */
 
 import { type NextRequest, NextResponse } from 'next/server'
-import { desc, eq, inArray } from 'drizzle-orm'
+import { desc, eq, inArray, ne } from 'drizzle-orm'
 import { db } from '@/db'
 import { smokeTestRuns } from '@/db/schema'
+import { metrics } from '@/lib/metrics'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * Update Prometheus metrics from a smoke test result.
+ * Called both when new results arrive and on startup (to survive pod restarts).
+ */
+function updateSmokeTestMetrics(run: {
+  status: string
+  startedAt: Date
+  completedAt: Date | null
+  totalTests: number | null
+  passedTests: number | null
+  failedTests: number | null
+  durationMs: number | null
+}) {
+  metrics.smokeTest.lastStatus.set(run.status === 'passed' ? 1 : 0)
+  metrics.smokeTest.lastRunTimestamp.set(
+    (run.completedAt ?? run.startedAt).getTime() / 1000
+  )
+  if (run.durationMs != null) {
+    metrics.smokeTest.lastDuration.set(run.durationMs / 1000)
+  }
+  if (run.totalTests != null) {
+    metrics.smokeTest.lastTotal.set(run.totalTests)
+  }
+  if (run.passedTests != null) {
+    metrics.smokeTest.lastPassed.set(run.passedTests)
+  }
+  if (run.failedTests != null) {
+    metrics.smokeTest.lastFailed.set(run.failedTests)
+  }
+}
+
+// Initialize metrics from DB on startup so they survive pod restarts.
+// This runs once when the module is first imported.
+const _initMetrics = db
+  .select()
+  .from(smokeTestRuns)
+  .where(ne(smokeTestRuns.status, 'running'))
+  .orderBy(desc(smokeTestRuns.startedAt))
+  .limit(1)
+  .get()
+  .then((latestRun) => {
+    if (latestRun) {
+      updateSmokeTestMetrics({
+        status: latestRun.status,
+        startedAt: latestRun.startedAt,
+        completedAt: latestRun.completedAt,
+        totalTests: latestRun.totalTests,
+        passedTests: latestRun.passedTests,
+        failedTests: latestRun.failedTests,
+        durationMs: latestRun.durationMs,
+      })
+    }
+  })
+  .catch((err) => {
+    console.error('Failed to initialize smoke test metrics from DB:', err)
+  })
 
 interface SmokeTestResultsRequest {
   id: string
@@ -99,6 +157,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<SmokeTest
           errorMessage: body.errorMessage ?? null,
         },
       })
+
+    // Update Prometheus metrics for completed runs
+    if (body.status !== 'running') {
+      updateSmokeTestMetrics({
+        status: body.status,
+        startedAt: new Date(body.startedAt),
+        completedAt: body.completedAt ? new Date(body.completedAt) : null,
+        totalTests: body.totalTests ?? null,
+        passedTests: body.passedTests ?? null,
+        failedTests: body.failedTests ?? null,
+        durationMs: body.durationMs ?? null,
+      })
+      metrics.smokeTest.runsTotal.inc({ status: body.status })
+    }
 
     // Clean up old test runs (keep last 100)
     // Get IDs to keep (newest 100)
