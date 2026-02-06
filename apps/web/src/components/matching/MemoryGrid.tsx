@@ -182,6 +182,15 @@ export function MemoryGrid<
     >
       {/* Cards Grid - Consistent r×c Layout */}
       <div
+        data-element="matching-grid"
+        data-game-idle={
+          !state.isProcessingMove && !state.showMismatchFeedback && state.flippedCards.length === 0
+            ? 'true'
+            : 'false'
+        }
+        data-game-processing={state.isProcessingMove ? 'true' : 'false'}
+        data-game-mismatch-feedback={state.showMismatchFeedback ? 'true' : 'false'}
+        data-game-flipped-count={state.flippedCards.length}
         style={{
           display: 'grid',
           gap: '6px',
