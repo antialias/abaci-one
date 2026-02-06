@@ -505,11 +505,15 @@ export function updateSmokeTestMetrics(run: {
 }
 
 /**
- * Initialize smoke test metrics from DB on startup.
- * Uses dynamic import to avoid circular dependency with db module.
- * Runs on every pod so all replicas report consistent values.
+ * Initialize smoke test metrics from DB.
+ * Called from the /api/metrics handler on first scrape so it runs in a
+ * proper request context on every pod. Guarded to only execute once.
  */
-export const smokeTestMetricsReady = (async () => {
+let _smokeTestMetricsInitialized = false
+export async function initSmokeTestMetrics() {
+  if (_smokeTestMetricsInitialized) return
+  _smokeTestMetricsInitialized = true
+
   try {
     const { db } = await import('@/db')
     const { smokeTestRuns } = await import('@/db/schema')
@@ -527,9 +531,11 @@ export const smokeTestMetricsReady = (async () => {
       updateSmokeTestMetrics(latestRun)
     }
   } catch (err) {
+    // Allow retry on next scrape if init fails
+    _smokeTestMetricsInitialized = false
     console.error('Failed to initialize smoke test metrics from DB:', err)
   }
-})()
+}
 
 // =============================================================================
 // ERROR METRICS
