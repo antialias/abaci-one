@@ -61,9 +61,9 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
               }
 
               env {
-                # Report results to the primary pod (requires write access to DB)
+                # Report results to the app service (any pod can write via libSQL)
                 name  = "RESULTS_API_URL"
-                value = "http://abaci-app-primary.${kubernetes_namespace.abaci.metadata[0].name}.svc.cluster.local/api/smoke-test-results"
+                value = "http://abaci-app.${kubernetes_namespace.abaci.metadata[0].name}.svc.cluster.local/api/smoke-test-results"
               }
 
               env {
