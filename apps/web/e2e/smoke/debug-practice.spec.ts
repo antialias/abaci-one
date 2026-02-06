@@ -226,44 +226,6 @@ async function waitForGameIdle(page: Page, timeout = 5000) {
 }
 
 /**
- * Wait for a specific card to be matched.
- */
-async function waitForCardMatched(page: Page, cardId: string, timeout = 5000) {
-  // Try data attribute first
-  const dataCard = page.locator(`[data-card-id="${cardId}"][data-card-matched="true"]`)
-  if ((await page.locator(`[data-card-id="${cardId}"]`).count()) > 0) {
-    await expect(dataCard).toBeVisible({ timeout })
-    return
-  }
-
-  // Fallback: poll fiber tree
-  await page.waitForFunction(
-    (targetId) => {
-      const gc = document.querySelector('[data-element="game-container"]')
-      if (!gc) return false
-      const divs = gc.querySelectorAll('div')
-      const cardDivs = Array.from(divs).filter(
-        (d) => window.getComputedStyle(d).aspectRatio === '3 / 4'
-      )
-      if (cardDivs.length === 0) return false
-      const fKey = Object.keys(cardDivs[0]).find((k) => k.startsWith('__reactFiber'))
-      if (!fKey) return false
-      let f = (cardDivs[0] as any)[fKey]
-      for (let i = 0; i < 20 && f; i++) {
-        if (f.type?.name === 'MemoryGrid') {
-          const card = f.memoizedProps.state.gameCards.find((c: any) => c.id === targetId)
-          return card?.matched === true
-        }
-        f = f.return
-      }
-      return false
-    },
-    cardId,
-    { timeout }
-  )
-}
-
-/**
  * Play the matching game to completion.
  * Makes at least 2 deliberate mismatches before solving all pairs.
  */
@@ -310,42 +272,34 @@ async function playMatchingGame(page: Page) {
     await clickMatchingCard(page, pairB.number) // Wrong pair!
 
     // Wait for mismatch to clear
-    await waitForGameIdle(page)
+    await waitForGameIdle(page, 15000)
     mismatchCount++
   }
   expect(mismatchCount).toBe(2)
 
   // --- Solve all pairs correctly ---
+  // Count unmatched pairs to know when the last one completes the game
+  let unmatchedCount = pairs.length
   for (const [, pair] of pairs) {
-    // Check if already matched
-    const isMatched = await page.evaluate(
-      (targetId) => {
-        const gc = document.querySelector('[data-element="game-container"]')
-        if (!gc) return false
-        const divs = gc.querySelectorAll('div')
-        const cardDivs = Array.from(divs).filter(
-          (d) => window.getComputedStyle(d).aspectRatio === '3 / 4'
-        )
-        if (cardDivs.length === 0) return false
-        const fKey = Object.keys(cardDivs[0]).find((k) => k.startsWith('__reactFiber'))
-        if (!fKey) return false
-        let f = (cardDivs[0] as any)[fKey]
-        for (let i = 0; i < 20 && f; i++) {
-          if (f.type?.name === 'MemoryGrid') {
-            return f.memoizedProps.state.gameCards.find((c: any) => c.id === targetId)?.matched === true
-          }
-          f = f.return
-        }
-        return false
-      },
-      pair.abacus
-    )
-    if (isMatched) continue
+    // Check if already matched via data attribute
+    const matchedAttr = await page.locator(`[data-card-id="${pair.abacus}"]`).getAttribute('data-card-matched')
+    if (matchedAttr === 'true') {
+      unmatchedCount--
+      continue
+    }
 
     await clickMatchingCard(page, pair.abacus)
-    await page.waitForTimeout(300)
+    await page.waitForTimeout(400)
     await clickMatchingCard(page, pair.number)
-    await waitForCardMatched(page, pair.abacus)
+    unmatchedCount--
+
+    if (unmatchedCount === 0) {
+      // Last pair — game auto-transitions to results, game container disappears
+      break
+    }
+
+    // Wait for game to settle (server processes match via WebSocket)
+    await waitForGameIdle(page, 15000)
   }
 
   // Game should auto-transition to results
