@@ -252,26 +252,6 @@ async function runTests(): Promise<void> {
       })
     })
 
-    // Debug: Log CWD and check for screenshots
-    console.log(`[debug] CWD: ${process.cwd()}`)
-    try {
-      const pngFiles = execSync('find . -name "*.png" -type f 2>/dev/null || true', {
-        cwd: process.cwd(),
-        encoding: 'utf-8',
-      }).trim()
-      console.log(`[debug] PNG files found in CWD:\n${pngFiles || '(none)'}`)
-
-      const whichPw = execSync('which playwright 2>/dev/null || echo "not found"', {
-        encoding: 'utf-8',
-      }).trim()
-      console.log(`[debug] playwright binary: ${whichPw}`)
-
-      const screenshotsDirExists = existsSync(join(process.cwd(), 'screenshots'))
-      console.log(`[debug] screenshots/ dir exists: ${screenshotsDirExists}`)
-    } catch (debugErr) {
-      console.log(`[debug] Error during debug logging: ${debugErr}`)
-    }
-
     const completedAt = new Date().toISOString()
     const durationMs = new Date(completedAt).getTime() - new Date(startedAt).getTime()
 

@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build @soroban/abacus-react
+        run: pnpm --filter @soroban/abacus-react run build
+
       - name: Run tests with coverage
         run: pnpm --filter @soroban/web run test:coverage
 
