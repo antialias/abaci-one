@@ -37,8 +37,8 @@ export const purposeConfigs: Record<PurposeType, PurposeConfig> = {
     emoji: '🎯',
     color: 'blue',
     explanation:
-      "Building mastery of your current curriculum skills. These problems are at the heart of what you're learning right now.",
-    shortExplanation: 'Practicing a skill you are currently learning.',
+      'Zeroes in on the specific skills your child is currently learning. The system analyzes recent performance to identify which skills need the most attention and generates problems targeting those. Complexity is capped to keep the focus on learning, not struggling.',
+    shortExplanation: 'Targets skills your child is actively working to master.',
   },
   reinforce: {
     label: 'Reinforcement',
@@ -46,8 +46,8 @@ export const purposeConfigs: Record<PurposeType, PurposeConfig> = {
     emoji: '💪',
     color: 'orange',
     explanation:
-      'Extra practice for skills identified as needing more work. These problems target areas where mastery is still developing.',
-    shortExplanation: 'Extra practice for a skill that needs more work.',
+      'Extra reps on skills the system has flagged as not yet solid. When a skill drops below 50% mastery confidence, reinforce problems give additional targeted practice on that specific weakness until it sticks.',
+    shortExplanation: 'Extra reps on skills flagged as not yet solid.',
   },
   review: {
     label: 'Spaced Review',
@@ -55,17 +55,17 @@ export const purposeConfigs: Record<PurposeType, PurposeConfig> = {
     emoji: '🔄',
     color: 'green',
     explanation:
-      'Keeping mastered skills fresh through spaced repetition. Regular review prevents forgetting and strengthens long-term memory.',
-    shortExplanation: 'Keeping a mastered skill fresh through review.',
+      "Each review problem targets one specific previously-learned skill that hasn't been practiced recently. The system cycles through stale skills so nothing gets forgotten — the core idea behind spaced repetition.",
+    shortExplanation: 'Revisits one stale skill per problem to prevent forgetting.',
   },
   challenge: {
-    label: 'Mixed Practice',
+    label: 'Challenge',
     shortLabel: 'Challenge',
     emoji: '⭐',
     color: 'purple',
     explanation:
-      "Problems that combine multiple mastered skills. Great for building fluency and applying what you've learned in new ways.",
-    shortExplanation: 'Combining multiple skills to build fluency.',
+      'Harder problems with no complexity ceiling. Every challenge problem requires at least one advanced technique and draws freely from all learned skills — no hand-holding on which skill to use. Builds real fluency under pressure.',
+    shortExplanation: 'Hard problems combining multiple skills, no difficulty cap.',
   },
 }
 
