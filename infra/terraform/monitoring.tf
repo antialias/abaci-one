@@ -1509,7 +1509,7 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
             textMode = "value"
           }
           targets = [{
-            expr  = "smoke_test_last_status{app=\"abaci-app\"}"
+            expr  = "max(smoke_test_last_status{app=\"abaci-app\"})"
             refId = "A"
           }]
           title = "Smoke Test Status"
@@ -1547,7 +1547,7 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
             textMode = "auto"
           }
           targets = [{
-            expr         = "time() - smoke_test_last_run_timestamp_seconds{app=\"abaci-app\"}"
+            expr         = "time() - max(smoke_test_last_run_timestamp_seconds{app=\"abaci-app\"})"
             legendFormat = "Age"
             refId        = "A"
           }]
@@ -1586,7 +1586,7 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
             textMode = "auto"
           }
           targets = [{
-            expr         = "smoke_test_last_duration_seconds{app=\"abaci-app\"}"
+            expr         = "max(smoke_test_last_duration_seconds{app=\"abaci-app\"})"
             legendFormat = "Duration"
             refId        = "A"
           }]
@@ -1625,12 +1625,12 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
           }
           targets = [
             {
-              expr         = "smoke_test_last_passed_count{app=\"abaci-app\"}"
+              expr         = "max(smoke_test_last_passed_count{app=\"abaci-app\"})"
               legendFormat = "Passed"
               refId        = "A"
             },
             {
-              expr         = "smoke_test_last_failed_count{app=\"abaci-app\"}"
+              expr         = "max(smoke_test_last_failed_count{app=\"abaci-app\"})"
               legendFormat = "Failed"
               refId        = "B"
             }
@@ -1666,7 +1666,7 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
             showThresholdMarkers = true
           }
           targets = [{
-            expr  = "smoke_test_last_passed_count{app=\"abaci-app\"} / smoke_test_last_total_count{app=\"abaci-app\"}"
+            expr  = "max(smoke_test_last_passed_count{app=\"abaci-app\"}) / max(smoke_test_last_total_count{app=\"abaci-app\"})"
             refId = "A"
           }]
           title = "Pass Rate"
@@ -1761,17 +1761,17 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
           }
           targets = [
             {
-              expr         = "increase(smoke_test_runs_total{app=\"abaci-app\", status=\"passed\"}[1d])"
+              expr         = "sum(increase(smoke_test_runs_total{app=\"abaci-app\", status=\"passed\"}[1d]))"
               legendFormat = "passed"
               refId        = "A"
             },
             {
-              expr         = "increase(smoke_test_runs_total{app=\"abaci-app\", status=\"failed\"}[1d])"
+              expr         = "sum(increase(smoke_test_runs_total{app=\"abaci-app\", status=\"failed\"}[1d]))"
               legendFormat = "failed"
               refId        = "B"
             },
             {
-              expr         = "increase(smoke_test_runs_total{app=\"abaci-app\", status=\"error\"}[1d])"
+              expr         = "sum(increase(smoke_test_runs_total{app=\"abaci-app\", status=\"error\"}[1d]))"
               legendFormat = "error"
               refId        = "C"
             }
@@ -1824,7 +1824,7 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
             tooltip = { mode = "multi", sort = "desc" }
           }
           targets = [{
-            expr         = "smoke_test_last_duration_seconds{app=\"abaci-app\"}"
+            expr         = "max(smoke_test_last_duration_seconds{app=\"abaci-app\"})"
             legendFormat = "Duration"
             refId        = "A"
           }]
