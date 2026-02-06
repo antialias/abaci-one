@@ -133,11 +133,17 @@ describe('StartPracticeModalContext', () => {
       expect(result.current.durationMinutes).toBe(10)
     })
 
-    it('should initialize with abacus and visualization enabled', () => {
+    it('should initialize with default part weights (abacus=2, visualization=1, linear=0)', () => {
       const { result } = renderHook(() => useStartPracticeModal(), {
         wrapper: createWrapper(),
       })
 
+      expect(result.current.partWeights).toEqual({
+        abacus: 2,
+        visualization: 1,
+        linear: 0,
+      })
+      // enabledParts derived from weights
       expect(result.current.enabledParts).toEqual({
         abacus: true,
         visualization: true,
@@ -199,54 +205,105 @@ describe('StartPracticeModalContext', () => {
     })
   })
 
-  describe('Practice Mode Toggles', () => {
-    it('should toggle a practice mode', () => {
+  describe('Part Weight Cycling', () => {
+    it('should cycle a part weight: 1 → 2', () => {
       const { result } = renderHook(() => useStartPracticeModal(), {
         wrapper: createWrapper(),
       })
 
+      // visualization starts at 1
+      expect(result.current.partWeights.visualization).toBe(1)
+
+      act(() => {
+        result.current.cyclePartWeight('visualization')
+      })
+
+      expect(result.current.partWeights.visualization).toBe(2)
+    })
+
+    it('should cycle weight 2 → 1 (never disables via cycle)', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      // Cycle visualization: 1 → 2 → 1
+      act(() => {
+        result.current.cyclePartWeight('visualization') // 1→2
+      })
+      act(() => {
+        result.current.cyclePartWeight('visualization') // 2→1
+      })
+
+      expect(result.current.partWeights.visualization).toBe(1)
       expect(result.current.enabledParts.visualization).toBe(true)
-
-      act(() => {
-        result.current.togglePart('visualization')
-      })
-
-      expect(result.current.enabledParts.visualization).toBe(false)
     })
 
-    it('should not allow disabling the last enabled mode', () => {
+    it('should cycle weight 0 → 1 (enable)', () => {
       const { result } = renderHook(() => useStartPracticeModal(), {
         wrapper: createWrapper(),
       })
 
-      // Disable visualization first
+      // linear starts at 0
+      expect(result.current.partWeights.linear).toBe(0)
+
       act(() => {
-        result.current.togglePart('visualization')
+        result.current.cyclePartWeight('linear')
       })
 
-      expect(result.current.enabledParts.abacus).toBe(true)
-      expect(result.current.enabledParts.visualization).toBe(false)
-
-      // Try to disable abacus (should not work - it's the last one)
-      act(() => {
-        result.current.togglePart('abacus')
-      })
-
-      expect(result.current.enabledParts.abacus).toBe(true)
+      expect(result.current.partWeights.linear).toBe(1)
+      expect(result.current.enabledParts.linear).toBe(true)
     })
 
-    it('should update enabledPartCount when modes change', () => {
+    it('should update enabledPartCount when weights change', () => {
       const { result } = renderHook(() => useStartPracticeModal(), {
         wrapper: createWrapper(),
       })
 
       expect(result.current.enabledPartCount).toBe(2) // abacus + visualization
 
+      // Enable linear (0 → 1)
       act(() => {
-        result.current.togglePart('visualization')
+        result.current.cyclePartWeight('linear')
       })
 
-      expect(result.current.enabledPartCount).toBe(1)
+      expect(result.current.enabledPartCount).toBe(3)
+    })
+  })
+
+  describe('Disable Part', () => {
+    it('should disable a part via disablePart', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      expect(result.current.partWeights.visualization).toBe(1)
+
+      act(() => {
+        result.current.disablePart('visualization')
+      })
+
+      expect(result.current.partWeights.visualization).toBe(0)
+      expect(result.current.enabledParts.visualization).toBe(false)
+    })
+
+    it('should not allow disabling the last active part', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      // Disable visualization first
+      act(() => {
+        result.current.disablePart('visualization')
+      })
+
+      expect(result.current.partWeights.visualization).toBe(0)
+
+      // Try to disable abacus — should be blocked since it's the only active one
+      act(() => {
+        result.current.disablePart('abacus')
+      })
+
+      expect(result.current.partWeights.abacus).toBe(2)
     })
   })
 
@@ -308,8 +365,9 @@ describe('StartPracticeModalContext', () => {
 
       expect(result.current.showGameBreakSettings).toBe(true) // 2 parts enabled
 
+      // Disable visualization explicitly
       act(() => {
-        result.current.togglePart('visualization')
+        result.current.disablePart('visualization')
       })
 
       expect(result.current.showGameBreakSettings).toBe(false) // only 1 part
@@ -374,8 +432,8 @@ describe('StartPracticeModalContext', () => {
         wrapper: createWrapper(),
       })
 
-      // With 2 modes enabled (abacus + visualization)
-      expect(result.current.modesSummary.text).toBe('all modes')
+      // With 2 modes enabled (abacus + visualization), linear is weight 0
+      expect(result.current.modesSummary.text).toBe('2 modes')
       expect(result.current.modesSummary.emojis).toContain('🧮')
       expect(result.current.modesSummary.emojis).toContain('🧠')
     })
@@ -497,19 +555,19 @@ describe('StartPracticeModalContext', () => {
         type: 'abacus',
         emoji: '🧮',
         label: 'Abacus',
-        enabled: true,
+        defaultWeight: 2,
       })
       expect(PART_TYPES[1]).toEqual({
         type: 'visualization',
         emoji: '🧠',
         label: 'Visualize',
-        enabled: true,
+        defaultWeight: 1,
       })
       expect(PART_TYPES[2]).toEqual({
         type: 'linear',
         emoji: '💭',
         label: 'Linear',
-        enabled: false,
+        defaultWeight: 0,
       })
     })
   })

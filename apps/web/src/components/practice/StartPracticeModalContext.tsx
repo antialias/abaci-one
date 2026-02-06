@@ -40,14 +40,14 @@ import {
 
 // Part types configuration
 export const PART_TYPES = [
-  { type: 'abacus' as const, emoji: '🧮', label: 'Abacus', enabled: true },
+  { type: 'abacus' as const, emoji: '🧮', label: 'Abacus', defaultWeight: 2 },
   {
     type: 'visualization' as const,
     emoji: '🧠',
     label: 'Visualize',
-    enabled: true,
+    defaultWeight: 1,
   },
-  { type: 'linear' as const, emoji: '💭', label: 'Linear', enabled: false }, // Disabled for now
+  { type: 'linear' as const, emoji: '💭', label: 'Linear', defaultWeight: 0 },
 ] as const
 
 export type EnabledParts = {
@@ -57,6 +57,12 @@ export type EnabledParts = {
 }
 
 export type PartType = 'abacus' | 'visualization' | 'linear'
+
+export type PartWeights = {
+  abacus: number
+  visualization: number
+  linear: number
+}
 
 // Game info interface for the context (used for both real games and mock overrides)
 export interface GameInfo {
@@ -85,7 +91,11 @@ interface StartPracticeModalContextValue {
   durationMinutes: number
   setDurationMinutes: (min: number) => void
   enabledParts: EnabledParts
-  togglePart: (partType: keyof EnabledParts) => void
+  partWeights: PartWeights
+  /** Tap on segment: 0→1, 1→2, 2→1 (never disables) */
+  cyclePartWeight: (partType: keyof PartWeights) => void
+  /** Explicit disable via × button (blocked if last active) */
+  disablePart: (partType: keyof PartWeights) => void
   abacusMaxTerms: number
   setAbacusMaxTerms: (terms: number) => void
 
@@ -211,11 +221,19 @@ export function StartPracticeModalProvider({
   const [includeTutorial, setIncludeTutorial] = useState(
     sessionMode.type === 'progression' && sessionMode.tutorialRequired
   )
-  const [enabledParts, setEnabledParts] = useState<EnabledParts>({
-    abacus: true,
-    visualization: true,
-    linear: false,
+  const [partWeights, setPartWeights] = useState<PartWeights>({
+    abacus: 2,
+    visualization: 1,
+    linear: 0,
   })
+  const enabledParts = useMemo<EnabledParts>(
+    () => ({
+      abacus: partWeights.abacus > 0,
+      visualization: partWeights.visualization > 0,
+      linear: partWeights.linear > 0,
+    }),
+    [partWeights]
+  )
   const [abacusMaxTerms, setAbacusMaxTerms] = useState(
     DEFAULT_PLAN_CONFIG.abacusTermCount?.max ?? 5
   )
@@ -237,12 +255,28 @@ export function StartPracticeModalProvider({
   const [gameBreakCustomConfig, setGameBreakCustomConfig] = useState<Record<string, unknown>>({})
   const [gameBreakShowCustomize, setGameBreakShowCustomize] = useState(false)
 
-  // Toggle part helper
-  const togglePart = useCallback((partType: keyof EnabledParts) => {
-    setEnabledParts((prev) => {
-      const enabledCount = Object.values(prev).filter(Boolean).length
-      if (enabledCount === 1 && prev[partType]) return prev
-      return { ...prev, [partType]: !prev[partType] }
+  // Tap on segment: 0→1, 1→2, 2→1 (never disables; no-op if sole active mode)
+  const cyclePartWeight = useCallback((partType: keyof PartWeights) => {
+    setPartWeights((prev) => {
+      const current = prev[partType]
+      if (current === 0) return { ...prev, [partType]: 1 }
+      // If this is the only active mode, weight is meaningless — don't toggle
+      const activeCount = Object.values(prev).filter((w) => w > 0).length
+      if (activeCount === 1) return prev
+      if (current === 1) return { ...prev, [partType]: 2 }
+      // current === 2 → back to 1
+      return { ...prev, [partType]: 1 }
+    })
+  }, [])
+
+  // Explicit disable via × button (blocked if last active)
+  const disablePart = useCallback((partType: keyof PartWeights) => {
+    setPartWeights((prev) => {
+      const othersTotal = Object.entries(prev)
+        .filter(([k]) => k !== partType)
+        .reduce((sum, [, v]) => sum + v, 0)
+      if (othersTotal === 0) return prev // can't disable the last active part
+      return { ...prev, [partType]: 0 }
     })
   }, [])
 
@@ -316,41 +350,61 @@ export function StartPracticeModalProvider({
     }
   }, [hasSingleGame, singleGame])
 
+  // Derive partTimeWeights from partWeights for the API call
+  const partTimeWeights = useMemo(() => {
+    const total = partWeights.abacus + partWeights.visualization + partWeights.linear
+    if (total === 0) return { abacus: 1, visualization: 0, linear: 0 }
+    return {
+      abacus: partWeights.abacus / total,
+      visualization: partWeights.visualization / total,
+      linear: partWeights.linear / total,
+    }
+  }, [partWeights])
+
   const problemsPerType = useMemo(() => {
-    const enabledPartTypes = PART_TYPES.filter((p) => enabledParts[p.type]).map((p) => p.type)
-    const enabledCount = enabledPartTypes.length
-    if (enabledCount === 0) {
+    const totalWeight = partWeights.abacus + partWeights.visualization + partWeights.linear
+    if (totalWeight === 0) {
       return { abacus: 0, visualization: 0, linear: 0 }
     }
 
-    const minutesPerPart = durationMinutes / enabledCount
-
     return {
-      abacus: enabledParts.abacus
-        ? estimateSessionProblemCount(minutesPerPart, avgTermsPerProblem, secondsPerTerm, 'abacus')
-        : 0,
-      visualization: enabledParts.visualization
-        ? estimateSessionProblemCount(
-            minutesPerPart,
-            avgTermsPerProblem,
-            secondsPerTerm,
-            'visualization'
-          )
-        : 0,
-      linear: enabledParts.linear
-        ? estimateSessionProblemCount(minutesPerPart, avgTermsPerProblem, secondsPerTerm, 'linear')
-        : 0,
+      abacus:
+        partWeights.abacus > 0
+          ? estimateSessionProblemCount(
+              durationMinutes * (partWeights.abacus / totalWeight),
+              avgTermsPerProblem,
+              secondsPerTerm,
+              'abacus'
+            )
+          : 0,
+      visualization:
+        partWeights.visualization > 0
+          ? estimateSessionProblemCount(
+              durationMinutes * (partWeights.visualization / totalWeight),
+              avgTermsPerProblem,
+              secondsPerTerm,
+              'visualization'
+            )
+          : 0,
+      linear:
+        partWeights.linear > 0
+          ? estimateSessionProblemCount(
+              durationMinutes * (partWeights.linear / totalWeight),
+              avgTermsPerProblem,
+              secondsPerTerm,
+              'linear'
+            )
+          : 0,
     }
-  }, [durationMinutes, enabledParts, avgTermsPerProblem, secondsPerTerm])
+  }, [durationMinutes, partWeights, avgTermsPerProblem, secondsPerTerm])
 
   const estimatedProblems = useMemo(() => {
     return problemsPerType.abacus + problemsPerType.visualization + problemsPerType.linear
   }, [problemsPerType])
 
   const modesSummary = useMemo(() => {
-    const availableParts = PART_TYPES.filter((p) => p.enabled)
-    const enabled = availableParts.filter((p) => enabledParts[p.type])
-    if (enabled.length === availableParts.length)
+    const enabled = PART_TYPES.filter((p) => partWeights[p.type] > 0)
+    if (enabled.length === PART_TYPES.length)
       return {
         text: 'all modes',
         emojis: enabled.map((p) => p.emoji).join(''),
@@ -360,11 +414,11 @@ export function StartPracticeModalProvider({
       text: `${enabled.length} mode${enabled.length > 1 ? 's' : ''}`,
       emojis: enabled.map((p) => p.emoji).join(''),
     }
-  }, [enabledParts])
+  }, [partWeights])
 
   const enabledPartCount = useMemo(() => {
-    return PART_TYPES.filter((p) => p.enabled && enabledParts[p.type]).length
-  }, [enabledParts])
+    return PART_TYPES.filter((p) => partWeights[p.type] > 0).length
+  }, [partWeights])
 
   const showGameBreakSettings = enabledPartCount >= 2
 
@@ -421,6 +475,7 @@ export function StartPracticeModalProvider({
             durationMinutes,
             abacusTermCount: { min: 3, max: abacusMaxTerms },
             enabledParts,
+            partTimeWeights,
             problemGenerationMode: 'adaptive-bkt',
             sessionMode,
             gameBreakSettings: {
@@ -463,6 +518,7 @@ export function StartPracticeModalProvider({
     durationMinutes,
     abacusMaxTerms,
     enabledParts,
+    partTimeWeights,
     existingPlan,
     sessionMode,
     gameBreakEnabled,
@@ -491,7 +547,9 @@ export function StartPracticeModalProvider({
     durationMinutes,
     setDurationMinutes,
     enabledParts,
-    togglePart,
+    partWeights,
+    cyclePartWeight,
+    disablePart,
     abacusMaxTerms,
     setAbacusMaxTerms,
 

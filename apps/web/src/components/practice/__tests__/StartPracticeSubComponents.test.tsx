@@ -184,22 +184,35 @@ describe('PracticeModesSelector', () => {
     vi.clearAllMocks()
   })
 
-  it('should render enabled practice mode options', () => {
+  it('should render all practice mode segments', () => {
     render(<PracticeModesSelector />, { wrapper: createWrapper() })
 
-    // Only Abacus and Visualize are enabled in PART_TYPES, Linear is disabled
+    // All 3 modes should be shown as segments (even linear with weight 0)
     expect(screen.getByText('Abacus')).toBeInTheDocument()
     expect(screen.getByText('Visualize')).toBeInTheDocument()
+    expect(screen.getByText('Linear')).toBeInTheDocument()
   })
 
-  it('should show abacus and visualization as enabled by default', () => {
+  it('should show abacus and visualization as enabled by default, linear as disabled', () => {
     render(<PracticeModesSelector />, { wrapper: createWrapper() })
 
     const abacusButton = screen.getByRole('button', { name: /abacus/i })
     const visualizeButton = screen.getByRole('button', { name: /visualize/i })
+    const linearButton = screen.getByRole('button', { name: /linear/i })
 
     expect(abacusButton).toHaveAttribute('data-enabled', 'true')
+    expect(abacusButton).toHaveAttribute('data-weight', '2')
     expect(visualizeButton).toHaveAttribute('data-enabled', 'true')
+    expect(visualizeButton).toHaveAttribute('data-weight', '1')
+    expect(linearButton).toHaveAttribute('data-enabled', 'false')
+    expect(linearButton).toHaveAttribute('data-weight', '0')
+  })
+
+  it('should render as a proportion bar', () => {
+    const { container } = render(<PracticeModesSelector />, { wrapper: createWrapper() })
+
+    const bar = container.querySelector('[data-element="proportion-bar"]')
+    expect(bar).toBeInTheDocument()
   })
 
   it('should display practice modes label', () => {
@@ -208,13 +221,39 @@ describe('PracticeModesSelector', () => {
     expect(screen.getByText('Practice Modes')).toBeInTheDocument()
   })
 
-  it('should toggle mode when clicking', () => {
+  it('should cycle weight when clicking (1 → 2)', () => {
     render(<PracticeModesSelector />, { wrapper: createWrapper() })
 
     const visualizeButton = screen.getByRole('button', { name: /visualize/i })
     fireEvent.click(visualizeButton)
 
-    expect(visualizeButton).toHaveAttribute('data-enabled', 'false')
+    expect(visualizeButton).toHaveAttribute('data-weight', '2')
+  })
+
+  it('should show ×2 label when weights are mixed', () => {
+    render(<PracticeModesSelector />, { wrapper: createWrapper() })
+
+    // Abacus=2, visualization=1 → mixed weights, abacus should show ×2
+    const abacusButton = screen.getByRole('button', { name: /abacus/i })
+    expect(abacusButton.querySelector('[data-element="weight-label"]')).toHaveTextContent('×2')
+  })
+
+  it('should show + hint on disabled segments', () => {
+    render(<PracticeModesSelector />, { wrapper: createWrapper() })
+
+    // Linear starts at weight 0
+    const linearButton = screen.getByRole('button', { name: /linear/i })
+    expect(linearButton.querySelector('[data-element="add-hint"]')).toHaveTextContent('+')
+  })
+
+  it('should show toggle badge on active non-last segments as remove hint', () => {
+    render(<PracticeModesSelector />, { wrapper: createWrapper() })
+
+    // Both abacus and visualization are active (2 active), so both get remove hints
+    const abacusButton = screen.getByRole('button', { name: /abacus/i })
+    const badge = abacusButton.querySelector('[data-element="remove-hint"]')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveAttribute('data-action', 'disable-mode')
   })
 })
 

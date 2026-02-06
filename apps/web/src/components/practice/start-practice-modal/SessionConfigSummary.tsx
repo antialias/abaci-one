@@ -10,7 +10,7 @@ export function SessionConfigSummary() {
   const {
     durationMinutes,
     estimatedProblems,
-    enabledParts,
+    partWeights,
     problemsPerType,
     isExpanded,
     setIsExpanded,
@@ -147,7 +147,7 @@ export function SessionConfigSummary() {
             },
           })}
         >
-          {PART_TYPES.filter((p) => p.enabled && enabledParts[p.type]).map(({ type, emoji }) => (
+          {PART_TYPES.filter((p) => partWeights[p.type] > 0).map(({ type, emoji }) => (
             <div
               key={type}
               data-mode={type}
