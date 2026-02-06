@@ -58,6 +58,7 @@ async function generateSessionPlan({
   enabledParts,
   partTimeWeights,
   purposeTimeWeights,
+  shufflePurposes,
   problemGenerationMode,
   confidenceThreshold,
   sessionMode,
