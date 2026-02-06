@@ -75,6 +75,7 @@ const nextConfig = {
       // Radix UI components
       '@radix-ui/react-accordion',
       '@radix-ui/react-checkbox',
+      '@radix-ui/react-collapsible',
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
       '@radix-ui/react-hover-card',
