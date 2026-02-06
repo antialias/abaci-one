@@ -1368,13 +1368,17 @@ const Bead: React.FC<BeadProps> = ({
             // Only process during active drag, ignore drag end
             if (!active || !gestureStateRef.current.isDragging) {
               if (!active) {
-                // Clean up on drag end but don't revert state
+                const wasDragGesture =
+                  gestureStateRef.current.hasGestureTriggered;
                 gestureStateRef.current.isDragging = false;
                 gestureStateRef.current.lastDirection = null;
-                // Reset the gesture trigger flag after a short delay to allow clicks
-                setTimeout(() => {
-                  gestureStateRef.current.hasGestureTriggered = false;
-                }, 100);
+                if (wasDragGesture) {
+                  // Real drag happened — delay reset to prevent synthetic click after drag
+                  setTimeout(() => {
+                    gestureStateRef.current.hasGestureTriggered = false;
+                  }, 100);
+                }
+                // If no drag gesture, hasGestureTriggered is already false — click will pass through
               }
               return;
             }
