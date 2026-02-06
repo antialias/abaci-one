@@ -148,6 +148,7 @@ const defaultSessionMode: SessionMode = {
   phase: mockPhase,
   skipCount: 0,
   focusDescription: 'Test focus',
+  canSkipTutorial: true,
 }
 
 function createWrapper() {

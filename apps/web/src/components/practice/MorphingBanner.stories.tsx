@@ -26,6 +26,7 @@ const mockProgressionMode: SessionMode = {
   tutorialRequired: true,
   skipCount: 0,
   focusDescription: 'Ready to learn +5 (Heaven Bead)',
+  canSkipTutorial: true,
 }
 
 const mockRemediationMode: SessionMode = {

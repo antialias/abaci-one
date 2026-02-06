@@ -8,8 +8,7 @@ import {
   DurationSelector,
   PracticeModesSelector,
   GameBreakSettings,
-  TutorialCTA,
-  RemediationCTA,
+  SessionFocusInfo,
 } from '../start-practice-modal'
 
 // Mock ThemeContext
@@ -97,6 +96,7 @@ const defaultSessionMode: SessionMode = {
   phase: mockPhase,
   skipCount: 0,
   focusDescription: 'Test focus',
+  canSkipTutorial: true,
 }
 
 const tutorialSessionMode: SessionMode = {
@@ -110,6 +110,7 @@ const tutorialSessionMode: SessionMode = {
   phase: mockPhase,
   skipCount: 0,
   focusDescription: 'Learning new skill',
+  canSkipTutorial: true,
 }
 
 const remediationSessionMode: SessionMode = {
@@ -271,94 +272,70 @@ describe('GameBreakSettings', () => {
   })
 })
 
-describe('TutorialCTA', () => {
+describe('SessionFocusInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  const onStartTutorial = vi.fn()
-
-  it('should not render when tutorial is not required', () => {
-    const { container } = render(<TutorialCTA onStartTutorial={onStartTutorial} />, {
-      wrapper: createWrapper(),
-    })
-
-    // Should render nothing
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('should render when tutorial is required', () => {
-    render(<TutorialCTA onStartTutorial={onStartTutorial} />, {
+  it('should render progression info when tutorial is included', () => {
+    const { container } = render(<SessionFocusInfo />, {
       wrapper: createWrapper({ sessionMode: tutorialSessionMode }),
     })
 
-    expect(screen.getByText(/You've unlocked:/)).toBeInTheDocument()
-    expect(screen.getByText('Test Tutorial')).toBeInTheDocument()
+    // Check data attribute for focus type
+    const element = container.querySelector('[data-focus-type="progression"]')
+    expect(element).toBeInTheDocument()
+    expect(element?.textContent).toContain('Learning')
+    expect(element?.textContent).toContain('Test Tutorial')
   })
 
-  it('should show begin tutorial button', () => {
-    render(<TutorialCTA onStartTutorial={onStartTutorial} />, {
+  it('should show skip tutorial checkbox when canSkipTutorial is true', () => {
+    render(<SessionFocusInfo />, {
       wrapper: createWrapper({ sessionMode: tutorialSessionMode }),
     })
 
-    expect(screen.getByText('Begin Tutorial')).toBeInTheDocument()
+    expect(screen.getByText(/Skip tutorial/)).toBeInTheDocument()
   })
 
-  it('should call onStartTutorial when button is clicked', () => {
-    render(<TutorialCTA onStartTutorial={onStartTutorial} />, {
-      wrapper: createWrapper({ sessionMode: tutorialSessionMode }),
-    })
-
-    const button = screen.getByRole('button', { name: /begin tutorial/i })
-    fireEvent.click(button)
-
-    expect(onStartTutorial).toHaveBeenCalled()
-  })
-})
-
-describe('RemediationCTA', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should not render for progression mode', () => {
-    const { container } = render(<RemediationCTA />, {
-      wrapper: createWrapper(),
-    })
-
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('should render for remediation mode', () => {
-    render(<RemediationCTA />, {
+  it('should render remediation info for remediation mode', () => {
+    render(<SessionFocusInfo />, {
       wrapper: createWrapper({ sessionMode: remediationSessionMode }),
     })
 
-    expect(screen.getByText('Time to build strength!')).toBeInTheDocument()
+    expect(screen.getByText(/Strengthening:/)).toBeInTheDocument()
+    expect(screen.getByText(/Weak Skill 1, Weak Skill 2/)).toBeInTheDocument()
   })
 
-  it('should display weak skills count', () => {
-    render(<RemediationCTA />, {
-      wrapper: createWrapper({ sessionMode: remediationSessionMode }),
+  it('should render maintenance info for maintenance mode', () => {
+    const maintenanceSessionMode: SessionMode = {
+      type: 'maintenance',
+      skillCount: 5,
+      focusDescription: 'Maintaining all skills',
+    }
+
+    render(<SessionFocusInfo />, {
+      wrapper: createWrapper({ sessionMode: maintenanceSessionMode }),
     })
 
-    expect(screen.getByText(/2 skills that need practice/)).toBeInTheDocument()
+    expect(screen.getByText(/Mixed review/)).toBeInTheDocument()
+    expect(screen.getByText(/5 skills/)).toBeInTheDocument()
   })
 
-  it('should display weak skill badges', () => {
-    render(<RemediationCTA />, {
-      wrapper: createWrapper({ sessionMode: remediationSessionMode }),
+  it('should show progression-no-tutorial fallback when no tutorial config', () => {
+    const progressionNoTutorial: SessionMode = {
+      type: 'progression',
+      nextSkill: { skillId: 'no-tutorial-skill', displayName: 'No Tutorial Skill', pKnown: 0.8 },
+      tutorialRequired: false,
+      phase: mockPhase,
+      skipCount: 0,
+      focusDescription: 'Practice focus description',
+      canSkipTutorial: true,
+    }
+
+    render(<SessionFocusInfo />, {
+      wrapper: createWrapper({ sessionMode: progressionNoTutorial }),
     })
 
-    expect(screen.getByText(/Weak Skill 1/)).toBeInTheDocument()
-    expect(screen.getByText(/Weak Skill 2/)).toBeInTheDocument()
-  })
-
-  it('should show start button', () => {
-    render(<RemediationCTA />, {
-      wrapper: createWrapper({ sessionMode: remediationSessionMode }),
-    })
-
-    expect(screen.getByText('Start Focus Practice')).toBeInTheDocument()
+    expect(screen.getByText('Practice focus description')).toBeInTheDocument()
   })
 })

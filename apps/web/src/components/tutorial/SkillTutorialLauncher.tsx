@@ -505,33 +505,38 @@ export function SkillTutorialLauncher({
               Start Tutorial
             </button>
 
-            <button
-              data-action="skip-tutorial"
-              onClick={() => {
-                if (isObservationMode && onControl) {
-                  onControl({ type: 'skip-tutorial' })
-                } else {
-                  handleSkip()
-                }
-              }}
-              disabled={isSubmitting}
-              className={css({
-                px: 4,
-                py: 3,
-                bg: 'transparent',
-                color: theme === 'dark' ? 'gray.400' : 'gray.500',
-                fontSize: 'sm',
-                borderRadius: 'lg',
-                cursor: 'pointer',
-                _hover: {
-                  bg: theme === 'dark' ? 'gray.700' : 'gray.100',
-                  color: theme === 'dark' ? 'gray.300' : 'gray.600',
-                },
-                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-              })}
-            >
-              Skip for now
-            </button>
+            {/* Only show skip button if onSkip handler is provided.
+                When canSkipTutorial is false (user has no other skills),
+                the parent won't pass onSkip, hiding this button. */}
+            {onSkip && (
+              <button
+                data-action="skip-tutorial"
+                onClick={() => {
+                  if (isObservationMode && onControl) {
+                    onControl({ type: 'skip-tutorial' })
+                  } else {
+                    handleSkip()
+                  }
+                }}
+                disabled={isSubmitting}
+                className={css({
+                  px: 4,
+                  py: 3,
+                  bg: 'transparent',
+                  color: theme === 'dark' ? 'gray.400' : 'gray.500',
+                  fontSize: 'sm',
+                  borderRadius: 'lg',
+                  cursor: 'pointer',
+                  _hover: {
+                    bg: theme === 'dark' ? 'gray.700' : 'gray.100',
+                    color: theme === 'dark' ? 'gray.300' : 'gray.600',
+                  },
+                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                Skip for now
+              </button>
+            )}
           </div>
 
           {/* Cancel link */}

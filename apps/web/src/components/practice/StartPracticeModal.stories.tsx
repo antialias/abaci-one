@@ -97,6 +97,7 @@ const mockProgressionMode: ProgressionModeType = {
   tutorialRequired: true,
   skipCount: 0,
   focusDescription: 'Learning: +5',
+  canSkipTutorial: true,
 }
 
 const mockRemediationMode: RemediationModeType = {

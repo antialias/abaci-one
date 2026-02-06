@@ -3,20 +3,25 @@
 import { css } from '../../../../styled-system/css'
 import { useStartPracticeModal } from '../StartPracticeModalContext'
 
-export function StartButton() {
-  const { showTutorialGate, showRemediationCta, isStarting, handleStart } = useStartPracticeModal()
+interface StartButtonProps {
+  /** Optional override for the start handler (used for tutorial flow) */
+  onStart?: () => void
+}
 
-  // Only show when no special CTA is active
-  if (showTutorialGate || showRemediationCta) {
-    return null
-  }
+export function StartButton({ onStart }: StartButtonProps) {
+  const { isStarting, handleStart } = useStartPracticeModal()
+
+  // Use provided onStart or fall back to context handleStart
+  const handleClick = onStart ?? handleStart
+
+  // Always render - this is the only action button now
 
   return (
     <button
       type="button"
       data-action="start-practice"
       data-status={isStarting ? 'starting' : 'ready'}
-      onClick={handleStart}
+      onClick={handleClick}
       disabled={isStarting}
       className={css({
         width: '100%',

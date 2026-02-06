@@ -30,6 +30,7 @@ const mockProgressionMode: ProgressionMode = {
   tutorialRequired: true,
   skipCount: 0,
   focusDescription: 'Learning: +5 − 3',
+  canSkipTutorial: true,
 }
 
 // =============================================================================

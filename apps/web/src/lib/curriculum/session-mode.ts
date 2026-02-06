@@ -82,6 +82,12 @@ export interface ProgressionMode {
   skipCount: number
   /** Description for the session header */
   focusDescription: string
+  /**
+   * Whether the student can skip the tutorial and still practice.
+   * False when this is their first skill (no other skills to practice).
+   * When false, the tutorial is mandatory - skipping would result in no skills.
+   */
+  canSkipTutorial: boolean
 }
 
 /**
@@ -227,6 +233,11 @@ export async function getSessionMode(playerId: string): Promise<SessionMode> {
     // PROGRESSION MODE
     const nextSkillDisplay = getSkillDisplayName(nextSkillInfo.skillId)
 
+    // Student can skip tutorial only if they have other skills to practice.
+    // If this is their first skill (no practicing skills yet), skipping would
+    // result in NoSkillsEnabledClientError - so we must prevent skip.
+    const canSkipTutorial = practicingIds.size > 0
+
     return {
       type: 'progression',
       nextSkill: {
@@ -238,6 +249,7 @@ export async function getSessionMode(playerId: string): Promise<SessionMode> {
       tutorialRequired: !nextSkillInfo.tutorialReady,
       skipCount: nextSkillInfo.skipCount,
       focusDescription: `Learning: ${nextSkillDisplay}`,
+      canSkipTutorial,
     }
   }
 

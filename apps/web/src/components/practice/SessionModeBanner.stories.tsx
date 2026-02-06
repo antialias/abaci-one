@@ -73,6 +73,7 @@ const mockProgressionModeWithTutorial: ProgressionMode = {
   tutorialRequired: true,
   skipCount: 0,
   focusDescription: 'Learning: +5 - 4',
+  canSkipTutorial: true,
 }
 
 const mockProgressionModeNoTutorial: ProgressionMode = {
@@ -93,6 +94,7 @@ const mockProgressionModeNoTutorial: ProgressionMode = {
   tutorialRequired: false,
   skipCount: 2,
   focusDescription: 'Practice: +4',
+  canSkipTutorial: true,
 }
 
 const mockMaintenanceMode: MaintenanceMode = {

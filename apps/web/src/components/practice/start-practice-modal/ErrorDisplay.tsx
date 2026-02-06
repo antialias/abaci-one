@@ -4,14 +4,10 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../../styled-system/css'
 import { useStartPracticeModal } from '../StartPracticeModalContext'
 
-interface ErrorDisplayProps {
-  onOpenSkillSelector?: () => void
-}
-
-export function ErrorDisplay({ onOpenSkillSelector }: ErrorDisplayProps) {
+export function ErrorDisplay() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { displayError, isNoSkillsError } = useStartPracticeModal()
+  const { displayError, isNoSkillsError, setShowSkillSelector } = useStartPracticeModal()
 
   if (!displayError) {
     return null
@@ -62,28 +58,27 @@ export function ErrorDisplay({ onOpenSkillSelector }: ErrorDisplayProps) {
           >
             Enable at least one skill to start practicing.
           </p>
-          {onOpenSkillSelector && (
-            <button
-              type="button"
-              onClick={onOpenSkillSelector}
-              className={css({
-                padding: '0.5rem 1rem',
-                fontSize: '0.8125rem',
-                fontWeight: '600',
-                color: 'white',
-                backgroundColor: isDark ? '#d97706' : '#f59e0b',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                _hover: {
-                  backgroundColor: isDark ? '#b45309' : '#d97706',
-                },
-              })}
-            >
-              Open Skill Selector
-            </button>
-          )}
+          <button
+            type="button"
+            data-action="open-skill-selector"
+            onClick={() => setShowSkillSelector(true)}
+            className={css({
+              padding: '0.5rem 1rem',
+              fontSize: '0.8125rem',
+              fontWeight: '600',
+              color: 'white',
+              backgroundColor: isDark ? '#d97706' : '#f59e0b',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              _hover: {
+                backgroundColor: isDark ? '#b45309' : '#d97706',
+              },
+            })}
+          >
+            Open Skill Selector
+          </button>
         </>
       ) : (
         <p

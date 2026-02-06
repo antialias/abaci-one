@@ -2944,10 +2944,6 @@ export function DashboardClient({
               problemHistory={problemHistory}
               onClose={() => setShowStartPracticeModal(false)}
               onStarted={() => setShowStartPracticeModal(false)}
-              onOpenSkillSelector={() => {
-                setShowStartPracticeModal(false)
-                setShowManualSkillModal(true)
-              }}
             />
           )}
 

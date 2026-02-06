@@ -85,6 +85,7 @@ const defaultSessionMode: SessionMode = {
   phase: mockPhase,
   skipCount: 0,
   focusDescription: 'Test focus',
+  canSkipTutorial: true,
 }
 
 const remediationSessionMode: SessionMode = {
@@ -410,6 +411,7 @@ describe('StartPracticeModalContext', () => {
         phase: mockPhase,
         skipCount: 0,
         focusDescription: 'Learning new skill',
+        canSkipTutorial: true,
       }
 
       const { result } = renderHook(() => useStartPracticeModal(), {

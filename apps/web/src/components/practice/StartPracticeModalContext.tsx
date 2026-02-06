@@ -129,6 +129,19 @@ interface StartPracticeModalContextValue {
   showTutorialGate: boolean
   showRemediationCta: boolean
   nextSkill: { skillId: string; displayName: string } | null
+  /**
+   * Whether the student can skip the tutorial.
+   * False when user has no other skills to practice (first skill).
+   * When false, tutorial is mandatory.
+   */
+  canSkipTutorial: boolean
+  /**
+   * Whether to include tutorial in the session.
+   * Default: true when tutorialRequired.
+   * User can uncheck if canSkipTutorial is true.
+   */
+  includeTutorial: boolean
+  setIncludeTutorial: (include: boolean) => void
 
   // UI state
   isExpanded: boolean
@@ -138,6 +151,10 @@ interface StartPracticeModalContextValue {
   isStarting: boolean
   displayError: Error | null
   isNoSkillsError: boolean
+
+  // Skill selector (for "no skills" error remediation)
+  showSkillSelector: boolean
+  setShowSkillSelector: (show: boolean) => void
 
   // Actions
   handleStart: () => Promise<void>
@@ -189,6 +206,11 @@ export function StartPracticeModalProvider({
   // Session config state
   const [durationMinutes, setDurationMinutes] = useState(existingPlan?.targetDurationMinutes ?? 10)
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
+  const [showSkillSelector, setShowSkillSelector] = useState(false)
+  // Whether to include tutorial in session (default: true if tutorial is required)
+  const [includeTutorial, setIncludeTutorial] = useState(
+    sessionMode.type === 'progression' && sessionMode.tutorialRequired
+  )
   const [enabledParts, setEnabledParts] = useState<EnabledParts>({
     abacus: true,
     visualization: true,
@@ -357,6 +379,9 @@ export function StartPracticeModalProvider({
   const showTutorialGate = !!tutorialConfig
   const showRemediationCta = sessionMode.type === 'remediation' && sessionMode.weakSkills.length > 0
 
+  // Check if student can skip the tutorial (has other skills to practice)
+  const canSkipTutorial = sessionMode.type === 'progression' ? sessionMode.canSkipTutorial : true
+
   // Mutations
   const generatePlan = useGenerateSessionPlan()
   const approvePlan = useApproveSessionPlan()
@@ -506,6 +531,9 @@ export function StartPracticeModalProvider({
     showTutorialGate,
     showRemediationCta,
     nextSkill,
+    canSkipTutorial,
+    includeTutorial,
+    setIncludeTutorial,
 
     // UI state
     isExpanded,
@@ -515,6 +543,10 @@ export function StartPracticeModalProvider({
     isStarting,
     displayError,
     isNoSkillsError,
+
+    // Skill selector
+    showSkillSelector,
+    setShowSkillSelector,
 
     // Actions
     handleStart,
