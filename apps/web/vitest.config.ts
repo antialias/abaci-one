@@ -15,6 +15,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['json-summary', 'html'],
       reportsDirectory: './coverage',
+      reportOnFailure: true,
     },
   },
   resolve: {
