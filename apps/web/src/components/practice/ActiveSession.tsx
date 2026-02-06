@@ -46,6 +46,7 @@ import { usePracticeSoundEffects } from './hooks/usePracticeSoundEffects'
 import { NumericKeypad } from './NumericKeypad'
 import { PracticeFeedback } from './PracticeFeedback'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
+import { DebugOverlay } from './DebugOverlay'
 import { ProblemDebugPanel } from './ProblemDebugPanel'
 import { VerticalProblem } from './VerticalProblem'
 import type { ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
@@ -185,6 +186,8 @@ interface ActiveSessionProps {
   onCancelRedo?: () => void
   /** Called when a result is edited in browse mode (to trigger refetch) */
   onResultEdited?: () => void
+  /** When true, show the debug overlay with submit buttons */
+  debug?: boolean
 }
 
 /**
@@ -655,6 +658,7 @@ export function ActiveSession({
   onRedoComplete,
   onCancelRedo,
   onResultEdited,
+  debug = false,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -843,6 +847,7 @@ export function ActiveSession({
     isPaused,
     isSubmitting,
     prefixSums,
+    prefixMatch,
     matchedPrefixIndex,
     canSubmit,
     shouldAutoSubmit,
@@ -1450,6 +1455,9 @@ export function ActiveSession({
     // Ambiguous cases are handled by awaitingDisambiguation phase, which auto-transitions to helpMode
     if (phase.phase !== 'inputting') return
 
+    // Skip ambiguous matches - they should go through awaitingDisambiguation flow
+    if (prefixMatch.isAmbiguous) return
+
     // For unambiguous matches, trigger immediately
     if (matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1) {
       const newConfirmedCount = matchedPrefixIndex + 1
@@ -1457,7 +1465,7 @@ export function ActiveSession({
         enterHelpMode(newConfirmedCount)
       }
     }
-  }, [phase, matchedPrefixIndex, prefixSums.length, enterHelpMode, isDockedByUser])
+  }, [phase, prefixMatch, matchedPrefixIndex, prefixSums.length, enterHelpMode, isDockedByUser])
 
   // Handle when student reaches target value on help abacus
   // Sequence: show target value → dismiss abacus → show value in answer boxes → fade to empty → exit
@@ -1663,6 +1671,52 @@ export function ActiveSession({
       handleSubmit()
     }
   }, [shouldAutoSubmit, handleSubmit])
+
+  // Debug submit: set answer then submit after React commits the state update
+  const debugSubmitInFlightRef = useRef(false)
+  const handleSubmitRef = useRef(handleSubmit)
+  handleSubmitRef.current = handleSubmit
+  const debugSubmit = useCallback(
+    (value: number) => {
+      if (debugSubmitInFlightRef.current) return
+      debugSubmitInFlightRef.current = true
+      flushSync(() => {
+        setAnswer(String(value))
+      })
+      // Use rAF to ensure React has committed the state before calling handleSubmit
+      requestAnimationFrame(() => {
+        handleSubmitRef.current()
+        // Reset guard after submission completes (allow next submit after delay)
+        setTimeout(() => {
+          debugSubmitInFlightRef.current = false
+        }, 2000)
+      })
+    },
+    [setAnswer]
+  )
+
+  // Expose global debug API for e2e tests and Chrome DevTools automation
+  // Gated on ?debug=1 in URL (checked directly, not via useSearchParams)
+  useEffect(() => {
+    const isDebugUrl =
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('debug') === '1'
+    if (!isDebugUrl) return
+
+    const api = {
+      getAnswer: () => attempt?.problem?.answer ?? null,
+      submitCorrect: () => {
+        if (attempt?.problem) debugSubmit(attempt.problem.answer)
+      },
+      submitWrong: () => {
+        if (attempt?.problem) debugSubmit(attempt.problem.answer + 1)
+      },
+    }
+    ;(window as any).__practiceDebug = api
+    return () => {
+      delete (window as any).__practiceDebug
+    }
+  })
 
   // Handle keyboard input
   useEffect(() => {
@@ -2406,6 +2460,19 @@ export function ActiveSession({
             />
           )}
         </div>
+      )}
+
+      {/* Debug overlay - submit buttons for automated testing */}
+      {debug && attempt?.problem && (
+        <DebugOverlay
+          correctAnswer={attempt.problem.answer}
+          partIndex={currentPartIndex}
+          slotIndex={currentSlotIndex}
+          partType={currentPart?.type ?? 'abacus'}
+          purpose={currentSlot?.purpose ?? 'focus'}
+          onSubmitCorrect={() => debugSubmit(attempt.problem.answer)}
+          onSubmitWrong={() => debugSubmit(attempt.problem.answer + 1)}
+        />
       )}
 
       {/* Debug panel - shows current problem details when visual debug mode is on */}

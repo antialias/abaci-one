@@ -1648,6 +1648,70 @@ describe('useInteractionPhase', () => {
   })
 
   // ===========================================================================
+  // Regression: helpMode exit with ambiguous prefix should not re-enter help
+  // https://github.com/antialias/abaci-one/issues/2
+  // ===========================================================================
+
+  describe('helpMode exit with ambiguous prefix (issue #2)', () => {
+    // Problem: 4 + 30 + 10 = 44, prefix sums: [4, 34, 44]
+    // Bug: typing "4" from helpMode should go to awaitingDisambiguation, not back to helpMode
+    const ambiguousProblem = createTestProblem([4, 30, 10]) // answer: 44
+
+    it('typing digit from helpMode goes to awaitingDisambiguation when prefix match is ambiguous', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(ambiguousProblem, 0, 0)
+      })
+
+      // Enter help mode explicitly (simulating timer expiration after first "4")
+      act(() => {
+        result.current.enterHelpMode(1)
+      })
+      expect(result.current.phase.phase).toBe('helpMode')
+
+      // Type "4" to exit help mode - should go to awaitingDisambiguation, NOT helpMode
+      // because "4" matches prefix sum [4] but could also be the first digit of [44]
+      act(() => {
+        result.current.handleDigit('4')
+      })
+      expect(result.current.phase.phase).toBe('awaitingDisambiguation')
+      // NOT helpMode - this was the bug
+      expect(result.current.phase.phase).not.toBe('helpMode')
+    })
+
+    it('typing second digit from awaitingDisambiguation completes the answer', () => {
+      const { result } = renderHook(() => useInteractionPhase())
+
+      act(() => {
+        result.current.loadProblem(ambiguousProblem, 0, 0)
+      })
+
+      // Enter help mode
+      act(() => {
+        result.current.enterHelpMode(1)
+      })
+
+      // Type "4" - goes to awaitingDisambiguation
+      act(() => {
+        result.current.handleDigit('4')
+      })
+      expect(result.current.phase.phase).toBe('awaitingDisambiguation')
+
+      // Type second "4" - should complete the answer "44"
+      act(() => {
+        result.current.handleDigit('4')
+      })
+      expect(result.current.phase.phase).toBe('inputting')
+      if (result.current.phase.phase === 'inputting') {
+        expect(result.current.phase.attempt.userAnswer).toBe('44')
+      }
+      // Should auto-submit since 44 === answer
+      expect(result.current.shouldAutoSubmit).toBe(true)
+    })
+  })
+
+  // ===========================================================================
   // Complete phase
   // ===========================================================================
 

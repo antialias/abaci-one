@@ -766,13 +766,13 @@ export function useInteractionPhase(
         }
 
         // If in help mode, exit help mode and start fresh with the new digit
+        // We reset to an empty answer and fall through to the normal digit processing
+        // so that ambiguity checks (awaitingDisambiguation) still apply
         if (prev.phase === 'helpMode') {
-          const freshAttempt = {
-            ...prev.attempt,
-            userAnswer: digit,
-            rejectedDigit: null,
+          prev = {
+            phase: 'inputting',
+            attempt: { ...prev.attempt, userAnswer: '', rejectedDigit: null },
           }
-          return { phase: 'inputting', attempt: freshAttempt }
         }
 
         const attempt = prev.attempt
