@@ -22,69 +22,12 @@
  */
 
 import { type NextRequest, NextResponse } from 'next/server'
-import { desc, eq, inArray, ne } from 'drizzle-orm'
+import { desc, inArray } from 'drizzle-orm'
 import { db } from '@/db'
 import { smokeTestRuns } from '@/db/schema'
-import { metrics } from '@/lib/metrics'
+import { metrics, updateSmokeTestMetrics } from '@/lib/metrics'
 
 export const dynamic = 'force-dynamic'
-
-/**
- * Update Prometheus metrics from a smoke test result.
- * Called both when new results arrive and on startup (to survive pod restarts).
- */
-function updateSmokeTestMetrics(run: {
-  status: string
-  startedAt: Date
-  completedAt: Date | null
-  totalTests: number | null
-  passedTests: number | null
-  failedTests: number | null
-  durationMs: number | null
-}) {
-  metrics.smokeTest.lastStatus.set(run.status === 'passed' ? 1 : 0)
-  metrics.smokeTest.lastRunTimestamp.set(
-    (run.completedAt ?? run.startedAt).getTime() / 1000
-  )
-  if (run.durationMs != null) {
-    metrics.smokeTest.lastDuration.set(run.durationMs / 1000)
-  }
-  if (run.totalTests != null) {
-    metrics.smokeTest.lastTotal.set(run.totalTests)
-  }
-  if (run.passedTests != null) {
-    metrics.smokeTest.lastPassed.set(run.passedTests)
-  }
-  if (run.failedTests != null) {
-    metrics.smokeTest.lastFailed.set(run.failedTests)
-  }
-}
-
-// Initialize metrics from DB on startup so they survive pod restarts.
-// This runs once when the module is first imported.
-const _initMetrics = db
-  .select()
-  .from(smokeTestRuns)
-  .where(ne(smokeTestRuns.status, 'running'))
-  .orderBy(desc(smokeTestRuns.startedAt))
-  .limit(1)
-  .get()
-  .then((latestRun) => {
-    if (latestRun) {
-      updateSmokeTestMetrics({
-        status: latestRun.status,
-        startedAt: latestRun.startedAt,
-        completedAt: latestRun.completedAt,
-        totalTests: latestRun.totalTests,
-        passedTests: latestRun.passedTests,
-        failedTests: latestRun.failedTests,
-        durationMs: latestRun.durationMs,
-      })
-    }
-  })
-  .catch((err) => {
-    console.error('Failed to initialize smoke test metrics from DB:', err)
-  })
 
 interface SmokeTestResultsRequest {
   id: string

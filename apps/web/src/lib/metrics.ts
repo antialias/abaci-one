@@ -473,6 +473,64 @@ export const smokeTestRunsTotal = new Counter({
   registers: [metricsRegistry],
 })
 
+/**
+ * Update smoke test gauges from a result object.
+ * Used both for DB initialization and when new results arrive via API.
+ */
+export function updateSmokeTestMetrics(run: {
+  status: string
+  startedAt: Date
+  completedAt: Date | null
+  totalTests: number | null
+  passedTests: number | null
+  failedTests: number | null
+  durationMs: number | null
+}) {
+  smokeTestLastStatus.set(run.status === 'passed' ? 1 : 0)
+  smokeTestLastRunTimestamp.set(
+    (run.completedAt ?? run.startedAt).getTime() / 1000
+  )
+  if (run.durationMs != null) {
+    smokeTestLastDuration.set(run.durationMs / 1000)
+  }
+  if (run.totalTests != null) {
+    smokeTestLastTotal.set(run.totalTests)
+  }
+  if (run.passedTests != null) {
+    smokeTestLastPassed.set(run.passedTests)
+  }
+  if (run.failedTests != null) {
+    smokeTestLastFailed.set(run.failedTests)
+  }
+}
+
+/**
+ * Initialize smoke test metrics from DB on startup.
+ * Uses dynamic import to avoid circular dependency with db module.
+ * Runs on every pod so all replicas report consistent values.
+ */
+export const smokeTestMetricsReady = (async () => {
+  try {
+    const { db } = await import('@/db')
+    const { smokeTestRuns } = await import('@/db/schema')
+    const { desc, ne } = await import('drizzle-orm')
+
+    const latestRun = await db
+      .select()
+      .from(smokeTestRuns)
+      .where(ne(smokeTestRuns.status, 'running'))
+      .orderBy(desc(smokeTestRuns.startedAt))
+      .limit(1)
+      .get()
+
+    if (latestRun) {
+      updateSmokeTestMetrics(latestRun)
+    }
+  } catch (err) {
+    console.error('Failed to initialize smoke test metrics from DB:', err)
+  }
+})()
+
 // =============================================================================
 // ERROR METRICS
 // =============================================================================
