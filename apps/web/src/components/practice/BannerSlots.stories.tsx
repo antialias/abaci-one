@@ -8,6 +8,7 @@ import {
   useSessionModeBanner,
 } from '@/contexts/SessionModeBannerContext'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
+import type { SkillReadinessResult } from '@/lib/curriculum/skill-readiness'
 import { css } from '../../../styled-system/css'
 import { ContentBannerSlot, NavBannerSlot, ProjectingBanner } from './BannerSlots'
 
@@ -87,15 +88,104 @@ const mockMaintenanceMode: SessionMode = {
   focusDescription: 'All 12 skills mastered - maintenance practice',
 }
 
+const mockProgressionSoftNudge: SessionMode = {
+  type: 'progression',
+  nextSkill: {
+    skillId: 'heaven.5',
+    displayName: '+5 (Heaven Bead)',
+    pKnown: 0,
+  },
+  phase: {
+    id: 'level1-phase2',
+    name: 'Heaven Bead',
+    primarySkillId: 'heaven.5',
+  } as any,
+  tutorialRequired: true,
+  skipCount: 0,
+  focusDescription: 'Ready to learn +5 (Heaven Bead)',
+  canSkipTutorial: true,
+}
+
+const mockMaintenanceDeferredAllMet: SessionMode = {
+  type: 'maintenance',
+  skillCount: 5,
+  focusDescription: 'Mixed practice',
+  deferredProgression: {
+    nextSkill: {
+      skillId: 'heaven.5',
+      displayName: '+5 (Heaven Bead)',
+      pKnown: 0,
+    },
+    readiness: {
+      'add.3': {
+        skillId: 'add.3',
+        isSolid: true,
+        dimensions: {
+          mastery: { met: true, pKnown: 0.92, confidence: 0.75 },
+          volume: { met: true, opportunities: 35, sessionCount: 5 },
+          speed: { met: true, medianSecondsPerTerm: 2.1 },
+          consistency: { met: true, recentAccuracy: 0.93, lastFiveAllCorrect: true, recentHelpCount: 0 },
+        },
+      } satisfies SkillReadinessResult,
+      'add.4': {
+        skillId: 'add.4',
+        isSolid: true,
+        dimensions: {
+          mastery: { met: true, pKnown: 0.90, confidence: 0.70 },
+          volume: { met: true, opportunities: 30, sessionCount: 4 },
+          speed: { met: true, medianSecondsPerTerm: 2.4 },
+          consistency: { met: true, recentAccuracy: 0.91, lastFiveAllCorrect: true, recentHelpCount: 0 },
+        },
+      } satisfies SkillReadinessResult,
+    },
+    phase: {
+      id: 'level1-phase2',
+      name: 'Heaven Bead',
+      primarySkillId: 'heaven.5',
+    } as any,
+  },
+}
+
+const mockMaintenanceDeferredPartial: SessionMode = {
+  type: 'maintenance',
+  skillCount: 5,
+  focusDescription: 'Mixed practice',
+  deferredProgression: {
+    nextSkill: {
+      skillId: 'heaven.5',
+      displayName: '+5 (Heaven Bead)',
+      pKnown: 0,
+    },
+    readiness: {
+      'add.3': {
+        skillId: 'add.3',
+        isSolid: false,
+        dimensions: {
+          mastery: { met: true, pKnown: 0.88, confidence: 0.65 },
+          volume: { met: true, opportunities: 28, sessionCount: 4 },
+          speed: { met: false, medianSecondsPerTerm: 5.3 },
+          consistency: { met: false, recentAccuracy: 0.73, lastFiveAllCorrect: false, recentHelpCount: 2 },
+        },
+      } satisfies SkillReadinessResult,
+    },
+    phase: {
+      id: 'level1-phase2',
+      name: 'Heaven Bead',
+      primarySkillId: 'heaven.5',
+    } as any,
+  },
+}
+
 // =============================================================================
 // Helper Components
 // =============================================================================
 
 function ActionRegistrar() {
-  const { setOnAction } = useSessionModeBanner()
+  const { setOnAction, setOnDefer } = useSessionModeBanner()
   useEffect(() => {
     setOnAction(() => alert('Practice action triggered!'))
-  }, [setOnAction])
+    setOnDefer(() => alert('Defer triggered! Will ask again later.'))
+  }, [setOnAction, setOnDefer])
   return null
 }
 
@@ -542,4 +632,48 @@ export const ScrollProjectionDark: Story = {
 export const ScrollProjectionProgression: Story = {
   name: 'Scroll Projection (Progression)',
   render: () => <ScrollProjectionDemo sessionMode={mockProgressionMode} />,
+}
+
+// =============================================================================
+// Readiness Stories
+// =============================================================================
+
+export const ProgressionSoftNudge: Story = {
+  name: 'Progression (Soft Nudge with Defer)',
+  render: () => <BannerSlotsDemo sessionMode={mockProgressionSoftNudge} />,
+}
+
+export const MaintenanceDeferredAllMet: Story = {
+  name: 'Maintenance (Deferred - All Dimensions Met)',
+  render: () => <BannerSlotsDemo sessionMode={mockMaintenanceDeferredAllMet} />,
+}
+
+export const MaintenanceDeferredPartial: Story = {
+  name: 'Maintenance (Deferred - Partial Readiness)',
+  render: () => <BannerSlotsDemo sessionMode={mockMaintenanceDeferredPartial} />,
+}
+
+export const DarkModeProgressionSoftNudge: Story = {
+  name: 'Dark Mode (Progression Soft Nudge)',
+  render: () => <BannerSlotsDemo sessionMode={mockProgressionSoftNudge} darkMode />,
+}
+
+export const DarkMaintenanceDeferredAllMet: Story = {
+  name: 'Dark Mode (Deferred - All Met)',
+  render: () => <BannerSlotsDemo sessionMode={mockMaintenanceDeferredAllMet} darkMode />,
+}
+
+export const DarkMaintenanceDeferredPartial: Story = {
+  name: 'Dark Mode (Deferred - Partial)',
+  render: () => <BannerSlotsDemo sessionMode={mockMaintenanceDeferredPartial} darkMode />,
+}
+
+export const ScrollProjectionSoftNudge: Story = {
+  name: 'Scroll Projection (Progression Soft Nudge)',
+  render: () => <ScrollProjectionDemo sessionMode={mockProgressionSoftNudge} />,
+}
+
+export const ScrollProjectionMaintenanceDeferred: Story = {
+  name: 'Scroll Projection (Maintenance Deferred)',
+  render: () => <ScrollProjectionDemo sessionMode={mockMaintenanceDeferredPartial} />,
 }

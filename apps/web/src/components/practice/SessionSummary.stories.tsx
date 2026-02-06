@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react'
+import React, { useEffect } from 'react'
 import type {
   GeneratedProblem,
   ProblemSlot,
@@ -7,13 +8,21 @@ import type {
   SessionSummary as SessionSummaryType,
   SlotResult,
 } from '@/db/schema/session-plans'
-import { createBasicSkillSet } from '@/types/tutorial'
+import { createBasicSkillSet, type SkillSet } from '@/types/tutorial'
 import {
   analyzeRequiredSkills,
   type ProblemConstraints as GeneratorConstraints,
   generateSingleProblem,
 } from '@/utils/problemGenerator'
+import { ThemeProvider } from '@/contexts/ThemeContext'
+import {
+  SessionModeBannerProvider,
+  useSessionModeBanner,
+} from '@/contexts/SessionModeBannerContext'
+import type { SessionMode } from '@/lib/curriculum/session-mode'
+import type { SkillReadinessResult } from '@/lib/curriculum/skill-readiness'
 import { css } from '../../../styled-system/css'
+import { ContentBannerSlot } from './BannerSlots'
 import { SessionSummary } from './SessionSummary'
 
 const meta: Meta<typeof SessionSummary> = {
@@ -103,6 +112,8 @@ function generateMockResults(config: {
       skillsExercised: problem.skillsRequired,
       usedOnScreenAbacus: usedAbacus,
       timestamp: new Date(Date.now() - (count - i) * 30000),
+      hadHelp: false,
+      incorrectAttempts: 0,
     }
   })
 }
@@ -126,7 +137,7 @@ function createCompletedSessionPlan(config: {
       index: i,
       purpose: 'focus' as const,
       constraints: {
-        allowedSkills: { basic: { directAddition: true } },
+        allowedSkills: { basic: { directAddition: true } } as Partial<SkillSet>,
         digitRange: { min: 1, max: 1 },
         termCount: { min: 3, max: 4 },
       },
@@ -190,6 +201,8 @@ function createCompletedSessionPlan(config: {
     targetDurationMinutes: 10,
     estimatedProblemCount: totalProblems,
     avgTimePerProblemSeconds: 40,
+    gameBreakSettings: null,
+    masteredSkillIds: [],
     parts,
     summary,
     status: 'completed',
@@ -204,10 +217,16 @@ function createCompletedSessionPlan(config: {
     },
     adjustments: [],
     results,
-    createdAt: Date.now() - sessionDurationMs - 120000,
-    approvedAt: Date.now() - sessionDurationMs - 60000,
-    startedAt: Date.now() - sessionDurationMs,
-    completedAt: Date.now(),
+    retryState: null,
+    remoteCameraSessionId: null,
+    isPaused: false,
+    pausedAt: null,
+    pausedBy: null,
+    pauseReason: null,
+    createdAt: new Date(Date.now() - sessionDurationMs - 120000),
+    approvedAt: new Date(Date.now() - sessionDurationMs - 60000),
+    startedAt: new Date(Date.now() - sessionDurationMs),
+    completedAt: new Date(),
   }
 }
 
@@ -453,4 +472,196 @@ export const PerformanceComparison: Story = {
       })}
     </div>
   ),
+}
+
+// =============================================================================
+// Just-Completed + Banner Composite Stories
+// =============================================================================
+
+/**
+ * Helper that registers action/defer callbacks with the banner provider.
+ */
+function ActionRegistrar() {
+  const { setOnAction, setOnDefer } = useSessionModeBanner()
+  useEffect(() => {
+    setOnAction(() => alert('Practice action triggered!'))
+    setOnDefer(() => alert('Deferred!'))
+  }, [setOnAction, setOnDefer])
+  return null
+}
+
+/**
+ * Perfect session with justCompleted=true — triggers PerfectSessionCelebration
+ * (confetti + celebration card). All results are correct.
+ */
+export const PerfectSessionJustCompleted: Story = {
+  render: () => {
+    const results = generateMockResults({
+      count: 15,
+      correctRate: 1.0,
+      skillLevel: 'basic',
+    })
+    return (
+      <SummaryWrapper>
+        <SessionSummary
+          plan={createCompletedSessionPlan({ results, skillLevel: 'basic' })}
+          studentName="Sonia"
+          justCompleted
+          {...handlers}
+        />
+      </SummaryWrapper>
+    )
+  },
+}
+
+/**
+ * Just completed with good (but not perfect) score — shows the
+ * non-celebration "Great Work" header for contrast.
+ */
+export const JustCompletedGoodScore: Story = {
+  render: () => {
+    const results = generateMockResults({
+      count: 15,
+      correctRate: 0.8,
+      skillLevel: 'basic',
+    })
+    return (
+      <SummaryWrapper>
+        <SessionSummary
+          plan={createCompletedSessionPlan({ results, skillLevel: 'basic' })}
+          studentName="Marcus"
+          justCompleted
+          {...handlers}
+        />
+      </SummaryWrapper>
+    )
+  },
+}
+
+// Mock session modes for composite stories
+
+const mockProgressionMode: SessionMode = {
+  type: 'progression',
+  nextSkill: {
+    skillId: 'heaven.5',
+    displayName: '+5 (Heaven Bead)',
+    pKnown: 0,
+  },
+  phase: {
+    id: 'level1-phase2',
+    name: 'Heaven Bead',
+    primarySkillId: 'heaven.5',
+  } as any,
+  tutorialRequired: true,
+  skipCount: 0,
+  focusDescription: 'Ready to learn +5 (Heaven Bead)',
+  canSkipTutorial: true,
+}
+
+const mockMaintenanceDeferredMode: SessionMode = {
+  type: 'maintenance',
+  skillCount: 5,
+  focusDescription: 'Mixed practice',
+  deferredProgression: {
+    nextSkill: {
+      skillId: 'heaven.5',
+      displayName: '+5 (Heaven Bead)',
+      pKnown: 0,
+    },
+    readiness: {
+      'add.3': {
+        skillId: 'add.3',
+        isSolid: false,
+        dimensions: {
+          mastery: { met: true, pKnown: 0.88, confidence: 0.65 },
+          volume: { met: true, opportunities: 28, sessionCount: 4 },
+          speed: { met: false, medianSecondsPerTerm: 5.3 },
+          consistency: { met: false, recentAccuracy: 0.73, lastFiveAllCorrect: false, recentHelpCount: 2 },
+        },
+      } satisfies SkillReadinessResult,
+    },
+    phase: {
+      id: 'level1-phase2',
+      name: 'Heaven Bead',
+      primarySkillId: 'heaven.5',
+    } as any,
+  },
+}
+
+/**
+ * Composite: Perfect session celebration with a progression-mode banner above.
+ * Shows the banner + celebration card together as on the real summary page.
+ */
+export const PerfectSessionWithBanner: Story = {
+  parameters: { layout: 'fullscreen' },
+  render: () => {
+    const results = generateMockResults({
+      count: 15,
+      correctRate: 1.0,
+      skillLevel: 'basic',
+    })
+    return (
+      <ThemeProvider>
+        <SessionModeBannerProvider sessionMode={mockProgressionMode} isLoading={false}>
+          <ActionRegistrar />
+          <div
+            className={css({
+              backgroundColor: 'gray.100',
+              padding: '2rem',
+              minHeight: '100vh',
+            })}
+          >
+            <div className={css({ maxWidth: '700px', margin: '0 auto' })}>
+              <ContentBannerSlot className={css({ marginBottom: '1.5rem' })} />
+              <SessionSummary
+                plan={createCompletedSessionPlan({ results, skillLevel: 'basic' })}
+                studentName="Sonia"
+                justCompleted
+                {...handlers}
+              />
+            </div>
+          </div>
+        </SessionModeBannerProvider>
+      </ThemeProvider>
+    )
+  },
+}
+
+/**
+ * Composite: Maintenance mode with deferred progression (inline ReadinessReport)
+ * above the session summary.
+ */
+export const SummaryWithMaintenanceDeferredBanner: Story = {
+  parameters: { layout: 'fullscreen' },
+  render: () => {
+    const results = generateMockResults({
+      count: 15,
+      correctRate: 0.87,
+      skillLevel: 'basic',
+    })
+    return (
+      <ThemeProvider>
+        <SessionModeBannerProvider sessionMode={mockMaintenanceDeferredMode} isLoading={false}>
+          <ActionRegistrar />
+          <div
+            className={css({
+              backgroundColor: 'gray.100',
+              padding: '2rem',
+              minHeight: '100vh',
+            })}
+          >
+            <div className={css({ maxWidth: '700px', margin: '0 auto' })}>
+              <ContentBannerSlot className={css({ marginBottom: '1.5rem' })} />
+              <SessionSummary
+                plan={createCompletedSessionPlan({ results, skillLevel: 'basic' })}
+                studentName="Sonia"
+                justCompleted
+                {...handlers}
+              />
+            </div>
+          </div>
+        </SessionModeBannerProvider>
+      </ThemeProvider>
+    )
+  },
 }

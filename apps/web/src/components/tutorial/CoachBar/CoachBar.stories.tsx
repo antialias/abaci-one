@@ -21,8 +21,13 @@ const createMockSegment = (overrides: Partial<PedagogicalSegment> = {}): Pedagog
     },
   ],
   expression: '5',
+  stepIndices: [0],
   termIndices: [0],
   termRange: { startIndex: 0, endIndex: 1 },
+  startValue: 0,
+  endValue: 5,
+  startState: { 0: { heavenActive: false, earthActive: 0 } },
+  endState: { 0: { heavenActive: true, earthActive: 0 } },
   readable: {
     title: 'Direct Move',
     subtitle: 'Simple bead movement',
@@ -31,11 +36,17 @@ const createMockSegment = (overrides: Partial<PedagogicalSegment> = {}): Pedagog
       { label: 'Digit being added', value: '5' },
       { label: 'Target place', value: 'ones' },
     ],
+    why: [],
     stepsFriendly: ['Press the heaven bead down'],
     validation: { ok: true, issues: [] },
   },
   ...overrides,
 })
+
+type CoachBarStoryArgs = {
+  mockSegment?: PedagogicalSegment | null
+  canHideCoachBar?: boolean
+}
 
 const meta: Meta<typeof CoachBar> = {
   title: 'Tutorial/CoachBar',
@@ -59,7 +70,7 @@ The CoachBar shows contextual guidance during tutorial steps. It displays the cu
     },
   },
   decorators: [
-    (Story, context) => {
+    (Story: any, context: any) => {
       const segment = context.args.mockSegment || null
       const canHide = context.args.canHideCoachBar ?? true
 
@@ -90,7 +101,7 @@ The CoachBar shows contextual guidance during tutorial steps. It displays the cu
 }
 
 export default meta
-type Story = StoryObj<typeof meta>
+type Story = StoryObj<CoachBarStoryArgs>
 
 export const Default: Story = {
   args: {
@@ -109,6 +120,7 @@ export const DirectMove: Story = {
           { label: 'Digit being added', value: '3' },
           { label: 'Rod shows', value: '0 (empty)' },
         ],
+        why: [],
         stepsFriendly: ['Move 3 earth beads down'],
         validation: { ok: true, issues: [] },
       },
@@ -128,6 +140,7 @@ export const FiveComplement: Story = {
           { label: 'Target digit', value: '8' },
           { label: 'Five friend', value: '5 - 2 = 3' },
         ],
+        why: [],
         stepsFriendly: [
           'Press heaven bead down (+5)',
           'Lift 2 earth beads (-2)',
@@ -151,6 +164,7 @@ export const TenComplement: Story = {
           { label: 'Target digit', value: '7' },
           { label: 'Ten friend', value: '10 - 3 = 7' },
         ],
+        why: [],
         stepsFriendly: [
           'Add 1 to tens place (+10)',
           'Subtract 3 from ones place (-3)',
@@ -174,6 +188,7 @@ export const WithLongContent: Story = {
           { label: 'Starting position', value: 'hundreds = 9' },
           { label: 'Cascade effect', value: 'ripples to thousands' },
         ],
+        why: [],
         stepsFriendly: ['Complex multi-step operation'],
         validation: { ok: true, issues: [] },
       },
@@ -188,6 +203,7 @@ export const WithMinimalContent: Story = {
         title: 'Step',
         summary: 'Short instruction.',
         chips: [],
+        why: [],
         stepsFriendly: [],
         validation: { ok: true, issues: [] },
       },
@@ -250,6 +266,7 @@ export const Interactive: Story = {
             title: 'Step 1: Direct Move',
             summary: 'Add 2 to the ones place. Simple bead movement.',
             chips: [{ label: 'Action', value: 'Move 2 earth beads' }],
+            why: [],
             stepsFriendly: [],
             validation: { ok: true, issues: [] },
           },
@@ -260,6 +277,7 @@ export const Interactive: Story = {
             title: 'Step 2: Five Friend',
             summary: "Add 7 to the ones place using 5's friend.",
             chips: [{ label: 'Strategy', value: '5 + 2 = 7' }],
+            why: [],
             stepsFriendly: [],
             validation: { ok: true, issues: [] },
           },
@@ -270,6 +288,7 @@ export const Interactive: Story = {
             title: 'Step 3: Complete',
             summary: 'Tutorial step completed successfully!',
             chips: [{ label: 'Result', value: 'Target reached' }],
+            why: [],
             stepsFriendly: [],
             validation: { ok: true, issues: [] },
           },
