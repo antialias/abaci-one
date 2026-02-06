@@ -23,5 +23,8 @@ test.describe('Settings Smoke Tests', () => {
 
     // Tab navigation should be visible with General tab
     await expect(page.locator('[data-tab="general"]')).toBeVisible()
+
+    // Capture screenshot for dashboard
+    await page.screenshot({ path: 'screenshots/settings.png', fullPage: true })
   })
 })

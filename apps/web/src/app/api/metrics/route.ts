@@ -15,14 +15,15 @@
  */
 
 import { NextResponse } from 'next/server'
-import { metricsRegistry, initSmokeTestMetrics } from '@/lib/metrics'
+import { metricsRegistry, initSmokeTestMetrics, initCoverageMetrics } from '@/lib/metrics'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    // Initialize smoke test metrics from DB on first scrape (runs once per pod)
+    // Initialize metrics from DB on first scrape (runs once per pod)
     await initSmokeTestMetrics()
+    await initCoverageMetrics()
 
     const metrics = await metricsRegistry.metrics()
 

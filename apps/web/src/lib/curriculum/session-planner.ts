@@ -91,6 +91,8 @@ export interface GenerateSessionPlanOptions {
   problemGenerationMode?: ProblemGenerationMode
   sessionMode?: SessionMode
   gameBreakSettings?: GameBreakSettings
+  /** Override the number of problems per part (for debug/testing) */
+  overrideProblemsPerPart?: number
 }
 
 /**
@@ -139,6 +141,7 @@ export async function generateSessionPlan(
     problemGenerationMode = DEFAULT_PROBLEM_GENERATION_MODE,
     sessionMode,
     gameBreakSettings = DEFAULT_GAME_BREAK_SETTINGS,
+    overrideProblemsPerPart,
   } = options
 
   const config = { ...DEFAULT_PLAN_CONFIG, ...configOverrides }
@@ -314,7 +317,8 @@ export async function generateSessionPlan(
         normalizedWeight,
         costCalculator,
         studentMaxSkillCost,
-        weakSkills
+        weakSkills,
+        overrideProblemsPerPart
       )
     )
     partNumber = (partNumber + 1) as 1 | 2 | 3
@@ -367,12 +371,14 @@ function buildSessionPart(
   normalizedWeight?: number,
   costCalculator?: SkillCostCalculator,
   studentMaxSkillCost?: number,
-  weakSkills?: string[]
+  weakSkills?: string[],
+  overrideProblemsPerPart?: number
 ): SessionPart {
   // Get time allocation for this part (use normalized weight if provided)
   const partWeight = normalizedWeight ?? config.partTimeWeights[type]
   const partDurationMinutes = totalDurationMinutes * partWeight
-  const partProblemCount = Math.max(2, Math.floor((partDurationMinutes * 60) / avgTimeSeconds))
+  const partProblemCount =
+    overrideProblemsPerPart ?? Math.max(2, Math.floor((partDurationMinutes * 60) / avgTimeSeconds))
 
   // Calculate slot distribution with part-type-specific challenge ratios
   // (See config/slot-distribution.ts for rationale)

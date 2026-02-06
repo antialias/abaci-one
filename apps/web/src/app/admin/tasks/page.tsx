@@ -213,7 +213,12 @@ export default function AdminTasksPage() {
   const failureStats = taskTypes.map((type) => {
     const ofType = recentTasks.filter((t) => t.type === type)
     const failed = ofType.filter((t) => t.status === 'failed').length
-    return { type, total: ofType.length, failed, rate: ofType.length > 0 ? failed / ofType.length : 0 }
+    return {
+      type,
+      total: ofType.length,
+      failed,
+      rate: ofType.length > 0 ? failed / ofType.length : 0,
+    }
   })
 
   const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null

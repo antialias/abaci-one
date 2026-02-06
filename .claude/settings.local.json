@@ -824,7 +824,18 @@
       "Bash(gh workflow list)",
       "WebFetch(domain:www.githubstatus.com)",
       "Bash(do kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n abaci exec deployment/abaci-app -- node -e \"const s=Date.now\\(\\); require\\(''dns''\\).lookup\\(''api.openai.com'',\\(e,a\\)=>console.log\\(''$i:'',e||a,\\(Date.now\\(\\)-s\\)+''ms''\\)\\)\")",
-      "mcp__chrome-devtools__get_console_message"
+      "mcp__chrome-devtools__get_console_message",
+      "mcp__kubernetes__kubectl_apply",
+      "mcp__kubernetes__kubectl_delete",
+      "Bash(gh issue create:*)",
+      "Bash(gh issue edit:*)",
+      "Bash(BASE_URL=http://localhost:3000 ./node_modules/.bin/playwright test:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(BASE_URL=http://localhost:3000 npx @playwright/test:*)",
+      "Bash(gh secret set:*)",
+      "Bash(gh secret list:*)",
+      "mcp__kubernetes__kubectl_rollout"
     ],
     "deny": [],
     "ask": []

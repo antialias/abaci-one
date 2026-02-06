@@ -68,6 +68,12 @@ const DEBUG_SECTIONS: DebugSection[] = [
         description: 'Test route guards and authentication',
         icon: <TestTube size={20} />,
       },
+      {
+        href: '/debug/practice',
+        title: 'Practice Debug',
+        description: 'Create debug sessions with presets (game break test, etc.)',
+        icon: <Gamepad2 size={20} />,
+      },
     ],
   },
   {

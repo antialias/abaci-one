@@ -456,9 +456,7 @@ describe('A/B Mastery Trajectories', () => {
       hillCoefficient: 2.0,
       // Pre-seed all skills EXCEPT the deficient one
       initialExposures: Object.fromEntries(
-        allSkills
-          .filter((s) => s !== deficientSkillId)
-          .map((s) => [s, 25]) // 25 exposures = ~86% mastery for basic, ~73% for five-comp
+        allSkills.filter((s) => s !== deficientSkillId).map((s) => [s, 25]) // 25 exposures = ~86% mastery for basic, ~73% for five-comp
       ),
       helpUsageProbabilities: [0.7, 0.3], // 70% no help, 30% uses help
       helpBonuses: [0, 0.25], // Help bonus when used

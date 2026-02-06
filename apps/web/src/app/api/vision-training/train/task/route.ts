@@ -35,9 +35,7 @@ export async function POST(request: Request) {
       .from(backgroundTasks)
       .where(eq(backgroundTasks.type, 'vision-training'))
       .all()
-      .then((tasks) =>
-        tasks.find((t) => t.status === 'running' || t.status === 'pending')
-      )
+      .then((tasks) => tasks.find((t) => t.status === 'running' || t.status === 'pending'))
 
     if (existingTask) {
       return NextResponse.json({
@@ -107,9 +105,7 @@ export async function GET() {
       .where(eq(backgroundTasks.type, 'vision-training'))
       .all()
 
-    const activeTask = tasks.find(
-      (t) => t.status === 'running' || t.status === 'pending'
-    )
+    const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
 
     if (activeTask) {
       return NextResponse.json({
@@ -142,9 +138,7 @@ export async function DELETE() {
       .where(eq(backgroundTasks.type, 'vision-training'))
       .all()
 
-    const activeTask = tasks.find(
-      (t) => t.status === 'running' || t.status === 'pending'
-    )
+    const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
 
     if (!activeTask) {
       return NextResponse.json({ message: 'No training in progress' })
@@ -172,9 +166,7 @@ export async function PUT() {
       .where(eq(backgroundTasks.type, 'vision-training'))
       .all()
 
-    const activeTask = tasks.find(
-      (t) => t.status === 'running' || t.status === 'pending'
-    )
+    const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
 
     if (!activeTask) {
       return NextResponse.json({ message: 'No training in progress' })

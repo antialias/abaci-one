@@ -1,0 +1,102 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "Abaci One Stack Track Tack" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]: Abaci One
+        - generic [ref=e7]: Stack Track Tack
+      - generic [ref=e8]:
+        - navigation [ref=e9]:
+          - link "Create" [ref=e11] [cursor=pointer]:
+            - /url: /create
+          - link "Practice" [ref=e13] [cursor=pointer]:
+            - /url: /practice
+          - link "Games" [ref=e15] [cursor=pointer]:
+            - /url: /games
+          - link "Blog" [ref=e17] [cursor=pointer]:
+            - /url: /blog
+        - button "☰" [ref=e18] [cursor=pointer]:
+          - generic [ref=e19]: ☰
+  - navigation [ref=e20]:
+    - generic [ref=e21]:
+      - link "Debug-1770396518630's dashboard" [ref=e22] [cursor=pointer]:
+        - /url: /practice/zs2kg68g8yizvjk5ac2t9y1s/dashboard
+        - generic [ref=e23]: 🐛
+      - link "Debug-1770396518630" [ref=e25] [cursor=pointer]:
+        - /url: /practice/zs2kg68g8yizvjk5ac2t9y1s/dashboard
+    - generic [ref=e26]:
+      - generic [ref=e29]:
+        - generic [ref=e30]: 🎮
+        - generic [ref=e31]: Game Break
+      - generic [ref=e32]:
+        - generic [ref=e33]: ⏱️
+        - generic [ref=e34]: 1:47
+      - button "Back to Practice →" [ref=e35] [cursor=pointer]
+  - main [ref=e36]:
+    - generic [ref=e37]:
+      - generic [ref=e40]:
+        - link "Abaci One Stack Track Tack" [ref=e41] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e42]: Abaci One
+          - generic [ref=e43]: Stack Track Tack
+        - generic [ref=e44]:
+          - navigation [ref=e45]:
+            - link "Create" [ref=e47] [cursor=pointer]:
+              - /url: /create
+            - link "Practice" [ref=e49] [cursor=pointer]:
+              - /url: /practice
+            - link "Games" [ref=e51] [cursor=pointer]:
+              - /url: /games
+            - link "Blog" [ref=e53] [cursor=pointer]:
+              - /url: /blog
+          - button "☰" [ref=e54] [cursor=pointer]:
+            - generic [ref=e55]: ☰
+      - main [ref=e58]:
+        - generic [ref=e62]:
+          - generic [ref=e65] [cursor=pointer]:
+            - generic [ref=e68]: 🔢
+            - generic [ref=e70]: "21"
+          - generic [ref=e73] [cursor=pointer]:
+            - generic [ref=e76]: 🔢
+            - generic [ref=e78]: "5"
+          - generic [ref=e81] [cursor=pointer]:
+            - generic [ref=e84]: 🔢
+            - generic [ref=e86]: "9"
+          - generic [ref=e89] [cursor=pointer]:
+            - generic [ref=e92]: 🔢
+            - generic [ref=e94]: "47"
+          - generic [ref=e97] [cursor=pointer]:
+            - generic [ref=e100]: 🧮
+            - img [ref=e104]
+          - generic [ref=e132] [cursor=pointer]:
+            - generic [ref=e135]: 🧮
+            - img [ref=e139]
+          - generic [ref=e167] [cursor=pointer]:
+            - generic [ref=e170]: 🧮
+            - img [ref=e174]
+          - generic [ref=e202] [cursor=pointer]:
+            - generic [ref=e205]: 🧮
+            - img [ref=e209]
+          - generic [ref=e225] [cursor=pointer]:
+            - generic [ref=e228]: 🧮
+            - img [ref=e232]
+          - generic [ref=e248] [cursor=pointer]:
+            - generic [ref=e251]: 🧮
+            - img [ref=e255]
+          - generic [ref=e283] [cursor=pointer]:
+            - generic [ref=e286]: 🔢
+            - generic [ref=e288]: "23"
+          - generic [ref=e291] [cursor=pointer]:
+            - generic [ref=e294]: 🔢
+            - generic [ref=e296]: "36"
+  - generic [ref=e298] [cursor=pointer]:
+    - generic:
+      - generic:
+        - img
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e349]
+```

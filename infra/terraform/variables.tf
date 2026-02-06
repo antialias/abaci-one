@@ -123,6 +123,13 @@ variable "github_repo_url" {
 }
 
 # ArgoCD Configuration
+variable "coverage_api_token" {
+  description = "Bearer token for the /api/coverage-results endpoint (used by GitHub Actions)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "argocd_domain" {
   description = "Domain for ArgoCD UI (leave empty to use port-forward only)"
   type        = string

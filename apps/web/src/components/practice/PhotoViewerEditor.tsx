@@ -171,7 +171,9 @@ export function PhotoViewerEditor({
   // Note: currentPhoto is defined later, but we need these for conditional checks
   // so we'll derive them based on photos[currentIndex]
   const currentPhotoId = photos[currentIndex]?.id
-  const streamingState = currentPhotoId ? parsingContext.state.activeStreams.get(currentPhotoId) : undefined
+  const streamingState = currentPhotoId
+    ? parsingContext.state.activeStreams.get(currentPhotoId)
+    : undefined
   const isInitialParsing =
     streamingState?.streamType === 'initial' &&
     (streamingState.status === 'connecting' ||

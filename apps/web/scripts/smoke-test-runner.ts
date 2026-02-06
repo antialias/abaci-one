@@ -120,6 +120,14 @@ function saveHtmlReport(runId: string, htmlReportDir: string, passed: boolean): 
       cpSync(htmlReportDir, destDir, { recursive: true })
       console.log(`HTML report saved to: ${destDir}`)
 
+      // Copy screenshots into the report directory
+      const screenshotsDir = join(process.cwd(), 'screenshots')
+      if (existsSync(screenshotsDir)) {
+        const destScreenshots = join(destDir, 'screenshots')
+        cpSync(screenshotsDir, destScreenshots, { recursive: true })
+        console.log(`Screenshots copied to: ${destScreenshots}`)
+      }
+
       // Update "latest" symlink
       const latestLink = join(REPORT_DIR, 'latest')
       try {

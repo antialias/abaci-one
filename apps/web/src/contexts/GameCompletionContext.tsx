@@ -1,10 +1,10 @@
-"use client";
+'use client'
 
-import { createContext, useContext, useRef, type ReactNode } from "react";
+import { createContext, useContext, useRef, type ReactNode } from 'react'
 
-type GameCompleteCallback = (gameState: Record<string, unknown>) => void;
+type GameCompleteCallback = (gameState: Record<string, unknown>) => void
 
-const GameCompletionContext = createContext<GameCompleteCallback | null>(null);
+const GameCompletionContext = createContext<GameCompleteCallback | null>(null)
 
 /**
  * Provides a game completion callback that game providers can call
@@ -17,23 +17,23 @@ export function GameCompletionProvider({
   onGameComplete,
   children,
 }: {
-  onGameComplete: GameCompleteCallback;
-  children: ReactNode;
+  onGameComplete: GameCompleteCallback
+  children: ReactNode
 }) {
   // Use ref to avoid re-renders when callback identity changes
-  const callbackRef = useRef(onGameComplete);
-  callbackRef.current = onGameComplete;
+  const callbackRef = useRef(onGameComplete)
+  callbackRef.current = onGameComplete
 
   // Stable callback that reads from ref
   const stableCallback = useRef<GameCompleteCallback>((gameState) => {
-    callbackRef.current(gameState);
-  }).current;
+    callbackRef.current(gameState)
+  }).current
 
   return (
     <GameCompletionContext.Provider value={stableCallback}>
       {children}
     </GameCompletionContext.Provider>
-  );
+  )
 }
 
 /**
@@ -41,5 +41,5 @@ export function GameCompletionProvider({
  * Returns null if not in a practice/game-break context.
  */
 export function useGameCompletionCallback(): GameCompleteCallback | null {
-  return useContext(GameCompletionContext);
+  return useContext(GameCompletionContext)
 }

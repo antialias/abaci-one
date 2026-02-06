@@ -1695,29 +1695,6 @@ export function ActiveSession({
     [setAnswer]
   )
 
-  // Expose global debug API for e2e tests and Chrome DevTools automation
-  // Gated on ?debug=1 in URL (checked directly, not via useSearchParams)
-  useEffect(() => {
-    const isDebugUrl =
-      typeof window !== 'undefined' &&
-      new URLSearchParams(window.location.search).get('debug') === '1'
-    if (!isDebugUrl) return
-
-    const api = {
-      getAnswer: () => attempt?.problem?.answer ?? null,
-      submitCorrect: () => {
-        if (attempt?.problem) debugSubmit(attempt.problem.answer)
-      },
-      submitWrong: () => {
-        if (attempt?.problem) debugSubmit(attempt.problem.answer + 1)
-      },
-    }
-    ;(window as any).__practiceDebug = api
-    return () => {
-      delete (window as any).__practiceDebug
-    }
-  })
-
   // Handle keyboard input
   useEffect(() => {
     if (!hasPhysicalKeyboard || !canAcceptInput) return

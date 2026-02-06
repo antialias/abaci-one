@@ -141,11 +141,17 @@ export function AbacusAnimatedBead({
 
           if (!active || !gestureStateRef.current.isDragging) {
             if (!active) {
+              const wasDragGesture =
+                gestureStateRef.current.hasGestureTriggered;
               gestureStateRef.current.isDragging = false;
               gestureStateRef.current.lastDirection = null;
-              setTimeout(() => {
-                gestureStateRef.current.hasGestureTriggered = false;
-              }, 100);
+              if (wasDragGesture) {
+                // Real drag happened — delay reset to prevent synthetic click after drag
+                setTimeout(() => {
+                  gestureStateRef.current.hasGestureTriggered = false;
+                }, 100);
+              }
+              // If no drag gesture, hasGestureTriggered is already false — click will pass through
             }
             return;
           }

@@ -294,8 +294,8 @@ resource "kubernetes_config_map" "dev_artifacts_nginx" {
 
             <a href="/coverage/" class="card">
                 <div class="card-icon">📊</div>
-                <div class="card-title">Test Coverage <span class="badge badge-soon">Soon</span></div>
-                <div class="card-desc">Code coverage reports showing tested vs untested code paths.</div>
+                <div class="card-title">Test Coverage <span class="badge badge-live">Live</span></div>
+                <div class="card-desc">Code coverage reports showing tested vs untested code paths. Updated on every push to main.</div>
                 <div class="card-url">/coverage/</div>
             </a>
         </div>

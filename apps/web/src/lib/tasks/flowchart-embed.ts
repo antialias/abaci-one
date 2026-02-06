@@ -28,9 +28,7 @@ export interface FlowchartEmbedOutput {
  * Generates embeddings for all published flowcharts missing them or with
  * an outdated version. Reports per-flowchart progress via events.
  */
-export async function startFlowchartEmbedding(
-  input: FlowchartEmbedInput
-): Promise<string> {
+export async function startFlowchartEmbedding(input: FlowchartEmbedInput): Promise<string> {
   return createTask<FlowchartEmbedInput, FlowchartEmbedOutput, FlowchartEmbedEvent>(
     'flowchart-embed',
     input,

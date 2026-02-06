@@ -240,6 +240,12 @@ export function MemoryGrid<
             <div
               key={card.id}
               ref={enableMultiplayerPresence ? setCardRef(card.id) : undefined}
+              data-component="matching-card"
+              data-card-id={card.id}
+              data-card-number={card.number}
+              data-card-type={card.type}
+              data-card-matched={isMatched ? 'true' : 'false'}
+              data-card-flipped={isFlipped ? 'true' : 'false'}
               className={css({
                 aspectRatio: '3/4',
                 // Fully responsive card sizing - no fixed pixel sizes

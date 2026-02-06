@@ -334,9 +334,7 @@ export function isParsingAttachment(state: ParsingContextState, attachmentId: st
   const stream = state.activeStreams.get(attachmentId)
   if (!stream) return false
 
-  return (
-    stream.status !== 'complete' && stream.status !== 'error' && stream.status !== 'cancelled'
-  )
+  return stream.status !== 'complete' && stream.status !== 'error' && stream.status !== 'cancelled'
 }
 
 /**

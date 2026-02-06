@@ -11,6 +11,11 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['json-summary', 'html'],
+      reportsDirectory: './coverage',
+    },
   },
   resolve: {
     alias: {

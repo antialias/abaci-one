@@ -369,7 +369,12 @@ export default function TrainModelPage() {
       // Handle task state (for reconnection)
       socket.on(
         'task:state',
-        (task: { id: string; status: string; progress: number; progressMessage: string | null }) => {
+        (task: {
+          id: string
+          status: string
+          progress: number
+          progressMessage: string | null
+        }) => {
           if (task.progress > 0 || task.progressMessage) {
             setStatusMessage(task.progressMessage || `Progress: ${task.progress}%`)
           }

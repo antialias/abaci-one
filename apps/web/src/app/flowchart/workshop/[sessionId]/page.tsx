@@ -353,29 +353,32 @@ export default function WorkshopPage() {
       }
 
       // Handle initial task state on subscription
-      socket.on('task:state', (task: { status: string; progress: number; progressMessage: string | null }) => {
-        console.log(`[workshop-client] task:state received:`, task.status, task.progressMessage)
-        if (task.status === 'running') {
-          dispatch({ type: 'STREAM_STARTED', responseId: taskId })
-          // If we have a progress message from the DB, show it immediately
-          // so reconnecting clients see "AI is thinking..." or "Generating flowchart..."
-          // instead of the generic "Starting generation..." message
-          if (task.progressMessage) {
-            dispatch({
-              type: 'STREAM_PROGRESS',
-              stage: 'reconnecting',
-              message: task.progressMessage,
-            })
+      socket.on(
+        'task:state',
+        (task: { status: string; progress: number; progressMessage: string | null }) => {
+          console.log(`[workshop-client] task:state received:`, task.status, task.progressMessage)
+          if (task.status === 'running') {
+            dispatch({ type: 'STREAM_STARTED', responseId: taskId })
+            // If we have a progress message from the DB, show it immediately
+            // so reconnecting clients see "AI is thinking..." or "Generating flowchart..."
+            // instead of the generic "Starting generation..." message
+            if (task.progressMessage) {
+              dispatch({
+                type: 'STREAM_PROGRESS',
+                stage: 'reconnecting',
+                message: task.progressMessage,
+              })
+            }
+          } else if (task.status === 'completed') {
+            // Task already finished — reload session to get final state
+            setActiveTaskId(null)
+            loadSession()
+          } else if (task.status === 'failed') {
+            dispatch({ type: 'STREAM_ERROR', message: 'Task failed' })
+            setActiveTaskId(null)
           }
-        } else if (task.status === 'completed') {
-          // Task already finished — reload session to get final state
-          setActiveTaskId(null)
-          loadSession()
-        } else if (task.status === 'failed') {
-          dispatch({ type: 'STREAM_ERROR', message: 'Task failed' })
-          setActiveTaskId(null)
         }
-      })
+      )
 
       // Handle task events (real-time and replayed)
       let eventCount = 0
@@ -383,7 +386,11 @@ export default function WorkshopPage() {
         if (event.taskId !== taskId) return
         eventCount++
         if (eventCount <= 5 || eventCount % 50 === 0) {
-          console.log(`[workshop-client] task:event #${eventCount}:`, event.eventType, event.replayed ? '(replayed)' : '')
+          console.log(
+            `[workshop-client] task:event #${eventCount}:`,
+            event.eventType,
+            event.replayed ? '(replayed)' : ''
+          )
         }
 
         const payload = event.payload as Record<string, unknown>
@@ -585,10 +592,7 @@ export default function WorkshopPage() {
     !session.draftDefinitionJson
 
   const shouldReconnectToTask =
-    session &&
-    !activeTaskId &&
-    session.currentTaskId &&
-    streamingState.status === 'idle'
+    session && !activeTaskId && session.currentTaskId && streamingState.status === 'idle'
 
   // Reconnect to in-progress task on page load
   useEffect(() => {
@@ -645,9 +649,10 @@ export default function WorkshopPage() {
     dispatch({ type: 'STREAM_CANCELLED' })
 
     // Determine which endpoint to call based on stream type
-    const endpoint = streamingState.streamType === 'refine'
-      ? `/api/flowchart-workshop/sessions/${sessionId}/refine/task`
-      : `/api/flowchart-workshop/sessions/${sessionId}/generate/task`
+    const endpoint =
+      streamingState.streamType === 'refine'
+        ? `/api/flowchart-workshop/sessions/${sessionId}/refine/task`
+        : `/api/flowchart-workshop/sessions/${sessionId}/generate/task`
 
     try {
       await fetch(endpoint, { method: 'DELETE' })

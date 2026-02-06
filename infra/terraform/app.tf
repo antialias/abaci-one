@@ -13,8 +13,9 @@ resource "kubernetes_secret" "app_env" {
   }
 
   data = {
-    AUTH_SECRET        = var.auth_secret
-    LLM_OPENAI_API_KEY = var.openai_api_key
+    AUTH_SECRET         = var.auth_secret
+    LLM_OPENAI_API_KEY  = var.openai_api_key
+    COVERAGE_API_TOKEN  = var.coverage_api_token
   }
 }
 

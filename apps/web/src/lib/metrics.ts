@@ -538,6 +538,90 @@ export async function initSmokeTestMetrics() {
 }
 
 // =============================================================================
+// UNIT TEST COVERAGE METRICS
+// =============================================================================
+
+export const coverageLinesPct = new Gauge({
+  name: 'coverage_lines_pct',
+  help: 'Line coverage percentage from unit tests',
+  registers: [metricsRegistry],
+})
+
+export const coverageBranchesPct = new Gauge({
+  name: 'coverage_branches_pct',
+  help: 'Branch coverage percentage from unit tests',
+  registers: [metricsRegistry],
+})
+
+export const coverageFunctionsPct = new Gauge({
+  name: 'coverage_functions_pct',
+  help: 'Function coverage percentage from unit tests',
+  registers: [metricsRegistry],
+})
+
+export const coverageStatementsPct = new Gauge({
+  name: 'coverage_statements_pct',
+  help: 'Statement coverage percentage from unit tests',
+  registers: [metricsRegistry],
+})
+
+export const coverageLastRunTimestamp = new Gauge({
+  name: 'coverage_last_run_timestamp_seconds',
+  help: 'Unix timestamp of the last coverage report',
+  registers: [metricsRegistry],
+})
+
+/**
+ * Update coverage gauges from a result object.
+ * Used both for DB initialization and when new results arrive via API.
+ */
+export function updateCoverageMetrics(run: {
+  linesPct: number
+  branchesPct: number
+  functionsPct: number
+  statementsPct: number
+  timestamp: Date
+}) {
+  coverageLinesPct.set(run.linesPct)
+  coverageBranchesPct.set(run.branchesPct)
+  coverageFunctionsPct.set(run.functionsPct)
+  coverageStatementsPct.set(run.statementsPct)
+  coverageLastRunTimestamp.set(run.timestamp.getTime() / 1000)
+}
+
+/**
+ * Initialize coverage metrics from DB.
+ * Called from the /api/metrics handler on first scrape so it runs in a
+ * proper request context on every pod. Guarded to only execute once.
+ */
+let _coverageMetricsInitialized = false
+export async function initCoverageMetrics() {
+  if (_coverageMetricsInitialized) return
+  _coverageMetricsInitialized = true
+
+  try {
+    const { db } = await import('@/db')
+    const { coverageResults } = await import('@/db/schema')
+    const { desc } = await import('drizzle-orm')
+
+    const latest = await db
+      .select()
+      .from(coverageResults)
+      .orderBy(desc(coverageResults.timestamp))
+      .limit(1)
+      .get()
+
+    if (latest) {
+      updateCoverageMetrics(latest)
+    }
+  } catch (err) {
+    // Allow retry on next scrape if init fails
+    _coverageMetricsInitialized = false
+    console.error('Failed to initialize coverage metrics from DB:', err)
+  }
+}
+
+// =============================================================================
 // ERROR METRICS
 // =============================================================================
 
@@ -637,6 +721,13 @@ export const metrics = {
     lastPassed: smokeTestLastPassed,
     lastFailed: smokeTestLastFailed,
     runsTotal: smokeTestRunsTotal,
+  },
+  coverage: {
+    linesPct: coverageLinesPct,
+    branchesPct: coverageBranchesPct,
+    functionsPct: coverageFunctionsPct,
+    statementsPct: coverageStatementsPct,
+    lastRunTimestamp: coverageLastRunTimestamp,
   },
   errors: {
     total: errorsTotal,

@@ -637,36 +637,36 @@ export function OfflineWorkSection({
                           : att.parsingStatus}
                     {/* Cancel button for processing or re-parsing state */}
                     {isActuallyProcessing && onCancelParsing && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onCancelParsing(att.id)
-                          }}
-                          className={css({
-                            marginLeft: '0.25rem',
-                            padding: '0.125rem',
-                            borderRadius: 'full',
-                            backgroundColor: 'rgba(255,255,255,0.2)',
-                            color: 'white',
-                            fontSize: '0.625rem',
-                            lineHeight: '1',
-                            cursor: 'pointer',
-                            border: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '14px',
-                            height: '14px',
-                            _hover: {
-                              backgroundColor: 'rgba(255,255,255,0.4)',
-                            },
-                          })}
-                          title="Cancel parsing"
-                        >
-                          ✕
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onCancelParsing(att.id)
+                        }}
+                        className={css({
+                          marginLeft: '0.25rem',
+                          padding: '0.125rem',
+                          borderRadius: 'full',
+                          backgroundColor: 'rgba(255,255,255,0.2)',
+                          color: 'white',
+                          fontSize: '0.625rem',
+                          lineHeight: '1',
+                          cursor: 'pointer',
+                          border: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '14px',
+                          height: '14px',
+                          _hover: {
+                            backgroundColor: 'rgba(255,255,255,0.4)',
+                          },
+                        })}
+                        title="Cancel parsing"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 ) : null}
 

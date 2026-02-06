@@ -32,9 +32,7 @@ export async function POST(request: Request) {
       .from(backgroundTasks)
       .where(eq(backgroundTasks.type, 'flowchart-embed'))
       .all()
-      .then((tasks) =>
-        tasks.find((t) => t.status === 'running' || t.status === 'pending')
-      )
+      .then((tasks) => tasks.find((t) => t.status === 'running' || t.status === 'pending'))
 
     if (existingTask) {
       return NextResponse.json({
@@ -89,9 +87,7 @@ export async function GET() {
       .where(eq(backgroundTasks.type, 'flowchart-embed'))
       .all()
 
-    const activeTask = tasks.find(
-      (t) => t.status === 'running' || t.status === 'pending'
-    )
+    const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
 
     if (activeTask) {
       return NextResponse.json({
@@ -124,9 +120,7 @@ export async function DELETE() {
       .where(eq(backgroundTasks.type, 'flowchart-embed'))
       .all()
 
-    const activeTask = tasks.find(
-      (t) => t.status === 'running' || t.status === 'pending'
-    )
+    const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
 
     if (!activeTask) {
       return NextResponse.json({ message: 'No embedding in progress' })

@@ -20,5 +20,8 @@ test.describe('Practice Smoke Tests', () => {
     await expect(page.locator('a, button').first()).toBeVisible({
       timeout: 15000,
     })
+
+    // Capture screenshot for dashboard
+    await page.screenshot({ path: 'screenshots/practice.png', fullPage: true })
   })
 })

@@ -506,8 +506,12 @@ export function WorksheetParsingProvider({
 
       // Log current state for debugging concurrent parsing
       const activeCount = state.activeStreams.size
-      console.log(`[Parse:${shortId}] startParse called. Active streams: ${activeCount}`,
-        activeCount > 0 ? `[${[...state.activeStreams.keys()].map(k => k.slice(-6)).join(', ')}]` : '')
+      console.log(
+        `[Parse:${shortId}] startParse called. Active streams: ${activeCount}`,
+        activeCount > 0
+          ? `[${[...state.activeStreams.keys()].map((k) => k.slice(-6)).join(', ')}]`
+          : ''
+      )
 
       // If this attachment already has an active parse, cancel it first
       if (isParsingAttachment(state, attachmentId)) {
@@ -565,7 +569,14 @@ export function WorksheetParsingProvider({
         invalidateAttachments()
       }
     },
-    [playerId, state, cleanupAttachmentSocket, updateAttachmentStatus, invalidateAttachments, subscribeToTask]
+    [
+      playerId,
+      state,
+      cleanupAttachmentSocket,
+      updateAttachmentStatus,
+      invalidateAttachments,
+      subscribeToTask,
+    ]
   )
 
   // ============================================================================
@@ -579,7 +590,9 @@ export function WorksheetParsingProvider({
 
       // Log current state for debugging concurrent parsing
       const activeCount = state.activeStreams.size
-      console.log(`[Reparse:${shortId}] startReparse called (${problemIndices.length} problems). Active streams: ${activeCount}`)
+      console.log(
+        `[Reparse:${shortId}] startReparse called (${problemIndices.length} problems). Active streams: ${activeCount}`
+      )
 
       // If this attachment already has an active parse, cancel it first
       if (isParsingAttachment(state, attachmentId)) {
@@ -639,7 +652,14 @@ export function WorksheetParsingProvider({
         invalidateAttachments()
       }
     },
-    [playerId, state, cleanupAttachmentSocket, updateAttachmentStatus, invalidateAttachments, subscribeToTask]
+    [
+      playerId,
+      state,
+      cleanupAttachmentSocket,
+      updateAttachmentStatus,
+      invalidateAttachments,
+      subscribeToTask,
+    ]
   )
 
   // ============================================================================

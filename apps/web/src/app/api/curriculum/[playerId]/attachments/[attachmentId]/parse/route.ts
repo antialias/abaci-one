@@ -18,10 +18,7 @@ import { db } from '@/db'
 import { practiceAttachments, type ParsingStatus } from '@/db/schema/practice-attachments'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-import {
-  computeParsingStats,
-  type WorksheetParsingResult,
-} from '@/lib/worksheet-parsing'
+import { computeParsingStats, type WorksheetParsingResult } from '@/lib/worksheet-parsing'
 
 interface RouteParams {
   params: Promise<{ playerId: string; attachmentId: string }>

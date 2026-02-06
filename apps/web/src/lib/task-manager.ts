@@ -521,11 +521,7 @@ export async function getTaskEvents(taskId: string): Promise<TaskEvent[]> {
  * )
  * ```
  */
-export async function createTask<
-  TInput,
-  TOutput,
-  TEvent extends TaskEventBase = TaskEventBase,
->(
+export async function createTask<TInput, TOutput, TEvent extends TaskEventBase = TaskEventBase>(
   type: TaskType,
   input: TInput,
   handler: (handle: TaskHandle<TOutput, TEvent>, input: TInput) => Promise<void>,
@@ -610,9 +606,7 @@ export async function createTask<
         where: eq(schema.backgroundTasks.id, id),
       })
       if (task && task.status === 'running') {
-        console.error(
-          `[TaskManager] Task ${id} (${type}) timed out after ${timeoutMs / 1000}s`
-        )
+        console.error(`[TaskManager] Task ${id} (${type}) timed out after ${timeoutMs / 1000}s`)
         await failTask(id, `Task timed out after ${timeoutMs / 1000}s`, type)
       }
     }, timeoutMs)

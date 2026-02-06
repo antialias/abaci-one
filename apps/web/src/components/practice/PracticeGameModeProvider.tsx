@@ -1,23 +1,23 @@
-"use client";
+'use client'
 
-import type { ReactNode } from "react";
-import { useMemo, useCallback } from "react";
-import { GameModeProvider, type RoomData } from "@/contexts/GameModeContext";
-import { GameCompletionProvider } from "@/contexts/GameCompletionContext";
-import type { Player as DBPlayer } from "@/db/schema/players";
-import { useViewerId } from "@/hooks/useViewerId";
+import type { ReactNode } from 'react'
+import { useMemo, useCallback } from 'react'
+import { GameModeProvider, type RoomData } from '@/contexts/GameModeContext'
+import { GameCompletionProvider } from '@/contexts/GameCompletionContext'
+import type { Player as DBPlayer } from '@/db/schema/players'
+import { useViewerId } from '@/hooks/useViewerId'
 
 interface StudentInfo {
-  id: string;
-  name: string;
-  emoji: string;
-  color: string;
+  id: string
+  name: string
+  emoji: string
+  color: string
 }
 
 interface PracticeGameModeProviderProps {
-  student: StudentInfo;
-  roomData: RoomData | null;
-  children: ReactNode;
+  student: StudentInfo
+  roomData: RoomData | null
+  children: ReactNode
   /**
    * Callback fired when the game transitions to 'results' phase.
    *
@@ -33,7 +33,7 @@ interface PracticeGameModeProviderProps {
    * @param gameState The final game state when transitioning to 'results'
    * @see docs in .claude/ARCADE_ROOM_ARCHITECTURE.md for the full protocol
    */
-  onGameComplete?: (gameState: Record<string, unknown>) => void;
+  onGameComplete?: (gameState: Record<string, unknown>) => void
 }
 
 /**
@@ -54,23 +54,23 @@ export function PracticeGameModeProvider({
   children,
   onGameComplete,
 }: PracticeGameModeProviderProps) {
-  const { data: viewerId } = useViewerId();
+  const { data: viewerId } = useViewerId()
 
   // Game completion is now detected via GameCompletionContext.
   // The matching Provider (or any game provider) calls the completion callback
   // when transitioning to 'results' phase, so we don't need our own socket.
   const handleGameComplete = useCallback(
     (gameState: Record<string, unknown>) => {
-      onGameComplete?.(gameState);
+      onGameComplete?.(gameState)
     },
-    [onGameComplete],
-  );
+    [onGameComplete]
+  )
 
   // Use viewerId as the player ID so it matches the server-side fallback.
   // The server creates sessions with roomPlayerIds = [userId] (viewerId) when no
   // DB players exist. Using viewerId here ensures client and server agree on the
   // player ID from the start, avoiding "player not found" warnings.
-  const playerId = viewerId ?? "practice-user";
+  const playerId = viewerId ?? 'practice-user'
 
   // Create a fake DBPlayer from the practice student
   const dbPlayers: DBPlayer[] = useMemo(
@@ -89,14 +89,14 @@ export function PracticeGameModeProvider({
         familyCode: null,
       },
     ],
-    [student, playerId],
-  );
+    [student, playerId]
+  )
 
   // Inject the fake player into roomData.memberPlayers
   // This is necessary because getRoomActivePlayers() queries the DB,
   // but our practice student isn't a real DB player.
   const enrichedRoomData: RoomData | null = useMemo(() => {
-    if (!roomData) return roomData;
+    if (!roomData) return roomData
 
     return {
       ...roomData,
@@ -111,14 +111,14 @@ export function PracticeGameModeProvider({
           },
         ],
       },
-    };
-  }, [roomData, playerId, student]);
+    }
+  }, [roomData, playerId, student])
 
   // No-op mutations - we don't want to modify player data during game breaks
-  const createPlayer = useCallback(() => {}, []);
-  const updatePlayerMutation = useCallback(() => {}, []);
-  const deletePlayer = useCallback(() => {}, []);
-  const notifyRoomOfPlayerUpdate = useCallback(() => {}, []);
+  const createPlayer = useCallback(() => {}, [])
+  const updatePlayerMutation = useCallback(() => {}, [])
+  const deletePlayer = useCallback(() => {}, [])
+  const notifyRoomOfPlayerUpdate = useCallback(() => {}, [])
 
   return (
     <GameCompletionProvider onGameComplete={handleGameComplete}>
@@ -135,5 +135,5 @@ export function PracticeGameModeProvider({
         {children}
       </GameModeProvider>
     </GameCompletionProvider>
-  );
+  )
 }

@@ -571,19 +571,20 @@ export default function FlowchartPickerPage() {
       })
 
       // Handle task already completed/failed before socket connected
-      socket.on(
-        'task:state',
-        (state: { id: string; status: string }) => {
-          if (state.id !== taskId) return
-          if (state.status === 'completed' || state.status === 'failed' || state.status === 'cancelled') {
-            setIsGeneratingEmbeddings(false)
-            socket.disconnect()
-            if (state.status === 'completed') {
-              loadPublished()
-            }
+      socket.on('task:state', (state: { id: string; status: string }) => {
+        if (state.id !== taskId) return
+        if (
+          state.status === 'completed' ||
+          state.status === 'failed' ||
+          state.status === 'cancelled'
+        ) {
+          setIsGeneratingEmbeddings(false)
+          socket.disconnect()
+          if (state.status === 'completed') {
+            loadPublished()
           }
         }
-      )
+      })
 
       socket.on(
         'task:event',

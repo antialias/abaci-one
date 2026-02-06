@@ -1,8 +1,15 @@
+import nextDynamic from 'next/dynamic'
 import { notFound, redirect } from 'next/navigation'
 import { canPerformAction } from '@/lib/classroom/access-control'
 import { getActiveSessionPlan, getPlayer } from '@/lib/curriculum/server'
 import { getDbUserId } from '@/lib/viewer'
-import { PracticeClient } from './PracticeClient'
+
+// Skip SSR for PracticeClient — practice is fully interactive and has hooks
+// (useHasPhysicalKeyboard, useSearchParams) that produce server/client mismatches
+const PracticeClient = nextDynamic(
+  () => import('./PracticeClient').then((m) => m.PracticeClient),
+  { ssr: false }
+)
 
 // Disable caching for this page - session state must always be fresh
 export const dynamic = 'force-dynamic'

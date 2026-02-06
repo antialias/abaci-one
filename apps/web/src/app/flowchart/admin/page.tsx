@@ -286,31 +286,28 @@ function EmbeddingsManagerInline({ onComplete }: { onComplete?: () => void }) {
       })
 
       // Handle task already completed/failed before socket connected
-      socket.on(
-        'task:state',
-        (state: { id: string; status: string; output?: unknown }) => {
-          if (state.id !== taskId) return
-          if (state.status === 'completed') {
-            const output = state.output as
-              | { embeddedCount?: number; skippedCount?: number }
-              | undefined
-            setResult({
-              seeded: output?.embeddedCount ?? 0,
-              skipped: output?.skippedCount ?? 0,
-            })
-            setIsRegenerating(false)
-            setProgressMessage(null)
-            socket.disconnect()
-            socketRef.current = null
-            onComplete?.()
-          } else if (state.status === 'failed' || state.status === 'cancelled') {
-            setIsRegenerating(false)
-            setProgressMessage(null)
-            socket.disconnect()
-            socketRef.current = null
-          }
+      socket.on('task:state', (state: { id: string; status: string; output?: unknown }) => {
+        if (state.id !== taskId) return
+        if (state.status === 'completed') {
+          const output = state.output as
+            | { embeddedCount?: number; skippedCount?: number }
+            | undefined
+          setResult({
+            seeded: output?.embeddedCount ?? 0,
+            skipped: output?.skippedCount ?? 0,
+          })
+          setIsRegenerating(false)
+          setProgressMessage(null)
+          socket.disconnect()
+          socketRef.current = null
+          onComplete?.()
+        } else if (state.status === 'failed' || state.status === 'cancelled') {
+          setIsRegenerating(false)
+          setProgressMessage(null)
+          socket.disconnect()
+          socketRef.current = null
         }
-      )
+      })
 
       socket.on(
         'task:event',
@@ -442,7 +439,7 @@ function EmbeddingsManagerInline({ onComplete }: { onComplete?: () => void }) {
           },
         })}
       >
-        {isRegenerating ? (progressMessage || 'Regenerating...') : 'Regenerate All Embeddings'}
+        {isRegenerating ? progressMessage || 'Regenerating...' : 'Regenerate All Embeddings'}
       </button>
 
       <p

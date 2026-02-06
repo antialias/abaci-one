@@ -19,5 +19,8 @@ test.describe('Arcade Smoke Tests', () => {
     await expect(page.locator("button, a, [role='button']").first()).toBeVisible({
       timeout: 15000,
     })
+
+    // Capture screenshot for dashboard
+    await page.screenshot({ path: 'screenshots/arcade.png', fullPage: true })
   })
 })

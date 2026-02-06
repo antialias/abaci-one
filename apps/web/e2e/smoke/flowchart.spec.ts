@@ -19,5 +19,8 @@ test.describe('Flowchart Smoke Tests', () => {
     await expect(page.locator('button, a, svg, [role]').first()).toBeVisible({
       timeout: 15000,
     })
+
+    // Capture screenshot for dashboard
+    await page.screenshot({ path: 'screenshots/flowchart.png', fullPage: true })
   })
 })

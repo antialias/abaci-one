@@ -1459,14 +1459,46 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
           title = "Container Restarts (1h)"
           type  = "timeseries"
         },
+      ]
+      refresh       = "30s"
+      schemaVersion = 39
+      tags          = ["ops", "infrastructure"]
+      templating    = { list = [] }
+      time          = { from = "now-1h", to = "now" }
+      timepicker    = {}
+      timezone      = "browser"
+      title         = "Ops Metrics"
+      uid           = "ops-metrics"
+      version       = 1
+    })
+  }
+
+  depends_on = [helm_release.kube_prometheus_stack]
+}
+
+# Testing Dashboard - E2E Smoke Tests + Unit Test Coverage
+resource "kubernetes_config_map" "grafana_dashboard_testing" {
+  metadata {
+    name      = "grafana-dashboard-testing"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      grafana_dashboard = "1"
+    }
+  }
+
+  data = {
+    "testing-metrics.json" = jsonencode({
+      annotations = { list = [] }
+      editable    = true
+      panels = [
         # =================================================================
-        # Row: E2E Smoke Tests
+        # Row 1: E2E Smoke Tests - Status Overview
         # =================================================================
         {
           collapsed = false
-          gridPos   = { h = 1, w = 24, x = 0, y = 36 }
-          id        = 500
-          title     = "E2E Smoke Tests"
+          gridPos   = { h = 1, w = 24, x = 0, y = 0 }
+          id        = 100
+          title     = "E2E Smoke Tests - Status Overview"
           type      = "row"
         },
         # Status indicator - big PASSED/FAILED
@@ -1494,8 +1526,8 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
               unit = "none"
             }
           }
-          gridPos = { h = 6, w = 4, x = 0, y = 37 }
-          id      = 501
+          gridPos = { h = 6, w = 4, x = 0, y = 1 }
+          id      = 101
           options = {
             colorMode   = "background"
             graphMode   = "none"
@@ -1532,8 +1564,8 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
               unit = "s"
             }
           }
-          gridPos = { h = 6, w = 4, x = 4, y = 37 }
-          id      = 502
+          gridPos = { h = 6, w = 4, x = 4, y = 1 }
+          id      = 102
           options = {
             colorMode   = "value"
             graphMode   = "none"
@@ -1571,8 +1603,8 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
               unit = "s"
             }
           }
-          gridPos = { h = 6, w = 4, x = 8, y = 37 }
-          id      = 503
+          gridPos = { h = 6, w = 4, x = 8, y = 1 }
+          id      = 103
           options = {
             colorMode   = "value"
             graphMode   = "area"
@@ -1609,8 +1641,8 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
               unit = "none"
             }
           }
-          gridPos = { h = 6, w = 4, x = 12, y = 37 }
-          id      = 504
+          gridPos = { h = 6, w = 4, x = 12, y = 1 }
+          id      = 104
           options = {
             colorMode   = "value"
             graphMode   = "none"
@@ -1657,8 +1689,8 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
               unit = "percentunit"
             }
           }
-          gridPos = { h = 6, w = 4, x = 16, y = 37 }
-          id      = 505
+          gridPos = { h = 6, w = 4, x = 16, y = 1 }
+          id      = 105
           options = {
             orientation          = "auto"
             reduceOptions        = { calcs = ["lastNotNull"], fields = "", values = false }
@@ -1687,8 +1719,8 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
               unit = "short"
             }
           }
-          gridPos = { h = 6, w = 4, x = 20, y = 37 }
-          id      = 506
+          gridPos = { h = 6, w = 4, x = 20, y = 1 }
+          id      = 106
           options = {
             colorMode   = "value"
             graphMode   = "area"
@@ -1708,6 +1740,86 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
           }]
           title = "Total Runs"
           type  = "stat"
+        },
+        # =================================================================
+        # Row 2: E2E Smoke Tests - Page Screenshots
+        # =================================================================
+        {
+          collapsed = false
+          gridPos   = { h = 1, w = 24, x = 0, y = 7 }
+          id        = 200
+          title     = "E2E Smoke Tests - Page Screenshots"
+          type      = "row"
+        },
+        # Homepage screenshot
+        {
+          gridPos = { h = 10, w = 5, x = 0, y = 8 }
+          id      = 201
+          options = {
+            content = "<div style=\"text-align:center\"><h3 style=\"margin:0 0 8px 0;color:#ccc\">Homepage</h3><img src=\"https://dev.abaci.one/smoke-reports/latest/screenshots/homepage.png\" style=\"max-width:100%;height:auto;border-radius:4px;border:1px solid #333\" onerror=\"this.parentElement.innerHTML='<p style=color:#666>No screenshot available</p>'\" /></div>"
+            mode    = "html"
+          }
+          title       = ""
+          transparent = true
+          type        = "text"
+        },
+        # Practice screenshot
+        {
+          gridPos = { h = 10, w = 5, x = 5, y = 8 }
+          id      = 202
+          options = {
+            content = "<div style=\"text-align:center\"><h3 style=\"margin:0 0 8px 0;color:#ccc\">Practice</h3><img src=\"https://dev.abaci.one/smoke-reports/latest/screenshots/practice.png\" style=\"max-width:100%;height:auto;border-radius:4px;border:1px solid #333\" onerror=\"this.parentElement.innerHTML='<p style=color:#666>No screenshot available</p>'\" /></div>"
+            mode    = "html"
+          }
+          title       = ""
+          transparent = true
+          type        = "text"
+        },
+        # Arcade screenshot
+        {
+          gridPos = { h = 10, w = 5, x = 10, y = 8 }
+          id      = 203
+          options = {
+            content = "<div style=\"text-align:center\"><h3 style=\"margin:0 0 8px 0;color:#ccc\">Arcade</h3><img src=\"https://dev.abaci.one/smoke-reports/latest/screenshots/arcade.png\" style=\"max-width:100%;height:auto;border-radius:4px;border:1px solid #333\" onerror=\"this.parentElement.innerHTML='<p style=color:#666>No screenshot available</p>'\" /></div>"
+            mode    = "html"
+          }
+          title       = ""
+          transparent = true
+          type        = "text"
+        },
+        # Settings screenshot
+        {
+          gridPos = { h = 10, w = 5, x = 15, y = 8 }
+          id      = 204
+          options = {
+            content = "<div style=\"text-align:center\"><h3 style=\"margin:0 0 8px 0;color:#ccc\">Settings</h3><img src=\"https://dev.abaci.one/smoke-reports/latest/screenshots/settings.png\" style=\"max-width:100%;height:auto;border-radius:4px;border:1px solid #333\" onerror=\"this.parentElement.innerHTML='<p style=color:#666>No screenshot available</p>'\" /></div>"
+            mode    = "html"
+          }
+          title       = ""
+          transparent = true
+          type        = "text"
+        },
+        # Flowchart screenshot
+        {
+          gridPos = { h = 10, w = 4, x = 20, y = 8 }
+          id      = 205
+          options = {
+            content = "<div style=\"text-align:center\"><h3 style=\"margin:0 0 8px 0;color:#ccc\">Flowchart</h3><img src=\"https://dev.abaci.one/smoke-reports/latest/screenshots/flowchart.png\" style=\"max-width:100%;height:auto;border-radius:4px;border:1px solid #333\" onerror=\"this.parentElement.innerHTML='<p style=color:#666>No screenshot available</p>'\" /></div>"
+            mode    = "html"
+          }
+          title       = ""
+          transparent = true
+          type        = "text"
+        },
+        # =================================================================
+        # Row 3: E2E Smoke Tests - History
+        # =================================================================
+        {
+          collapsed = false
+          gridPos   = { h = 1, w = 24, x = 0, y = 18 }
+          id        = 300
+          title     = "E2E Smoke Tests - History"
+          type      = "row"
         },
         # Run history - pass/fail over time
         {
@@ -1753,8 +1865,8 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
               }
             ]
           }
-          gridPos = { h = 8, w = 12, x = 0, y = 43 }
-          id      = 507
+          gridPos = { h = 8, w = 12, x = 0, y = 19 }
+          id      = 301
           options = {
             legend  = { calcs = [], displayMode = "list", placement = "bottom", showLegend = true }
             tooltip = { mode = "multi", sort = "desc" }
@@ -1817,8 +1929,8 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
               unit = "s"
             }
           }
-          gridPos = { h = 8, w = 12, x = 12, y = 43 }
-          id      = 508
+          gridPos = { h = 8, w = 12, x = 12, y = 19 }
+          id      = 302
           options = {
             legend  = { calcs = ["mean", "max"], displayMode = "table", placement = "bottom", showLegend = true }
             tooltip = { mode = "multi", sort = "desc" }
@@ -1830,17 +1942,275 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
           }]
           title = "Suite Duration Over Time"
           type  = "timeseries"
+        },
+        # =================================================================
+        # Row 4: Unit Test Coverage - Current
+        # =================================================================
+        {
+          collapsed = false
+          gridPos   = { h = 1, w = 24, x = 0, y = 27 }
+          id        = 400
+          title     = "Unit Test Coverage - Current"
+          type      = "row"
+        },
+        # Line Coverage gauge
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "thresholds" }
+              max   = 100
+              min   = 0
+              thresholds = {
+                mode = "absolute"
+                steps = [
+                  { color = "red", value = null },
+                  { color = "yellow", value = 50 },
+                  { color = "green", value = 80 }
+                ]
+              }
+              unit = "percent"
+            }
+          }
+          gridPos = { h = 6, w = 6, x = 0, y = 28 }
+          id      = 401
+          options = {
+            orientation          = "auto"
+            reduceOptions        = { calcs = ["lastNotNull"], fields = "", values = false }
+            showThresholdLabels  = false
+            showThresholdMarkers = true
+          }
+          targets = [{
+            expr  = "max(coverage_lines_pct{app=\"abaci-app\"})"
+            refId = "A"
+          }]
+          title = "Line Coverage"
+          type  = "gauge"
+        },
+        # Branch Coverage gauge
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "thresholds" }
+              max   = 100
+              min   = 0
+              thresholds = {
+                mode = "absolute"
+                steps = [
+                  { color = "red", value = null },
+                  { color = "yellow", value = 50 },
+                  { color = "green", value = 80 }
+                ]
+              }
+              unit = "percent"
+            }
+          }
+          gridPos = { h = 6, w = 6, x = 6, y = 28 }
+          id      = 402
+          options = {
+            orientation          = "auto"
+            reduceOptions        = { calcs = ["lastNotNull"], fields = "", values = false }
+            showThresholdLabels  = false
+            showThresholdMarkers = true
+          }
+          targets = [{
+            expr  = "max(coverage_branches_pct{app=\"abaci-app\"})"
+            refId = "A"
+          }]
+          title = "Branch Coverage"
+          type  = "gauge"
+        },
+        # Function Coverage gauge
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "thresholds" }
+              max   = 100
+              min   = 0
+              thresholds = {
+                mode = "absolute"
+                steps = [
+                  { color = "red", value = null },
+                  { color = "yellow", value = 50 },
+                  { color = "green", value = 80 }
+                ]
+              }
+              unit = "percent"
+            }
+          }
+          gridPos = { h = 6, w = 6, x = 12, y = 28 }
+          id      = 403
+          options = {
+            orientation          = "auto"
+            reduceOptions        = { calcs = ["lastNotNull"], fields = "", values = false }
+            showThresholdLabels  = false
+            showThresholdMarkers = true
+          }
+          targets = [{
+            expr  = "max(coverage_functions_pct{app=\"abaci-app\"})"
+            refId = "A"
+          }]
+          title = "Function Coverage"
+          type  = "gauge"
+        },
+        # Statement Coverage gauge
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "thresholds" }
+              max   = 100
+              min   = 0
+              thresholds = {
+                mode = "absolute"
+                steps = [
+                  { color = "red", value = null },
+                  { color = "yellow", value = 50 },
+                  { color = "green", value = 80 }
+                ]
+              }
+              unit = "percent"
+            }
+          }
+          gridPos = { h = 6, w = 6, x = 18, y = 28 }
+          id      = 404
+          options = {
+            orientation          = "auto"
+            reduceOptions        = { calcs = ["lastNotNull"], fields = "", values = false }
+            showThresholdLabels  = false
+            showThresholdMarkers = true
+          }
+          targets = [{
+            expr  = "max(coverage_statements_pct{app=\"abaci-app\"})"
+            refId = "A"
+          }]
+          title = "Statement Coverage"
+          type  = "gauge"
+        },
+        # =================================================================
+        # Row 5: Unit Test Coverage - Trend
+        # =================================================================
+        {
+          collapsed = false
+          gridPos   = { h = 1, w = 24, x = 0, y = 34 }
+          id        = 500
+          title     = "Unit Test Coverage - Trend"
+          type      = "row"
+        },
+        # All Coverage % Over Time
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "palette-classic" }
+              custom = {
+                axisBorderShow    = false
+                axisCenteredZero  = false
+                axisColorMode     = "text"
+                axisLabel         = ""
+                axisPlacement     = "auto"
+                barAlignment      = 0
+                drawStyle         = "line"
+                fillOpacity       = 10
+                gradientMode      = "none"
+                hideFrom          = { legend = false, tooltip = false, viz = false }
+                insertNulls       = false
+                lineInterpolation = "smooth"
+                lineWidth         = 2
+                pointSize         = 5
+                scaleDistribution = { type = "linear" }
+                showPoints        = "always"
+                spanNulls         = false
+                stacking          = { group = "A", mode = "none" }
+                thresholdsStyle   = { mode = "off" }
+              }
+              max  = 100
+              min  = 0
+              unit = "percent"
+            }
+          }
+          gridPos = { h = 8, w = 16, x = 0, y = 35 }
+          id      = 501
+          options = {
+            legend  = { calcs = ["lastNotNull"], displayMode = "table", placement = "bottom", showLegend = true }
+            tooltip = { mode = "multi", sort = "desc" }
+          }
+          targets = [
+            {
+              expr         = "max(coverage_lines_pct{app=\"abaci-app\"})"
+              legendFormat = "Lines"
+              refId        = "A"
+            },
+            {
+              expr         = "max(coverage_branches_pct{app=\"abaci-app\"})"
+              legendFormat = "Branches"
+              refId        = "B"
+            },
+            {
+              expr         = "max(coverage_functions_pct{app=\"abaci-app\"})"
+              legendFormat = "Functions"
+              refId        = "C"
+            },
+            {
+              expr         = "max(coverage_statements_pct{app=\"abaci-app\"})"
+              legendFormat = "Statements"
+              refId        = "D"
+            }
+          ]
+          title = "Coverage % Over Time"
+          type  = "timeseries"
+        },
+        # Last Updated stat
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = { mode = "thresholds" }
+              thresholds = {
+                mode = "absolute"
+                steps = [
+                  { color = "green", value = null },
+                  { color = "yellow", value = 86400 },
+                  { color = "red", value = 259200 }
+                ]
+              }
+              unit = "s"
+            }
+          }
+          gridPos = { h = 8, w = 8, x = 16, y = 35 }
+          id      = 502
+          options = {
+            colorMode   = "value"
+            graphMode   = "none"
+            justifyMode = "auto"
+            orientation = "auto"
+            reduceOptions = {
+              calcs  = ["lastNotNull"]
+              fields = ""
+              values = false
+            }
+            textMode = "auto"
+          }
+          targets = [{
+            expr         = "time() - max(coverage_last_run_timestamp_seconds{app=\"abaci-app\"})"
+            legendFormat = "Age"
+            refId        = "A"
+          }]
+          title = "Coverage Last Updated"
+          type  = "stat"
         }
       ]
-      refresh       = "30s"
+      refresh       = "5m"
       schemaVersion = 39
-      tags          = ["ops", "infrastructure"]
+      tags          = ["testing", "e2e", "coverage"]
       templating    = { list = [] }
-      time          = { from = "now-1h", to = "now" }
+      time          = { from = "now-7d", to = "now" }
       timepicker    = {}
       timezone      = "browser"
-      title         = "Ops Metrics"
-      uid           = "ops-metrics"
+      title         = "Testing"
+      uid           = "testing-metrics"
       version       = 1
     })
   }

@@ -50,9 +50,7 @@ export interface FlowchartGenerateOutput {
  * 3. Creates a version history entry
  * 4. Runs test-case validation
  */
-export async function startFlowchartGeneration(
-  input: FlowchartGenerateInput
-): Promise<string> {
+export async function startFlowchartGeneration(input: FlowchartGenerateInput): Promise<string> {
   return createTask<FlowchartGenerateInput, FlowchartGenerateOutput, FlowchartGenerateEvent>(
     'flowchart-generate',
     input,

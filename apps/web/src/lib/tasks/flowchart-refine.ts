@@ -46,9 +46,7 @@ export interface FlowchartRefineOutput {
  * 3. Creates a version history entry
  * 4. Runs test-case validation
  */
-export async function startFlowchartRefinement(
-  input: FlowchartRefineInput
-): Promise<string> {
+export async function startFlowchartRefinement(input: FlowchartRefineInput): Promise<string> {
   return createTask<FlowchartRefineInput, FlowchartRefineOutput, FlowchartRefineEvent>(
     'flowchart-refine',
     input,
