@@ -2,6 +2,11 @@ import '@testing-library/jest-dom'
 import React from 'react'
 import { vi } from 'vitest'
 
+// Polyfill React.cache for tests (server component feature not available in jsdom)
+if (typeof (React as any).cache !== 'function') {
+  ;(React as any).cache = <T extends (...args: any[]) => any>(fn: T): T => fn
+}
+
 // Mock next-intl for tests
 // This provides a passthrough translation function that returns the key
 vi.mock('next-intl', () => ({
