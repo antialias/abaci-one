@@ -83,6 +83,8 @@ describe('useRoomData hooks', () => {
           name: 'Test Room',
           code: 'ABC123',
           gameName: 'matching',
+          gameConfig: null,
+          accessMode: 'open',
           members: [],
           memberPlayers: {},
         })
@@ -158,7 +160,7 @@ describe('useRoomData hooks', () => {
             name: 'New Room',
             gameName: 'matching',
             creatorName: 'Player 1',
-            gameConfig: { difficulty: 6 },
+            gameConfig: null,
           }),
         })
       )
@@ -228,6 +230,8 @@ describe('useRoomData hooks', () => {
         name: 'New Room',
         code: 'XYZ789',
         gameName: 'matching',
+        gameConfig: null,
+        accessMode: 'open',
         members: [],
         memberPlayers: {},
       })
@@ -236,7 +240,7 @@ describe('useRoomData hooks', () => {
 
   describe('useJoinRoom', () => {
     test('joins a room successfully', async () => {
-      const mockJoinResult = {
+      const mockApiResponse = {
         member: {
           id: 'member-1',
           userId: 'test-user-id',
@@ -249,8 +253,6 @@ describe('useRoomData hooks', () => {
           name: 'Test Room',
           code: 'ABC123',
           gameName: 'matching',
-          members: [],
-          memberPlayers: {},
         },
         members: [],
         memberPlayers: {},
@@ -259,7 +261,7 @@ describe('useRoomData hooks', () => {
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => mockJoinResult,
+        json: async () => mockApiResponse,
       })
 
       const { result } = renderHook(() => useJoinRoom(), { wrapper })
@@ -278,7 +280,19 @@ describe('useRoomData hooks', () => {
       )
 
       await waitFor(() => {
-        expect(joinedRoom).toEqual(mockJoinResult)
+        expect(joinedRoom).toEqual({
+          ...mockApiResponse,
+          room: {
+            id: 'room-123',
+            name: 'Test Room',
+            code: 'ABC123',
+            gameName: 'matching',
+            gameConfig: null,
+            accessMode: 'open',
+            members: [],
+            memberPlayers: {},
+          },
+        })
       })
 
       // Verify fetch was called correctly
@@ -408,6 +422,8 @@ describe('useRoomData hooks', () => {
           name: 'Test Room',
           code: 'ABC123',
           gameName: 'matching',
+          gameConfig: null,
+          accessMode: 'open',
           members: [],
           memberPlayers: {},
         })

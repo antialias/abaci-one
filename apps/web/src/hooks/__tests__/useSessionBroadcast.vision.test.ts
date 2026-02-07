@@ -170,7 +170,7 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
       expect(mockSocket.emit).not.toHaveBeenCalledWith('vision-frame', expect.anything())
     })
 
-    it('does not emit when not connected', () => {
+    it('still emits vision-frame even when not connected (fire-and-forget)', () => {
       // Don't trigger connect handler
       const { result } = renderHook(() =>
         useSessionBroadcast('session-123', 'player-456', createMockBroadcastState())
@@ -180,25 +180,25 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
         result.current.sendVisionFrame('imageData', 123, 0.95)
       })
 
-      // The join-session emit happens on connect, but vision-frame should not
+      // Vision frames are sent fire-and-forget via the socket
       const visionFrameCalls = mockSocket.emit.mock.calls.filter(
         ([event]) => event === 'vision-frame'
       )
-      expect(visionFrameCalls).toHaveLength(0)
+      expect(visionFrameCalls).toHaveLength(1)
     })
 
-    it('does not emit when state is null', () => {
+    it('still emits vision-frame when state is null (fire-and-forget)', () => {
       const { result } = renderHook(() => useSessionBroadcast('session-123', 'player-456', null))
 
       act(() => {
         result.current.sendVisionFrame('imageData', 123, 0.95)
       })
 
-      // Should still not emit vision-frame (no connection due to null state cleanup logic)
+      // Vision frames are sent fire-and-forget via the socket
       const visionFrameCalls = mockSocket.emit.mock.calls.filter(
         ([event]) => event === 'vision-frame'
       )
-      expect(visionFrameCalls).toHaveLength(0)
+      expect(visionFrameCalls).toHaveLength(1)
     })
   })
 

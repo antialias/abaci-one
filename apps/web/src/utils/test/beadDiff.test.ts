@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// Unmock @soroban/abacus-react so we can test the real bead diff algorithms
+vi.unmock('@soroban/abacus-react')
+
 import { numberToAbacusState } from '../abacusInstructionGenerator'
 import {
   areStatesEqual,

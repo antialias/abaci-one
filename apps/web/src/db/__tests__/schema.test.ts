@@ -83,9 +83,9 @@ describe('Schema validation', () => {
       expect(arcadeSessions.version).toBeDefined()
     })
 
-    it('has userId as primary key', () => {
-      expect(arcadeSessions.userId).toBeDefined()
-      expect(arcadeSessions.userId.primary).toBe(true)
+    it('has roomId as primary key', () => {
+      expect(arcadeSessions.roomId).toBeDefined()
+      expect(arcadeSessions.roomId.primary).toBe(true)
     })
 
     it('has foreign key to users', () => {

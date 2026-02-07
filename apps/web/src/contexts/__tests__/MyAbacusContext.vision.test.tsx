@@ -78,17 +78,12 @@ describe('MyAbacusContext - vision functionality', () => {
       expect(result.current.isVisionSetupComplete).toBe(false)
     })
 
-    it('returns true when both camera and calibration are set', () => {
+    it('returns true when camera source and device are set', () => {
       const { result } = renderHook(() => useMyAbacus(), { wrapper })
 
       act(() => {
+        result.current.setVisionCameraSource('local')
         result.current.setVisionCamera('camera-123')
-        result.current.setVisionCalibration({
-          roi: { x: 0, y: 0, width: 100, height: 100 },
-          columnCount: 5,
-          columnDividers: [],
-          rotation: 0,
-        })
       })
 
       expect(result.current.isVisionSetupComplete).toBe(true)

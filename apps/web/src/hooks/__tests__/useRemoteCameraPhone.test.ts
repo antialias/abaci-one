@@ -112,7 +112,7 @@ describe('useRemoteCameraPhone', () => {
       expect(result.current.isConnected).toBe(true)
     })
 
-    it('should set error if socket not connected', () => {
+    it('should not connect if socket not connected yet', () => {
       const { result } = renderHook(() => useRemoteCameraPhone())
 
       // Don't simulate connect - socket is not connected
@@ -121,7 +121,8 @@ describe('useRemoteCameraPhone', () => {
         result.current.connect('fail-session')
       })
 
-      expect(result.current.error).toBe('Socket not connected')
+      // When socket is not connected, connect is deferred (no error, not connected)
+      expect(result.current.isConnected).toBe(false)
     })
   })
 

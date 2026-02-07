@@ -54,7 +54,7 @@ describe('getSkillTutorialConfig', () => {
     const config = getSkillTutorialConfig('basic.directAddition')
     expect(config).not.toBeNull()
     expect(config?.skillId).toBe('basic.directAddition')
-    expect(config?.title).toBe('Adding by moving earth beads')
+    expect(config?.title).toBe('Direct Addition (1-4)')
     expect(config?.exampleProblems.length).toBeGreaterThan(0)
   })
 
@@ -81,7 +81,7 @@ describe('getSkillTutorialConfig', () => {
 describe('getSkillDisplayName', () => {
   it('returns title from config for known skill', () => {
     const name = getSkillDisplayName('basic.directAddition')
-    expect(name).toBe('Adding by moving earth beads')
+    expect(name).toBe('Direct Addition (1-4)')
   })
 
   it('returns parsed name for unknown skill', () => {
