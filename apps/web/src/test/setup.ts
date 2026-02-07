@@ -46,18 +46,6 @@ vi.mock('@/db', () => ({
   ),
 }))
 
-// Mock @/generated/build-info.json (generated at build time, not in CI)
-vi.mock('@/generated/build-info.json', () => ({
-  default: {
-    commitShort: 'test1234',
-    commit: 'test1234567890',
-    branch: 'main',
-    tag: '',
-    dirty: false,
-    buildTimestamp: new Date().toISOString(),
-  },
-}))
-
 // Polyfill window.matchMedia for jsdom (used by useDeviceCapabilities)
 if (typeof window !== 'undefined' && !window.matchMedia) {
   Object.defineProperty(window, 'matchMedia', {
