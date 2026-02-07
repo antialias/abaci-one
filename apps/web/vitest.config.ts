@@ -24,6 +24,13 @@ export default defineConfig({
       reporter: ['json-summary', 'html'],
       reportsDirectory: './coverage',
       reportOnFailure: true,
+      thresholds: {
+        autoUpdate: true,
+        lines: 10.91,
+        branches: 61.6,
+        functions: 19.69,
+        statements: 11.38,
+      },
     },
   },
   resolve: {
