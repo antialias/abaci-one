@@ -10,6 +10,12 @@ vi.mock('@soroban/abacus-react', () => ({
     ;(global as any).lastCustomStyles = customStyles
     return <div data-testid="mock-abacus" />
   }),
+  useAbacusDisplay: () => ({
+    config: { colorScheme: 'place-value', beadShape: 'diamond', hideInactiveBeads: false },
+    updateConfig: () => {},
+    resetToDefaults: () => {},
+  }),
+  calculateBeadDiffFromValues: () => ({ hasChanges: false, changes: [], summary: '' }),
 }))
 
 describe('TutorialPlayer Highlighting', () => {

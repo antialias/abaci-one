@@ -39,6 +39,13 @@ vi.mock('@soroban/abacus-react', () => ({
     )
   },
   StepBeadHighlight: {},
+  AbacusDisplayProvider: ({ children }: any) => <div>{children}</div>,
+  useAbacusDisplay: () => ({
+    config: { colorScheme: 'place-value', beadShape: 'diamond', hideInactiveBeads: false },
+    updateConfig: () => {},
+    resetToDefaults: () => {},
+  }),
+  calculateBeadDiffFromValues: () => ({ hasChanges: false, changes: [], summary: '' }),
 }))
 
 const mockTutorial: Tutorial = {

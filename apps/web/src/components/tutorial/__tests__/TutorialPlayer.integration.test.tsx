@@ -17,6 +17,12 @@ vi.mock('@soroban/abacus-react', () => ({
     </div>
   ),
   AbacusOverlay: ({ children }: any) => <div data-testid="mock-overlay">{children}</div>,
+  useAbacusDisplay: () => ({
+    config: { colorScheme: 'place-value', beadShape: 'diamond', hideInactiveBeads: false },
+    updateConfig: () => {},
+    resetToDefaults: () => {},
+  }),
+  calculateBeadDiffFromValues: () => ({ hasChanges: false, changes: [], summary: '' }),
 }))
 
 // Mock tutorial data with multi-step instructions

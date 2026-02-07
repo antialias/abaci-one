@@ -36,6 +36,12 @@ vi.mock('@soroban/abacus-react', () => ({
       </button>
     </div>
   ),
+  useAbacusDisplay: () => ({
+    config: { colorScheme: 'place-value', beadShape: 'diamond', hideInactiveBeads: false },
+    updateConfig: () => {},
+    resetToDefaults: () => {},
+  }),
+  calculateBeadDiffFromValues: () => ({ hasChanges: false, changes: [], summary: '' }),
 }))
 
 describe('Tutorial Editor Page Integration Tests', () => {
