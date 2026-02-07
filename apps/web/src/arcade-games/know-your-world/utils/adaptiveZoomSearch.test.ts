@@ -8,36 +8,36 @@ import type { Bounds } from './adaptiveZoomSearch'
 
 describe('adaptiveZoomSearch', () => {
   describe('calculateAdaptiveThresholds', () => {
-    it('returns min 0.02, max 0.08 for very small regions (< 1px)', () => {
+    it('returns min 0.02, max 0.4 for very small regions (< 1px)', () => {
       expect(calculateAdaptiveThresholds(0.5)).toEqual({
         min: 0.02,
-        max: 0.08,
+        max: 0.4,
       })
       expect(calculateAdaptiveThresholds(0.99)).toEqual({
         min: 0.02,
-        max: 0.08,
+        max: 0.4,
       })
     })
 
-    it('returns min 0.05, max 0.15 for small regions (1px - 5px)', () => {
-      expect(calculateAdaptiveThresholds(1)).toEqual({ min: 0.05, max: 0.15 })
-      expect(calculateAdaptiveThresholds(3)).toEqual({ min: 0.05, max: 0.15 })
+    it('returns min 0.05, max 0.25 for small regions (1px - 5px)', () => {
+      expect(calculateAdaptiveThresholds(1)).toEqual({ min: 0.05, max: 0.25 })
+      expect(calculateAdaptiveThresholds(3)).toEqual({ min: 0.05, max: 0.25 })
       expect(calculateAdaptiveThresholds(4.99)).toEqual({
         min: 0.05,
-        max: 0.15,
+        max: 0.25,
       })
     })
 
-    it('returns min 0.1, max 0.25 for larger regions (>= 5px)', () => {
-      expect(calculateAdaptiveThresholds(5)).toEqual({ min: 0.1, max: 0.25 })
-      expect(calculateAdaptiveThresholds(10)).toEqual({ min: 0.1, max: 0.25 })
-      expect(calculateAdaptiveThresholds(100)).toEqual({ min: 0.1, max: 0.25 })
+    it('returns min 0.1, max 0.3 for larger regions (>= 5px)', () => {
+      expect(calculateAdaptiveThresholds(5)).toEqual({ min: 0.1, max: 0.3 })
+      expect(calculateAdaptiveThresholds(10)).toEqual({ min: 0.1, max: 0.3 })
+      expect(calculateAdaptiveThresholds(100)).toEqual({ min: 0.1, max: 0.3 })
     })
 
     it('handles boundary cases correctly', () => {
-      expect(calculateAdaptiveThresholds(0)).toEqual({ min: 0.02, max: 0.08 })
-      expect(calculateAdaptiveThresholds(1)).toEqual({ min: 0.05, max: 0.15 })
-      expect(calculateAdaptiveThresholds(5)).toEqual({ min: 0.1, max: 0.25 })
+      expect(calculateAdaptiveThresholds(0)).toEqual({ min: 0.02, max: 0.4 })
+      expect(calculateAdaptiveThresholds(1)).toEqual({ min: 0.05, max: 0.25 })
+      expect(calculateAdaptiveThresholds(5)).toEqual({ min: 0.1, max: 0.3 })
     })
   })
 

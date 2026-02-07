@@ -200,9 +200,9 @@ describe('KnowYourWorldValidator', () => {
         ])
       })
 
-      it('re-inserts region at end on hard difficulty', async () => {
+      it('re-inserts region at end on low assistance level', async () => {
         const state = createBaseState({
-          difficulty: 'hard',
+          assistanceLevel: 'none',
           currentPrompt: 'region-1',
           regionsToFind: ['region-2', 'region-3', 'region-4', 'region-5'],
         })
@@ -221,9 +221,9 @@ describe('KnowYourWorldValidator', () => {
         ])
       })
 
-      it('handles easy difficulty with fewer than 3 regions remaining', async () => {
+      it('handles high assistance with fewer than 3 regions remaining', async () => {
         const state = createBaseState({
-          difficulty: 'easy',
+          assistanceLevel: 'helpful',
           currentPrompt: 'region-1',
           regionsToFind: ['region-2'], // Only 1 region in queue
         })

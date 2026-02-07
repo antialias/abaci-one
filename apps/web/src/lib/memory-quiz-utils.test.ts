@@ -156,7 +156,8 @@ describe('Memory Quiz Utils', () => {
 
       expect(shouldTriggerIncorrectGuess('99', targets, found)).toBe(true)
       expect(shouldTriggerIncorrectGuess('999', targets, found)).toBe(true)
-      expect(shouldTriggerIncorrectGuess('12', targets, found)).toBe(true) // not 123 or any other target
+      // '12' is a prefix of 123, so it should NOT trigger (user may still be typing)
+      expect(shouldTriggerIncorrectGuess('12', targets, found)).toBe(false)
     })
 
     it('should trigger for single digits that cannot be prefixes', () => {
