@@ -123,6 +123,7 @@ export type TaskType =
   | 'flowchart-embed'
   | 'flowchart-generate'
   | 'flowchart-refine'
+  | 'seed-students'
   | 'demo'
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 /**

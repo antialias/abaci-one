@@ -71,6 +71,7 @@ const taskTimeouts: Partial<Record<TaskType, number>> = {
   'flowchart-embed': 5 * 60 * 1000, // 5 minutes
   'flowchart-generate': 6 * 60 * 1000, // 6 minutes (LLM + validation)
   'flowchart-refine': 6 * 60 * 1000, // 6 minutes (LLM + validation)
+  'seed-students': 10 * 60 * 1000, // 10 minutes (high-volume profiles are slow)
   demo: 2 * 60 * 1000, // 2 minutes
 }
 

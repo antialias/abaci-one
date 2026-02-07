@@ -218,6 +218,22 @@ export type FlowchartRefineEvent =
   | { type: 'refine_error'; message: string; code?: string }
 
 // ============================================================================
+// Seed Students domain events
+// ============================================================================
+
+export type SeedStudentsEvent =
+  | { type: 'seed_started'; profileCount: number; profileNames: string[] }
+  | { type: 'student_started'; name: string; index: number; total: number }
+  | {
+      type: 'student_completed'
+      name: string
+      playerId: string
+      classifications: { weak: number; developing: number; strong: number }
+    }
+  | { type: 'student_failed'; name: string; error: string }
+  | { type: 'seed_complete'; seededCount: number; failedCount: number; classroomCode: string }
+
+// ============================================================================
 // Demo task events
 // ============================================================================
 
@@ -234,6 +250,7 @@ export interface TaskEventMap {
   'flowchart-embed': FlowchartEmbedEvent
   'flowchart-generate': FlowchartGenerateEvent
   'flowchart-refine': FlowchartRefineEvent
+  'seed-students': SeedStudentsEvent
   demo: DemoTaskEvent
 }
 

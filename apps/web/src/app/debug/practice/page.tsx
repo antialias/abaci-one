@@ -3,6 +3,7 @@
 import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { SeedStudentsSection } from '@/components/debug/SeedStudentsSection'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../../styled-system/css'
@@ -159,6 +160,8 @@ export default function DebugPracticePage() {
               </button>
             ))}
           </div>
+
+          <SeedStudentsSection isDark={isDark} />
         </div>
       </main>
     </PageWithNav>
