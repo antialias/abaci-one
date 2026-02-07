@@ -1,6 +1,21 @@
 import { render, screen } from '@testing-library/react'
 import RootLayout from '../layout'
 
+// Mock next/headers server functions (used by getRequestLocale)
+vi.mock('next/headers', () => ({
+  headers: vi.fn(() => Promise.resolve(new Map([['x-locale', 'en']]))),
+  cookies: vi.fn(() => Promise.resolve({ get: () => undefined })),
+}))
+
+// Mock i18n helpers to avoid server-only dependencies
+vi.mock('../../i18n/request', () => ({
+  getRequestLocale: vi.fn(() => Promise.resolve('en')),
+}))
+
+vi.mock('../../i18n/messages', () => ({
+  getMessages: vi.fn(() => Promise.resolve({})),
+}))
+
 // Mock ClientProviders
 vi.mock('../../components/ClientProviders', () => ({
   ClientProviders: ({ children }: { children: React.ReactNode }) => (
@@ -9,19 +24,22 @@ vi.mock('../../components/ClientProviders', () => ({
 }))
 
 describe('RootLayout', () => {
-  it('renders children with ClientProviders', () => {
+  it('renders children with ClientProviders', async () => {
     const pageContent = <div>Page content</div>
 
-    render(<RootLayout>{pageContent}</RootLayout>)
+    // RootLayout is an async server component; await its JSX before rendering
+    const jsx = await RootLayout({ children: pageContent })
+    render(jsx)
 
     expect(screen.getByTestId('client-providers')).toBeInTheDocument()
     expect(screen.getByText('Page content')).toBeInTheDocument()
   })
 
-  it('renders html and body tags', () => {
+  it('renders html and body tags', async () => {
     const pageContent = <div>Test content</div>
 
-    const { container } = render(<RootLayout>{pageContent}</RootLayout>)
+    const jsx = await RootLayout({ children: pageContent })
+    const { container } = render(jsx)
 
     const html = container.querySelector('html')
     const body = container.querySelector('body')

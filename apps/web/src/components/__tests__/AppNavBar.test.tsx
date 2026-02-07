@@ -1,10 +1,12 @@
 import { render, screen } from '@testing-library/react'
+import { usePathname } from 'next/navigation'
 import { vi } from 'vitest'
 import { AppNavBar } from '../AppNavBar'
 
 // Mock Next.js hooks
+const mockUsePathname = vi.fn(() => '/games/matching')
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/games/matching',
+  usePathname: () => mockUsePathname(),
   useRouter: () => ({
     push: vi.fn(),
   }),
@@ -19,23 +21,56 @@ vi.mock('../../contexts/FullscreenContext', () => ({
   }),
 }))
 
+vi.mock('../../contexts/DeploymentInfoContext', () => ({
+  useDeploymentInfo: () => ({
+    isOpen: false,
+    open: vi.fn(),
+    close: vi.fn(),
+    toggle: vi.fn(),
+  }),
+}))
+
+vi.mock('../../contexts/ThemeContext', () => ({
+  useTheme: () => ({
+    theme: 'dark',
+    resolvedTheme: 'dark',
+    setTheme: vi.fn(),
+  }),
+}))
+
+vi.mock('../../contexts/VisualDebugContext', () => ({
+  useVisualDebug: () => ({
+    isVisualDebugEnabled: false,
+    toggleVisualDebug: vi.fn(),
+    isDevelopment: false,
+    isDebugAllowed: false,
+  }),
+}))
+
 // Mock AbacusDisplayDropdown
 vi.mock('../AbacusDisplayDropdown', () => ({
   AbacusDisplayDropdown: () => <div data-testid="abacus-dropdown">Dropdown</div>,
 }))
 
 describe('AppNavBar', () => {
-  it('renders navSlot when provided', () => {
-    const navSlot = <div data-testid="nav-slot">🧩 Memory Pairs</div>
+  beforeEach(() => {
+    mockUsePathname.mockReturnValue('/games/matching')
+  })
+
+  it('renders navSlot in minimal variant for arcade pages', () => {
+    // Minimal variant auto-detects for /arcade/* paths
+    mockUsePathname.mockReturnValue('/arcade/matching')
+    const navSlot = <div data-testid="nav-slot">Memory Pairs</div>
 
     render(<AppNavBar navSlot={navSlot} />)
 
     expect(screen.getByTestId('nav-slot')).toBeInTheDocument()
-    expect(screen.getByText('🧩 Memory Pairs')).toBeInTheDocument()
+    expect(screen.getByText('Memory Pairs')).toBeInTheDocument()
   })
 
-  it('does not render nav branding when navSlot is null', () => {
-    render(<AppNavBar navSlot={null} />)
+  it('does not render navSlot in full variant', () => {
+    // /games/* path uses full variant (not auto-detected as minimal)
+    render(<AppNavBar navSlot={<div data-testid="nav-slot">Slot</div>} />)
 
     expect(screen.queryByTestId('nav-slot')).not.toBeInTheDocument()
   })
@@ -46,21 +81,20 @@ describe('AppNavBar', () => {
     expect(screen.queryByTestId('nav-slot')).not.toBeInTheDocument()
   })
 
-  it('renders minimal variant for game pages', () => {
+  it('renders minimal variant for arcade pages with auto-detection', () => {
+    // Auto-detection switches to minimal for /arcade/* paths
+    mockUsePathname.mockReturnValue('/arcade/matching')
     const navSlot = <div data-testid="nav-slot">Game Name</div>
 
     render(<AppNavBar variant="full" navSlot={navSlot} />)
 
-    // Should auto-detect minimal variant for /games/matching path
     expect(screen.getByTestId('nav-slot')).toBeInTheDocument()
   })
 
-  it('renders fullscreen toggle button', () => {
-    const navSlot = <div data-testid="nav-slot">Game Name</div>
+  it('renders hamburger menu button in full variant', () => {
+    render(<AppNavBar />)
 
-    render(<AppNavBar navSlot={navSlot} />)
-
-    // Check that fullscreen toggle button is present
-    expect(screen.getByTitle('Enter Fullscreen')).toBeInTheDocument()
+    // The hamburger menu renders a button with the ☰ character
+    expect(screen.getByText('☰')).toBeInTheDocument()
   })
 })
