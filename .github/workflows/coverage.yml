@@ -30,6 +30,10 @@ jobs:
       - name: Build @soroban/abacus-react
         run: pnpm --filter @soroban/abacus-react run build
 
+      - name: Generate Panda CSS styled-system
+        working-directory: apps/web
+        run: npx @pandacss/dev
+
       - name: Lint (Biome)
         working-directory: apps/web
         run: npx @biomejs/biome lint .
