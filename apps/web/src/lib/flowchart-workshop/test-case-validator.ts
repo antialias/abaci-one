@@ -248,7 +248,8 @@ export function runTestCaseWithFlowchart(
 
   // Use simulateWalk + extractAnswer for unified computation
   try {
-    const terminalState = simulateWalk(flowchart, example.values)
+    const normalizedValues = normalizeExampleValues(example.values)
+    const terminalState = simulateWalk(flowchart, normalizedValues)
     const { display: answerDisplay } = extractAnswer(flowchart, terminalState)
     const answer = answerDisplay.text || null
 
