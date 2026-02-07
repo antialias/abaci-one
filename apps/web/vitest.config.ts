@@ -19,6 +19,9 @@ export default defineConfig({
       '**/src/db/__tests__/database-connection.test.ts',
       '**/src/test/session-targeting-trace.test.ts',
       '**/src/lib/arcade/__tests__/arcade-session-integration.test.ts',
+      '**/src/lib/arcade/__tests__/modal-rooms.test.ts',
+      '**/src/lib/arcade/__tests__/orphaned-session-cleanup.test.ts',
+      '**/src/lib/arcade/__tests__/room-invitations.test.ts',
       '**/src/app/api/arcade-session/__tests__/route.test.ts',
     ],
     coverage: {

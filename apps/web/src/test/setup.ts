@@ -3,6 +3,49 @@ import 'vitest-axe/extend-expect'
 import React from 'react'
 import { vi } from 'vitest'
 
+// Mock @/db to prevent SQLite access in unit tests
+// The db module creates a real SQLite connection which fails in CI (no database file)
+// Tests that need a real database are excluded via vitest.config.ts
+function createChainableDbMock(): any {
+  const chain = (): any =>
+    new Proxy(() => Promise.resolve([]), {
+      get: (_target, prop) => {
+        if (prop === 'then') return undefined // not a thenable until awaited
+        if (prop === 'all') return () => Promise.resolve([])
+        if (prop === 'get') return () => Promise.resolve(undefined)
+        if (prop === 'values') return () => Promise.resolve([])
+        if (prop === 'run') return () => Promise.resolve()
+        if (prop === 'execute') return () => Promise.resolve()
+        return chain()
+      },
+      apply: () => chain(),
+    })
+  return new Proxy(
+    {},
+    {
+      get: (_target, prop) => {
+        if (prop === 'transaction') return (fn: any) => fn(chain())
+        return chain()
+      },
+    }
+  )
+}
+vi.mock('@/db', () => ({
+  db: createChainableDbMock(),
+  schema: new Proxy(
+    {},
+    {
+      get: () =>
+        new Proxy(
+          {},
+          {
+            get: () => Symbol('column'),
+          }
+        ),
+    }
+  ),
+}))
+
 // Polyfill React.cache for tests (server component feature not available in jsdom)
 if (typeof (React as any).cache !== 'function') {
   ;(React as any).cache = <T extends (...args: any[]) => any>(fn: T): T => fn
