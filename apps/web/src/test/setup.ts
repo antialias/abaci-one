@@ -46,6 +46,35 @@ vi.mock('@/db', () => ({
   ),
 }))
 
+// Mock @/generated/build-info.json (generated at build time, not in CI)
+vi.mock('@/generated/build-info.json', () => ({
+  default: {
+    commitShort: 'test1234',
+    commit: 'test1234567890',
+    branch: 'main',
+    tag: '',
+    dirty: false,
+    buildTimestamp: new Date().toISOString(),
+  },
+}))
+
+// Polyfill window.matchMedia for jsdom (used by useDeviceCapabilities)
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  })
+}
+
 // Polyfill React.cache for tests (server component feature not available in jsdom)
 if (typeof (React as any).cache !== 'function') {
   ;(React as any).cache = <T extends (...args: any[]) => any>(fn: T): T => fn

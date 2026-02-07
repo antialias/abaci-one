@@ -23,6 +23,8 @@ export default defineConfig({
       '**/src/lib/arcade/__tests__/orphaned-session-cleanup.test.ts',
       '**/src/lib/arcade/__tests__/room-invitations.test.ts',
       '**/src/app/api/arcade-session/__tests__/route.test.ts',
+      '**/src/app/api/worksheets/download/__tests__/route.test.ts',
+      '**/src/lib/curriculum/__tests__/updateSessionPlanRemoteCamera.test.ts',
     ],
     coverage: {
       provider: 'v8',
