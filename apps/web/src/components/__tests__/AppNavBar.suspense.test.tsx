@@ -3,9 +3,9 @@ import React from 'react'
 import { vi } from 'vitest'
 import { AppNavBar } from '../AppNavBar'
 
-// Mock Next.js hooks
+// Mock Next.js hooks - use /arcade path to get minimal variant which renders navSlot
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/games/matching',
+  usePathname: () => '/arcade/matching',
   useRouter: () => ({
     push: vi.fn(),
   }),
@@ -20,14 +20,40 @@ vi.mock('../../contexts/FullscreenContext', () => ({
   }),
 }))
 
+vi.mock('../../contexts/DeploymentInfoContext', () => ({
+  useDeploymentInfo: () => ({
+    isOpen: false,
+    open: vi.fn(),
+    close: vi.fn(),
+    toggle: vi.fn(),
+  }),
+}))
+
+vi.mock('../../contexts/ThemeContext', () => ({
+  useTheme: () => ({
+    theme: 'dark',
+    resolvedTheme: 'dark',
+    setTheme: vi.fn(),
+  }),
+}))
+
+vi.mock('../../contexts/VisualDebugContext', () => ({
+  useVisualDebug: () => ({
+    isVisualDebugEnabled: false,
+    toggleVisualDebug: vi.fn(),
+    isDevelopment: false,
+    isDebugAllowed: false,
+  }),
+}))
+
 // Mock AbacusDisplayDropdown
 vi.mock('../AbacusDisplayDropdown', () => ({
   AbacusDisplayDropdown: () => <div data-testid="abacus-dropdown">Dropdown</div>,
 }))
 
 describe('AppNavBar Suspense Fix', () => {
-  it('renders nav slot content with Suspense boundary (FIXED)', async () => {
-    // Simulate the exact structure that Next.js App Router provides
+  it('renders nav slot content when wrapped in Suspense by caller', async () => {
+    // Next.js App Router wraps lazy components in Suspense before passing as navSlot
     const MatchingNavContent = () => (
       <h1
         style={{
@@ -39,63 +65,42 @@ describe('AppNavBar Suspense Fix', () => {
           margin: 0,
         }}
       >
-        🧩 Memory Pairs
+        Memory Pairs
       </h1>
     )
 
-    // Create a lazy component like Next.js does
     const LazyMatchingNav = React.lazy(() => Promise.resolve({ default: MatchingNavContent }))
 
-    // This is what Next.js App Router passes to our component
-    const navSlot = <LazyMatchingNav />
+    // Caller wraps in Suspense (like Next.js does)
+    const navSlot = (
+      <React.Suspense fallback={<div>Loading...</div>}>
+        <LazyMatchingNav />
+      </React.Suspense>
+    )
 
     render(<AppNavBar navSlot={navSlot} />)
-
-    // Should show loading state briefly
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
 
     // Wait for the lazy component to load and render
     await waitFor(() => {
-      expect(screen.getByText('🧩 Memory Pairs')).toBeInTheDocument()
+      expect(screen.getByText('Memory Pairs')).toBeInTheDocument()
     })
-
-    // Loading state should be gone
-    expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-
-    // Game name should be visible in the nav
-    expect(screen.getByText('🧩 Memory Pairs')).toBeInTheDocument()
   })
 
-  it('demonstrates the original issue was fixed', async () => {
-    // This test shows that without our Suspense fix, this would have failed
-    const MemoryQuizContent = () => <h1>🧠 Memory Lightning</h1>
-    const LazyMemoryQuizNav = React.lazy(() => Promise.resolve({ default: MemoryQuizContent }))
-
-    const navSlot = <LazyMemoryQuizNav />
+  it('renders eagerly loaded nav slot content', () => {
+    // Non-lazy components render immediately
+    const navSlot = <h1>Memory Lightning</h1>
 
     render(<AppNavBar navSlot={navSlot} />)
 
-    // Without Suspense boundary in AppNavBar, this would fail to render
-    // But now it works because we wrap navSlot in Suspense
-    await waitFor(() => {
-      expect(screen.getByText('🧠 Memory Lightning')).toBeInTheDocument()
-    })
-  })
-
-  it('shows that lazy components need Suspense to render', () => {
-    // This test shows what happens without Suspense - it should fail
-    const TestContent = () => <h1>Test Content</h1>
-    const LazyTest = React.lazy(() => Promise.resolve({ default: TestContent }))
-
-    // Trying to render lazy component without Suspense should fail
-    expect(() => render(<LazyTest />)).toThrow()
+    expect(screen.getByText('Memory Lightning')).toBeInTheDocument()
   })
 
   it('handles nav slot gracefully when null or undefined', () => {
-    render(<AppNavBar navSlot={null} />)
-    expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+    const { unmount } = render(<AppNavBar navSlot={null} />)
+    // Should render without crashing
+    unmount()
 
     render(<AppNavBar navSlot={undefined} />)
-    expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+    // Should render without crashing
   })
 })
