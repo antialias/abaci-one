@@ -144,6 +144,7 @@ export function LoadShareCodeModal({ isOpen, onClose, isDark }: LoadShareCodeMod
                 onChange={handleInputChange}
                 placeholder="e.g., k7mP2qR"
                 autoComplete="off"
+                // biome-ignore lint/a11y/noAutofocus: focus input on modal open
                 autoFocus
                 className={css({
                   w: 'full',

@@ -608,6 +608,7 @@ export function FlowchartCheckpoint({
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e)}
             disabled={disabled}
+            // biome-ignore lint/a11y/noAutofocus: focus input on modal open
             autoFocus
             className={css({
               width: '120px',

@@ -478,6 +478,9 @@ importers:
       vitest:
         specifier: ^1.0.0
         version: 1.6.1(@types/node@20.19.19)(happy-dom@18.0.1)(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(lightningcss@1.30.2)(terser@5.44.0)
+      vitest-axe:
+        specifier: ^0.1.0
+        version: 0.1.0(vitest@1.6.1(@types/node@20.19.19)(happy-dom@18.0.1)(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(lightningcss@1.30.2)(terser@5.44.0))
 
   packages/abacus-react:
     dependencies:
@@ -12729,6 +12732,11 @@ packages:
         optional: true
       terser:
         optional: true
+
+  vitest-axe@0.1.0:
+    resolution: {integrity: sha512-jvtXxeQPg8R/2ANTY8QicA5pvvdRP4F0FsVUAHANJ46YCDASie/cuhlSzu0DGcLmZvGBSBNsNuK3HqfaeknyvA==}
+    peerDependencies:
+      vitest: '>=0.16.0'
 
   vitest@1.6.1:
     resolution: {integrity: sha512-Ljb1cnSJSivGN0LqXd/zmDbWEM0RNNg2t1QW/XUhYl/qPqyu7CsqeWtqQXHVaJsecLPuDoak2oJcZN2QoRIOag==}
@@ -27647,6 +27655,16 @@ snapshots:
       fsevents: 2.3.3
       lightningcss: 1.30.2
       terser: 5.44.0
+
+  vitest-axe@0.1.0(vitest@1.6.1(@types/node@20.19.19)(happy-dom@18.0.1)(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(lightningcss@1.30.2)(terser@5.44.0)):
+    dependencies:
+      aria-query: 5.3.2
+      axe-core: 4.10.3
+      chalk: 5.6.2
+      dom-accessibility-api: 0.5.16
+      lodash-es: 4.17.21
+      redent: 3.0.0
+      vitest: 1.6.1(@types/node@20.19.19)(happy-dom@18.0.1)(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(lightningcss@1.30.2)(terser@5.44.0)
 
   vitest@1.6.1(@types/node@20.19.19)(happy-dom@18.0.1)(jsdom@27.0.0(canvas-mock@0.0.0)(postcss@8.5.6))(lightningcss@1.30.2)(terser@5.44.0):
     dependencies:

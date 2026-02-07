@@ -64,7 +64,11 @@ function SkillBadge({
       })}
     >
       {likelyCause && (
-        <span className={css({ fontSize: '0.625rem' })} aria-label="Likely cause of error">
+        <span
+          className={css({ fontSize: '0.625rem' })}
+          role="img"
+          aria-label="Likely cause of error"
+        >
           ⚠️
         </span>
       )}

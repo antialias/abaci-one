@@ -223,7 +223,7 @@ export function sanitizeMermaidContent(content: string): string {
   // - Group 3: Closing delimiter ("]  or "}  or "])  or ")) )
 
   return content.replace(
-    /(\["|\{"|(\(\[")|\(\(")([^]*?)("]|\}"|"]\)|"\)\))/g,
+    /(\["|\{"|(\(\[")|\(\(")([\s\S]*?)("]|\}"|"]\)|"\)\))/g,
     (match, open, _stadium, innerContent, close) => {
       // If we captured the stadium opener, use that
       const actualOpen = _stadium || open

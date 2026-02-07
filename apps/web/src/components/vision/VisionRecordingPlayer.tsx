@@ -105,6 +105,7 @@ export function VisionRecordingPlayer({
       })}
     >
       {/* Video element */}
+      {/* biome-ignore lint/a11y/useMediaCaption: vision recording playback where captions are not applicable */}
       <video
         ref={videoRef}
         src={videoUrl}

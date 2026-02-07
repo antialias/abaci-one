@@ -30,6 +30,10 @@ jobs:
       - name: Build @soroban/abacus-react
         run: pnpm --filter @soroban/abacus-react run build
 
+      - name: Lint (Biome)
+        working-directory: apps/web
+        run: npx @biomejs/biome lint .
+
       - name: Run tests with coverage
         run: pnpm --filter @soroban/web run test:coverage
 

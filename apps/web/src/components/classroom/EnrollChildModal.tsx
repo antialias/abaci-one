@@ -302,6 +302,7 @@ export function EnrollChildModal({ isOpen, onClose, playerId, playerName }: Enro
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   placeholder="e.g., ABC123"
                   maxLength={6}
+                  // biome-ignore lint/a11y/noAutofocus: focus input on modal open
                   autoFocus
                   data-input="classroom-code"
                   className={css({

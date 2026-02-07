@@ -266,6 +266,3 @@ describe('Training Capture Rate Limiting', () => {
     })
   })
 })
-
-// Export for potential reuse in integration tests
-export { TrainingCaptureRateLimiter }

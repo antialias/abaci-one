@@ -154,7 +154,7 @@ test.describe('Know Your World - Full-Screen Layout', () => {
     // Should contain emojis (game mode: 🤝/🏁/↔️, difficulty: 😊/🤔)
     const hasEmojis = await gameInfo.evaluate((el) => {
       const text = el.textContent || ''
-      return /[🤝🏁↔️😊🤔]/u.test(text)
+      return /(🤝|🏁|↔️|😊|🤔)/u.test(text)
     })
     expect(hasEmojis).toBe(true)
   })

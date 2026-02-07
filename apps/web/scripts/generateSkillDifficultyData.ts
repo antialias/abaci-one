@@ -69,6 +69,7 @@ function parseSnapshotFile(content: string): SnapshotData {
     try {
       // The snapshot content is a JavaScript object literal, parse it
       // eslint-disable-next-line no-eval
+      // biome-ignore lint/security/noGlobalEval: parsing snapshot data from trusted local files
       return eval(`(${match[1]})`)
     } catch (e) {
       console.error(`Error parsing snapshot ${name}:`, e)

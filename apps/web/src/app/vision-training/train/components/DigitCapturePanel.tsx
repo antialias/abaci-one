@@ -377,6 +377,7 @@ export function DigitCapturePanel({
         height: '100%',
         overflow: 'hidden', // No scrolling in capture panel
       })}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: needed for programmatic focus to receive keyboard events
       tabIndex={0}
       onKeyDown={(e) => handleKeyDown(e.nativeEvent)}
     >

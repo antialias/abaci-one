@@ -748,6 +748,7 @@ function getNextNodeForSimulation(
       return buildFromOption(def.options[0])
     }
 
+    // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional fallthrough to share instruction logic
     case 'checkpoint': {
       // Check for skip condition
       if (def.skipIf && def.skipTo) {
@@ -761,7 +762,6 @@ function getNextNodeForSimulation(
       }
       // Fall through to instruction logic
     }
-    // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional fallthrough
     case 'instruction': {
       if (def.next) return buildResult(def.next)
       const edges = flowchart.definition.edges?.[nodeId]
@@ -1201,6 +1201,7 @@ export function calculatePathComplexity(
         break
       }
 
+      // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional fallthrough to share instruction logic
       case 'checkpoint': {
         // Check for skip condition first
         if (def.skipIf && def.skipTo) {
@@ -1218,7 +1219,6 @@ export function calculatePathComplexity(
         checkpoints++
         // Fall through to instruction logic for next node
       }
-      // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional fallthrough to share instruction logic
       case 'instruction': {
         if (def.next) {
           currentNodeId = def.next

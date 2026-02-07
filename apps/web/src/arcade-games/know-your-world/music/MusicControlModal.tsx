@@ -131,6 +131,7 @@ export function MusicControlModal({ open, onOpenChange }: MusicControlModalProps
         />
         <Dialog.Content
           data-component="music-control-modal"
+          aria-describedby={undefined}
           className={css({
             position: 'fixed',
             top: '50%',

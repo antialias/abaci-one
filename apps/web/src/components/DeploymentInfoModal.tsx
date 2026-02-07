@@ -144,6 +144,7 @@ export function DeploymentInfoModal({
           })}
         />
         <Dialog.Content
+          aria-describedby={undefined}
           className={css({
             position: 'fixed',
             top: '50%',

@@ -99,7 +99,7 @@ function SkillTag({
       })}
     >
       {isWeak && (
-        <span className={css({ fontSize: '0.625rem' })} aria-label="Weak skill">
+        <span className={css({ fontSize: '0.625rem' })} role="img" aria-label="Weak skill">
           ⚠️
         </span>
       )}
