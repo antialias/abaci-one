@@ -185,6 +185,86 @@ function ComplexitySection({
   )
 }
 
+/**
+ * Term count section for purpose tooltip - shows dynamic term count scaling info
+ */
+function TermCountSection({ slot }: { slot?: ProblemSlot }) {
+  const explanation = slot?.termCountExplanation
+  if (!explanation) return null
+
+  const { comfortLevel, factors, dynamicRange, override, finalRange } = explanation
+  const modeLabel =
+    factors.sessionMode === 'remediation'
+      ? 'Remediation (shorter)'
+      : factors.sessionMode === 'progression'
+        ? 'Progression'
+        : 'Maintenance'
+
+  const sectionStyles = {
+    container: css({
+      marginTop: '0.5rem',
+      padding: '0.5rem',
+      backgroundColor: 'gray.800',
+      borderRadius: '6px',
+      fontSize: '0.8125rem',
+    }),
+    header: css({
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.25rem',
+      color: 'gray.400',
+      fontWeight: '500',
+      marginBottom: '0.375rem',
+    }),
+    row: css({
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      color: 'gray.300',
+      paddingY: '0.125rem',
+    }),
+    value: css({
+      fontFamily: 'mono',
+      color: 'white',
+    }),
+  }
+
+  return (
+    <div className={sectionStyles.container} data-element="term-count-section">
+      <div className={sectionStyles.header}>
+        <span>&#x1F4D0;</span>
+        <span>Problem Length</span>
+      </div>
+      <div className={sectionStyles.row}>
+        <span>Terms:</span>
+        <span className={sectionStyles.value}>
+          {finalRange.min}&ndash;{finalRange.max}
+        </span>
+      </div>
+      <div className={sectionStyles.row}>
+        <span>Comfort level:</span>
+        <span className={sectionStyles.value}>{Math.round(comfortLevel * 100)}%</span>
+      </div>
+      <div className={sectionStyles.row}>
+        <span>Session mode:</span>
+        <span>{modeLabel}</span>
+      </div>
+      {factors.avgMastery !== null && (
+        <div className={sectionStyles.row}>
+          <span>Avg mastery:</span>
+          <span className={sectionStyles.value}>{Math.round(factors.avgMastery * 100)}%</span>
+        </div>
+      )}
+      {override && (
+        <div className={sectionStyles.row}>
+          <span>Override cap:</span>
+          <span className={sectionStyles.value}>max {override.max}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const tooltipStyles = {
   container: css({
     display: 'flex',
@@ -316,6 +396,9 @@ function PurposeTooltipContent({
 
       {/* Complexity section when slot or complexity data is available */}
       {(slot || complexity) && <ComplexitySection slot={slot} complexity={complexity} />}
+
+      {/* Term count section with comfort level details */}
+      {slot && <TermCountSection slot={slot} />}
     </div>
   )
 }

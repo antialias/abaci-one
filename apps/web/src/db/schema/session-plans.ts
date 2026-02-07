@@ -10,6 +10,7 @@ import {
   SESSION_TIMEOUT_HOURS,
   TERM_COUNT_RANGES,
 } from '@/lib/curriculum/config'
+import type { TermCountExplanation } from '@/lib/curriculum/config/term-count-scaling'
 import type { SkillSet } from '@/types/tutorial'
 import { players } from './players'
 
@@ -58,6 +59,8 @@ export interface ProblemSlot {
     min?: number
     max?: number
   }
+  /** Explanation of how term count range was determined (for tooltip display) */
+  termCountExplanation?: TermCountExplanation
 }
 
 export interface ProblemConstraints {

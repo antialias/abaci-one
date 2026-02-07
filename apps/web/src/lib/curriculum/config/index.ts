@@ -70,3 +70,17 @@ export {
 
 // Readiness Thresholds
 export { READINESS_THRESHOLDS, type ReadinessThresholds } from './readiness-thresholds'
+
+// Term Count Scaling (dynamic comfort-based scaling)
+export {
+  computeTermCountRange,
+  TERM_COUNT_SCALING,
+  type TermCountExplanation,
+} from './term-count-scaling'
+
+// Comfort Level (mastery-derived comfort computation)
+export {
+  computeComfortLevel,
+  applyTermCountOverride,
+  type ComfortLevelResult,
+} from '../comfort-level'

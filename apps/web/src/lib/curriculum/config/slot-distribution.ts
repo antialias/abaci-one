@@ -78,6 +78,10 @@ export const PART_TIME_WEIGHTS: Record<SessionPartType, number> = {
  * More terms = more complex multi-step problems.
  *
  * Example: { min: 3, max: 6 } means problems like "23 + 14 + 8" to "12 + 5 + 9 + 3 + 7 + 2"
+ *
+ * @deprecated Use `TERM_COUNT_SCALING` from `./term-count-scaling` instead.
+ * Static ranges are now replaced by dynamic comfort-based scaling.
+ * These values are still used as fallback defaults in PlanGenerationConfig.
  */
 export const TERM_COUNT_RANGES: Record<SessionPartType, { min: number; max: number } | null> = {
   /** Base term count - physical abacus allows more complex problems */
@@ -91,6 +95,9 @@ export const TERM_COUNT_RANGES: Record<SessionPartType, { min: number; max: numb
 /**
  * Get effective term count range for a part type.
  * Falls back to abacus range (or adjusted) if null.
+ *
+ * @deprecated Use `computeTermCountRange()` from `./term-count-scaling` instead.
+ * This returns static ranges; the new function uses dynamic comfort-based scaling.
  */
 export function getTermCountRange(partType: SessionPartType): {
   min: number

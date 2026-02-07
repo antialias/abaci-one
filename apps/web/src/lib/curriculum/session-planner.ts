@@ -67,6 +67,8 @@ import {
 } from './progress-manager'
 import { getWeakSkillIds, type SessionMode } from './session-mode'
 import { revokeSharesForSession } from '@/lib/session-share'
+import { computeComfortLevel, applyTermCountOverride } from './comfort-level'
+import { computeTermCountRange, type TermCountExplanation } from './config/term-count-scaling'
 
 // ============================================================================
 // Plan Generation
@@ -234,6 +236,28 @@ export async function generateSessionPlan(
   const practicingSkillIds = skillMastery.filter((s) => s.isPracticing).map((s) => s.skillId)
   const studentMaxSkillCost = calculateMaxSkillCost(costCalculator, practicingSkillIds)
 
+  // Compute comfort level for dynamic term count scaling
+  const comfortResult = sessionMode
+    ? computeComfortLevel(bktResults, practicingSkillIds, sessionMode)
+    : {
+        comfortLevel: 0.3,
+        factors: {
+          avgMastery: null,
+          sessionMode: 'maintenance',
+          modeMultiplier: 1.0,
+          skillCountBonus: 0,
+        } as TermCountExplanation['factors'],
+      }
+
+  if (process.env.DEBUG_SESSION_PLANNER === 'true') {
+    console.log(
+      `[SessionPlanner] Comfort level: ${(comfortResult.comfortLevel * 100).toFixed(0)}% ` +
+        `(avgMastery=${comfortResult.factors.avgMastery?.toFixed(2) ?? 'N/A'}, ` +
+        `mode=${comfortResult.factors.sessionMode}, mult=${comfortResult.factors.modeMultiplier}, ` +
+        `bonus=${comfortResult.factors.skillCountBonus.toFixed(3)})`
+    )
+  }
+
   // Get current phase
   const currentPhaseId = curriculum?.currentPhaseId || 'L1.add.+1.direct'
   const currentPhase = getPhase(currentPhaseId)
@@ -321,7 +345,9 @@ export async function generateSessionPlan(
         studentMaxSkillCost,
         weakSkills,
         overrideProblemsPerPart,
-        shufflePurposes
+        shufflePurposes,
+        comfortResult.comfortLevel,
+        comfortResult.factors
       )
     )
     partNumber = (partNumber + 1) as 1 | 2 | 3
@@ -376,7 +402,9 @@ function buildSessionPart(
   studentMaxSkillCost?: number,
   weakSkills?: string[],
   overrideProblemsPerPart?: number,
-  shufflePurposes = true
+  shufflePurposes = true,
+  comfortLevel = 0.3,
+  comfortFactors?: TermCountExplanation['factors']
 ): SessionPart {
   // Get time allocation for this part (use normalized weight if provided)
   const partWeight = normalizedWeight ?? config.partTimeWeights[type]
@@ -402,9 +430,9 @@ function buildSessionPart(
   }
   const totalWeight = weights.focus + weights.reinforce + weights.review + weights.challenge
 
-  const focusCount = Math.round(partProblemCount * weights.focus / totalWeight)
-  const reinforceCount = Math.round(partProblemCount * weights.reinforce / totalWeight)
-  const reviewCount = Math.round(partProblemCount * weights.review / totalWeight)
+  const focusCount = Math.round((partProblemCount * weights.focus) / totalWeight)
+  const reinforceCount = Math.round((partProblemCount * weights.reinforce) / totalWeight)
+  const reviewCount = Math.round((partProblemCount * weights.review) / totalWeight)
   // Challenge absorbs rounding remainder (clamped to 0 if canDoChallenge is false)
   const challengeCount = canDoChallenge
     ? Math.max(0, partProblemCount - focusCount - reinforceCount - reviewCount)
@@ -444,7 +472,9 @@ function buildSessionPart(
         type,
         config,
         costCalculator,
-        studentMaxSkillCost
+        studentMaxSkillCost,
+        comfortLevel,
+        comfortFactors
       )
     )
   }
@@ -460,7 +490,9 @@ function buildSessionPart(
         type,
         config,
         costCalculator,
-        studentMaxSkillCost
+        studentMaxSkillCost,
+        comfortLevel,
+        comfortFactors
       )
     )
   }
@@ -476,7 +508,9 @@ function buildSessionPart(
         type,
         config,
         costCalculator,
-        studentMaxSkillCost
+        studentMaxSkillCost,
+        comfortLevel,
+        comfortFactors
       )
     )
   }
@@ -491,7 +525,9 @@ function buildSessionPart(
         type,
         config,
         costCalculator,
-        studentMaxSkillCost
+        studentMaxSkillCost,
+        comfortLevel,
+        comfortFactors
       )
     )
   }
@@ -1206,39 +1242,51 @@ function identifyWeakSkills(bktResults: Map<string, SkillBktResult> | undefined)
 }
 
 /**
- * Get term count constraints based on part type and config
+ * Get term count constraints based on part type, comfort level, and config overrides.
  *
- * - abacus: Uses config.abacusTermCount
- * - visualization: Uses config.visualizationTermCount, or 75% of abacus if null
- * - linear: Uses config.linearTermCount, or same as abacus if null
+ * Uses dynamic comfort-based scaling, with config overrides acting as ceiling.
+ *
+ * @param partType - The session part type
+ * @param config - Plan generation config (contains parent/teacher overrides)
+ * @param comfortLevel - Student comfort level (0-1)
+ * @param comfortFactors - Individual factors that produced the comfort level
+ * @returns The final range and an explanation for UI display
  */
 function getTermCountForPartType(
   partType: SessionPartType,
-  config: PlanGenerationConfig
-): { min: number; max: number } {
-  // abacusTermCount can be null in the type, but we default to a safe value
-  const abacusTerms = config.abacusTermCount ?? { min: 3, max: 6 }
+  config: PlanGenerationConfig,
+  comfortLevel: number,
+  comfortFactors?: TermCountExplanation['factors']
+): { range: { min: number; max: number }; explanation: TermCountExplanation } {
+  const dynamicRange = computeTermCountRange(partType, comfortLevel)
 
-  if (partType === 'abacus') {
-    return abacusTerms
+  // Get config override for this part type (parent/teacher setting)
+  const override =
+    partType === 'abacus'
+      ? config.abacusTermCount
+      : partType === 'visualization'
+        ? config.visualizationTermCount
+        : config.linearTermCount
+
+  const finalRange = applyTermCountOverride(dynamicRange, override)
+
+  const factors = comfortFactors ?? {
+    avgMastery: null,
+    sessionMode: 'maintenance',
+    modeMultiplier: 1.0,
+    skillCountBonus: 0,
   }
 
-  if (partType === 'visualization') {
-    // Use explicit config if set, otherwise 75% of abacus
-    if (config.visualizationTermCount) {
-      return config.visualizationTermCount
-    }
-    return {
-      min: Math.max(2, Math.round(abacusTerms.min * 0.75)),
-      max: Math.max(2, Math.round(abacusTerms.max * 0.75)),
-    }
+  return {
+    range: finalRange,
+    explanation: {
+      comfortLevel,
+      factors,
+      dynamicRange,
+      override: override ?? null,
+      finalRange,
+    },
   }
-
-  // linear: use explicit config if set, otherwise same as abacus
-  if (config.linearTermCount) {
-    return config.linearTermCount
-  }
-  return abacusTerms
 }
 
 /**
@@ -1300,7 +1348,9 @@ function createSlot(
   partType: SessionPartType,
   config: PlanGenerationConfig,
   costCalculator?: SkillCostCalculator,
-  studentMaxSkillCost?: number
+  studentMaxSkillCost?: number,
+  comfortLevel = 0.3,
+  comfortFactors?: TermCountExplanation['factors']
 ): ProblemSlot {
   // Get complexity bounds for this purpose + part type combination
   // Pass studentMaxSkillCost for dynamic visualization budget
@@ -1311,11 +1361,19 @@ function createSlot(
     studentMaxSkillCost
   )
 
+  // Get dynamic term count range based on comfort level
+  const { range: termCount, explanation: termCountExplanation } = getTermCountForPartType(
+    partType,
+    config,
+    comfortLevel,
+    comfortFactors
+  )
+
   const constraints = {
     allowedSkills: baseConstraints.allowedSkills,
     targetSkills: baseConstraints.targetSkills,
     forbiddenSkills: baseConstraints.forbiddenSkills,
-    termCount: getTermCountForPartType(partType, config),
+    termCount,
     digitRange: { min: 1, max: 2 },
     // Add complexity budget constraints based on purpose
     ...(complexityBounds.min !== undefined && {
@@ -1336,6 +1394,7 @@ function createSlot(
     constraints,
     problem,
     complexityBounds,
+    termCountExplanation,
   }
 }
 

@@ -482,8 +482,16 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
                             })}
                           >
                             Terms: {slot.constraints.termCount?.min}-
-                            {slot.constraints.termCount?.max}, Digits:{' '}
-                            {slot.constraints.digitRange?.min}-{slot.constraints.digitRange?.max}
+                            {slot.constraints.termCount?.max}
+                            {slot.termCountExplanation && (
+                              <>
+                                {' '}
+                                (comfort: {Math.round(slot.termCountExplanation.comfortLevel * 100)}
+                                %)
+                              </>
+                            )}
+                            , Digits: {slot.constraints.digitRange?.min}-
+                            {slot.constraints.digitRange?.max}
                           </div>
                         )}
                       </div>
