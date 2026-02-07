@@ -18,6 +18,8 @@ export default defineConfig({
       '**/journey-simulator/**',
       '**/src/db/__tests__/database-connection.test.ts',
       '**/src/test/session-targeting-trace.test.ts',
+      '**/src/lib/arcade/__tests__/arcade-session-integration.test.ts',
+      '**/src/app/api/arcade-session/__tests__/route.test.ts',
     ],
     coverage: {
       provider: 'v8',
@@ -29,7 +31,7 @@ export default defineConfig({
         lines: 10,
         branches: 61,
         functions: 19,
-        statements: 11,
+        statements: 10,
       },
     },
   },

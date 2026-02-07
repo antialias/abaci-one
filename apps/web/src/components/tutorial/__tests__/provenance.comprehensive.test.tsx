@@ -5,19 +5,19 @@ import type { Tutorial } from '../../../types/tutorial'
 import { generateUnifiedInstructionSequence } from '../../../utils/unifiedStepGenerator'
 import { DecompositionWithReasons } from '../DecompositionWithReasons'
 import { TutorialProvider, useTutorialContext } from '../TutorialContext'
+import { TutorialUIProvider } from '../TutorialUIContext'
 
-// Mock Radix Tooltip for reliable testing
-vi.mock('@radix-ui/react-tooltip', () => ({
-  Provider: ({ children }: any) => <div data-testid="tooltip-provider">{children}</div>,
-  Root: ({ children, open = true }: any) => <div data-testid="tooltip-root">{children}</div>,
-  Trigger: ({ children }: any) => <div data-testid="tooltip-trigger">{children}</div>,
-  Portal: ({ children }: any) => <div data-testid="tooltip-portal">{children}</div>,
+// Mock Radix HoverCard (component uses @radix-ui/react-hover-card, not tooltip)
+vi.mock('@radix-ui/react-hover-card', () => ({
+  Root: ({ children }: any) => <div data-testid="hovercard-root">{children}</div>,
+  Trigger: ({ children }: any) => <div data-testid="hovercard-trigger">{children}</div>,
+  Portal: ({ children }: any) => <div data-testid="hovercard-portal">{children}</div>,
   Content: ({ children, className, ...props }: any) => (
     <div data-testid="tooltip-content" className={className} {...props}>
       {children}
     </div>
   ),
-  Arrow: (props: any) => <div data-testid="tooltip-arrow" {...props} />,
+  Arrow: (props: any) => <div data-testid="hovercard-arrow" {...props} />,
 }))
 
 describe('Provenance System - Comprehensive Tests', () => {
@@ -51,14 +51,16 @@ describe('Provenance System - Comprehensive Tests', () => {
 
   function renderWithTutorialContext(component: React.ReactElement) {
     return render(
-      <TutorialProvider
-        tutorial={provenanceTutorial}
-        onStepComplete={() => {}}
-        onTutorialComplete={() => {}}
-        onEvent={() => {}}
-      >
-        {component}
-      </TutorialProvider>
+      <TutorialUIProvider>
+        <TutorialProvider
+          tutorial={provenanceTutorial}
+          onStepComplete={() => {}}
+          onTutorialComplete={() => {}}
+          onEvent={() => {}}
+        >
+          {component}
+        </TutorialProvider>
+      </TutorialUIProvider>
     )
   }
 
@@ -77,15 +79,22 @@ describe('Provenance System - Comprehensive Tests', () => {
       expect(twentyStep?.provenance).toBeDefined()
 
       if (twentyStep?.provenance) {
-        // Verify provenance data matches the specification exactly
-        expect(twentyStep.provenance).toEqual({
-          rhs: 25, // the addend
-          rhsDigit: 2, // digit from tens place
-          rhsPlace: 1, // tens = place 1
-          rhsPlaceName: 'tens', // human readable
-          rhsDigitIndex: 0, // '2' is first character in '25'
-          rhsValue: 20, // 2 * 10^1 = 20
-        })
+        // Verify provenance data contains expected fields
+        expect(twentyStep.provenance).toEqual(
+          expect.objectContaining({
+            rhs: 25, // the addend
+            rhsDigit: 2, // digit from tens place
+            rhsPlace: 1, // tens = place 1
+            rhsPlaceName: 'tens', // human readable
+            rhsDigitIndex: 0, // '2' is first character in '25'
+            rhsValue: 20, // 2 * 10^1 = 20
+          })
+        )
+
+        // Also verify additional term-level fields
+        expect(twentyStep.provenance.termPlace).toBe(1)
+        expect(twentyStep.provenance.termPlaceName).toBe('tens')
+        expect(twentyStep.provenance.termValue).toBe(20)
       }
 
       // Verify ones digit complement group
@@ -192,18 +201,19 @@ describe('Provenance System - Comprehensive Tests', () => {
         />
       )
 
-      // Verify that enhanced provenance content exists in the DOM
-      // The specific enhanced tooltip content we expect to see:
-      // - "Add the tens digit — 2 tens (20)" (enhanced title)
-      // - "From addend 25" (enhanced subtitle)
-      // - "We're adding the tens digit of 25 → 2 tens" (enhanced explanation)
+      // In test environment, t('key', {...}) returns just 'key' (the i18n mock).
+      // For Direct rule with provenance, the enhanced title is t('directTitle', {...}) => 'directTitle'
+      // and the enhanced subtitle is t('directSubtitle', {...}) => 'directSubtitle'.
+      // The readable summary (not i18n) contains the actual explanation text.
 
-      // Check that the DOM contains at least one instance of our enhanced content
-      // This proves the provenance system is working and generating enhanced tooltips
+      // Check that the DOM contains enhanced content from the provenance system
       const enhancedContent = [
-        screen.queryAllByText('Add the tens digit — 2 tens (20)'),
-        screen.queryAllByText('From addend 25'),
-        screen.queryAllByText(/We're adding the tens digit of 25/),
+        // i18n key for Direct rule enhanced title
+        screen.queryAllByText('directTitle'),
+        // i18n key for Direct rule enhanced subtitle
+        screen.queryAllByText('directSubtitle'),
+        // The readable summary is not i18n, so it shows as-is
+        screen.queryAllByText(/Add 2 to the tens/),
       ].flat()
 
       // The provenance system should generate enhanced content for mathematical terms
@@ -237,8 +247,9 @@ describe('Provenance System - Comprehensive Tests', () => {
         <DecompositionWithReasons fullDecomposition="" termPositions={[]} segments={[]} />
       )
 
-      // Should render without throwing
-      expect(screen.getByTestId('tooltip-provider')).toBeInTheDocument()
+      // Should render without throwing - the component renders a div.decomposition
+      const decomposition = document.querySelector('.decomposition')
+      expect(decomposition).toBeTruthy()
     })
   })
 

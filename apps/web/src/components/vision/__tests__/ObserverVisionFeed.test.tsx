@@ -59,63 +59,59 @@ describe('ObserverVisionFeed', () => {
     })
   })
 
-  describe('detected value display', () => {
-    it('displays the detected value', () => {
+  describe('detected value display (auto-detection disabled)', () => {
+    // ENABLE_AUTO_DETECTION is false, so the detection overlay is hidden.
+    // These tests verify the detection overlay elements are NOT rendered.
+
+    it('does not display detected value when auto-detection is disabled', () => {
       const frame = createMockFrame({ detectedValue: 456, confidence: 0.87 })
       render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
-      expect(screen.getByText('456')).toBeInTheDocument()
+      expect(screen.queryByText('456')).not.toBeInTheDocument()
     })
 
-    it('displays confidence percentage', () => {
+    it('does not display confidence when auto-detection is disabled', () => {
       const frame = createMockFrame({ detectedValue: 123, confidence: 0.87 })
       render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
-      expect(screen.getByText('87%')).toBeInTheDocument()
+      expect(screen.queryByText('87%')).not.toBeInTheDocument()
     })
 
-    it('displays dashes when detectedValue is null', () => {
+    it('does not display dashes when auto-detection is disabled', () => {
       const frame = createMockFrame({ detectedValue: null, confidence: 0 })
       render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
-      expect(screen.getByText('---')).toBeInTheDocument()
+      expect(screen.queryByText('---')).not.toBeInTheDocument()
     })
 
-    it('hides confidence when value is null', () => {
+    it('does not display confidence when auto-detection is disabled (null value)', () => {
       const frame = createMockFrame({ detectedValue: null, confidence: 0.95 })
       render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
       expect(screen.queryByText('95%')).not.toBeInTheDocument()
     })
 
-    it('handles zero as a valid detected value', () => {
+    it('does not display zero value when auto-detection is disabled', () => {
       const frame = createMockFrame({ detectedValue: 0, confidence: 0.99 })
       render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
-      expect(screen.getByText('0')).toBeInTheDocument()
-      expect(screen.getByText('99%')).toBeInTheDocument()
+      expect(screen.queryByText('99%')).not.toBeInTheDocument()
     })
   })
 
   describe('live/stale indicator', () => {
-    it('shows Live status for fresh frames (less than 1 second old)', () => {
+    // Note: Live/Stale TEXT is inside the detection overlay which is hidden
+    // when ENABLE_AUTO_DETECTION is false. But data attributes still work.
+
+    it('does not show Live/Stale text when auto-detection is disabled', () => {
       const now = Date.now()
       vi.setSystemTime(now)
 
       const frame = createMockFrame({ receivedAt: now - 500 }) // 500ms ago
       render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
-      expect(screen.getByText('Live')).toBeInTheDocument()
-    })
-
-    it('shows Stale status for old frames (more than 1 second old)', () => {
-      const now = Date.now()
-      vi.setSystemTime(now)
-
-      const frame = createMockFrame({ receivedAt: now - 1500 }) // 1.5 seconds ago
-      render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
-
-      expect(screen.getByText('Stale')).toBeInTheDocument()
+      expect(screen.queryByText('Live')).not.toBeInTheDocument()
+      expect(screen.queryByText('Stale')).not.toBeInTheDocument()
     })
 
     it('sets stale data attribute when frame is old', () => {
@@ -163,34 +159,43 @@ describe('ObserverVisionFeed', () => {
     })
   })
 
-  describe('edge cases', () => {
-    it('handles very large detected values', () => {
+  describe('edge cases (auto-detection disabled)', () => {
+    // With ENABLE_AUTO_DETECTION=false, detection overlay values are hidden.
+    // These tests verify the component renders without errors for edge case data.
+
+    it('renders without errors for very large detected values', () => {
       const frame = createMockFrame({ detectedValue: 99999, confidence: 1.0 })
       render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
-      expect(screen.getByText('99999')).toBeInTheDocument()
-      expect(screen.getByText('100%')).toBeInTheDocument()
+      // Values are not displayed when auto-detection is disabled
+      expect(screen.queryByText('99999')).not.toBeInTheDocument()
+      expect(screen.queryByText('100%')).not.toBeInTheDocument()
+      // But image still renders
+      expect(screen.getByRole('img')).toBeInTheDocument()
     })
 
-    it('rounds confidence to nearest integer', () => {
+    it('renders without errors for various confidence values', () => {
       const frame = createMockFrame({ detectedValue: 123, confidence: 0.876 })
       render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
-      expect(screen.getByText('88%')).toBeInTheDocument()
+      expect(screen.queryByText('88%')).not.toBeInTheDocument()
+      expect(screen.getByRole('img')).toBeInTheDocument()
     })
 
-    it('handles confidence edge case of exactly 1', () => {
+    it('renders without errors for confidence of exactly 1', () => {
       const frame = createMockFrame({ detectedValue: 123, confidence: 1.0 })
       render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
-      expect(screen.getByText('100%')).toBeInTheDocument()
+      expect(screen.queryByText('100%')).not.toBeInTheDocument()
+      expect(screen.getByRole('img')).toBeInTheDocument()
     })
 
-    it('handles confidence edge case of exactly 0', () => {
+    it('renders without errors for confidence of exactly 0', () => {
       const frame = createMockFrame({ detectedValue: 123, confidence: 0 })
       render(<ObserverVisionFeed frame={frame} {...defaultProps} />)
 
-      expect(screen.getByText('0%')).toBeInTheDocument()
+      expect(screen.queryByText('0%')).not.toBeInTheDocument()
+      expect(screen.getByRole('img')).toBeInTheDocument()
     })
   })
 })

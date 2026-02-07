@@ -21,7 +21,9 @@ describe('Unified Step Generator', () => {
       expect(step.mathematicalTerm).toBeDefined()
       expect(step.englishInstruction).toBeDefined()
       expect(step.expectedValue).toBeGreaterThan(3)
-      expect(step.expectedValue).toBeLessThanOrEqual(17)
+      // Intermediate values may temporarily exceed target due to five's complement
+      // (e.g., +5 then -1 to add 4 causes overshoot)
+      expect(step.expectedValue).toBeLessThanOrEqual(20)
       expect(step.beadMovements.length).toBeGreaterThan(0)
     })
 
@@ -156,9 +158,17 @@ describe('Unified Step Generator', () => {
       expect(step.termPosition.endIndex).toBeGreaterThan(step.termPosition.startIndex)
 
       // Extract the term using the position and verify it matches
+      // Note: For negative terms inside complement groups, positions point to the
+      // unsigned number part (e.g., "1" not "-1") since the minus is part of the
+      // complement group formatting, not the individual term position
       const { startIndex, endIndex } = step.termPosition
       const extractedTerm = sequence.fullDecomposition.substring(startIndex, endIndex)
-      expect(extractedTerm).toBe(step.mathematicalTerm)
+      if (step.mathematicalTerm.startsWith('-')) {
+        // Position points to unsigned number part within complement group
+        expect(extractedTerm).toBe(step.mathematicalTerm.substring(1))
+      } else {
+        expect(extractedTerm).toBe(step.mathematicalTerm)
+      }
 
       console.log(
         `Step ${index + 1}: "${step.mathematicalTerm}" at position ${startIndex}-${endIndex} = "${extractedTerm}"`
@@ -178,14 +188,24 @@ describe('Unified Step Generator', () => {
       )
     ).toBe('10')
 
-    // Second step should be "(5 - 1)" at position around 18-25
+    // Second step should be "5" (the positive part of the five's complement)
     const secondStep = sequence.steps[1]
-    expect(secondStep.mathematicalTerm).toBe('(5 - 1)')
+    expect(secondStep.mathematicalTerm).toBe('5')
     expect(
       sequence.fullDecomposition.substring(
         secondStep.termPosition.startIndex,
         secondStep.termPosition.endIndex
       )
-    ).toBe('(5 - 1)')
+    ).toBe('5')
+
+    // Third step should be "-1" (position points to unsigned "1" in complement group)
+    const thirdStep = sequence.steps[2]
+    expect(thirdStep.mathematicalTerm).toBe('-1')
+    expect(
+      sequence.fullDecomposition.substring(
+        thirdStep.termPosition.startIndex,
+        thirdStep.termPosition.endIndex
+      )
+    ).toBe('1')
   })
 })

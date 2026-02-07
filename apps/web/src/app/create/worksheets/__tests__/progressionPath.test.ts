@@ -13,8 +13,8 @@ import {
 
 describe('progressionPath', () => {
   describe('SINGLE_CARRY_PATH', () => {
-    it('should have 6 steps', () => {
-      expect(SINGLE_CARRY_PATH).toHaveLength(6)
+    it('should have 8 steps', () => {
+      expect(SINGLE_CARRY_PATH).toHaveLength(8)
     })
 
     it('should have consecutive step numbers', () => {
@@ -24,56 +24,71 @@ describe('progressionPath', () => {
     })
 
     it('should have correct next/previous links', () => {
-      // First step
+      // First step (basic-addition-1d)
       expect(SINGLE_CARRY_PATH[0].previousStepId).toBe(null)
-      expect(SINGLE_CARRY_PATH[0].nextStepId).toBe('single-carry-1d-minimal')
+      expect(SINGLE_CARRY_PATH[0].nextStepId).toBe('mixed-addition-1d')
 
-      // Middle steps
-      expect(SINGLE_CARRY_PATH[1].previousStepId).toBe('single-carry-1d-full')
-      expect(SINGLE_CARRY_PATH[1].nextStepId).toBe('single-carry-2d-full')
+      // Middle steps (mixed-addition-1d → single-carry-1d-full)
+      expect(SINGLE_CARRY_PATH[1].previousStepId).toBe('basic-addition-1d')
+      expect(SINGLE_CARRY_PATH[1].nextStepId).toBe('single-carry-1d-full')
 
-      // Last step
-      expect(SINGLE_CARRY_PATH[5].previousStepId).toBe('single-carry-3d-full')
-      expect(SINGLE_CARRY_PATH[5].nextStepId).toBe(null)
+      // Last step (single-carry-3d-minimal)
+      expect(SINGLE_CARRY_PATH[7].previousStepId).toBe('single-carry-3d-full')
+      expect(SINGLE_CARRY_PATH[7].nextStepId).toBe(null)
     })
 
     it('should demonstrate scaffolding cycling', () => {
-      // 1-digit: full → minimal
-      expect(SINGLE_CARRY_PATH[0].config.displayRules?.tenFrames).toBe('whenRegrouping')
+      // Foundation steps: no ten-frames
+      expect(SINGLE_CARRY_PATH[0].config.displayRules?.tenFrames).toBe('never')
       expect(SINGLE_CARRY_PATH[1].config.displayRules?.tenFrames).toBe('never')
 
-      // 2-digit: full → minimal (ten-frames RETURN)
+      // 1-digit carry: full → minimal
       expect(SINGLE_CARRY_PATH[2].config.displayRules?.tenFrames).toBe('whenRegrouping')
       expect(SINGLE_CARRY_PATH[3].config.displayRules?.tenFrames).toBe('never')
 
-      // 3-digit: full → minimal (ten-frames RETURN AGAIN)
+      // 2-digit carry: full → minimal (ten-frames RETURN)
       expect(SINGLE_CARRY_PATH[4].config.displayRules?.tenFrames).toBe('whenRegrouping')
       expect(SINGLE_CARRY_PATH[5].config.displayRules?.tenFrames).toBe('never')
+
+      // 3-digit carry: full → minimal (ten-frames RETURN AGAIN)
+      expect(SINGLE_CARRY_PATH[6].config.displayRules?.tenFrames).toBe('whenRegrouping')
+      expect(SINGLE_CARRY_PATH[7].config.displayRules?.tenFrames).toBe('never')
     })
 
     it('should have increasing digit complexity', () => {
-      // 1-digit (steps 0-1)
+      // Foundation 1-digit (steps 0-1)
       expect(SINGLE_CARRY_PATH[0].config.digitRange?.min).toBe(1)
       expect(SINGLE_CARRY_PATH[0].config.digitRange?.max).toBe(1)
       expect(SINGLE_CARRY_PATH[1].config.digitRange?.min).toBe(1)
 
-      // 2-digit (steps 2-3)
-      expect(SINGLE_CARRY_PATH[2].config.digitRange?.min).toBe(2)
-      expect(SINGLE_CARRY_PATH[2].config.digitRange?.max).toBe(2)
-      expect(SINGLE_CARRY_PATH[3].config.digitRange?.min).toBe(2)
+      // 1-digit carry (steps 2-3)
+      expect(SINGLE_CARRY_PATH[2].config.digitRange?.min).toBe(1)
+      expect(SINGLE_CARRY_PATH[2].config.digitRange?.max).toBe(1)
+      expect(SINGLE_CARRY_PATH[3].config.digitRange?.min).toBe(1)
 
-      // 3-digit (steps 4-5)
-      expect(SINGLE_CARRY_PATH[4].config.digitRange?.min).toBe(3)
-      expect(SINGLE_CARRY_PATH[4].config.digitRange?.max).toBe(3)
-      expect(SINGLE_CARRY_PATH[5].config.digitRange?.min).toBe(3)
+      // 2-digit carry (steps 4-5)
+      expect(SINGLE_CARRY_PATH[4].config.digitRange?.min).toBe(2)
+      expect(SINGLE_CARRY_PATH[4].config.digitRange?.max).toBe(2)
+      expect(SINGLE_CARRY_PATH[5].config.digitRange?.min).toBe(2)
+
+      // 3-digit carry (steps 6-7)
+      expect(SINGLE_CARRY_PATH[6].config.digitRange?.min).toBe(3)
+      expect(SINGLE_CARRY_PATH[6].config.digitRange?.max).toBe(3)
+      expect(SINGLE_CARRY_PATH[7].config.digitRange?.min).toBe(3)
     })
 
     it('should have consistent regrouping config', () => {
-      // All steps have 100% regrouping, ones place only
-      SINGLE_CARRY_PATH.forEach((step) => {
-        expect(step.config.pAnyStart).toBe(1.0)
-        expect(step.config.pAllStart).toBe(0)
-      })
+      // Foundation steps have different regrouping
+      expect(SINGLE_CARRY_PATH[0].config.pAnyStart).toBe(0) // No regrouping
+      expect(SINGLE_CARRY_PATH[0].config.pAllStart).toBe(0)
+      expect(SINGLE_CARRY_PATH[1].config.pAnyStart).toBe(0.5) // 50% regrouping
+      expect(SINGLE_CARRY_PATH[1].config.pAllStart).toBe(0)
+
+      // Carry steps have 100% regrouping, ones place only
+      for (let i = 2; i < SINGLE_CARRY_PATH.length; i++) {
+        expect(SINGLE_CARRY_PATH[i].config.pAnyStart).toBe(1.0)
+        expect(SINGLE_CARRY_PATH[i].config.pAllStart).toBe(0)
+      }
     })
 
     it('should all be addition operator', () => {
@@ -82,10 +97,15 @@ describe('progressionPath', () => {
       })
     })
 
-    it('should all be single-carry technique', () => {
-      SINGLE_CARRY_PATH.forEach((step) => {
-        expect(step.technique).toBe('single-carry')
-      })
+    it('should all be addition techniques', () => {
+      // Foundation steps use basic-addition technique
+      expect(SINGLE_CARRY_PATH[0].technique).toBe('basic-addition')
+      expect(SINGLE_CARRY_PATH[1].technique).toBe('basic-addition')
+
+      // Carry steps use single-carry technique
+      for (let i = 2; i < SINGLE_CARRY_PATH.length; i++) {
+        expect(SINGLE_CARRY_PATH[i].technique).toBe('single-carry')
+      }
     })
 
     it('should have interpolate disabled', () => {
@@ -100,40 +120,43 @@ describe('progressionPath', () => {
     it('should return first step for value 0', () => {
       const step = getStepFromSliderValue(0, SINGLE_CARRY_PATH)
       expect(step.stepNumber).toBe(0)
-      expect(step.id).toBe('single-carry-1d-full')
+      expect(step.id).toBe('basic-addition-1d')
     })
 
     it('should return last step for value 100', () => {
       const step = getStepFromSliderValue(100, SINGLE_CARRY_PATH)
-      expect(step.stepNumber).toBe(5)
+      expect(step.stepNumber).toBe(7)
       expect(step.id).toBe('single-carry-3d-minimal')
     })
 
     it('should return middle steps for middle values', () => {
-      // 6 steps → positions at 0, 20, 40, 60, 80, 100
-      const step1 = getStepFromSliderValue(20, SINGLE_CARRY_PATH)
+      // 8 steps → positions at 0, 14.3, 28.6, 42.9, 57.1, 71.4, 85.7, 100
+      // Value 14: (14/100) * 7 = 0.98 → rounds to 1
+      const step1 = getStepFromSliderValue(14, SINGLE_CARRY_PATH)
       expect(step1.stepNumber).toBe(1)
 
-      const step2 = getStepFromSliderValue(40, SINGLE_CARRY_PATH)
+      // Value 29: (29/100) * 7 = 2.03 → rounds to 2
+      const step2 = getStepFromSliderValue(29, SINGLE_CARRY_PATH)
       expect(step2.stepNumber).toBe(2)
 
-      const step3 = getStepFromSliderValue(60, SINGLE_CARRY_PATH)
+      // Value 43: (43/100) * 7 = 3.01 → rounds to 3
+      const step3 = getStepFromSliderValue(43, SINGLE_CARRY_PATH)
       expect(step3.stepNumber).toBe(3)
     })
 
     it('should round to nearest step', () => {
-      // 6 steps → positions at 0, 20, 40, 60, 80, 100
-      // Value 30: (30/100) * 5 = 1.5 → rounds to 2
-      const step = getStepFromSliderValue(30, SINGLE_CARRY_PATH)
-      expect(step.stepNumber).toBe(2)
+      // 8 steps → positions at 0, 14.3, 28.6, 42.9, 57.1, 71.4, 85.7, 100
+      // Value 21: (21/100) * 7 = 1.47 → rounds to 1
+      const step = getStepFromSliderValue(21, SINGLE_CARRY_PATH)
+      expect(step.stepNumber).toBe(1)
 
-      // Value 10: (10/100) * 5 = 0.5 → rounds to 1
-      const step2 = getStepFromSliderValue(10, SINGLE_CARRY_PATH)
-      expect(step2.stepNumber).toBe(1)
+      // Value 7: (7/100) * 7 = 0.49 → rounds to 0
+      const step2 = getStepFromSliderValue(7, SINGLE_CARRY_PATH)
+      expect(step2.stepNumber).toBe(0)
 
-      // Value 50: (50/100) * 5 = 2.5 → rounds to 3
+      // Value 50: (50/100) * 7 = 3.5 → rounds to 4
       const step3 = getStepFromSliderValue(50, SINGLE_CARRY_PATH)
-      expect(step3.stepNumber).toBe(3)
+      expect(step3.stepNumber).toBe(4)
     })
 
     it('should clamp values below 0 to first step', () => {
@@ -143,7 +166,7 @@ describe('progressionPath', () => {
 
     it('should clamp values above 100 to last step', () => {
       const step = getStepFromSliderValue(150, SINGLE_CARRY_PATH)
-      expect(step.stepNumber).toBe(5)
+      expect(step.stepNumber).toBe(7)
     })
   })
 
@@ -154,18 +177,18 @@ describe('progressionPath', () => {
     })
 
     it('should return 100 for last step', () => {
-      const value = getSliderValueFromStep(5, SINGLE_CARRY_PATH.length)
+      const value = getSliderValueFromStep(7, SINGLE_CARRY_PATH.length)
       expect(value).toBe(100)
     })
 
     it('should return evenly spaced values for middle steps', () => {
-      // 6 steps → 0, 20, 40, 60, 80, 100
-      expect(getSliderValueFromStep(0, 6)).toBe(0)
-      expect(getSliderValueFromStep(1, 6)).toBe(20)
-      expect(getSliderValueFromStep(2, 6)).toBe(40)
-      expect(getSliderValueFromStep(3, 6)).toBe(60)
-      expect(getSliderValueFromStep(4, 6)).toBe(80)
-      expect(getSliderValueFromStep(5, 6)).toBe(100)
+      // 8 steps → 0, 100/7, 200/7, 300/7, 400/7, 500/7, 600/7, 100
+      expect(getSliderValueFromStep(0, 8)).toBe(0)
+      expect(getSliderValueFromStep(7, 8)).toBe(100)
+      // Middle steps should be evenly spaced
+      for (let i = 0; i < 8; i++) {
+        expect(getSliderValueFromStep(i, 8)).toBeCloseTo((i / 7) * 100, 10)
+      }
     })
 
     it('should handle single-step path', () => {
@@ -185,9 +208,9 @@ describe('progressionPath', () => {
 
   describe('findNearestStep', () => {
     it('should find exact match for step config', () => {
-      const step2Config = SINGLE_CARRY_PATH[2].config
-      const nearest = findNearestStep(step2Config, SINGLE_CARRY_PATH)
-      expect(nearest.stepNumber).toBe(2)
+      const step4Config = SINGLE_CARRY_PATH[4].config
+      const nearest = findNearestStep(step4Config, SINGLE_CARRY_PATH)
+      expect(nearest.stepNumber).toBe(4)
       expect(nearest.id).toBe('single-carry-2d-full')
     })
 
@@ -211,22 +234,23 @@ describe('progressionPath', () => {
       expect(nearest.config.digitRange?.min).toBe(3)
     })
 
-    it('should fall back to first step if no good match', () => {
+    it('should fall back to best scoring step if no good match', () => {
       const config = {
         digitRange: { min: 5, max: 5 }, // No 5-digit steps
         operator: 'subtraction' as const, // Wrong operator
-        pAnyStart: 0.5, // Wrong regrouping
+        pAnyStart: 0.5, // Matches mixed-addition-1d (step 1)
         pAllStart: 0.5,
       }
 
       const nearest = findNearestStep(config, SINGLE_CARRY_PATH)
       expect(nearest).toBeDefined() // Should still return something
-      expect(nearest.stepNumber).toBe(0) // Default to first
+      // Step 1 (mixed-addition-1d) wins because pAnyStart=0.5 matches
+      expect(nearest.stepNumber).toBe(1)
     })
 
     it('should match regrouping config when digit range matches', () => {
       // Two steps with same digit range, different scaffolding
-      const baseDisplayRules = SINGLE_CARRY_PATH[2].config.displayRules!
+      const baseDisplayRules = SINGLE_CARRY_PATH[4].config.displayRules!
 
       const config1 = {
         digitRange: { min: 2, max: 2 },
@@ -240,7 +264,7 @@ describe('progressionPath', () => {
       }
 
       const nearest1 = findNearestStep(config1, SINGLE_CARRY_PATH)
-      expect(nearest1.id).toBe('single-carry-2d-full') // Step 2
+      expect(nearest1.id).toBe('single-carry-2d-full') // Step 4
 
       const config2 = {
         digitRange: { min: 2, max: 2 },
@@ -254,7 +278,7 @@ describe('progressionPath', () => {
       }
 
       const nearest2 = findNearestStep(config2, SINGLE_CARRY_PATH)
-      expect(nearest2.id).toBe('single-carry-2d-minimal') // Step 3
+      expect(nearest2.id).toBe('single-carry-2d-minimal') // Step 5
     })
   })
 
@@ -315,7 +339,7 @@ describe('progressionPath', () => {
     it('should find step by ID', () => {
       const step = getStepById('single-carry-2d-full', SINGLE_CARRY_PATH)
       expect(step).toBeDefined()
-      expect(step?.stepNumber).toBe(2)
+      expect(step?.stepNumber).toBe(4)
       expect(step?.config.digitRange?.min).toBe(2)
     })
 
@@ -325,7 +349,7 @@ describe('progressionPath', () => {
     })
 
     it('should find first step', () => {
-      const step = getStepById('single-carry-1d-full', SINGLE_CARRY_PATH)
+      const step = getStepById('basic-addition-1d', SINGLE_CARRY_PATH)
       expect(step).toBeDefined()
       expect(step?.stepNumber).toBe(0)
     })
@@ -333,7 +357,7 @@ describe('progressionPath', () => {
     it('should find last step', () => {
       const step = getStepById('single-carry-3d-minimal', SINGLE_CARRY_PATH)
       expect(step).toBeDefined()
-      expect(step?.stepNumber).toBe(5)
+      expect(step?.stepNumber).toBe(7)
     })
   })
 })

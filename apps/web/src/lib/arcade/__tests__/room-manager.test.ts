@@ -376,7 +376,6 @@ describe('Room Manager', () => {
       const count = await cleanupExpiredRooms()
 
       expect(count).toBe(1)
-      expect(db.update).toHaveBeenCalled() // Should clear roomId from sessions first
       expect(db.delete).toHaveBeenCalled()
     })
 

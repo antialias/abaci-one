@@ -1,60 +1,20 @@
 import { render, screen } from '@testing-library/react'
-import type React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PedagogicalSegment, TermProvenance } from '../../../utils/unifiedStepGenerator'
 import { ReasonTooltip } from '../ReasonTooltip'
 
-// Mock the Radix Tooltip to make testing easier
-const MockTooltipProvider = ({ children }: { children: React.ReactNode }) => (
-  <div data-testid="tooltip-provider">{children}</div>
-)
-
-const MockTooltipRoot = ({
-  children,
-  open = true,
-}: {
-  children: React.ReactNode
-  open?: boolean
-}) => (
-  <div data-testid="tooltip-root" data-open={open}>
-    {children}
-  </div>
-)
-
-const MockTooltipTrigger = ({
-  children,
-  asChild,
-}: {
-  children: React.ReactNode
-  asChild?: boolean
-}) => <div data-testid="tooltip-trigger">{children}</div>
-
-const MockTooltipPortal = ({ children }: { children: React.ReactNode }) => (
-  <div data-testid="tooltip-portal">{children}</div>
-)
-
-const MockTooltipContent = ({
-  children,
-  ...props
-}: {
-  children: React.ReactNode
-  [key: string]: any
-}) => (
-  <div data-testid="tooltip-content" {...props}>
-    {children}
-  </div>
-)
-
-const MockTooltipArrow = (props: any) => <div data-testid="tooltip-arrow" {...props} />
-
-// Mock Radix UI components
-vi.mock('@radix-ui/react-tooltip', () => ({
-  Provider: MockTooltipProvider,
-  Root: MockTooltipRoot,
-  Trigger: MockTooltipTrigger,
-  Portal: MockTooltipPortal,
-  Content: MockTooltipContent,
-  Arrow: MockTooltipArrow,
+// Mock Radix HoverCard (component uses @radix-ui/react-hover-card, not tooltip)
+// All mock components must be defined inside the factory to avoid hoisting issues
+vi.mock('@radix-ui/react-hover-card', () => ({
+  Root: ({ children }: any) => <div data-testid="hovercard-root">{children}</div>,
+  Trigger: ({ children }: any) => <div data-testid="hovercard-trigger">{children}</div>,
+  Portal: ({ children }: any) => <div data-testid="hovercard-portal">{children}</div>,
+  Content: ({ children, ...props }: any) => (
+    <div data-testid="hovercard-content" {...props}>
+      {children}
+    </div>
+  ),
+  Arrow: (props: any) => <div data-testid="hovercard-arrow" {...props} />,
 }))
 
 describe('ReasonTooltip with Provenance', () => {
@@ -106,8 +66,6 @@ describe('ReasonTooltip with Provenance', () => {
   const defaultProps = {
     termIndex: 0,
     segment: mockSegment,
-    open: true,
-    onOpenChange: vi.fn(),
     provenance: mockProvenance,
   }
 
@@ -115,53 +73,52 @@ describe('ReasonTooltip with Provenance', () => {
     vi.clearAllMocks()
   })
 
-  it('should display enhanced title with provenance', () => {
+  it('should display enhanced title with provenance (via i18n key)', () => {
     render(
       <ReasonTooltip {...defaultProps}>
         <span>20</span>
       </ReasonTooltip>
     )
 
-    // Should show the enhanced title format
-    expect(screen.getByText('Add the tens digit — 2 tens (20)')).toBeInTheDocument()
+    // i18n mock returns the key name. The component calls t('directTitle', {...})
+    // which returns 'directTitle' in test environment
+    expect(screen.getByText('directTitle')).toBeInTheDocument()
   })
 
-  it('should display enhanced subtitle with provenance', () => {
+  it('should display enhanced subtitle with provenance (via i18n key)', () => {
     render(
       <ReasonTooltip {...defaultProps}>
         <span>20</span>
       </ReasonTooltip>
     )
 
-    // Should show the enhanced subtitle
-    expect(screen.getByText('From addend 25')).toBeInTheDocument()
+    // t('directSubtitle', { addend: 25 }) returns 'directSubtitle'
+    expect(screen.getByText('directSubtitle')).toBeInTheDocument()
   })
 
-  it('should display enhanced breadcrumb chips', () => {
+  it('should show details toggle button for chips', () => {
     render(
       <ReasonTooltip {...defaultProps}>
         <span>20</span>
       </ReasonTooltip>
     )
 
-    // Should show enhanced chips
-    expect(screen.getByText(/Digit we're using: 2 \(tens\)/)).toBeInTheDocument()
-    expect(screen.getByText(/This rod shows: 7/)).toBeInTheDocument()
-    expect(screen.getByText(/So we add here: \+2 tens → 20/)).toBeInTheDocument()
+    // Chips are behind a "More details" disclosure toggle (i18n key: details.toggle)
+    expect(screen.getByText('details.toggle')).toBeInTheDocument()
   })
 
-  it('should display provenance-based explanation for Direct rule', () => {
+  it('should display rule info emoji for Direct rule', () => {
     render(
       <ReasonTooltip {...defaultProps}>
         <span>20</span>
       </ReasonTooltip>
     )
 
-    // Should show the enhanced explanation
-    expect(screen.getByText(/We're adding the tens digit of 25 → 2 tens/)).toBeInTheDocument()
+    // Direct rule shows sparkle emoji
+    expect(screen.getByText('✨')).toBeInTheDocument()
   })
 
-  it('should handle complement operations with group ID', () => {
+  it('should handle complement operations with different rule', () => {
     const complementProvenance: TermProvenance = {
       rhs: 25,
       rhsDigit: 5,
@@ -202,9 +159,10 @@ describe('ReasonTooltip with Provenance', () => {
       </ReasonTooltip>
     )
 
-    // Should show the enhanced title for complement operations
-    expect(screen.getByText('Add the ones digit — 5 ones (5)')).toBeInTheDocument()
-    expect(screen.getByText('From addend 25')).toBeInTheDocument()
+    // TenComplement rule shows the 10 emoji
+    expect(screen.getByText('🔟')).toBeInTheDocument()
+    // Title falls back to readable.title for non-Direct rules
+    expect(screen.getByText('Make 10 — ones')).toBeInTheDocument()
   })
 
   it('should fallback to readable content when provenance is not available', () => {
@@ -214,13 +172,12 @@ describe('ReasonTooltip with Provenance', () => {
       </ReasonTooltip>
     )
 
-    // Should show the fallback title and content
+    // Without provenance, falls back to readable.title and readable.subtitle
     expect(screen.getByText('Direct Add — tens')).toBeInTheDocument()
     expect(screen.getByText('Simple bead movement')).toBeInTheDocument()
-    expect(screen.getByText(/We can add beads directly to this rod/)).toBeInTheDocument()
   })
 
-  it('should not render enhanced content when no rule is provided', () => {
+  it('should not render tooltip content when no rule is provided', () => {
     const segmentWithoutRule = {
       ...mockSegment,
       plan: [],
@@ -234,62 +191,17 @@ describe('ReasonTooltip with Provenance', () => {
 
     // Should just render the children without any tooltip
     expect(screen.getByText('20')).toBeInTheDocument()
-    expect(screen.queryByTestId('tooltip-content')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('hovercard-content')).not.toBeInTheDocument()
   })
 
-  it('should log debug information when provenance is provided', () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
+  it('should render summary text from segment', () => {
     render(
       <ReasonTooltip {...defaultProps}>
         <span>20</span>
       </ReasonTooltip>
     )
 
-    // Should log debug information
-    expect(consoleSpy).toHaveBeenCalledWith('ReasonTooltip - provenance data:', mockProvenance)
-    expect(consoleSpy).toHaveBeenCalledWith('ReasonTooltip - rule:', 'Direct')
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'ReasonTooltip - enhancedContent:',
-      expect.objectContaining({
-        title: 'Add the tens digit — 2 tens (20)',
-        subtitle: 'From addend 25',
-        chips: expect.arrayContaining([
-          expect.objectContaining({
-            label: "Digit we're using",
-            value: '2 (tens)',
-          }),
-        ]),
-      })
-    )
-
-    consoleSpy.mockRestore()
-  })
-
-  it('should handle the exact 3475 + 25 = 3500 example', () => {
-    // Test with the exact provenance data from our example
-    const exactProvenance: TermProvenance = {
-      rhs: 25,
-      rhsDigit: 2,
-      rhsPlace: 1,
-      rhsPlaceName: 'tens',
-      rhsDigitIndex: 0, // '2' is the first digit in '25'
-      rhsValue: 20,
-    }
-
-    render(
-      <ReasonTooltip {...defaultProps} provenance={exactProvenance}>
-        <span>20</span>
-      </ReasonTooltip>
-    )
-
-    // Verify all the expected enhanced content
-    expect(screen.getByText('Add the tens digit — 2 tens (20)')).toBeInTheDocument()
-    expect(screen.getByText('From addend 25')).toBeInTheDocument()
-    expect(screen.getByText(/We're adding the tens digit of 25 → 2 tens/)).toBeInTheDocument()
-
-    // Verify the chips show the digit transformation clearly
-    expect(screen.getByText(/Digit we're using: 2 \(tens\)/)).toBeInTheDocument()
-    expect(screen.getByText(/So we add here: \+2 tens → 20/)).toBeInTheDocument()
+    // Summary text is displayed from segment.readable.summary
+    expect(screen.getByText('Add 2 earth beads directly in the tens column.')).toBeInTheDocument()
   })
 })

@@ -63,3 +63,16 @@ jobs:
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.COVERAGE_API_TOKEN }}" \
             -d "{\"commitSha\":\"${COMMIT_SHA}\",\"lines\":${LINES},\"branches\":${BRANCHES},\"functions\":${FUNCTIONS},\"statements\":${STATEMENTS}}"
+
+      - name: Upload coverage HTML to dev.abaci.one
+        if: always()
+        run: |
+          if [ ! -d apps/web/coverage ]; then
+            echo "No coverage directory found, skipping"
+            exit 0
+          fi
+          tar czf /tmp/coverage-report.tar.gz -C apps/web/coverage .
+          curl -sf -X POST "https://abaci.one/api/coverage-report" \
+            -H "Authorization: Bearer ${{ secrets.COVERAGE_API_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @/tmp/coverage-report.tar.gz

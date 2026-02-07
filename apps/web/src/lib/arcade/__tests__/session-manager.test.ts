@@ -16,6 +16,16 @@ vi.mock('@/db', () => ({
       users: {
         findFirst: vi.fn(),
       },
+      arcadeRooms: {
+        findFirst: vi.fn(),
+      },
+      roomMembers: {
+        findFirst: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      players: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
     },
     insert: vi.fn(() => ({
       values: vi.fn(() => ({
@@ -26,7 +36,7 @@ vi.mock('@/db', () => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({
         where: vi.fn(() => ({
-          limit: vi.fn(),
+          limit: vi.fn().mockResolvedValue([]),
         })),
       })),
     })),
@@ -43,13 +53,15 @@ vi.mock('@/db', () => ({
   },
   schema: {
     users: { guestId: {}, id: {} },
-    arcadeSessions: { userId: {} },
+    arcadeSessions: { userId: {}, roomId: {}, version: {} },
+    arcadeRooms: { id: {} },
+    roomMembers: { roomId: {}, userId: {} },
   },
 }))
 
-// Mock the validation module
-vi.mock('../validation', async () => {
-  const actual = await vi.importActual('../validation')
+// Mock the validators module (where getValidator is exported from)
+vi.mock('../validators', async () => {
+  const actual = await vi.importActual('../validators')
   return {
     ...actual,
     getValidator: vi.fn(() => ({
@@ -174,6 +186,20 @@ describe('session-manager', () => {
       // Mock user lookup
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser)
 
+      // Mock room lookup (getArcadeSession verifies room exists)
+      vi.mocked(db.query.arcadeRooms.findFirst).mockResolvedValue({
+        id: 'test-room-id',
+        name: 'Test Room',
+        createdBy: mockGuestId,
+        creatorName: 'Test User',
+        gameName: 'matching',
+        gameConfig: {},
+        isActive: true,
+        createdAt: new Date(),
+        lastActivity: new Date(),
+        ttlMinutes: 60,
+      } as any)
+
       // Mock session query
       vi.mocked(db.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -184,6 +210,7 @@ describe('session-manager', () => {
                 currentGame: 'matching',
                 gameState: {},
                 version: 1,
+                roomId: 'test-room-id',
                 expiresAt: new Date(Date.now() + 1000000),
                 isActive: true,
               },
@@ -215,7 +242,7 @@ describe('session-manager', () => {
     const mockSession = {
       userId: mockUserId,
       currentGame: 'matching' as const,
-      gameState: { flippedCards: [] },
+      gameState: { matching: { flippedCards: [] } }, // Namespaced format
       version: 1,
       isActive: true,
       expiresAt: new Date(Date.now() + 1000000),
@@ -223,11 +250,26 @@ describe('session-manager', () => {
       lastActivityAt: new Date(),
       gameUrl: '/arcade/matching',
       activePlayers: [1] as any,
+      roomId: 'test-room-id',
     }
 
     it('should use session.userId (database ID) for update WHERE clause', async () => {
       // Mock user lookup
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser)
+
+      // Mock room lookup (getArcadeSession verifies room exists)
+      vi.mocked(db.query.arcadeRooms.findFirst).mockResolvedValue({
+        id: 'test-room-id',
+        name: 'Test Room',
+        createdBy: mockGuestId,
+        creatorName: 'Test User',
+        gameName: 'matching',
+        gameConfig: {},
+        isActive: true,
+        createdAt: new Date(),
+        lastActivity: new Date(),
+        ttlMinutes: 60,
+      } as any)
 
       // Mock session query
       vi.mocked(db.select).mockReturnValue({
@@ -278,6 +320,39 @@ describe('session-manager', () => {
       // Mock user lookup
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser)
 
+      // Mock room lookup (getArcadeSession verifies room exists)
+      vi.mocked(db.query.arcadeRooms.findFirst).mockResolvedValue({
+        id: 'test-room-id',
+        name: 'Test Room',
+        createdBy: mockGuestId,
+        creatorName: 'Test User',
+        gameName: 'matching',
+        gameConfig: {},
+        isActive: true,
+        createdAt: new Date(),
+        lastActivity: new Date(),
+        ttlMinutes: 60,
+      } as any)
+
+      // Mock session query (getArcadeSession is called internally)
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              {
+                userId: mockUserId,
+                currentGame: 'matching',
+                gameState: {},
+                version: 1,
+                roomId: 'test-room-id',
+                expiresAt: new Date(Date.now() + 1000000),
+                isActive: true,
+              },
+            ]),
+          }),
+        }),
+      } as any)
+
       const mockWhere = vi.fn()
       vi.mocked(db.delete).mockReturnValue({
         where: mockWhere,
@@ -311,6 +386,39 @@ describe('session-manager', () => {
     it('should translate guestId to user.id before updating', async () => {
       // Mock user lookup
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser)
+
+      // Mock room lookup (getArcadeSession verifies room exists)
+      vi.mocked(db.query.arcadeRooms.findFirst).mockResolvedValue({
+        id: 'test-room-id',
+        name: 'Test Room',
+        createdBy: mockGuestId,
+        creatorName: 'Test User',
+        gameName: 'matching',
+        gameConfig: {},
+        isActive: true,
+        createdAt: new Date(),
+        lastActivity: new Date(),
+        ttlMinutes: 60,
+      } as any)
+
+      // Mock session query (getArcadeSession is called internally)
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              {
+                userId: mockUserId,
+                currentGame: 'matching',
+                gameState: {},
+                version: 1,
+                roomId: 'test-room-id',
+                expiresAt: new Date(Date.now() + 1000000),
+                isActive: true,
+              },
+            ]),
+          }),
+        }),
+      } as any)
 
       const mockWhere = vi.fn()
       vi.mocked(db.update).mockReturnValue({

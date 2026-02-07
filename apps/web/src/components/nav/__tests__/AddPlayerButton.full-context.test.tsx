@@ -4,15 +4,61 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import React from 'react'
 import { GameContextNav } from '../GameContextNav'
 
-// Mock InvitePlayersTab to simulate room creation
-let triggerRoomCreation: (() => void) | null = null
+// Mock Next.js navigation hooks (required by AddPlayerButton, PendingInvitations, RoomInfo, etc.)
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => '/test',
+  useSearchParams: () => new URLSearchParams(),
+}))
 
+// Mock ToastContext (required by PendingInvitations and other sub-components)
+vi.mock('@/components/common/ToastContext', () => ({
+  useToast: () => ({
+    showError: vi.fn(),
+    showSuccess: vi.fn(),
+    showInfo: vi.fn(),
+  }),
+}))
+
+// Mock PendingInvitations to avoid fetch calls in tests
+vi.mock('../PendingInvitations', () => ({
+  PendingInvitations: () => null,
+}))
+
+// Mock useViewerId (used by GameContextNav)
+vi.mock('@/hooks/useViewerId', () => ({
+  useViewerId: () => ({ data: 'test-viewer-id' }),
+}))
+
+// Mock useRoomData (used by GameContextNav, RoomInfo, AddPlayerButton)
+vi.mock('@/hooks/useRoomData', () => ({
+  useRoomData: () => ({
+    roomData: null,
+    isInRoom: false,
+    refetch: vi.fn(),
+    getRoomShareUrl: vi.fn(() => 'https://example.com/room/ABC123'),
+    isLoading: false,
+  }),
+  useCreateRoom: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useJoinRoom: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useGetRoomByCode: () => ({ mutateAsync: vi.fn() }),
+  useLeaveRoom: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useClearRoomGame: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+
+// Mock InvitePlayersTab to simulate room creation
 vi.mock('../InvitePlayersTab', () => ({
   InvitePlayersTab: () => {
     const [status, setStatus] = React.useState<'loading' | 'success'>('loading')
 
     React.useEffect(() => {
-      triggerRoomCreation = () => setStatus('success')
       const timer = setTimeout(() => setStatus('success'), 100)
       return () => clearTimeout(timer)
     }, [])
@@ -30,6 +76,9 @@ vi.mock('../InvitePlayersTab', () => ({
   },
 }))
 
+// The second tab label when isInRoom=true is "📨 Invite More"
+const INVITE_TAB_LABEL = '📨 Invite More'
+
 describe('AddPlayerButton - Full Context Re-render Test', () => {
   let queryClient: QueryClient
 
@@ -40,7 +89,6 @@ describe('AddPlayerButton - Full Context Re-render Test', () => {
         mutations: { retry: false },
       },
     })
-    triggerRoomCreation = null
   })
 
   it('keeps popover open when GameContextNav re-renders with roomInfo', async () => {
@@ -48,6 +96,15 @@ describe('AddPlayerButton - Full Context Re-render Test', () => {
       { id: 'player-1', name: 'Player 1', emoji: '😀' },
       { id: 'player-2', name: 'Player 2', emoji: '😎' },
     ]
+
+    // Start with roomInfo present so isInRoom=true and InvitePlayersTab mock is used
+    const roomInfo = {
+      roomId: 'test-room',
+      roomName: 'Quick Room',
+      gameName: 'matching' as const,
+      playerCount: 1,
+      joinCode: 'ABC123',
+    }
 
     const { rerender } = render(
       <QueryClientProvider client={queryClient}>
@@ -62,7 +119,7 @@ describe('AddPlayerButton - Full Context Re-render Test', () => {
           onAddPlayer={vi.fn()}
           onRemovePlayer={vi.fn()}
           onConfigurePlayer={vi.fn()}
-          roomInfo={undefined} // NO room initially
+          roomInfo={roomInfo}
         />
       </QueryClientProvider>
     )
@@ -72,11 +129,11 @@ describe('AddPlayerButton - Full Context Re-render Test', () => {
     fireEvent.click(addButton)
 
     await waitFor(() => {
-      expect(screen.getByText('Invite Players 📨')).toBeInTheDocument()
+      expect(screen.getByText(INVITE_TAB_LABEL)).toBeInTheDocument()
     })
 
-    // Step 2: Click Invite Players tab
-    const inviteTab = screen.getByText('Invite Players 📨')
+    // Step 2: Click Invite tab
+    const inviteTab = screen.getByText(INVITE_TAB_LABEL)
     fireEvent.click(inviteTab)
 
     // Step 3: Verify loading state
@@ -89,8 +146,8 @@ describe('AddPlayerButton - Full Context Re-render Test', () => {
       await new Promise((resolve) => setTimeout(resolve, 150))
     })
 
-    // Step 5: SIMULATE PRODUCTION BEHAVIOR - Re-render with roomInfo
-    // This is what happens in production when room is created
+    // Step 5: SIMULATE PRODUCTION BEHAVIOR - Re-render with updated roomInfo
+    // This is what happens in production when room state changes (e.g., new player joins)
     rerender(
       <QueryClientProvider client={queryClient}>
         <GameContextNav
@@ -105,18 +162,14 @@ describe('AddPlayerButton - Full Context Re-render Test', () => {
           onRemovePlayer={vi.fn()}
           onConfigurePlayer={vi.fn()}
           roomInfo={{
-            // NOW we have roomInfo - this causes left side of nav to change
-            roomId: 'test-room',
-            roomName: 'Quick Room',
-            gameName: 'matching',
-            playerCount: 1,
-            joinCode: 'ABC123',
+            ...roomInfo,
+            playerCount: 2, // Player count changed - triggers re-render
           }}
         />
       </QueryClientProvider>
     )
 
-    // Step 6: CRITICAL TEST - Is popover still visible?
+    // Step 6: CRITICAL TEST - Is popover still visible after re-render?
     await waitFor(
       () => {
         // Try to find the popover content

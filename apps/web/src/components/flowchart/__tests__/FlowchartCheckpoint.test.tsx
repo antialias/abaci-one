@@ -46,6 +46,20 @@ vi.mock('../../../../styled-system/patterns', () => ({
   vstack: vi.fn(() => 'mocked-vstack-class'),
 }))
 
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+})
+
 describe('FlowchartCheckpoint', () => {
   const defaultProps = {
     prompt: 'What is 2 + 2?',

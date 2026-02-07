@@ -1,5 +1,6 @@
-import React from 'react'
+import type React from 'react'
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { ScoreboardTab } from '../ScoreboardTab'
 
@@ -9,12 +10,32 @@ vi.mock('@/hooks/useGameResults', () => ({
   usePlayerClassroomRank: vi.fn(),
 }))
 
+vi.mock('@/hooks/useSkillMetrics', () => ({
+  usePlayerSkillMetrics: vi.fn(),
+  useClassroomSkillsLeaderboard: vi.fn(),
+}))
+
 // Import mocked hooks
 import { usePlayerGameHistory, usePlayerClassroomRank } from '@/hooks/useGameResults'
+import { usePlayerSkillMetrics, useClassroomSkillsLeaderboard } from '@/hooks/useSkillMetrics'
 
 // Cast to mock functions for type safety
 const mockUsePlayerGameHistory = usePlayerGameHistory as ReturnType<typeof vi.fn>
 const mockUsePlayerClassroomRank = usePlayerClassroomRank as ReturnType<typeof vi.fn>
+const mockUsePlayerSkillMetrics = usePlayerSkillMetrics as ReturnType<typeof vi.fn>
+const mockUseClassroomSkillsLeaderboard = useClassroomSkillsLeaderboard as ReturnType<typeof vi.fn>
+
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  })
+
+const renderWithProviders = (ui: React.ReactElement) => {
+  const queryClient = createQueryClient()
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
 
 describe('ScoreboardTab', () => {
   const defaultProps = {
@@ -25,6 +46,16 @@ describe('ScoreboardTab', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+
+    // Default mock returns for skill metrics hooks
+    mockUsePlayerSkillMetrics.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    })
+    mockUseClassroomSkillsLeaderboard.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    })
   })
 
   // ============================================================================
@@ -44,7 +75,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       // Find loading text in personal bests section
       const personalBestsSection = document.querySelector('[data-section="personal-bests"]')
@@ -65,7 +96,7 @@ describe('ScoreboardTab', () => {
         isLoading: true,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getAllByText('Loading...').length).toBeGreaterThanOrEqual(1)
     })
@@ -88,7 +119,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText(/No games played yet/i)).toBeInTheDocument()
     })
@@ -105,7 +136,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText(/No recent games/i)).toBeInTheDocument()
     })
@@ -122,7 +153,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText(/No classmates have played games yet/i)).toBeInTheDocument()
     })
@@ -161,7 +192,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText('Matching Pairs')).toBeInTheDocument()
       expect(screen.getByText('95%')).toBeInTheDocument()
@@ -194,7 +225,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText('⚔️')).toBeInTheDocument()
     })
@@ -221,7 +252,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       // Default icon appears in the personal bests grid item (within matching game card)
       const matchingCard = document.querySelector('[data-game="matching"]')
@@ -251,7 +282,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText('1 game played')).toBeInTheDocument()
     })
@@ -288,7 +319,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText('Matching Pairs')).toBeInTheDocument()
       expect(screen.getByText('95%')).toBeInTheDocument()
@@ -320,7 +351,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText('2m 5s')).toBeInTheDocument()
     })
@@ -351,7 +382,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText('-')).toBeInTheDocument()
     })
@@ -382,7 +413,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       // Should only show first 10
       expect(screen.getByText('Game 0')).toBeInTheDocument()
@@ -435,7 +466,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText('Classroom Leaderboard')).toBeInTheDocument()
       expect(screen.getByText('Alice')).toBeInTheDocument()
@@ -474,7 +505,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText('(You)')).toBeInTheDocument()
     })
@@ -499,7 +530,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText(/ranked #3 of 10/i)).toBeInTheDocument()
     })
@@ -516,7 +547,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} classroomId={null} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} classroomId={null} />)
 
       expect(screen.queryByText('Classroom Leaderboard')).not.toBeInTheDocument()
       expect(screen.getByText(/Join a classroom/i)).toBeInTheDocument()
@@ -534,7 +565,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} classroomId={undefined} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} classroomId={undefined} />)
 
       expect(screen.queryByText('Classroom Leaderboard')).not.toBeInTheDocument()
     })
@@ -579,7 +610,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       // Check that ranks 1, 2, 3 are displayed
       expect(screen.getByText('1')).toBeInTheDocument()
@@ -605,7 +636,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText('Personal Bests')).toBeInTheDocument()
       expect(screen.getByText('🏆')).toBeInTheDocument()
@@ -623,7 +654,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText('Recent Games')).toBeInTheDocument()
       expect(screen.getByText('🎮')).toBeInTheDocument()
@@ -641,7 +672,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(screen.getByText('Classroom Leaderboard')).toBeInTheDocument()
       expect(screen.getByText('📊')).toBeInTheDocument()
@@ -665,7 +696,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       const component = document.querySelector('[data-component="scoreboard-tab"]')
       expect(component).toBeInTheDocument()
@@ -683,7 +714,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       expect(document.querySelector('[data-section="personal-bests"]')).toBeInTheDocument()
       expect(document.querySelector('[data-section="recent-games"]')).toBeInTheDocument()
@@ -718,7 +749,7 @@ describe('ScoreboardTab', () => {
         isLoading: false,
       })
 
-      render(<ScoreboardTab {...defaultProps} />)
+      renderWithProviders(<ScoreboardTab {...defaultProps} />)
 
       // The score should be displayed
       expect(screen.getByText('95%')).toBeInTheDocument()

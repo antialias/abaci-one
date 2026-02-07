@@ -8,6 +8,7 @@ import { DELETE, GET, POST } from '../route'
 describe('Arcade Session API Routes', () => {
   const testUserId = 'test-user-for-api-routes'
   const testGuestId = 'test-guest-id-api-routes'
+  const testRoomId = 'test-room-for-api-routes'
   const baseUrl = 'http://localhost:3000'
 
   beforeEach(async () => {
@@ -20,11 +21,25 @@ describe('Arcade Session API Routes', () => {
         createdAt: new Date(),
       })
       .onConflictDoNothing()
+
+    // Create test room (required for session creation and retrieval)
+    await db
+      .insert(schema.arcadeRooms)
+      .values({
+        id: testRoomId,
+        code: 'TSTRT',
+        createdBy: testGuestId,
+        creatorName: 'Test User',
+        gameName: 'matching',
+        gameConfig: { difficulty: 6 },
+      })
+      .onConflictDoNothing()
   })
 
   afterEach(async () => {
-    // Clean up
-    await deleteArcadeSession(testUserId)
+    // Clean up sessions first (FK constraint), then rooms, then users
+    await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.roomId, testRoomId))
+    await db.delete(schema.arcadeRooms).where(eq(schema.arcadeRooms.id, testRoomId))
     await db.delete(schema.users).where(eq(schema.users.id, testUserId))
   })
 
@@ -38,6 +53,7 @@ describe('Arcade Session API Routes', () => {
           gameUrl: '/arcade/matching',
           initialState: { test: 'state' },
           activePlayers: [1],
+          roomId: testRoomId,
         }),
       })
 
@@ -63,24 +79,40 @@ describe('Arcade Session API Routes', () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error).toBe('Missing required fields')
+      expect(data.error).toBe(
+        'Missing required fields (userId, gameName, gameUrl, initialState, activePlayers, roomId)'
+      )
     })
 
-    it('should return 500 for non-existent user (foreign key constraint)', async () => {
+    it('should auto-create user and session for non-existent user', async () => {
+      const nonExistentGuestId = 'non-existent-user-' + Date.now()
       const request = new NextRequest(`${baseUrl}/api/arcade-session`, {
         method: 'POST',
         body: JSON.stringify({
-          userId: 'non-existent-user',
+          userId: nonExistentGuestId,
           gameName: 'matching',
           gameUrl: '/arcade/matching',
           initialState: {},
           activePlayers: [1],
+          roomId: testRoomId,
         }),
       })
 
       const response = await POST(request)
+      const data = await response.json()
 
-      expect(response.status).toBe(500)
+      // createArcadeSession auto-creates users, so this succeeds
+      expect(response.status).toBe(200)
+      expect(data.session).toBeDefined()
+
+      // Clean up auto-created user
+      const autoUser = await db.query.users.findFirst({
+        where: eq(schema.users.guestId, nonExistentGuestId),
+      })
+      if (autoUser) {
+        await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.userId, autoUser.id))
+        await db.delete(schema.users).where(eq(schema.users.id, autoUser.id))
+      }
     })
   })
 
@@ -95,6 +127,7 @@ describe('Arcade Session API Routes', () => {
           gameUrl: '/arcade/matching',
           initialState: { test: 'state' },
           activePlayers: [1],
+          roomId: testRoomId,
         }),
       })
       await POST(createRequest)
@@ -140,6 +173,7 @@ describe('Arcade Session API Routes', () => {
           gameUrl: '/arcade/matching',
           initialState: {},
           activePlayers: [1],
+          roomId: testRoomId,
         }),
       })
       await POST(createRequest)

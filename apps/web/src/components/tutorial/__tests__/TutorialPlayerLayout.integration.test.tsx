@@ -74,31 +74,29 @@ describe('TutorialPlayer New Layout Integration Tests', () => {
   }
 
   describe('New Layout Structure', () => {
-    it('should render tutorial step title instead of problem field', () => {
+    it('should render tutorial title and step problem', () => {
+      renderTutorialPlayer()
+
+      // Tutorial title is in h1
+      expect(screen.getByText(mockTutorial.title)).toBeInTheDocument()
+
+      // Step problem is displayed in h2
+      const firstStep = mockTutorial.steps[0]
+      expect(screen.getByText(firstStep.problem)).toBeInTheDocument()
+    })
+
+    it('should display step description', () => {
       renderTutorialPlayer()
 
       const firstStep = mockTutorial.steps[0]
-      expect(screen.getByText(firstStep.title)).toBeInTheDocument()
-
-      // Should NOT display the raw problem field
-      expect(screen.queryByText(firstStep.problem)).not.toBeInTheDocument()
+      expect(screen.getByText(firstStep.description)).toBeInTheDocument()
     })
 
-    it('should display computed problem string from start/target values', () => {
+    it('should show step progress info', () => {
       renderTutorialPlayer()
 
-      const firstStep = mockTutorial.steps[0]
-      const expectedProblem = `${firstStep.startValue} + ${firstStep.targetValue - firstStep.startValue} = ${firstStep.targetValue}`
-
-      expect(screen.getByText(expectedProblem)).toBeInTheDocument()
-    })
-
-    it('should show inline guidance with fixed height layout', () => {
-      renderTutorialPlayer()
-
-      // Should show current instruction in inline guidance area
-      const _firstStep = mockTutorial.steps[0]
-      expect(screen.getByText('Click the earth bead to add 1')).toBeInTheDocument()
+      // i18n mock returns the key for step progress
+      expect(screen.getByText('header.step')).toBeInTheDocument()
     })
 
     it('should keep abacus always visible and centered', () => {
@@ -111,23 +109,26 @@ describe('TutorialPlayer New Layout Integration Tests', () => {
       expect(abacus).toBeVisible()
     })
 
-    it('should show bead diff tooltip instead of error messages', async () => {
+    it('should render abacus with bead highlights section', async () => {
       renderTutorialPlayer()
 
-      // With new design, no error toasts are shown - only bead diff tooltip
+      // The mock abacus should be rendered
       const abacus = screen.getByTestId('mock-abacus')
       expect(abacus).toBeInTheDocument()
 
-      // Bead diff tooltip should appear when there are highlights
+      // Step bead highlights area should be present
       const highlights = screen.getByTestId('step-bead-highlights')
-      expect(highlights).toHaveTextContent('1 arrows')
+      expect(highlights).toBeInTheDocument()
     })
 
-    it('should display success message as toast when step completed', async () => {
+    it('should mark step as completed when target value is reached', async () => {
       renderTutorialPlayer()
 
       const firstStep = mockTutorial.steps[0]
       const targetValue = firstStep.targetValue
+
+      // Wait for programmatic change flag to clear
+      await new Promise((resolve) => setTimeout(resolve, 200))
 
       // Simulate correct interaction to complete step
       for (let i = 0; i < targetValue; i++) {
@@ -135,9 +136,11 @@ describe('TutorialPlayer New Layout Integration Tests', () => {
         fireEvent.click(bead)
       }
 
-      // Should show success message as toast
+      // Step completion is tracked via data attribute and callback
       await waitFor(() => {
-        expect(screen.getByText(/great! you completed this step correctly/i)).toBeInTheDocument()
+        const player = document.querySelector('[data-step-completed="true"]')
+        expect(player).toBeInTheDocument()
+        expect(mockOnStepComplete).toHaveBeenCalled()
       })
     })
   })
@@ -174,8 +177,8 @@ describe('TutorialPlayer New Layout Integration Tests', () => {
       const abacus = screen.getByTestId('mock-abacus')
       const initialPosition = abacus.getBoundingClientRect()
 
-      // Navigate to next step
-      const nextButton = screen.getByText(/next/i)
+      // Navigate to next step (i18n mock returns keys)
+      const nextButton = screen.getByText('navigation.next')
       fireEvent.click(nextButton)
 
       await waitFor(() => {
@@ -269,6 +272,9 @@ describe('TutorialPlayer New Layout Integration Tests', () => {
 
     it('should provide clear visual feedback for user actions', async () => {
       renderTutorialPlayer()
+
+      // Wait for programmatic change flag to clear
+      await new Promise((resolve) => setTimeout(resolve, 200))
 
       const earthBead = screen.getByTestId('mock-bead-0')
       fireEvent.click(earthBead)

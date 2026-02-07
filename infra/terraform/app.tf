@@ -210,6 +210,11 @@ resource "kubernetes_deployment" "app" {
             name       = "uploads-data"
             mount_path = "/app/apps/web/data/uploads"
           }
+
+          volume_mount {
+            name       = "dev-artifacts"
+            mount_path = "/dev-artifacts"
+          }
         }
 
         volume {
@@ -223,6 +228,13 @@ resource "kubernetes_deployment" "app" {
           name = "uploads-data"
           persistent_volume_claim {
             claim_name = kubernetes_persistent_volume_claim.uploads.metadata[0].name
+          }
+        }
+
+        volume {
+          name = "dev-artifacts"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.dev_artifacts.metadata[0].name
           }
         }
       }

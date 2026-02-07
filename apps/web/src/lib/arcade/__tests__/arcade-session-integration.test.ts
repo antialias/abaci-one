@@ -43,10 +43,20 @@ describe('Arcade Session Integration', () => {
   })
 
   afterEach(async () => {
-    // Clean up
+    // Clean up - delete sessions first (FK constraint on roomId)
     await deleteArcadeSession(testGuestId)
+    // Also clean up any sessions directly by roomId in case deleteArcadeSession misses them
     if (testRoomId) {
-      await deleteRoom(testRoomId)
+      try {
+        await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.roomId, testRoomId))
+      } catch {
+        // May already be deleted
+      }
+      try {
+        await deleteRoom(testRoomId)
+      } catch {
+        // Room may already be deleted
+      }
     }
     await db.delete(schema.users).where(eq(schema.users.id, testUserId))
   })
@@ -91,14 +101,15 @@ describe('Arcade Session Integration', () => {
     expect(session).toBeDefined()
     expect(session.userId).toBe(testUserId)
     expect(session.version).toBe(1)
-    expect((session.gameState as MemoryPairsState).gamePhase).toBe('setup')
+    // Game state is stored in namespaced format: { matching: <state> }
+    expect((session.gameState as any).matching.gamePhase).toBe('setup')
 
-    // 2. Retrieve session (simulating "join")
-    const retrieved = await getArcadeSession(testUserId)
+    // 2. Retrieve session (simulating "join") - use guestId, not database userId
+    const retrieved = await getArcadeSession(testGuestId)
     expect(retrieved).toBeDefined()
     expect(retrieved?.userId).toBe(testUserId)
 
-    // 3. Apply a valid move (START_GAME)
+    // 3. Apply a valid move (START_GAME) - use guestId for lookup
     const startGameMove = {
       type: 'START_GAME',
       playerId: testUserId,
@@ -108,13 +119,15 @@ describe('Arcade Session Integration', () => {
       },
     }
 
-    const result = await applyGameMove(testUserId, startGameMove as any)
+    const result = await applyGameMove(testGuestId, startGameMove as any)
 
     expect(result.success).toBe(true)
     expect(result.session).toBeDefined()
     expect(result.session?.version).toBe(2) // Version incremented
-    expect((result.session?.gameState as MemoryPairsState).gamePhase).toBe('playing')
-    expect((result.session?.gameState as MemoryPairsState).gameCards.length).toBe(12) // 6 pairs
+    // Result gameState is namespaced: { matching: <state> }
+    const resultState = (result.session?.gameState as any).matching as MemoryPairsState
+    expect(resultState.gamePhase).toBe('playing')
+    expect(resultState.gameCards.length).toBe(12) // 6 pairs
 
     // 4. Try an invalid move (should be rejected)
     const invalidMove = {
@@ -126,19 +139,19 @@ describe('Arcade Session Integration', () => {
       },
     }
 
-    const invalidResult = await applyGameMove(testUserId, invalidMove as any)
+    const invalidResult = await applyGameMove(testGuestId, invalidMove as any)
 
     expect(invalidResult.success).toBe(false)
     expect(invalidResult.error).toBe('Card not found')
 
     // Version should NOT have incremented
-    const sessionAfterInvalid = await getArcadeSession(testUserId)
+    const sessionAfterInvalid = await getArcadeSession(testGuestId)
     expect(sessionAfterInvalid?.version).toBe(2) // Still 2, not 3
 
     // 5. Clean up (exit session)
-    await deleteArcadeSession(testUserId)
+    await deleteArcadeSession(testGuestId)
 
-    const deletedSession = await getArcadeSession(testUserId)
+    const deletedSession = await getArcadeSession(testGuestId)
     expect(deletedSession).toBeUndefined()
   })
 
@@ -192,7 +205,7 @@ describe('Arcade Session Integration', () => {
       roomId: testRoomId,
     })
 
-    // First move: flip card 1
+    // First move: flip card 1 - use guestId for session lookup
     const move1 = {
       type: 'FLIP_CARD',
       playerId: testUserId,
@@ -200,7 +213,7 @@ describe('Arcade Session Integration', () => {
       data: { cardId: 'card-1' },
     }
 
-    const result1 = await applyGameMove(testUserId, move1 as any)
+    const result1 = await applyGameMove(testGuestId, move1 as any)
     expect(result1.success).toBe(true)
     expect(result1.session?.version).toBe(2)
 
@@ -212,12 +225,12 @@ describe('Arcade Session Integration', () => {
       data: { cardId: 'card-2' },
     }
 
-    const result2 = await applyGameMove(testUserId, move2 as any)
+    const result2 = await applyGameMove(testGuestId, move2 as any)
     expect(result2.success).toBe(true)
     expect(result2.session?.version).toBe(3)
 
-    // Verify the match was recorded
-    const state = result2.session?.gameState as MemoryPairsState
+    // Verify the match was recorded - game state is namespaced
+    const state = (result2.session?.gameState as any).matching as MemoryPairsState
     expect(state.matchedPairs).toBe(1)
     expect(state.gameCards[0].matched).toBe(true)
     expect(state.gameCards[1].matched).toBe(true)

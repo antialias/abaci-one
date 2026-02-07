@@ -1,25 +1,39 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import React from 'react'
 import { AddPlayerButton } from '../AddPlayerButton'
 
-// Track render count to detect re-renders
-let invitePlayersRenderCount = 0
-let simulateRoomCreation: (() => void) | null = null
+// Mock Next.js navigation hooks (required by AddPlayerButton which uses useRouter)
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => '/test',
+  useSearchParams: () => new URLSearchParams(),
+}))
+
+// Mock ToastContext (required by sub-components like PendingInvitations)
+vi.mock('@/components/common/ToastContext', () => ({
+  useToast: () => ({
+    showError: vi.fn(),
+    showSuccess: vi.fn(),
+    showInfo: vi.fn(),
+  }),
+}))
 
 // Mock InvitePlayersTab to simulate room creation behavior
+// This is rendered when isInRoom=true and the invite tab is selected
 vi.mock('../InvitePlayersTab', () => ({
   InvitePlayersTab: () => {
-    invitePlayersRenderCount++
     const [status, setStatus] = React.useState<'loading' | 'success'>('loading')
 
     React.useEffect(() => {
-      // Store the function to trigger room creation
-      simulateRoomCreation = () => {
-        setStatus('success')
-      }
-
-      // Simulate room creation after a delay
       const timer = setTimeout(() => {
         setStatus('success')
       }, 100)
@@ -40,8 +54,8 @@ vi.mock('../InvitePlayersTab', () => ({
   },
 }))
 
-// Need to import React since we're using it in the mock
-import React from 'react'
+// The second tab label when isInRoom=true is "📨 Invite More"
+const INVITE_TAB_LABEL = '📨 Invite More'
 
 describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
   let queryClient: QueryClient
@@ -53,10 +67,6 @@ describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
         mutations: { retry: false },
       },
     })
-
-    // Reset counter
-    invitePlayersRenderCount = 0
-    simulateRoomCreation = null
   })
 
   const renderWithProviders = (component: React.ReactElement) => {
@@ -70,7 +80,12 @@ describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
     ]
 
     renderWithProviders(
-      <AddPlayerButton inactivePlayers={mockPlayers} shouldEmphasize={true} onAddPlayer={vi.fn()} />
+      <AddPlayerButton
+        inactivePlayers={mockPlayers}
+        shouldEmphasize={true}
+        onAddPlayer={vi.fn()}
+        isInRoom={true}
+      />
     )
 
     // Step 1: Click the + button to open popover
@@ -80,11 +95,11 @@ describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
     // Step 2: Verify popover is open
     await waitFor(() => {
       expect(screen.getByText('Add Player')).toBeInTheDocument()
-      expect(screen.getByText('Invite Players 📨')).toBeInTheDocument()
+      expect(screen.getByText(INVITE_TAB_LABEL)).toBeInTheDocument()
     })
 
-    // Step 3: Click the "Invite Players" tab
-    const inviteTab = screen.getByText('Invite Players 📨')
+    // Step 3: Click the invite tab
+    const inviteTab = screen.getByText(INVITE_TAB_LABEL)
     fireEvent.click(inviteTab)
 
     // Step 4: Verify we see the loading state
@@ -93,7 +108,6 @@ describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
     })
 
     // Step 5: Wait for room creation to complete
-    // The mock will update mockIsInRoom to true after 100ms
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 150))
     })
@@ -102,7 +116,7 @@ describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
     await waitFor(() => {
       // The tab headers should still be visible
       expect(screen.getByText('Add Player')).toBeInTheDocument()
-      expect(screen.getByText('Invite Players 📨')).toBeInTheDocument()
+      expect(screen.getByText(INVITE_TAB_LABEL)).toBeInTheDocument()
       // And we should see the share buttons now
       expect(screen.getByText('ABC123')).toBeInTheDocument()
       expect(screen.getByText('Share Link')).toBeInTheDocument()
@@ -115,7 +129,7 @@ describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
 
     // Step 8: Verify popover is STILL there after delay
     expect(screen.queryByText('Add Player')).toBeInTheDocument()
-    expect(screen.queryByText('Invite Players 📨')).toBeInTheDocument()
+    expect(screen.queryByText(INVITE_TAB_LABEL)).toBeInTheDocument()
     expect(screen.queryByText('ABC123')).toBeInTheDocument()
     expect(screen.queryByText('Share Link')).toBeInTheDocument()
 
@@ -133,6 +147,7 @@ describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
         inactivePlayers={mockPlayers}
         shouldEmphasize={true}
         onAddPlayer={onAddPlayer}
+        isInRoom={true}
       />
     )
 
@@ -140,7 +155,7 @@ describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
     const addButton = screen.getByTitle('Add player')
     fireEvent.click(addButton)
 
-    const inviteTab = await screen.findByText('Invite Players 📨')
+    const inviteTab = await screen.findByText(INVITE_TAB_LABEL)
     fireEvent.click(inviteTab)
 
     // Wait for room creation
@@ -172,7 +187,12 @@ describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
     ]
 
     renderWithProviders(
-      <AddPlayerButton inactivePlayers={mockPlayers} shouldEmphasize={true} onAddPlayer={vi.fn()} />
+      <AddPlayerButton
+        inactivePlayers={mockPlayers}
+        shouldEmphasize={true}
+        onAddPlayer={vi.fn()}
+        isInRoom={true}
+      />
     )
 
     // Open popover
@@ -180,7 +200,7 @@ describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
     fireEvent.click(addButton)
 
     // Click Invite tab
-    const inviteTab = await screen.findByText('Invite Players 📨')
+    const inviteTab = await screen.findByText(INVITE_TAB_LABEL)
     fireEvent.click(inviteTab)
 
     // Wait for room creation
@@ -194,7 +214,7 @@ describe('AddPlayerButton - Popover Persistence During Room Creation', () => {
     })
 
     // Popover should STILL be visible
-    expect(screen.queryByText('Invite Players 📨')).toBeInTheDocument()
+    expect(screen.queryByText(INVITE_TAB_LABEL)).toBeInTheDocument()
     expect(screen.queryByText('ABC123')).toBeInTheDocument()
     expect(screen.queryByText('Share Link')).toBeInTheDocument()
   })

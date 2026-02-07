@@ -57,6 +57,11 @@ vi.mock('../Provider', () => ({
 
 vi.mock('../maps', () => ({
   getFilteredMapDataBySizesSync: mockGetFilteredMapDataBySizesSync,
+  getAssistanceLevel: () => ({
+    id: 'helpful',
+    label: 'Helpful',
+    nameConfirmationLetters: 0,
+  }),
 }))
 
 vi.mock('./MapRenderer', () => ({
@@ -80,9 +85,44 @@ vi.mock('./GameInfoPanel', () => ({
   ),
 }))
 
+vi.mock('@/lib/arcade/game-sdk', () => ({
+  useViewerId: () => ({ data: 'test-viewer-id' }),
+  useGameMode: () => ({
+    activePlayers: new Set(['player-1']),
+    players: new Map([['player-1', { id: 'player-1', name: 'Test Player', isLocal: true }]]),
+  }),
+}))
+
 describe('PlayingPhase', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.restoreAllMocks()
+    // Re-apply default implementations after restoreAllMocks
+    mockUseKnowYourWorld.mockImplementation(() => ({
+      state: {
+        selectedMap: 'world' as const,
+        selectedContinent: 'all',
+        includeSizes: ['huge', 'large', 'medium'],
+        assistanceLevel: 'helpful',
+        regionsFound: ['france', 'germany'],
+        currentPrompt: 'spain',
+        gameMode: 'cooperative' as const,
+        regionsToFind: ['spain', 'italy', 'portugal'],
+      },
+      clickRegion: vi.fn(),
+    }))
+    mockGetFilteredMapDataBySizesSync.mockImplementation(
+      () =>
+        ({
+          id: 'world',
+          name: 'World Map',
+          viewBox: '0 0 1000 500',
+          regions: [
+            { id: 'spain', name: 'Spain', path: 'M 100 100 L 200 200' },
+            { id: 'italy', name: 'Italy', path: 'M 300 300 L 400 400' },
+            { id: 'portugal', name: 'Portugal', path: 'M 500 500 L 600 600' },
+          ],
+        }) as MapData
+    )
   })
 
   it('renders the panel layout with game info and map panels', () => {
@@ -93,16 +133,16 @@ describe('PlayingPhase', () => {
     expect(screen.getByTestId('map-renderer')).toBeInTheDocument()
   })
 
-  it('renders PanelGroup with vertical direction', () => {
+  it('renders playing-phase container with correct data attribute', () => {
     const { container } = render(<PlayingPhase />)
 
-    // The playing-phase container should have flex column layout
+    // The playing-phase container should exist as a full-viewport fixed-position element
     const playingPhase = container.querySelector('[data-component="playing-phase"]')
     expect(playingPhase).toBeInTheDocument()
 
-    const styles = window.getComputedStyle(playingPhase!)
-    expect(styles.display).toBe('flex')
-    expect(styles.flexDirection).toBe('column')
+    // Should contain both the map renderer and game info panel
+    expect(playingPhase!.querySelector('[data-testid="map-renderer"]')).toBeInTheDocument()
+    expect(playingPhase!.querySelector('[data-testid="game-info-panel"]')).toBeInTheDocument()
   })
 
   it('passes correct props to GameInfoPanel', () => {
@@ -149,17 +189,16 @@ describe('PlayingPhase', () => {
     expect(screen.getByTestId('game-info-panel')).toBeInTheDocument()
   })
 
-  it('renders map panel with proper container styles', () => {
+  it('renders map renderer inside the playing-phase container', () => {
     const { container } = render(<PlayingPhase />)
 
-    const mapPanel = container.querySelector('[data-component="map-panel"]')
-    expect(mapPanel).toBeInTheDocument()
+    // The map renderer should be rendered as a direct child of the playing-phase container
+    const playingPhase = container.querySelector('[data-component="playing-phase"]')
+    expect(playingPhase).toBeInTheDocument()
 
-    const styles = window.getComputedStyle(mapPanel!)
-    expect(styles.width).toBe('100%')
-    expect(styles.height).toBe('100%')
-    expect(styles.display).toBe('flex')
-    expect(styles.overflow).toBe('hidden')
+    // MapRenderer should be present inside the container
+    const mapRenderer = screen.getByTestId('map-renderer')
+    expect(playingPhase!.contains(mapRenderer)).toBe(true)
   })
 
   it('passes clickRegion handler to MapRenderer', async () => {
@@ -188,6 +227,21 @@ describe('PlayingPhase', () => {
   })
 
   it('uses correct map data from getFilteredMapDataBySizesSync', () => {
+    // Override state to have a prompt that exists in the custom map
+    mockUseKnowYourWorld.mockReturnValue({
+      state: {
+        selectedMap: 'usa' as const,
+        selectedContinent: 'all',
+        includeSizes: ['huge', 'large', 'medium'],
+        assistanceLevel: 'helpful',
+        regionsFound: [],
+        currentPrompt: 'california',
+        gameMode: 'cooperative' as const,
+        regionsToFind: ['california', 'texas'],
+      },
+      clickRegion: vi.fn(),
+    })
+
     mockGetFilteredMapDataBySizesSync.mockReturnValue({
       id: 'usa',
       name: 'USA Map',
@@ -200,7 +254,7 @@ describe('PlayingPhase', () => {
 
     render(<PlayingPhase />)
 
-    expect(mockGetFilteredMapDataBySizesSync).toHaveBeenCalledWith('world', 'all', [
+    expect(mockGetFilteredMapDataBySizesSync).toHaveBeenCalledWith('usa', 'all', [
       'huge',
       'large',
       'medium',
@@ -209,6 +263,24 @@ describe('PlayingPhase', () => {
 })
 
 describe('PlayingPhase - Different Scenarios', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    // Re-apply default map data implementation after restoreAllMocks
+    mockGetFilteredMapDataBySizesSync.mockImplementation(
+      () =>
+        ({
+          id: 'world',
+          name: 'World Map',
+          viewBox: '0 0 1000 500',
+          regions: [
+            { id: 'spain', name: 'Spain', path: 'M 100 100 L 200 200' },
+            { id: 'italy', name: 'Italy', path: 'M 300 300 L 400 400' },
+            { id: 'portugal', name: 'Portugal', path: 'M 500 500 L 600 600' },
+          ],
+        }) as MapData
+    )
+  })
+
   it('handles empty regionsFound array', () => {
     mockUseKnowYourWorld.mockReturnValue({
       state: {
@@ -226,7 +298,9 @@ describe('PlayingPhase - Different Scenarios', () => {
 
     render(<PlayingPhase />)
 
-    expect(screen.getByText('Progress: 0/2')).toBeInTheDocument()
+    // totalRegions comes from mapData.regions.length (3), not regionsToFind
+    // foundCount comes from regionsFound.length (0)
+    expect(screen.getByText('Progress: 0/3')).toBeInTheDocument()
   })
 
   it('handles all regions found scenario', () => {
@@ -250,6 +324,17 @@ describe('PlayingPhase - Different Scenarios', () => {
   })
 
   it('renders with no assistance mode', () => {
+    // Override map data to include luxembourg for the prompt
+    mockGetFilteredMapDataBySizesSync.mockReturnValue({
+      id: 'world',
+      name: 'World Map',
+      viewBox: '0 0 1000 500',
+      regions: [
+        { id: 'luxembourg', name: 'Luxembourg', path: 'M 100 100 L 200 200' },
+        { id: 'liechtenstein', name: 'Liechtenstein', path: 'M 300 300 L 400 400' },
+      ],
+    } as MapData)
+
     mockUseKnowYourWorld.mockReturnValue({
       state: {
         selectedMap: 'world' as const,

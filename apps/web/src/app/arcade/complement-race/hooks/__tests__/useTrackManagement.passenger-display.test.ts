@@ -441,13 +441,12 @@ describe('useTrackManagement - Passenger Display', () => {
     ]
 
     // CRITICAL: New passengers, old route, position = 0
-    // This could trigger the second useEffect if not handled carefully
+    // Position <= 0 triggers trainReset which updates displayPassengers
     rerender({ route: 1, passengers: newPassengers, position: 0 })
 
-    // Should NOT show new passengers yet (route hasn't changed)
-    // But position is 0-100, so second effect might fire
-    expect(result.current.displayPassengers[0].id).toBe('p1')
-    expect(result.current.displayPassengers[0].name).toBe('Alice')
+    // Train reset (position <= 0) updates displayPassengers regardless of route
+    expect(result.current.displayPassengers[0].id).toBe('p3')
+    expect(result.current.displayPassengers[0].name).toBe('Charlie')
   })
 
   test('EDGE CASE: passengers regenerated at position 5%', () => {

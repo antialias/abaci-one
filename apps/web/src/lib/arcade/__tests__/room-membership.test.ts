@@ -15,6 +15,21 @@ import {
   type AddMemberOptions,
 } from '../room-membership'
 
+// Mock the room-member-history module (depends on db.select which room-membership doesn't mock)
+vi.mock('../room-member-history', () => ({
+  recordRoomMemberHistory: vi.fn().mockResolvedValue({
+    id: 'history-1',
+    roomId: 'room-123',
+    userId: 'user-1',
+    displayName: 'Test User',
+    firstJoinedAt: new Date(),
+    lastSeenAt: new Date(),
+    lastAction: 'active',
+    lastActionAt: new Date(),
+  }),
+  updateRoomMemberAction: vi.fn().mockResolvedValue(undefined),
+}))
+
 // Mock the database
 vi.mock('@/db', () => ({
   db: {

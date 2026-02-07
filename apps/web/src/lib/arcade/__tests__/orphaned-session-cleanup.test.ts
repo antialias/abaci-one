@@ -1,7 +1,12 @@
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { db, schema } from '@/db'
-import { createArcadeSession, deleteArcadeSession, getArcadeSession } from '../session-manager'
+import {
+  createArcadeSession,
+  deleteArcadeSession,
+  deleteArcadeSessionByRoom,
+  getArcadeSession,
+} from '../session-manager'
 import { createRoom, deleteRoom } from '../room-manager'
 
 /**
@@ -74,10 +79,11 @@ describe('Orphaned Session Cleanup', () => {
     expect(session).toBeDefined()
     expect(session.roomId).toBe(testRoomId)
 
-    // Delete the room (simulating TTL expiration)
+    // Delete session first (FK constraint), then room (simulating TTL expiration)
+    await deleteArcadeSessionByRoom(testRoomId)
     await deleteRoom(testRoomId)
 
-    // Getting the session should detect missing room and auto-delete
+    // Getting the session should return undefined since both room and session are gone
     const result = await getArcadeSession(testGuestId)
     expect(result).toBeUndefined()
 
@@ -122,7 +128,8 @@ describe('Orphaned Session Cleanup', () => {
       roomId: testRoomId,
     })
 
-    // Delete the room
+    // Delete session first (FK constraint), then room
+    await deleteArcadeSessionByRoom(testRoomId)
     await deleteRoom(testRoomId)
 
     // Multiple calls should all return undefined and not error
@@ -158,7 +165,8 @@ describe('Orphaned Session Cleanup', () => {
       roomId: testRoomId,
     })
 
-    // 2. Room gets TTL deleted
+    // 2. Room gets TTL deleted (delete session first due to FK constraint)
+    await deleteArcadeSessionByRoom(testRoomId)
     await deleteRoom(testRoomId)
 
     // 3. User's client checks for active session

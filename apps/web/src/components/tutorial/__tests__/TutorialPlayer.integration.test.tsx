@@ -93,7 +93,7 @@ describe('TutorialPlayer Integration', () => {
       })
 
       // Navigate to next step
-      const nextButton = screen.getByText('Next →')
+      const nextButton = screen.getByText('navigation.next')
       fireEvent.click(nextButton)
 
       await waitFor(() => {
@@ -107,6 +107,9 @@ describe('TutorialPlayer Integration', () => {
       await waitFor(() => {
         expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
       })
+
+      // Wait for programmatic change flag to clear after initialization
+      await new Promise((resolve) => setTimeout(resolve, 200))
 
       // User clicks a bead
       fireEvent.click(screen.getByTestId('bead-click'))
@@ -124,6 +127,9 @@ describe('TutorialPlayer Integration', () => {
         expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
       })
 
+      // Wait for programmatic change flag to clear after initialization
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
       // Simulate user changing abacus to target value (8)
       // We'll click the bead 3 times to go from 5 to 8
       fireEvent.click(screen.getByTestId('bead-click')) // 6
@@ -132,8 +138,9 @@ describe('TutorialPlayer Integration', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('abacus-value')).toHaveTextContent('8')
-        // Should show success feedback
-        expect(screen.getByText(/excellent/i)).toBeInTheDocument()
+        // Step completion is tracked via data attributes
+        const player = document.querySelector('[data-step-completed="true"]')
+        expect(player).toBeInTheDocument()
       })
     })
   })
@@ -182,16 +189,17 @@ describe('TutorialPlayer Integration', () => {
     })
 
     it('should allow manual multi-step navigation', async () => {
-      render(<TutorialPlayer tutorial={mockTutorial} />)
+      // Multi-step controls (prev/next) are only available in debug mode
+      render(<TutorialPlayer tutorial={mockTutorial} isDebugMode={true} />)
 
-      // Should show multi-step controls
+      // Should show multi-step controls (i18n mock returns keys)
       await waitFor(() => {
-        expect(screen.getByText('⏪ Prev')).toBeInTheDocument()
-        expect(screen.getByText('Next ⏩')).toBeInTheDocument()
+        expect(screen.getByText('controls.multiStep.prev')).toBeInTheDocument()
+        expect(screen.getByText('controls.multiStep.next')).toBeInTheDocument()
       })
 
       // Navigate to next multi-step
-      fireEvent.click(screen.getByText('Next ⏩'))
+      fireEvent.click(screen.getByText('controls.multiStep.next'))
 
       await waitFor(() => {
         expect(screen.getByText('Then add 3 more')).toBeInTheDocument()
@@ -219,7 +227,7 @@ describe('TutorialPlayer Integration', () => {
       })
 
       // Navigate to next step
-      fireEvent.click(screen.getByText('Next →'))
+      fireEvent.click(screen.getByText('navigation.next'))
 
       await waitFor(() => {
         expect(onStepChange).toHaveBeenCalledWith(1, mockTutorial.steps[1])
@@ -238,9 +246,9 @@ describe('TutorialPlayer Integration', () => {
       })
 
       // Navigate between steps rapidly
-      fireEvent.click(screen.getByText('Next →'))
-      fireEvent.click(screen.getByText('← Prev'))
-      fireEvent.click(screen.getByText('Next →'))
+      fireEvent.click(screen.getByText('navigation.next'))
+      fireEvent.click(screen.getByText('navigation.previous'))
+      fireEvent.click(screen.getByText('navigation.next'))
 
       // Should handle rapid navigation without getting stuck
       await waitFor(() => {
@@ -256,6 +264,9 @@ describe('TutorialPlayer Integration', () => {
         expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
       })
 
+      // Wait for programmatic change flag to clear after initialization
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
       // User change
       fireEvent.click(screen.getByTestId('bead-click'))
       await waitFor(() => {
@@ -263,12 +274,15 @@ describe('TutorialPlayer Integration', () => {
       })
 
       // Navigate to new step (programmatic change)
-      fireEvent.click(screen.getByText('Next →'))
+      fireEvent.click(screen.getByText('navigation.next'))
       await waitFor(() => {
         expect(screen.getByTestId('abacus-value')).toHaveTextContent('10')
       })
 
-      // User should still be able to interact after programmatic change
+      // First user interaction after step navigation clears the programmatic change flag
+      fireEvent.click(screen.getByTestId('bead-click'))
+
+      // User should be able to interact after programmatic change flag is cleared
       fireEvent.click(screen.getByTestId('bead-click'))
       await waitFor(() => {
         expect(screen.getByTestId('abacus-value')).toHaveTextContent('11')
@@ -301,6 +315,9 @@ describe('TutorialPlayer Integration', () => {
         expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')
       })
 
+      // Wait for programmatic change flag to clear after initialization
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
       // Try to set an invalid value
       fireEvent.click(screen.getByTestId('set-target'))
 
@@ -310,7 +327,7 @@ describe('TutorialPlayer Integration', () => {
       })
 
       // Navigation should still work
-      fireEvent.click(screen.getByText('Next →'))
+      fireEvent.click(screen.getByText('navigation.next'))
       await waitFor(() => {
         expect(screen.getByTestId('abacus-value')).toHaveTextContent('10')
       })
@@ -336,8 +353,8 @@ describe('TutorialPlayer Integration', () => {
       })
 
       fireEvent.click(screen.getByTestId('bead-click'))
-      fireEvent.click(screen.getByText('Next →'))
-      fireEvent.click(screen.getByText('← Prev'))
+      fireEvent.click(screen.getByText('navigation.next'))
+      fireEvent.click(screen.getByText('navigation.previous'))
 
       await waitFor(() => {
         expect(screen.getByTestId('abacus-value')).toHaveTextContent('5')

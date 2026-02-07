@@ -1,9 +1,77 @@
-import { AbacusDisplayProvider } from '@soroban/abacus-react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import React from 'react'
 import { vi } from 'vitest'
 import type { Tutorial } from '../../../types/tutorial'
-import { TutorialProvider } from '../TutorialContext'
 import { TutorialPlayer } from '../TutorialPlayer'
+
+// Mock browser APIs not available in jsdom
+global.ResizeObserver = vi.fn(() => ({
+  disconnect: vi.fn(),
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+})) as any
+
+global.IntersectionObserver = vi.fn(() => ({
+  disconnect: vi.fn(),
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+})) as any
+
+// Mock the AbacusReact component to expose a controllable value change button
+vi.mock('@soroban/abacus-react', () => ({
+  AbacusReact: ({ value, onValueChange, overlays }: any) => {
+    const [currentValue, setCurrentValue] = React.useState(value)
+
+    // Sync with prop changes
+    React.useEffect(() => {
+      setCurrentValue(value)
+    }, [value])
+
+    const handleSetToFive = () => {
+      setCurrentValue(5)
+      onValueChange?.(5)
+    }
+
+    const handleSetToSix = () => {
+      setCurrentValue(6)
+      onValueChange?.(6)
+    }
+
+    const handleSetToFour = () => {
+      setCurrentValue(4)
+      onValueChange?.(4)
+    }
+
+    return (
+      <div data-testid="mock-abacus">
+        <div data-testid="abacus-value">{currentValue}</div>
+        <button onClick={handleSetToFive} data-testid="set-value-5">
+          Set to 5
+        </button>
+        <button onClick={handleSetToSix} data-testid="set-value-6">
+          Set to 6
+        </button>
+        <button onClick={handleSetToFour} data-testid="set-value-4">
+          Set to 4
+        </button>
+        {/* Render overlays for tooltip testing */}
+        {overlays?.map((overlay: any, index: number) => (
+          <div key={index} data-testid={`overlay-${index}`}>
+            {overlay.content}
+          </div>
+        ))}
+      </div>
+    )
+  },
+  StepBeadHighlight: {},
+  AbacusDisplayProvider: ({ children }: any) => <div>{children}</div>,
+  useAbacusDisplay: () => ({
+    config: { colorScheme: 'place-value', beadShape: 'diamond', hideInactiveBeads: false },
+    updateConfig: () => {},
+    resetToDefaults: () => {},
+  }),
+  calculateBeadDiffFromValues: () => ({ hasChanges: false, changes: [], summary: '' }),
+}))
 
 // Mock tutorial data
 const mockTutorial: Tutorial = {
@@ -34,140 +102,117 @@ const mockTutorial: Tutorial = {
   ],
 }
 
-// Test component that exposes internal state for testing
-const TestCelebrationComponent = ({ tutorial }: { tutorial: Tutorial }) => {
-  return (
-    <AbacusDisplayProvider>
-      <TutorialProvider tutorial={tutorial}>
-        <TutorialPlayer tutorial={tutorial} isDebugMode={true} showDebugPanel={false} />
-      </TutorialProvider>
-    </AbacusDisplayProvider>
-  )
-}
-
 describe('TutorialPlayer Celebration Tooltip', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
+  const renderTutorialPlayer = (tutorial = mockTutorial, props = {}) => {
+    return render(<TutorialPlayer tutorial={tutorial} isDebugMode={false} {...props} />)
+  }
+
   describe('Celebration Tooltip Visibility', () => {
     it('should show celebration tooltip when step is completed and at target value', async () => {
-      render(<TestCelebrationComponent tutorial={mockTutorial} />)
+      const onStepComplete = vi.fn()
+      renderTutorialPlayer(mockTutorial, { onStepComplete })
 
       // Wait for initial render with start value (3)
       await waitFor(() => {
-        expect(screen.getByText('3 + 2')).toBeInTheDocument()
+        expect(screen.getByTestId('abacus-value')).toHaveTextContent('3')
       })
 
-      // Simulate reaching target value (5) by finding and clicking appropriate beads
-      // We need to add 2 to get from 3 to 5
-      // Look for earth beads in the ones place that we can activate
-      const abacusContainer =
-        screen.getByRole('img', { hidden: true }) || document.querySelector('svg')
+      // Wait for programmatic change flag to clear
+      await new Promise((resolve) => setTimeout(resolve, 200))
 
-      if (abacusContainer) {
-        // Simulate clicking beads to reach value 5
-        fireEvent.click(abacusContainer)
-
-        // In a real scenario, we'd need to trigger the actual value change
-        // For testing, we'll use a more direct approach
-        const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 },
-        })
-        abacusContainer.dispatchEvent(valueChangeEvent)
-      }
+      // Trigger value change to target (5)
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('set-value-5'))
+      })
 
       // Wait for celebration tooltip to appear
       await waitFor(
         () => {
-          const celebrationElements = screen.queryAllByText(/excellent work/i)
-          expect(celebrationElements.length).toBeGreaterThan(0)
+          const celebration = screen.queryAllByText('Excellent work!')
+          expect(celebration.length).toBeGreaterThan(0)
         },
         { timeout: 3000 }
       )
     })
 
     it('should hide celebration tooltip when user moves away from target value', async () => {
-      render(<TestCelebrationComponent tutorial={mockTutorial} />)
+      const onStepComplete = vi.fn()
+      renderTutorialPlayer(mockTutorial, { onStepComplete })
 
       // Wait for initial render
       await waitFor(() => {
-        expect(screen.getByText('3 + 2')).toBeInTheDocument()
+        expect(screen.getByTestId('abacus-value')).toHaveTextContent('3')
       })
 
-      // First, complete the step (reach target value 5)
-      const abacusContainer = document.querySelector('svg')
-      if (abacusContainer) {
-        const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 },
-        })
-        abacusContainer.dispatchEvent(valueChangeEvent)
-      }
+      // Wait for programmatic change flag to clear
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      // Reach target value (5)
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('set-value-5'))
+      })
 
       // Verify celebration appears
       await waitFor(
         () => {
-          const celebrationElements = screen.queryAllByText(/excellent work/i)
-          expect(celebrationElements.length).toBeGreaterThan(0)
+          const celebration = screen.queryAllByText('Excellent work!')
+          expect(celebration.length).toBeGreaterThan(0)
         },
-        { timeout: 2000 }
+        { timeout: 3000 }
       )
 
       // Now move away from target value (change to 6)
-      if (abacusContainer) {
-        const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 6 },
-        })
-        abacusContainer.dispatchEvent(valueChangeEvent)
-      }
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('set-value-6'))
+      })
 
       // Verify celebration tooltip disappears
       await waitFor(
         () => {
-          const celebrationElements = screen.queryAllByText(/excellent work/i)
-          expect(celebrationElements.length).toBe(0)
+          const celebration = screen.queryAllByText('Excellent work!')
+          expect(celebration.length).toBe(0)
         },
         { timeout: 2000 }
       )
     })
 
     it('should return to instruction tooltip when moved away from target', async () => {
-      render(<TestCelebrationComponent tutorial={mockTutorial} />)
+      const onStepComplete = vi.fn()
+      renderTutorialPlayer(mockTutorial, { onStepComplete })
 
       // Wait for initial render
       await waitFor(() => {
-        expect(screen.getByText('3 + 2')).toBeInTheDocument()
+        expect(screen.getByTestId('abacus-value')).toHaveTextContent('3')
       })
+
+      // Wait for programmatic change flag to clear
+      await new Promise((resolve) => setTimeout(resolve, 200))
 
       // Complete step (reach target value 5)
-      const abacusContainer = document.querySelector('svg')
-      if (abacusContainer) {
-        fireEvent.click(abacusContainer)
-        const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 },
-        })
-        abacusContainer.dispatchEvent(valueChangeEvent)
-      }
-
-      // Wait for celebration
-      await waitFor(() => {
-        expect(screen.queryAllByText(/excellent work/i).length).toBeGreaterThan(0)
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('set-value-5'))
       })
 
-      // Move away from target (to value 4)
-      if (abacusContainer) {
-        const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 4 },
-        })
-        abacusContainer.dispatchEvent(valueChangeEvent)
-      }
+      // Wait for celebration
+      await waitFor(
+        () => {
+          expect(screen.queryAllByText('Excellent work!').length).toBeGreaterThan(0)
+        },
+        { timeout: 3000 }
+      )
 
-      // Should show instruction tooltip instead of celebration
+      // Move away from target (to value 4)
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('set-value-4'))
+      })
+
+      // Should hide celebration
       await waitFor(() => {
-        expect(screen.queryAllByText(/excellent work/i).length).toBe(0)
-        // Look for instruction indicators (lightbulb emoji or guidance text)
-        const instructionElements = screen.queryAllByText(/💡/i)
-        expect(instructionElements.length).toBeGreaterThanOrEqual(0) // May not always have instructions
+        expect(screen.queryAllByText('Excellent work!').length).toBe(0)
       })
     })
   })
@@ -175,33 +220,20 @@ describe('TutorialPlayer Celebration Tooltip', () => {
   describe('Celebration Tooltip Positioning', () => {
     it('should position celebration tooltip at last moved bead when available', async () => {
       const onStepComplete = vi.fn()
-
-      render(
-        <AbacusDisplayProvider>
-          <TutorialProvider tutorial={mockTutorial} onStepComplete={onStepComplete}>
-            <TutorialPlayer
-              tutorial={mockTutorial}
-              isDebugMode={true}
-              onStepComplete={onStepComplete}
-            />
-          </TutorialProvider>
-        </AbacusDisplayProvider>
-      )
+      renderTutorialPlayer(mockTutorial, { onStepComplete })
 
       // Wait for initial render
       await waitFor(() => {
-        expect(screen.getByText('3 + 2')).toBeInTheDocument()
+        expect(screen.getByTestId('abacus-value')).toHaveTextContent('3')
       })
 
+      // Wait for programmatic change flag to clear
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
       // Simulate completing the step
-      const abacusContainer = document.querySelector('svg')
-      if (abacusContainer) {
-        fireEvent.click(abacusContainer)
-        const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 },
-        })
-        abacusContainer.dispatchEvent(valueChangeEvent)
-      }
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('set-value-5'))
+      })
 
       // Wait for step completion callback
       await waitFor(
@@ -211,31 +243,40 @@ describe('TutorialPlayer Celebration Tooltip', () => {
         { timeout: 3000 }
       )
 
-      // Verify celebration tooltip is positioned (should be visible in DOM)
-      const tooltipPortal = document.querySelector('[data-radix-popper-content-wrapper]')
-      expect(tooltipPortal).toBeTruthy()
+      // Verify celebration tooltip appears in overlay
+      await waitFor(
+        () => {
+          const celebration = screen.queryAllByText('Excellent work!')
+          expect(celebration.length).toBeGreaterThan(0)
+        },
+        { timeout: 3000 }
+      )
     })
 
     it('should use fallback position when no last moved bead available', async () => {
-      render(<TestCelebrationComponent tutorial={mockTutorial} />)
+      const onStepComplete = vi.fn()
+      renderTutorialPlayer(mockTutorial, { onStepComplete })
 
-      // Directly trigger completion without tracking a moved bead
-      const abacusContainer = document.querySelector('svg')
-      if (abacusContainer) {
-        // Skip the gradual movement and go straight to target
-        const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 },
-        })
-        abacusContainer.dispatchEvent(valueChangeEvent)
-      }
+      // Wait for initial render
+      await waitFor(() => {
+        expect(screen.getByTestId('abacus-value')).toHaveTextContent('3')
+      })
+
+      // Wait for programmatic change flag to clear
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      // Directly trigger completion to target value
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('set-value-5'))
+      })
 
       // Should still show celebration tooltip with fallback positioning
       await waitFor(
         () => {
-          const celebrationElements = screen.queryAllByText(/excellent work/i)
-          expect(celebrationElements.length).toBeGreaterThan(0)
+          const celebration = screen.queryAllByText('Excellent work!')
+          expect(celebration.length).toBeGreaterThan(0)
         },
-        { timeout: 2000 }
+        { timeout: 3000 }
       )
     })
   })
@@ -260,41 +301,51 @@ describe('TutorialPlayer Celebration Tooltip', () => {
         ],
       }
 
-      render(<TestCelebrationComponent tutorial={multiStepTutorial} />)
+      renderTutorialPlayer(multiStepTutorial)
 
-      // Complete first step
-      const abacusContainer = document.querySelector('svg')
-      if (abacusContainer) {
-        const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 },
-        })
-        abacusContainer.dispatchEvent(valueChangeEvent)
-      }
-
-      // Navigate to next step
-      const nextButton = screen.getByText(/next/i)
-      fireEvent.click(nextButton)
-
-      // Wait for step change
+      // Wait for initial render
       await waitFor(() => {
-        expect(screen.getByText('2 + 3')).toBeInTheDocument()
+        expect(screen.getByTestId('abacus-value')).toHaveTextContent('3')
       })
 
-      // Complete second step - should use appropriate positioning
-      if (abacusContainer) {
-        const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 },
-        })
-        abacusContainer.dispatchEvent(valueChangeEvent)
-      }
+      // Wait for programmatic change flag to clear
+      await new Promise((resolve) => setTimeout(resolve, 200))
 
-      // Celebration should appear for second step
+      // Complete first step
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('set-value-5'))
+      })
+
+      // Wait for celebration to appear
       await waitFor(
         () => {
-          expect(screen.queryAllByText(/excellent work/i).length).toBeGreaterThan(0)
+          expect(screen.queryAllByText('Excellent work!').length).toBeGreaterThan(0)
         },
-        { timeout: 2000 }
+        { timeout: 3000 }
       )
+
+      // The step should be completed, which means the next button should be available
+      // In i18n mock, button text is the translation key
+      await waitFor(() => {
+        // Look for the next/complete button by data attribute
+        const nextButton = document.querySelector('[data-action="next-step"]')
+        expect(nextButton).toBeTruthy()
+      })
+
+      // Click next step
+      const nextButton = document.querySelector('[data-action="next-step"]') as HTMLElement
+      await act(async () => {
+        fireEvent.click(nextButton)
+      })
+
+      // Wait for step change - abacus value should reset
+      await waitFor(() => {
+        expect(screen.getByTestId('abacus-value')).toHaveTextContent('2')
+      })
+
+      // Celebration should not be showing for the new step
+      const celebration = screen.queryAllByText('Excellent work!')
+      expect(celebration.length).toBe(0)
     })
   })
 })
