@@ -678,7 +678,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
                     move: clearMove,
                   }
                   if (clearResult.session.roomId) {
-                    io!.to(`game:${clearResult.session.roomId}`).emit('move-accepted', clearAccepted)
+                    io!
+                      .to(`game:${clearResult.session.roomId}`)
+                      .emit('move-accepted', clearAccepted)
                   } else {
                     io!.to(`arcade:${capturedUserId}`).emit('move-accepted', clearAccepted)
                   }

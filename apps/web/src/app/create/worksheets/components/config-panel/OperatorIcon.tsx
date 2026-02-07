@@ -33,7 +33,8 @@ export function OperatorIcon({
 
   return (
     <span
-      className={cx(css({
+      className={cx(
+        css({
           fontSize: sizeMap[size],
           fontWeight: 'bold',
           color: colorValue,

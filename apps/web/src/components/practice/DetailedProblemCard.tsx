@@ -477,7 +477,8 @@ function DetailedVerticalProblem({
             {hasTrace && (
               <InlineSkillList
                 step={
-                  step ?? ({
+                  step ??
+                  ({
                     termAdded: term,
                     skillsUsed: [],
                   } as unknown as GenerationTraceStep)

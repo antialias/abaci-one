@@ -48,9 +48,7 @@ export function findTopmostBeadWithArrows(
   if (!stepBeadHighlights || stepBeadHighlights.length === 0) return null
 
   // Filter only beads that have direction arrows
-  const beadsWithArrows = stepBeadHighlights.filter(
-    (bead) => !!bead.direction
-  )
+  const beadsWithArrows = stepBeadHighlights.filter((bead) => !!bead.direction)
 
   if (beadsWithArrows.length === 0) {
     return null

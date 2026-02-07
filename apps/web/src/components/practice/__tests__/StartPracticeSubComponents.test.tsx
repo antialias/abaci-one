@@ -294,10 +294,22 @@ describe('PurposeDistributionBar', () => {
   it('should show focus with weight 3 and others with weight 1', () => {
     const { container } = render(<PurposeDistributionBar />, { wrapper: createWrapper() })
 
-    expect(container.querySelector('[data-option="segment-focus"]')).toHaveAttribute('data-weight', '3')
-    expect(container.querySelector('[data-option="segment-reinforce"]')).toHaveAttribute('data-weight', '1')
-    expect(container.querySelector('[data-option="segment-review"]')).toHaveAttribute('data-weight', '1')
-    expect(container.querySelector('[data-option="segment-challenge"]')).toHaveAttribute('data-weight', '1')
+    expect(container.querySelector('[data-option="segment-focus"]')).toHaveAttribute(
+      'data-weight',
+      '3'
+    )
+    expect(container.querySelector('[data-option="segment-reinforce"]')).toHaveAttribute(
+      'data-weight',
+      '1'
+    )
+    expect(container.querySelector('[data-option="segment-review"]')).toHaveAttribute(
+      'data-weight',
+      '1'
+    )
+    expect(container.querySelector('[data-option="segment-challenge"]')).toHaveAttribute(
+      'data-weight',
+      '1'
+    )
   })
 
   it('should display Problem Mix label', () => {
@@ -316,7 +328,9 @@ describe('PurposeDistributionBar', () => {
   it('should cycle reinforce weight when clicking (1 → 2)', () => {
     const { container } = render(<PurposeDistributionBar />, { wrapper: createWrapper() })
 
-    const reinforceSegment = container.querySelector('[data-option="segment-reinforce"]') as HTMLElement
+    const reinforceSegment = container.querySelector(
+      '[data-option="segment-reinforce"]'
+    ) as HTMLElement
     fireEvent.click(reinforceSegment)
 
     expect(reinforceSegment).toHaveAttribute('data-weight', '2')

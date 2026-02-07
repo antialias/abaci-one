@@ -5,31 +5,33 @@ import type { MapData } from '../types'
 
 // Hoisted mocks so they can be overridden per-test
 const mockUseKnowYourWorld = vi.hoisted(() =>
-  vi.fn((): {
-    state: {
-      selectedMap: 'world' | 'usa'
-      selectedContinent: string
-      includeSizes: string[]
-      assistanceLevel: string
-      regionsFound: string[]
-      currentPrompt: string | null
-      gameMode: 'cooperative' | 'race' | 'turn-based'
-      regionsToFind: string[]
-    }
-    clickRegion: ReturnType<typeof vi.fn>
-  } => ({
-    state: {
-      selectedMap: 'world',
-      selectedContinent: 'all',
-      includeSizes: ['huge', 'large', 'medium'],
-      assistanceLevel: 'helpful',
-      regionsFound: ['france', 'germany'],
-      currentPrompt: 'spain',
-      gameMode: 'cooperative',
-      regionsToFind: ['spain', 'italy', 'portugal'],
-    },
-    clickRegion: vi.fn(),
-  }))
+  vi.fn(
+    (): {
+      state: {
+        selectedMap: 'world' | 'usa'
+        selectedContinent: string
+        includeSizes: string[]
+        assistanceLevel: string
+        regionsFound: string[]
+        currentPrompt: string | null
+        gameMode: 'cooperative' | 'race' | 'turn-based'
+        regionsToFind: string[]
+      }
+      clickRegion: ReturnType<typeof vi.fn>
+    } => ({
+      state: {
+        selectedMap: 'world',
+        selectedContinent: 'all',
+        includeSizes: ['huge', 'large', 'medium'],
+        assistanceLevel: 'helpful',
+        regionsFound: ['france', 'germany'],
+        currentPrompt: 'spain',
+        gameMode: 'cooperative',
+        regionsToFind: ['spain', 'italy', 'portugal'],
+      },
+      clickRegion: vi.fn(),
+    })
+  )
 )
 
 const mockGetFilteredMapDataBySizesSync = vi.hoisted(() =>

@@ -16,7 +16,11 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 // Wrapper to handle state
-function DropdownWrapper(args: Omit<React.ComponentProps<typeof RuleDropdown>, 'onChange'> & { onChange?: (value: RuleMode) => void }) {
+function DropdownWrapper(
+  args: Omit<React.ComponentProps<typeof RuleDropdown>, 'onChange'> & {
+    onChange?: (value: RuleMode) => void
+  }
+) {
   const [value, setValue] = useState<RuleMode>(args.value)
   return <RuleDropdown {...args} value={value} onChange={setValue} />
 }

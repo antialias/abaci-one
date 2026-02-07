@@ -6,23 +6,23 @@ import type { MapData } from '../types'
 
 // Hoisted mocks so they can be overridden per-test
 const mockUseKnowYourWorld = vi.hoisted(() =>
-  vi.fn((): {
-    state: { gameMode: string; difficulty?: string }
-    lastError: string | null
-    clearError: ReturnType<typeof vi.fn>
-  } => ({
-    state: {
-      gameMode: 'cooperative',
-      difficulty: 'easy',
-    },
-    lastError: null,
-    clearError: vi.fn(),
-  }))
+  vi.fn(
+    (): {
+      state: { gameMode: string; difficulty?: string }
+      lastError: string | null
+      clearError: ReturnType<typeof vi.fn>
+    } => ({
+      state: {
+        gameMode: 'cooperative',
+        difficulty: 'easy',
+      },
+      lastError: null,
+      clearError: vi.fn(),
+    })
+  )
 )
 
-const mockUseTheme = vi.hoisted(() =>
-  vi.fn(() => ({ resolvedTheme: 'light' }))
-)
+const mockUseTheme = vi.hoisted(() => vi.fn(() => ({ resolvedTheme: 'light' })))
 
 vi.mock('@/contexts/ThemeContext', () => ({
   useTheme: () => mockUseTheme(),

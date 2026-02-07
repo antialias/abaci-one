@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react'
-import React, { useEffect } from 'react'
+import type React from 'react'
+import { useEffect } from 'react'
 import type {
   GeneratedProblem,
   ProblemSlot,
@@ -576,7 +577,12 @@ const mockMaintenanceDeferredMode: SessionMode = {
           mastery: { met: true, pKnown: 0.88, confidence: 0.65 },
           volume: { met: true, opportunities: 28, sessionCount: 4 },
           speed: { met: false, medianSecondsPerTerm: 5.3 },
-          consistency: { met: false, recentAccuracy: 0.73, lastFiveAllCorrect: false, recentHelpCount: 2 },
+          consistency: {
+            met: false,
+            recentAccuracy: 0.73,
+            lastFiveAllCorrect: false,
+            recentHelpCount: 2,
+          },
         },
       } satisfies SkillReadinessResult,
     },

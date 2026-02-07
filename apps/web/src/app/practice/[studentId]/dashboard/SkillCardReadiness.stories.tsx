@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import type { SkillReadinessDimensions } from '@/lib/curriculum/skill-readiness'
 import { css } from '../../../../../styled-system/css'
-import { SkillCard, ReadinessDot, type ProcessedSkill, type AttentionBadge } from './DashboardClient'
+import {
+  SkillCard,
+  ReadinessDot,
+  type ProcessedSkill,
+  type AttentionBadge,
+} from './DashboardClient'
 
 // ============================================================================
 // Mock Data Helpers
@@ -138,13 +143,7 @@ type Story = StoryObj
 // Individual Stories
 // ============================================================================
 
-function CardWrapper({
-  skill,
-  badges,
-}: {
-  skill: ProcessedSkill
-  badges?: AttentionBadge[]
-}) {
+function CardWrapper({ skill, badges }: { skill: ProcessedSkill; badges?: AttentionBadge[] }) {
   return (
     <div className={css({ width: '160px' })}>
       <SkillCard
@@ -202,11 +201,7 @@ export const GridComparison: Story = {
         >
           Solid (all 4 green)
         </p>
-        <SkillCard
-          skill={solidSkill}
-          isDark={false}
-          onClick={() => {}}
-        />
+        <SkillCard skill={solidSkill} isDark={false} onClick={() => {}} />
       </div>
 
       <div>
@@ -221,11 +216,7 @@ export const GridComparison: Story = {
         >
           Partial (2/4 green)
         </p>
-        <SkillCard
-          skill={partialSkill}
-          isDark={false}
-          onClick={() => {}}
-        />
+        <SkillCard skill={partialSkill} isDark={false} onClick={() => {}} />
       </div>
 
       <div>
@@ -240,11 +231,7 @@ export const GridComparison: Story = {
         >
           No Readiness Data
         </p>
-        <SkillCard
-          skill={noReadinessSkill}
-          isDark={false}
-          onClick={() => {}}
-        />
+        <SkillCard skill={noReadinessSkill} isDark={false} onClick={() => {}} />
       </div>
 
       <div>
@@ -259,11 +246,7 @@ export const GridComparison: Story = {
         >
           Not Practicing
         </p>
-        <SkillCard
-          skill={notPracticingSkill}
-          isDark={false}
-          onClick={() => {}}
-        />
+        <SkillCard skill={notPracticingSkill} isDark={false} onClick={() => {}} />
       </div>
 
       <div>
@@ -278,12 +261,7 @@ export const GridComparison: Story = {
         >
           Weak + Readiness
         </p>
-        <SkillCard
-          skill={weakSkill}
-          isDark={false}
-          onClick={() => {}}
-          badges={['weak']}
-        />
+        <SkillCard skill={weakSkill} isDark={false} onClick={() => {}} badges={['weak']} />
       </div>
     </div>
   ),

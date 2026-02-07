@@ -12,10 +12,7 @@
 
 import { NextResponse } from 'next/server'
 import { canPerformAction } from '@/lib/classroom'
-import {
-  clearDeferral,
-  deferProgression,
-} from '@/lib/curriculum/progression-deferrals'
+import { clearDeferral, deferProgression } from '@/lib/curriculum/progression-deferrals'
 import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
@@ -28,10 +25,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const { skillId } = await request.json()
 
     if (!playerId || !skillId) {
-      return NextResponse.json(
-        { error: 'Player ID and skill ID required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Player ID and skill ID required' }, { status: 400 })
     }
 
     const userId = await getDbUserId()
@@ -45,10 +39,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json({ deferral })
   } catch (error) {
     console.error('Error deferring progression:', error)
-    return NextResponse.json(
-      { error: 'Failed to defer progression' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to defer progression' }, { status: 500 })
   }
 }
 
@@ -58,10 +49,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const { skillId } = await request.json()
 
     if (!playerId || !skillId) {
-      return NextResponse.json(
-        { error: 'Player ID and skill ID required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Player ID and skill ID required' }, { status: 400 })
     }
 
     const userId = await getDbUserId()
@@ -75,9 +63,6 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error clearing deferral:', error)
-    return NextResponse.json(
-      { error: 'Failed to clear deferral' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to clear deferral' }, { status: 500 })
   }
 }

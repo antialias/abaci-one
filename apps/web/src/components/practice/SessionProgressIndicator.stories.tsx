@@ -46,7 +46,11 @@ function createSlots(count: number): SessionPart['slots'] {
 }
 
 // Helper to create a single part
-function createPart(partNumber: 1 | 2 | 3, type: SessionPart['type'], slotCount: number): SessionPart {
+function createPart(
+  partNumber: 1 | 2 | 3,
+  type: SessionPart['type'],
+  slotCount: number
+): SessionPart {
   return {
     partNumber,
     type,

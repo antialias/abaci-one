@@ -53,7 +53,10 @@ import {
   ROTATION_MULTIPLIERS,
 } from '@/lib/curriculum/config'
 import type { ProblemResultWithContext } from '@/lib/curriculum/server'
-import { assessSkillReadiness, type SkillReadinessDimensions } from '@/lib/curriculum/skill-readiness'
+import {
+  assessSkillReadiness,
+  type SkillReadinessDimensions,
+} from '@/lib/curriculum/skill-readiness'
 import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
 import { api } from '@/lib/queryClient'
 import { curriculumKeys } from '@/lib/queryKeys'
@@ -586,9 +589,7 @@ export function ReadinessDot({
         alignItems: 'center',
         gap: '0.125rem',
         fontSize: '0.5625rem',
-        color: met
-          ? isDark ? 'green.400' : 'green.600'
-          : isDark ? 'gray.500' : 'gray.400',
+        color: met ? (isDark ? 'green.400' : 'green.600') : isDark ? 'gray.500' : 'gray.400',
       })}
     >
       <span
@@ -597,8 +598,12 @@ export function ReadinessDot({
           height: '6px',
           borderRadius: '50%',
           backgroundColor: met
-            ? isDark ? 'green.400' : 'green.500'
-            : isDark ? 'gray.600' : 'gray.300',
+            ? isDark
+              ? 'green.400'
+              : 'green.500'
+            : isDark
+              ? 'gray.600'
+              : 'gray.300',
           flexShrink: 0,
         })}
       />
@@ -2663,7 +2668,12 @@ interface BannerActionRegistrarProps {
  * Helper component that registers the banner action callbacks.
  * Must be used inside SessionModeBannerProvider.
  */
-function BannerActionRegistrar({ onAction, onDefer, onResume, onStartFresh }: BannerActionRegistrarProps) {
+function BannerActionRegistrar({
+  onAction,
+  onDefer,
+  onResume,
+  onStartFresh,
+}: BannerActionRegistrarProps) {
   const { setOnAction, setOnDefer, setOnResume, setOnStartFresh } = useSessionModeBanner()
 
   useEffect(() => {

@@ -424,7 +424,9 @@ export default function SharedWorksheetPage() {
                   }}
                   status="idle"
                   isReadOnly={true}
-                  onShare={async () => { setShowShareModal(true) }}
+                  onShare={async () => {
+                    setShowShareModal(true)
+                  }}
                   onEdit={() => setShowEditModal(true)}
                 />
               )

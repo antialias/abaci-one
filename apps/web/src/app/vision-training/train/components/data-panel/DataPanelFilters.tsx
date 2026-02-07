@@ -90,7 +90,10 @@ export function DataPanelFilters<T extends DataPanelItem>({
     return count
   }, [filters])
 
-  const filteredCount = useMemo(() => applyFilters(items as unknown as AnyDataItem[], filters).length, [items, filters])
+  const filteredCount = useMemo(
+    () => applyFilters(items as unknown as AnyDataItem[], filters).length,
+    [items, filters]
+  )
 
   const handleTimeRangeChange = useCallback(
     (before?: number, after?: number) => {

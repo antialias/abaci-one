@@ -99,9 +99,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         problemsAttempted: results.length,
         problemsCorrect: results.filter((r) => r.isCorrect).length,
         totalTimeMs: results.reduce((sum, r) => sum + (r.responseTimeMs ?? 0), 0),
-        skillsUsed: [
-          ...new Set(results.flatMap((r) => r.skillsExercised ?? [])),
-        ],
+        skillsUsed: [...new Set(results.flatMap((r) => r.skillsExercised ?? []))],
       }
     })
     timings.transform = performance.now() - t

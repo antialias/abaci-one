@@ -61,42 +61,42 @@ export function GameCard({ gameType, config, variant = 'detailed', className }: 
     <div
       onClick={handleGameClick}
       className={`${css({
-          background: config.gradient || 'white',
-          rounded: variant === 'compact' ? 'xl' : '2xl',
-          p: variant === 'compact' ? '3' : { base: '3', md: '4', lg: '6' },
-          border: '2px solid',
-          borderColor: available ? config.borderColor || 'blue.200' : 'gray.200',
-          boxShadow:
-            variant === 'compact'
-              ? '0 4px 12px rgba(0, 0, 0, 0.1)'
-              : '0 10px 40px rgba(0, 0, 0, 0.1)',
-          opacity: available ? 1 : 0.5,
-          cursor: available ? 'pointer' : 'not-allowed',
-          transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-          position: 'relative',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          _hover: available
-            ? {
-                transform:
-                  variant === 'compact'
-                    ? 'translateY(-2px) scale(1.02)'
-                    : 'translateY(-8px) scale(1.02)',
-                boxShadow:
-                  variant === 'compact'
-                    ? '0 8px 25px rgba(59, 130, 246, 0.15)'
-                    : '0 25px 50px rgba(59, 130, 246, 0.15)',
-                borderColor:
-                  config.color === 'green'
-                    ? 'green.300'
-                    : config.color === 'purple'
-                      ? 'purple.300'
-                      : 'blue.300',
-              }
-            : {},
-        })}${className ? ` ${className}` : ''}`}
+        background: config.gradient || 'white',
+        rounded: variant === 'compact' ? 'xl' : '2xl',
+        p: variant === 'compact' ? '3' : { base: '3', md: '4', lg: '6' },
+        border: '2px solid',
+        borderColor: available ? config.borderColor || 'blue.200' : 'gray.200',
+        boxShadow:
+          variant === 'compact'
+            ? '0 4px 12px rgba(0, 0, 0, 0.1)'
+            : '0 10px 40px rgba(0, 0, 0, 0.1)',
+        opacity: available ? 1 : 0.5,
+        cursor: available ? 'pointer' : 'not-allowed',
+        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        _hover: available
+          ? {
+              transform:
+                variant === 'compact'
+                  ? 'translateY(-2px) scale(1.02)'
+                  : 'translateY(-8px) scale(1.02)',
+              boxShadow:
+                variant === 'compact'
+                  ? '0 8px 25px rgba(59, 130, 246, 0.15)'
+                  : '0 25px 50px rgba(59, 130, 246, 0.15)',
+              borderColor:
+                config.color === 'green'
+                  ? 'green.300'
+                  : config.color === 'purple'
+                    ? 'purple.300'
+                    : 'blue.300',
+            }
+          : {},
+      })}${className ? ` ${className}` : ''}`}
     >
       {/* Game icon with enhanced styling */}
       <div

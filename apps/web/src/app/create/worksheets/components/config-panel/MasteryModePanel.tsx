@@ -1281,7 +1281,9 @@ export function MasteryModePanel({ formState, onChange, isDark = false }: Master
         currentSkill={currentSkill}
         masteryStates={masteryStates}
         currentMixRatio={(formState as any).reviewMixRatio ?? 0.25}
-        currentSelectedReviewSkills={(formState as any).selectedReviewSkills as SkillId[] | undefined}
+        currentSelectedReviewSkills={
+          (formState as any).selectedReviewSkills as SkillId[] | undefined
+        }
         onApply={(mixRatio, selectedReviewSkills) => {
           onChange({
             reviewMixRatio: mixRatio,

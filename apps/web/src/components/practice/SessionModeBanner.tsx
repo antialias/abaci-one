@@ -234,7 +234,14 @@ interface ProgressionBannerProps {
   isDark: boolean
 }
 
-function ProgressionBanner({ mode, onAction, onDefer, isLoading, variant, isDark }: ProgressionBannerProps) {
+function ProgressionBanner({
+  mode,
+  onAction,
+  onDefer,
+  isLoading,
+  variant,
+  isDark,
+}: ProgressionBannerProps) {
   return (
     <div
       data-element="session-mode-banner"
@@ -302,7 +309,9 @@ function ProgressionBanner({ mode, onAction, onDefer, isLoading, variant, isDark
               })}
               style={{ color: isDark ? '#a1a1aa' : '#6b7280' }}
             >
-              {mode.tutorialRequired ? 'Tutorial available when ready' : 'Continue building mastery'}
+              {mode.tutorialRequired
+                ? 'Tutorial available when ready'
+                : 'Continue building mastery'}
             </p>
           </div>
         </div>
@@ -474,7 +483,9 @@ function MaintenanceBanner({ mode, onAction, isLoading, variant, isDark }: Maint
               })}
               style={{ color: isDark ? '#93c5fd' : '#1d4ed8' }}
             >
-              {deferred ? `Working toward: ${deferred.nextSkill.displayName}` : 'All skills strong!'}
+              {deferred
+                ? `Working toward: ${deferred.nextSkill.displayName}`
+                : 'All skills strong!'}
             </p>
             <p
               className={css({

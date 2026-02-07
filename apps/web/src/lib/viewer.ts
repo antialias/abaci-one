@@ -14,9 +14,7 @@ import { GUEST_COOKIE_NAME, verifyGuestToken } from './guest-token'
  * @returns Viewer information with discriminated union type
  */
 export async function getViewer(): Promise<
-  | { kind: 'user'; session: Session }
-  | { kind: 'guest'; guestId: string }
-  | { kind: 'unknown' }
+  { kind: 'user'; session: Session } | { kind: 'guest'; guestId: string } | { kind: 'unknown' }
 > {
   const start = performance.now()
 

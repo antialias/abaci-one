@@ -22,7 +22,8 @@ function makeBktResult(
     uncertaintyRange: { low: partial.pKnown - 0.1, high: partial.pKnown + 0.1 },
     successCount: Math.round(partial.opportunities * partial.pKnown),
     lastPracticedAt: null,
-    masteryClassification: partial.pKnown >= 0.8 ? 'strong' : partial.pKnown >= 0.5 ? 'developing' : 'weak',
+    masteryClassification:
+      partial.pKnown >= 0.8 ? 'strong' : partial.pKnown >= 0.5 ? 'developing' : 'weak',
   }
 }
 

@@ -37,12 +37,17 @@ export function TrainingDataCapture({
   const [calibration, setCalibration] = useState<CalibrationGrid | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
-  const captureElementRef = useRef<HTMLCanvasElement | HTMLImageElement | HTMLVideoElement | null>(null)
+  const captureElementRef = useRef<HTMLCanvasElement | HTMLImageElement | HTMLVideoElement | null>(
+    null
+  )
 
   // Handle capture from camera
-  const handleCapture = useCallback((element: HTMLCanvasElement | HTMLImageElement | HTMLVideoElement) => {
-    captureElementRef.current = element
-  }, [])
+  const handleCapture = useCallback(
+    (element: HTMLCanvasElement | HTMLImageElement | HTMLVideoElement) => {
+      captureElementRef.current = element
+    },
+    []
+  )
 
   // Capture training data
   const captureTrainingData = useCallback(async () => {

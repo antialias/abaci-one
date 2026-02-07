@@ -439,9 +439,7 @@ export function PurposeDistributionBar() {
     <div data-component="purpose-distribution-bar">
       <ProportionBar
         label="Problem Mix"
-        labelExtra={
-          <PurposeInfoButton purposeTimeWeights={purposeTimeWeights} isDark={isDark} />
-        }
+        labelExtra={<PurposeInfoButton purposeTimeWeights={purposeTimeWeights} isDark={isDark} />}
         dataSetting="purpose-distribution"
         segments={segments}
         onCycleWeight={(key) => cyclePurposeWeight(key as PurposeWeightType)}

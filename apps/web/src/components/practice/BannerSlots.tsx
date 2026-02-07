@@ -419,7 +419,8 @@ export function ProjectingBanner() {
     return null
   }
 
-  const { sessionMode, isLoading, activeSession, onAction, onDefer, onResume, onStartFresh } = context
+  const { sessionMode, isLoading, activeSession, onAction, onDefer, onResume, onStartFresh } =
+    context
 
   // Render the appropriate banner for the destination slot
   const bannerContent =

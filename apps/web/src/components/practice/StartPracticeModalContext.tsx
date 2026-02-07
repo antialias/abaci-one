@@ -337,7 +337,11 @@ export function StartPracticeModalProvider({
 
   // Normalized 0-1 weights for API call
   const purposeTimeWeights = useMemo(() => {
-    const total = purposeWeights.focus + purposeWeights.reinforce + purposeWeights.review + purposeWeights.challenge
+    const total =
+      purposeWeights.focus +
+      purposeWeights.reinforce +
+      purposeWeights.review +
+      purposeWeights.challenge
     if (total === 0) return { focus: 1, reinforce: 0, review: 0, challenge: 0 }
     return {
       focus: purposeWeights.focus / total,

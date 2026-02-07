@@ -574,7 +574,12 @@ const mockDeferredReadinessAllMet: Record<string, SkillReadinessResult> = {
       mastery: { met: true, pKnown: 0.92, confidence: 0.75 },
       volume: { met: true, opportunities: 35, sessionCount: 5 },
       speed: { met: true, medianSecondsPerTerm: 2.1 },
-      consistency: { met: true, recentAccuracy: 0.93, lastFiveAllCorrect: true, recentHelpCount: 0 },
+      consistency: {
+        met: true,
+        recentAccuracy: 0.93,
+        lastFiveAllCorrect: true,
+        recentHelpCount: 0,
+      },
     },
   },
 }
@@ -587,7 +592,12 @@ const mockDeferredReadinessPartial: Record<string, SkillReadinessResult> = {
       mastery: { met: true, pKnown: 0.88, confidence: 0.65 },
       volume: { met: true, opportunities: 28, sessionCount: 4 },
       speed: { met: false, medianSecondsPerTerm: 5.3 },
-      consistency: { met: false, recentAccuracy: 0.73, lastFiveAllCorrect: false, recentHelpCount: 2 },
+      consistency: {
+        met: false,
+        recentAccuracy: 0.73,
+        lastFiveAllCorrect: false,
+        recentHelpCount: 2,
+      },
     },
   },
 }

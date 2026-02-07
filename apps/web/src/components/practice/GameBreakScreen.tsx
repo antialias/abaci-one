@@ -129,7 +129,12 @@ export function GameBreakScreen({
           // Get the config for this specific game
           const config = gameConfig[selectedGameName] ?? game!.defaultConfig
           try {
-            results = (validator.getResultsReport as (state: Record<string, unknown>, config: unknown) => GameResultsReport)(gameState, config)
+            results = (
+              validator.getResultsReport as (
+                state: Record<string, unknown>,
+                config: unknown
+              ) => GameResultsReport
+            )(gameState, config)
           } catch (err) {
             console.error('Failed to generate results report:', err)
           }

@@ -1263,7 +1263,12 @@ export function TutorialEditor({
             `  Changes:`,
             beadDiff.changes
               .map(
-                (c: { placeValue: number; beadType: string; direction: string; position?: number }) =>
+                (c: {
+                  placeValue: number
+                  beadType: string
+                  direction: string
+                  position?: number
+                }) =>
                   `${c.placeValue}:${c.beadType}:${c.direction}${c.position !== undefined ? `:pos${c.position}` : ''}`
               )
               .join(', ')
@@ -2149,37 +2154,49 @@ export function TutorialEditor({
                                                     mt: 1,
                                                   })}
                                                 >
-                                                  {beadDiff.changes.map((change: { placeValue: number; beadType: string; direction: string; position?: number }, changeIndex: number) => (
-                                                    <span
-                                                      key={changeIndex}
-                                                      className={css({
-                                                        fontSize: 'xs',
-                                                        px: 1,
-                                                        py: 0.5,
-                                                        borderRadius: 'xs',
-                                                        bg:
-                                                          change.direction === 'activate'
-                                                            ? 'green.100'
-                                                            : 'red.100',
-                                                        color:
-                                                          change.direction === 'activate'
-                                                            ? 'green.800'
-                                                            : 'red.800',
-                                                        border: '1px solid',
-                                                        borderColor:
-                                                          change.direction === 'activate'
-                                                            ? 'green.300'
-                                                            : 'red.300',
-                                                      })}
-                                                    >
-                                                      {change.direction === 'activate' ? '↗️' : '↙️'}
-                                                      {change.beadType === 'heaven' ? 'H' : 'E'}
-                                                      {change.position !== undefined
-                                                        ? change.position
-                                                        : ''}
-                                                      @P{change.placeValue}
-                                                    </span>
-                                                  ))}
+                                                  {beadDiff.changes.map(
+                                                    (
+                                                      change: {
+                                                        placeValue: number
+                                                        beadType: string
+                                                        direction: string
+                                                        position?: number
+                                                      },
+                                                      changeIndex: number
+                                                    ) => (
+                                                      <span
+                                                        key={changeIndex}
+                                                        className={css({
+                                                          fontSize: 'xs',
+                                                          px: 1,
+                                                          py: 0.5,
+                                                          borderRadius: 'xs',
+                                                          bg:
+                                                            change.direction === 'activate'
+                                                              ? 'green.100'
+                                                              : 'red.100',
+                                                          color:
+                                                            change.direction === 'activate'
+                                                              ? 'green.800'
+                                                              : 'red.800',
+                                                          border: '1px solid',
+                                                          borderColor:
+                                                            change.direction === 'activate'
+                                                              ? 'green.300'
+                                                              : 'red.300',
+                                                        })}
+                                                      >
+                                                        {change.direction === 'activate'
+                                                          ? '↗️'
+                                                          : '↙️'}
+                                                        {change.beadType === 'heaven' ? 'H' : 'E'}
+                                                        {change.position !== undefined
+                                                          ? change.position
+                                                          : ''}
+                                                        @P{change.placeValue}
+                                                      </span>
+                                                    )
+                                                  )}
                                                 </div>
                                               </div>
                                             )}

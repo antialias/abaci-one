@@ -80,10 +80,7 @@ function createBktResult(
 /**
  * Generate a set of results that meet ALL readiness criteria for a skill.
  */
-function generateSolidResults(
-  skillId: string,
-  sessionCount = 4
-): ProblemResultWithContext[] {
+function generateSolidResults(skillId: string, sessionCount = 4): ProblemResultWithContext[] {
   const results: ProblemResultWithContext[] = []
   const now = Date.now()
 
@@ -116,7 +113,7 @@ describe('assessSkillReadiness', () => {
   it('returns solid when all criteria are met', () => {
     const skillId = 'basic.directAddition'
     const results = generateSolidResults(skillId)
-    const bkt = createBktResult(skillId, 0.90, 0.70)
+    const bkt = createBktResult(skillId, 0.9, 0.7)
 
     const readiness = assessSkillReadiness(skillId, results, bkt)
 
@@ -134,7 +131,7 @@ describe('assessSkillReadiness', () => {
     for (let i = 0; i < 5; i++) {
       results.push(createResult('session-1', [skillId], true, 3000, { terms: [1, 2, 3] }))
     }
-    const bkt = createBktResult(skillId, 0.90, 0.70)
+    const bkt = createBktResult(skillId, 0.9, 0.7)
 
     const readiness = assessSkillReadiness(skillId, results, bkt)
 
@@ -150,7 +147,7 @@ describe('assessSkillReadiness', () => {
     for (let i = 0; i < 25; i++) {
       results.push(createResult('session-1', [skillId], true, 3000, { terms: [1, 2, 3] }))
     }
-    const bkt = createBktResult(skillId, 0.90, 0.70)
+    const bkt = createBktResult(skillId, 0.9, 0.7)
 
     const readiness = assessSkillReadiness(skillId, results, bkt)
 
@@ -162,25 +159,25 @@ describe('assessSkillReadiness', () => {
   it('returns not solid when BKT pKnown is below threshold', () => {
     const skillId = 'basic.directAddition'
     const results = generateSolidResults(skillId)
-    const bkt = createBktResult(skillId, 0.70, 0.70) // pKnown too low
+    const bkt = createBktResult(skillId, 0.7, 0.7) // pKnown too low
 
     const readiness = assessSkillReadiness(skillId, results, bkt)
 
     expect(readiness.isSolid).toBe(false)
     expect(readiness.dimensions.mastery.met).toBe(false)
-    expect(readiness.dimensions.mastery.pKnown).toBe(0.70)
+    expect(readiness.dimensions.mastery.pKnown).toBe(0.7)
   })
 
   it('returns not solid when BKT confidence is below threshold', () => {
     const skillId = 'basic.directAddition'
     const results = generateSolidResults(skillId)
-    const bkt = createBktResult(skillId, 0.95, 0.30) // confidence too low
+    const bkt = createBktResult(skillId, 0.95, 0.3) // confidence too low
 
     const readiness = assessSkillReadiness(skillId, results, bkt)
 
     expect(readiness.isSolid).toBe(false)
     expect(readiness.dimensions.mastery.met).toBe(false)
-    expect(readiness.dimensions.mastery.confidence).toBe(0.30)
+    expect(readiness.dimensions.mastery.confidence).toBe(0.3)
   })
 
   it('returns not solid when responses are too slow', () => {
@@ -199,7 +196,7 @@ describe('assessSkillReadiness', () => {
         )
       }
     }
-    const bkt = createBktResult(skillId, 0.90, 0.70)
+    const bkt = createBktResult(skillId, 0.9, 0.7)
 
     const readiness = assessSkillReadiness(skillId, results, bkt)
 
@@ -241,7 +238,7 @@ describe('assessSkillReadiness', () => {
       })
     )
 
-    const bkt = createBktResult(skillId, 0.90, 0.70)
+    const bkt = createBktResult(skillId, 0.9, 0.7)
 
     const readiness = assessSkillReadiness(skillId, results, bkt)
 
@@ -284,7 +281,7 @@ describe('assessSkillReadiness', () => {
       })
     )
 
-    const bkt = createBktResult(skillId, 0.90, 0.70)
+    const bkt = createBktResult(skillId, 0.9, 0.7)
 
     const readiness = assessSkillReadiness(skillId, results, bkt)
 
@@ -336,7 +333,7 @@ describe('assessSkillReadiness', () => {
       })
     )
 
-    const bkt = createBktResult(skillId, 0.90, 0.70)
+    const bkt = createBktResult(skillId, 0.9, 0.7)
     const readiness = assessSkillReadiness(skillId, results, bkt)
 
     // The retry and recency-refresh should be excluded, so consistency should still be met
@@ -363,20 +360,13 @@ describe('assessAllSkillsReadiness', () => {
 
   it('all skills solid when every skill meets all dimensions', () => {
     const skills = ['skill.a', 'skill.b']
-    const results = [
-      ...generateSolidResults('skill.a'),
-      ...generateSolidResults('skill.b'),
-    ]
+    const results = [...generateSolidResults('skill.a'), ...generateSolidResults('skill.b')]
     const bktResults = [
-      createBktResult('skill.a', 0.90, 0.70),
+      createBktResult('skill.a', 0.9, 0.7),
       createBktResult('skill.b', 0.92, 0.75),
     ]
 
-    const readiness = assessAllSkillsReadiness(
-      results,
-      bktResults,
-      new Set(skills)
-    )
+    const readiness = assessAllSkillsReadiness(results, bktResults, new Set(skills))
 
     expect(readiness.get('skill.a')?.isSolid).toBe(true)
     expect(readiness.get('skill.b')?.isSolid).toBe(true)
@@ -394,16 +384,9 @@ describe('assessAllSkillsReadiness', () => {
         })
       ),
     ]
-    const bktResults = [
-      createBktResult('skill.a', 0.90, 0.70),
-      createBktResult('skill.b', 0.90, 0.70),
-    ]
+    const bktResults = [createBktResult('skill.a', 0.9, 0.7), createBktResult('skill.b', 0.9, 0.7)]
 
-    const readiness = assessAllSkillsReadiness(
-      results,
-      bktResults,
-      new Set(skills)
-    )
+    const readiness = assessAllSkillsReadiness(results, bktResults, new Set(skills))
 
     expect(readiness.get('skill.a')?.isSolid).toBe(true)
     expect(readiness.get('skill.b')?.isSolid).toBe(false)
@@ -415,13 +398,9 @@ describe('assessAllSkillsReadiness', () => {
 
   it('does not assess skills outside practicingIds', () => {
     const results = generateSolidResults('skill.a')
-    const bktResults = [createBktResult('skill.a', 0.90, 0.70)]
+    const bktResults = [createBktResult('skill.a', 0.9, 0.7)]
 
-    const readiness = assessAllSkillsReadiness(
-      results,
-      bktResults,
-      new Set(['skill.a'])
-    )
+    const readiness = assessAllSkillsReadiness(results, bktResults, new Set(['skill.a']))
 
     expect(readiness.size).toBe(1)
     expect(readiness.has('skill.a')).toBe(true)

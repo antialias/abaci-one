@@ -43,7 +43,8 @@ export function EditorLayout({
 }: EditorLayoutProps) {
   return (
     <div
-      className={cx(css({
+      className={cx(
+        css({
           p: 3,
           bg: 'purple.50',
           border: '1px solid',

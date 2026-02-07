@@ -13,7 +13,12 @@ function makeReadiness(overrides: {
   mastery?: { met: boolean; pKnown: number; confidence: number }
   volume?: { met: boolean; opportunities: number; sessionCount: number }
   speed?: { met: boolean; medianSecondsPerTerm: number | null }
-  consistency?: { met: boolean; recentAccuracy: number; lastFiveAllCorrect: boolean; recentHelpCount: number }
+  consistency?: {
+    met: boolean
+    recentAccuracy: number
+    lastFiveAllCorrect: boolean
+    recentHelpCount: number
+  }
 }): SkillReadinessResult {
   return {
     skillId: overrides.skillId ?? 'add-3',
@@ -22,7 +27,12 @@ function makeReadiness(overrides: {
       mastery: overrides.mastery ?? { met: true, pKnown: 0.92, confidence: 0.75 },
       volume: overrides.volume ?? { met: true, opportunities: 35, sessionCount: 5 },
       speed: overrides.speed ?? { met: true, medianSecondsPerTerm: 2.1 },
-      consistency: overrides.consistency ?? { met: true, recentAccuracy: 0.93, lastFiveAllCorrect: true, recentHelpCount: 0 },
+      consistency: overrides.consistency ?? {
+        met: true,
+        recentAccuracy: 0.93,
+        lastFiveAllCorrect: true,
+        recentHelpCount: 0,
+      },
     },
   }
 }
@@ -38,7 +48,12 @@ const someDimensionsUnmet: Record<string, SkillReadinessResult> = {
     mastery: { met: true, pKnown: 0.88, confidence: 0.65 },
     volume: { met: true, opportunities: 28, sessionCount: 4 },
     speed: { met: false, medianSecondsPerTerm: 5.3 },
-    consistency: { met: false, recentAccuracy: 0.73, lastFiveAllCorrect: false, recentHelpCount: 2 },
+    consistency: {
+      met: false,
+      recentAccuracy: 0.73,
+      lastFiveAllCorrect: false,
+      recentHelpCount: 2,
+    },
   }),
 }
 

@@ -75,9 +75,7 @@ function filterResultsForSkill(
 ): ProblemResultWithContext[] {
   return allResults.filter(
     (r) =>
-      r.skillsExercised.includes(skillId) &&
-      r.source !== 'recency-refresh' &&
-      r.isRetry !== true
+      r.skillsExercised.includes(skillId) && r.source !== 'recency-refresh' && r.isRetry !== true
   )
 }
 
@@ -170,8 +168,7 @@ function assessConsistency(results: ProblemResultWithContext[]): ConsistencyDime
   // Help-free in last N
   const helpWindow = sorted.slice(0, READINESS_THRESHOLDS.noHelpInLastN)
   const recentHelpCount = helpWindow.filter((r) => r.hadHelp).length
-  const helpFree =
-    helpWindow.length >= READINESS_THRESHOLDS.noHelpInLastN && recentHelpCount === 0
+  const helpFree = helpWindow.length >= READINESS_THRESHOLDS.noHelpInLastN && recentHelpCount === 0
 
   const accuracyMet =
     recentWindow.length >= READINESS_THRESHOLDS.accuracyWindowSize &&
@@ -209,8 +206,7 @@ export function assessSkillReadiness(
 
   // A skill with 0 opportunities doesn't block (student hasn't encountered it yet)
   const isSolid =
-    filtered.length === 0 ||
-    (mastery.met && volume.met && speed.met && consistency.met)
+    filtered.length === 0 || (mastery.met && volume.met && speed.met && consistency.met)
 
   return {
     skillId,
@@ -233,10 +229,7 @@ export function assessAllSkillsReadiness(
   const readiness = new Map<string, SkillReadinessResult>()
 
   for (const skillId of practicingIds) {
-    readiness.set(
-      skillId,
-      assessSkillReadiness(skillId, allResults, bktMap.get(skillId))
-    )
+    readiness.set(skillId, assessSkillReadiness(skillId, allResults, bktMap.get(skillId)))
   }
 
   return readiness

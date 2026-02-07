@@ -6,10 +6,9 @@ import { getDbUserId } from '@/lib/viewer'
 
 // Skip SSR for PracticeClient — practice is fully interactive and has hooks
 // (useHasPhysicalKeyboard, useSearchParams) that produce server/client mismatches
-const PracticeClient = nextDynamic(
-  () => import('./PracticeClient').then((m) => m.PracticeClient),
-  { ssr: false }
-)
+const PracticeClient = nextDynamic(() => import('./PracticeClient').then((m) => m.PracticeClient), {
+  ssr: false,
+})
 
 // Disable caching for this page - session state must always be fresh
 export const dynamic = 'force-dynamic'

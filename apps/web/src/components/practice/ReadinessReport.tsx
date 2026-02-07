@@ -69,18 +69,10 @@ function DimensionLine({ icon, label, met, isDark }: DimensionLineProps) {
         lineHeight: '1.4',
       })}
       style={{
-        color: met
-          ? isDark
-            ? '#86efac'
-            : '#166534'
-          : isDark
-            ? '#d4d4d8'
-            : '#525252',
+        color: met ? (isDark ? '#86efac' : '#166534') : isDark ? '#d4d4d8' : '#525252',
       }}
     >
-      <span className={css({ flexShrink: 0, lineHeight: 1, marginTop: '0.125rem' })}>
-        {icon}
-      </span>
+      <span className={css({ flexShrink: 0, lineHeight: 1, marginTop: '0.125rem' })}>{icon}</span>
       <span>{label}</span>
     </div>
   )
@@ -124,12 +116,22 @@ export function ReadinessReport({ readiness, variant = 'full' }: ReadinessReport
           borderRadius: '999px',
         })}
         style={{
-          backgroundColor: solidCount === total
-            ? isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)'
-            : isDark ? 'rgba(251, 191, 36, 0.2)' : 'rgba(251, 191, 36, 0.1)',
-          color: solidCount === total
-            ? isDark ? '#86efac' : '#166534'
-            : isDark ? '#fcd34d' : '#92400e',
+          backgroundColor:
+            solidCount === total
+              ? isDark
+                ? 'rgba(34, 197, 94, 0.2)'
+                : 'rgba(34, 197, 94, 0.1)'
+              : isDark
+                ? 'rgba(251, 191, 36, 0.2)'
+                : 'rgba(251, 191, 36, 0.1)',
+          color:
+            solidCount === total
+              ? isDark
+                ? '#86efac'
+                : '#166534'
+              : isDark
+                ? '#fcd34d'
+                : '#92400e',
         }}
       >
         {solidCount === total ? 'Solid' : `${solidCount}/${total} solid`}
@@ -193,7 +195,10 @@ function aggregateDimensions(results: SkillReadinessResult[]): AggregatedDimensi
     ) {
       worstSpeed = r
     }
-    if (r.dimensions.consistency.recentAccuracy < worstConsistency.dimensions.consistency.recentAccuracy) {
+    if (
+      r.dimensions.consistency.recentAccuracy <
+      worstConsistency.dimensions.consistency.recentAccuracy
+    ) {
       worstConsistency = r
     }
     if (r.dimensions.mastery.pKnown < worstMastery.dimensions.mastery.pKnown) {

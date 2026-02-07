@@ -343,10 +343,7 @@ function ReviewFlowDemo() {
   )
 
   const handleCorrectProblem = useCallback(
-    async (
-      problemIndex: number,
-      correction: ProblemCorrection
-    ) => {
+    async (problemIndex: number, correction: ProblemCorrection) => {
       log(`Corrected problem #${problemIndex + 1}: ${JSON.stringify(correction)}`)
       await new Promise((r) => setTimeout(r, 300))
       setProblems((prev) =>

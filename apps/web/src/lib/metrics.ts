@@ -487,9 +487,7 @@ export function updateSmokeTestMetrics(run: {
   durationMs: number | null
 }) {
   smokeTestLastStatus.set(run.status === 'passed' ? 1 : 0)
-  smokeTestLastRunTimestamp.set(
-    (run.completedAt ?? run.startedAt).getTime() / 1000
-  )
+  smokeTestLastRunTimestamp.set((run.completedAt ?? run.startedAt).getTime() / 1000)
   if (run.durationMs != null) {
     smokeTestLastDuration.set(run.durationMs / 1000)
   }

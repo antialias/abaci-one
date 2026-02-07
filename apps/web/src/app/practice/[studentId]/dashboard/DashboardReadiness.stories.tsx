@@ -9,7 +9,10 @@ import {
 } from '@/contexts/SessionModeBannerContext'
 import { ContentBannerSlot, ProjectingBanner } from '@/components/practice/BannerSlots'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
-import type { SkillReadinessDimensions, SkillReadinessResult } from '@/lib/curriculum/skill-readiness'
+import type {
+  SkillReadinessDimensions,
+  SkillReadinessResult,
+} from '@/lib/curriculum/skill-readiness'
 import { css } from '../../../../../styled-system/css'
 import { SkillCard, type ProcessedSkill, type AttentionBadge } from './DashboardClient'
 
@@ -156,14 +159,70 @@ const mockSkills: Array<ProcessedSkill & { _badges?: AttentionBadge[] }> = [
 ]
 
 const allSolidSkills: ProcessedSkill[] = [
-  makeSkill({ displayName: '+1', skillId: 'add.1', category: 'Addition', categoryOrder: 1, readiness: solidReadiness, isSolid: true }),
-  makeSkill({ displayName: '+2', skillId: 'add.2', category: 'Addition', categoryOrder: 1, readiness: solidReadiness, isSolid: true }),
-  makeSkill({ displayName: '+3', skillId: 'add.3', category: 'Addition', categoryOrder: 1, readiness: solidReadiness, isSolid: true }),
-  makeSkill({ displayName: '+5 - 1', skillId: 'fc.1', category: 'Five Complements', categoryOrder: 2, readiness: solidReadiness, isSolid: true }),
-  makeSkill({ displayName: '+5 - 2', skillId: 'fc.2', category: 'Five Complements', categoryOrder: 2, readiness: solidReadiness, isSolid: true }),
-  makeSkill({ displayName: '+10 - 1', skillId: 'tc.1', category: 'Ten Complements', categoryOrder: 3, readiness: solidReadiness, isSolid: true }),
-  makeSkill({ displayName: '+10 - 2', skillId: 'tc.2', category: 'Ten Complements', categoryOrder: 3, readiness: solidReadiness, isSolid: true }),
-  makeSkill({ displayName: '+10 - 3', skillId: 'tc.3', category: 'Ten Complements', categoryOrder: 3, readiness: solidReadiness, isSolid: true }),
+  makeSkill({
+    displayName: '+1',
+    skillId: 'add.1',
+    category: 'Addition',
+    categoryOrder: 1,
+    readiness: solidReadiness,
+    isSolid: true,
+  }),
+  makeSkill({
+    displayName: '+2',
+    skillId: 'add.2',
+    category: 'Addition',
+    categoryOrder: 1,
+    readiness: solidReadiness,
+    isSolid: true,
+  }),
+  makeSkill({
+    displayName: '+3',
+    skillId: 'add.3',
+    category: 'Addition',
+    categoryOrder: 1,
+    readiness: solidReadiness,
+    isSolid: true,
+  }),
+  makeSkill({
+    displayName: '+5 - 1',
+    skillId: 'fc.1',
+    category: 'Five Complements',
+    categoryOrder: 2,
+    readiness: solidReadiness,
+    isSolid: true,
+  }),
+  makeSkill({
+    displayName: '+5 - 2',
+    skillId: 'fc.2',
+    category: 'Five Complements',
+    categoryOrder: 2,
+    readiness: solidReadiness,
+    isSolid: true,
+  }),
+  makeSkill({
+    displayName: '+10 - 1',
+    skillId: 'tc.1',
+    category: 'Ten Complements',
+    categoryOrder: 3,
+    readiness: solidReadiness,
+    isSolid: true,
+  }),
+  makeSkill({
+    displayName: '+10 - 2',
+    skillId: 'tc.2',
+    category: 'Ten Complements',
+    categoryOrder: 3,
+    readiness: solidReadiness,
+    isSolid: true,
+  }),
+  makeSkill({
+    displayName: '+10 - 3',
+    skillId: 'tc.3',
+    category: 'Ten Complements',
+    categoryOrder: 3,
+    readiness: solidReadiness,
+    isSolid: true,
+  }),
 ]
 
 // ============================================================================
@@ -198,7 +257,12 @@ const mockMaintenanceDeferredPartial: SessionMode = {
           mastery: { met: true, pKnown: 0.88, confidence: 0.65 },
           volume: { met: true, opportunities: 28, sessionCount: 4 },
           speed: { met: false, medianSecondsPerTerm: 5.3 },
-          consistency: { met: false, recentAccuracy: 0.73, lastFiveAllCorrect: false, recentHelpCount: 2 },
+          consistency: {
+            met: false,
+            recentAccuracy: 0.73,
+            lastFiveAllCorrect: false,
+            recentHelpCount: 2,
+          },
         },
       } satisfies SkillReadinessResult,
     },
@@ -409,40 +473,28 @@ type Story = StoryObj<typeof DashboardReadinessDemo>
 export const ProgressionSoftNudge: Story = {
   name: 'Progression (Soft Nudge)',
   render: () => (
-    <DashboardReadinessDemo
-      sessionMode={mockProgressionSoftNudge}
-      skills={mockSkills}
-    />
+    <DashboardReadinessDemo sessionMode={mockProgressionSoftNudge} skills={mockSkills} />
   ),
 }
 
 export const MaintenanceDeferredPartial: Story = {
   name: 'Maintenance (Deferred - Partial Readiness)',
   render: () => (
-    <DashboardReadinessDemo
-      sessionMode={mockMaintenanceDeferredPartial}
-      skills={mockSkills}
-    />
+    <DashboardReadinessDemo sessionMode={mockMaintenanceDeferredPartial} skills={mockSkills} />
   ),
 }
 
 export const MaintenanceDeferredAllSolid: Story = {
   name: 'Maintenance (Deferred - All Solid)',
   render: () => (
-    <DashboardReadinessDemo
-      sessionMode={mockMaintenanceDeferredAllMet}
-      skills={allSolidSkills}
-    />
+    <DashboardReadinessDemo sessionMode={mockMaintenanceDeferredAllMet} skills={allSolidSkills} />
   ),
 }
 
 export const PureMaintenanceAllSolid: Story = {
   name: 'Pure Maintenance (All Solid)',
   render: () => (
-    <DashboardReadinessDemo
-      sessionMode={mockPureMaintenance}
-      skills={allSolidSkills}
-    />
+    <DashboardReadinessDemo sessionMode={mockPureMaintenance} skills={allSolidSkills} />
   ),
 }
 
@@ -473,10 +525,6 @@ export const DarkModeDeferred: Story = {
 export const DarkModePureMaintenance: Story = {
   name: 'Dark Mode (Pure Maintenance)',
   render: () => (
-    <DashboardReadinessDemo
-      sessionMode={mockPureMaintenance}
-      skills={allSolidSkills}
-      darkMode
-    />
+    <DashboardReadinessDemo sessionMode={mockPureMaintenance} skills={allSolidSkills} darkMode />
   ),
 }

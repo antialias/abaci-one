@@ -39,7 +39,8 @@ async function setupDebugSession(page: Page) {
  * Read the correct answer from the data-correct-answer attribute on the vertical problem component.
  */
 async function getCorrectAnswer(page: Page): Promise<number> {
-  const value = await page.locator('[data-component="vertical-problem"]')
+  const value = await page
+    .locator('[data-component="vertical-problem"]')
     .getAttribute('data-correct-answer')
   if (!value) throw new Error('No data-correct-answer attribute found')
   return parseInt(value, 10)
@@ -75,7 +76,9 @@ async function submitCorrectAnswer(page: Page) {
   // Wait briefly for auto-submit to trigger, then press Enter as fallback
   await page.waitForTimeout(300)
   // Check if problem is still visible (auto-submit didn't fire)
-  const problemStillVisible = await page.locator('[data-component="vertical-problem"][data-status="active"]').isVisible()
+  const problemStillVisible = await page
+    .locator('[data-component="vertical-problem"][data-status="active"]')
+    .isVisible()
   if (problemStillVisible) {
     await page.keyboard.press('Enter')
   }
@@ -159,7 +162,9 @@ async function waitForGameIdle(page: Page, timeout = 15000) {
 async function waitForMatchedCount(page: Page, expectedCount: number, timeout = 15000) {
   await page.waitForFunction(
     (count) => {
-      const matched = document.querySelectorAll('[data-component="matching-card"][data-card-matched="true"]')
+      const matched = document.querySelectorAll(
+        '[data-component="matching-card"][data-card-matched="true"]'
+      )
       return matched.length >= count * 2 // 2 cards per pair
     },
     expectedCount,
@@ -178,9 +183,12 @@ async function playMatchingGame(page: Page) {
   ).toBeVisible({ timeout: 20000 })
 
   // Wait for cards to render
-  await page.waitForFunction(() => {
-    return document.querySelectorAll('[data-component="matching-card"]').length > 0
-  }, { timeout: 10000 })
+  await page.waitForFunction(
+    () => {
+      return document.querySelectorAll('[data-component="matching-card"]').length > 0
+    },
+    { timeout: 10000 }
+  )
 
   const cards = await readCardData(page)
 
@@ -239,7 +247,9 @@ async function playMatchingGame(page: Page) {
   for (let i = 0; i < pairs.length; i++) {
     const [, pair] = pairs[i]
     // Skip already matched pairs
-    const matchedAttr = await page.locator(`[data-card-id="${pair.abacus}"]`).getAttribute('data-card-matched')
+    const matchedAttr = await page
+      .locator(`[data-card-id="${pair.abacus}"]`)
+      .getAttribute('data-card-matched')
     if (matchedAttr === 'true') continue
 
     // Wait for game to be idle before each match attempt
