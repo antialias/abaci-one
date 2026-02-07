@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, Loader2, Search, Share2 } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronRight, Loader2, RefreshCw, Search, Share2 } from 'lucide-react'
 import { FamilyCodeDisplay } from '@/components/family/FamilyCodeDisplay'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type { ProfileInfo } from '@/lib/seed/types'
@@ -174,7 +174,7 @@ function ProfileCard({
       </div>
 
       {/* Completed details */}
-      {studentStatus?.status === 'completed' && studentStatus.classifications && (
+      {studentStatus?.status === 'completed' && (
         <div
           className={css({
             marginTop: '6px',
@@ -186,11 +186,13 @@ function ProfileCard({
             gap: '3px',
           })}
         >
-          <div>
-            🔴 {studentStatus.classifications.weak} weak, 📚{' '}
-            {studentStatus.classifications.developing} dev, ✅{' '}
-            {studentStatus.classifications.strong} strong
-          </div>
+          {studentStatus.classifications && (
+            <div>
+              🔴 {studentStatus.classifications.weak} weak, 📚{' '}
+              {studentStatus.classifications.developing} dev, ✅{' '}
+              {studentStatus.classifications.strong} strong
+            </div>
+          )}
           <div className={css({ display: 'flex', alignItems: 'center', gap: '10px' })}>
             {studentStatus.playerId && (
               <>
@@ -313,6 +315,13 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
   const [searching, setSearching] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [sharePlayer, setSharePlayer] = useState<{ playerId: string; name: string } | null>(null)
+  const [embeddingStatus, setEmbeddingStatus] = useState<{
+    cached: boolean
+    stale: boolean
+    profileCount: number
+    cachedAt: string | null
+  } | null>(null)
+  const [regenerating, setRegenerating] = useState(false)
 
   interface TaskOutput {
     seededCount: number
@@ -329,7 +338,7 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
 
   const { state: taskState } = useBackgroundTask<TaskOutput>(taskId)
 
-  // Fetch profile list
+  // Fetch profile list, embedding status, and previously-seeded students
   useEffect(() => {
     fetch('/api/debug/seed-students')
       .then((r) => r.json())
@@ -341,13 +350,49 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
         setError(err.message)
         setLoading(false)
       })
+
+    fetch('/api/debug/seed-students/embeddings')
+      .then((r) => r.json())
+      .then((data) => setEmbeddingStatus(data))
+      .catch(() => {})
+
+    fetch('/api/debug/seed-students/seeded')
+      .then((r) => r.json())
+      .then((data) => {
+        const seeded = data.seeded as Record<string, { playerId: string; seededAt: string }>
+        if (!seeded || Object.keys(seeded).length === 0) return
+        const statuses = new Map<string, StudentStatus>()
+        for (const [profileName, info] of Object.entries(seeded)) {
+          statuses.set(profileName, {
+            name: profileName,
+            status: 'completed',
+            playerId: info.playerId,
+            seededAt: new Date(info.seededAt),
+          })
+        }
+        setStudentStatuses(statuses)
+      })
+      .catch(() => {})
   }, [])
 
-  // Process task events for per-student status
+  const handleRegenerateEmbeddings = useCallback(async () => {
+    setRegenerating(true)
+    try {
+      const res = await fetch('/api/debug/seed-students/embeddings', { method: 'POST' })
+      const data = await res.json()
+      setEmbeddingStatus(data)
+    } catch {
+      // ignore
+    } finally {
+      setRegenerating(false)
+    }
+  }, [])
+
+  // Process task events for per-student status (merge with existing)
   useEffect(() => {
     if (!taskState?.events) return
 
-    const newStatuses = new Map<string, StudentStatus>()
+    const updates = new Map<string, StudentStatus>()
 
     for (const event of taskState.events) {
       const payload = event.payload as Record<string, unknown>
@@ -356,18 +401,18 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
         case 'seed_started': {
           const names = payload.profileNames as string[]
           for (const name of names) {
-            newStatuses.set(name, { name, status: 'pending' })
+            updates.set(name, { name, status: 'pending' })
           }
           break
         }
         case 'student_started': {
           const name = payload.name as string
-          newStatuses.set(name, { name, status: 'seeding' })
+          updates.set(name, { name, status: 'seeding' })
           break
         }
         case 'student_completed': {
           const name = payload.name as string
-          newStatuses.set(name, {
+          updates.set(name, {
             name,
             status: 'completed',
             playerId: payload.playerId as string,
@@ -382,7 +427,7 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
         }
         case 'student_failed': {
           const name = payload.name as string
-          newStatuses.set(name, {
+          updates.set(name, {
             name,
             status: 'failed',
             error: payload.error as string,
@@ -396,32 +441,41 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
       }
     }
 
-    if (newStatuses.size > 0) {
-      setStudentStatuses(newStatuses)
+    if (updates.size > 0) {
+      setStudentStatuses((prev) => {
+        const merged = new Map(prev)
+        for (const [name, status] of updates) {
+          merged.set(name, status)
+        }
+        return merged
+      })
     }
   }, [taskState?.events])
 
   // Populate from task output when events weren't received (fast-completing tasks)
   useEffect(() => {
     if (!taskState?.output) return
-    if (studentStatuses.size > 0) return // events already populated statuses
+    // Skip if task events already populated statuses for this task
+    if (taskState.events && taskState.events.length > 0) return
 
     const output = taskState.output
     setClassroomCode(output.classroomCode)
 
-    const newStatuses = new Map<string, StudentStatus>()
-    for (const student of output.students) {
-      newStatuses.set(student.name, {
-        name: student.name,
-        status: student.status === 'completed' ? 'completed' : 'failed',
-        playerId: student.playerId,
-        classifications: student.classifications,
-        error: student.error,
-        seededAt: new Date(),
-      })
-    }
-    setStudentStatuses(newStatuses)
-  }, [taskState?.output, studentStatuses.size])
+    setStudentStatuses((prev) => {
+      const merged = new Map(prev)
+      for (const student of output.students) {
+        merged.set(student.name, {
+          name: student.name,
+          status: student.status === 'completed' ? 'completed' : 'failed',
+          playerId: student.playerId,
+          classifications: student.classifications,
+          error: student.error,
+          seededAt: new Date(),
+        })
+      }
+      return merged
+    })
+  }, [taskState?.output, taskState?.events])
 
   const groupedProfiles = PROFILE_GROUPS.map((group) => ({
     ...group,
@@ -459,39 +513,36 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
     })
   }, [])
 
-  const handleSearch = useCallback(
-    (query: string) => {
-      setSearchQuery(query)
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query)
 
-      if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
 
-      if (query.trim().length < 3) {
-        setSearchResults(null)
-        setSearching(false)
-        return
-      }
+    if (query.trim().length < 3) {
+      setSearchResults(null)
+      setSearching(false)
+      return
+    }
 
-      setSearching(true)
-      debounceRef.current = setTimeout(async () => {
-        try {
-          const res = await fetch(
-            `/api/debug/seed-students/search?q=${encodeURIComponent(query.trim())}`
-          )
-          const data = await res.json()
-          const map = new Map<string, number>()
-          for (const r of data.results ?? []) {
-            map.set(r.name, r.similarity)
-          }
-          setSearchResults(map)
-        } catch {
-          setSearchResults(null)
-        } finally {
-          setSearching(false)
+    setSearching(true)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/debug/seed-students/search?q=${encodeURIComponent(query.trim())}`
+        )
+        const data = await res.json()
+        const map = new Map<string, number>()
+        for (const r of data.results ?? []) {
+          map.set(r.name, r.similarity)
         }
-      }, 400)
-    },
-    []
-  )
+        setSearchResults(map)
+      } catch {
+        setSearchResults(null)
+      } finally {
+        setSearching(false)
+      }
+    }, 400)
+  }, [])
 
   const handleSeed = useCallback(async (profileNames: string[]) => {
     setError(null)
@@ -634,6 +685,73 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
         )}
       </div>
 
+      {/* Embedding status indicator */}
+      {embeddingStatus && (embeddingStatus.stale || !embeddingStatus.cached) && (
+        <div
+          data-element="embedding-status"
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 12px',
+            marginBottom: '0.75rem',
+            borderRadius: '8px',
+            fontSize: '0.8rem',
+            backgroundColor: embeddingStatus.stale
+              ? isDark ? 'yellow.900/30' : 'yellow.50'
+              : isDark ? 'gray.800' : 'gray.100',
+            border: '1px solid',
+            borderColor: embeddingStatus.stale
+              ? isDark ? 'yellow.800' : 'yellow.300'
+              : isDark ? 'gray.700' : 'gray.300',
+            color: embeddingStatus.stale
+              ? isDark ? 'yellow.300' : 'yellow.800'
+              : isDark ? 'gray.400' : 'gray.600',
+          })}
+        >
+          {embeddingStatus.stale && (
+            <AlertTriangle size={14} className={css({ flexShrink: 0 })} />
+          )}
+          <span className={css({ flex: 1 })}>
+            {embeddingStatus.stale
+              ? 'Search embeddings are stale — profile content has changed since they were generated.'
+              : 'Search embeddings not yet generated.'}
+          </span>
+          <button
+            data-action="regenerate-embeddings"
+            onClick={handleRegenerateEmbeddings}
+            disabled={regenerating}
+            className={css({
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              border: 'none',
+              cursor: regenerating ? 'not-allowed' : 'pointer',
+              flexShrink: 0,
+              backgroundColor: embeddingStatus.stale
+                ? isDark ? 'yellow.700' : 'yellow.500'
+                : isDark ? 'blue.700' : 'blue.500',
+              color: 'white',
+              _hover: regenerating ? {} : {
+                backgroundColor: embeddingStatus.stale
+                  ? isDark ? 'yellow.600' : 'yellow.400'
+                  : isDark ? 'blue.600' : 'blue.400',
+              },
+            })}
+          >
+            <RefreshCw
+              size={12}
+              className={regenerating ? css({ animation: 'spin 1s linear infinite' }) : undefined}
+            />
+            {regenerating ? 'Regenerating...' : 'Regenerate'}
+          </button>
+        </div>
+      )}
+
       {/* Action bar — sticky above list */}
       {(selected.size > 0 || isComplete || isFailed) && (
         <div
@@ -747,9 +865,7 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
             )}
             {profiles
               .filter((p) => searchResults.has(p.name))
-              .sort(
-                (a, b) => (searchResults.get(b.name) ?? 0) - (searchResults.get(a.name) ?? 0)
-              )
+              .sort((a, b) => (searchResults.get(b.name) ?? 0) - (searchResults.get(a.name) ?? 0))
               .map((profile) => (
                 <ProfileCard
                   key={profile.name}
@@ -772,8 +888,7 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
             const groupNames = group.profiles.map((p) => p.name)
             const allGroupSelected =
               groupNames.length > 0 && groupNames.every((n) => selected.has(n))
-            const someGroupSelected =
-              !allGroupSelected && groupNames.some((n) => selected.has(n))
+            const someGroupSelected = !allGroupSelected && groupNames.some((n) => selected.has(n))
 
             return (
               <div

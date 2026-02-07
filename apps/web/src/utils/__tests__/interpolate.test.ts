@@ -147,15 +147,11 @@ describe('lerpRgba', () => {
 
 describe('rgbaToString', () => {
   it('formats rgba string', () => {
-    expect(rgbaToString({ r: 255, g: 128, b: 0, a: 0.5 })).toBe(
-      'rgba(255, 128, 0, 0.500)'
-    )
+    expect(rgbaToString({ r: 255, g: 128, b: 0, a: 0.5 })).toBe('rgba(255, 128, 0, 0.500)')
   })
 
   it('rounds RGB values', () => {
-    expect(rgbaToString({ r: 128.7, g: 64.3, b: 0.1, a: 1 })).toBe(
-      'rgba(129, 64, 0, 1.000)'
-    )
+    expect(rgbaToString({ r: 128.7, g: 64.3, b: 0.1, a: 1 })).toBe('rgba(129, 64, 0, 1.000)')
   })
 })
 
@@ -202,10 +198,7 @@ describe('lerpGradientStops', () => {
 
 describe('gradientToCss', () => {
   it('produces valid CSS gradient', () => {
-    const stops = [
-      gradientStop(255, 0, 0, 1, 0),
-      gradientStop(0, 0, 255, 1, 100),
-    ]
+    const stops = [gradientStop(255, 0, 0, 1, 0), gradientStop(0, 0, 255, 1, 100)]
     const css = gradientToCss(90, stops)
     expect(css).toMatch(/^linear-gradient\(90deg,/)
     expect(css).toContain('rgba(255, 0, 0, 1.000) 0%')
@@ -230,7 +223,10 @@ describe('boxShadow', () => {
   it('creates a box shadow', () => {
     const s = boxShadow(1, 2, 3, 4, 255, 0, 0, 0.5, true)
     expect(s).toEqual({
-      x: 1, y: 2, blur: 3, spread: 4,
+      x: 1,
+      y: 2,
+      blur: 3,
+      spread: 4,
       color: { r: 255, g: 0, b: 0, a: 0.5 },
       inset: true,
     })
@@ -274,10 +270,7 @@ describe('lerpBoxShadowSingle', () => {
 describe('lerpBoxShadows', () => {
   it('pads shorter arrays with transparent shadows', () => {
     const start = [boxShadow(10, 10, 10, 10, 255, 0, 0, 1)]
-    const end = [
-      boxShadow(20, 20, 20, 20, 0, 255, 0, 1),
-      boxShadow(5, 5, 5, 5, 0, 0, 255, 1),
-    ]
+    const end = [boxShadow(20, 20, 20, 20, 0, 255, 0, 1), boxShadow(5, 5, 5, 5, 0, 0, 255, 1)]
     const result = lerpBoxShadows(start, end, 0)
     expect(result).toHaveLength(2)
     // Second shadow should be transparent (padded)
@@ -303,10 +296,7 @@ describe('boxShadowsToCss', () => {
   })
 
   it('joins multiple shadows with comma', () => {
-    const shadows = [
-      boxShadow(1, 1, 2, 0, 0, 0, 0, 0.5),
-      boxShadow(0, 0, 10, 0, 255, 0, 0, 1),
-    ]
+    const shadows = [boxShadow(1, 1, 2, 0, 0, 0, 0, 0.5), boxShadow(0, 0, 10, 0, 255, 0, 0, 1)]
     const css = boxShadowsToCss(shadows)
     // Each shadow contains "px ... rgba()" — count by splitting on "px rgba" boundaries
     expect(css).toContain('px')

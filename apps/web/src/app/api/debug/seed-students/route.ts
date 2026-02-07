@@ -98,7 +98,12 @@ export async function POST(req: Request) {
 
     const taskId = await createTask<
       { profiles: string[]; categories: string[] },
-      { seededCount: number; failedCount: number; classroomCode: string; students: StudentResult[] },
+      {
+        seededCount: number
+        failedCount: number
+        classroomCode: string
+        students: StudentResult[]
+      },
       SeedStudentsEvent
     >(
       'seed-students',

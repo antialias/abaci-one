@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  getRoomDisplay,
-  getRoomDisplayName,
-  getRoomDisplayWithEmoji,
-} from '../room-display'
+import { getRoomDisplay, getRoomDisplayName, getRoomDisplayWithEmoji } from '../room-display'
 
 describe('getRoomDisplay', () => {
   it('returns custom name display when name is provided', () => {

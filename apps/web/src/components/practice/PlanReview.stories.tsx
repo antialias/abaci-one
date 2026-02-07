@@ -5,6 +5,7 @@ import type {
   SessionPlan,
   SessionSummary,
 } from '@/db/schema/session-plans'
+import type { TermCountExplanation } from '@/lib/curriculum/config/term-count-scaling'
 import { createBasicSkillSet } from '@/types/tutorial'
 import { css } from '../../../styled-system/css'
 import { PlanReview } from './PlanReview'
@@ -21,12 +22,36 @@ const meta: Meta<typeof PlanReview> = {
 export default meta
 type Story = StoryObj<typeof PlanReview>
 
+function createMockTermCountExplanation(
+  comfortLevel: number,
+  sessionMode = 'maintenance'
+): TermCountExplanation {
+  const modeMultiplier = sessionMode === 'remediation' ? 0.6 : sessionMode === 'progression' ? 0.85 : 1.0
+  const dynamicRange = {
+    min: Math.round(2 + 2 * comfortLevel),
+    max: Math.round(3 + 5 * comfortLevel),
+  }
+  return {
+    comfortLevel,
+    factors: {
+      avgMastery: comfortLevel > 0 ? comfortLevel / modeMultiplier : null,
+      sessionMode,
+      modeMultiplier,
+      skillCountBonus: 0.055,
+    },
+    dynamicRange,
+    override: null,
+    finalRange: dynamicRange,
+  }
+}
+
 /**
  * Helper to create mock problem slots
  */
 function createMockSlots(
   count: number,
-  purposes: Array<'focus' | 'reinforce' | 'review' | 'challenge'> = ['focus', 'reinforce', 'review']
+  purposes: Array<'focus' | 'reinforce' | 'review' | 'challenge'> = ['focus', 'reinforce', 'review'],
+  termCountExplanation?: TermCountExplanation
 ): ProblemSlot[] {
   const baseSkills = createBasicSkillSet()
   return Array.from({ length: count }, (_, i) => ({
@@ -44,8 +69,9 @@ function createMockSlots(
         },
       },
       digitRange: { min: 1, max: 1 },
-      termCount: { min: 3, max: 4 },
+      termCount: termCountExplanation?.finalRange ?? { min: 3, max: 4 },
     },
+    termCountExplanation,
   }))
 }
 
@@ -282,6 +308,103 @@ export const PlanComparison: Story = {
             focusDescription: 'Standard Session',
           })}
           studentName="Student"
+          {...handlers}
+        />
+      </PlanWrapper>
+    </div>
+  ),
+}
+
+// =============================================================================
+// Term Count Scaling Stories
+// =============================================================================
+
+export const WithTermCountScalingRemediation: Story = {
+  name: 'Term Count Scaling - Remediation (Low Comfort)',
+  render: () => {
+    const explanation = createMockTermCountExplanation(0.22, 'remediation')
+    const plan = createMockSessionPlan({
+      totalProblems: 12,
+      durationMinutes: 8,
+      focusDescription: 'Remediation: Basic Skills',
+    })
+    // Replace slots with ones that have term count explanation
+    plan.parts.forEach((part) => {
+      part.slots = createMockSlots(
+        part.slots.length,
+        ['focus', 'reinforce', 'review'],
+        explanation
+      )
+    })
+    return (
+      <PlanWrapper>
+        <PlanReview plan={plan} studentName="Struggling Student" {...handlers} />
+      </PlanWrapper>
+    )
+  },
+}
+
+export const WithTermCountScalingMaintenance: Story = {
+  name: 'Term Count Scaling - Maintenance (High Comfort)',
+  render: () => {
+    const explanation = createMockTermCountExplanation(0.88, 'maintenance')
+    const plan = createMockSessionPlan({
+      totalProblems: 18,
+      durationMinutes: 12,
+      focusDescription: 'Maintenance: All Skills Strong',
+    })
+    plan.parts.forEach((part) => {
+      part.slots = createMockSlots(
+        part.slots.length,
+        ['focus', 'reinforce', 'review', 'challenge'],
+        explanation
+      )
+    })
+    return (
+      <PlanWrapper>
+        <PlanReview plan={plan} studentName="Strong Student" {...handlers} />
+      </PlanWrapper>
+    )
+  },
+}
+
+export const ComfortLevelComparison: Story = {
+  name: 'Term Count Scaling - Side by Side Comfort Comparison',
+  render: () => (
+    <div className={css({ display: 'flex', gap: '2rem', flexWrap: 'wrap' })}>
+      <PlanWrapper>
+        <PlanReview
+          plan={(() => {
+            const explanation = createMockTermCountExplanation(0.2, 'remediation')
+            const plan = createMockSessionPlan({
+              totalProblems: 9,
+              durationMinutes: 5,
+              focusDescription: 'Remediation (comfort: 20%)',
+            })
+            plan.parts.forEach((part) => {
+              part.slots = createMockSlots(part.slots.length, ['focus', 'reinforce'], explanation)
+            })
+            return plan
+          })()}
+          studentName="Low Comfort"
+          {...handlers}
+        />
+      </PlanWrapper>
+      <PlanWrapper>
+        <PlanReview
+          plan={(() => {
+            const explanation = createMockTermCountExplanation(0.9, 'maintenance')
+            const plan = createMockSessionPlan({
+              totalProblems: 9,
+              durationMinutes: 5,
+              focusDescription: 'Maintenance (comfort: 90%)',
+            })
+            plan.parts.forEach((part) => {
+              part.slots = createMockSlots(part.slots.length, ['focus', 'challenge'], explanation)
+            })
+            return plan
+          })()}
+          studentName="High Comfort"
           {...handlers}
         />
       </PlanWrapper>

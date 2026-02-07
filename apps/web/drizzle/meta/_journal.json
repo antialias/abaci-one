@@ -610,6 +610,13 @@
       "when": 1770700000000,
       "tag": "0086_add_progression_deferrals",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "6",
+      "when": 1770800000000,
+      "tag": "0087_seed_profile_players",
+      "breakpoints": true
     }
   ]
 }

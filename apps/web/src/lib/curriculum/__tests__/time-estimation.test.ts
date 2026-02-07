@@ -14,11 +14,7 @@ import {
 } from '../time-estimation'
 
 // Helper to create a mock SlotResult
-function mockResult(
-  responseTimeMs: number,
-  termCount: number,
-  skillsRequired: string[] = []
-) {
+function mockResult(responseTimeMs: number, termCount: number, skillsRequired: string[] = []) {
   return {
     responseTimeMs,
     problem: {
@@ -213,16 +209,12 @@ describe('calculateProblemComplexityUnits', () => {
 
 describe('calculateSecondsPerComplexityUnit', () => {
   it('returns null with insufficient results', () => {
-    const results = Array.from({ length: 5 }, () =>
-      mockResult(3000, 3, ['add.direct'])
-    )
+    const results = Array.from({ length: 5 }, () => mockResult(3000, 3, ['add.direct']))
     expect(calculateSecondsPerComplexityUnit(results)).toBeNull()
   })
 
   it('calculates SPCU from sufficient results', () => {
-    const results = Array.from({ length: 12 }, () =>
-      mockResult(5000, 3, ['add.direct'])
-    )
+    const results = Array.from({ length: 12 }, () => mockResult(5000, 3, ['add.direct']))
     const spcu = calculateSecondsPerComplexityUnit(results)
     expect(spcu).not.toBeNull()
     expect(spcu!).toBeGreaterThanOrEqual(2)

@@ -1,18 +1,54 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import type { ProblemSlot } from '@/db/schema/session-plans'
+import type { TermCountExplanation } from '@/lib/curriculum/config/term-count-scaling'
 import { css } from '../../../styled-system/css'
+import { PurposeBadge as RealPurposeBadge } from './PurposeBadge'
 import { Tooltip, TooltipProvider } from '../ui/Tooltip'
 
 // =============================================================================
 // Mock Data Factories
 // =============================================================================
 
+function createTermCountExplanation(opts?: {
+  comfortLevel?: number
+  sessionMode?: string
+  avgMastery?: number | null
+  override?: { min: number; max: number } | null
+}): TermCountExplanation {
+  const comfortLevel = opts?.comfortLevel ?? 0.5
+  const sessionMode = opts?.sessionMode ?? 'maintenance'
+  const avgMastery = opts?.avgMastery !== undefined ? opts.avgMastery : 0.65
+  const modeMultiplier = sessionMode === 'remediation' ? 0.6 : sessionMode === 'progression' ? 0.85 : 1.0
+  const dynamicRange = {
+    min: Math.round(2 + 2 * comfortLevel),
+    max: Math.round(3 + 5 * comfortLevel),
+  }
+  const override = opts?.override ?? null
+  const finalRange = override
+    ? { min: Math.min(dynamicRange.min, override.max), max: Math.min(dynamicRange.max, override.max) }
+    : dynamicRange
+
+  return {
+    comfortLevel,
+    factors: {
+      avgMastery,
+      sessionMode,
+      modeMultiplier,
+      skillCountBonus: 0.055,
+    },
+    dynamicRange,
+    override,
+    finalRange,
+  }
+}
+
 function createMockSlot(
   purpose: ProblemSlot['purpose'],
   skillOverride?: {
     category: string
     skillKey: string
-  }
+  },
+  termCountExplanation?: TermCountExplanation
 ): ProblemSlot {
   const baseSlot: ProblemSlot = {
     index: 0,
@@ -21,6 +57,7 @@ function createMockSlot(
       termCount: { min: 2, max: 4 },
       digitRange: { min: 1, max: 2 },
     },
+    termCountExplanation,
   }
 
   // For reinforce/review, add a specific skill constraint
@@ -854,6 +891,128 @@ export const InProblemContextDark: Story = {
           __
         </div>
       </div>
+    </div>
+  ),
+}
+
+// =============================================================================
+// Term Count Scaling Stories (using real PurposeBadge component)
+// =============================================================================
+
+export const WithTermCountTooltipRemediation: Story = {
+  name: 'Term Count Tooltip - Remediation (Real Component)',
+  render: () => (
+    <RealPurposeBadge
+      purpose="focus"
+      slot={createMockSlot(
+        'focus',
+        undefined,
+        createTermCountExplanation({
+          comfortLevel: 0.22,
+          sessionMode: 'remediation',
+          avgMastery: 0.31,
+        })
+      )}
+    />
+  ),
+}
+
+export const WithTermCountTooltipMaintenance: Story = {
+  name: 'Term Count Tooltip - Maintenance (Real Component)',
+  render: () => (
+    <RealPurposeBadge
+      purpose="reinforce"
+      slot={createMockSlot(
+        'reinforce',
+        { category: 'fiveComplements', skillKey: '4=5-1' },
+        createTermCountExplanation({
+          comfortLevel: 0.78,
+          sessionMode: 'maintenance',
+          avgMastery: 0.85,
+        })
+      )}
+    />
+  ),
+}
+
+export const WithTermCountTooltipOverride: Story = {
+  name: 'Term Count Tooltip - With Override (Real Component)',
+  render: () => (
+    <RealPurposeBadge
+      purpose="challenge"
+      slot={createMockSlot(
+        'challenge',
+        undefined,
+        createTermCountExplanation({
+          comfortLevel: 0.72,
+          sessionMode: 'maintenance',
+          avgMastery: 0.8,
+          override: { min: 3, max: 5 },
+        })
+      )}
+    />
+  ),
+}
+
+export const WithTermCountTooltipNoData: Story = {
+  name: 'Term Count Tooltip - No BKT Data (Real Component)',
+  render: () => (
+    <RealPurposeBadge
+      purpose="review"
+      slot={createMockSlot(
+        'review',
+        { category: 'basic', skillKey: '+2' },
+        createTermCountExplanation({
+          comfortLevel: 0.3,
+          sessionMode: 'maintenance',
+          avgMastery: null,
+        })
+      )}
+    />
+  ),
+}
+
+export const AllComfortLevels: Story = {
+  name: 'Term Count - All Comfort Levels Compared',
+  render: () => (
+    <div className={css({ display: 'flex', flexDirection: 'column', gap: '1rem' })}>
+      {[
+        { label: 'Struggling (22%)', comfort: 0.22, mode: 'remediation' as const, mastery: 0.31 },
+        { label: 'Developing (51%)', comfort: 0.51, mode: 'progression' as const, mastery: 0.6 },
+        { label: 'Comfortable (78%)', comfort: 0.78, mode: 'maintenance' as const, mastery: 0.85 },
+        { label: 'Mastered (95%)', comfort: 0.95, mode: 'maintenance' as const, mastery: 0.93 },
+      ].map(({ label, comfort, mode, mastery }) => (
+        <div
+          key={label}
+          className={css({
+            display: 'flex',
+            gap: '0.75rem',
+            alignItems: 'center',
+          })}
+        >
+          <span
+            className={css({
+              width: '160px',
+              fontSize: '0.75rem',
+              color: 'gray.500',
+            })}
+          >
+            {label}
+          </span>
+          <RealPurposeBadge
+            purpose="focus"
+            slot={createMockSlot(
+              'focus',
+              undefined,
+              createTermCountExplanation({
+                comfortLevel: comfort,
+                sessionMode: mode,
+                avgMastery: mastery,
+              })
+            )}
+          />
+        </div>
+      ))}
     </div>
   ),
 }

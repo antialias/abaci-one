@@ -449,6 +449,12 @@ export async function createTestStudentWithTuning(
   // Enroll the student in the teacher's classroom
   await directEnrollStudent(classroomId, result!.playerId)
 
+  // Record the seed profile → player mapping
+  await db.insert(schema.seedProfilePlayers).values({
+    profileId: profile.name,
+    playerId: result!.playerId,
+  })
+
   return {
     playerId: result!.playerId,
     classifications: result!.classifications,

@@ -73,7 +73,11 @@ This profile represents a student who:
 - Could benefit from slower progression and more scaffolding
 - Might have difficulty with fine motor skills or conceptual understanding
 
-Use this student to test how the UI handles intervention alerts for foundational skill deficits.`,
+Use this student to test how the UI handles intervention alerts for foundational skill deficits.
+
+TERM COUNT SCALING: Tests low comfort level with weak mastery data.
+Expected comfort ~0.2 → abacus 2-4 terms, visualization 2, linear 2-4.
+Tooltip should show low avg mastery and short problem lengths.`,
     skillHistory: [
       { skillId: 'basic.directAddition', targetClassification: 'weak', problems: 15 },
       { skillId: 'basic.heavenBead', targetClassification: 'weak', problems: 12 },
@@ -115,7 +119,11 @@ This profile represents a student who:
 - Should NOT be held back on other skills
 - May benefit from focused tutoring on the specific technique
 
-Use this student to test targeted intervention recommendations.`,
+Use this student to test targeted intervention recommendations.
+
+TERM COUNT SCALING: Tests mixed mastery with one weak blocker.
+Expected comfort ~0.5 (high avgMastery dragged down by one weak skill).
+Good for verifying mid-range term counts (abacus 3-6).`,
     skillHistory: [
       { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 20 },
       { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 18 },
@@ -222,7 +230,11 @@ This student should be promoted to L1 subtraction or could start L2 addition wit
 Use this student to test:
 - "Ready to advance" indicators
 - Promotion recommendations
-- Session planning when all skills are strong`,
+- Session planning when all skills are strong
+
+TERM COUNT SCALING: Tests high comfort with all-strong skills.
+Expected comfort ~0.85-0.95 → abacus 4-7, visualization 3-5, linear 4-7.
+Tooltip should show high avg mastery and longer problem lengths.`,
     skillHistory: [
       { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 25 },
       { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 25 },
@@ -288,7 +300,11 @@ This is a "red flag" scenario - the system should have advanced this student lon
 Use this student to test:
 - Urgent promotion alerts
 - Detection of stale curriculum placement
-- Over-mastery warnings`,
+- Over-mastery warnings
+
+TERM COUNT SCALING: Tests maximum comfort level with 18 strong skills.
+Expected comfort ~0.95-1.0 → ceiling ranges: abacus 4-8, visualization 3-6, linear 4-8.
+Also tests large skillCountBonus (log(19)/20 ≈ 0.147).`,
     skillHistory: [
       { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 35 },
       { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 35 },
@@ -383,7 +399,12 @@ How it works:
 • Two skills have low accuracy (< 50%) with enough problems to be confident
 • The next skill (fiveComplements.3=5-2) is available but blocked by weak skills
 
-Use this to test the remediation UI in dashboard and modal.`,
+Use this to test the remediation UI in dashboard and modal.
+
+TERM COUNT SCALING: Primary test for remediation mode multiplier (×0.6).
+Expected comfort ~0.2 (low avgMastery × 0.6 remediation multiplier).
+Problems should be noticeably shorter than maintenance students.
+Tooltip should show "Remediation (shorter)" session mode.`,
     tutorialCompletedSkills: [
       'basic.directAddition',
       'basic.heavenBead',
@@ -576,7 +597,13 @@ How it works:
 NOTE: True maintenance mode is rare in practice - usually there's always a next skill.
 This profile demonstrates the maintenance case.
 
-Use this to test the maintenance mode UI in dashboard and modal.`,
+Use this to test the maintenance mode UI in dashboard and modal.
+
+TERM COUNT SCALING: Primary test for high comfort in maintenance mode (×1.0).
+Expected comfort ~0.9+ (all strong × 1.0 maintenance + skillCountBonus for 7 skills).
+Problems should be at the longer end: abacus 4-7, visualization 3-5, linear 4-7.
+Compare with 🎯 Remediation Test to see the full comfort range in action.
+Also test "Steps per problem" override: set to 4, verify no slot exceeds 4 terms.`,
     tutorialCompletedSkills: [
       'basic.directAddition',
       'basic.heavenBead',
@@ -649,7 +676,11 @@ What you should see:
 
 This tests the empty state handling in the dashboard.
 
-Use this to verify the dashboard handles zero practicing skills gracefully.`,
+Use this to verify the dashboard handles zero practicing skills gracefully.
+
+TERM COUNT SCALING: Tests the no-BKT-data fallback path.
+Expected comfort = 0.3 (conservative default when no mastery data exists).
+Abacus should get ~3-5 terms. Tooltip should show "Avg mastery: N/A".`,
     skillHistory: [],
   },
   {
@@ -727,7 +758,11 @@ Use this to verify:
 • Dashboard handles many skills gracefully
 • Skill list scrolling/pagination works
 • Performance with larger skill counts
-• Progress calculations with extensive history`,
+• Progress calculations with extensive history
+
+TERM COUNT SCALING: Tests skillCountBonus with 9 practicing skills.
+skillCountBonus = min(0.15, log(10)/20) ≈ 0.115 — noticeably higher than
+students with fewer skills. Compare comfort level with 🔢 Single Skill Only.`,
     skillHistory: [
       { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 40 },
       { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 35 },
@@ -1416,6 +1451,9 @@ export function deriveTags(profile: TestStudentProfile): string[] {
   }
   if (profile.practicingSkills.length === 0) {
     tags.push('empty-state')
+  }
+  if (profile.intentionNotes.includes('TERM COUNT SCALING')) {
+    tags.push('term-count-scaling')
   }
 
   return tags
