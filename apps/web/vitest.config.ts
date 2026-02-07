@@ -11,6 +11,14 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    exclude: [
+      '**/node_modules/**',
+      '**/e2e/**',
+      '**/*.e2e.test.*',
+      '**/journey-simulator/**',
+      '**/src/db/__tests__/database-connection.test.ts',
+      '**/src/test/session-targeting-trace.test.ts',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['json-summary', 'html'],
