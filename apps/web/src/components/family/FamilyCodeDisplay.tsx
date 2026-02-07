@@ -99,6 +99,7 @@ export function FamilyCodeDisplay({
         />
         <Dialog.Content
           data-component="family-code-modal"
+          aria-describedby={undefined}
           className={css({
             position: 'fixed',
             top: '50%',
@@ -114,6 +115,21 @@ export function FamilyCodeDisplay({
             _focus: { outline: 'none' },
           })}
         >
+          <Dialog.Title
+            className={css({
+              position: 'absolute',
+              width: '1px',
+              height: '1px',
+              padding: 0,
+              margin: '-1px',
+              overflow: 'hidden',
+              clip: 'rect(0, 0, 0, 0)',
+              whiteSpace: 'nowrap',
+              borderWidth: 0,
+            })}
+          >
+            Share Access to {playerName}
+          </Dialog.Title>
           {/* Close button */}
           <Dialog.Close asChild>
             <button

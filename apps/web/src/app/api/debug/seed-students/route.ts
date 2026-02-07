@@ -88,9 +88,17 @@ export async function POST(req: Request) {
     // Create background task
     const profileNameList = profilesToSeed.map((p) => p.name)
 
+    interface StudentResult {
+      name: string
+      status: 'completed' | 'failed'
+      playerId?: string
+      classifications?: { weak: number; developing: number; strong: number }
+      error?: string
+    }
+
     const taskId = await createTask<
       { profiles: string[]; categories: string[] },
-      { seededCount: number; failedCount: number; classroomCode: string },
+      { seededCount: number; failedCount: number; classroomCode: string; students: StudentResult[] },
       SeedStudentsEvent
     >(
       'seed-students',
@@ -104,6 +112,7 @@ export async function POST(req: Request) {
 
         let seededCount = 0
         let failedCount = 0
+        const students: StudentResult[] = []
 
         for (let i = 0; i < profilesToSeed.length; i++) {
           if (handle.isCancelled()) break
@@ -125,15 +134,24 @@ export async function POST(req: Request) {
           try {
             const result = await createTestStudentWithTuning(profile, userId, classroomId, 3)
 
+            const classifications = {
+              weak: result.classifications.weak ?? 0,
+              developing: result.classifications.developing ?? 0,
+              strong: result.classifications.strong ?? 0,
+            }
+
             handle.emit({
               type: 'student_completed',
               name: profile.name,
               playerId: result.playerId,
-              classifications: {
-                weak: result.classifications.weak ?? 0,
-                developing: result.classifications.developing ?? 0,
-                strong: result.classifications.strong ?? 0,
-              },
+              classifications,
+            })
+
+            students.push({
+              name: profile.name,
+              status: 'completed',
+              playerId: result.playerId,
+              classifications,
             })
 
             seededCount++
@@ -144,6 +162,12 @@ export async function POST(req: Request) {
             handle.emit({
               type: 'student_failed',
               name: profile.name,
+              error: errorMessage,
+            })
+
+            students.push({
+              name: profile.name,
+              status: 'failed',
               error: errorMessage,
             })
 
@@ -158,7 +182,7 @@ export async function POST(req: Request) {
           classroomCode,
         })
 
-        handle.complete({ seededCount, failedCount, classroomCode })
+        handle.complete({ seededCount, failedCount, classroomCode, students })
       },
       userId
     )

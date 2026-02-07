@@ -90,10 +90,10 @@ export function useBackgroundTask<TOutput = unknown>(
       if (socketRef.current) {
         socketRef.current.disconnect()
         socketRef.current = null
-        setIsConnected(false)
-        setState(null)
-        setError(null)
       }
+      setIsConnected(false)
+      setState(null)
+      setError(null)
       return
     }
 
