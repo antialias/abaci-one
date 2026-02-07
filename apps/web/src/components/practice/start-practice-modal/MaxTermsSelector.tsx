@@ -26,7 +26,7 @@ export function MaxTermsSelector() {
           },
         })}
       >
-        Numbers per problem
+        Steps per problem
       </div>
       <div
         data-element="terms-options"
