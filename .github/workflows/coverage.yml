@@ -9,7 +9,7 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -59,11 +59,3 @@ jobs:
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.COVERAGE_API_TOKEN }}" \
             -d "{\"commitSha\":\"${COMMIT_SHA}\",\"lines\":${LINES},\"branches\":${BRANCHES},\"functions\":${FUNCTIONS},\"statements\":${STATEMENTS}}"
-
-      - name: Commit updated coverage thresholds
-        if: success()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apps/web/vitest.config.ts
-          git diff --cached --quiet || git commit -m "chore: auto-update coverage thresholds [skip ci]" && git push
