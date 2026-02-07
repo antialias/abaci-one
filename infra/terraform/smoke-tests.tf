@@ -55,13 +55,14 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
               image_pull_policy = "Always"
 
               env {
-                # Test against the app service (load balances across all pods)
+                # Test against prod HTTPS so cookies (__Host- prefix) and TLS work
+                # exactly like a real user. This also tests ingress and DNS.
                 name  = "BASE_URL"
-                value = "http://abaci-app.${kubernetes_namespace.abaci.metadata[0].name}.svc.cluster.local"
+                value = "https://abaci.one"
               }
 
               env {
-                # Report results to the app service (any pod can write via libSQL)
+                # Report results via internal service (no auth needed, avoids ingress)
                 name  = "RESULTS_API_URL"
                 value = "http://abaci-app.${kubernetes_namespace.abaci.metadata[0].name}.svc.cluster.local/api/smoke-test-results"
               }
