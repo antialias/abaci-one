@@ -57,8 +57,12 @@ export function shouldTriggerIncorrectGuess(
 
   const couldBeValidPrefix = couldBePrefix(input, targetNumbers)
 
-  // Only trigger if it clearly cannot be a valid prefix of any target number
-  return !couldBeValidPrefix
+  // Trigger if it clearly cannot be a valid prefix of any remaining target number
+  // For multi-digit inputs that ARE valid prefixes, don't trigger (user may still be typing)
+  if (couldBeValidPrefix) return false
+
+  // Not a prefix and not a target — it's wrong
+  return true
 }
 
 /**
