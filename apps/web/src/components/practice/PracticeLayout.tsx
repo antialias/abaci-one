@@ -77,10 +77,10 @@ function PracticeLayoutInner({ children, onBannerAction }: PracticeLayoutInnerPr
  */
 export function PracticeLayout({ studentId, children, onBannerAction }: PracticeLayoutProps) {
   // Fetch session mode
-  const { data: sessionMode, isLoading } = useSessionMode(studentId)
+  const { data: sessionModeData, isLoading } = useSessionMode(studentId)
 
   return (
-    <SessionModeBannerProvider sessionMode={sessionMode ?? null} isLoading={isLoading}>
+    <SessionModeBannerProvider sessionMode={sessionModeData?.sessionMode ?? null} isLoading={isLoading}>
       <PracticeLayoutInner onBannerAction={onBannerAction}>{children}</PracticeLayoutInner>
     </SessionModeBannerProvider>
   )

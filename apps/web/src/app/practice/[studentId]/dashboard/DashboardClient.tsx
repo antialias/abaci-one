@@ -2748,7 +2748,9 @@ export function DashboardClient({
   const setMasteredSkillsMutation = useSetMasteredSkills()
 
   // Session mode - single source of truth for session planning decisions
-  const { data: sessionMode, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
+  const { data: sessionModeData, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
+  const sessionMode = sessionModeData?.sessionMode
+  const comfortLevel = sessionModeData?.comfortLevel
 
   // Subscribe to player presence updates via WebSocket
   // This ensures the UI updates when teacher removes student from classroom
@@ -3079,6 +3081,7 @@ export function DashboardClient({
               studentName={player.name}
               focusDescription={sessionMode.focusDescription}
               sessionMode={sessionMode}
+              comfortLevel={comfortLevel}
               avgSecondsPerProblem={avgSecondsPerProblem}
               existingPlan={activeSession}
               problemHistory={problemHistory}

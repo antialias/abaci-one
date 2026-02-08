@@ -26,7 +26,7 @@ import {
   DurationSelector,
   PracticeModesSelector,
   PurposeDistributionBar,
-  MaxTermsSelector,
+  ProblemLengthSelector,
   GameBreakSettings,
   SessionFocusInfo,
   ErrorDisplay,
@@ -38,6 +38,8 @@ interface StartPracticeModalProps {
   studentName: string
   focusDescription: string
   sessionMode: SessionMode
+  /** Comfort level from the session mode API (0-1) */
+  comfortLevel?: number
   secondsPerTerm?: number
   /** @deprecated Use secondsPerTerm instead */
   avgSecondsPerProblem?: number
@@ -57,6 +59,7 @@ export function StartPracticeModal({
   studentName,
   focusDescription,
   sessionMode,
+  comfortLevel,
   secondsPerTerm,
   avgSecondsPerProblem,
   existingPlan,
@@ -72,6 +75,7 @@ export function StartPracticeModal({
       studentName={studentName}
       focusDescription={focusDescription}
       sessionMode={sessionMode}
+      comfortLevel={comfortLevel}
       secondsPerTerm={secondsPerTerm}
       avgSecondsPerProblem={avgSecondsPerProblem}
       existingPlan={existingPlan}
@@ -479,7 +483,7 @@ function StartPracticeModalContent({
                         <DurationSelector />
                         <PracticeModesSelector />
                         <PurposeDistributionBar />
-                        <MaxTermsSelector />
+                        <ProblemLengthSelector />
                         <GameBreakSettings />
                       </div>
                     </div>

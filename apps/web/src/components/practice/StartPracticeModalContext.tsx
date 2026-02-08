@@ -28,6 +28,7 @@ import {
   useStartSessionPlan,
 } from '@/hooks/useSessionPlan'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
+import { computeTermCountRange } from '@/lib/curriculum/config/term-count-scaling'
 import {
   convertSecondsPerProblemToSpt,
   estimateSessionProblemCount,
@@ -37,6 +38,15 @@ import {
   getSkillTutorialConfig,
   type SkillTutorialConfig,
 } from '@/lib/curriculum/skill-tutorial-config'
+
+// Problem length preference type and comfort adjustments
+export type ProblemLengthPreference = 'shorter' | 'recommended' | 'longer'
+
+export const COMFORT_ADJUSTMENTS: Record<ProblemLengthPreference, number> = {
+  shorter: -0.3,
+  recommended: 0,
+  longer: 0.2,
+}
 
 // Part types configuration
 export const PART_TYPES = [
@@ -107,8 +117,10 @@ interface StartPracticeModalContextValue {
   cyclePartWeight: (partType: keyof PartWeights) => void
   /** Explicit disable via × button (blocked if last active) */
   disablePart: (partType: keyof PartWeights) => void
-  abacusMaxTerms: number
-  setAbacusMaxTerms: (terms: number) => void
+  problemLengthPreference: ProblemLengthPreference
+  setProblemLengthPreference: (pref: ProblemLengthPreference) => void
+  /** Comfort level from the session mode API (0-1) */
+  comfortLevel: number
 
   // Purpose weight config
   purposeWeights: PurposeWeights
@@ -210,6 +222,8 @@ interface StartPracticeModalProviderProps {
   studentName: string
   focusDescription: string
   sessionMode: SessionMode
+  /** Comfort level from the session mode API (0-1), defaults to 0.3 */
+  comfortLevel?: number
   secondsPerTerm?: number
   avgSecondsPerProblem?: number
   existingPlan?: SessionPlan | null
@@ -226,6 +240,7 @@ export function StartPracticeModalProvider({
   studentName,
   focusDescription,
   sessionMode,
+  comfortLevel: comfortLevelProp = 0.3,
   secondsPerTerm: secondsPerTermProp,
   avgSecondsPerProblem,
   existingPlan = null,
@@ -257,9 +272,8 @@ export function StartPracticeModalProvider({
     }),
     [partWeights]
   )
-  const [abacusMaxTerms, setAbacusMaxTerms] = useState(
-    DEFAULT_PLAN_CONFIG.abacusTermCount?.max ?? 5
-  )
+  const [problemLengthPreference, setProblemLengthPreference] =
+    useState<ProblemLengthPreference>('recommended')
 
   // Game break config state
   const [gameBreakEnabled, setGameBreakEnabled] = useState(DEFAULT_GAME_BREAK_SETTINGS.enabled)
@@ -360,8 +374,11 @@ export function StartPracticeModalProvider({
   }, [secondsPerTermProp, avgSecondsPerProblem])
 
   const avgTermsPerProblem = useMemo(() => {
-    return (3 + abacusMaxTerms) / 2
-  }, [abacusMaxTerms])
+    const adjustment = COMFORT_ADJUSTMENTS[problemLengthPreference]
+    const adjustedComfort = Math.max(0, Math.min(1, comfortLevelProp + adjustment))
+    const range = computeTermCountRange('abacus', adjustedComfort)
+    return (range.min + range.max) / 2
+  }, [problemLengthPreference, comfortLevelProp])
 
   const practiceApprovedGames = useMemo(
     () => practiceApprovedGamesOverride ?? getPracticeApprovedGames(),
@@ -541,10 +558,11 @@ export function StartPracticeModalProvider({
         plan = existingPlan
       } else {
         try {
+          const comfortAdj = COMFORT_ADJUSTMENTS[problemLengthPreference]
           plan = await generatePlan.mutateAsync({
             playerId: studentId,
             durationMinutes,
-            abacusTermCount: { min: 3, max: abacusMaxTerms },
+            comfortAdjustment: comfortAdj !== 0 ? comfortAdj : undefined,
             enabledParts,
             partTimeWeights,
             purposeTimeWeights,
@@ -589,7 +607,7 @@ export function StartPracticeModalProvider({
   }, [
     studentId,
     durationMinutes,
-    abacusMaxTerms,
+    problemLengthPreference,
     enabledParts,
     partTimeWeights,
     purposeTimeWeights,
@@ -625,8 +643,9 @@ export function StartPracticeModalProvider({
     partWeights,
     cyclePartWeight,
     disablePart,
-    abacusMaxTerms,
-    setAbacusMaxTerms,
+    problemLengthPreference,
+    setProblemLengthPreference,
+    comfortLevel: comfortLevelProp,
 
     // Purpose weight config
     purposeWeights,

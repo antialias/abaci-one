@@ -157,7 +157,8 @@ export function NotesModal({
 
   // ========== Additional data for Overview tab ==========
   const { data: curriculumData } = usePlayerCurriculumQuery(student.id)
-  const { data: sessionMode } = useSessionMode(student.id)
+  const { data: sessionModeData } = useSessionMode(student.id)
+  const sessionMode = sessionModeData?.sessionMode ?? null
   const updatePlayer = useUpdatePlayer() // For notes only
 
   // ========== Stakeholder data for Relationships tab ==========

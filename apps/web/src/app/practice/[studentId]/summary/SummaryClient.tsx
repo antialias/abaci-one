@@ -150,7 +150,9 @@ export function SummaryClient({
   const photoViewer = usePhotoViewer()
 
   // Session mode - single source of truth for session planning decisions
-  const { data: sessionMode, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
+  const { data: sessionModeData, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
+  const sessionMode = sessionModeData?.sessionMode
+  const comfortLevel = sessionModeData?.comfortLevel
 
   // Player access - pre-flight authorization check for upload capability
   const { data: playerAccess } = usePlayerAccess(studentId)
@@ -575,6 +577,7 @@ export function SummaryClient({
               studentName={player.name}
               focusDescription={sessionMode.focusDescription}
               sessionMode={sessionMode}
+              comfortLevel={comfortLevel}
               avgSecondsPerProblem={avgSecondsPerProblem}
               existingPlan={null}
               problemHistory={problemHistory}

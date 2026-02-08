@@ -19,10 +19,15 @@ export const sessionModeKeys = {
   forPlayer: (playerId: string) => [...sessionModeKeys.all, playerId] as const,
 }
 
+export interface SessionModeWithComfort {
+  sessionMode: SessionMode
+  comfortLevel: number
+}
+
 /**
  * Fetch the session mode for a player
  */
-async function fetchSessionMode(playerId: string): Promise<SessionMode> {
+async function fetchSessionMode(playerId: string): Promise<SessionModeWithComfort> {
   const response = await fetch(`/api/curriculum/${playerId}/session-mode`)
 
   if (!response.ok) {
@@ -31,7 +36,10 @@ async function fetchSessionMode(playerId: string): Promise<SessionMode> {
   }
 
   const data: SessionModeResponse = await response.json()
-  return data.sessionMode
+  return {
+    sessionMode: data.sessionMode,
+    comfortLevel: data.comfortLevel,
+  }
 }
 
 /**
