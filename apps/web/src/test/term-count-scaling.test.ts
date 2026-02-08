@@ -369,6 +369,72 @@ describe('integration: comfort → range → override', () => {
 // TERM_COUNT_SCALING config validation
 // =============================================================================
 
+// =============================================================================
+// Comfort Adjustment (Problem Length Preference)
+// =============================================================================
+
+describe('comfort adjustment for problem length preference', () => {
+  it('shorter preference reduces term counts', () => {
+    const bkt = new Map([['basic.+1', createBktResult('basic.+1', 0.7, 0.8)]])
+    const { comfortLevel: rawComfort } = computeComfortLevel(
+      bkt,
+      ['basic.+1'],
+      createSessionMode('maintenance')
+    )
+
+    const adjustedComfort = Math.max(0, Math.min(1, rawComfort + (-0.3)))
+    const rawRange = computeTermCountRange('abacus', rawComfort)
+    const adjustedRange = computeTermCountRange('abacus', adjustedComfort)
+
+    expect(adjustedRange.max).toBeLessThanOrEqual(rawRange.max)
+  })
+
+  it('longer preference increases term counts', () => {
+    const bkt = new Map([['basic.+1', createBktResult('basic.+1', 0.5, 0.7)]])
+    const { comfortLevel: rawComfort } = computeComfortLevel(
+      bkt,
+      ['basic.+1'],
+      createSessionMode('maintenance')
+    )
+
+    const adjustedComfort = Math.max(0, Math.min(1, rawComfort + 0.2))
+    const rawRange = computeTermCountRange('abacus', rawComfort)
+    const adjustedRange = computeTermCountRange('abacus', adjustedComfort)
+
+    expect(adjustedRange.max).toBeGreaterThanOrEqual(rawRange.max)
+  })
+
+  it('recommended preference does not change term counts', () => {
+    const bkt = new Map([['basic.+1', createBktResult('basic.+1', 0.6, 0.8)]])
+    const { comfortLevel: rawComfort } = computeComfortLevel(
+      bkt,
+      ['basic.+1'],
+      createSessionMode('maintenance')
+    )
+
+    const adjustedComfort = Math.max(0, Math.min(1, rawComfort + 0))
+    expect(adjustedComfort).toBe(rawComfort)
+
+    const rawRange = computeTermCountRange('abacus', rawComfort)
+    const adjustedRange = computeTermCountRange('abacus', adjustedComfort)
+    expect(adjustedRange).toEqual(rawRange)
+  })
+
+  it('adjustment is clamped to [0, 1]', () => {
+    // Very low comfort + shorter should clamp to 0
+    const adjustedLow = Math.max(0, Math.min(1, 0.1 + (-0.3)))
+    expect(adjustedLow).toBe(0)
+    const rangeLow = computeTermCountRange('abacus', adjustedLow)
+    expect(rangeLow.min).toBeGreaterThanOrEqual(2)
+
+    // Very high comfort + longer should clamp to 1
+    const adjustedHigh = Math.max(0, Math.min(1, 0.95 + 0.2))
+    expect(adjustedHigh).toBe(1)
+    const rangeHigh = computeTermCountRange('abacus', adjustedHigh)
+    expect(rangeHigh.max).toBe(8)
+  })
+})
+
 describe('TERM_COUNT_SCALING config', () => {
   it('has valid ranges for all part types', () => {
     for (const [partType, scaling] of Object.entries(TERM_COUNT_SCALING)) {

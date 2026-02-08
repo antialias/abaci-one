@@ -375,20 +375,28 @@ describe('StartPracticeModalContext', () => {
     })
   })
 
-  describe('Max Terms Setting', () => {
-    it('should update abacus max terms', () => {
+  describe('Problem Length Preference', () => {
+    it('should default to recommended', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      expect(result.current.problemLengthPreference).toBe('recommended')
+    })
+
+    it('should update problem length preference', () => {
       const { result } = renderHook(() => useStartPracticeModal(), {
         wrapper: createWrapper(),
       })
 
       act(() => {
-        result.current.setAbacusMaxTerms(7)
+        result.current.setProblemLengthPreference('shorter')
       })
 
-      expect(result.current.abacusMaxTerms).toBe(7)
+      expect(result.current.problemLengthPreference).toBe('shorter')
     })
 
-    it('should affect avgTermsPerProblem when max terms changes', () => {
+    it('should affect avgTermsPerProblem when preference changes to longer', () => {
       const { result } = renderHook(() => useStartPracticeModal(), {
         wrapper: createWrapper(),
       })
@@ -396,10 +404,33 @@ describe('StartPracticeModalContext', () => {
       const initialAvg = result.current.avgTermsPerProblem
 
       act(() => {
-        result.current.setAbacusMaxTerms(8)
+        result.current.setProblemLengthPreference('longer')
       })
 
       expect(result.current.avgTermsPerProblem).toBeGreaterThan(initialAvg)
+    })
+
+    it('should decrease avgTermsPerProblem when preference changes to shorter', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      const initialAvg = result.current.avgTermsPerProblem
+
+      act(() => {
+        result.current.setProblemLengthPreference('shorter')
+      })
+
+      expect(result.current.avgTermsPerProblem).toBeLessThanOrEqual(initialAvg)
+    })
+
+    it('should expose comfortLevel from provider props', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper(),
+      })
+
+      // Default comfort level is 0.3
+      expect(result.current.comfortLevel).toBe(0.3)
     })
   })
 
