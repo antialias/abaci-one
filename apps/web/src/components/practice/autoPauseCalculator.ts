@@ -6,6 +6,7 @@
  */
 
 import type { SlotResult } from '@/db/schema/session-plans'
+import type { ProgressiveAssistanceTimingConfig } from '@/constants/helpTiming'
 
 // ============================================================================
 // Constants
@@ -149,6 +150,57 @@ export function getAutoPauseExplanation(stats: AutoPauseStats): string {
   }
 
   return explanation
+}
+
+// ============================================================================
+// Progressive Assistance Thresholds
+// ============================================================================
+
+/**
+ * Thresholds for progressive assistance escalation.
+ * All values in milliseconds.
+ */
+export interface ProgressiveThresholds {
+  /** When to show encouragement text (based on mean response time) */
+  encouragementMs: number
+  /** When to offer help button (based on mean + 1σ) */
+  helpOfferMs: number
+  /** When to auto-pause (based on mean + 2σ) */
+  autoPauseMs: number
+}
+
+/**
+ * Calculate progressive assistance thresholds from historical response times.
+ *
+ * Uses the same statistical approach as auto-pause but with three escalation levels:
+ * - Encouragement: mean response time (clamped)
+ * - Help offer: mean + 1σ (clamped)
+ * - Auto-pause: mean + 2σ (clamped) — same formula as existing auto-pause
+ */
+export function calculateProgressiveThresholds(
+  results: SlotResult[],
+  timing: ProgressiveAssistanceTimingConfig
+): ProgressiveThresholds {
+  const { mean, stdDev, count } = calculateResponseTimeStats(results)
+  const hasSufficientData = count >= MIN_SAMPLES_FOR_STATISTICS
+
+  if (!hasSufficientData) {
+    return {
+      encouragementMs: timing.defaultEncouragementMs,
+      helpOfferMs: timing.defaultHelpOfferMs,
+      autoPauseMs: DEFAULT_PAUSE_TIMEOUT_MS,
+    }
+  }
+
+  return {
+    encouragementMs: clamp(mean, timing.minEncouragementMs, timing.maxEncouragementMs),
+    helpOfferMs: clamp(mean + stdDev, timing.minHelpOfferMs, timing.maxHelpOfferMs),
+    autoPauseMs: clamp(mean + 2 * stdDev, MIN_PAUSE_THRESHOLD_MS, MAX_PAUSE_THRESHOLD_MS),
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(value, max))
 }
 
 /**
