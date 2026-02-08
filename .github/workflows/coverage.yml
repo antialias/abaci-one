@@ -9,7 +9,7 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -42,6 +42,14 @@ jobs:
 
       - name: Run tests with coverage
         run: pnpm --filter @soroban/web run test:coverage
+
+      - name: Commit updated coverage thresholds
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/web/vitest.config.ts
+          git diff --cached --quiet || git commit -m "chore: auto-update coverage thresholds [skip ci]" && git push
 
       - name: Upload coverage HTML report
         if: always()
