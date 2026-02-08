@@ -25,7 +25,8 @@
     "db:studio": "drizzle-kit studio",
     "db:drop": "drizzle-kit drop",
     "seed:test-students": "npx tsx scripts/seedTestStudents.ts",
-    "build:seed-script": "npx esbuild scripts/seedTestStudents.ts --bundle --platform=node --packages=external --outfile=dist/seedTestStudents.js"
+    "build:seed-script": "npx esbuild scripts/seedTestStudents.ts --bundle --platform=node --packages=external --outfile=dist/seedTestStudents.js",
+    "generate:audio": "npx tsx scripts/generateAudioClips.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -171,6 +172,7 @@
     "tsx": "^4.20.5",
     "typescript": "^5.0.0",
     "vitest": "^1.0.0",
+    "openai": "^4.73.0",
     "vitest-axe": "^0.1.0"
   },
   "eslintConfig": {
