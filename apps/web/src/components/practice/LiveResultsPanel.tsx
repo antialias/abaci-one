@@ -339,6 +339,17 @@ export function LiveResultsPanel({
   // Get incorrect results
   const incorrectResults = useMemo(() => results.filter((r) => !r.isCorrect), [results])
 
+  // Compute per-purpose accuracy
+  const purposeStats = useMemo(() => {
+    const groups: Record<string, { correct: number; total: number }> = {}
+    for (const r of results) {
+      if (!groups[r.purpose]) groups[r.purpose] = { correct: 0, total: 0 }
+      groups[r.purpose].total++
+      if (r.isCorrect) groups[r.purpose].correct++
+    }
+    return groups
+  }, [results])
+
   // No results yet - show placeholder
   if (results.length === 0) {
     return (
@@ -475,6 +486,58 @@ export function LiveResultsPanel({
           </button>
         )}
       </div>
+
+      {/* Purpose accuracy summary */}
+      {Object.keys(purposeStats).length > 0 && (
+        <div
+          data-element="purpose-accuracy"
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem',
+            padding: '0.375rem 0.75rem',
+            borderBottom: '1px solid',
+            borderColor: isDark ? 'gray.700' : 'gray.200',
+            flexWrap: 'wrap',
+          })}
+        >
+          {(['focus', 'reinforce', 'review', 'challenge'] as const).map((purpose) => {
+            const group = purposeStats[purpose]
+            if (!group) return null
+            const config = getPurposeConfig(purpose)
+            const colors = getPurposeColors(purpose, isDark)
+            const accuracy = group.total > 0 ? group.correct / group.total : 0
+            return (
+              <span
+                key={purpose}
+                data-purpose={purpose}
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.125rem',
+                  padding: '0.125rem 0.375rem',
+                  borderRadius: '4px',
+                  fontSize: '0.625rem',
+                  fontWeight: 'bold',
+                  backgroundColor: colors.background,
+                  color:
+                    accuracy === 1
+                      ? isDark
+                        ? 'green.300'
+                        : 'green.700'
+                      : accuracy === 0
+                        ? isDark
+                          ? 'red.300'
+                          : 'red.700'
+                        : colors.text,
+                })}
+              >
+                {config.emoji} {group.correct}/{group.total}
+              </span>
+            )
+          })}
+        </div>
+      )}
 
       {/* Problem list content */}
       <div

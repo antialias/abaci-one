@@ -27,6 +27,7 @@ import { MobileResultsSummary } from '../practice/MobileResultsSummary'
 import { ObserverTransitionView } from '../practice/ObserverTransitionView'
 import { PracticeFeedback } from '../practice/PracticeFeedback'
 import { PurposeBadge } from '../practice/PurposeBadge'
+import { SessionPlanOverview } from '../practice/SessionPlanOverview'
 import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
 import { VerticalProblem } from '../practice/VerticalProblem'
 import { ObserverVisionFeed } from '../vision/ObserverVisionFeed'
@@ -704,6 +705,25 @@ export function SessionObserverView({
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+      {/* Session Plan Overview - collapsible summary of the full session structure */}
+      {state?.sessionParts &&
+        state.currentPartIndex !== undefined &&
+        state.currentSlotIndex !== undefined && (
+          <div
+            data-element="session-plan-overview"
+            className={css({
+              padding: { base: '4px 16px 8px', md: '4px 20px 12px' },
+            })}
+          >
+            <SessionPlanOverview
+              parts={state.sessionParts}
+              currentPartIndex={state.currentPartIndex}
+              currentSlotIndex={state.currentSlotIndex}
+              isDark={isDark}
+            />
           </div>
         )}
 

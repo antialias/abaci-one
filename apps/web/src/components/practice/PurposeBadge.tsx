@@ -34,7 +34,7 @@ interface PurposeBadgeProps {
 /**
  * Extract the primary skill from constraints for display
  */
-function extractTargetSkillName(slot: ProblemSlot): string | null {
+export function extractTargetSkillName(slot: ProblemSlot): string | null {
   const targetSkills = slot.constraints?.targetSkills
   if (!targetSkills) return null
 
@@ -54,7 +54,7 @@ function extractTargetSkillName(slot: ProblemSlot): string | null {
 /**
  * Format a skill ID into a human-readable name
  */
-function formatSkillName(category: string, skillKey: string): string {
+export function formatSkillName(category: string, skillKey: string): string {
   // Categories: basic, fiveComplements, tenComplements
   if (category === 'basic') {
     // Format "+3" or "-5" into "add 3" or "subtract 5"
