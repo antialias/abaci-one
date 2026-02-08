@@ -96,6 +96,8 @@ export interface GenerateSessionPlanOptions {
   overrideProblemsPerPart?: number
   /** When true, shuffle problem purposes within each part (default: true) */
   shufflePurposes?: boolean
+  /** Comfort level adjustment from problem length preference (shorter=-0.3, recommended=0, longer=+0.2) */
+  comfortAdjustment?: number
 }
 
 /**
@@ -146,6 +148,7 @@ export async function generateSessionPlan(
     gameBreakSettings = DEFAULT_GAME_BREAK_SETTINGS,
     overrideProblemsPerPart,
     shufflePurposes = true,
+    comfortAdjustment = 0,
   } = options
 
   const config = { ...DEFAULT_PLAN_CONFIG, ...configOverrides }
@@ -237,7 +240,7 @@ export async function generateSessionPlan(
   const studentMaxSkillCost = calculateMaxSkillCost(costCalculator, practicingSkillIds)
 
   // Compute comfort level for dynamic term count scaling
-  const comfortResult = sessionMode
+  const rawComfortResult = sessionMode
     ? computeComfortLevel(bktResults, practicingSkillIds, sessionMode)
     : {
         comfortLevel: 0.3,
@@ -249,10 +252,19 @@ export async function generateSessionPlan(
         } as TermCountExplanation['factors'],
       }
 
+  // Apply comfort adjustment from problem length preference
+  const rawComfortLevel = rawComfortResult.comfortLevel
+  const adjustedComfortLevel = Math.max(0, Math.min(1, rawComfortLevel + comfortAdjustment))
+  const comfortResult = {
+    ...rawComfortResult,
+    comfortLevel: adjustedComfortLevel,
+  }
+
   if (process.env.DEBUG_SESSION_PLANNER === 'true') {
     console.log(
       `[SessionPlanner] Comfort level: ${(comfortResult.comfortLevel * 100).toFixed(0)}% ` +
-        `(avgMastery=${comfortResult.factors.avgMastery?.toFixed(2) ?? 'N/A'}, ` +
+        `(raw=${(rawComfortLevel * 100).toFixed(0)}%, adj=${comfortAdjustment}, ` +
+        `avgMastery=${comfortResult.factors.avgMastery?.toFixed(2) ?? 'N/A'}, ` +
         `mode=${comfortResult.factors.sessionMode}, mult=${comfortResult.factors.modeMultiplier}, ` +
         `bonus=${comfortResult.factors.skillCountBonus.toFixed(3)})`
     )
@@ -347,7 +359,9 @@ export async function generateSessionPlan(
         overrideProblemsPerPart,
         shufflePurposes,
         comfortResult.comfortLevel,
-        comfortResult.factors
+        comfortResult.factors,
+        comfortAdjustment,
+        rawComfortLevel
       )
     )
     partNumber = (partNumber + 1) as 1 | 2 | 3
@@ -404,7 +418,9 @@ function buildSessionPart(
   overrideProblemsPerPart?: number,
   shufflePurposes = true,
   comfortLevel = 0.3,
-  comfortFactors?: TermCountExplanation['factors']
+  comfortFactors?: TermCountExplanation['factors'],
+  comfortAdjustment?: number,
+  rawComfortLevel?: number
 ): SessionPart {
   // Get time allocation for this part (use normalized weight if provided)
   const partWeight = normalizedWeight ?? config.partTimeWeights[type]
@@ -474,7 +490,9 @@ function buildSessionPart(
         costCalculator,
         studentMaxSkillCost,
         comfortLevel,
-        comfortFactors
+        comfortFactors,
+        comfortAdjustment,
+        rawComfortLevel
       )
     )
   }
@@ -492,7 +510,9 @@ function buildSessionPart(
         costCalculator,
         studentMaxSkillCost,
         comfortLevel,
-        comfortFactors
+        comfortFactors,
+        comfortAdjustment,
+        rawComfortLevel
       )
     )
   }
@@ -510,7 +530,9 @@ function buildSessionPart(
         costCalculator,
         studentMaxSkillCost,
         comfortLevel,
-        comfortFactors
+        comfortFactors,
+        comfortAdjustment,
+        rawComfortLevel
       )
     )
   }
@@ -527,7 +549,9 @@ function buildSessionPart(
         costCalculator,
         studentMaxSkillCost,
         comfortLevel,
-        comfortFactors
+        comfortFactors,
+        comfortAdjustment,
+        rawComfortLevel
       )
     )
   }
@@ -1256,7 +1280,9 @@ function getTermCountForPartType(
   partType: SessionPartType,
   config: PlanGenerationConfig,
   comfortLevel: number,
-  comfortFactors?: TermCountExplanation['factors']
+  comfortFactors?: TermCountExplanation['factors'],
+  comfortAdjustment?: number,
+  rawComfortLevel?: number
 ): { range: { min: number; max: number }; explanation: TermCountExplanation } {
   const dynamicRange = computeTermCountRange(partType, comfortLevel)
 
@@ -1285,6 +1311,9 @@ function getTermCountForPartType(
       dynamicRange,
       override: override ?? null,
       finalRange,
+      ...(comfortAdjustment !== undefined && comfortAdjustment !== 0
+        ? { comfortAdjustment, rawComfortLevel }
+        : {}),
     },
   }
 }
@@ -1350,7 +1379,9 @@ function createSlot(
   costCalculator?: SkillCostCalculator,
   studentMaxSkillCost?: number,
   comfortLevel = 0.3,
-  comfortFactors?: TermCountExplanation['factors']
+  comfortFactors?: TermCountExplanation['factors'],
+  comfortAdjustment?: number,
+  rawComfortLevel?: number
 ): ProblemSlot {
   // Get complexity bounds for this purpose + part type combination
   // Pass studentMaxSkillCost for dynamic visualization budget
@@ -1366,7 +1397,9 @@ function createSlot(
     partType,
     config,
     comfortLevel,
-    comfortFactors
+    comfortFactors,
+    comfortAdjustment,
+    rawComfortLevel
   )
 
   const constraints = {

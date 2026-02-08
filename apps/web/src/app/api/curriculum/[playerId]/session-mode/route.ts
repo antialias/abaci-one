@@ -15,6 +15,7 @@
 import { NextResponse } from 'next/server'
 import { canPerformAction } from '@/lib/classroom'
 import { getSessionMode, type SessionMode } from '@/lib/curriculum/session-mode'
+import { getSessionModeComfortLevel } from '@/lib/curriculum/session-mode-comfort'
 import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
@@ -23,6 +24,7 @@ interface RouteParams {
 
 export interface SessionModeResponse {
   sessionMode: SessionMode
+  comfortLevel: number
 }
 
 /**
@@ -44,9 +46,11 @@ export async function GET(_request: Request, { params }: RouteParams) {
     }
 
     const sessionMode = await getSessionMode(playerId)
+    const comfortLevel = await getSessionModeComfortLevel(playerId, sessionMode)
 
     return NextResponse.json({
       sessionMode,
+      comfortLevel,
     } satisfies SessionModeResponse)
   } catch (error) {
     console.error('Error fetching session mode:', error)

@@ -63,6 +63,7 @@ async function generateSessionPlan({
   confidenceThreshold,
   sessionMode,
   gameBreakSettings,
+  comfortAdjustment,
 }: {
   playerId: string
   durationMinutes: number
@@ -75,6 +76,7 @@ async function generateSessionPlan({
   confidenceThreshold?: number
   sessionMode?: SessionMode
   gameBreakSettings?: GameBreakSettings
+  comfortAdjustment?: number
 }): Promise<SessionPlan> {
   const res = await api(`curriculum/${playerId}/sessions/plans`, {
     method: 'POST',
@@ -90,6 +92,7 @@ async function generateSessionPlan({
       confidenceThreshold,
       sessionMode,
       gameBreakSettings,
+      comfortAdjustment,
     }),
   })
   if (!res.ok) {

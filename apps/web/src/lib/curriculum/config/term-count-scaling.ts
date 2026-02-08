@@ -48,7 +48,7 @@ export const TERM_COUNT_SCALING: Record<
  * exactly why a student got a particular term count range.
  */
 export interface TermCountExplanation {
-  /** Comfort level (0-1) used for interpolation */
+  /** Comfort level (0-1) used for interpolation (after adjustment) */
   comfortLevel: number
   /** Individual factors that produced the comfort level */
   factors: {
@@ -67,6 +67,10 @@ export interface TermCountExplanation {
   override: { min: number; max: number } | null
   /** Final range after override applied */
   finalRange: { min: number; max: number }
+  /** Comfort adjustment from problem length preference (shorter=-0.3, recommended=0, longer=+0.2) */
+  comfortAdjustment?: number
+  /** Raw comfort level before adjustment was applied */
+  rawComfortLevel?: number
 }
 
 // =============================================================================
