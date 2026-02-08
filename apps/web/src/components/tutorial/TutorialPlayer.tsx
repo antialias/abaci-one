@@ -27,6 +27,7 @@ import { BeadTooltipContent } from '../shared/BeadTooltipContent'
 import { TutorialProvider, useTutorialContext } from './TutorialContext'
 import { TutorialUIProvider } from './TutorialUIContext'
 import type { SkillTutorialControlAction } from '@/lib/classroom/socket-events'
+import { useTutorialAudioHelp } from './hooks/useTutorialAudioHelp'
 import './CoachBar/coachbar.css'
 
 // Reducer state and actions
@@ -273,6 +274,12 @@ function TutorialPlayerContent({
   const currentStep = isObservationMode
     ? tutorial.steps[observedState.currentStepIndex]
     : contextCurrentStep
+
+  // Audio help — reads tutorial step titles aloud for non-readers
+  useTutorialAudioHelp({
+    currentStepIndex,
+    stepTitle: currentStep?.title,
+  })
 
   // Non-observed state values (only used in interactive mode)
   const { error, events, stepStartTime, multiStepStartTime, uiState } = state

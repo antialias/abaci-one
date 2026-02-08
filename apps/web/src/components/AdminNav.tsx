@@ -32,6 +32,11 @@ const adminNavItems: AdminNavItem[] = [
     description: 'Curriculum',
   },
   {
+    href: '/admin/audio',
+    label: 'Audio',
+    description: 'TTS clips',
+  },
+  {
     href: '/vision-training',
     label: 'Vision',
     description: 'ML training',

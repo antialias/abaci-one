@@ -2,13 +2,14 @@
 
 import { useAbacusDisplay } from '@soroban/abacus-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Key, Languages, Palette, Settings as SettingsIcon } from 'lucide-react'
+import { Key, Languages, Palette, Settings as SettingsIcon, Volume2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AbacusStylePanel } from '@/components/AbacusDisplayDropdown'
 import { AbacusDock } from '@/components/AbacusDock'
 import { LanguageSelector } from '@/components/LanguageSelector'
 import { PageWithNav } from '@/components/PageWithNav'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useAudioHelp } from '@/contexts/AudioHelpContext'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { api } from '@/lib/queryClient'
@@ -147,6 +148,8 @@ export default function SettingsPage() {
  * General settings tab - Theme, Language
  */
 function GeneralTab({ isDark }: { isDark: boolean }) {
+  const { isEnabled, setEnabled, volume, setVolume } = useAudioHelp()
+
   return (
     <div data-section="general-tab">
       {/* Appearance Section */}
@@ -176,6 +179,86 @@ function GeneralTab({ isDark }: { isDark: boolean }) {
           >
             <LanguageSelector variant="inline" />
           </SettingRow>
+        </SectionCard>
+      </section>
+
+      {/* Audio Help Section */}
+      <section className={css({ marginBottom: '1.5rem' })}>
+        <SectionCard isDark={isDark}>
+          <SectionHeader icon={<Volume2 size={18} />} title="Audio Help" isDark={isDark} />
+          <SettingRow
+            label="Read Problems Aloud"
+            description="Read math problems and feedback aloud for non-readers"
+            isDark={isDark}
+          >
+            <button
+              type="button"
+              data-component="audio-help-toggle"
+              data-action="toggle-audio-help"
+              onClick={() => setEnabled(!isEnabled)}
+              className={css({
+                width: '44px',
+                height: '24px',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: 'pointer',
+                position: 'relative',
+                backgroundColor: isEnabled
+                  ? isDark ? 'purple.500' : 'purple.600'
+                  : isDark ? 'gray.600' : 'gray.300',
+                transition: 'background-color 0.2s',
+              })}
+            >
+              <span
+                className={css({
+                  display: 'block',
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  backgroundColor: 'white',
+                  position: 'absolute',
+                  top: '3px',
+                  transition: 'left 0.2s',
+                  left: isEnabled ? '23px' : '3px',
+                })}
+              />
+            </button>
+          </SettingRow>
+          {isEnabled && (
+            <SettingRow
+              label="Volume"
+              description="Adjust the audio help volume"
+              isDark={isDark}
+              noBorder
+            >
+              <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={Math.round(volume * 100)}
+                  onChange={(e) => setVolume(Number(e.target.value) / 100)}
+                  data-component="audio-help-volume"
+                  data-action="change-volume"
+                  className={css({
+                    width: '100px',
+                    cursor: 'pointer',
+                    accentColor: isDark ? 'purple.400' : 'purple.600',
+                  })}
+                />
+                <span
+                  className={css({
+                    fontSize: '0.75rem',
+                    color: isDark ? 'gray.400' : 'gray.600',
+                    minWidth: '2rem',
+                    textAlign: 'right',
+                  })}
+                >
+                  {Math.round(volume * 100)}%
+                </span>
+              </div>
+            </SettingRow>
+          )}
         </SectionCard>
       </section>
     </div>

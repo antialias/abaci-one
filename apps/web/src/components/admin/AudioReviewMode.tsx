@@ -1,0 +1,630 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { AudioClipEntry } from "@/lib/audio/audioManifest";
+import { css } from "../../../styled-system/css";
+
+interface AudioReviewModeProps {
+  voice: string;
+  manifest: AudioClipEntry[];
+  onClose: () => void;
+  onRegenerateFlagged: (clipIds: string[]) => void;
+  isRegenerating: boolean;
+}
+
+type Phase = "reviewing" | "summary";
+
+export function AudioReviewMode({
+  voice,
+  manifest,
+  onClose,
+  onRegenerateFlagged,
+  isRegenerating,
+}: AudioReviewModeProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [flagged, setFlagged] = useState<Set<string>>(new Set());
+  const [isAutoAdvance, setIsAutoAdvance] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [phase, setPhase] = useState<Phase>("reviewing");
+  // When re-reviewing flagged only, this holds the filtered subset
+  const [reviewSubset, setReviewSubset] = useState<AudioClipEntry[] | null>(
+    null,
+  );
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  // Refs to mirror state — readable from onended without nesting state updaters
+  // (nesting setState updaters causes StrictMode to call them 2×2 = 4 times)
+  const flaggedRef = useRef(flagged);
+  flaggedRef.current = flagged;
+  const isAutoAdvanceRef = useRef(isAutoAdvance);
+  isAutoAdvanceRef.current = isAutoAdvance;
+
+  const clips = reviewSubset ?? manifest;
+
+  const currentClip = clips[currentIndex] as AudioClipEntry | undefined;
+
+  const clearAutoAdvanceTimer = useCallback(() => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+  }, []);
+
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsPlaying(false);
+    clearAutoAdvanceTimer();
+  }, [clearAutoAdvanceTimer]);
+
+  // Play current clip
+  const playCurrentClip = useCallback(() => {
+    if (!currentClip) return;
+    stopAudio();
+
+    const audio = new Audio(`/audio/${voice}/${currentClip.filename}`);
+    audioRef.current = audio;
+    setIsPlaying(true);
+
+    audio.onended = () => {
+      setIsPlaying(false);
+      // Read current state from refs (not state updaters) to avoid
+      // StrictMode double-invocation creating multiple orphaned timers
+      if (isAutoAdvanceRef.current && !flaggedRef.current.has(currentClip.id)) {
+        autoAdvanceTimerRef.current = setTimeout(() => {
+          setCurrentIndex((idx) => {
+            const nextIdx = idx + 1;
+            if (nextIdx >= clips.length) {
+              setPhase("summary");
+              return idx;
+            }
+            return nextIdx;
+          });
+        }, 1000);
+      }
+    };
+
+    audio.onerror = () => {
+      setIsPlaying(false);
+    };
+
+    audio.play();
+  }, [currentClip, voice, stopAudio, clips.length]);
+
+  // Play on mount and index changes
+  useEffect(() => {
+    if (phase === "reviewing" && currentClip) {
+      playCurrentClip();
+    }
+    return () => {
+      clearAutoAdvanceTimer();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, phase]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopAudio();
+    };
+  }, [stopAudio]);
+
+  const handleNext = () => {
+    clearAutoAdvanceTimer();
+    if (currentIndex + 1 >= clips.length) {
+      setPhase("summary");
+    } else {
+      setCurrentIndex((i) => i + 1);
+    }
+  };
+
+  const handleBack = () => {
+    clearAutoAdvanceTimer();
+    setCurrentIndex((i) => Math.max(0, i - 1));
+  };
+
+  const handleToggleFlag = () => {
+    if (!currentClip) return;
+    setFlagged((prev) => {
+      const next = new Set(prev);
+      if (next.has(currentClip.id)) {
+        next.delete(currentClip.id);
+      } else {
+        next.add(currentClip.id);
+        // Flagging pauses auto-advance
+        setIsAutoAdvance(false);
+        clearAutoAdvanceTimer();
+      }
+      return next;
+    });
+  };
+
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      stopAudio();
+    } else {
+      playCurrentClip();
+    }
+  };
+
+  const handleUnflag = (clipId: string) => {
+    setFlagged((prev) => {
+      const next = new Set(prev);
+      next.delete(clipId);
+      return next;
+    });
+  };
+
+  const handleReReviewFlagged = () => {
+    const flaggedClips = manifest.filter((c) => flagged.has(c.id));
+    if (flaggedClips.length === 0) return;
+    setReviewSubset(flaggedClips);
+    setCurrentIndex(0);
+    setPhase("reviewing");
+  };
+
+  const handleRegenerate = () => {
+    onRegenerateFlagged(Array.from(flagged));
+  };
+
+  const categoryLabel = (cat: string) => {
+    return cat.charAt(0).toUpperCase() + cat.slice(1);
+  };
+
+  const progressPercent =
+    clips.length > 0
+      ? Math.round(((currentIndex + 1) / clips.length) * 100)
+      : 0;
+
+  const buttonBase = css({
+    border: "none",
+    borderRadius: "6px",
+    padding: "8px 16px",
+    fontSize: "14px",
+    fontWeight: "600",
+    cursor: "pointer",
+    "&:disabled": { opacity: 0.5, cursor: "not-allowed" },
+  });
+
+  if (phase === "summary") {
+    const flaggedClips = manifest.filter((c) => flagged.has(c.id));
+
+    return (
+      <section
+        data-component="AudioReviewMode"
+        data-element="summary"
+        className={css({
+          backgroundColor: "#161b22",
+          border: "1px solid #30363d",
+          borderRadius: "6px",
+          padding: "20px",
+          marginBottom: "24px",
+        })}
+      >
+        <div
+          className={css({
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "16px",
+          })}
+        >
+          <h2
+            className={css({
+              fontSize: "18px",
+              fontWeight: "600",
+              color: "#f0f6fc",
+            })}
+          >
+            Review Complete — {voice}
+          </h2>
+          <button
+            data-action="close-review"
+            onClick={onClose}
+            className={css({
+              background: "none",
+              border: "1px solid #30363d",
+              color: "#8b949e",
+              borderRadius: "6px",
+              padding: "6px 14px",
+              fontSize: "13px",
+              cursor: "pointer",
+              "&:hover": { borderColor: "#8b949e" },
+            })}
+          >
+            Done
+          </button>
+        </div>
+
+        {flaggedClips.length === 0 ? (
+          <p className={css({ color: "#3fb950", fontSize: "14px" })}>
+            All clips passed review. No issues found.
+          </p>
+        ) : (
+          <>
+            <p
+              className={css({
+                color: "#f0f6fc",
+                fontSize: "14px",
+                marginBottom: "12px",
+              })}
+            >
+              {flaggedClips.length} clip{flaggedClips.length !== 1 ? "s" : ""}{" "}
+              flagged for regeneration:
+            </p>
+
+            <div
+              className={css({
+                maxHeight: "300px",
+                overflowY: "auto",
+                marginBottom: "16px",
+              })}
+            >
+              {flaggedClips.map((clip) => (
+                <div
+                  key={clip.id}
+                  className={css({
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 12px",
+                    borderBottom: "1px solid #21262d",
+                    fontSize: "13px",
+                  })}
+                >
+                  <div
+                    className={css({
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    })}
+                  >
+                    <span
+                      className={css({
+                        fontFamily: "monospace",
+                        fontSize: "12px",
+                        color: "#8b949e",
+                      })}
+                    >
+                      {clip.id}
+                    </span>
+                    <span className={css({ color: "#c9d1d9" })}>
+                      {clip.text}
+                    </span>
+                  </div>
+                  <button
+                    data-action="unflag-clip"
+                    onClick={() => handleUnflag(clip.id)}
+                    className={css({
+                      background: "none",
+                      border: "none",
+                      color: "#f85149",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      "&:hover": { textDecoration: "underline" },
+                    })}
+                  >
+                    Unflag
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className={css({ display: "flex", gap: "8px" })}>
+              <button
+                data-action="regenerate-flagged"
+                onClick={handleRegenerate}
+                disabled={isRegenerating || flaggedClips.length === 0}
+                className={`${buttonBase} ${css({
+                  backgroundColor: "#238636",
+                  color: "#fff",
+                  "&:hover": { backgroundColor: "#2ea043" },
+                })}`}
+              >
+                Regenerate {flaggedClips.length} flagged clip
+                {flaggedClips.length !== 1 ? "s" : ""}
+              </button>
+              <button
+                data-action="re-review-flagged"
+                onClick={handleReReviewFlagged}
+                disabled={flaggedClips.length === 0}
+                className={`${buttonBase} ${css({
+                  backgroundColor: "#30363d",
+                  color: "#c9d1d9",
+                  "&:hover": { backgroundColor: "#3d444d" },
+                })}`}
+              >
+                Re-review flagged only
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
+
+  // Review phase
+  return (
+    <section
+      data-component="AudioReviewMode"
+      data-element="review"
+      className={css({
+        backgroundColor: "#161b22",
+        border: "1px solid #30363d",
+        borderRadius: "6px",
+        padding: "20px",
+        marginBottom: "24px",
+      })}
+    >
+      {/* Header */}
+      <div
+        className={css({
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "16px",
+        })}
+      >
+        <h2
+          className={css({
+            fontSize: "18px",
+            fontWeight: "600",
+            color: "#f0f6fc",
+          })}
+        >
+          Reviewing: {voice}
+          {reviewSubset && (
+            <span
+              className={css({
+                color: "#8b949e",
+                fontSize: "13px",
+                marginLeft: "8px",
+              })}
+            >
+              (flagged only)
+            </span>
+          )}
+        </h2>
+        <div
+          className={css({
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          })}
+        >
+          <span
+            className={css({
+              color: "#f85149",
+              fontSize: "13px",
+              fontWeight: "600",
+            })}
+          >
+            {flagged.size} flagged
+          </span>
+          <button
+            data-action="close-review"
+            onClick={() => {
+              stopAudio();
+              onClose();
+            }}
+            className={css({
+              background: "none",
+              border: "1px solid #30363d",
+              color: "#8b949e",
+              borderRadius: "6px",
+              padding: "6px 14px",
+              fontSize: "13px",
+              cursor: "pointer",
+              "&:hover": { borderColor: "#8b949e" },
+            })}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className={css({ marginBottom: "16px" })}>
+        <div
+          className={css({
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: "4px",
+            fontSize: "12px",
+            color: "#8b949e",
+          })}
+        >
+          <span>
+            {currentIndex + 1} / {clips.length}
+          </span>
+          <span>{progressPercent}%</span>
+        </div>
+        <div
+          className={css({
+            backgroundColor: "#30363d",
+            borderRadius: "4px",
+            height: "4px",
+            overflow: "hidden",
+          })}
+        >
+          <div
+            className={css({
+              backgroundColor: "#58a6ff",
+              height: "100%",
+              transition: "width 0.3s",
+            })}
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Current clip card */}
+      {currentClip && (
+        <div
+          data-element="clip-card"
+          className={css({
+            backgroundColor: "#0d1117",
+            border: "1px solid",
+            borderColor: flagged.has(currentClip.id) ? "#f85149" : "#30363d",
+            borderRadius: "8px",
+            padding: "24px",
+            marginBottom: "16px",
+            textAlign: "center",
+          })}
+        >
+          <span
+            className={css({
+              display: "inline-block",
+              fontSize: "11px",
+              backgroundColor: "#1f6feb33",
+              color: "#58a6ff",
+              padding: "2px 10px",
+              borderRadius: "12px",
+              marginBottom: "12px",
+              textTransform: "capitalize",
+            })}
+          >
+            {categoryLabel(currentClip.category)}
+          </span>
+          <div
+            className={css({
+              fontFamily: "monospace",
+              fontSize: "12px",
+              color: "#8b949e",
+              marginBottom: "8px",
+            })}
+          >
+            {currentClip.id}
+          </div>
+          <div
+            className={css({
+              fontSize: "24px",
+              fontWeight: "600",
+              color: "#f0f6fc",
+            })}
+          >
+            &ldquo;{currentClip.text}&rdquo;
+          </div>
+          {flagged.has(currentClip.id) && (
+            <div
+              className={css({
+                marginTop: "8px",
+                color: "#f85149",
+                fontSize: "13px",
+                fontWeight: "600",
+              })}
+            >
+              FLAGGED
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Playback controls */}
+      <div
+        data-element="playback-controls"
+        className={css({
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "8px",
+          marginBottom: "12px",
+        })}
+      >
+        <button
+          data-action="review-back"
+          onClick={handleBack}
+          disabled={currentIndex === 0}
+          className={`${buttonBase} ${css({
+            backgroundColor: "#30363d",
+            color: "#c9d1d9",
+            "&:hover": { backgroundColor: "#3d444d" },
+          })}`}
+        >
+          Back
+        </button>
+        <button
+          data-action="review-play-pause"
+          onClick={handlePlayPause}
+          className={`${buttonBase} ${css({
+            backgroundColor: "#1f6feb",
+            color: "#fff",
+            minWidth: "80px",
+            "&:hover": { backgroundColor: "#388bfd" },
+          })}`}
+        >
+          {isPlaying ? "Pause" : "Play"}
+        </button>
+        <button
+          data-action="review-next"
+          onClick={handleNext}
+          className={`${buttonBase} ${css({
+            backgroundColor: "#30363d",
+            color: "#c9d1d9",
+            "&:hover": { backgroundColor: "#3d444d" },
+          })}`}
+        >
+          Next
+        </button>
+        <div className={css({ width: "16px" })} />
+        <button
+          data-action="review-flag"
+          onClick={handleToggleFlag}
+          className={`${buttonBase} ${css({
+            backgroundColor:
+              currentClip && flagged.has(currentClip.id)
+                ? "#f85149"
+                : "#3d1f28",
+            color:
+              currentClip && flagged.has(currentClip.id) ? "#fff" : "#f85149",
+            border: "1px solid #f85149",
+            "&:hover": { backgroundColor: "#f8514944" },
+          })}`}
+        >
+          {currentClip && flagged.has(currentClip.id) ? "Unflag" : "Flag"}
+        </button>
+      </div>
+
+      {/* Auto-advance toggle */}
+      <div
+        data-element="auto-advance"
+        className={css({
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "8px",
+          fontSize: "13px",
+          color: "#8b949e",
+        })}
+      >
+        <label
+          className={css({
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            cursor: "pointer",
+          })}
+        >
+          <input
+            type="checkbox"
+            checked={isAutoAdvance}
+            onChange={(e) => setIsAutoAdvance(e.target.checked)}
+            className={css({ cursor: "pointer" })}
+          />
+          Auto-advance
+        </label>
+        {isAutoAdvance && (
+          <span className={css({ color: "#3fb950", fontSize: "12px" })}>
+            ON
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}

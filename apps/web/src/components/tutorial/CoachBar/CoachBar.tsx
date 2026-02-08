@@ -1,13 +1,30 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
+import { useAudioHelp } from '@/contexts/AudioHelpContext'
 import type { PedagogicalSegment } from '../DecompositionWithReasons'
 import { useTutorialUI } from '../TutorialUIContext'
 
 export function CoachBar() {
   const ui = useTutorialUI()
   const t = useTranslations('tutorial.coachBar')
+  const { isEnabled: audioHelpEnabled } = useAudioHelp()
   const seg: PedagogicalSegment | null = ui.activeSegment
+  const lastSummaryRef = useRef<string>('')
+
+  // Read coach hint aloud via browser SpeechSynthesis when it changes
+  const summary = seg?.readable?.summary
+  useEffect(() => {
+    if (!audioHelpEnabled || !summary || summary === lastSummaryRef.current) return
+    lastSummaryRef.current = summary
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(summary)
+      utterance.rate = 0.9
+      speechSynthesis.cancel()
+      speechSynthesis.speak(utterance)
+    }
+  }, [audioHelpEnabled, summary])
 
   if (!ui.showCoachBar || !seg || !seg.readable?.summary) return null
 

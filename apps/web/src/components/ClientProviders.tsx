@@ -6,6 +6,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import dynamic from 'next/dynamic'
 import { type ReactNode, useState } from 'react'
 import { ToastProvider } from '@/components/common/ToastContext'
+import { AudioHelpProvider } from '@/contexts/AudioHelpContext'
 import { DeploymentInfoProvider } from '@/contexts/DeploymentInfoContext'
 import { FullscreenProvider } from '@/contexts/FullscreenContext'
 import { HomeHeroProvider } from '@/contexts/HomeHeroContext'
@@ -46,15 +47,17 @@ function InnerProviders({ children }: { children: ReactNode }) {
             <FullscreenProvider>
               <HomeHeroProvider>
                 <MyAbacusProvider>
-                  <DeploymentInfoProvider>
-                    <PageTransitionProvider>
-                      {children}
-                      <PageTransitionOverlay />
-                      <DeploymentInfo />
-                      <HeartbeatTracker />
-                      <MyAbacus />
-                    </PageTransitionProvider>
-                  </DeploymentInfoProvider>
+                  <AudioHelpProvider>
+                    <DeploymentInfoProvider>
+                      <PageTransitionProvider>
+                        {children}
+                        <PageTransitionOverlay />
+                        <DeploymentInfo />
+                        <HeartbeatTracker />
+                        <MyAbacus />
+                      </PageTransitionProvider>
+                    </DeploymentInfoProvider>
+                  </AudioHelpProvider>
                 </MyAbacusProvider>
               </HomeHeroProvider>
             </FullscreenProvider>
