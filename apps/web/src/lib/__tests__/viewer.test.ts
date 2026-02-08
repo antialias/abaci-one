@@ -34,12 +34,43 @@ vi.mock('../guest-token', () => ({
   verifyGuestToken: (...args: any[]) => mockVerifyGuestToken(...args),
 }))
 
+// Mock @/db to avoid drizzle-orm hangs
+const mockFindFirst = vi.fn()
+const mockInsertReturning = vi.fn()
+vi.mock('@/db', () => ({
+  db: {
+    query: {
+      users: {
+        findFirst: (...args: any[]) => mockFindFirst(...args),
+      },
+    },
+    insert: vi.fn(() => ({
+      values: vi.fn(() => ({
+        returning: () => mockInsertReturning(),
+      })),
+    })),
+  },
+  schema: {
+    users: {
+      guestId: 'guestId',
+      id: 'id',
+    },
+  },
+}))
+
+// Mock drizzle-orm eq function
+vi.mock('drizzle-orm', () => ({
+  eq: vi.fn((_col: any, val: any) => ({ column: _col, value: val })),
+}))
+
 describe('viewer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAuth.mockResolvedValue(null)
     mockHeadersGet.mockReturnValue(null)
     mockCookiesGet.mockReturnValue(undefined)
+    mockFindFirst.mockResolvedValue(undefined)
+    mockInsertReturning.mockResolvedValue([])
   })
 
   describe('getViewer', () => {
@@ -198,6 +229,29 @@ describe('viewer', () => {
       expect(id).toBe('auth-user-id')
     })
 
+    it('looks up existing user by guestId for guest viewers', async () => {
+      const { getDbUserId } = await import('../viewer')
+
+      mockAuth.mockResolvedValue(null)
+      mockHeadersGet.mockReturnValue('guest-abc')
+      mockFindFirst.mockResolvedValue({ id: 'db-user-id-for-guest', guestId: 'guest-abc' })
+
+      const id = await getDbUserId()
+      expect(id).toBe('db-user-id-for-guest')
+    })
+
+    it('creates new user when guest user not found in DB', async () => {
+      const { getDbUserId } = await import('../viewer')
+
+      mockAuth.mockResolvedValue(null)
+      mockHeadersGet.mockReturnValue('new-guest')
+      mockFindFirst.mockResolvedValue(undefined)
+      mockInsertReturning.mockResolvedValue([{ id: 'newly-created-user-id', guestId: 'new-guest' }])
+
+      const id = await getDbUserId()
+      expect(id).toBe('newly-created-user-id')
+    })
+
     it('throws for unknown viewers', async () => {
       const { getDbUserId } = await import('../viewer')
 
@@ -210,6 +264,56 @@ describe('viewer', () => {
   })
 
   describe('getViewerUser', () => {
+    it('returns user record for authenticated user', async () => {
+      const { getViewerUser } = await import('../viewer')
+
+      const session = {
+        user: { id: 'auth-user-id' },
+        expires: new Date().toISOString(),
+      }
+      mockAuth.mockResolvedValue(session)
+      mockFindFirst.mockResolvedValue({ id: 'auth-user-id', name: 'Test User' })
+
+      const user = await getViewerUser()
+      expect(user).toEqual({ id: 'auth-user-id', name: 'Test User' })
+    })
+
+    it('throws when authenticated user not found in database', async () => {
+      const { getViewerUser } = await import('../viewer')
+
+      const session = {
+        user: { id: 'missing-user-id' },
+        expires: new Date().toISOString(),
+      }
+      mockAuth.mockResolvedValue(session)
+      mockFindFirst.mockResolvedValue(undefined)
+
+      await expect(getViewerUser()).rejects.toThrow('Authenticated user not found in database')
+    })
+
+    it('returns existing user record for guest viewer', async () => {
+      const { getViewerUser } = await import('../viewer')
+
+      mockAuth.mockResolvedValue(null)
+      mockHeadersGet.mockReturnValue('guest-xyz')
+      mockFindFirst.mockResolvedValue({ id: 'guest-db-id', guestId: 'guest-xyz' })
+
+      const user = await getViewerUser()
+      expect(user).toEqual({ id: 'guest-db-id', guestId: 'guest-xyz' })
+    })
+
+    it('creates and returns new user record for guest with no existing record', async () => {
+      const { getViewerUser } = await import('../viewer')
+
+      mockAuth.mockResolvedValue(null)
+      mockHeadersGet.mockReturnValue('new-guest-id')
+      mockFindFirst.mockResolvedValue(undefined)
+      mockInsertReturning.mockResolvedValue([{ id: 'new-db-id', guestId: 'new-guest-id' }])
+
+      const user = await getViewerUser()
+      expect(user).toEqual({ id: 'new-db-id', guestId: 'new-guest-id' })
+    })
+
     it('throws for unknown viewers', async () => {
       const { getViewerUser } = await import('../viewer')
 

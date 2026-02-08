@@ -268,4 +268,262 @@ describe('metrics', () => {
       expect(metricsRegistry).toBeDefined()
     })
   })
+
+  describe('additional metric categories', () => {
+    it('socket category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.socket.connections).toBeDefined()
+      expect(metrics.socket.connectionsTotal).toBeDefined()
+      expect(metrics.socket.eventsTotal).toBeDefined()
+      expect(metrics.socket.roomsActive).toBeDefined()
+    })
+
+    it('db category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.db.queryDuration).toBeDefined()
+      expect(metrics.db.queryTotal).toBeDefined()
+      expect(metrics.db.connectionsActive).toBeDefined()
+    })
+
+    it('arcade category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.arcade.sessionsActive).toBeDefined()
+      expect(metrics.arcade.sessionsTotal).toBeDefined()
+      expect(metrics.arcade.gamesCompleted).toBeDefined()
+      expect(metrics.arcade.scoreHistogram).toBeDefined()
+      expect(metrics.arcade.highScore).toBeDefined()
+    })
+
+    it('worksheet category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.worksheet.generationsTotal).toBeDefined()
+      expect(metrics.worksheet.generationDuration).toBeDefined()
+      expect(metrics.worksheet.problemsGenerated).toBeDefined()
+    })
+
+    it('flashcard category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.flashcard.generationsTotal).toBeDefined()
+      expect(metrics.flashcard.cardsGenerated).toBeDefined()
+    })
+
+    it('flowchart category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.flowchart.viewsTotal).toBeDefined()
+      expect(metrics.flowchart.workshopSessionsActive).toBeDefined()
+      expect(metrics.flowchart.workshopProblemsTotal).toBeDefined()
+    })
+
+    it('vision category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.vision.recordingsActive).toBeDefined()
+      expect(metrics.vision.recordingsTotal).toBeDefined()
+      expect(metrics.vision.framesProcessed).toBeDefined()
+      expect(metrics.vision.recognitionsTotal).toBeDefined()
+      expect(metrics.vision.remoteCameraSessionsActive).toBeDefined()
+    })
+
+    it('classroom category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.classroom.active).toBeDefined()
+      expect(metrics.classroom.studentsTotal).toBeDefined()
+      expect(metrics.classroom.playerLogins).toBeDefined()
+      expect(metrics.classroom.teacherLogins).toBeDefined()
+    })
+
+    it('curriculum category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.curriculum.skillMastery).toBeDefined()
+      expect(metrics.curriculum.skillsUnlocked).toBeDefined()
+      expect(metrics.curriculum.sessionsCompleted).toBeDefined()
+    })
+
+    it('llm category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.llm.requestsTotal).toBeDefined()
+      expect(metrics.llm.requestDuration).toBeDefined()
+      expect(metrics.llm.tokensUsed).toBeDefined()
+    })
+
+    it('smokeTest category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.smokeTest.lastStatus).toBeDefined()
+      expect(metrics.smokeTest.lastRunTimestamp).toBeDefined()
+      expect(metrics.smokeTest.lastDuration).toBeDefined()
+      expect(metrics.smokeTest.lastTotal).toBeDefined()
+      expect(metrics.smokeTest.lastPassed).toBeDefined()
+      expect(metrics.smokeTest.lastFailed).toBeDefined()
+      expect(metrics.smokeTest.runsTotal).toBeDefined()
+    })
+
+    it('coverage category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.coverage.linesPct).toBeDefined()
+      expect(metrics.coverage.branchesPct).toBeDefined()
+      expect(metrics.coverage.functionsPct).toBeDefined()
+      expect(metrics.coverage.statementsPct).toBeDefined()
+      expect(metrics.coverage.lastRunTimestamp).toBeDefined()
+    })
+
+    it('errors category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.errors.total).toBeDefined()
+      expect(metrics.errors.byCode).toBeDefined()
+    })
+
+    it('sessions category has expected metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.sessions.active).toBeDefined()
+      expect(metrics.sessions.duration).toBeDefined()
+      expect(metrics.sessions.pageViews).toBeDefined()
+      expect(metrics.sessions.uniqueVisitors).toBeDefined()
+    })
+  })
+
+  describe('individual metric names', () => {
+    it('http metrics have correct names', async () => {
+      const { httpRequestDuration, httpRequestTotal, httpRequestsInFlight } = await import(
+        '../metrics'
+      )
+
+      expect((httpRequestDuration as any).name).toBe('http_request_duration_seconds')
+      expect((httpRequestTotal as any).name).toBe('http_requests_total')
+      expect((httpRequestsInFlight as any).name).toBe('http_requests_in_flight')
+    })
+
+    it('socket metrics have correct names', async () => {
+      const { socketConnections, socketConnectionsTotal, socketEventsTotal } = await import(
+        '../metrics'
+      )
+
+      expect((socketConnections as any).name).toBe('socketio_connections_active')
+      expect((socketConnectionsTotal as any).name).toBe('socketio_connections_total')
+      expect((socketEventsTotal as any).name).toBe('socketio_events_total')
+    })
+
+    it('db metrics have correct names', async () => {
+      const { dbQueryDuration, dbQueryTotal, dbConnectionsActive } = await import('../metrics')
+
+      expect((dbQueryDuration as any).name).toBe('db_query_duration_seconds')
+      expect((dbQueryTotal as any).name).toBe('db_queries_total')
+      expect((dbConnectionsActive as any).name).toBe('db_connections_active')
+    })
+
+    it('practice metrics have correct names', async () => {
+      const { practiceProblemsTotal, practiceResponseTime } = await import('../metrics')
+
+      expect((practiceProblemsTotal as any).name).toBe('practice_problems_total')
+      expect((practiceResponseTime as any).name).toBe('practice_response_time_seconds')
+    })
+
+    it('error metrics have correct names', async () => {
+      const { errorsTotal, errorsByCode } = await import('../metrics')
+
+      expect((errorsTotal as any).name).toBe('errors_total')
+      expect((errorsByCode as any).name).toBe('errors_by_code_total')
+    })
+  })
+
+  describe('updateSmokeTestMetrics edge cases', () => {
+    it('sets durationMs in seconds', async () => {
+      const { updateSmokeTestMetrics, smokeTestLastDuration } = await import('../metrics')
+
+      updateSmokeTestMetrics({
+        status: 'passed',
+        startedAt: new Date(),
+        completedAt: new Date(),
+        totalTests: 5,
+        passedTests: 5,
+        failedTests: 0,
+        durationMs: 45000,
+      })
+
+      expect((smokeTestLastDuration as any).getValue()).toBe(45)
+    })
+
+    it('sets passedTests and failedTests counts', async () => {
+      const { updateSmokeTestMetrics, smokeTestLastPassed, smokeTestLastFailed } = await import(
+        '../metrics'
+      )
+
+      updateSmokeTestMetrics({
+        status: 'failed',
+        startedAt: new Date(),
+        completedAt: new Date(),
+        totalTests: 10,
+        passedTests: 7,
+        failedTests: 3,
+        durationMs: 30000,
+      })
+
+      expect((smokeTestLastPassed as any).getValue()).toBe(7)
+      expect((smokeTestLastFailed as any).getValue()).toBe(3)
+    })
+
+    it('handles status other than passed as 0', async () => {
+      const { updateSmokeTestMetrics, smokeTestLastStatus } = await import('../metrics')
+
+      updateSmokeTestMetrics({
+        status: 'error',
+        startedAt: new Date(),
+        completedAt: null,
+        totalTests: null,
+        passedTests: null,
+        failedTests: null,
+        durationMs: null,
+      })
+
+      expect((smokeTestLastStatus as any).getValue()).toBe(0)
+    })
+  })
+
+  describe('updateCoverageMetrics edge cases', () => {
+    it('handles zero coverage values', async () => {
+      const { updateCoverageMetrics, coverageLinesPct, coverageBranchesPct } = await import(
+        '../metrics'
+      )
+
+      updateCoverageMetrics({
+        linesPct: 0,
+        branchesPct: 0,
+        functionsPct: 0,
+        statementsPct: 0,
+        timestamp: new Date(),
+      })
+
+      expect((coverageLinesPct as any).getValue()).toBe(0)
+      expect((coverageBranchesPct as any).getValue()).toBe(0)
+    })
+
+    it('handles 100% coverage values', async () => {
+      const { updateCoverageMetrics, coverageLinesPct, coverageFunctionsPct } = await import(
+        '../metrics'
+      )
+
+      updateCoverageMetrics({
+        linesPct: 100,
+        branchesPct: 100,
+        functionsPct: 100,
+        statementsPct: 100,
+        timestamp: new Date(),
+      })
+
+      expect((coverageLinesPct as any).getValue()).toBe(100)
+      expect((coverageFunctionsPct as any).getValue()).toBe(100)
+    })
+  })
 })
