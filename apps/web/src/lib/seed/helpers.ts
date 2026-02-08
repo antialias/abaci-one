@@ -42,7 +42,10 @@ export function generateSlotResults(
       problem,
       studentAnswer: isCorrect ? realistic.answer : wrongAnswer,
       isCorrect,
-      responseTimeMs: 4000 + Math.random() * 2000,
+      responseTimeMs: (() => {
+        const range = config.responseTimeMsRange ?? { min: 4000, max: 6000 }
+        return range.min + Math.random() * (range.max - range.min)
+      })(),
       skillsExercised: realistic.skillsUsed, // ALL skills used, not just target
       usedOnScreenAbacus: false,
       timestamp: new Date(sessionStartTime.getTime() + (startIndex + i) * 10000),

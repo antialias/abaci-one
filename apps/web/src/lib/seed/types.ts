@@ -18,6 +18,8 @@ export interface SkillConfig {
   ageDays?: number
   /** Simulate legacy data by omitting hadHelp field (tests NaN handling) */
   simulateLegacyData?: boolean
+  /** Range for generated responseTimeMs values (default: { min: 4000, max: 6000 }) */
+  responseTimeMsRange?: { min: number; max: number }
 }
 
 /**

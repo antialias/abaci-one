@@ -1419,6 +1419,214 @@ Use this to verify:
       },
     ],
   },
+
+  // =============================================================================
+  // Progressive Assistance Test Profiles
+  // =============================================================================
+
+  {
+    name: '🐢 Slow Struggling Student',
+    emoji: '🐢',
+    color: '#b45309',
+    category: 'edge',
+    description: 'PROGRESSIVE ASSISTANCE - Slow responses, thresholds in mid-range (not clamped)',
+    currentPhaseId: 'L1.add.+3.five',
+    practicingSkills: MID_L1_SKILLS,
+    ensureAllPracticingHaveHistory: true,
+    tutorialCompletedSkills: MID_L1_SKILLS,
+    intentionNotes: `INTENTION: Slow Struggling Student (Progressive Assistance Test)
+
+This student has SLOW response times (15-30s per problem) that produce
+progressive assistance thresholds in the mid-range, avoiding min/max clamps.
+
+Response time range: 15,000 - 30,000ms
+Expected statistics (with ~40+ problems):
+  mean ≈ 22.5s, σ ≈ 4.3s
+
+Expected progressive thresholds:
+  encouragement: clamp(22.5s, 8s, 45s) = 22.5s  ← mid-range, not clamped
+  helpOffer:     clamp(26.8s, 15s, 90s) = 26.8s  ← mid-range, not clamped
+  autoPause:     clamp(31.1s, 30s, 300s) = 31.1s ← just above minimum
+
+Skills are mixed (some weak, some developing) so the student will actually
+struggle and trigger the assistance system during practice.
+
+Use this to test:
+  • Timer-driven escalation: idle → encouraging → offeringHelp → autoPaused
+  • Thresholds computed from actual response time statistics
+  • Debug panel showing statistical threshold calculation
+  • The full assistance lifecycle with realistic pacing`,
+    skillHistory: [
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 20,
+        responseTimeMsRange: { min: 15000, max: 30000 },
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'developing',
+        problems: 18,
+        responseTimeMsRange: { min: 15000, max: 30000 },
+      },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'weak',
+        problems: 15,
+        responseTimeMsRange: { min: 15000, max: 30000 },
+      },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'weak',
+        problems: 12,
+        responseTimeMsRange: { min: 15000, max: 30000 },
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
+        problems: 10,
+        responseTimeMsRange: { min: 15000, max: 30000 },
+      },
+    ],
+  },
+  {
+    name: '🎲 High Variance Student',
+    emoji: '🎲',
+    color: '#7c3aed',
+    category: 'edge',
+    description: 'PROGRESSIVE ASSISTANCE - Wide response time spread, large gaps between thresholds',
+    currentPhaseId: 'L1.add.+2.five',
+    practicingSkills: MID_L1_SKILLS,
+    ensureAllPracticingHaveHistory: true,
+    tutorialCompletedSkills: MID_L1_SKILLS,
+    intentionNotes: `INTENTION: High Variance Student (Progressive Assistance Test)
+
+This student has HIGHLY VARIABLE response times (5-45s per problem).
+Some problems are answered quickly, others take very long.
+This produces WIDE gaps between progressive assistance thresholds.
+
+Response time range: 5,000 - 45,000ms
+Expected statistics (with ~50+ problems):
+  mean ≈ 25s, σ ≈ 11.5s
+
+Expected progressive thresholds:
+  encouragement: clamp(25s, 8s, 45s)   = 25s    ← mid-range
+  helpOffer:     clamp(36.5s, 15s, 90s) = 36.5s  ← mid-range, wide gap from encouragement
+  autoPause:     clamp(48s, 30s, 300s)  = 48s    ← well above minimum
+
+The wide σ means there's a BIG gap between encouragement (25s) and
+auto-pause (48s), giving the student plenty of time to get help.
+
+Skills are developing (mid-range accuracy) — typical of a student
+who sometimes "gets it" and sometimes doesn't.
+
+Use this to test:
+  • Large gaps between threshold levels
+  • Debug panel threshold progress bar with wide segments
+  • Student has time to interact with help offer before auto-pause
+  • Statistical calculation handles high variance correctly`,
+    skillHistory: [
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 22,
+        responseTimeMsRange: { min: 5000, max: 45000 },
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'developing',
+        problems: 20,
+        responseTimeMsRange: { min: 5000, max: 45000 },
+      },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'developing',
+        problems: 18,
+        responseTimeMsRange: { min: 5000, max: 45000 },
+      },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'developing',
+        problems: 15,
+        responseTimeMsRange: { min: 5000, max: 45000 },
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
+        problems: 12,
+        responseTimeMsRange: { min: 5000, max: 45000 },
+      },
+    ],
+  },
+  {
+    name: '⚡ Fast Responder',
+    emoji: '⚡',
+    color: '#eab308',
+    category: 'edge',
+    description: 'PROGRESSIVE ASSISTANCE - Very fast responses, all thresholds at minimum clamps',
+    currentPhaseId: 'L1.add.+3.five',
+    practicingSkills: MID_L1_SKILLS,
+    ensureAllPracticingHaveHistory: true,
+    tutorialCompletedSkills: MID_L1_SKILLS,
+    intentionNotes: `INTENTION: Fast Responder (Progressive Assistance Test)
+
+This student has VERY FAST response times (1.5-4s per problem).
+All progressive assistance thresholds will hit their MINIMUM clamps.
+
+Response time range: 1,500 - 4,000ms
+Expected statistics (with ~50+ problems):
+  mean ≈ 2.75s, σ ≈ 0.72s
+
+Expected progressive thresholds (all clamped to minimums):
+  encouragement: clamp(2.75s, 8s, 45s)  = 8s   ← minimum clamp
+  helpOffer:     clamp(3.47s, 15s, 90s)  = 15s  ← minimum clamp
+  autoPause:     clamp(4.19s, 30s, 300s) = 30s  ← minimum clamp
+
+This is the BASELINE case — tests that the min clamps work correctly
+and that the assistance system still functions with fast responders.
+Most real students answering basic addition will be in this range.
+
+Skills are mostly strong (fast student = proficient student), with
+one weak skill to provide a realistic struggle point.
+
+Use this to test:
+  • Min clamp behavior (thresholds = 8s, 15s, 30s)
+  • Escalation still works at minimum thresholds
+  • Compare with 🐢 Slow Struggling to see full threshold range
+  • Debug panel showing clamped vs. computed values`,
+    skillHistory: [
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 25,
+        responseTimeMsRange: { min: 1500, max: 4000 },
+      },
+      {
+        skillId: 'basic.heavenBead',
+        targetClassification: 'strong',
+        problems: 22,
+        responseTimeMsRange: { min: 1500, max: 4000 },
+      },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
+        problems: 20,
+        responseTimeMsRange: { min: 1500, max: 4000 },
+      },
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'developing',
+        problems: 15,
+        responseTimeMsRange: { min: 1500, max: 4000 },
+      },
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'weak',
+        problems: 10,
+        responseTimeMsRange: { min: 1500, max: 4000 },
+      },
+    ],
+  },
 ]
 
 // =============================================================================
@@ -1454,6 +1662,9 @@ export function deriveTags(profile: TestStudentProfile): string[] {
   }
   if (profile.intentionNotes.includes('TERM COUNT SCALING')) {
     tags.push('term-count-scaling')
+  }
+  if (profile.skillHistory.some((s) => s.responseTimeMsRange)) {
+    tags.push('progressive-assistance')
   }
 
   return tags
