@@ -88,6 +88,12 @@ export const versionHistoryKeys = {
   session: (sessionId: string) => [...versionHistoryKeys.all, sessionId] as const,
 }
 
+// Session preferences query keys (per-student StartPracticeModal settings)
+export const sessionPreferencesKeys = {
+  all: ['session-preferences'] as const,
+  detail: (playerId: string) => [...sessionPreferencesKeys.all, playerId] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player

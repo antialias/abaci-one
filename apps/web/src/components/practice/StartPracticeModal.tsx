@@ -2,11 +2,16 @@
 
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   useSkillTutorialBroadcast,
   type SkillTutorialBroadcastState,
 } from '@/hooks/useSkillTutorialBroadcast'
+import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
+import {
+  usePlayerSessionPreferences,
+  useSavePlayerSessionPreferences,
+} from '@/hooks/usePlayerSessionPreferences'
 import type { SkillTutorialControlAction } from '@/lib/classroom/socket-events'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPlan } from '@/db/schema/session-plans'
@@ -69,6 +74,58 @@ export function StartPracticeModal({
   initialExpanded,
   practiceApprovedGamesOverride,
 }: StartPracticeModalProps) {
+  // Load persisted preferences for this student.
+  // We must wait for the query to settle before rendering the provider,
+  // because useState initializers only run on first mount — if the provider
+  // mounts before the query resolves, saved values are ignored.
+  const { data: savedPreferences, isLoading: prefsLoading } =
+    usePlayerSessionPreferences(studentId)
+  const saveMutation = useSavePlayerSessionPreferences(studentId)
+  // Ref so the callback never changes identity when mutation state changes
+  const saveMutationRef = useRef(saveMutation)
+  saveMutationRef.current = saveMutation
+
+  // Debounced save: 1000ms after last change
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleSavePreferences = useCallback(
+    (prefs: PlayerSessionPreferencesConfig) => {
+      // Clear any existing debounce timer
+      if (debounceTimer.current) clearTimeout(debounceTimer.current)
+      // Clear any "saved" fade timer
+      if (fadeTimer.current) clearTimeout(fadeTimer.current)
+
+      setSaveStatus('saving')
+
+      debounceTimer.current = setTimeout(() => {
+        saveMutationRef.current.mutate(prefs, {
+          onSuccess: () => {
+            setSaveStatus('saved')
+            // Fade the "Saved" indicator after 3 seconds
+            fadeTimer.current = setTimeout(() => setSaveStatus('idle'), 3000)
+          },
+          onError: () => {
+            setSaveStatus('error')
+          },
+        })
+      }, 1000)
+    },
+    [] // stable — no deps that change identity
+  )
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current)
+      if (fadeTimer.current) clearTimeout(fadeTimer.current)
+    }
+  }, [])
+
+  // Don't render until preferences have loaded so useState initializers see the saved values
+  if (prefsLoading) return null
+
   return (
     <StartPracticeModalProvider
       studentId={studentId}
@@ -82,6 +139,8 @@ export function StartPracticeModal({
       onStarted={onStarted}
       initialExpanded={initialExpanded}
       practiceApprovedGamesOverride={practiceApprovedGamesOverride}
+      savedPreferences={savedPreferences}
+      onSavePreferences={handleSavePreferences}
     >
       <StartPracticeModalContent
         studentId={studentId}
@@ -89,6 +148,7 @@ export function StartPracticeModal({
         focusDescription={focusDescription}
         onClose={onClose}
         open={open}
+        saveStatus={saveStatus}
       />
     </StartPracticeModalProvider>
   )
@@ -100,6 +160,7 @@ interface StartPracticeModalContentProps {
   focusDescription: string
   onClose: () => void
   open: boolean
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error'
 }
 
 function StartPracticeModalContent({
@@ -108,6 +169,7 @@ function StartPracticeModalContent({
   focusDescription,
   onClose,
   open,
+  saveStatus,
 }: StartPracticeModalContentProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -415,20 +477,57 @@ function StartPracticeModalContent({
                           },
                         })}
                       >
-                        <span
+                        <div
+                          data-element="settings-header-left"
                           className={css({
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            color: isDark ? 'gray.400' : 'gray.500',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            '@media (max-width: 480px), (max-height: 700px)': {
-                              fontSize: '0.625rem',
-                            },
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
                           })}
                         >
-                          Session Settings
-                        </span>
+                          <span
+                            className={css({
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              color: isDark ? 'gray.400' : 'gray.500',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                              '@media (max-width: 480px), (max-height: 700px)': {
+                                fontSize: '0.625rem',
+                              },
+                            })}
+                          >
+                            Session Settings
+                          </span>
+                          {saveStatus !== 'idle' && (
+                            <span
+                              data-element="save-status"
+                              className={css({
+                                fontSize: '0.625rem',
+                                fontWeight: '500',
+                                transition: 'opacity 0.3s ease',
+                              })}
+                              style={{
+                                color:
+                                  saveStatus === 'error'
+                                    ? '#ef4444'
+                                    : saveStatus === 'saving'
+                                      ? isDark
+                                        ? '#94a3b8'
+                                        : '#64748b'
+                                      : isDark
+                                        ? '#4ade80'
+                                        : '#16a34a',
+                              }}
+                            >
+                              {saveStatus === 'saving'
+                                ? 'Saving...'
+                                : saveStatus === 'saved'
+                                  ? 'Saved'
+                                  : 'Save failed'}
+                            </span>
+                          )}
+                        </div>
                         <button
                           type="button"
                           data-action="collapse-settings"

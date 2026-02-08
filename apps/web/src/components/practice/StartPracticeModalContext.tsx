@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -17,6 +18,7 @@ import type {
   PracticeBreakGameConfig,
 } from '@/db/schema/session-plans'
 import { DEFAULT_PLAN_CONFIG, DEFAULT_GAME_BREAK_SETTINGS } from '@/db/schema/session-plans'
+import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
 import { getPracticeApprovedGames } from '@/lib/arcade/practice-approved-games'
 import type { PracticeBreakConfig } from '@/lib/arcade/manifest-schema'
 import {
@@ -232,6 +234,10 @@ interface StartPracticeModalProviderProps {
   initialExpanded?: boolean
   /** Override practice-approved games list (for Storybook/testing) */
   practiceApprovedGamesOverride?: GameInfo[]
+  /** Previously saved session preferences for this student */
+  savedPreferences?: PlayerSessionPreferencesConfig | null
+  /** Callback fired when settings change (caller should debounce) */
+  onSavePreferences?: (prefs: PlayerSessionPreferencesConfig) => void
 }
 
 export function StartPracticeModalProvider({
@@ -247,23 +253,25 @@ export function StartPracticeModalProvider({
   onStarted,
   initialExpanded = false,
   practiceApprovedGamesOverride,
+  savedPreferences,
+  onSavePreferences,
 }: StartPracticeModalProviderProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
 
-  // Session config state
-  const [durationMinutes, setDurationMinutes] = useState(existingPlan?.targetDurationMinutes ?? 10)
+  // Session config state (savedPreferences takes priority, then existingPlan, then hardcoded defaults)
+  const [durationMinutes, setDurationMinutes] = useState(
+    savedPreferences?.durationMinutes ?? existingPlan?.targetDurationMinutes ?? 10
+  )
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
   const [showSkillSelector, setShowSkillSelector] = useState(false)
   // Whether to include tutorial in session (default: true if tutorial is required)
   const [includeTutorial, setIncludeTutorial] = useState(
     sessionMode.type === 'progression' && sessionMode.tutorialRequired
   )
-  const [partWeights, setPartWeights] = useState<PartWeights>({
-    abacus: 2,
-    visualization: 1,
-    linear: 0,
-  })
+  const [partWeights, setPartWeights] = useState<PartWeights>(
+    savedPreferences?.partWeights ?? { abacus: 2, visualization: 1, linear: 0 }
+  )
   const enabledParts = useMemo<EnabledParts>(
     () => ({
       abacus: partWeights.abacus > 0,
@@ -273,22 +281,27 @@ export function StartPracticeModalProvider({
     [partWeights]
   )
   const [problemLengthPreference, setProblemLengthPreference] =
-    useState<ProblemLengthPreference>('recommended')
+    useState<ProblemLengthPreference>(savedPreferences?.problemLengthPreference ?? 'recommended')
 
   // Game break config state
-  const [gameBreakEnabled, setGameBreakEnabled] = useState(DEFAULT_GAME_BREAK_SETTINGS.enabled)
+  const [gameBreakEnabled, setGameBreakEnabled] = useState(
+    savedPreferences?.gameBreakEnabled ?? DEFAULT_GAME_BREAK_SETTINGS.enabled
+  )
   const [gameBreakMinutes, setGameBreakMinutes] = useState(
-    DEFAULT_GAME_BREAK_SETTINGS.maxDurationMinutes
+    savedPreferences?.gameBreakMinutes ?? DEFAULT_GAME_BREAK_SETTINGS.maxDurationMinutes
   )
   const [gameBreakSelectionMode, setGameBreakSelectionMode] = useState<GameBreakSelectionMode>(
-    DEFAULT_GAME_BREAK_SETTINGS.selectionMode
+    (savedPreferences?.gameBreakSelectionMode as GameBreakSelectionMode) ??
+      DEFAULT_GAME_BREAK_SETTINGS.selectionMode
   )
   const [gameBreakSelectedGame, setGameBreakSelectedGameRaw] = useState<string | 'random' | null>(
-    DEFAULT_GAME_BREAK_SETTINGS.selectedGame
+    savedPreferences?.gameBreakSelectedGame ?? DEFAULT_GAME_BREAK_SETTINGS.selectedGame
   )
   // Per-game config state
   const [gameBreakDifficultyPreset, setGameBreakDifficultyPreset] =
-    useState<GameBreakDifficultyPreset>('medium')
+    useState<GameBreakDifficultyPreset>(
+      (savedPreferences?.gameBreakDifficultyPreset as GameBreakDifficultyPreset) ?? 'medium'
+    )
   const [gameBreakCustomConfig, setGameBreakCustomConfig] = useState<Record<string, unknown>>({})
   const [gameBreakShowCustomize, setGameBreakShowCustomize] = useState(false)
 
@@ -318,13 +331,12 @@ export function StartPracticeModalProvider({
   }, [])
 
   // Purpose weight state
-  const [purposeWeights, setPurposeWeights] = useState<PurposeWeights>({
-    focus: 3,
-    reinforce: 1,
-    review: 1,
-    challenge: 1,
-  })
-  const [shufflePurposes, setShufflePurposes] = useState(true)
+  const [purposeWeights, setPurposeWeights] = useState<PurposeWeights>(
+    savedPreferences?.purposeWeights ?? { focus: 3, reinforce: 1, review: 1, challenge: 1 }
+  )
+  const [shufflePurposes, setShufflePurposes] = useState(
+    savedPreferences?.shufflePurposes ?? true
+  )
 
   // Tap on segment: 0→1, 1↔2 (no-op if sole active)
   const cyclePurposeWeight = useCallback((purposeType: PurposeWeightType) => {
@@ -437,6 +449,54 @@ export function StartPracticeModalProvider({
       setGameBreakSelectionMode('auto-start')
     }
   }, [hasSingleGame, singleGame])
+
+  // Fire onSavePreferences callback whenever any persisted setting changes.
+  // Use a ref for the callback so the effect only re-runs when settings change,
+  // not when the callback identity changes (which would cause an infinite loop).
+  const onSavePreferencesRef = useRef(onSavePreferences)
+  onSavePreferencesRef.current = onSavePreferences
+
+  // Track the last-saved config as JSON so we only fire saves when values actually change.
+  // This handles StrictMode double-mount (ref persists, so second mount sees same JSON → skips)
+  // and object reference changes (partWeights/purposeWeights are new objects each render).
+  const lastSavedConfigRef = useRef<string | null>(null)
+  useEffect(() => {
+    const config = {
+      durationMinutes,
+      problemLengthPreference,
+      partWeights,
+      purposeWeights,
+      shufflePurposes,
+      gameBreakEnabled,
+      gameBreakMinutes,
+      gameBreakSelectionMode,
+      gameBreakSelectedGame: gameBreakSelectedGame === 'random' ? null : gameBreakSelectedGame,
+      gameBreakDifficultyPreset,
+    }
+    const configJson = JSON.stringify(config)
+
+    if (lastSavedConfigRef.current === null) {
+      // First run — capture initial state, don't save
+      lastSavedConfigRef.current = configJson
+      return
+    }
+
+    if (configJson === lastSavedConfigRef.current) return
+
+    lastSavedConfigRef.current = configJson
+    onSavePreferencesRef.current?.(config)
+  }, [
+    durationMinutes,
+    problemLengthPreference,
+    partWeights,
+    purposeWeights,
+    shufflePurposes,
+    gameBreakEnabled,
+    gameBreakMinutes,
+    gameBreakSelectionMode,
+    gameBreakSelectedGame,
+    gameBreakDifficultyPreset,
+  ])
 
   // Derive partTimeWeights from partWeights for the API call
   const partTimeWeights = useMemo(() => {
