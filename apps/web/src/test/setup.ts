@@ -83,6 +83,14 @@ vi.mock('next-intl', () => ({
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
+// Mock device capability hooks to prevent uncaught matchMedia exceptions
+// These hooks use setTimeout callbacks that fire after test cleanup in jsdom
+vi.mock('@/hooks/useDeviceCapabilities', () => ({
+  useIsTouchDevice: () => false,
+  useHasAnyFinePointer: () => true,
+  useHasPhysicalKeyboard: () => true,
+}))
+
 // Mock @soroban/abacus-react for tests
 // This provides mock implementations of abacus display context and components
 const mockAbacusConfig = {

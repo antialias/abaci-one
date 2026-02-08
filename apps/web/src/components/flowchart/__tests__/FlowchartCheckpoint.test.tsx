@@ -36,6 +36,13 @@ vi.mock('react-simple-keyboard', () => ({
   ),
 }))
 
+// Mock device capabilities to show virtual keyboard in tests
+vi.mock('@/hooks/useDeviceCapabilities', () => ({
+  useIsTouchDevice: () => true,
+  useHasAnyFinePointer: () => false,
+  useHasPhysicalKeyboard: () => false,
+}))
+
 // Mock Panda CSS
 vi.mock('../../../../styled-system/css', () => ({
   css: vi.fn(() => 'mocked-css-class'),
