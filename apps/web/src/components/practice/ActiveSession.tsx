@@ -16,7 +16,7 @@ import {
 } from '@/db/schema/session-plans'
 
 import { css } from '../../../styled-system/css'
-import { type AutoPauseStats, calculateAutoPauseInfo, type PauseInfo } from './autoPauseCalculator'
+import { type AutoPauseStats, type PauseInfo } from './autoPauseCalculator'
 import { BrowseModeView, getLinearIndex } from './BrowseModeView'
 import { PartTransitionScreen, TRANSITION_COUNTDOWN_MS } from './PartTransitionScreen'
 import { extractTargetSkillName, PurposeBadge } from './PurposeBadge'
@@ -42,12 +42,18 @@ import { DecompositionProvider, DecompositionSection } from '../decomposition'
 import { generateCoachHint } from './coachHintGenerator'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { findMatchedPrefixIndex, useInteractionPhase } from './hooks/useInteractionPhase'
+import { useAudioHelp } from '@/contexts/AudioHelpContext'
+import { AudioHelpButton } from './AudioHelpButton'
+import { usePracticeAudioHelp } from './hooks/usePracticeAudioHelp'
 import { usePracticeSoundEffects } from './hooks/usePracticeSoundEffects'
 import { NumericKeypad } from './NumericKeypad'
 import { PracticeFeedback } from './PracticeFeedback'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
 import { DebugOverlay } from './DebugOverlay'
 import { ProblemDebugPanel } from './ProblemDebugPanel'
+import { AssistanceDebugPanel } from './AssistanceDebugPanel'
+import { ProgressiveAssistanceUI } from './ProgressiveAssistanceUI'
+import { useProgressiveAssistance } from './hooks/useProgressiveAssistance'
 import { VerticalProblem } from './VerticalProblem'
 import type { ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
 import { useSetRemoteCameraSession } from '@/hooks/useSessionPlan'
@@ -574,6 +580,57 @@ export function ActiveSession({
     onManualSubmitRequired: () => playSound('womp_womp'),
   })
 
+  // Progressive assistance state machine — subsumes auto-pause timer
+  const handleAutoPause = useCallback(
+    (info: PauseInfo) => {
+      setPauseInfo(info)
+      pause()
+      onPause?.(info)
+    },
+    [pause, onPause]
+  )
+
+  const assistance = useProgressiveAssistance({
+    attempt: attempt ? {
+      startTime: attempt.startTime,
+      accumulatedPauseMs: attempt.accumulatedPauseMs,
+      problem: { terms: attempt.problem.terms },
+    } : null,
+    results: plan.results,
+    problemTermsCount: attempt?.problem?.terms?.length ?? 0,
+    isPaused,
+    onAutoPause: handleAutoPause,
+  })
+
+  // Sync assistance machine with interaction phase transitions
+  const prevPhaseRef = useRef(phase.phase)
+  useEffect(() => {
+    const prev = prevPhaseRef.current
+    const curr = phase.phase
+    prevPhaseRef.current = curr
+
+    // Entered help mode
+    if (curr === 'helpMode' && prev !== 'helpMode') {
+      assistance.onHelpEntered()
+    }
+    // Exited help mode
+    if (prev === 'helpMode' && curr !== 'helpMode') {
+      assistance.onHelpExited()
+    }
+  }, [phase.phase, assistance.onHelpEntered, assistance.onHelpExited])
+
+  // Notify assistance machine when problem changes
+  const prevActiveProblemKeyRef = useRef(activeProblem?.key)
+  useEffect(() => {
+    const prevKey = prevActiveProblemKeyRef.current
+    const currKey = activeProblem?.key
+    prevActiveProblemKeyRef.current = currKey
+
+    if (prevKey !== undefined && currKey !== prevKey) {
+      assistance.onProblemChanged()
+    }
+  }, [activeProblem?.key, assistance.onProblemChanged])
+
   // Notify parent of timing data changes for external timing display
   useEffect(() => {
     if (onTimingUpdate) {
@@ -587,6 +644,16 @@ export function ActiveSession({
       }
     }
   }, [onTimingUpdate, attempt?.startTime, attempt?.accumulatedPauseMs])
+
+  // Audio help — reads problems and feedback aloud for non-readers
+  const { isEnabled: audioHelpEnabled, isPlaying: audioHelpIsPlaying } = useAudioHelp()
+  const audioHelpIsCorrect = phase.phase === 'showingFeedback' ? phase.result === 'correct' : null
+  const { replayProblem } = usePracticeAudioHelp({
+    terms: attempt?.problem?.terms ?? null,
+    showingFeedback: showFeedback,
+    isCorrect: audioHelpIsCorrect,
+    correctAnswer: attempt?.problem?.answer ?? null,
+  })
 
   // Calculate total progress across all parts (needed for broadcast state)
   const totalProblems = useMemo(() => {
@@ -816,7 +883,7 @@ export function ActiveSession({
 
     // Resume the session
     setPauseInfo(undefined)
-    lastResumeTimeRef.current = Date.now()
+    assistance.onResumed()
     resume()
     onResume?.()
 
@@ -916,14 +983,12 @@ export function ActiveSession({
     prevBrowseModeProp.current = isBrowseModeProp
   }, [isBrowseModeProp, currentPracticeLinearIndex, setBrowseIndex])
 
-  // Track last resume time to reset auto-pause timer after resuming
-  const lastResumeTimeRef = useRef<number>(0)
   const handleDigitWithTimerReset = useCallback(
     (digit: string) => {
-      lastResumeTimeRef.current = Date.now()
+      assistance.onDigitTyped()
       handleDigit(digit)
     },
-    [handleDigit]
+    [handleDigit, assistance.onDigitTyped]
   )
 
   // Reset dismissed states when help context changes (new help session)
@@ -1175,6 +1240,9 @@ export function ActiveSession({
   const handleTargetReached = useCallback(() => {
     if (phase.phase !== 'helpMode' || !helpContext) return
 
+    // Notify assistance machine that a help term was completed
+    assistance.onHelpTermCompleted(helpContext.termIndex)
+
     // Step 1: Set the answer to the target value (shows in answer boxes behind abacus)
     setAnswer(String(helpContext.targetValue))
 
@@ -1196,7 +1264,7 @@ export function ActiveSession({
         }, 300) // Match fade-out duration
       }, 1000) // Show target value in answer boxes for 1 second
     }, 600) // Brief pause to see success state on abacus
-  }, [phase.phase, helpContext, setAnswer, clearAnswer, exitHelpMode])
+  }, [phase.phase, helpContext, setAnswer, clearAnswer, exitHelpMode, assistance.onHelpTermCompleted])
 
   // Handle value change from the docked abacus
   const handleAbacusDockValueChange = useCallback(
@@ -1244,6 +1312,11 @@ export function ActiveSession({
     const responseTimeMs = Date.now() - attemptData.startTime - attemptData.accumulatedPauseMs
     const isCorrect = answerNum === attemptData.problem.answer
 
+    // Notify assistance machine of incorrect answer
+    if (!isCorrect) {
+      assistance.onWrongAnswer()
+    }
+
     // Collect vision training data if answer is correct and vision is enabled
     // This runs in the background (fire-and-forget) to not block the UI
     if (isCorrect) {
@@ -1259,8 +1332,8 @@ export function ActiveSession({
       responseTimeMs,
       skillsExercised: attemptData.problem.skillsRequired,
       usedOnScreenAbacus: phase.phase === 'helpMode',
-      incorrectAttempts: 0, // TODO: track this properly
-      hadHelp: phase.phase === 'helpMode',
+      incorrectAttempts: assistance.machineState.context.wrongAttemptCount,
+      hadHelp: phase.phase === 'helpMode' || assistance.machineState.context.helpedTermIndices.size > 0,
     }
 
     // Handle redo mode differently - use onRecordRedo which doesn't advance session position
@@ -1366,6 +1439,9 @@ export function ActiveSession({
     redoState,
     redoOriginalWasCorrect,
     onRedoComplete,
+    assistance.onWrongAnswer,
+    assistance.machineState.context.wrongAttemptCount,
+    assistance.machineState.context.helpedTermIndices,
   ])
 
   // Auto-submit when correct answer is entered
@@ -1440,65 +1516,8 @@ export function ActiveSession({
     exitHelpMode,
   ])
 
-  // Auto-pause when user takes too long on a problem
-  // Uses mean + 2 standard deviations of response times if we have enough data,
-  // otherwise defaults to 5 minutes
-  useEffect(() => {
-    // Only run auto-pause when actively inputting
-    if (
-      phase.phase !== 'inputting' &&
-      phase.phase !== 'awaitingDisambiguation' &&
-      phase.phase !== 'helpMode'
-    ) {
-      return
-    }
-
-    // Don't auto-pause if already paused or no attempt yet
-    if (isPaused || !attempt) return
-
-    // Calculate the threshold and stats from historical results
-    const { threshold, stats } = calculateAutoPauseInfo(plan.results)
-
-    // Calculate remaining time until auto-pause
-    // After resume, use the resume time as effective start (resets the auto-pause timer)
-    const effectiveStartTime = Math.max(attempt.startTime, lastResumeTimeRef.current)
-    const elapsedMs = Date.now() - effectiveStartTime
-    const remainingMs = threshold - elapsedMs
-
-    // Create pause info for auto-timeout
-    const autoPauseInfo: PauseInfo = {
-      pausedAt: new Date(),
-      reason: 'auto-timeout',
-      autoPauseStats: stats,
-    }
-
-    // If already over threshold, pause immediately
-    if (remainingMs <= 0) {
-      setPauseInfo(autoPauseInfo)
-      pause()
-      onPause?.(autoPauseInfo)
-      return
-    }
-
-    // Set timeout to trigger pause when threshold is reached
-    const timeoutId = setTimeout(() => {
-      // Update pausedAt to actual pause time
-      autoPauseInfo.pausedAt = new Date()
-      setPauseInfo(autoPauseInfo)
-      pause()
-      onPause?.(autoPauseInfo)
-    }, remainingMs)
-
-    return () => clearTimeout(timeoutId)
-  }, [
-    phase.phase,
-    isPaused,
-    attempt?.startTime,
-    attempt?.accumulatedPauseMs,
-    plan.results,
-    pause,
-    onPause,
-  ])
+  // Auto-pause is now handled by the progressive assistance state machine
+  // (useProgressiveAssistance hook, TIMER_AUTO_PAUSE event)
 
   const handlePause = useCallback(
     (info?: PauseInfo) => {
@@ -1515,10 +1534,64 @@ export function ActiveSession({
 
   const handleResume = useCallback(() => {
     setPauseInfo(undefined)
-    lastResumeTimeRef.current = Date.now() // Reset auto-pause timer
+    assistance.onResumed()
     resume()
     onResume?.()
-  }, [resume, onResume])
+  }, [resume, onResume, assistance.onResumed])
+
+  // Handle skip (from progressive assistance) — show correct answer and advance
+  const handleSkip = useCallback(async () => {
+    if (!attempt) return
+
+    // In redo mode, cancel the redo instead
+    if (isInRedoMode && onCancelRedo) {
+      onCancelRedo()
+      return
+    }
+
+    // Record as incorrect with help
+    const responseTimeMs = Date.now() - attempt.startTime - attempt.accumulatedPauseMs
+    const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
+      slotIndex: attempt.slotIndex,
+      problem: attempt.problem,
+      studentAnswer: attempt.problem.answer, // Record the correct answer
+      isCorrect: false, // Marked incorrect because student didn't solve it
+      responseTimeMs,
+      skillsExercised: attempt.problem.skillsRequired,
+      usedOnScreenAbacus: false,
+      incorrectAttempts: assistance.machineState.context.wrongAttemptCount,
+      hadHelp: true,
+      helpTrigger: 'manual' as const,
+    }
+
+    // Show the correct answer briefly
+    setAnswer(String(attempt.problem.answer))
+    startSubmit()
+
+    await onAnswer(result)
+
+    completeSubmit('incorrect')
+
+    // Advance after showing the answer
+    setTimeout(() => {
+      clearToLoading()
+    }, 1500)
+  }, [
+    attempt,
+    isInRedoMode,
+    onCancelRedo,
+    onAnswer,
+    setAnswer,
+    startSubmit,
+    completeSubmit,
+    clearToLoading,
+    assistance.machineState.context.wrongAttemptCount,
+  ])
+
+  // Handle help requested from progressive assistance UI
+  const handleHelpFromAssistance = useCallback(() => {
+    enterHelpMode(0)
+  }, [enterHelpMode])
 
   const getHealthColor = (health: SessionHealth['overall']) => {
     switch (health) {
@@ -1733,6 +1806,11 @@ export function ActiveSession({
               )}
               <PurposeBadge purpose={currentSlot.purpose} slot={currentSlot} />
             </div>
+          )}
+
+          {/* Audio help replay button — only shown when audio help is enabled */}
+          {audioHelpEnabled && (
+            <AudioHelpButton onReplay={replayProblem} isPlaying={audioHelpIsPlaying} />
           )}
 
           {/* Problem display - centered, with help panel positioned outside */}
@@ -2023,6 +2101,18 @@ export function ActiveSession({
         )}
       </div>
 
+      {/* Progressive assistance UI (encouragement, help button, skip) */}
+      {showInputArea && !isPaused && (
+        <ProgressiveAssistanceUI
+          machineState={assistance.machineState}
+          showWrongAnswerSuggestion={assistance.showWrongAnswerSuggestion}
+          isDark={isDark}
+          onHelpRequested={handleHelpFromAssistance}
+          onSkip={handleSkip}
+          onDismissWrongAnswerSuggestion={assistance.dismissWrongAnswerSuggestion}
+        />
+      )}
+
       {/* Input area */}
       {showInputArea && !isPaused && (
         <div
@@ -2108,6 +2198,9 @@ export function ActiveSession({
           phaseName={phase.phase}
         />
       )}
+
+      {/* Assistance debug panel - shows state machine state when visual debug mode is on */}
+      <AssistanceDebugPanel machineState={assistance.machineState} />
 
       {/* Session Paused Modal - rendered here as single source of truth */}
       <SessionPausedModal
