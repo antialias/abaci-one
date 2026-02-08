@@ -124,6 +124,7 @@ export type TaskType =
   | 'flowchart-generate'
   | 'flowchart-refine'
   | 'seed-students'
+  | 'audio-generate'
   | 'demo'
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 /**

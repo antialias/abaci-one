@@ -23,6 +23,14 @@ export const appSettings = sqliteTable('app_settings', {
    * regardless of their pKnown value.
    */
   bktConfidenceThreshold: real('bkt_confidence_threshold').notNull().default(0.3),
+
+  /**
+   * Active TTS voice for audio help.
+   *
+   * Matches an OpenAI TTS voice name (e.g. 'nova', 'shimmer', 'alloy').
+   * Clips are stored at public/audio/{voice}/{filename}.
+   */
+  audioVoice: text('audio_voice').notNull().default('nova'),
 })
 
 export type AppSettings = typeof appSettings.$inferSelect
@@ -34,4 +42,5 @@ export type NewAppSettings = typeof appSettings.$inferInsert
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   id: 'default',
   bktConfidenceThreshold: 0.3,
+  audioVoice: 'nova',
 }
