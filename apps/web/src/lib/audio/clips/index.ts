@@ -3,6 +3,8 @@ export * from './numbers'
 export * from './operators'
 export * from './feedback'
 export * from './tutorial'
+export * from './assistance'
+export * from './practice'
 
 import {
   NUMBER_0, NUMBER_1, NUMBER_2, NUMBER_3, NUMBER_4,
