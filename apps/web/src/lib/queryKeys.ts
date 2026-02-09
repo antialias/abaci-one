@@ -94,6 +94,12 @@ export const sessionPreferencesKeys = {
   detail: (playerId: string) => [...sessionPreferencesKeys.all, playerId] as const,
 }
 
+// Collected clips query keys (admin audio TTS generation)
+export const collectedClipKeys = {
+  all: ['collected-clips'] as const,
+  list: (voice?: string) => [...collectedClipKeys.all, 'list', voice ?? ''] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player

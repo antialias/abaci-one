@@ -1,8 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
-import { useAudioHelp } from '@/contexts/AudioHelpContext'
-import { feedbackToSequence, problemToSequence } from '@/lib/audio/problemReader'
+import { useEffect, useMemo, useRef } from 'react'
+import { useTTS } from '@/hooks/useTTS'
+import { useAudioManager } from '@/hooks/useAudioManager'
+import { termsToSentence } from '@/lib/audio/termsToSentence'
+import { buildFeedbackText } from '@/lib/audio/buildFeedbackText'
+
+const MATH_TONE =
+  'Speaking clearly and steadily, reading a math problem to a young child. Pause slightly between each number and operator.'
+const CELEBRATION_TONE =
+  'Warmly congratulating a child. Genuinely encouraging and happy.'
+const CORRECTIVE_TONE =
+  'Gently guiding a child after a wrong answer. Kind, not disappointed.'
 
 interface UsePracticeAudioHelpOptions {
   terms: number[] | null
@@ -17,51 +26,50 @@ export function usePracticeAudioHelp({
   isCorrect,
   correctAnswer,
 }: UsePracticeAudioHelpOptions) {
-  const { isEnabled, playSequence, stop } = useAudioHelp()
-  const lastTermsKeyRef = useRef<string>('')
-  const lastFeedbackRef = useRef(false)
+  const { stop } = useAudioManager()
 
-  // Auto-read problem when terms change
+  const problemText = useMemo(
+    () => (terms ? termsToSentence(terms) : ''),
+    [terms]
+  )
+  const feedbackText = useMemo(
+    () =>
+      showingFeedback && isCorrect !== null && correctAnswer !== null
+        ? buildFeedbackText(isCorrect, correctAnswer)
+        : '',
+    [showingFeedback, isCorrect, correctAnswer]
+  )
+
+  const sayProblem = useTTS(problemText, { tone: MATH_TONE })
+  const sayFeedback = useTTS(feedbackText, {
+    tone: isCorrect ? CELEBRATION_TONE : CORRECTIVE_TONE,
+  })
+
+  // Auto-play problem when terms change
+  const prevTermsRef = useRef<number[] | null>(null)
   useEffect(() => {
-    if (!isEnabled || !terms || terms.length === 0) return
+    if (!problemText || terms === prevTermsRef.current) return
+    prevTermsRef.current = terms
+    sayProblem()
+  }, [problemText, terms, sayProblem])
 
-    const termsKey = terms.join(',')
-    if (termsKey === lastTermsKeyRef.current) return
-    lastTermsKeyRef.current = termsKey
-
-    const sequence = problemToSequence(terms)
-    if (sequence.length > 0) {
-      playSequence(sequence)
-    }
-  }, [isEnabled, terms, playSequence])
-
-  // Auto-read feedback
+  // Auto-play feedback
+  const playedFeedbackRef = useRef(false)
   useEffect(() => {
-    if (!isEnabled) return
+    if (!feedbackText || playedFeedbackRef.current) return
+    playedFeedbackRef.current = true
+    sayFeedback()
+  }, [feedbackText, sayFeedback])
 
-    if (showingFeedback && !lastFeedbackRef.current) {
-      lastFeedbackRef.current = true
-      if (isCorrect !== null && correctAnswer !== null) {
-        const sequence = feedbackToSequence(isCorrect, correctAnswer)
-        playSequence(sequence)
-      }
-    } else if (!showingFeedback) {
-      lastFeedbackRef.current = false
-    }
-  }, [isEnabled, showingFeedback, isCorrect, correctAnswer, playSequence])
+  // Reset feedback flag
+  useEffect(() => {
+    if (!showingFeedback) playedFeedbackRef.current = false
+  }, [showingFeedback])
 
   // Stop audio on unmount
   useEffect(() => {
     return () => stop()
   }, [stop])
 
-  const replayProblem = useCallback(() => {
-    if (!isEnabled || !terms || terms.length === 0) return
-    const sequence = problemToSequence(terms)
-    if (sequence.length > 0) {
-      playSequence(sequence)
-    }
-  }, [isEnabled, terms, playSequence])
-
-  return { replayProblem }
+  return { replayProblem: sayProblem }
 }

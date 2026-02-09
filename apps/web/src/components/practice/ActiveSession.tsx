@@ -42,7 +42,7 @@ import { DecompositionProvider, DecompositionSection } from '../decomposition'
 import { generateCoachHint } from './coachHintGenerator'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { findMatchedPrefixIndex, useInteractionPhase } from './hooks/useInteractionPhase'
-import { useAudioHelp } from '@/contexts/AudioHelpContext'
+import { useAudioManager } from '@/hooks/useAudioManager'
 import { AudioHelpButton } from './AudioHelpButton'
 import { usePracticeAudioHelp } from './hooks/usePracticeAudioHelp'
 import { usePracticeSoundEffects } from './hooks/usePracticeSoundEffects'
@@ -646,7 +646,7 @@ export function ActiveSession({
   }, [onTimingUpdate, attempt?.startTime, attempt?.accumulatedPauseMs])
 
   // Audio help — reads problems and feedback aloud for non-readers
-  const { isEnabled: audioHelpEnabled, isPlaying: audioHelpIsPlaying } = useAudioHelp()
+  const { isEnabled: audioHelpEnabled, isPlaying: audioHelpIsPlaying } = useAudioManager()
   const audioHelpIsCorrect = phase.phase === 'showingFeedback' ? phase.result === 'correct' : null
   const { replayProblem } = usePracticeAudioHelp({
     terms: attempt?.problem?.terms ?? null,

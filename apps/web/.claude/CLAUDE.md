@@ -121,6 +121,7 @@ kubectl get applications -n argocd
 | Flowchart system | `src/lib/flowcharts/README.md` |
 | Daily practice | `docs/DAILY_PRACTICE_SYSTEM.md` |
 | Background tasks | `.claude/reference/background-tasks.md` |
+| TTS audio system | `.claude/reference/tts-audio-system.md` |
 
 ---
 

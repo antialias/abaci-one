@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AUDIO_CATEGORIES } from "@/lib/audio/audioManifest";
 import type { AudioClipEntry } from "@/lib/audio/audioManifest";
 import { css } from "../../../styled-system/css";
 
@@ -9,7 +10,10 @@ interface AudioReviewModeProps {
   manifest: AudioClipEntry[];
   onClose: () => void;
   onRegenerateFlagged: (clipIds: string[]) => void;
+  onRegenerateSingle: (clipId: string) => void;
   isRegenerating: boolean;
+  flagged: Set<string>;
+  onToggleFlag: (clipId: string) => void;
 }
 
 type Phase = "reviewing" | "summary";
@@ -19,13 +23,16 @@ export function AudioReviewMode({
   manifest,
   onClose,
   onRegenerateFlagged,
+  onRegenerateSingle,
   isRegenerating,
+  flagged,
+  onToggleFlag,
 }: AudioReviewModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [flagged, setFlagged] = useState<Set<string>>(new Set());
   const [isAutoAdvance, setIsAutoAdvance] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [phase, setPhase] = useState<Phase>("reviewing");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   // When re-reviewing flagged only, this holds the filtered subset
   const [reviewSubset, setReviewSubset] = useState<AudioClipEntry[] | null>(
     null,
@@ -43,7 +50,10 @@ export function AudioReviewMode({
   const isAutoAdvanceRef = useRef(isAutoAdvance);
   isAutoAdvanceRef.current = isAutoAdvance;
 
-  const clips = reviewSubset ?? manifest;
+  const clips = useMemo(() => {
+    const base = reviewSubset ?? manifest;
+    return categoryFilter ? base.filter((c) => c.category === categoryFilter) : base;
+  }, [reviewSubset, manifest, categoryFilter]);
 
   const currentClip = clips[currentIndex] as AudioClipEntry | undefined;
 
@@ -131,18 +141,13 @@ export function AudioReviewMode({
 
   const handleToggleFlag = () => {
     if (!currentClip) return;
-    setFlagged((prev) => {
-      const next = new Set(prev);
-      if (next.has(currentClip.id)) {
-        next.delete(currentClip.id);
-      } else {
-        next.add(currentClip.id);
-        // Flagging pauses auto-advance
-        setIsAutoAdvance(false);
-        clearAutoAdvanceTimer();
-      }
-      return next;
-    });
+    const wasFlagged = flagged.has(currentClip.id);
+    onToggleFlag(currentClip.id);
+    if (!wasFlagged) {
+      // Flagging pauses auto-advance
+      setIsAutoAdvance(false);
+      clearAutoAdvanceTimer();
+    }
   };
 
   const handlePlayPause = () => {
@@ -151,14 +156,6 @@ export function AudioReviewMode({
     } else {
       playCurrentClip();
     }
-  };
-
-  const handleUnflag = (clipId: string) => {
-    setFlagged((prev) => {
-      const next = new Set(prev);
-      next.delete(clipId);
-      return next;
-    });
   };
 
   const handleReReviewFlagged = () => {
@@ -298,20 +295,38 @@ export function AudioReviewMode({
                       {clip.text}
                     </span>
                   </div>
-                  <button
-                    data-action="unflag-clip"
-                    onClick={() => handleUnflag(clip.id)}
-                    className={css({
-                      background: "none",
-                      border: "none",
-                      color: "#f85149",
-                      cursor: "pointer",
-                      fontSize: "12px",
-                      "&:hover": { textDecoration: "underline" },
-                    })}
-                  >
-                    Unflag
-                  </button>
+                  <div className={css({ display: "flex", alignItems: "center", gap: "8px" })}>
+                    <button
+                      data-action="regenerate-single"
+                      onClick={() => onRegenerateSingle(clip.id)}
+                      disabled={isRegenerating}
+                      className={css({
+                        background: "none",
+                        border: "none",
+                        color: "#238636",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        "&:hover": { textDecoration: "underline" },
+                        "&:disabled": { opacity: 0.5, cursor: "not-allowed" },
+                      })}
+                    >
+                      Regen
+                    </button>
+                    <button
+                      data-action="unflag-clip"
+                      onClick={() => onToggleFlag(clip.id)}
+                      className={css({
+                        background: "none",
+                        border: "none",
+                        color: "#f85149",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        "&:hover": { textDecoration: "underline" },
+                      })}
+                    >
+                      Unflag
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -407,6 +422,27 @@ export function AudioReviewMode({
           >
             {flagged.size} flagged
           </span>
+          {flagged.size > 0 && (
+            <button
+              data-action="regen-flagged-header"
+              onClick={() => onRegenerateFlagged(Array.from(flagged))}
+              disabled={isRegenerating}
+              className={css({
+                fontSize: "12px",
+                backgroundColor: "#238636",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                padding: "4px 10px",
+                fontWeight: "600",
+                cursor: "pointer",
+                "&:hover": { backgroundColor: "#2ea043" },
+                "&:disabled": { opacity: 0.5, cursor: "not-allowed" },
+              })}
+            >
+              Regen {flagged.size} flagged
+            </button>
+          )}
           <button
             data-action="close-review"
             onClick={() => {
@@ -427,6 +463,61 @@ export function AudioReviewMode({
             Close
           </button>
         </div>
+      </div>
+
+      {/* Category filter tabs */}
+      <div
+        data-element="category-tabs"
+        className={css({
+          display: "flex",
+          gap: "4px",
+          marginBottom: "12px",
+          borderBottom: "1px solid #30363d",
+          paddingBottom: "8px",
+        })}
+      >
+        <button
+          data-action="category-all"
+          onClick={() => { setCategoryFilter(null); setCurrentIndex(0); }}
+          className={css({
+            backgroundColor: categoryFilter === null ? "#30363d" : "transparent",
+            color: categoryFilter === null ? "#f0f6fc" : "#8b949e",
+            border: "none",
+            borderRadius: "6px",
+            padding: "4px 12px",
+            fontSize: "12px",
+            fontWeight: "600",
+            cursor: "pointer",
+            "&:hover": { backgroundColor: "#21262d" },
+          })}
+        >
+          All ({(reviewSubset ?? manifest).length})
+        </button>
+        {AUDIO_CATEGORIES.map((cat) => {
+          const count = (reviewSubset ?? manifest).filter((c) => c.category === cat).length;
+          if (count === 0) return null;
+          return (
+            <button
+              key={cat}
+              data-action={`category-${cat}`}
+              onClick={() => { setCategoryFilter(cat); setCurrentIndex(0); }}
+              className={css({
+                backgroundColor: categoryFilter === cat ? "#30363d" : "transparent",
+                color: categoryFilter === cat ? "#f0f6fc" : "#8b949e",
+                border: "none",
+                borderRadius: "6px",
+                padding: "4px 12px",
+                fontSize: "12px",
+                fontWeight: "600",
+                cursor: "pointer",
+                textTransform: "capitalize",
+                "&:hover": { backgroundColor: "#21262d" },
+              })}
+            >
+              {cat} ({count})
+            </button>
+          );
+        })}
       </div>
 
       {/* Progress bar */}
@@ -589,6 +680,20 @@ export function AudioReviewMode({
         >
           {currentClip && flagged.has(currentClip.id) ? "Unflag" : "Flag"}
         </button>
+        {currentClip && flagged.has(currentClip.id) && (
+          <button
+            data-action="regenerate-now"
+            onClick={() => onRegenerateSingle(currentClip.id)}
+            disabled={isRegenerating}
+            className={`${buttonBase} ${css({
+              backgroundColor: "#238636",
+              color: "#fff",
+              "&:hover": { backgroundColor: "#2ea043" },
+            })}`}
+          >
+            Regenerate Now
+          </button>
+        )}
       </div>
 
       {/* Auto-advance toggle */}

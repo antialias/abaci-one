@@ -2,14 +2,14 @@
 
 import { useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
-import { useAudioHelp } from '@/contexts/AudioHelpContext'
+import { useAudioManager } from '@/hooks/useAudioManager'
 import type { PedagogicalSegment } from '../DecompositionWithReasons'
 import { useTutorialUI } from '../TutorialUIContext'
 
 export function CoachBar() {
   const ui = useTutorialUI()
   const t = useTranslations('tutorial.coachBar')
-  const { isEnabled: audioHelpEnabled } = useAudioHelp()
+  const { isEnabled: audioHelpEnabled } = useAudioManager()
   const seg: PedagogicalSegment | null = ui.activeSegment
   const lastSummaryRef = useRef<string>('')
 

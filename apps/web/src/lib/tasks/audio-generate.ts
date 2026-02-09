@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 import { AUDIO_MANIFEST } from "@/lib/audio/audioManifest";
+import { buildTtsParams } from "@/lib/audio/toneDirections";
 import { createTask } from "../task-manager";
 import type { AudioGenerateEvent } from "./events";
 
@@ -105,9 +106,9 @@ export async function startAudioGeneration(
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "tts-1",
+            model: "gpt-4o-mini-tts",
             voice: config.voice,
-            input: clip.text,
+            ...buildTtsParams(clip.text, clip.tone),
             response_format: "mp3",
           }),
         });

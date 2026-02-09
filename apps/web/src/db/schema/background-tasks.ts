@@ -125,6 +125,7 @@ export type TaskType =
   | 'flowchart-refine'
   | 'seed-students'
   | 'audio-generate'
+  | 'collected-clip-generate'
   | 'demo'
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 /**

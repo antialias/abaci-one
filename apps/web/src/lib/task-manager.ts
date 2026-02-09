@@ -73,6 +73,7 @@ const taskTimeouts: Partial<Record<TaskType, number>> = {
   'flowchart-refine': 6 * 60 * 1000, // 6 minutes (LLM + validation)
   'seed-students': 10 * 60 * 1000, // 10 minutes (high-volume profiles are slow)
   'audio-generate': 15 * 60 * 1000, // 15 minutes (many clips, external API)
+  'collected-clip-generate': 15 * 60 * 1000, // 15 minutes (many clips, external API)
   demo: 2 * 60 * 1000, // 2 minutes
 }
 

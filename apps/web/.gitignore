@@ -62,6 +62,9 @@ public/openapi.json
 # User uploads
 data/uploads/
 
+# Generated TTS audio clips
+data/audio/
+
 # ML training data
 training-data/
 data/vision-training/collected/

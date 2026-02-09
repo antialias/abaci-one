@@ -9,7 +9,7 @@ import { AbacusDock } from '@/components/AbacusDock'
 import { LanguageSelector } from '@/components/LanguageSelector'
 import { PageWithNav } from '@/components/PageWithNav'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { useAudioHelp } from '@/contexts/AudioHelpContext'
+import { useAudioManager } from '@/hooks/useAudioManager'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { api } from '@/lib/queryClient'
@@ -148,7 +148,7 @@ export default function SettingsPage() {
  * General settings tab - Theme, Language
  */
 function GeneralTab({ isDark }: { isDark: boolean }) {
-  const { isEnabled, setEnabled, volume, setVolume } = useAudioHelp()
+  const { isEnabled, setEnabled, volume, setVolume } = useAudioManager()
 
   return (
     <div data-section="general-tab">

@@ -302,6 +302,26 @@ export type AudioGenerateEvent =
     };
 
 // ============================================================================
+// Collected Clip Generate domain events
+// ============================================================================
+
+export type CollectedClipGenerateEvent =
+  | {
+      type: "cc_gen_started";
+      voice: string;
+      totalClips: number;
+      missingClips: number;
+    }
+  | { type: "cc_clip_done"; clipId: string }
+  | { type: "cc_clip_error"; clipId: string; error: string }
+  | {
+      type: "cc_gen_complete";
+      generated: number;
+      errors: number;
+      total: number;
+    };
+
+// ============================================================================
 // Demo task events
 // ============================================================================
 
@@ -320,6 +340,7 @@ export interface TaskEventMap {
   "flowchart-refine": FlowchartRefineEvent;
   "seed-students": SeedStudentsEvent;
   "audio-generate": AudioGenerateEvent;
+  "collected-clip-generate": CollectedClipGenerateEvent;
   demo: DemoTaskEvent;
 }
 

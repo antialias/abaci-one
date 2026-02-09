@@ -1,7 +1,7 @@
 # NFS-backed storage for persistent data
 #
-# Vision training data and uploads are stored on the NAS and mounted via NFS.
-# This allows both Docker Compose (current prod) and K3s to share the same data.
+# Vision training data, uploads, and generated audio are stored on the NAS
+# and mounted via NFS. This allows all pods to share the same data.
 
 # NFS PersistentVolume for vision training data
 resource "kubernetes_persistent_volume" "vision_training" {
@@ -102,6 +102,58 @@ resource "kubernetes_persistent_volume_claim" "uploads" {
       match_labels = {
         type = "nfs"
         app  = "abaci-uploads"
+      }
+    }
+  }
+}
+
+# NFS PersistentVolume for generated TTS audio clips
+resource "kubernetes_persistent_volume" "audio" {
+  metadata {
+    name = "audio-pv"
+    labels = {
+      type = "nfs"
+      app  = "abaci-audio"
+    }
+  }
+
+  spec {
+    capacity = {
+      storage = "5Gi"
+    }
+    access_modes                     = ["ReadWriteMany"]
+    persistent_volume_reclaim_policy = "Retain"
+    storage_class_name               = "nfs"
+
+    persistent_volume_source {
+      nfs {
+        server = var.nfs_server
+        path   = "/volume1/homes/antialias/projects/abaci.one/data/audio"
+      }
+    }
+  }
+}
+
+resource "kubernetes_persistent_volume_claim" "audio" {
+  metadata {
+    name      = "audio-data"
+    namespace = kubernetes_namespace.abaci.metadata[0].name
+  }
+
+  spec {
+    access_modes       = ["ReadWriteMany"]
+    storage_class_name = "nfs"
+
+    resources {
+      requests = {
+        storage = "5Gi"
+      }
+    }
+
+    selector {
+      match_labels = {
+        type = "nfs"
+        app  = "abaci-audio"
       }
     }
   }

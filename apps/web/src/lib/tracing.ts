@@ -4,6 +4,10 @@
  * This file exports helper functions for working with traces in the application.
  * The OpenTelemetry SDK is initialized via instrumentation.js (loaded with --require).
  *
+ * IMPORTANT: @opentelemetry/api is imported lazily (inside functions) to avoid
+ * pulling it into the Next.js vendor chunk graph at module scope, which causes
+ * "Cannot find module './vendor-chunks/@opentelemetry+api@..." errors in dev.
+ *
  * Usage:
  *   import { getCurrentTraceId, recordError } from '@/lib/tracing'
  *
@@ -12,14 +16,18 @@
  *   return NextResponse.json({ error: 'Something failed', traceId }, { status: 500 })
  */
 
-import { trace, context, SpanStatusCode } from '@opentelemetry/api'
+type OtelApi = typeof import('@opentelemetry/api')
 
-// Export utilities for manual tracing
+function getOtel(): OtelApi {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('@opentelemetry/api')
+}
 
 /**
  * Get the current trace ID (useful for error responses)
  */
 export function getCurrentTraceId(): string | null {
+  const { trace } = getOtel()
   const span = trace.getActiveSpan()
   if (!span) return null
   return span.spanContext().traceId
@@ -29,6 +37,7 @@ export function getCurrentTraceId(): string | null {
  * Get the current span context for logging
  */
 export function getTraceContext(): { traceId: string; spanId: string } | null {
+  const { trace } = getOtel()
   const span = trace.getActiveSpan()
   if (!span) return null
   const ctx = span.spanContext()
@@ -42,6 +51,7 @@ export function getTraceContext(): { traceId: string; spanId: string } | null {
  * Add an error to the current span
  */
 export function recordError(error: Error, attributes?: Record<string, string>): void {
+  const { trace, SpanStatusCode } = getOtel()
   const span = trace.getActiveSpan()
   if (!span) return
   span.recordException(error)
@@ -55,6 +65,7 @@ export function recordError(error: Error, attributes?: Record<string, string>): 
  * Create a custom span for tracing a specific operation
  */
 export function withSpan<T>(name: string, fn: () => T, attributes?: Record<string, string>): T {
+  const { trace, SpanStatusCode } = getOtel()
   const tracer = trace.getTracer('abaci-app')
   return tracer.startActiveSpan(name, (span) => {
     try {
@@ -83,6 +94,7 @@ export async function withSpanAsync<T>(
   fn: () => Promise<T>,
   attributes?: Record<string, string>
 ): Promise<T> {
+  const { trace, SpanStatusCode } = getOtel()
   const tracer = trace.getTracer('abaci-app')
   return tracer.startActiveSpan(name, async (span) => {
     try {
@@ -102,5 +114,3 @@ export async function withSpanAsync<T>(
     }
   })
 }
-
-export { trace, context }

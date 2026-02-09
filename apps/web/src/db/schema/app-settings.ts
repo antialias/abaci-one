@@ -31,6 +31,21 @@ export const appSettings = sqliteTable('app_settings', {
    * Clips are stored at public/audio/{voice}/{filename}.
    */
   audioVoice: text('audio_voice').notNull().default('nova'),
+
+  /**
+   * Voice chain configuration (JSON-encoded).
+   *
+   * An ordered array of VoiceSource objects defining the fallback chain
+   * for audio playback. Each entry is either:
+   *   { type: 'pregenerated', name: '<voice>' }
+   *   { type: 'browser-tts' }
+   */
+  voiceChain: text('voice_chain').default(
+    JSON.stringify([
+      { type: 'pregenerated', name: 'nova' },
+      { type: 'browser-tts' },
+    ])
+  ),
 })
 
 export type AppSettings = typeof appSettings.$inferSelect
@@ -43,4 +58,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   id: 'default',
   bktConfidenceThreshold: 0.3,
   audioVoice: 'nova',
+  voiceChain: JSON.stringify([
+    { type: 'pregenerated', name: 'nova' },
+    { type: 'browser-tts' },
+  ]),
 }
