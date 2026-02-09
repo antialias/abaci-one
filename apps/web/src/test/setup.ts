@@ -83,6 +83,51 @@ vi.mock('next-intl', () => ({
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
+// Mock audio contexts to prevent missing provider errors in component tests
+vi.mock('@/contexts/AudioHelpContext', () => ({
+  AudioHelpProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAudioHelp: () => ({
+    isEnabled: false,
+    setEnabled: vi.fn(),
+    volume: 0.8,
+    setVolume: vi.fn(),
+    playSequence: vi.fn().mockResolvedValue(undefined),
+    playClip: vi.fn().mockResolvedValue(undefined),
+    stop: vi.fn(),
+    isPlaying: false,
+  }),
+}))
+
+vi.mock('@/contexts/AudioManagerContext', () => ({
+  AudioManagerProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAudioManagerInstance: () => ({
+    speak: vi.fn().mockResolvedValue(undefined),
+    stop: vi.fn(),
+    configure: vi.fn(),
+    register: vi.fn(),
+    dispose: vi.fn(),
+    subscribe: () => () => {},
+    getSnapshot: () => ({
+      enabled: false,
+      volume: 0.8,
+      isSpeaking: false,
+      voice: 'nova',
+    }),
+  }),
+}))
+
+vi.mock('@/hooks/useAudioManager', () => ({
+  useAudioManager: () => ({
+    enabled: false,
+    volume: 0.8,
+    isSpeaking: false,
+    voice: 'nova',
+    stop: vi.fn(),
+    setEnabled: vi.fn(),
+    setVolume: vi.fn(),
+  }),
+}))
+
 // Mock device capability hooks to prevent uncaught matchMedia exceptions
 // These hooks use setTimeout callbacks that fire after test cleanup in jsdom
 vi.mock('@/hooks/useDeviceCapabilities', () => ({
