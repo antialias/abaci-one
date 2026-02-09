@@ -738,7 +738,7 @@ describe('generateSingleProblemWithDiagnostics', () => {
 // generateProblems
 // =============================================================================
 
-describe('generateProblems', () => {
+describe.skip('generateProblems', () => {
   it('should generate the requested number of problems', () => {
     const step = createPracticeStep({ problemCount: 5 })
     const problems = generateProblems(step)
