@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pages: write
+      id-token: write
 
     steps:
       - name: Checkout repository
@@ -78,17 +80,29 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.COVERAGE_API_TOKEN }}" \
             -d "{\"commitSha\":\"${COMMIT_SHA}\",\"lines\":${LINES},\"branches\":${BRANCHES},\"functions\":${FUNCTIONS},\"statements\":${STATEMENTS}}"
 
-      - name: Upload coverage HTML to dev.abaci.one
+      - name: Prepare GitHub Pages artifact
         if: always()
-        continue-on-error: true
         run: |
           if [ ! -d apps/web/coverage ]; then
             echo "No coverage directory found, skipping"
             exit 0
           fi
-          tar czf /tmp/coverage-report.tar.gz -C apps/web/coverage .
-          curl -sf -X POST "https://abaci.one/api/coverage-report" \
-            -H "Authorization: Bearer ${{ secrets.COVERAGE_API_TOKEN }}" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary @/tmp/coverage-report.tar.gz \
-            || echo "Coverage HTML upload failed (endpoint may not be deployed yet)"
+          mkdir -p _pages/coverage
+          cp -r apps/web/coverage/* _pages/coverage/
+          cat > _pages/index.html << 'HEREDOC'
+          <!DOCTYPE html>
+          <html>
+          <head><meta http-equiv="refresh" content="0;url=coverage/"></head>
+          <body><a href="coverage/">Coverage Report</a></body>
+          </html>
+          HEREDOC
+
+      - name: Upload Pages artifact
+        if: always()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _pages/
+
+      - name: Deploy to GitHub Pages
+        if: always()
+        uses: actions/deploy-pages@v4

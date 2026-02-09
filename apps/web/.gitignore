@@ -62,8 +62,9 @@ public/openapi.json
 # User uploads
 data/uploads/
 
-# Generated TTS audio clips
+# Generated TTS audio clips (served from data/audio/ via API, not baked into Docker image)
 data/audio/
+public/audio/
 
 # ML training data
 training-data/

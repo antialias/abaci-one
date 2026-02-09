@@ -78,7 +78,7 @@ export function AudioReviewMode({
     if (!currentClip) return;
     stopAudio();
 
-    const audio = new Audio(`/audio/${voice}/${currentClip.filename}`);
+    const audio = new Audio(`/api/audio/clips/${voice}/${currentClip.id}`);
     audioRef.current = audio;
     setIsPlaying(true);
 

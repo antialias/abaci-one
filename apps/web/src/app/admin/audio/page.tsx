@@ -4,14 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppNavBar } from "@/components/AppNavBar";
 import { AdminNav } from "@/components/AdminNav";
-import { AudioReviewMode } from "@/components/admin/AudioReviewMode";
-import { AudioClipActions } from "@/components/admin/AudioClipActions";
 import { TtsTestPanel } from "@/components/admin/TtsTestPanel";
 import { useBackgroundTask } from "@/hooks/useBackgroundTask";
 import { useCollectedClips, useGenerateCollectedClips, collectedClipKeys } from "@/hooks/useCollectedClips";
-import { AUDIO_CATEGORIES } from "@/lib/audio/audioManifest";
-import type { AudioClipEntry } from "@/lib/audio/audioManifest";
-import type { AudioGenerateOutput } from "@/lib/tasks/audio-generate";
 import type { CollectedClipGenerateOutput } from "@/lib/tasks/collected-clip-generate";
 import { css } from "../../../../styled-system/css";
 
@@ -29,32 +24,19 @@ const ALL_VOICES = [
   "shimmer",
 ] as const;
 
-interface VoiceInfo {
-  total: number;
-  existing: number;
-}
-
 type VoiceSource =
   | { type: "pregenerated"; name: string }
   | { type: "browser-tts" };
 
 interface AudioStatus {
   activeVoice: string;
-  manifest: AudioClipEntry[];
-  voices: Record<string, VoiceInfo>;
+  voices: Record<string, { total: number; existing: number }>;
 }
 
 export default function AdminAudioPage() {
   const [status, setStatus] = useState<AudioStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [genTaskId, setGenTaskId] = useState<string | null>(null);
-  const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
-  const [addVoice, setAddVoice] = useState("");
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playingClipId, setPlayingClipId] = useState<string | null>(null);
-  const [reviewVoice, setReviewVoice] = useState<string | null>(null);
-  const [flaggedClips, setFlaggedClips] = useState<Set<string>>(new Set());
   const [voiceChain, setVoiceChain] = useState<VoiceSource[]>([]);
   const [voiceChainDirty, setVoiceChainDirty] = useState(false);
   const [showVoiceChain, setShowVoiceChain] = useState(false);
@@ -78,22 +60,6 @@ export default function AdminAudioPage() {
   // React Query: mutation for triggering collected clip generation
   const ccGenerateMutation = useGenerateCollectedClips(ccGenVoice);
 
-  const handleToggleFlag = useCallback((clipId: string) => {
-    setFlaggedClips((prev) => {
-      const next = new Set(prev);
-      if (next.has(clipId)) {
-        next.delete(clipId);
-      } else {
-        next.add(clipId);
-      }
-      return next;
-    });
-  }, []);
-
-  // Background task subscription
-  const { state: taskState, cancel: cancelTask } =
-    useBackgroundTask<AudioGenerateOutput>(genTaskId);
-
   // Background task subscription for collected clip generation
   const { state: ccTaskState, cancel: cancelCcTask } =
     useBackgroundTask<CollectedClipGenerateOutput>(ccGenTaskId);
@@ -102,21 +68,14 @@ export default function AdminAudioPage() {
     try {
       const res = await fetch("/api/admin/audio");
       if (!res.ok) throw new Error("Failed to fetch");
-      const data: AudioStatus = await res.json();
-      setStatus(data);
-      if (!selectedVoice && Object.keys(data.voices).length > 0) {
-        setSelectedVoice(
-          data.activeVoice in data.voices
-            ? data.activeVoice
-            : Object.keys(data.voices)[0],
-        );
-      }
+      const data = await res.json();
+      setStatus({ activeVoice: data.activeVoice, voices: data.voices });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
-  }, [selectedVoice]);
+  }, []);
 
   useEffect(() => {
     fetchStatus();
@@ -184,16 +143,6 @@ export default function AdminAudioPage() {
     setVoiceChainDirty(true);
   };
 
-  // Refresh status when task completes
-  useEffect(() => {
-    if (taskState?.status === "completed" || taskState?.status === "failed") {
-      fetchStatus();
-    }
-  }, [taskState?.status, fetchStatus]);
-
-  const isGenerating =
-    taskState?.status === "pending" || taskState?.status === "running";
-
   const isCcGenerating =
     ccTaskState?.status === "pending" || ccTaskState?.status === "running";
 
@@ -211,26 +160,6 @@ export default function AdminAudioPage() {
     }
   };
 
-  const handleGenerate = async (voice: string) => {
-    try {
-      const res = await fetch("/api/admin/audio/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voice }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Generation failed");
-      }
-
-      const { taskId } = await res.json();
-      setGenTaskId(taskId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
-    }
-  };
-
   const handleRemoveVoice = async (voice: string) => {
     if (!confirm(`Remove all clips for voice "${voice}"?`)) return;
     try {
@@ -244,46 +173,10 @@ export default function AdminAudioPage() {
         const errData = await res.json();
         throw new Error(errData.error || "Failed to remove");
       }
-      if (selectedVoice === voice) setSelectedVoice(null);
       await fetchStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove voice");
     }
-  };
-
-  const handlePlay = (voice: string, filename: string, clipId: string) => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-    const audio = new Audio(`/audio/${voice}/${filename}`);
-    audioRef.current = audio;
-    setPlayingClipId(clipId);
-    audio.play();
-    audio.onended = () => setPlayingClipId(null);
-    audio.onerror = () => setPlayingClipId(null);
-  };
-
-  const handleRegenerate = async (voice: string, clipIds: string[]) => {
-    if (!voice || clipIds.length === 0) return;
-    try {
-      const res = await fetch("/api/admin/audio/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voice, clipIds }),
-      });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Generation failed");
-      }
-      const { taskId } = await res.json();
-      setGenTaskId(taskId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Regeneration failed");
-    }
-  };
-
-  const handleRegenerateSingle = (voice: string, clipId: string) => {
-    handleRegenerate(voice, [clipId]);
   };
 
   // Collected clip generation handler (uses mutation)
@@ -293,7 +186,7 @@ export default function AdminAudioPage() {
       {
         onSuccess: ({ taskId }) => setCcGenTaskId(taskId),
         onError: (err) =>
-          setError(err instanceof Error ? err.message : "CC generation failed"),
+          setError(err instanceof Error ? err.message : "Generation failed"),
       },
     );
   };
@@ -320,26 +213,6 @@ export default function AdminAudioPage() {
   }, [ccTaskState?.status, ccGenVoice, queryClient]);
 
   const installedVoices = status ? Object.keys(status.voices).sort() : [];
-  const uninstalledVoices = ALL_VOICES.filter(
-    (v) => !installedVoices.includes(v),
-  );
-
-  // Collect domain events from task for per-clip status
-  const clipEvents = (taskState?.events ?? []).filter(
-    (e) => e.eventType === "clip_done" || e.eventType === "clip_error",
-  );
-
-  // Group manifest by category
-  const groupedManifest = status?.manifest.reduce(
-    (acc, clip) => {
-      if (!acc[clip.category]) acc[clip.category] = [];
-      acc[clip.category].push(clip);
-      return acc;
-    },
-    {} as Record<string, AudioClipEntry[]>,
-  );
-
-  const categoryOrder = AUDIO_CATEGORIES;
 
   return (
     <>
@@ -470,11 +343,6 @@ export default function AdminAudioPage() {
                           <span className={css({ color: "#f0f6fc", fontWeight: "600", flex: 1 })}>
                             {source.type === "pregenerated" ? source.name : "Browser TTS"}
                           </span>
-                          {source.type === "pregenerated" && status.voices[source.name] && (
-                            <span className={css({ color: "#8b949e", fontSize: "12px" })}>
-                              {status.voices[source.name].existing}/{status.voices[source.name].total}
-                            </span>
-                          )}
                           <span
                             className={css({
                               fontSize: "11px",
@@ -664,7 +532,7 @@ export default function AdminAudioPage() {
                   })}
                 >
                   <span className={css({ fontSize: "15px", fontWeight: "600" })}>
-                    Collected Clips (Runtime TTS)
+                    Collected Clips
                   </span>
                   <span className={css({ display: "flex", alignItems: "center", gap: "8px" })}>
                     <span className={css({ color: "#8b949e", fontSize: "12px" })}>
@@ -678,7 +546,7 @@ export default function AdminAudioPage() {
                 {showCollectedClips && (
                   <div className={css({ padding: "0 16px 16px" })}>
                     <p className={css({ color: "#8b949e", fontSize: "13px", marginBottom: "12px" })}>
-                      These text+tone pairs were collected from actual app usage via browser TTS. Higher play counts indicate priority for pre-generation.
+                      Clips collected from app usage. Generate mp3s for a voice, then add the voice to the chain above.
                     </p>
 
                     {/* Voice selector + controls */}
@@ -712,30 +580,35 @@ export default function AdminAudioPage() {
                           <option key={v} value={v}>{v}</option>
                         ))}
                       </select>
-                      <button
-                        data-action="cc-generate-all-missing"
-                        onClick={() => {
-                          const missingIds = collectedClips
-                            .filter((c) => !ccGeneratedFor[c.id])
-                            .map((c) => c.id);
-                          if (missingIds.length > 0) handleCcGenerate(missingIds);
-                        }}
-                        disabled={isCcGenerating || collectedClips.length === 0 || collectedClips.every((c) => ccGeneratedFor[c.id])}
-                        className={css({
-                          fontSize: "12px",
-                          backgroundColor: "#238636",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: "6px",
-                          padding: "4px 12px",
-                          cursor: "pointer",
-                          fontWeight: "600",
-                          "&:hover": { backgroundColor: "#2ea043" },
-                          "&:disabled": { opacity: 0.5, cursor: "not-allowed" },
-                        })}
-                      >
-                        Generate All Missing
-                      </button>
+                      {(() => {
+                        const missingCount = collectedClips.filter((c) => !ccGeneratedFor[c.id]).length;
+                        return missingCount > 0 ? (
+                          <button
+                            data-action="cc-generate-all-missing"
+                            onClick={() => {
+                              const missingIds = collectedClips
+                                .filter((c) => !ccGeneratedFor[c.id])
+                                .map((c) => c.id);
+                              handleCcGenerate(missingIds);
+                            }}
+                            disabled={isCcGenerating}
+                            className={css({
+                              fontSize: "12px",
+                              backgroundColor: "#238636",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: "6px",
+                              padding: "4px 12px",
+                              cursor: "pointer",
+                              fontWeight: "600",
+                              "&:hover": { backgroundColor: "#2ea043" },
+                              "&:disabled": { opacity: 0.5, cursor: "not-allowed" },
+                            })}
+                          >
+                            Generate {missingCount} Missing
+                          </button>
+                        ) : null;
+                      })()}
                       <button
                         data-action="refresh-collected"
                         onClick={() => queryClient.invalidateQueries({ queryKey: collectedClipKeys.list(ccGenVoice) })}
@@ -770,7 +643,7 @@ export default function AdminAudioPage() {
                       >
                         <div className={css({ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" })}>
                           <span className={css({ color: "#f0f6fc", fontSize: "13px", fontWeight: "600" })}>
-                            Collected Clip Generation{" "}
+                            Generation{" "}
                             {isCcGenerating ? "in progress..." : ccTaskState.status}
                           </span>
                           {isCcGenerating && (
@@ -810,10 +683,63 @@ export default function AdminAudioPage() {
                           </p>
                         )}
                         {ccTaskState.error && (
-                          <p className={css({ color: "#f85149", fontSize: "12px" })}>
-                            Error: {ccTaskState.error}
-                          </p>
+                          <div
+                            data-element="cc-task-error-banner"
+                            className={css({
+                              backgroundColor: "#3d1f28",
+                              border: "1px solid #f85149",
+                              borderRadius: "6px",
+                              padding: "10px 14px",
+                              marginTop: "8px",
+                              color: "#f85149",
+                              fontSize: "13px",
+                              lineHeight: "1.5",
+                            })}
+                          >
+                            {ccTaskState.error}
+                          </div>
                         )}
+                        {/* Per-clip event log */}
+                        {(() => {
+                          const ccClipEvents = (ccTaskState.events ?? []).filter(
+                            (e) => e.eventType === "cc_clip_done" || e.eventType === "cc_clip_error",
+                          );
+                          return ccClipEvents.length > 0 ? (
+                            <div
+                              data-element="cc-clip-events"
+                              className={css({
+                                maxHeight: "150px",
+                                overflowY: "auto",
+                                fontSize: "12px",
+                                fontFamily: "monospace",
+                                marginTop: "8px",
+                              })}
+                            >
+                              {ccClipEvents.map((e, i) => {
+                                const payload = e.payload as {
+                                  clipId?: string;
+                                  error?: string;
+                                };
+                                return (
+                                  <div
+                                    key={i}
+                                    className={css({
+                                      color:
+                                        e.eventType === "cc_clip_error"
+                                          ? "#f85149"
+                                          : "#3fb950",
+                                      padding: "1px 0",
+                                    })}
+                                  >
+                                    {e.eventType === "cc_clip_done" ? "\u2713" : "\u2717"}{" "}
+                                    {payload.clipId}
+                                    {payload.error && ` \u2014 ${payload.error}`}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
                     )}
 
@@ -827,7 +753,31 @@ export default function AdminAudioPage() {
                       </p>
                     )}
 
-                    {collectedClips.length > 0 && (
+                    {collectedClips.length > 0 && (() => {
+                      const clipsWithoutSay = collectedClips.filter((c) => !c.say || Object.keys(c.say).length === 0);
+                      return (
+                      <>
+                      {clipsWithoutSay.length > 0 && (
+                        <div
+                          data-element="cc-missing-say-warning"
+                          className={css({
+                            backgroundColor: "#3b2e00",
+                            border: "1px solid #d29922",
+                            borderRadius: "6px",
+                            padding: "10px 14px",
+                            marginBottom: "12px",
+                            color: "#d29922",
+                            fontSize: "13px",
+                            lineHeight: "1.5",
+                          })}
+                        >
+                          <strong>{clipsWithoutSay.length} clip{clipsWithoutSay.length > 1 ? "s" : ""}</strong> missing{" "}
+                          <code className={css({ fontSize: "12px", backgroundColor: "#d2992220", padding: "1px 4px", borderRadius: "3px" })}>say</code>{" "}
+                          text. These will use the clip ID as the spoken text, which may not sound natural.
+                          Register clips with a <code className={css({ fontSize: "12px", backgroundColor: "#d2992220", padding: "1px 4px", borderRadius: "3px" })}>say</code> map
+                          in <code className={css({ fontSize: "12px", backgroundColor: "#d2992220", padding: "1px 4px", borderRadius: "3px" })}>useTTS()</code> to provide proper text.
+                        </div>
+                      )}
                       <table
                         className={css({
                           width: "100%",
@@ -837,17 +787,17 @@ export default function AdminAudioPage() {
                       >
                         <thead>
                           <tr>
-                            {["Status", "Text", "Tone", "Plays", "Play", "Actions"].map((header, idx) => (
+                            {["Status", "Clip ID", "Text", "Tone", "Plays", "Play", "Actions"].map((header, idx) => (
                               <th
                                 key={header}
                                 className={css({
-                                  textAlign: idx === 1 || idx === 2 ? "left" : "center",
+                                  textAlign: idx === 1 || idx === 2 || idx === 3 ? "left" : "center",
                                   padding: "6px 8px",
                                   color: "#8b949e",
                                   borderBottom: "1px solid #30363d",
                                   fontWeight: "500",
                                   backgroundColor: "#161b22",
-                                  width: idx === 0 || idx === 4 ? "50px" : idx === 5 ? "90px" : undefined,
+                                  width: idx === 0 || idx === 5 ? "50px" : idx === 6 ? "90px" : undefined,
                                 })}
                               >
                                 {header}
@@ -883,9 +833,36 @@ export default function AdminAudioPage() {
                                     padding: "6px 8px",
                                     borderBottom: "1px solid #21262d",
                                     color: "#f0f6fc",
+                                    fontFamily: "monospace",
+                                    fontSize: "12px",
                                   })}
                                 >
-                                  {clip.text}
+                                  {clip.id}
+                                </td>
+                                <td
+                                  className={css({
+                                    padding: "6px 8px",
+                                    borderBottom: "1px solid #21262d",
+                                    fontSize: "12px",
+                                    maxWidth: "200px",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  })}
+                                  title={clip.say ? JSON.stringify(clip.say) : `No say text — clip ID "${clip.id}" will be read aloud verbatim`}
+                                >
+                                  {(() => {
+                                    const sayText = clip.say ? Object.values(clip.say)[0] : undefined;
+                                    if (sayText) return <span className={css({ color: "#c9d1d9" })}>{sayText}</span>;
+                                    return (
+                                      <span className={css({ display: "flex", alignItems: "center", gap: "4px" })}>
+                                        <span className={css({ color: "#d29922", fontSize: "13px" })} title="Missing say text — clip ID will be spoken as-is">&#9888;</span>
+                                        <span className={css({ color: "#d29922", fontStyle: "italic" })}>
+                                          &quot;{clip.id}&quot;
+                                        </span>
+                                      </span>
+                                    );
+                                  })()}
                                 </td>
                                 <td
                                   className={css({
@@ -967,7 +944,9 @@ export default function AdminAudioPage() {
                           })}
                         </tbody>
                       </table>
-                    )}
+                      </>
+                      );
+                    })()}
                   </div>
                 )}
               </section>
@@ -1051,11 +1030,9 @@ export default function AdminAudioPage() {
                         display: "flex",
                         flexDirection: "column",
                         gap: "8px",
-                        marginBottom: "16px",
                       })}
                     >
                       {installedVoices.map((v) => {
-                        const info = status.voices[v];
                         const isActive = v === status.activeVoice;
                         return (
                           <div
@@ -1100,92 +1077,11 @@ export default function AdminAudioPage() {
                                   active
                                 </span>
                               )}
-                              <span
-                                className={css({
-                                  color: "#8b949e",
-                                  fontSize: "13px",
-                                })}
-                              >
-                                {info.existing}/{info.total} clips
-                              </span>
-                              {info.existing < info.total && (
-                                <button
-                                  data-action="generate-missing"
-                                  onClick={() => handleGenerate(v)}
-                                  disabled={isGenerating}
-                                  className={css({
-                                    fontSize: "12px",
-                                    backgroundColor: "#238636",
-                                    color: "#fff",
-                                    border: "none",
-                                    borderRadius: "6px",
-                                    padding: "4px 10px",
-                                    cursor: "pointer",
-                                    "&:hover": { backgroundColor: "#2ea043" },
-                                    "&:disabled": {
-                                      opacity: 0.5,
-                                      cursor: "not-allowed",
-                                    },
-                                  })}
-                                >
-                                  Generate missing
-                                </button>
-                              )}
-                              {info.existing > 0 && (
-                                <button
-                                  data-action="regenerate-all"
-                                  onClick={() => {
-                                    if (confirm(`Regenerate all ${info.total} clips for "${v}"? This will replace all existing clips.`)) {
-                                      handleRegenerate(v, status.manifest.map((c) => c.id));
-                                    }
-                                  }}
-                                  disabled={isGenerating}
-                                  className={css({
-                                    fontSize: "12px",
-                                    backgroundColor: "transparent",
-                                    color: "#d29922",
-                                    border: "1px solid #d29922",
-                                    borderRadius: "6px",
-                                    padding: "4px 10px",
-                                    cursor: "pointer",
-                                    "&:hover": { backgroundColor: "#d2992222" },
-                                    "&:disabled": {
-                                      opacity: 0.5,
-                                      cursor: "not-allowed",
-                                    },
-                                  })}
-                                >
-                                  Regenerate all
-                                </button>
-                              )}
-                              {info.existing > 0 && (
-                                <button
-                                  data-action="start-review"
-                                  onClick={() => setReviewVoice(v)}
-                                  disabled={isGenerating || reviewVoice === v}
-                                  className={css({
-                                    fontSize: "12px",
-                                    backgroundColor: "#1f6feb",
-                                    color: "#fff",
-                                    border: "none",
-                                    borderRadius: "6px",
-                                    padding: "4px 10px",
-                                    cursor: "pointer",
-                                    "&:hover": { backgroundColor: "#388bfd" },
-                                    "&:disabled": {
-                                      opacity: 0.5,
-                                      cursor: "not-allowed",
-                                    },
-                                  })}
-                                >
-                                  Start Review
-                                </button>
-                              )}
                             </div>
                             <button
                               data-action="remove-voice"
                               onClick={() => handleRemoveVoice(v)}
-                              disabled={isActive || isGenerating}
+                              disabled={isActive}
                               className={css({
                                 fontSize: "12px",
                                 backgroundColor: "transparent",
@@ -1207,522 +1103,9 @@ export default function AdminAudioPage() {
                         );
                       })}
                     </div>
-
-                    {/* Add voice */}
-                    <div
-                      data-element="add-voice"
-                      className={css({
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      })}
-                    >
-                      <select
-                        value={addVoice}
-                        onChange={(e) => setAddVoice(e.target.value)}
-                        className={css({
-                          backgroundColor: "#0d1117",
-                          color: "#f0f6fc",
-                          border: "1px solid #30363d",
-                          borderRadius: "6px",
-                          padding: "6px 12px",
-                          fontSize: "14px",
-                        })}
-                      >
-                        <option value="">Add a voice...</option>
-                        {uninstalledVoices.map((v) => (
-                          <option key={v} value={v}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        data-action="add-voice-generate"
-                        onClick={() => {
-                          if (addVoice) {
-                            handleGenerate(addVoice);
-                            setAddVoice("");
-                          }
-                        }}
-                        disabled={!addVoice || isGenerating}
-                        className={css({
-                          backgroundColor: "#238636",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: "6px",
-                          padding: "6px 16px",
-                          fontSize: "14px",
-                          fontWeight: "600",
-                          cursor: "pointer",
-                          "&:hover": { backgroundColor: "#2ea043" },
-                          "&:disabled": { opacity: 0.5, cursor: "not-allowed" },
-                        })}
-                      >
-                        Generate
-                      </button>
-                    </div>
                   </div>
                 )}
               </section>
-
-              {/* Review Mode */}
-              {reviewVoice && status && (
-                <AudioReviewMode
-                  voice={reviewVoice}
-                  manifest={status.manifest}
-                  onClose={() => setReviewVoice(null)}
-                  onRegenerateFlagged={(clipIds) => handleRegenerate(reviewVoice, clipIds)}
-                  onRegenerateSingle={(clipId) => handleRegenerateSingle(reviewVoice, clipId)}
-                  isRegenerating={isGenerating}
-                  flagged={flaggedClips}
-                  onToggleFlag={handleToggleFlag}
-                />
-              )}
-
-              {/* Generation Progress (from background task) */}
-              {taskState && (
-                <section
-                  data-element="generation-progress"
-                  className={css({
-                    backgroundColor: "#161b22",
-                    border: "1px solid #30363d",
-                    borderRadius: "6px",
-                    padding: "20px",
-                    marginBottom: "24px",
-                  })}
-                >
-                  <div
-                    className={css({
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      marginBottom: "12px",
-                    })}
-                  >
-                    <h2
-                      className={css({
-                        fontSize: "18px",
-                        fontWeight: "600",
-                        color: "#f0f6fc",
-                      })}
-                    >
-                      Generation{" "}
-                      {taskState.status === "running" ||
-                      taskState.status === "pending"
-                        ? "in progress..."
-                        : taskState.status}
-                    </h2>
-                    {isGenerating && (
-                      <button
-                        data-action="cancel-generation"
-                        onClick={cancelTask}
-                        className={css({
-                          fontSize: "12px",
-                          backgroundColor: "transparent",
-                          color: "#f85149",
-                          border: "1px solid #f85149",
-                          borderRadius: "6px",
-                          padding: "4px 10px",
-                          cursor: "pointer",
-                          "&:hover": { backgroundColor: "#f8514922" },
-                        })}
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-
-                  {taskState.output && (
-                    <p
-                      className={css({ color: "#8b949e", marginBottom: "8px" })}
-                    >
-                      Generated: {taskState.output.generated}, Errors:{" "}
-                      {taskState.output.errors}, Total: {taskState.output.total}
-                    </p>
-                  )}
-
-                  {taskState.error && (
-                    <p
-                      className={css({ color: "#f85149", marginBottom: "8px" })}
-                    >
-                      Error: {taskState.error}
-                    </p>
-                  )}
-
-                  {/* Progress bar */}
-                  {isGenerating && (
-                    <div className={css({ marginBottom: "8px" })}>
-                      <div
-                        className={css({
-                          backgroundColor: "#30363d",
-                          borderRadius: "4px",
-                          height: "8px",
-                          overflow: "hidden",
-                        })}
-                      >
-                        <div
-                          className={css({
-                            backgroundColor: "#58a6ff",
-                            height: "100%",
-                            transition: "width 0.3s",
-                          })}
-                          style={{ width: `${taskState.progress}%` }}
-                        />
-                      </div>
-                      <p
-                        className={css({
-                          color: "#8b949e",
-                          fontSize: "12px",
-                          marginTop: "4px",
-                        })}
-                      >
-                        {taskState.progressMessage || `${taskState.progress}%`}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Per-clip event log */}
-                  {clipEvents.length > 0 && (
-                    <div
-                      className={css({
-                        maxHeight: "150px",
-                        overflowY: "auto",
-                        fontSize: "12px",
-                        fontFamily: "monospace",
-                      })}
-                    >
-                      {clipEvents.map((e, i) => {
-                        const payload = e.payload as {
-                          clipId?: string;
-                          error?: string;
-                        };
-                        return (
-                          <div
-                            key={i}
-                            className={css({
-                              color:
-                                e.eventType === "clip_error"
-                                  ? "#f85149"
-                                  : "#3fb950",
-                              padding: "1px 0",
-                            })}
-                          >
-                            {e.eventType === "clip_done" ? "\u2713" : "\u2717"}{" "}
-                            {payload.clipId}
-                            {payload.error && ` - ${payload.error}`}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-              )}
-
-              {/* Clip Table */}
-              {installedVoices.length > 0 && (
-                <section
-                  data-element="clip-table"
-                  className={css({
-                    backgroundColor: "#161b22",
-                    border: "1px solid #30363d",
-                    borderRadius: "6px",
-                    padding: "20px",
-                    overflow: "auto",
-                    maxHeight: "calc(100vh - 400px)",
-                    position: "relative",
-                  })}
-                >
-                  <h2
-                    className={css({
-                      fontSize: "18px",
-                      fontWeight: "600",
-                      color: "#f0f6fc",
-                      marginBottom: "12px",
-                    })}
-                  >
-                    Clip Browser
-                  </h2>
-
-                  {/* Voice tabs */}
-                  <div
-                    data-element="voice-tabs"
-                    className={css({
-                      display: "flex",
-                      gap: "4px",
-                      marginBottom: "16px",
-                      borderBottom: "1px solid #30363d",
-                      paddingBottom: "8px",
-                      position: "sticky",
-                      top: 0,
-                      zIndex: 10,
-                      backgroundColor: "#161b22",
-                    })}
-                  >
-                    {installedVoices.map((v) => (
-                      <button
-                        key={v}
-                        onClick={() => setSelectedVoice(v)}
-                        className={css({
-                          backgroundColor:
-                            selectedVoice === v ? "#30363d" : "transparent",
-                          color: selectedVoice === v ? "#f0f6fc" : "#8b949e",
-                          border: "none",
-                          borderRadius: "6px",
-                          padding: "6px 14px",
-                          fontSize: "13px",
-                          fontWeight: "600",
-                          cursor: "pointer",
-                          "&:hover": { backgroundColor: "#21262d" },
-                        })}
-                      >
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-
-                  {selectedVoice && flaggedClips.size > 0 && (
-                    <div
-                      data-element="flagged-toolbar"
-                      className={css({
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "8px 12px",
-                        marginBottom: "12px",
-                        backgroundColor: "#3d1f28",
-                        border: "1px solid #f8514944",
-                        borderRadius: "6px",
-                        fontSize: "13px",
-                      })}
-                    >
-                      <span className={css({ color: "#f85149", fontWeight: "600" })}>
-                        {flaggedClips.size} flagged
-                      </span>
-                      <button
-                        data-action="regenerate-all-flagged"
-                        onClick={() => handleRegenerate(selectedVoice, Array.from(flaggedClips))}
-                        disabled={isGenerating}
-                        className={css({
-                          backgroundColor: "#238636",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: "6px",
-                          padding: "4px 12px",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          cursor: "pointer",
-                          "&:hover": { backgroundColor: "#2ea043" },
-                          "&:disabled": { opacity: 0.5, cursor: "not-allowed" },
-                        })}
-                      >
-                        Regenerate {flaggedClips.size} flagged
-                      </button>
-                      <button
-                        data-action="clear-flags"
-                        onClick={() => setFlaggedClips(new Set())}
-                        className={css({
-                          background: "none",
-                          border: "1px solid #30363d",
-                          color: "#8b949e",
-                          borderRadius: "6px",
-                          padding: "4px 12px",
-                          fontSize: "12px",
-                          cursor: "pointer",
-                          "&:hover": { borderColor: "#8b949e" },
-                        })}
-                      >
-                        Clear flags
-                      </button>
-                    </div>
-                  )}
-
-                  {selectedVoice && groupedManifest && (
-                    <div>
-                      {categoryOrder
-                        .filter((cat) => groupedManifest[cat])
-                        .map((cat) => (
-                          <div
-                            key={cat}
-                            className={css({ marginBottom: "20px" })}
-                          >
-                            <h3
-                              className={css({
-                                fontSize: "14px",
-                                fontWeight: "600",
-                                color: "#58a6ff",
-                                textTransform: "capitalize",
-                                marginBottom: "8px",
-                                position: "sticky",
-                                top: "48px",
-                                zIndex: 9,
-                                backgroundColor: "#161b22",
-                                padding: "4px 0",
-                              })}
-                            >
-                              {cat}
-                            </h3>
-                            <table
-                              className={css({
-                                width: "100%",
-                                borderCollapse: "collapse",
-                                fontSize: "13px",
-                              })}
-                            >
-                              <thead
-                                className={css({
-                                  position: "sticky",
-                                  top: "80px",
-                                  zIndex: 8,
-                                })}
-                              >
-                                <tr>
-                                  {["ID", "Text", "Tone", "Status", "Play", "Actions"].map(
-                                    (header, idx) => (
-                                      <th
-                                        key={header}
-                                        className={css({
-                                          textAlign:
-                                            idx >= 3 ? "center" : "left",
-                                          padding: "6px 8px",
-                                          color: "#8b949e",
-                                          borderBottom: "1px solid #30363d",
-                                          fontWeight: "500",
-                                          width: idx >= 3 && idx <= 4 ? "60px" : undefined,
-                                          backgroundColor: "#161b22",
-                                        })}
-                                      >
-                                        {header}
-                                      </th>
-                                    ),
-                                  )}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {groupedManifest[cat].map((clip) => {
-                                  const voiceInfo =
-                                    status.voices[selectedVoice];
-                                  const allExist =
-                                    voiceInfo &&
-                                    voiceInfo.existing === voiceInfo.total;
-                                  const isClipFlagged = flaggedClips.has(clip.id);
-                                  return (
-                                    <tr
-                                      key={clip.id}
-                                      className={css({
-                                        backgroundColor: isClipFlagged ? "#3d1f2810" : undefined,
-                                      })}
-                                    >
-                                      <td
-                                        className={css({
-                                          padding: "6px 8px",
-                                          borderBottom: "1px solid #21262d",
-                                          fontFamily: "monospace",
-                                          fontSize: "12px",
-                                        })}
-                                      >
-                                        {clip.id}
-                                      </td>
-                                      <td
-                                        className={css({
-                                          padding: "6px 8px",
-                                          borderBottom: "1px solid #21262d",
-                                        })}
-                                      >
-                                        {clip.text}
-                                      </td>
-                                      <td
-                                        className={css({
-                                          padding: "6px 8px",
-                                          borderBottom: "1px solid #21262d",
-                                          fontSize: "11px",
-                                          color: "#8b949e",
-                                        })}
-                                      >
-                                        {clip.tone}
-                                      </td>
-                                      <td
-                                        className={css({
-                                          padding: "6px 8px",
-                                          borderBottom: "1px solid #21262d",
-                                          textAlign: "center",
-                                        })}
-                                      >
-                                        <span
-                                          className={css({
-                                            display: "inline-block",
-                                            width: "8px",
-                                            height: "8px",
-                                            borderRadius: "50%",
-                                            backgroundColor: allExist
-                                              ? "#3fb950"
-                                              : "#8b949e",
-                                          })}
-                                        />
-                                      </td>
-                                      <td
-                                        className={css({
-                                          padding: "6px 8px",
-                                          borderBottom: "1px solid #21262d",
-                                          textAlign: "center",
-                                        })}
-                                      >
-                                        <button
-                                          data-action="play-clip"
-                                          onClick={() =>
-                                            handlePlay(
-                                              selectedVoice,
-                                              clip.filename,
-                                              clip.id,
-                                            )
-                                          }
-                                          disabled={!allExist}
-                                          className={css({
-                                            background: "none",
-                                            border: "none",
-                                            color:
-                                              playingClipId === clip.id
-                                                ? "#58a6ff"
-                                                : "#c9d1d9",
-                                            cursor: allExist
-                                              ? "pointer"
-                                              : "not-allowed",
-                                            fontSize: "16px",
-                                            opacity: allExist ? 1 : 0.3,
-                                          })}
-                                          title={`Play ${clip.id}`}
-                                        >
-                                          {playingClipId === clip.id
-                                            ? "\u23F8"
-                                            : "\u25B6"}
-                                        </button>
-                                      </td>
-                                      <td
-                                        className={css({
-                                          padding: "6px 8px",
-                                          borderBottom: "1px solid #21262d",
-                                          textAlign: "center",
-                                        })}
-                                      >
-                                        <AudioClipActions
-                                          clipId={clip.id}
-                                          isFlagged={isClipFlagged}
-                                          onToggleFlag={handleToggleFlag}
-                                          onRegenerate={(id) => handleRegenerateSingle(selectedVoice, id)}
-                                          isRegenerating={isGenerating}
-                                          compact
-                                        />
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </section>
-              )}
             </>
           )}
         </div>

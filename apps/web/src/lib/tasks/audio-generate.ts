@@ -5,7 +5,7 @@ import { buildTtsParams } from "@/lib/audio/toneDirections";
 import { createTask } from "../task-manager";
 import type { AudioGenerateEvent } from "./events";
 
-const AUDIO_DIR = join(process.cwd(), "public", "audio");
+const AUDIO_DIR = join(process.cwd(), "data", "audio");
 
 export interface AudioGenerateInput {
   voice: string;
@@ -92,6 +92,9 @@ export async function startAudioGeneration(
 
     let generated = 0;
     let errors = 0;
+    let consecutiveErrors = 0;
+    let lastErrorMessage = "";
+    const MAX_CONSECUTIVE_ERRORS = 3;
 
     for (let i = 0; i < missing.length; i++) {
       if (handle.isCancelled()) break;
@@ -116,25 +119,38 @@ export async function startAudioGeneration(
         if (!response.ok) {
           const errText = await response.text();
           errors++;
+          const errorMsg = `HTTP ${response.status}: ${errText}`;
+          consecutiveErrors++;
+          lastErrorMessage = errorMsg;
           handle.emit({
             type: "clip_error",
             clipId: clip.id,
-            error: `HTTP ${response.status}: ${errText}`,
+            error: errorMsg,
           });
-          continue;
+        } else {
+          const arrayBuffer = await response.arrayBuffer();
+          writeFileSync(join(voiceDir, clip.filename), Buffer.from(arrayBuffer));
+          generated++;
+          consecutiveErrors = 0;
+          handle.emit({ type: "clip_done", clipId: clip.id });
         }
-
-        const arrayBuffer = await response.arrayBuffer();
-        writeFileSync(join(voiceDir, clip.filename), Buffer.from(arrayBuffer));
-        generated++;
-        handle.emit({ type: "clip_done", clipId: clip.id });
       } catch (err) {
         errors++;
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        consecutiveErrors++;
+        lastErrorMessage = errorMsg;
         handle.emit({
           type: "clip_error",
           clipId: clip.id,
-          error: err instanceof Error ? err.message : String(err),
+          error: errorMsg,
         });
+      }
+
+      // Abort early on systemic failures
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        const friendlyMsg = describeSystemicError(lastErrorMessage, config.voice);
+        handle.fail(friendlyMsg);
+        return;
       }
 
       const progress = Math.round(((i + 1) / missing.length) * 100);
@@ -158,4 +174,24 @@ export async function startAudioGeneration(
       total: clipScope.length,
     });
   });
+}
+
+/** Map raw error messages to user-friendly descriptions for systemic failures. */
+function describeSystemicError(rawError: string, voice: string): string {
+  if (rawError.includes("EACCES") || rawError.includes("permission denied")) {
+    return `Permission denied writing audio files for voice "${voice}". The server cannot write to the audio storage directory. An admin needs to fix the directory permissions.`;
+  }
+  if (rawError.includes("ENOSPC") || rawError.includes("no space")) {
+    return `Disk full — not enough space to write audio files for voice "${voice}".`;
+  }
+  if (rawError.includes("ENOENT")) {
+    return `Audio storage directory not found for voice "${voice}". The volume may not be mounted.`;
+  }
+  if (rawError.includes("HTTP 401") || rawError.includes("HTTP 403")) {
+    return `OpenAI API authentication failed. Check that LLM_OPENAI_API_KEY is valid.`;
+  }
+  if (rawError.includes("HTTP 429")) {
+    return `OpenAI API rate limit exceeded. Try again later or reduce batch size.`;
+  }
+  return `Generation failed after repeated errors: ${rawError}`;
 }

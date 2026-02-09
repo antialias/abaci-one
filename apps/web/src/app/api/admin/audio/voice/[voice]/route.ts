@@ -5,7 +5,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
 
-const AUDIO_DIR = join(process.cwd(), 'public', 'audio')
+const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
 /**
  * DELETE /api/admin/audio/voice/[voice]

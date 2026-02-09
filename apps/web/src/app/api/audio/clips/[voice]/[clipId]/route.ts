@@ -1,10 +1,11 @@
 /**
- * API route for serving pre-generated collected clip mp3 files.
+ * API route for serving audio clip mp3 files.
  *
  * GET /api/audio/clips/[voice]/[clipId]
  *
- * Reads from data/audio/{voice}/cc-{clipId}.mp3 (NFS-backed in production).
- * No auth required — clip IDs are opaque hashes and audio content is not sensitive.
+ * Serves both static manifest clips ({clipId}.mp3) and collected clips
+ * (cc-{clipId}.mp3) from data/audio/{voice}/ (NFS-backed in production).
+ * No auth required — clip IDs are opaque and audio content is not sensitive.
  */
 
 import { readFile, stat } from 'fs/promises'
@@ -26,11 +27,22 @@ export async function GET(_request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
     }
 
-    const filepath = join(AUDIO_DIR, voice, `cc-${clipId}.mp3`)
+    // Try static clip first ({clipId}.mp3), then collected clip (cc-{clipId}.mp3)
+    const staticPath = join(AUDIO_DIR, voice, `${clipId}.mp3`)
+    const collectedPath = join(AUDIO_DIR, voice, `cc-${clipId}.mp3`)
 
-    try {
-      await stat(filepath)
-    } catch {
+    let filepath: string | null = null
+    for (const candidate of [staticPath, collectedPath]) {
+      try {
+        await stat(candidate)
+        filepath = candidate
+        break
+      } catch {
+        // Not found, try next
+      }
+    }
+
+    if (!filepath) {
       return new NextResponse(null, { status: 404 })
     }
 

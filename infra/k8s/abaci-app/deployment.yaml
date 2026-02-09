@@ -72,8 +72,6 @@ spec:
               mountPath: /app/apps/web/data/uploads
             - name: audio-data
               mountPath: /app/apps/web/data/audio
-            - name: dev-artifacts
-              mountPath: /dev-artifacts
       volumes:
         - name: vision-training-data
           persistentVolumeClaim:
@@ -84,6 +82,3 @@ spec:
         - name: audio-data
           persistentVolumeClaim:
             claimName: audio-data
-        - name: dev-artifacts
-          persistentVolumeClaim:
-            claimName: dev-artifacts

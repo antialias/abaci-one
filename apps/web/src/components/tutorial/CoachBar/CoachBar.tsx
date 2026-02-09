@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { useAudioManager } from '@/hooks/useAudioManager'
+import { useTTS } from '@/hooks/useTTS'
 import type { PedagogicalSegment } from '../DecompositionWithReasons'
 import { useTutorialUI } from '../TutorialUIContext'
 
@@ -13,18 +14,18 @@ export function CoachBar() {
   const seg: PedagogicalSegment | null = ui.activeSegment
   const lastSummaryRef = useRef<string>('')
 
-  // Read coach hint aloud via browser SpeechSynthesis when it changes
-  const summary = seg?.readable?.summary
+  // Read coach hint aloud via TTS voice chain when it changes
+  const summary = seg?.readable?.summary ?? ''
+  const sayCoachHint = useTTS(summary ? 'coach-hint' : '', {
+    tone: 'tutorial-instruction',
+    say: summary ? { en: summary } : undefined,
+  })
+
   useEffect(() => {
     if (!audioHelpEnabled || !summary || summary === lastSummaryRef.current) return
     lastSummaryRef.current = summary
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(summary)
-      utterance.rate = 0.9
-      speechSynthesis.cancel()
-      speechSynthesis.speak(utterance)
-    }
-  }, [audioHelpEnabled, summary])
+    sayCoachHint()
+  }, [audioHelpEnabled, summary, sayCoachHint])
 
   if (!ui.showCoachBar || !seg || !seg.readable?.summary) return null
 

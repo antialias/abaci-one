@@ -645,6 +645,20 @@
       "when": 1771200000000,
       "tag": "0091_classy_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "6",
+      "when": 1771300000000,
+      "tag": "0092_cynical_lord_tyger",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "6",
+      "when": 1771400000000,
+      "tag": "0093_slow_magik",
+      "breakpoints": true
     }
   ]
 }

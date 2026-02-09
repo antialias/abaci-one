@@ -1,3 +1,5 @@
+import { AUDIO_MANIFEST_MAP } from './audioManifest'
+
 export interface TtsAudioManagerConfig {
   volume: number
   enabled: boolean
@@ -9,8 +11,28 @@ export interface ManagerSnapshot {
   volume: number
 }
 
+/** Locale -> fallback text map (BCP 47 keys). */
+export type TtsSay = Record<string, string>
+
+export interface TtsConfig {
+  tone?: string
+  say?: TtsSay
+}
+
+/**
+ * A segment in a TTS sequence.
+ * - `string` -> clip ID (text resolved from AUDIO_MANIFEST_MAP or config.say)
+ * - `object` -> explicit clip ID with per-segment config overrides
+ */
+export type TtsSegment =
+  | string
+  | ({ clipId: string } & Partial<TtsConfig>)
+
+export type TtsInput = TtsSegment | TtsSegment[]
+
 export interface CollectedClip {
-  text: string
+  clipId: string
+  say: TtsSay
   tone: string
   playCount: number
   firstSeen: Date
@@ -23,22 +45,14 @@ export type VoiceSource =
 
 type Listener = () => void
 
-function collectionKey(text: string, tone: string): string {
-  return `${tone}::${text}`
+/** Resolved segment ready for playback. */
+interface ResolvedSegment {
+  clipId: string
+  fallbackText: string
+  tone: string
 }
 
-/**
- * Compute a clip hash matching the server's `crypto.createHash('sha256')`.
- * Uses Web Crypto API (available in all modern browsers).
- * Returns the first 16 hex chars of sha256(`${tone}::${text}`).
- */
-async function clipHash(text: string, tone: string): Promise<string> {
-  const data = new TextEncoder().encode(`${tone}::${text}`)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
-  return hex.slice(0, 16)
-}
+const INTER_SEGMENT_GAP_MS = 80
 
 export class TtsAudioManager {
   private listeners = new Set<Listener>()
@@ -51,23 +65,23 @@ export class TtsAudioManager {
   // Voice chain: ordered fallback list for playback
   private _voiceChain: VoiceSource[] = []
 
-  // Pre-generated clip IDs: voice name → set of clip IDs with mp3s on disk
+  // Pre-generated clip IDs: voice name -> set of clip IDs with mp3s on disk
   private _pregenClipIds = new Map<string, Set<string>>()
-
-  // Cache of computed clip hashes (text+tone → hash)
-  private _hashCache = new Map<string, string>()
 
   // Currently playing Audio element (for mp3 playback)
   private _currentAudio: HTMLAudioElement | null = null
 
-  // Cached snapshot for useSyncExternalStore — must be referentially stable
+  // Sequence cancellation flag
+  private _sequenceCancelled = false
+
+  // Cached snapshot for useSyncExternalStore -- must be referentially stable
   private _cachedSnapshot: ManagerSnapshot = {
     isPlaying: false,
     isEnabled: false,
     volume: 0.8,
   }
 
-  // ── Configuration ──────────────────────────────────────────────
+  // -- Configuration --
 
   configure(config: Partial<TtsAudioManagerConfig>): void {
     let changed = false
@@ -88,7 +102,7 @@ export class TtsAudioManager {
     if (changed) this.notify()
   }
 
-  // ── Voice Chain ─────────────────────────────────────────────────
+  // -- Voice Chain --
 
   /**
    * Load the pre-generated clip manifest for the given voice chain.
@@ -114,23 +128,45 @@ export class TtsAudioManager {
         this._pregenClipIds.set(voice, new Set(ids))
       }
     } catch {
-      // Non-fatal — fall back to browser TTS
+      // Non-fatal -- fall back to browser TTS
     }
   }
 
-  // ── Runtime Collection ────────────────────────────────────────
+  // -- Runtime Collection --
 
-  register(text: string, tone: string): void {
-    if (!text) return
-    const key = collectionKey(text, tone)
-    if (!this.collection.has(key)) {
-      this.collection.set(key, {
-        text,
-        tone,
-        playCount: 0,
-        firstSeen: new Date(),
-        lastSeen: new Date(),
-      })
+  register(input: TtsInput, config?: TtsConfig): void {
+    const segments = Array.isArray(input) ? input : [input]
+    const topTone = config?.tone ?? ''
+    const topSay = config?.say
+
+    for (const seg of segments) {
+      const clipId = typeof seg === 'string' ? seg : seg.clipId
+      if (!clipId) continue
+
+      const segSay = typeof seg === 'object' ? seg.say : undefined
+      const segTone = typeof seg === 'object' ? seg.tone : undefined
+
+      const effectiveTone = segTone ?? topTone
+      // Merge: top-level say, then segment say (segment wins)
+      const effectiveSay: TtsSay = { ...topSay, ...segSay }
+
+      const existing = this.collection.get(clipId)
+      if (existing) {
+        // Merge say maps across calls
+        Object.assign(existing.say, effectiveSay)
+        if (effectiveTone && !existing.tone) {
+          existing.tone = effectiveTone
+        }
+      } else {
+        this.collection.set(clipId, {
+          clipId,
+          say: effectiveSay,
+          tone: effectiveTone,
+          playCount: 0,
+          firstSeen: new Date(),
+          lastSeen: new Date(),
+        })
+      }
     }
   }
 
@@ -143,7 +179,8 @@ export class TtsAudioManager {
     if (clips.length === 0) return
 
     const payload = clips.map((c) => ({
-      text: c.text,
+      clipId: c.clipId,
+      say: c.say,
       tone: c.tone,
       playCount: c.playCount,
     }))
@@ -164,12 +201,12 @@ export class TtsAudioManager {
           body: JSON.stringify({ clips: payload }),
         })
       } catch {
-        // Best-effort — don't throw during cleanup
+        // Best-effort -- don't throw during cleanup
       }
     }
   }
 
-  // ── Playback ───────────────────────────────────────────────────
+  // -- Playback --
 
   /**
    * Play an mp3 file from a URL.
@@ -196,66 +233,126 @@ export class TtsAudioManager {
   }
 
   /**
-   * Get or compute the clip hash for a (text, tone) pair.
+   * Resolve BCP 47 locale from a TtsSay map using navigator.languages.
    */
-  private async getClipHash(text: string, tone: string): Promise<string> {
-    const key = collectionKey(text, tone)
-    let hash = this._hashCache.get(key)
-    if (!hash) {
-      hash = await clipHash(text, tone)
-      this._hashCache.set(key, hash)
+  private resolveSay(say: TtsSay | undefined): string | undefined {
+    if (!say) return undefined
+    const keys = Object.keys(say)
+    if (keys.length === 0) return undefined
+
+    if (typeof navigator !== 'undefined' && navigator.languages) {
+      for (const locale of navigator.languages) {
+        // Exact match
+        if (say[locale] !== undefined) return say[locale]
+        // Language-only prefix: en-US -> en
+        const langOnly = locale.split('-')[0]
+        if (say[langOnly] !== undefined) return say[langOnly]
+      }
     }
-    return hash
+
+    // Fall back to first available key
+    return say[keys[0]]
   }
 
-  async speak(text: string, tone: string): Promise<void> {
-    this.register(text, tone)
+  /**
+   * Resolve a single segment into playback-ready form.
+   */
+  private resolveSegment(seg: TtsSegment, topConfig?: TtsConfig): ResolvedSegment {
+    const clipId = typeof seg === 'string' ? seg : seg.clipId
+    const segTone = typeof seg === 'object' ? seg.tone : undefined
+    const segSay = typeof seg === 'object' ? seg.say : undefined
 
-    if (!this._isEnabled || !text) return
+    const effectiveTone = segTone ?? topConfig?.tone ?? ''
+    const effectiveSay: TtsSay = { ...topConfig?.say, ...segSay }
 
-    this.stop()
-    this.setPlaying(true)
+    // Resolve fallback text: manifest entry .text > resolveSay() > clipId
+    const manifestEntry = AUDIO_MANIFEST_MAP[clipId]
+    const fallbackText = manifestEntry?.text
+      ?? this.resolveSay(effectiveSay)
+      ?? clipId
 
-    // Increment play count
-    const key = collectionKey(text, tone)
-    const entry = this.collection.get(key)
-    if (entry) {
-      entry.playCount++
-      entry.lastSeen = new Date()
-    }
+    return { clipId, fallbackText, tone: effectiveTone }
+  }
 
-    // Try voice chain in order
+  /**
+   * Try playing a single resolved segment via the voice chain.
+   * Returns true if something played, false if chain exhausted.
+   */
+  private async playOneSegment(resolved: ResolvedSegment): Promise<boolean> {
     if (this._voiceChain.length > 0) {
-      const hash = await this.getClipHash(text, tone)
-
       for (const source of this._voiceChain) {
         if (source.type === 'pregenerated') {
           const clipIds = this._pregenClipIds.get(source.name)
-          if (clipIds?.has(hash)) {
-            const ok = await this.playMp3(`/api/audio/clips/${source.name}/${hash}`)
-            if (ok) {
-              this.setPlaying(false)
-              return
-            }
+          if (clipIds?.has(resolved.clipId)) {
+            const ok = await this.playMp3(`/api/audio/clips/${source.name}/${resolved.clipId}`)
+            if (ok) return true
             // mp3 failed, try next in chain
           }
         } else if (source.type === 'browser-tts') {
-          const ok = await this.speakBrowserTts(text)
-          if (ok) {
-            this.setPlaying(false)
-            return
-          }
+          const ok = await this.speakBrowserTts(resolved.fallbackText)
+          if (ok) return true
         }
       }
-
-      // All chain entries exhausted — done
-      this.setPlaying(false)
-      return
+      // All chain entries exhausted
+      return false
     }
 
-    // No voice chain — fall back to browser TTS
-    await this.speakBrowserTts(text)
+    // No voice chain -- fall back to browser TTS
+    return this.speakBrowserTts(resolved.fallbackText)
+  }
+
+  /**
+   * Play a sequence of resolved segments with inter-segment gaps.
+   */
+  private async playSequence(segments: ResolvedSegment[]): Promise<void> {
+    this.stop()
+    this._isPlaying = true
+    this._sequenceCancelled = false
+    this.notify()
+
+    for (let i = 0; i < segments.length; i++) {
+      if (this._sequenceCancelled) break
+
+      await this.playOneSegment(segments[i])
+
+      // Inter-segment gap (skip after last segment)
+      if (i < segments.length - 1 && !this._sequenceCancelled) {
+        await new Promise<void>((resolve) => setTimeout(resolve, INTER_SEGMENT_GAP_MS))
+      }
+    }
+
     this.setPlaying(false)
+  }
+
+  async speak(input: TtsInput, config?: TtsConfig): Promise<void> {
+    this.register(input, config)
+
+    if (!this._isEnabled) return
+
+    const segments = Array.isArray(input) ? input : [input]
+    if (segments.length === 0) return
+
+    const resolved = segments.map((seg) => this.resolveSegment(seg, config))
+
+    // Increment play counts
+    for (const r of resolved) {
+      const entry = this.collection.get(r.clipId)
+      if (entry) {
+        entry.playCount++
+        entry.lastSeen = new Date()
+      }
+    }
+
+    if (resolved.length === 1) {
+      // Single segment: simple path
+      this.stop()
+      this.setPlaying(true)
+      await this.playOneSegment(resolved[0])
+      this.setPlaying(false)
+    } else {
+      // Multi-segment: sequence path
+      await this.playSequence(resolved)
+    }
   }
 
   /**
@@ -278,6 +375,8 @@ export class TtsAudioManager {
   }
 
   stop(): void {
+    // Cancel any running sequence
+    this._sequenceCancelled = true
     // Stop any playing mp3
     if (this._currentAudio) {
       this._currentAudio.pause()
@@ -292,7 +391,7 @@ export class TtsAudioManager {
     }
   }
 
-  // ── React integration: useSyncExternalStore ────────────────────
+  // -- React integration: useSyncExternalStore --
 
   subscribe = (listener: Listener): (() => void) => {
     this.listeners.add(listener)
@@ -305,13 +404,13 @@ export class TtsAudioManager {
     return this._cachedSnapshot
   }
 
-  // ── Cleanup ────────────────────────────────────────────────────
+  // -- Cleanup --
 
   dispose(): void {
     this.stop()
   }
 
-  // ── Private ────────────────────────────────────────────────────
+  // -- Private --
 
   private setPlaying(playing: boolean): void {
     if (this._isPlaying !== playing) {

@@ -3,15 +3,10 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTTS } from '@/hooks/useTTS'
 import { useAudioManager } from '@/hooks/useAudioManager'
+import { termsToClipIds } from '@/lib/audio/termsToClipIds'
 import { termsToSentence } from '@/lib/audio/termsToSentence'
+import { buildFeedbackClipIds } from '@/lib/audio/buildFeedbackClipIds'
 import { buildFeedbackText } from '@/lib/audio/buildFeedbackText'
-
-const MATH_TONE =
-  'Speaking clearly and steadily, reading a math problem to a young child. Pause slightly between each number and operator.'
-const CELEBRATION_TONE =
-  'Warmly congratulating a child. Genuinely encouraging and happy.'
-const CORRECTIVE_TONE =
-  'Gently guiding a child after a wrong answer. Kind, not disappointed.'
 
 interface UsePracticeAudioHelpOptions {
   terms: number[] | null
@@ -28,11 +23,23 @@ export function usePracticeAudioHelp({
 }: UsePracticeAudioHelpOptions) {
   const { stop } = useAudioManager()
 
-  const problemText = useMemo(
+  const problemClipIds = useMemo(
+    () => (terms ? termsToClipIds(terms) : []),
+    [terms]
+  )
+  const problemSay = useMemo(
     () => (terms ? termsToSentence(terms) : ''),
     [terms]
   )
-  const feedbackText = useMemo(
+
+  const feedbackClipIds = useMemo(
+    () =>
+      showingFeedback && isCorrect !== null && correctAnswer !== null
+        ? buildFeedbackClipIds(isCorrect, correctAnswer)
+        : [],
+    [showingFeedback, isCorrect, correctAnswer]
+  )
+  const feedbackSay = useMemo(
     () =>
       showingFeedback && isCorrect !== null && correctAnswer !== null
         ? buildFeedbackText(isCorrect, correctAnswer)
@@ -40,26 +47,30 @@ export function usePracticeAudioHelp({
     [showingFeedback, isCorrect, correctAnswer]
   )
 
-  const sayProblem = useTTS(problemText, { tone: MATH_TONE })
-  const sayFeedback = useTTS(feedbackText, {
-    tone: isCorrect ? CELEBRATION_TONE : CORRECTIVE_TONE,
+  const sayProblem = useTTS(problemClipIds, {
+    tone: 'math-dictation',
+    say: problemSay ? { en: problemSay } : undefined,
+  })
+  const sayFeedback = useTTS(feedbackClipIds, {
+    tone: isCorrect ? 'celebration' : 'corrective',
+    say: feedbackSay ? { en: feedbackSay } : undefined,
   })
 
   // Auto-play problem when terms change
   const prevTermsRef = useRef<number[] | null>(null)
   useEffect(() => {
-    if (!problemText || terms === prevTermsRef.current) return
+    if (problemClipIds.length === 0 || terms === prevTermsRef.current) return
     prevTermsRef.current = terms
     sayProblem()
-  }, [problemText, terms, sayProblem])
+  }, [problemClipIds, terms, sayProblem])
 
   // Auto-play feedback
   const playedFeedbackRef = useRef(false)
   useEffect(() => {
-    if (!feedbackText || playedFeedbackRef.current) return
+    if (feedbackClipIds.length === 0 || playedFeedbackRef.current) return
     playedFeedbackRef.current = true
     sayFeedback()
-  }, [feedbackText, sayFeedback])
+  }, [feedbackClipIds, sayFeedback])
 
   // Reset feedback flag
   useEffect(() => {

@@ -113,6 +113,14 @@ resource "kubernetes_config_map" "dev_artifacts_nginx" {
               return 301 https://antialias.github.io/soroban-abacus-flashcards/;
           }
 
+          # Redirect coverage to GitHub Pages
+          location /coverage {
+              return 301 https://antialias.github.io/soroban-abacus-flashcards/coverage/;
+          }
+          location /coverage/ {
+              return 301 https://antialias.github.io/soroban-abacus-flashcards/coverage/;
+          }
+
           # Health check endpoint
           location /health {
               return 200 'ok';
@@ -292,11 +300,11 @@ resource "kubernetes_config_map" "dev_artifacts_nginx" {
                 <div class="card-url">GitHub Pages</div>
             </a>
 
-            <a href="/coverage/" class="card">
+            <a href="https://antialias.github.io/soroban-abacus-flashcards/coverage/" class="card">
                 <div class="card-icon">📊</div>
                 <div class="card-title">Test Coverage <span class="badge badge-live">Live</span></div>
                 <div class="card-desc">Code coverage reports showing tested vs untested code paths. Updated on every push to main.</div>
-                <div class="card-url">/coverage/</div>
+                <div class="card-url">GitHub Pages</div>
             </a>
         </div>
 

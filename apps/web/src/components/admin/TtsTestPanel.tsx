@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useAudioManagerInstance } from "@/contexts/AudioManagerContext";
+import { useTTS } from "@/hooks/useTTS";
 import type { CollectedClip } from "@/lib/audio/TtsAudioManager";
 import { css } from "../../../styled-system/css";
 
@@ -54,8 +55,19 @@ export function TtsTestPanel() {
     setShowCollection(true);
   }, [manager]);
 
+  // Clip ID for the test panel is the text itself; say carries the English text
+  const clipId = text.trim();
+  const ttsConfig = useMemo(
+    () => ({
+      tone,
+      say: clipId ? { en: clipId } : undefined,
+    }),
+    [clipId, tone],
+  );
+  const speak = useTTS(clipId, ttsConfig);
+
   const handleSpeak = useCallback(async () => {
-    if (!text.trim()) return;
+    if (!clipId) return;
     // Temporarily enable if disabled so the test panel always works
     const snap = manager.getSnapshot();
     const wasDisabled = !snap.isEnabled;
@@ -63,13 +75,13 @@ export function TtsTestPanel() {
 
     setIsSpeaking(true);
     try {
-      await manager.speak(text.trim(), tone);
+      await speak();
     } finally {
       setIsSpeaking(false);
       if (wasDisabled) manager.configure({ enabled: false });
       refreshCollection();
     }
-  }, [manager, text, tone, refreshCollection]);
+  }, [manager, clipId, speak, refreshCollection]);
 
   const handleStop = useCallback(() => {
     manager.stop();
@@ -263,7 +275,7 @@ export function TtsTestPanel() {
           <button
             data-action="speak"
             onClick={handleSpeak}
-            disabled={!text.trim() || isSpeaking}
+            disabled={!clipId || isSpeaking}
             className={css({
               backgroundColor: "#238636",
               color: "#fff",
@@ -381,7 +393,7 @@ export function TtsTestPanel() {
             >
               <thead>
                 <tr>
-                  {["Text", "Tone", "Plays", "Play"].map((header, idx) => (
+                  {["Clip ID", "Tone", "Plays", "Play"].map((header, idx) => (
                     <th
                       key={header}
                       className={css({
@@ -408,7 +420,7 @@ export function TtsTestPanel() {
                         color: "#f0f6fc",
                       })}
                     >
-                      {clip.text}
+                      {clip.clipId}
                     </td>
                     <td
                       className={css({
@@ -450,7 +462,10 @@ export function TtsTestPanel() {
                           const wasDisabled = !snap.isEnabled;
                           if (wasDisabled)
                             manager.configure({ enabled: true });
-                          await manager.speak(clip.text, clip.tone);
+                          await manager.speak(clip.clipId, {
+                            tone: clip.tone,
+                            say: clip.say,
+                          });
                           if (wasDisabled)
                             manager.configure({ enabled: false });
                           refreshCollection();
@@ -463,7 +478,7 @@ export function TtsTestPanel() {
                           fontSize: "14px",
                           "&:hover": { color: "#58a6ff" },
                         })}
-                        title={`Play "${clip.text}"`}
+                        title={`Play "${clip.clipId}"`}
                       >
                         &#9654;
                       </button>

@@ -7,8 +7,9 @@ const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 /**
  * GET /api/audio/collected-clips/manifest?voices=onyx,nova
  *
- * Lightweight endpoint returning which collected clip IDs have pre-generated
- * mp3 files for each requested voice. Used by TtsAudioManager at boot to
+ * Lightweight endpoint returning which clip IDs have pre-generated mp3 files
+ * for each requested voice. Includes both static manifest clips ({clipId}.mp3)
+ * and collected clips (cc-{clipId}.mp3). Used by TtsAudioManager at boot to
  * know which clips can play pre-generated audio.
  *
  * Response: { clipIdsByVoice: { onyx: ["abc123", ...], nova: [...] } }
@@ -31,11 +32,19 @@ export async function GET(request: NextRequest) {
       }
 
       const files = readdirSync(voiceDir)
-      const ccClipIds = files
-        .filter((f) => f.startsWith('cc-') && f.endsWith('.mp3'))
-        .map((f) => f.slice(3, -4)) // strip "cc-" prefix and ".mp3" suffix
+      const clipIds: string[] = []
+      for (const f of files) {
+        if (!f.endsWith('.mp3')) continue
+        if (f.startsWith('cc-')) {
+          // Collected clip: cc-{clipId}.mp3 → clipId
+          clipIds.push(f.slice(3, -4))
+        } else {
+          // Static manifest clip: {clipId}.mp3 → clipId
+          clipIds.push(f.slice(0, -4))
+        }
+      }
 
-      clipIdsByVoice[voice] = ccClipIds
+      clipIdsByVoice[voice] = clipIds
     }
 
     return NextResponse.json({ clipIdsByVoice })

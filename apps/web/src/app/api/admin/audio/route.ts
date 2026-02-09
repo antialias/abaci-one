@@ -6,7 +6,7 @@ import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
 import { AUDIO_MANIFEST } from '@/lib/audio/audioManifest'
 
-const AUDIO_DIR = join(process.cwd(), 'public', 'audio')
+const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
 /**
  * GET /api/admin/audio
@@ -24,7 +24,7 @@ export async function GET() {
 
     const activeVoice = settings?.audioVoice ?? DEFAULT_APP_SETTINGS.audioVoice
 
-    // Scan public/audio/ for voice directories
+    // Scan data/audio/ for voice directories
     const voices: Record<string, { total: number; existing: number }> = {}
     const manifestFilenames = new Set(AUDIO_MANIFEST.map((e) => e.filename))
 

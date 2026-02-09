@@ -13,8 +13,8 @@ export { collectedClipKeys } from '@/lib/queryKeys'
 
 export interface CollectedClipEntry {
   id: string
-  text: string
   tone: string
+  say: Record<string, string> | null
   playCount: number
   firstSeenAt: string
   lastSeenAt: string

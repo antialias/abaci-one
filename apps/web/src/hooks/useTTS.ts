@@ -2,28 +2,27 @@
 
 import { useCallback, useEffect } from 'react'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
+import type { TtsInput, TtsConfig } from '@/lib/audio/TtsAudioManager'
 
 /**
  * Declare a TTS utterance at the usage site and get a play function.
  *
- * On render: registers the (text, tone) pair with the manager.
- * Returns a stable callback that speaks the text via browser TTS.
+ * On render: registers the input with the manager.
+ * Returns a stable callback that speaks via the voice chain.
  *
- * @param text  The text to speak (empty string skips registration)
- * @param options.tone  Freeform tone description (used for future generation)
+ * @param input  A clip ID string, or an array of TtsSegments
+ * @param config  Optional config: { tone?, say? }
  */
-export function useTTS(text: string, options: { tone: string }): () => Promise<void> {
+export function useTTS(input: TtsInput, config?: TtsConfig): () => Promise<void> {
   const manager = useAudioManagerInstance()
 
   // Register on render (idempotent)
   useEffect(() => {
-    if (text) {
-      manager.register(text, options.tone)
-    }
-  }, [manager, text, options.tone])
+    manager.register(input, config)
+  }, [manager, input, config])
 
   return useCallback(
-    () => manager.speak(text, options.tone),
-    [manager, text, options.tone]
+    () => manager.speak(input, config),
+    [manager, input, config]
   )
 }

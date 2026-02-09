@@ -4,10 +4,6 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useTTS } from '@/hooks/useTTS'
 import { useAudioManager } from '@/hooks/useAudioManager'
 
-const INST =
-  'Patiently guiding a young child through an abacus tutorial. Clear, slow, friendly.'
-const CELEB = 'Proudly encouraging a child. Warm and affirming.'
-
 interface UseTutorialAudioHelpOptions {
   currentStepIndex: number
   stepTitle: string | undefined
@@ -20,15 +16,37 @@ export function useTutorialAudioHelp({
   const { isEnabled, stop } = useAudioManager()
   const lastStepIndexRef = useRef<number>(-1)
 
-  const sayWelcome = useTTS('Welcome!', { tone: INST })
-  const sayLookAtAbacus = useTTS('Look at the abacus', { tone: INST })
-  const sayTapTheBead = useTTS('Tap the bead', { tone: INST })
-  const sayThisIsOne = useTTS('This is one', { tone: INST })
-  const sayMoveBeadUp = useTTS('Move the bead up', { tone: INST })
-  const sayThisIsFive = useTTS('This is five', { tone: INST })
+  const sayWelcome = useTTS('tutorial-welcome', {
+    tone: 'tutorial-instruction',
+    say: { en: 'Welcome to the tutorial!' },
+  })
+  const sayLookAtAbacus = useTTS('tutorial-look-at-abacus', {
+    tone: 'tutorial-instruction',
+    say: { en: 'Look at the abacus.' },
+  })
+  const sayTapTheBead = useTTS('tutorial-tap-the-bead', {
+    tone: 'tutorial-instruction',
+    say: { en: 'Tap the bead.' },
+  })
+  const sayThisIsOne = useTTS('tutorial-this-is-one', {
+    tone: 'tutorial-instruction',
+    say: { en: 'This is one.' },
+  })
+  const sayMoveBeadUp = useTTS('tutorial-move-bead-up', {
+    tone: 'tutorial-instruction',
+    say: { en: 'Move the bead up.' },
+  })
+  const sayThisIsFive = useTTS('tutorial-this-is-five', {
+    tone: 'tutorial-instruction',
+    say: { en: 'This is five.' },
+  })
 
-  // For unmapped steps, use the step title directly
-  const saySynth = useTTS(stepTitle ?? '', { tone: INST })
+  // For unmapped steps, use a synthetic clip ID with the step title as say text
+  const synthClipId = stepTitle ? `tutorial-step-${currentStepIndex}` : ''
+  const saySynth = useTTS(synthClipId, {
+    tone: 'tutorial-instruction',
+    say: stepTitle ? { en: stepTitle } : undefined,
+  })
 
   const steps = useMemo(
     () => [

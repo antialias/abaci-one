@@ -162,11 +162,27 @@
       "Bash(crane digest:*)",
       "Bash(for pod in abaci-app-0 abaci-app-1 abaci-app-2)",
       "Bash(do echo '=== $pod ===')",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(pnpm db:migrate:*)",
+      "Bash(lsof:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(git status:*)",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:community.openai.com)",
+      "WebFetch(domain:blog.promptlayer.com)",
+      "Bash(git pull:*)",
+      "Bash(for voice in ash ballad sage)",
+      "Bash(do scp -r \"/Users/antialias/projects/soroban-abacus-flashcards/apps/web/public/audio/$voice\" antialias@192.168.86.51:/volume1/homes/antialias/projects/abaci.one/data/audio/)",
+      "Bash(do scp \"/Users/antialias/projects/soroban-abacus-flashcards/apps/web/public/audio/$voice/\"*.mp3 antialias@192.168.86.51:/volume1/homes/antialias/projects/abaci.one/data/audio/$voice/)",
+      "mcp__kubernetes__exec_in_pod",
+      "mcp__kubernetes__kubectl_get",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }

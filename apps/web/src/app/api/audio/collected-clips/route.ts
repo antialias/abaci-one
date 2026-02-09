@@ -1,27 +1,33 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { existsSync } from 'fs'
 import { join } from 'path'
-import { eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { ttsCollectedClips } from '@/db/schema'
-import crypto from 'crypto'
+import { ttsCollectedClips, ttsCollectedClipSay } from '@/db/schema'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
-
-function clipId(text: string, tone: string): string {
-  return crypto.createHash('sha256').update(`${tone}::${text}`).digest('hex').slice(0, 16)
-}
 
 /**
  * POST /api/audio/collected-clips
  *
  * Upserts a batch of collected clips from the client.
- * Increments play_count and updates last_seen_at.
+ * Increments play_count, updates last_seen_at, and upserts say entries.
+ *
+ * Payload: { clips: [{ clipId, say?, tone, playCount }] }
+ *   - clipId: human-readable clip ID
+ *   - say: optional locale -> text map (e.g. { "en-US": "Hello" })
+ *   - tone: freeform tone/instruction for TTS generation
+ *   - playCount: number of times played since last flush
  */
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const clips = body?.clips as Array<{ text: string; tone: string; playCount: number }> | undefined
+    const clips = body?.clips as Array<{
+      clipId: string
+      say?: Record<string, string>
+      tone: string
+      playCount: number
+    }> | undefined
 
     if (!Array.isArray(clips) || clips.length === 0) {
       return NextResponse.json({ ok: true, upserted: 0 })
@@ -31,16 +37,14 @@ export async function POST(request: Request) {
     let upserted = 0
 
     for (const clip of clips) {
-      if (!clip.text || !clip.tone) continue
+      if (!clip.clipId) continue
 
-      const id = clipId(clip.text, clip.tone)
-
+      // Upsert the clip row
       await db
         .insert(ttsCollectedClips)
         .values({
-          id,
-          text: clip.text,
-          tone: clip.tone,
+          id: clip.clipId,
+          tone: clip.tone || '',
           playCount: clip.playCount || 0,
           firstSeenAt: now,
           lastSeenAt: now,
@@ -52,6 +56,24 @@ export async function POST(request: Request) {
             lastSeenAt: now,
           },
         })
+
+      // Upsert say entries
+      if (clip.say) {
+        for (const [locale, text] of Object.entries(clip.say)) {
+          if (!text) continue
+          await db
+            .insert(ttsCollectedClipSay)
+            .values({
+              clipId: clip.clipId,
+              locale,
+              text,
+            })
+            .onConflictDoUpdate({
+              target: [ttsCollectedClipSay.clipId, ttsCollectedClipSay.locale],
+              set: { text },
+            })
+        }
+      }
 
       upserted++
     }
@@ -69,7 +91,7 @@ export async function POST(request: Request) {
 /**
  * GET /api/audio/collected-clips
  *
- * Returns all collected clips, sorted by play count descending.
+ * Returns all collected clips with their say entries, sorted by play count descending.
  * Optional `?voice=onyx` param adds per-clip generation status for that voice.
  */
 export async function GET(request: NextRequest) {
@@ -81,16 +103,38 @@ export async function GET(request: NextRequest) {
       .from(ttsCollectedClips)
       .orderBy(sql`${ttsCollectedClips.playCount} DESC`)
 
+    // Fetch all say entries and group by clipId
+    const sayEntries = await db
+      .select()
+      .from(ttsCollectedClipSay)
+
+    const sayByClipId = new Map<string, Record<string, string>>()
+    for (const entry of sayEntries) {
+      let map = sayByClipId.get(entry.clipId)
+      if (!map) {
+        map = {}
+        sayByClipId.set(entry.clipId, map)
+      }
+      map[entry.locale] = entry.text
+    }
+
+    // Build response with say maps attached
+    const clipsWithSay = clips.map((clip) => ({
+      ...clip,
+      say: sayByClipId.get(clip.id) ?? null,
+    }))
+
     let generatedFor: Record<string, boolean> | undefined
     if (voice) {
       const voiceDir = join(AUDIO_DIR, voice)
       generatedFor = {}
       for (const clip of clips) {
-        generatedFor[clip.id] = existsSync(join(voiceDir, `cc-${clip.id}.mp3`))
+        generatedFor[clip.id] = existsSync(join(voiceDir, `${clip.id}.mp3`))
+          || existsSync(join(voiceDir, `cc-${clip.id}.mp3`))
       }
     }
 
-    return NextResponse.json({ clips, ...(generatedFor ? { generatedFor } : {}) })
+    return NextResponse.json({ clips: clipsWithSay, ...(generatedFor ? { generatedFor } : {}) })
   } catch (error) {
     console.error('Error fetching collected clips:', error)
     return NextResponse.json(

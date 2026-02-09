@@ -8,7 +8,7 @@
  * Options:
  *   --voice <voice>  OpenAI TTS voice name (default: 'nova')
  *
- * Idempotent: skips clips that already exist in public/audio/{voice}/
+ * Idempotent: skips clips that already exist in data/audio/{voice}/
  */
 
 import { existsSync, mkdirSync, writeFileSync } from 'fs'
@@ -40,7 +40,7 @@ async function main() {
 
   const client = new OpenAI({ apiKey })
 
-  const outputDir = join(__dirname, '..', 'public', 'audio', voice)
+  const outputDir = join(__dirname, '..', 'data', 'audio', voice)
   mkdirSync(outputDir, { recursive: true })
 
   console.log(`Voice: ${voice}`)
