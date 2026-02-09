@@ -70,6 +70,8 @@ spec:
               mountPath: /app/apps/web/data/vision-training
             - name: uploads-data
               mountPath: /app/apps/web/data/uploads
+            - name: dev-artifacts
+              mountPath: /dev-artifacts
       volumes:
         - name: vision-training-data
           persistentVolumeClaim:
@@ -77,3 +79,6 @@ spec:
         - name: uploads-data
           persistentVolumeClaim:
             claimName: uploads-data
+        - name: dev-artifacts
+          persistentVolumeClaim:
+            claimName: dev-artifacts
