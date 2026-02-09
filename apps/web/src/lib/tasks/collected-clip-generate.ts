@@ -35,9 +35,9 @@ export async function startCollectedClipGeneration(
     CollectedClipGenerateOutput,
     CollectedClipGenerateEvent
   >("collected-clip-generate", input, async (handle, config) => {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      handle.fail("OPENAI_API_KEY is not configured");
+      handle.fail("LLM_OPENAI_API_KEY is not configured");
       return;
     }
 
