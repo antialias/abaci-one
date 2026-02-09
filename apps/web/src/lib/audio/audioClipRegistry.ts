@@ -2,6 +2,7 @@ export type AudioTone =
   | 'math-dictation'
   | 'celebration'
   | 'corrective'
+  | 'encouragement'
   | 'tutorial-instruction'
   | 'tutorial-celebration'
 

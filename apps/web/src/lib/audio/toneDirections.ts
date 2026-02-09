@@ -4,9 +4,11 @@ export const TONE_DIRECTIONS: Record<AudioTone, string> = {
   'math-dictation':
     'Speaking clearly and steadily. Reading one word in a math problem to a young child. Neutral, measured pace.',
   celebration:
-    'Warmly congratulating a child who answered correctly. Genuinely encouraging and happy.',
+    'Bursting with genuine excitement for a child who just got the answer right! Like a favorite teacher who can\'t contain their pride. Energetic, joyful, maybe a little silly. Make the kid feel like a champion.',
   corrective:
     'Gently and supportively guiding a child after a wrong answer. Kind, not disappointed.',
+  encouragement:
+    'Like a warm, playful coach cheering on a little kid. Patient and gentle but with a spark of fun — like you genuinely think this kid is about to do something amazing. Not syrupy or condescending. Think friendly older sibling energy.',
   'tutorial-instruction':
     'Patiently guiding a young child through their first time using an abacus app. Clear, slow, friendly.',
   'tutorial-celebration':
