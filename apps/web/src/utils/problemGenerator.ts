@@ -1182,7 +1182,10 @@ export function generateProblems(practiceStep: PracticeStep): GeneratedProblem[]
   // If we couldn't generate enough unique problems, fill with fallback problems
   // but ensure even fallbacks are unique
   let fallbackIndex = 0
-  while (problems.length < practiceStep.problemCount) {
+  const maxFallbackIterations = practiceStep.problemCount * 10
+  let fallbackIterations = 0
+  while (problems.length < practiceStep.problemCount && fallbackIterations < maxFallbackIterations) {
+    fallbackIterations++
     let fallbackProblem
     let fallbackAttempts = 0
 

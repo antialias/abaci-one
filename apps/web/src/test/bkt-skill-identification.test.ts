@@ -22,6 +22,7 @@ import type { SkillSet } from '@/types/tutorial'
 import { computeBktFromHistory } from '@/lib/curriculum/bkt'
 import type { SkillBktResult } from '@/lib/curriculum/bkt'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import { withSeededRandom } from '@/test/journey-simulator/SeededRandom'
 
 /**
  * Helper to create a valid ProblemResultWithContext
@@ -199,7 +200,7 @@ function createWeakSkillScenario(
 
 describe('BKT Skill Identification', () => {
   describe('Basic Skill Isolation', () => {
-    it('should correctly identify a weak basic.directAddition skill', () => {
+    it('should correctly identify a weak basic.directAddition skill', () => withSeededRandom(1001, () => {
       const weakSkill = 'basic.directAddition'
       const otherSkills = ['basic.heavenBead', 'fiveComplements.4=5-1', 'fiveComplements.3=5-2']
 
@@ -233,9 +234,9 @@ describe('BKT Skill Identification', () => {
           expect(skill.pKnown).toBeGreaterThan(weakSkillResult!.pKnown)
         }
       }
-    })
+    }))
 
-    it('should correctly identify a weak fiveComplements skill', () => {
+    it('should correctly identify a weak fiveComplements skill', () => withSeededRandom(1002, () => {
       const weakSkill = 'fiveComplements.4=5-1'
       const otherSkills = ['basic.directAddition', 'basic.heavenBead', 'fiveComplements.3=5-2']
 
@@ -258,7 +259,7 @@ describe('BKT Skill Identification', () => {
           expect(skill.pKnown).toBeGreaterThan(weakSkillResult!.pKnown)
         }
       }
-    })
+    }))
   })
 
   describe('Systematic Skill Testing', () => {
@@ -289,6 +290,10 @@ describe('BKT Skill Identification', () => {
       describe(testCase.category, () => {
         for (const skill of testCase.skills) {
           it(`should identify ${skill} as weak when it fails consistently`, () => {
+            // Use a deterministic seed derived from the skill name
+            let seedHash = 2000
+            for (let c = 0; c < skill.length; c++) seedHash = (seedHash * 31 + skill.charCodeAt(c)) >>> 0
+            return withSeededRandom(seedHash, () => {
             const otherSkills = [
               ...testCase.companions,
               ...testCase.skills.filter((s) => s !== skill),
@@ -312,6 +317,7 @@ describe('BKT Skill Identification', () => {
             if (weakSkillResult!.opportunities >= 5) {
               expect(weakSkillResult!.pKnown).toBeLessThan(0.6)
             }
+            })
           })
         }
       })
@@ -416,7 +422,7 @@ describe('BKT Skill Identification', () => {
   })
 
   describe('BKT vs No BKT Comparison', () => {
-    it('should show clear differentiation between weak and strong skills', () => {
+    it('should show clear differentiation between weak and strong skills', () => withSeededRandom(1004, () => {
       // Create a scenario with one definitively weak skill
       const weakSkill = 'fiveComplements.4=5-1'
       const strongSkills = [
@@ -468,11 +474,11 @@ describe('BKT Skill Identification', () => {
       console.log(
         `\nWeak skill in intervention list: ${weakInIntervention ? 'YES' : 'NO (may need more data or lower threshold)'}`
       )
-    })
+    }))
   })
 
   describe('Confidence Building', () => {
-    it('should require sufficient opportunities before confident identification', () => {
+    it('should require sufficient opportunities before confident identification', () => withSeededRandom(1005, () => {
       const weakSkill = 'fiveComplements.4=5-1'
       const otherSkills = ['basic.directAddition', 'basic.heavenBead', 'fiveComplements.3=5-2']
 
@@ -513,12 +519,12 @@ describe('BKT Skill Identification', () => {
       // With 80 problems, confidence should be reasonably high
       const finalConf = confidenceResults[confidenceResults.length - 1]
       expect(finalConf.conf).toBeGreaterThan(0.3)
-    })
+    }))
   })
 })
 
 describe('BKT Summary Statistics', () => {
-  it('should provide accurate summary for mixed skill levels', () => {
+  it('should provide accurate summary for mixed skill levels', () => withSeededRandom(1006, () => {
     // Create a mixed scenario with some weak and some strong skills
     const results: ProblemResultWithContext[] = []
     const baseTime = Date.now()
@@ -575,5 +581,5 @@ describe('BKT Summary Statistics', () => {
         }
       }
     }
-  })
+  }))
 })
