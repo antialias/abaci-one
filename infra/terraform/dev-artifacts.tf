@@ -107,18 +107,18 @@ resource "kubernetes_config_map" "dev_artifacts_nginx" {
 
           # Redirect Storybook to GitHub Pages (built by GitHub Actions)
           location /storybook {
-              return 301 https://antialias.github.io/soroban-abacus-flashcards/;
+              return 301 https://antialias.github.io/abaci-one/;
           }
           location /storybook/ {
-              return 301 https://antialias.github.io/soroban-abacus-flashcards/;
+              return 301 https://antialias.github.io/abaci-one/;
           }
 
           # Redirect coverage to GitHub Pages
           location /coverage {
-              return 301 https://antialias.github.io/soroban-abacus-flashcards/coverage/;
+              return 301 https://antialias.github.io/abaci-one/coverage/;
           }
           location /coverage/ {
-              return 301 https://antialias.github.io/soroban-abacus-flashcards/coverage/;
+              return 301 https://antialias.github.io/abaci-one/coverage/;
           }
 
           # Health check endpoint
@@ -300,7 +300,7 @@ resource "kubernetes_config_map" "dev_artifacts_nginx" {
                 <div class="card-url">GitHub Pages</div>
             </a>
 
-            <a href="https://antialias.github.io/soroban-abacus-flashcards/coverage/" class="card">
+            <a href="https://antialias.github.io/abaci-one/coverage/" class="card">
                 <div class="card-icon">📊</div>
                 <div class="card-title">Test Coverage <span class="badge badge-live">Live</span></div>
                 <div class="card-desc">Code coverage reports showing tested vs untested code paths. Updated on every push to main.</div>
