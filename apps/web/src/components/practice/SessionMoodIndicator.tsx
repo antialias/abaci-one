@@ -8,6 +8,7 @@ import {
   formatEstimatedTimeRemaining,
   type TimingStats,
 } from '@/hooks/useSessionTimeEstimate'
+import { calculateStreak } from '@/lib/calculateStreak'
 import { css } from '../../../styled-system/css'
 import { useIsTouchDevice } from './hooks/useDeviceDetection'
 import { SpeedMeter } from './SpeedMeter'
@@ -37,21 +38,6 @@ export interface SessionMoodIndicatorProps {
   isPaused: boolean
   /** Dark mode */
   isDark: boolean
-}
-
-/**
- * Calculate current streak from results
- */
-function calculateStreak(results: boolean[]): number {
-  let streak = 0
-  for (let i = results.length - 1; i >= 0; i--) {
-    if (results[i]) {
-      streak++
-    } else {
-      break
-    }
-  }
-  return streak
 }
 
 /**
