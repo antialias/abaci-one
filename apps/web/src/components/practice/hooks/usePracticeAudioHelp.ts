@@ -1,18 +1,18 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTTS } from '@/hooks/useTTS'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import { termsToClipIds } from '@/lib/audio/termsToClipIds'
-import { termsToSentence } from '@/lib/audio/termsToSentence'
 import { buildFeedbackClipIds } from '@/lib/audio/buildFeedbackClipIds'
-import { buildFeedbackText } from '@/lib/audio/buildFeedbackText'
+import { calculateStreak } from '@/lib/calculateStreak'
 
 interface UsePracticeAudioHelpOptions {
   terms: number[] | null
   showingFeedback: boolean
   isCorrect: boolean | null
   correctAnswer: number | null
+  results?: boolean[]
 }
 
 export function usePracticeAudioHelp({
@@ -20,40 +20,33 @@ export function usePracticeAudioHelp({
   showingFeedback,
   isCorrect,
   correctAnswer,
+  results,
 }: UsePracticeAudioHelpOptions) {
   const { stop } = useAudioManager()
 
+  const streak = useMemo(
+    () => (results ? calculateStreak(results) : 0),
+    [results]
+  )
+
   const problemClipIds = useMemo(
     () => (terms ? termsToClipIds(terms) : []),
-    [terms]
-  )
-  const problemSay = useMemo(
-    () => (terms ? termsToSentence(terms) : ''),
     [terms]
   )
 
   const feedbackClipIds = useMemo(
     () =>
       showingFeedback && isCorrect !== null && correctAnswer !== null
-        ? buildFeedbackClipIds(isCorrect, correctAnswer)
+        ? buildFeedbackClipIds(isCorrect, correctAnswer, { streak })
         : [],
-    [showingFeedback, isCorrect, correctAnswer]
-  )
-  const feedbackSay = useMemo(
-    () =>
-      showingFeedback && isCorrect !== null && correctAnswer !== null
-        ? buildFeedbackText(isCorrect, correctAnswer)
-        : '',
-    [showingFeedback, isCorrect, correctAnswer]
+    [showingFeedback, isCorrect, correctAnswer, streak]
   )
 
   const sayProblem = useTTS(problemClipIds, {
     tone: 'math-dictation',
-    say: problemSay ? { en: problemSay } : undefined,
   })
   const sayFeedback = useTTS(feedbackClipIds, {
     tone: isCorrect ? 'celebration' : 'corrective',
-    say: feedbackSay ? { en: feedbackSay } : undefined,
   })
 
   // Auto-play problem when terms change
@@ -82,5 +75,6 @@ export function usePracticeAudioHelp({
     return () => stop()
   }, [stop])
 
-  return { replayProblem: sayProblem }
+  // Wrap to prevent React onClick from passing MouseEvent as overrideInput
+  return { replayProblem: useCallback(() => sayProblem(), [sayProblem]) }
 }
