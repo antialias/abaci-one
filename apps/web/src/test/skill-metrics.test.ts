@@ -479,13 +479,24 @@ describe('calculateAccuracy', () => {
 // =============================================================================
 
 describe('calculatePracticeStreak', () => {
+  // Pin system clock so streak calculations are deterministic across timezones
+  const FIXED_NOW = new Date('2026-06-15T14:00:00')
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(FIXED_NOW)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('returns 0 for empty sessions', () => {
     expect(calculatePracticeStreak([])).toBe(0)
   })
 
   it('returns 0 for sessions without completed status', () => {
     const sessions = [
-      makeSessionPlan({ status: 'draft', completedAt: new Date() }),
+      makeSessionPlan({ status: 'draft', completedAt: FIXED_NOW }),
     ]
     expect(calculatePracticeStreak(sessions)).toBe(0)
   })
@@ -498,12 +509,9 @@ describe('calculatePracticeStreak', () => {
   })
 
   it('counts consecutive days from today', () => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12)
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
-    const twoDaysAgo = new Date(today)
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+    const today = new Date('2026-06-15T12:00:00')
+    const yesterday = new Date('2026-06-14T12:00:00')
+    const twoDaysAgo = new Date('2026-06-13T12:00:00')
 
     const sessions = [
       makeSessionPlan({ id: 's1', status: 'completed', completedAt: today }),
@@ -515,10 +523,8 @@ describe('calculatePracticeStreak', () => {
   })
 
   it('breaks streak when a day is missed', () => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12)
-    const threeDaysAgo = new Date(today)
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+    const today = new Date('2026-06-15T12:00:00')
+    const threeDaysAgo = new Date('2026-06-12T12:00:00')
 
     const sessions = [
       makeSessionPlan({ id: 's1', status: 'completed', completedAt: today }),
@@ -529,8 +535,7 @@ describe('calculatePracticeStreak', () => {
   })
 
   it('returns 0 when most recent session is > 1 day ago', () => {
-    const now = new Date()
-    const threeDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 3, 12)
+    const threeDaysAgo = new Date('2026-06-12T12:00:00')
 
     const sessions = [
       makeSessionPlan({ id: 's1', status: 'completed', completedAt: threeDaysAgo }),
@@ -540,14 +545,13 @@ describe('calculatePracticeStreak', () => {
   })
 
   it('deduplicates multiple sessions on the same day', () => {
-    const now = new Date()
-    const today1 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10)
-    const today2 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14)
-    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12)
+    const todayMorning = new Date('2026-06-15T10:00:00')
+    const todayAfternoon = new Date('2026-06-15T14:00:00')
+    const yesterday = new Date('2026-06-14T12:00:00')
 
     const sessions = [
-      makeSessionPlan({ id: 's1', status: 'completed', completedAt: today1 }),
-      makeSessionPlan({ id: 's2', status: 'completed', completedAt: today2 }),
+      makeSessionPlan({ id: 's1', status: 'completed', completedAt: todayMorning }),
+      makeSessionPlan({ id: 's2', status: 'completed', completedAt: todayAfternoon }),
       makeSessionPlan({ id: 's3', status: 'completed', completedAt: yesterday }),
     ]
 
