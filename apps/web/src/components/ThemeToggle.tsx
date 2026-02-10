@@ -40,8 +40,8 @@ export function ThemeToggle() {
       className={css({
         display: 'flex',
         alignItems: 'center',
-        gap: '0.5rem',
-        px: '1rem',
+        justifyContent: 'center',
+        px: '0.5rem',
         py: '0.5rem',
         bg: 'bg.surface',
         color: 'text.primary',
@@ -49,8 +49,7 @@ export function ThemeToggle() {
         borderColor: 'border.default',
         borderRadius: '0.5rem',
         cursor: 'pointer',
-        fontSize: '0.875rem',
-        fontWeight: 500,
+        fontSize: '1.1rem',
         transition: 'all 0.2s',
         _hover: {
           bg: 'interactive.hover',
@@ -59,7 +58,6 @@ export function ThemeToggle() {
       })}
     >
       {getThemeIcon()}
-      <span>{getThemeLabel()}</span>
     </button>
   )
 }

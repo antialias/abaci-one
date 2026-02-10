@@ -4,6 +4,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { signOut, useSession } from 'next-auth/react'
 import React, { useContext, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { css } from '../../styled-system/css'
@@ -17,7 +18,6 @@ import { useVisualDebug } from '../contexts/VisualDebugContext'
 import type { Subtitle } from '../data/abaciOneSubtitles'
 import { getRandomSubtitle } from '../data/abaciOneSubtitles'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
-import { UserMenu } from './nav/UserMenu'
 import { ThemeToggle } from './ThemeToggle'
 
 type HomeHeroContextValue = {
@@ -59,6 +59,8 @@ function MenuContent({
   onNavigate,
   isMobile,
   resolvedTheme,
+  session,
+  sessionStatus,
 }: {
   isFullscreen: boolean
   isArcadePage: boolean
@@ -68,6 +70,8 @@ function MenuContent({
   onNavigate?: () => void
   isMobile?: boolean
   resolvedTheme?: 'light' | 'dark'
+  session: any
+  sessionStatus: string
 }) {
   const isDark = resolvedTheme === 'dark'
   const { open: openDeploymentInfo } = useDeploymentInfo()
@@ -172,6 +176,126 @@ function MenuContent({
   return (
     <div style={containerStyle}>
       {isMobile ? (
+        <>
+        {/* Corner buttons — theme left, abacus right */}
+        <div
+          data-element="corner-buttons"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px 12px 0',
+          }}
+        >
+          <ThemeToggle />
+          <AbacusDisplayDropdown />
+        </div>
+
+        {/* Account section */}
+        <div
+          data-element="account-section"
+          style={{
+            padding: '8px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}
+        >
+          {sessionStatus === 'authenticated' && session?.user ? (
+            <Link
+              href="/settings"
+              data-action="preferences"
+              onClick={(e) => {
+                e.preventDefault()
+                handleLinkClick('/settings')
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                textDecoration: 'none',
+                borderRadius: '8px',
+                padding: '4px',
+                transition: 'background 0.2s ease',
+              }}
+              title="Preferences"
+            >
+              {session.user.image ? (
+                <img
+                  src={session.user.image}
+                  alt={session.user.name ?? 'User'}
+                  referrerPolicy="no-referrer"
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'rgba(139, 92, 246, 0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}
+                >
+                  {(session.user.name ?? session.user.email ?? '?')[0].toUpperCase()}
+                </div>
+              )}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: isDark ? 'white' : 'rgba(17, 24, 39, 1)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {session.user.name || session.user.email}
+                </div>
+              </div>
+            </Link>
+          ) : sessionStatus !== 'loading' ? (
+            <Link
+              href="/auth/signin"
+              data-action="sign-in"
+              onClick={(e) => {
+                e.preventDefault()
+                handleLinkClick('/auth/signin')
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)',
+                color: isDark ? 'rgba(196, 181, 253, 1)' : 'rgba(109, 40, 217, 1)',
+                fontSize: '13px',
+                fontWeight: 500,
+                textDecoration: 'none',
+                transition: 'all 0.2s ease',
+                alignSelf: 'flex-start',
+              }}
+            >
+              Sign In
+            </Link>
+          ) : null}
+        </div>
+        <div style={separatorStyle} />
+
         <div
           className={css({
             display: 'grid',
@@ -289,79 +413,10 @@ function MenuContent({
             )}
           </div>
 
-          {/* Column 2: Settings + Developer */}
+          {/* Column 2: Developer (if allowed) */}
           <div>
-            {/* Settings Link */}
-            <div style={sectionHeaderStyle}>Settings</div>
-
-            <Link
-              href="/settings"
-              onClick={
-                isMobile
-                  ? (e) => {
-                      e.preventDefault()
-                      handleLinkClick('/settings')
-                    }
-                  : undefined
-              }
-              style={linkStyle}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = isDark
-                  ? 'rgba(139, 92, 246, 0.2)'
-                  : 'rgba(139, 92, 246, 0.1)'
-                e.currentTarget.style.color = isDark
-                  ? 'rgba(196, 181, 253, 1)'
-                  : 'rgba(109, 40, 217, 1)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.color = isDark
-                  ? 'rgba(209, 213, 219, 1)'
-                  : 'rgba(55, 65, 81, 1)'
-              }}
-            >
-              <span style={{ fontSize: '18px' }}>⚙️</span>
-              <span>Preferences</span>
-            </Link>
-
-            {/* Theme Toggle - Quick Access */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: isMobile ? '10px' : '10px',
-                padding: isMobile ? '8px 12px' : '10px 14px',
-              }}
-            >
-              <ThemeToggle />
-            </div>
-
-            {/* Abacus Style - Quick Access */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: isMobile ? '10px' : '10px',
-                padding: isMobile ? '8px 12px' : '10px 14px',
-              }}
-            >
-              <span style={{ fontSize: isMobile ? '18px' : '16px' }}>🧮</span>
-              <span
-                style={{
-                  fontSize: isMobile ? '14px' : '14px',
-                  fontWeight: 500,
-                  color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
-                }}
-              >
-                Abacus Style
-              </span>
-              <AbacusDisplayDropdown />
-            </div>
-
-            {/* Developer Section - shown in dev or when ?debug=1 is used */}
             {isDebugAllowed && (
               <>
-                <div style={separatorStyle} />
                 <div style={sectionHeaderStyle}>Developer</div>
                 <Link
                   href="/debug"
@@ -469,9 +524,154 @@ function MenuContent({
             )}
           </div>
         </div>
+
+        {/* Sign out — pinned to bottom */}
+        {sessionStatus === 'authenticated' && (
+          <>
+            <div style={{ flex: 1 }} />
+            <div style={separatorStyle} />
+            <div
+              data-action="sign-out"
+              onClick={() => {
+                signOut({ callbackUrl: '/' })
+                onNavigate?.()
+              }}
+              style={{
+                ...controlButtonStyle,
+                color: isDark ? 'rgba(252, 165, 165, 1)' : 'rgba(185, 28, 28, 1)',
+                justifyContent: 'center',
+                padding: '10px 12px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDark
+                  ? 'rgba(239, 68, 68, 0.2)'
+                  : 'rgba(239, 68, 68, 0.1)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
+            >
+              <span>Sign out</span>
+            </div>
+          </>
+        )}
+        </>
       ) : (
         <>
           {/* Desktop: Single column layout */}
+          {/* Corner buttons — theme left, abacus right */}
+          <div
+            data-element="corner-buttons"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '4px 8px 0',
+            }}
+          >
+            <ThemeToggle />
+            <AbacusDisplayDropdown />
+          </div>
+
+          {/* Account section */}
+          <div
+            data-element="account-section"
+            style={{
+              padding: '4px 8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+            }}
+          >
+            {sessionStatus === 'authenticated' && session?.user ? (
+              <DropdownMenu.Item asChild>
+                <Link
+                  href="/settings"
+                  data-action="preferences"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '4px 6px',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    transition: 'background 0.2s ease',
+                  }}
+                  title="Preferences"
+                >
+                  {session.user.image ? (
+                    <img
+                      src={session.user.image}
+                      alt={session.user.name ?? 'User'}
+                      referrerPolicy="no-referrer"
+                      style={{
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        background: 'rgba(139, 92, 246, 0.8)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {(session.user.name ?? session.user.email ?? '?')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      minWidth: 0,
+                    }}
+                  >
+                    {session.user.name || session.user.email}
+                  </div>
+                </Link>
+              </DropdownMenu.Item>
+            ) : sessionStatus !== 'loading' ? (
+              <Link
+                href="/auth/signin"
+                data-action="sign-in"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  background: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)',
+                  color: isDark ? 'rgba(196, 181, 253, 1)' : 'rgba(109, 40, 217, 1)',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                  transition: 'all 0.2s ease',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                Sign In
+              </Link>
+            ) : null}
+          </div>
+
+          <DropdownMenu.Separator style={separatorStyle} />
+
           {/* Site Navigation Section */}
           <div style={sectionHeaderStyle}>Navigation</div>
 
@@ -536,71 +736,9 @@ function MenuContent({
 
           <DropdownMenu.Separator style={separatorStyle} />
 
-          {/* Settings Section */}
-          <div style={sectionHeaderStyle}>Settings</div>
-
-          <DropdownMenu.Item asChild>
-            <Link
-              href="/settings"
-              style={linkStyle}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = isDark
-                  ? 'rgba(139, 92, 246, 0.2)'
-                  : 'rgba(139, 92, 246, 0.1)'
-                e.currentTarget.style.color = isDark
-                  ? 'rgba(196, 181, 253, 1)'
-                  : 'rgba(109, 40, 217, 1)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.color = isDark
-                  ? 'rgba(209, 213, 219, 1)'
-                  : 'rgba(55, 65, 81, 1)'
-              }}
-            >
-              <span style={{ fontSize: '16px' }}>⚙️</span>
-              <span>Preferences</span>
-            </Link>
-          </DropdownMenu.Item>
-
-          {/* Theme Toggle - Quick Access */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 14px',
-            }}
-          >
-            <ThemeToggle />
-          </div>
-
-          {/* Abacus Style - Quick Access */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 14px',
-            }}
-          >
-            <span style={{ fontSize: '16px' }}>🧮</span>
-            <span
-              style={{
-                fontSize: '14px',
-                fontWeight: 500,
-                color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
-              }}
-            >
-              Abacus Style
-            </span>
-            <AbacusDisplayDropdown />
-          </div>
-
           {/* Developer Section - shown in dev or when ?debug=1 is used */}
           {isDebugAllowed && (
             <>
-              <DropdownMenu.Separator style={separatorStyle} />
               <div style={sectionHeaderStyle}>Developer</div>
               <DropdownMenu.Item asChild>
                 <Link
@@ -698,7 +836,98 @@ function MenuContent({
               </DropdownMenu.Item>
             </>
           )}
+
+          {/* Sign out — pinned to bottom */}
+          {sessionStatus === 'authenticated' && (
+            <>
+              <DropdownMenu.Separator style={separatorStyle} />
+              <DropdownMenu.Item
+                data-action="sign-out"
+                onSelect={() => signOut({ callbackUrl: '/' })}
+                style={{
+                  ...controlButtonStyle,
+                  color: isDark ? 'rgba(252, 165, 165, 1)' : 'rgba(185, 28, 28, 1)',
+                  justifyContent: 'center',
+                  padding: '10px 14px',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = isDark
+                    ? 'rgba(239, 68, 68, 0.2)'
+                    : 'rgba(239, 68, 68, 0.1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                }}
+              >
+                <span>Sign out</span>
+              </DropdownMenu.Item>
+            </>
+          )}
         </>
+      )}
+    </div>
+  )
+}
+
+function AvatarBadge({
+  session,
+  isDark,
+  isFullscreen,
+}: {
+  session: any
+  isDark: boolean
+  isFullscreen: boolean
+}) {
+  const user = session?.user
+  if (!user) return null
+
+  const borderColor = isFullscreen
+    ? 'rgba(0, 0, 0, 0.85)'
+    : isDark
+      ? 'rgba(31, 41, 55, 0.9)'
+      : 'white'
+
+  return (
+    <div
+      data-element="avatar-badge"
+      style={{
+        position: 'absolute',
+        bottom: '-2px',
+        right: '-2px',
+        width: '16px',
+        height: '16px',
+        borderRadius: '50%',
+        border: `2px solid ${borderColor}`,
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: user.image ? 'transparent' : 'rgba(139, 92, 246, 0.9)',
+        pointerEvents: 'none',
+      }}
+    >
+      {user.image ? (
+        <img
+          src={user.image}
+          alt=""
+          referrerPolicy="no-referrer"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          }}
+        />
+      ) : (
+        <span
+          style={{
+            fontSize: '8px',
+            fontWeight: 700,
+            color: 'white',
+            lineHeight: 1,
+          }}
+        >
+          {(user.name ?? user.email ?? '?')[0].toUpperCase()}
+        </span>
       )}
     </div>
   )
@@ -720,6 +949,8 @@ function HamburgerMenu({
   const [open, setOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const { resolvedTheme } = useTheme()
+  const { data: session, status: sessionStatus } = useSession()
+  const isDark = resolvedTheme === 'dark'
 
   // Detect mobile viewport - check the smaller dimension to catch landscape orientation
   React.useEffect(() => {
@@ -749,6 +980,7 @@ function HamburgerMenu({
           type="button"
           onClick={() => setOpen(!open)}
           style={{
+            position: 'relative',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -772,6 +1004,9 @@ function HamburgerMenu({
           >
             {open ? '✕' : '☰'}
           </span>
+          {sessionStatus === 'authenticated' && !open && (
+            <AvatarBadge session={session} isDark={isDark} isFullscreen={isFullscreen} />
+          )}
         </button>
 
         {open &&
@@ -849,6 +1084,8 @@ function HamburgerMenu({
                   onNavigate={handleClose}
                   isMobile={true}
                   resolvedTheme={resolvedTheme}
+                  session={session}
+                  sessionStatus={sessionStatus}
                 />
               </div>
 
@@ -880,6 +1117,7 @@ function HamburgerMenu({
         <button
           type="button"
           style={{
+            position: 'relative',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -915,6 +1153,9 @@ function HamburgerMenu({
           >
             ☰
           </span>
+          {sessionStatus === 'authenticated' && !open && (
+            <AvatarBadge session={session} isDark={isDark} isFullscreen={isFullscreen} />
+          )}
         </button>
       </DropdownMenu.Trigger>
 
@@ -958,6 +1199,8 @@ function HamburgerMenu({
             router={router}
             isMobile={false}
             resolvedTheme={resolvedTheme}
+            session={session}
+            sessionStatus={sessionStatus}
           />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -1268,10 +1511,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                 </div>
               </nav>
 
-              {/* User Menu - sign in / avatar */}
-              <UserMenu />
-
-              {/* Hamburger Menu - always visible, contains all links that don't fit */}
+              {/* Hamburger Menu - always visible, contains all links + user actions */}
               <HamburgerMenu
                 isFullscreen={false}
                 isArcadePage={false}

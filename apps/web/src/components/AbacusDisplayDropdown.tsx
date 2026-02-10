@@ -303,8 +303,8 @@ export function AbacusDisplayDropdown({
           className={css({
             display: 'flex',
             alignItems: 'center',
-            gap: '2',
-            px: '3',
+            justifyContent: 'center',
+            px: '2',
             py: '2',
             fontSize: 'sm',
             fontWeight: 'medium',
@@ -338,20 +338,6 @@ export function AbacusDisplayDropdown({
           })}
         >
           <span className={css({ fontSize: 'lg' })}>🧮</span>
-          <span>Style</span>
-          <svg
-            className={css({
-              w: '4',
-              h: '4',
-              transition: 'transform',
-              transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-            })}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
         </button>
       </DropdownMenu.Trigger>
 
