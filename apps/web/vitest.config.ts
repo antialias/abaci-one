@@ -33,10 +33,10 @@ export default defineConfig({
       reportOnFailure: true,
       thresholds: {
         autoUpdate: true,
-        lines: 16.79,
-        branches: 68.05,
+        lines: 16.8,
+        branches: 68.07,
         functions: 33.29,
-        statements: 16.79,
+        statements: 16.8,
       },
     },
   },
