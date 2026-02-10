@@ -37,13 +37,19 @@ export async function GET(request: NextRequest) {
       const files = readdirSync(voiceDir)
       const clipIds: string[] = []
       for (const f of files) {
-        if (!f.endsWith('.mp3')) continue
-        if (f.startsWith('cc-')) {
-          // Collected clip: cc-{clipId}.mp3 → clipId
-          clipIds.push(f.slice(3, -4))
-        } else {
-          // Static manifest clip: {clipId}.mp3 → clipId
-          clipIds.push(f.slice(0, -4))
+        if (f === '.deactivated') continue
+        if (f.endsWith('.mp3')) {
+          if (f.startsWith('cc-')) {
+            clipIds.push(f.slice(3, -4))
+          } else {
+            clipIds.push(f.slice(0, -4))
+          }
+        } else if (f.endsWith('.webm')) {
+          if (f.startsWith('cc-')) {
+            clipIds.push(f.slice(3, -5))
+          } else {
+            clipIds.push(f.slice(0, -5))
+          }
         }
       }
 

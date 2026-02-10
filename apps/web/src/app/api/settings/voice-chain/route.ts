@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
 
-type VoiceSource = { type: 'pregenerated'; name: string } | { type: 'browser-tts' }
+import type { VoiceSource } from '@/lib/audio/voiceSource'
 
 async function ensureDefaultSettings() {
   const existing = await db.select().from(appSettings).where(eq(appSettings.id, 'default')).limit(1)
@@ -24,6 +24,10 @@ function isValidVoiceChain(chain: unknown): chain is VoiceSource[] {
       (entry &&
         typeof entry === 'object' &&
         entry.type === 'pregenerated' &&
+        typeof entry.name === 'string') ||
+      (entry &&
+        typeof entry === 'object' &&
+        entry.type === 'custom' &&
         typeof entry.name === 'string') ||
       (entry && typeof entry === 'object' && entry.type === 'browser-tts')
   )

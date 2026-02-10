@@ -49,13 +49,28 @@ export async function GET() {
       .select({ count: sql<number>`count(*)` })
       .from(ttsCollectedClips)
 
-    // Count .mp3 files per voice directory for all known voices
+    // Count audio files per voice directory for all known + custom voices
     const voiceClipCounts: Record<string, number> = {}
-    for (const voice of ALL_VOICES) {
+    const knownVoices = new Set<string>(ALL_VOICES)
+
+    // Scan all directories under data/audio/ to catch custom voices too
+    const allVoiceDirs: string[] = [...ALL_VOICES]
+    if (existsSync(AUDIO_DIR)) {
+      for (const entry of readdirSync(AUDIO_DIR)) {
+        const entryPath = join(AUDIO_DIR, entry)
+        if (statSync(entryPath).isDirectory() && !knownVoices.has(entry)) {
+          allVoiceDirs.push(entry)
+        }
+      }
+    }
+
+    for (const voice of allVoiceDirs) {
       const voiceDir = join(AUDIO_DIR, voice)
       if (existsSync(voiceDir)) {
         const files = readdirSync(voiceDir)
-        voiceClipCounts[voice] = files.filter((f) => f.endsWith('.mp3')).length
+        voiceClipCounts[voice] = files.filter(
+          (f) => f.endsWith('.mp3') || f.endsWith('.webm')
+        ).length
       } else {
         voiceClipCounts[voice] = 0
       }

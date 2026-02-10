@@ -34,30 +34,34 @@ export async function GET(_request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
     }
 
-    // Try static clip first ({clipId}.mp3), then collected clip (cc-{clipId}.mp3)
-    const staticPath = join(AUDIO_DIR, voice, `${clipId}.mp3`)
-    const collectedPath = join(AUDIO_DIR, voice, `cc-${clipId}.mp3`)
+    // Try mp3 first, then webm — both static ({clipId}.*) and collected (cc-{clipId}.*)
+    const candidates = [
+      { path: join(AUDIO_DIR, voice, `${clipId}.mp3`), contentType: 'audio/mpeg' },
+      { path: join(AUDIO_DIR, voice, `cc-${clipId}.mp3`), contentType: 'audio/mpeg' },
+      { path: join(AUDIO_DIR, voice, `${clipId}.webm`), contentType: 'audio/webm' },
+      { path: join(AUDIO_DIR, voice, `cc-${clipId}.webm`), contentType: 'audio/webm' },
+    ]
 
-    let filepath: string | null = null
-    for (const candidate of [staticPath, collectedPath]) {
+    let found: { path: string; contentType: string } | null = null
+    for (const candidate of candidates) {
       try {
-        await stat(candidate)
-        filepath = candidate
+        await stat(candidate.path)
+        found = candidate
         break
       } catch {
         // Not found, try next
       }
     }
 
-    if (!filepath) {
+    if (!found) {
       return new NextResponse(null, { status: 404 })
     }
 
-    const fileBuffer = await readFile(filepath)
+    const fileBuffer = await readFile(found.path)
 
     return new NextResponse(new Uint8Array(fileBuffer), {
       headers: {
-        'Content-Type': 'audio/mpeg',
+        'Content-Type': found.contentType,
         'Content-Length': fileBuffer.byteLength.toString(),
         'Cache-Control': 'public, max-age=31536000, immutable',
       },

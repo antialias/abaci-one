@@ -3,9 +3,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { useSession } from 'next-auth/react'
 import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
 import { TtsTestPanel } from '@/components/admin/TtsTestPanel'
+import { ClipRecorder } from '@/components/admin/ClipRecorder'
+import { MicLevelMeter } from '@/components/admin/MicLevelMeter'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import {
   useCollectedClips,
@@ -17,8 +20,7 @@ import { isHashClipId } from '@/lib/audio/clipHash'
 import { ALL_VOICES, VOICE_PROVIDERS, getVoiceMeta } from '@/lib/audio/voices'
 import { Z_INDEX } from '@/constants/zIndex'
 import { css } from '../../../../styled-system/css'
-
-type VoiceSource = { type: 'pregenerated'; name: string } | { type: 'browser-tts' }
+import type { VoiceSource } from '@/lib/audio/voiceSource'
 
 interface AudioStatus {
   activeVoice: string
@@ -39,8 +41,14 @@ export default function AdminAudioPage() {
   const [ccGenVoice, setCcGenVoice] = useState<string>('onyx')
   const [ccGenTaskId, setCcGenTaskId] = useState<string | null>(null)
   const [ccPlayingClipId, setCcPlayingClipId] = useState<string | null>(null)
+  const [newCustomVoiceName, setNewCustomVoiceName] = useState<string | null>(null)
+  const [recordingClipId, setRecordingClipId] = useState<string | null>(null)
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('')
+  const [micStream, setMicStream] = useState<MediaStream | null>(null)
   const ccAudioRef = useRef<HTMLAudioElement | null>(null)
   const queryClient = useQueryClient()
+  const { data: session } = useSession()
 
   // React Query: collected clips with per-voice generation status
   const { data: ccData, isLoading: collectedClipsLoading } = useCollectedClips(ccGenVoice, {
@@ -48,6 +56,7 @@ export default function AdminAudioPage() {
   })
   const collectedClips = ccData?.clips ?? []
   const ccGeneratedFor = ccData?.generatedFor ?? {}
+  const ccDeactivatedFor = ccData?.deactivatedFor ?? {}
 
   // React Query: mutation for triggering collected clip generation
   const ccGenerateMutation = useGenerateCollectedClips(ccGenVoice)
@@ -122,6 +131,157 @@ export default function AdminAudioPage() {
   }
 
   const isCcGenerating = ccTaskState?.status === 'pending' || ccTaskState?.status === 'running'
+
+  // Determine if selected voice is custom
+  const isCustomVoice = voiceChain.some(
+    (s) => s.type === 'custom' && s.name === ccGenVoice
+  )
+
+  // Request mic permission, acquire stream, and enumerate devices when custom voice is selected.
+  // getUserMedia must be called BEFORE enumerateDevices — browsers withhold real
+  // deviceIds/labels until permission is granted, which causes { exact: id } to fail.
+  useEffect(() => {
+    if (!isCustomVoice) {
+      // Clean up stream when leaving custom voice
+      setMicStream((prev) => {
+        if (prev) prev.getTracks().forEach((t) => t.stop())
+        return null
+      })
+      setAudioDevices([])
+      setSelectedDeviceId('')
+      setRecordingClipId(null)
+      return
+    }
+
+    let cancelled = false
+
+    // 1. Request mic permission with default device → gives us a working stream immediately
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then(async (defaultStream) => {
+        if (cancelled) {
+          defaultStream.getTracks().forEach((t) => t.stop())
+          return
+        }
+        // Set the default stream so recording works right away
+        setMicStream((prev) => {
+          if (prev) prev.getTracks().forEach((t) => t.stop())
+          return defaultStream
+        })
+
+        // 2. Now that permission is granted, enumerate returns real deviceIds/labels
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        if (cancelled) return
+        const audioInputs = devices.filter((d) => d.kind === 'audioinput')
+        setAudioDevices(audioInputs)
+
+        // Pre-select the device that matches the active stream track
+        const activeTrack = defaultStream.getAudioTracks()[0]
+        const activeSettings = activeTrack?.getSettings()
+        const matchingDevice = audioInputs.find((d) => d.deviceId === activeSettings?.deviceId)
+        setSelectedDeviceId(matchingDevice?.deviceId ?? audioInputs[0]?.deviceId ?? '')
+      })
+      .catch((err) => {
+        console.error('Failed to acquire mic:', err)
+        if (!cancelled) setError('Failed to access microphone. Check browser permissions.')
+      })
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCustomVoice])
+
+  // Switch mic stream when user picks a different device from the dropdown
+  useEffect(() => {
+    if (!isCustomVoice || !selectedDeviceId) return
+    // Skip if the current stream already uses this device
+    const currentTrack = micStream?.getAudioTracks()[0]
+    if (currentTrack?.getSettings().deviceId === selectedDeviceId) return
+
+    let cancelled = false
+    navigator.mediaDevices
+      .getUserMedia({ audio: { deviceId: { ideal: selectedDeviceId } } })
+      .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
+        setMicStream((prev) => {
+          if (prev) prev.getTracks().forEach((t) => t.stop())
+          return stream
+        })
+      })
+      .catch((err) => {
+        console.error('Failed to switch mic:', err)
+        if (!cancelled) setError('Failed to switch microphone')
+      })
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDeviceId])
+
+  // Clean up mic stream on unmount
+  useEffect(() => {
+    return () => {
+      setMicStream((prev) => {
+        if (prev) prev.getTracks().forEach((t) => t.stop())
+        return null
+      })
+    }
+  }, [])
+
+  // Custom clip management handlers
+  const handleDeactivateClip = async (clipId: string) => {
+    try {
+      const res = await fetch(
+        `/api/admin/audio/custom-clips/${encodeURIComponent(ccGenVoice)}/${encodeURIComponent(clipId)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'deactivate' }),
+        }
+      )
+      if (!res.ok) throw new Error('Failed to deactivate')
+      queryClient.invalidateQueries({ queryKey: collectedClipKeys.list(ccGenVoice) })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to deactivate clip')
+    }
+  }
+
+  const handleReactivateClip = async (clipId: string) => {
+    try {
+      const res = await fetch(
+        `/api/admin/audio/custom-clips/${encodeURIComponent(ccGenVoice)}/${encodeURIComponent(clipId)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'reactivate' }),
+        }
+      )
+      if (!res.ok) throw new Error('Failed to reactivate')
+      queryClient.invalidateQueries({ queryKey: collectedClipKeys.list(ccGenVoice) })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reactivate clip')
+    }
+  }
+
+  const handleDeleteCustomClip = async (clipId: string) => {
+    if (!confirm(`Delete this recording for "${clipId}"?`)) return
+    try {
+      const res = await fetch(
+        `/api/admin/audio/custom-clips/${encodeURIComponent(ccGenVoice)}/${encodeURIComponent(clipId)}`,
+        { method: 'DELETE' }
+      )
+      if (!res.ok) throw new Error('Failed to delete')
+      queryClient.invalidateQueries({ queryKey: collectedClipKeys.list(ccGenVoice) })
+      fetchStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete clip')
+    }
+  }
 
   const handleRemoveVoice = async (voice: string) => {
     if (!confirm(`Remove all clips for voice "${voice}"?`)) return
@@ -317,7 +477,13 @@ export default function AdminAudioPage() {
                   <span className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
                     <span className={css({ color: '#8b949e', fontSize: '12px' })}>
                       {voiceChain
-                        .map((s) => (s.type === 'pregenerated' ? s.name : 'browser'))
+                        .map((s) =>
+                          s.type === 'pregenerated'
+                            ? s.name
+                            : s.type === 'custom'
+                              ? `${s.name} (mic)`
+                              : 'browser'
+                        )
                         .join(' \u2192 ')}
                     </span>
                     <span className={css({ color: '#8b949e', fontSize: '12px' })}>
@@ -370,7 +536,11 @@ export default function AdminAudioPage() {
                             {idx + 1}.
                           </span>
                           <span className={css({ color: '#f0f6fc', fontWeight: '600', flex: 1 })}>
-                            {source.type === 'pregenerated' ? source.name : 'Browser TTS'}
+                            {source.type === 'pregenerated'
+                              ? source.name
+                              : source.type === 'custom'
+                                ? source.name
+                                : 'Browser TTS'}
                           </span>
                           <span
                             className={css({
@@ -416,6 +586,17 @@ export default function AdminAudioPage() {
                                   </>
                                 )
                               })()
+                            ) : source.type === 'custom' ? (
+                              <span
+                                className={css({
+                                  padding: '2px 8px',
+                                  borderRadius: '8px',
+                                  backgroundColor: '#a371f733',
+                                  color: '#a371f7',
+                                })}
+                              >
+                                Custom (microphone)
+                              </span>
                             ) : (
                               <span
                                 className={css({
@@ -815,6 +996,130 @@ export default function AdminAudioPage() {
                           </DropdownMenu.Content>
                         </DropdownMenu.Portal>
                       </DropdownMenu.Root>
+
+                      {/* New Custom Voice button/input */}
+                      {newCustomVoiceName === null ? (
+                        <button
+                          data-action="new-custom-voice"
+                          onClick={() =>
+                            setNewCustomVoiceName(session?.user?.name ?? 'custom')
+                          }
+                          className={css({
+                            backgroundColor: '#0d1117',
+                            color: '#a371f7',
+                            border: '1px solid #a371f744',
+                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            '&:hover': { borderColor: '#a371f7' },
+                          })}
+                        >
+                          + Custom Voice
+                        </button>
+                      ) : (
+                        <div
+                          data-element="new-custom-voice-input"
+                          className={css({
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          })}
+                        >
+                          <input
+                            type="text"
+                            value={newCustomVoiceName}
+                            onChange={(e) => setNewCustomVoiceName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const name = newCustomVoiceName.trim()
+                                if (!name) return
+                                if (
+                                  ALL_VOICES.includes(name) ||
+                                  voiceChain.some(
+                                    (s) =>
+                                      (s.type === 'pregenerated' || s.type === 'custom') &&
+                                      s.name === name
+                                  )
+                                ) {
+                                  setError(
+                                    `Voice name "${name}" already exists in chain or is a built-in voice`
+                                  )
+                                  return
+                                }
+                                setVoiceChain((prev) => [
+                                  { type: 'custom', name } as VoiceSource,
+                                  ...prev,
+                                ])
+                                setVoiceChainDirty(true)
+                                setNewCustomVoiceName(null)
+                              } else if (e.key === 'Escape') {
+                                setNewCustomVoiceName(null)
+                              }
+                            }}
+                            placeholder="Voice name"
+                            autoFocus
+                            className={css({
+                              backgroundColor: '#0d1117',
+                              color: '#f0f6fc',
+                              border: '1px solid #a371f7',
+                              borderRadius: '6px',
+                              padding: '5px 10px',
+                              fontSize: '13px',
+                              width: '140px',
+                            })}
+                          />
+                          <button
+                            onClick={() => {
+                              const name = newCustomVoiceName.trim()
+                              if (!name) return
+                              if (
+                                ALL_VOICES.includes(name) ||
+                                voiceChain.some(
+                                  (s) =>
+                                    (s.type === 'pregenerated' || s.type === 'custom') &&
+                                    s.name === name
+                                )
+                              ) {
+                                setError(
+                                  `Voice name "${name}" already exists in chain or is a built-in voice`
+                                )
+                                return
+                              }
+                              setVoiceChain((prev) => [
+                                { type: 'custom', name } as VoiceSource,
+                                ...prev,
+                              ])
+                              setVoiceChainDirty(true)
+                              setNewCustomVoiceName(null)
+                            }}
+                            className={css({
+                              backgroundColor: '#238636',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '5px 10px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              '&:hover': { backgroundColor: '#2ea043' },
+                            })}
+                          >
+                            Add
+                          </button>
+                          <button
+                            onClick={() => setNewCustomVoiceName(null)}
+                            className={css({
+                              background: 'none',
+                              border: 'none',
+                              color: '#8b949e',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                            })}
+                          >
+                            &#10005;
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {voiceChainDirty && (
@@ -941,7 +1246,10 @@ export default function AdminAudioPage() {
                       <select
                         data-element="cc-voice-select"
                         value={ccGenVoice}
-                        onChange={(e) => setCcGenVoice(e.target.value)}
+                        onChange={(e) => {
+                          setCcGenVoice(e.target.value)
+                          setRecordingClipId(null)
+                        }}
                         className={css({
                           backgroundColor: '#0d1117',
                           color: '#f0f6fc',
@@ -956,38 +1264,53 @@ export default function AdminAudioPage() {
                             {v}
                           </option>
                         ))}
+                        {(() => {
+                          const customVoices = voiceChain
+                            .filter((s) => s.type === 'custom')
+                            .map((s) => (s as { type: 'custom'; name: string }).name)
+                          return customVoices.length > 0 ? (
+                            <optgroup label="Custom">
+                              {customVoices.map((v) => (
+                                <option key={v} value={v}>
+                                  {v}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ) : null
+                        })()}
                       </select>
-                      {(() => {
-                        const missingCount = collectedClips.filter(
-                          (c) => !ccGeneratedFor[c.id]
-                        ).length
-                        return missingCount > 0 ? (
-                          <button
-                            data-action="cc-generate-all-missing"
-                            onClick={() => {
-                              const missingIds = collectedClips
-                                .filter((c) => !ccGeneratedFor[c.id])
-                                .map((c) => c.id)
-                              handleCcGenerate(missingIds)
-                            }}
-                            disabled={isCcGenerating}
-                            className={css({
-                              fontSize: '12px',
-                              backgroundColor: '#238636',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '6px',
-                              padding: '4px 12px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              '&:hover': { backgroundColor: '#2ea043' },
-                              '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
-                            })}
-                          >
-                            Generate {missingCount} Missing
-                          </button>
-                        ) : null
-                      })()}
+                      {!isCustomVoice &&
+                        (() => {
+                          const missingCount = collectedClips.filter(
+                            (c) => !ccGeneratedFor[c.id]
+                          ).length
+                          return missingCount > 0 ? (
+                            <button
+                              data-action="cc-generate-all-missing"
+                              onClick={() => {
+                                const missingIds = collectedClips
+                                  .filter((c) => !ccGeneratedFor[c.id])
+                                  .map((c) => c.id)
+                                handleCcGenerate(missingIds)
+                              }}
+                              disabled={isCcGenerating}
+                              className={css({
+                                fontSize: '12px',
+                                backgroundColor: '#238636',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '4px 12px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                '&:hover': { backgroundColor: '#2ea043' },
+                                '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                              })}
+                            >
+                              Generate {missingCount} Missing
+                            </button>
+                          ) : null
+                        })()}
                       <button
                         data-action="refresh-collected"
                         onClick={() =>
@@ -1035,6 +1358,51 @@ export default function AdminAudioPage() {
                         ) : null
                       })()}
                     </div>
+
+                    {/* Mic selector bar — shown when custom voice selected */}
+                    {isCustomVoice && (
+                      <div
+                        data-element="mic-selector-bar"
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          backgroundColor: '#0d1117',
+                          border: '1px solid #30363d',
+                          borderRadius: '6px',
+                          padding: '10px 14px',
+                          marginBottom: '12px',
+                        })}
+                      >
+                        <MicLevelMeter stream={micStream} />
+                        <label className={css({ color: '#8b949e', fontSize: '13px', flexShrink: 0 })}>
+                          Microphone:
+                        </label>
+                        <select
+                          data-element="mic-device-select"
+                          value={selectedDeviceId}
+                          onChange={(e) => setSelectedDeviceId(e.target.value)}
+                          className={css({
+                            flex: 1,
+                            backgroundColor: '#161b22',
+                            color: '#f0f6fc',
+                            border: '1px solid #30363d',
+                            borderRadius: '6px',
+                            padding: '4px 10px',
+                            fontSize: '13px',
+                          })}
+                        >
+                          {audioDevices.length === 0 && (
+                            <option value="">No microphones found</option>
+                          )}
+                          {audioDevices.map((d) => (
+                            <option key={d.deviceId} value={d.deviceId}>
+                              {d.label || `Microphone ${d.deviceId.slice(0, 8)}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     {/* Voice Health Banner */}
                     {(() => {
@@ -1498,8 +1866,10 @@ export default function AdminAudioPage() {
                                       {/* Individual tone rows */}
                                       {group.clips.map((clip) => {
                                         const isGenerated = !!ccGeneratedFor[clip.id]
+                                        const isDeactivated = !!ccDeactivatedFor[clip.id]
                                         return (
-                                          <tr key={clip.id} data-element="cc-clip-row">
+                                          <React.Fragment key={clip.id}>
+                                          <tr data-element="cc-clip-row">
                                             <td
                                               className={css({
                                                 padding: '6px 8px',
@@ -1509,18 +1879,22 @@ export default function AdminAudioPage() {
                                             >
                                               <span
                                                 title={
-                                                  isGenerated
-                                                    ? `Generated for ${ccGenVoice}`
-                                                    : 'Not generated'
+                                                  isDeactivated
+                                                    ? 'Deactivated'
+                                                    : isGenerated
+                                                      ? `Generated for ${ccGenVoice}`
+                                                      : 'Not generated'
                                                 }
                                                 className={css({
                                                   display: 'inline-block',
                                                   width: '8px',
                                                   height: '8px',
                                                   borderRadius: '50%',
-                                                  backgroundColor: isGenerated
-                                                    ? '#3fb950'
-                                                    : '#484f58',
+                                                  backgroundColor: isDeactivated
+                                                    ? '#d29922'
+                                                    : isGenerated
+                                                      ? '#3fb950'
+                                                      : '#484f58',
                                                 })}
                                               />
                                             </td>
@@ -1618,32 +1992,208 @@ export default function AdminAudioPage() {
                                                 textAlign: 'center',
                                               })}
                                             >
-                                              <button
-                                                data-action="generate-cc-clip"
-                                                onClick={() => handleCcGenerate([clip.id])}
-                                                disabled={isCcGenerating}
-                                                className={css({
-                                                  fontSize: '11px',
-                                                  backgroundColor: isGenerated
-                                                    ? 'transparent'
-                                                    : '#238636',
-                                                  color: isGenerated ? '#d29922' : '#fff',
-                                                  border: isGenerated
-                                                    ? '1px solid #d29922'
-                                                    : 'none',
-                                                  borderRadius: '6px',
-                                                  padding: '2px 8px',
-                                                  cursor: 'pointer',
-                                                  '&:disabled': {
-                                                    opacity: 0.5,
-                                                    cursor: 'not-allowed',
-                                                  },
-                                                })}
-                                              >
-                                                {isGenerated ? 'Regen' : 'Generate'}
-                                              </button>
+                                              {isCustomVoice ? (
+                                                <div
+                                                  className={css({
+                                                    display: 'flex',
+                                                    gap: '4px',
+                                                    justifyContent: 'center',
+                                                    flexWrap: 'wrap',
+                                                  })}
+                                                >
+                                                  {!isGenerated && !isDeactivated && (
+                                                    <button
+                                                      data-action="record-clip"
+                                                      onClick={() =>
+                                                        setRecordingClipId(
+                                                          recordingClipId === clip.id
+                                                            ? null
+                                                            : clip.id
+                                                        )
+                                                      }
+                                                      className={css({
+                                                        fontSize: '11px',
+                                                        backgroundColor: '#238636',
+                                                        color: '#fff',
+                                                        border: 'none',
+                                                        borderRadius: '6px',
+                                                        padding: '2px 8px',
+                                                        cursor: 'pointer',
+                                                        '&:hover': {
+                                                          backgroundColor: '#2ea043',
+                                                        },
+                                                      })}
+                                                    >
+                                                      Record
+                                                    </button>
+                                                  )}
+                                                  {isGenerated && !isDeactivated && (
+                                                    <>
+                                                      <button
+                                                        data-action="re-record-clip"
+                                                        onClick={() =>
+                                                          setRecordingClipId(
+                                                            recordingClipId === clip.id
+                                                              ? null
+                                                              : clip.id
+                                                          )
+                                                        }
+                                                        className={css({
+                                                          fontSize: '11px',
+                                                          backgroundColor: 'transparent',
+                                                          color: '#d29922',
+                                                          border: '1px solid #d29922',
+                                                          borderRadius: '6px',
+                                                          padding: '2px 6px',
+                                                          cursor: 'pointer',
+                                                        })}
+                                                      >
+                                                        Re-record
+                                                      </button>
+                                                      <button
+                                                        data-action="deactivate-clip"
+                                                        onClick={() =>
+                                                          handleDeactivateClip(clip.id)
+                                                        }
+                                                        className={css({
+                                                          fontSize: '11px',
+                                                          background: 'none',
+                                                          border: 'none',
+                                                          color: '#8b949e',
+                                                          cursor: 'pointer',
+                                                          '&:hover': { color: '#d29922' },
+                                                        })}
+                                                        title="Deactivate"
+                                                      >
+                                                        Deact.
+                                                      </button>
+                                                    </>
+                                                  )}
+                                                  {isDeactivated && (
+                                                    <>
+                                                      <button
+                                                        data-action="re-record-clip"
+                                                        onClick={() =>
+                                                          setRecordingClipId(
+                                                            recordingClipId === clip.id
+                                                              ? null
+                                                              : clip.id
+                                                          )
+                                                        }
+                                                        className={css({
+                                                          fontSize: '11px',
+                                                          backgroundColor: 'transparent',
+                                                          color: '#d29922',
+                                                          border: '1px solid #d29922',
+                                                          borderRadius: '6px',
+                                                          padding: '2px 6px',
+                                                          cursor: 'pointer',
+                                                        })}
+                                                      >
+                                                        Re-record
+                                                      </button>
+                                                      <button
+                                                        data-action="reactivate-clip"
+                                                        onClick={() =>
+                                                          handleReactivateClip(clip.id)
+                                                        }
+                                                        className={css({
+                                                          fontSize: '11px',
+                                                          background: 'none',
+                                                          border: 'none',
+                                                          color: '#3fb950',
+                                                          cursor: 'pointer',
+                                                        })}
+                                                      >
+                                                        Reactivate
+                                                      </button>
+                                                    </>
+                                                  )}
+                                                  {(isGenerated || isDeactivated) && (
+                                                    <button
+                                                      data-action="delete-clip"
+                                                      onClick={() =>
+                                                        handleDeleteCustomClip(clip.id)
+                                                      }
+                                                      className={css({
+                                                        fontSize: '11px',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: '#f85149',
+                                                        cursor: 'pointer',
+                                                        '&:hover': {
+                                                          textDecoration: 'underline',
+                                                        },
+                                                      })}
+                                                      title="Delete recording"
+                                                    >
+                                                      Del
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                <button
+                                                  data-action="generate-cc-clip"
+                                                  onClick={() => handleCcGenerate([clip.id])}
+                                                  disabled={isCcGenerating}
+                                                  className={css({
+                                                    fontSize: '11px',
+                                                    backgroundColor: isGenerated
+                                                      ? 'transparent'
+                                                      : '#238636',
+                                                    color: isGenerated ? '#d29922' : '#fff',
+                                                    border: isGenerated
+                                                      ? '1px solid #d29922'
+                                                      : 'none',
+                                                    borderRadius: '6px',
+                                                    padding: '2px 8px',
+                                                    cursor: 'pointer',
+                                                    '&:disabled': {
+                                                      opacity: 0.5,
+                                                      cursor: 'not-allowed',
+                                                    },
+                                                  })}
+                                                >
+                                                  {isGenerated ? 'Regen' : 'Generate'}
+                                                </button>
+                                              )}
                                             </td>
                                           </tr>
+                                          {/* ClipRecorder inline row */}
+                                          {isCustomVoice && recordingClipId === clip.id && (
+                                            <tr data-element="clip-recorder-row">
+                                              <td
+                                                colSpan={6}
+                                                className={css({
+                                                  padding: '8px',
+                                                  borderBottom: '1px solid #21262d',
+                                                })}
+                                              >
+                                                <ClipRecorder
+                                                  voice={ccGenVoice}
+                                                  clipId={clip.id}
+                                                  promptText={
+                                                    clip.say
+                                                      ? Object.values(clip.say)[0] ?? clip.id
+                                                      : clip.id
+                                                  }
+                                                  tone={clip.tone}
+                                                  hasExistingClip={isGenerated || isDeactivated}
+                                                  isDeactivated={isDeactivated}
+                                                  stream={micStream}
+                                                  onSaved={() => {
+                                                    setRecordingClipId(null)
+                                                    queryClient.invalidateQueries({
+                                                      queryKey: collectedClipKeys.list(ccGenVoice),
+                                                    })
+                                                    fetchStatus()
+                                                  }}
+                                                  onCancel={() => setRecordingClipId(null)}
+                                                />
+                                              </td>
+                                            </tr>
+                                          )}
+                                          </React.Fragment>
                                         )
                                       })}
                                     </React.Fragment>

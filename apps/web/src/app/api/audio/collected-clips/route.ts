@@ -122,17 +122,30 @@ export async function GET(request: NextRequest) {
     }))
 
     let generatedFor: Record<string, boolean> | undefined
+    let deactivatedFor: Record<string, boolean> | undefined
     if (voice) {
       const voiceDir = join(AUDIO_DIR, voice)
       generatedFor = {}
+      deactivatedFor = {}
       for (const clip of clips) {
         generatedFor[clip.id] =
           existsSync(join(voiceDir, `${clip.id}.mp3`)) ||
-          existsSync(join(voiceDir, `cc-${clip.id}.mp3`))
+          existsSync(join(voiceDir, `cc-${clip.id}.mp3`)) ||
+          existsSync(join(voiceDir, `${clip.id}.webm`)) ||
+          existsSync(join(voiceDir, `cc-${clip.id}.webm`))
+        deactivatedFor[clip.id] =
+          existsSync(join(voiceDir, '.deactivated', `cc-${clip.id}.mp3`)) ||
+          existsSync(join(voiceDir, '.deactivated', `cc-${clip.id}.webm`)) ||
+          existsSync(join(voiceDir, '.deactivated', `${clip.id}.mp3`)) ||
+          existsSync(join(voiceDir, '.deactivated', `${clip.id}.webm`))
       }
     }
 
-    return NextResponse.json({ clips: clipsWithSay, ...(generatedFor ? { generatedFor } : {}) })
+    return NextResponse.json({
+      clips: clipsWithSay,
+      ...(generatedFor ? { generatedFor } : {}),
+      ...(deactivatedFor ? { deactivatedFor } : {}),
+    })
   } catch (error) {
     console.error('Error fetching collected clips:', error)
     return NextResponse.json({ error: 'Failed to fetch collected clips' }, { status: 500 })

@@ -23,6 +23,7 @@ export interface CollectedClipEntry {
 interface CollectedClipsResponse {
   clips: CollectedClipEntry[]
   generatedFor?: Record<string, boolean>
+  deactivatedFor?: Record<string, boolean>
 }
 
 // ============================================================================

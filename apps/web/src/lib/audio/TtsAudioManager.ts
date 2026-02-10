@@ -47,7 +47,8 @@ export interface CollectedClip {
   lastSeen: Date
 }
 
-export type VoiceSource = { type: 'pregenerated'; name: string } | { type: 'browser-tts' }
+export type { VoiceSource } from './voiceSource'
+import type { VoiceSource } from './voiceSource'
 
 type Listener = () => void
 
@@ -117,15 +118,18 @@ export class TtsAudioManager {
   async loadPregenManifest(voiceChain: VoiceSource[]): Promise<void> {
     this._voiceChain = voiceChain
 
-    const pregenVoices = voiceChain
-      .filter((s): s is { type: 'pregenerated'; name: string } => s.type === 'pregenerated')
+    const diskVoices = voiceChain
+      .filter(
+        (s): s is { type: 'pregenerated'; name: string } | { type: 'custom'; name: string } =>
+          s.type === 'pregenerated' || s.type === 'custom'
+      )
       .map((s) => s.name)
 
-    if (pregenVoices.length === 0) return
+    if (diskVoices.length === 0) return
 
     try {
       const res = await fetch(
-        `/api/audio/collected-clips/manifest?voices=${pregenVoices.join(',')}`
+        `/api/audio/collected-clips/manifest?voices=${diskVoices.join(',')}`
       )
       if (!res.ok) return
 
@@ -365,16 +369,16 @@ export class TtsAudioManager {
     if (this._voiceChain.length > 0) {
       for (let i = 0; i < this._voiceChain.length; i++) {
         const source = this._voiceChain[i]
-        if (source.type === 'pregenerated') {
+        if (source.type === 'pregenerated' || source.type === 'custom') {
           const clipIds = this._pregenClipIds.get(source.name)
           const hasClip = clipIds?.has(resolved.clipId) ?? false
           console.log(
-            `[TtsAudioManager] chain[${i}] pregenerated "${source.name}": hasClip=${hasClip}`
+            `[TtsAudioManager] chain[${i}] ${source.type} "${source.name}": hasClip=${hasClip}`
           )
           if (hasClip) {
             const ok = await this.playMp3(`/api/audio/clips/${source.name}/${resolved.clipId}`)
             if (ok) return true
-            // mp3 failed, try next in chain
+            // playback failed, try next in chain
           }
         } else if (source.type === 'browser-tts') {
           console.log(
@@ -602,7 +606,9 @@ export class TtsAudioManager {
       hasClip:
         source.type === 'browser-tts'
           ? true
-          : (this._pregenClipIds.get(source.name)?.has(clipId) ?? false),
+          : source.type === 'pregenerated' || source.type === 'custom'
+            ? (this._pregenClipIds.get(source.name)?.has(clipId) ?? false)
+            : false,
     }))
   }
 
