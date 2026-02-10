@@ -13,6 +13,7 @@ import { GameLayoutProvider } from '@/contexts/GameLayoutContext'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { css } from '../../../styled-system/css'
 import { PracticeGameModeProvider } from './PracticeGameModeProvider'
+import { useGameBreakAudio } from './hooks/useGameBreakAudio'
 
 export interface GameBreakScreenProps {
   isVisible: boolean
@@ -65,6 +66,9 @@ export function GameBreakScreen({
   const animationFrameRef = useRef<number | null>(null)
   const hasCompletedRef = useRef(false)
   const hasCleanedUpRef = useRef(false)
+
+  // Speak game break cues on phase transitions
+  useGameBreakAudio({ phase, isVisible })
 
   const maxDurationMs = maxDurationMinutes * 60 * 1000
 
