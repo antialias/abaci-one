@@ -47,6 +47,12 @@ vi.mock('../../contexts/VisualDebugContext', () => ({
   }),
 }))
 
+// Mock next-auth/react (UserMenu uses useSession)
+vi.mock('next-auth/react', () => ({
+  useSession: () => ({ data: null, status: 'unauthenticated' }),
+  SessionProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+
 // Mock AbacusDisplayDropdown
 vi.mock('../AbacusDisplayDropdown', () => ({
   AbacusDisplayDropdown: () => <div data-testid="abacus-dropdown">Dropdown</div>,
