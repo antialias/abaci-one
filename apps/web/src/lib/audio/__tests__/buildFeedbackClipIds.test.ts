@@ -1,16 +1,22 @@
 import { describe, expect, it, vi } from 'vitest'
 import { buildFeedbackClipIds } from '../buildFeedbackClipIds'
+import { CELEBRATION_CLIPS } from '../clips/feedback'
 
 describe('buildFeedbackClipIds', () => {
   it('returns a celebration clip for correct answers', () => {
+    // Use index 0 (always first clip regardless of array size)
     vi.spyOn(Math, 'random').mockReturnValue(0)
-    expect(buildFeedbackClipIds(true, 5)).toEqual(['feedback-correct'])
+    expect(buildFeedbackClipIds(true, 5)).toEqual([CELEBRATION_CLIPS[0]])
 
+    // Use index near middle
     vi.spyOn(Math, 'random').mockReturnValue(0.5)
-    expect(buildFeedbackClipIds(true, 5)).toEqual(['feedback-great-job'])
+    const midIdx = Math.floor(0.5 * CELEBRATION_CLIPS.length)
+    expect(buildFeedbackClipIds(true, 5)).toEqual([CELEBRATION_CLIPS[midIdx]])
 
-    vi.spyOn(Math, 'random').mockReturnValue(0.9)
-    expect(buildFeedbackClipIds(true, 5)).toEqual(['feedback-nice-work'])
+    // Use index near end
+    vi.spyOn(Math, 'random').mockReturnValue(0.99)
+    const lastIdx = Math.floor(0.99 * CELEBRATION_CLIPS.length)
+    expect(buildFeedbackClipIds(true, 5)).toEqual([CELEBRATION_CLIPS[lastIdx]])
 
     vi.restoreAllMocks()
   })

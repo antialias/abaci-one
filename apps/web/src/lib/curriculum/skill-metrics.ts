@@ -386,7 +386,7 @@ export function calculatePracticeStreak(sessions: SessionPlan[]): number {
   const uniqueDays = new Set<string>()
   for (const session of completedSessions) {
     const date = new Date(session.completedAt!)
-    const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+    const dayKey = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
     uniqueDays.add(dayKey)
   }
 
@@ -395,7 +395,7 @@ export function calculatePracticeStreak(sessions: SessionPlan[]): number {
 
   // Count consecutive days from today
   const today = new Date()
-  const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
   // Check if practiced today or yesterday (allow 1-day gap)
   const mostRecentDay = sortedDays[0]
