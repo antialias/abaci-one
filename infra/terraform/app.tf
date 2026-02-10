@@ -61,7 +61,8 @@ resource "kubernetes_config_map" "app_config" {
     REDIS_URL               = "redis://redis:6379"
     # libSQL server URL - all pods connect to this
     DATABASE_URL = "http://libsql.abaci.svc.cluster.local:8080"
-    # Trust the proxy for Auth.js
+    # Auth.js — explicit URL so OAuth callbacks use https://
+    AUTH_URL        = "https://${var.app_domain}"
     AUTH_TRUST_HOST = "true"
     # OpenTelemetry tracing configuration
     OTEL_EXPORTER_OTLP_ENDPOINT = "http://tempo.monitoring.svc.cluster.local:4317"
