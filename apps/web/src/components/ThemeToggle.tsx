@@ -1,9 +1,10 @@
 'use client'
 
+import React from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../styled-system/css'
 
-export function ThemeToggle() {
+export function ThemeToggle({ style }: { style?: React.CSSProperties } = {}) {
   const { theme, resolvedTheme, setTheme } = useTheme()
 
   const cycleTheme = () => {
@@ -37,6 +38,7 @@ export function ThemeToggle() {
       onClick={cycleTheme}
       aria-label={`Current theme: ${getThemeLabel()}. Click to cycle.`}
       title={`Current: ${getThemeLabel()}. Click to cycle themes.`}
+      style={style}
       className={css({
         display: 'flex',
         alignItems: 'center',

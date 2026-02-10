@@ -37,6 +37,11 @@ const adminNavItems: AdminNavItem[] = [
     description: 'TTS clips',
   },
   {
+    href: '/admin/tts-lab',
+    label: 'TTS Lab',
+    description: 'Reliability tests',
+  },
+  {
     href: '/vision-training',
     label: 'Vision',
     description: 'ML training',

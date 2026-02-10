@@ -5,6 +5,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTheme } from '@/contexts/ThemeContext'
 
+export interface DiceColorScheme {
+  faceLight: string
+  faceDark: string
+  dotLight: string
+  dotDark: string
+}
+
 // Dot patterns for each dice face (positions as fractions of face size)
 const DICE_DOT_PATTERNS: Record<number, Array<[number, number]>> = {
   1: [[0.5, 0.5]],
@@ -64,6 +71,7 @@ function DiceIcon({
   rotateZ,
   isDark,
   size = 22,
+  colorScheme,
 }: {
   className?: string
   rotateX: number
@@ -71,6 +79,7 @@ function DiceIcon({
   rotateZ: number
   isDark: boolean
   size?: number
+  colorScheme?: DiceColorScheme
 }) {
   const halfSize = size / 2
 
@@ -88,9 +97,13 @@ function DiceIcon({
   // Theme-aware colors
   // Dark mode: lighter indigo with more contrast against dark backgrounds
   // Light mode: deeper indigo that stands out against light backgrounds
-  const faceBackground = isDark ? '#818cf8' : '#4f46e5' // indigo-400 dark, indigo-600 light
+  const faceBackground = colorScheme
+    ? (isDark ? colorScheme.faceDark : colorScheme.faceLight)
+    : (isDark ? '#818cf8' : '#4f46e5') // indigo-400 dark, indigo-600 light
   const faceBorder = isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.5)'
-  const dotColor = isDark ? '#1e1b4b' : 'white' // indigo-950 dots on light bg in dark mode
+  const dotColor = colorScheme
+    ? (isDark ? colorScheme.dotDark : colorScheme.dotLight)
+    : (isDark ? '#1e1b4b' : 'white') // indigo-950 dots on light bg in dark mode
 
   // Render dots for a face
   const renderDots = (face: number) => {
@@ -218,6 +231,12 @@ export interface InteractiveDiceProps {
   className?: string
   /** Button style overrides */
   style?: React.CSSProperties
+  /** Override the default indigo color scheme */
+  colorScheme?: DiceColorScheme
+  /** Reports the rolled face value (1-6). When present, enables face 1. */
+  onRolledValue?: (value: number) => void
+  /** Increment to trigger a roll programmatically (e.g. for "Roll All") */
+  rollTrigger?: number
 }
 
 /**
@@ -240,6 +259,9 @@ export function InteractiveDice({
   title = 'Roll dice (drag or click)',
   className,
   style,
+  colorScheme,
+  onRolledValue,
+  rollTrigger,
 }: InteractiveDiceProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -249,7 +271,9 @@ export function InteractiveDice({
   // to land on the correct face derived from a random value
   const [spinCount, setSpinCount] = useState(0)
   // Track which face we're showing (for ensuring consecutive rolls differ)
-  const [currentFace, setCurrentFace] = useState(() => Math.floor(Math.random() * 5) + 2)
+  const minFace = onRolledValue ? 1 : 2
+  const faceCount = onRolledValue ? 6 : 5
+  const [currentFace, setCurrentFace] = useState(() => Math.floor(Math.random() * faceCount) + minFace)
 
   // Draggable dice state with physics simulation
   const [isDragging, setIsDragging] = useState(false)
@@ -298,17 +322,19 @@ export function InteractiveDice({
         rollCompleteTimeoutRef.current = undefined
       }
 
-      // Calculate target face (2-6, excluding 1 so it's clearly a dice)
-      const baseFace = Math.floor(Math.random() * 5) + 2
+      // Calculate target face (1-6 if onRolledValue, 2-6 otherwise)
+      const baseFace = Math.floor(Math.random() * faceCount) + minFace
 
       // Ensure it's different from the current face
-      const targetFace = baseFace === currentFace ? (baseFace === 6 ? 2 : baseFace + 1) : baseFace
+      const maxFace = minFace + faceCount - 1
+      const targetFace = baseFace === currentFace ? (baseFace === maxFace ? minFace : baseFace + 1) : baseFace
 
       // Add 1-2 full spins for visual drama
       const extraSpins = Math.floor(Math.random() * 2) + 1
 
       setSpinCount((prev) => prev + extraSpins)
       setCurrentFace(targetFace)
+      onRolledValue?.(targetFace)
       onRoll()
 
       // For click-only rolls (not throws), schedule completion callback after spring animation
@@ -320,7 +346,7 @@ export function InteractiveDice({
         }, 700)
       }
     },
-    [currentFace, onRoll, onRollComplete]
+    [currentFace, onRoll, onRollComplete, onRolledValue, minFace, faceCount]
   )
 
   // Physics simulation for thrown dice - uses direct DOM manipulation for performance
@@ -550,6 +576,15 @@ export function InteractiveDice({
       }
     }
   }, [])
+
+  // Programmatic roll trigger — when rollTrigger increments, fire a roll
+  const prevRollTrigger = useRef(rollTrigger ?? 0)
+  useEffect(() => {
+    if (rollTrigger !== undefined && rollTrigger !== prevRollTrigger.current && rollTrigger > 0) {
+      prevRollTrigger.current = rollTrigger
+      handleRoll()
+    }
+  }, [rollTrigger, handleRoll])
 
   // Compute dice rotation for react-spring animation (used when not flying)
   const diceRotation = {
@@ -787,6 +822,7 @@ export function InteractiveDice({
             rotateZ={diceRotation.rotateZ}
             isDark={isDark}
             size={size}
+            colorScheme={colorScheme}
           />
         </div>
       </button>
@@ -816,6 +852,7 @@ export function InteractiveDice({
               rotateZ={diceRotation.rotateZ}
               isDark={isDark}
               size={size}
+              colorScheme={colorScheme}
             />
           </div>,
           document.body

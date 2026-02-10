@@ -177,82 +177,88 @@ function MenuContent({
     <div style={containerStyle}>
       {isMobile ? (
         <>
-        {/* Corner buttons — theme left, abacus right */}
+        {/* Top bar — abacus (left corner), account (center), theme (right corner) */}
         <div
-          data-element="corner-buttons"
+          data-element="top-bar"
           style={{
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '8px 12px 0',
+            alignItems: 'stretch',
+            margin: '0 -16px 4px -16px',
           }}
         >
-          <ThemeToggle />
-          <AbacusDisplayDropdown />
-        </div>
-
-        {/* Account section */}
-        <div
-          data-element="account-section"
-          style={{
-            padding: '8px 12px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-          }}
-        >
-          {sessionStatus === 'authenticated' && session?.user ? (
-            <Link
-              href="/settings"
-              data-action="preferences"
-              onClick={(e) => {
-                e.preventDefault()
-                handleLinkClick('/settings')
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                textDecoration: 'none',
-                borderRadius: '8px',
-                padding: '4px',
-                transition: 'background 0.2s ease',
-              }}
-              title="Preferences"
-            >
-              {session.user.image ? (
-                <img
-                  src={session.user.image}
-                  alt={session.user.name ?? 'User'}
-                  referrerPolicy="no-referrer"
-                  style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    flexShrink: 0,
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    background: 'rgba(139, 92, 246, 0.8)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    flexShrink: 0,
-                  }}
-                >
-                  {(session.user.name ?? session.user.email ?? '?')[0].toUpperCase()}
-                </div>
-              )}
-              <div style={{ minWidth: 0, flex: 1 }}>
+          <AbacusDisplayDropdown
+            triggerStyle={{
+              borderRadius: '0 0 8px 0',
+              borderTop: 'none',
+              borderLeft: 'none',
+              boxShadow: 'none',
+              flexShrink: 0,
+            }}
+          />
+          <div
+            data-element="account-section"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 8px',
+            }}
+          >
+            {sessionStatus === 'authenticated' && session?.user ? (
+              <Link
+                href="/settings"
+                data-action="preferences"
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleLinkClick('/settings')
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  textDecoration: 'none',
+                  borderRadius: '8px',
+                  padding: '4px 8px',
+                  transition: 'background 0.2s ease',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                }}
+                title="Preferences"
+              >
+                {session.user.image ? (
+                  <img
+                    src={session.user.image}
+                    alt={session.user.name ?? 'User'}
+                    referrerPolicy="no-referrer"
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: 'rgba(139, 92, 246, 0.8)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {(session.user.name ?? session.user.email ?? '?')[0].toUpperCase()}
+                  </div>
+                )}
                 <div
                   style={{
                     fontSize: '13px',
@@ -261,38 +267,47 @@ function MenuContent({
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
+                    minWidth: 0,
                   }}
                 >
                   {session.user.name || session.user.email}
                 </div>
-              </div>
-            </Link>
-          ) : sessionStatus !== 'loading' ? (
-            <Link
-              href="/auth/signin"
-              data-action="sign-in"
-              onClick={(e) => {
-                e.preventDefault()
-                handleLinkClick('/auth/signin')
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                background: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)',
-                color: isDark ? 'rgba(196, 181, 253, 1)' : 'rgba(109, 40, 217, 1)',
-                fontSize: '13px',
-                fontWeight: 500,
-                textDecoration: 'none',
-                transition: 'all 0.2s ease',
-                alignSelf: 'flex-start',
-              }}
-            >
-              Sign In
-            </Link>
-          ) : null}
+              </Link>
+            ) : sessionStatus !== 'loading' ? (
+              <Link
+                href="/auth/signin"
+                data-action="sign-in"
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleLinkClick('/auth/signin')
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  background: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)',
+                  color: isDark ? 'rgba(196, 181, 253, 1)' : 'rgba(109, 40, 217, 1)',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                Sign In
+              </Link>
+            ) : null}
+          </div>
+          <ThemeToggle
+            style={{
+              borderRadius: '0 0 0 8px',
+              borderTop: 'none',
+              borderRight: 'none',
+              boxShadow: 'none',
+              flexShrink: 0,
+            }}
+          />
         </div>
         <div style={separatorStyle} />
 
@@ -325,6 +340,7 @@ function MenuContent({
             {renderNavLink('/practice', '📚', 'Practice')}
             {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
             {renderNavLink('/games', '🎮', 'Games')}
+            {renderNavLink('/toys', '🧸', 'Toys')}
             {renderNavLink('/guide', '📖', 'Guide')}
             {renderNavLink('/blog', '📝', 'Blog')}
 
@@ -559,115 +575,131 @@ function MenuContent({
       ) : (
         <>
           {/* Desktop: Single column layout */}
-          {/* Corner buttons — theme left, abacus right */}
+          {/* Top bar — abacus (left corner), account (center), theme (right corner) */}
           <div
-            data-element="corner-buttons"
+            data-element="top-bar"
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '4px 8px 0',
+              alignItems: 'stretch',
+              margin: '-8px -8px 4px -8px',
             }}
           >
-            <ThemeToggle />
-            <AbacusDisplayDropdown />
-          </div>
-
-          {/* Account section */}
-          <div
-            data-element="account-section"
-            style={{
-              padding: '4px 8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-            }}
-          >
-            {sessionStatus === 'authenticated' && session?.user ? (
-              <DropdownMenu.Item asChild>
-                <Link
-                  href="/settings"
-                  data-action="preferences"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '4px 6px',
-                    borderRadius: '8px',
-                    textDecoration: 'none',
-                    transition: 'background 0.2s ease',
-                  }}
-                  title="Preferences"
-                >
-                  {session.user.image ? (
-                    <img
-                      src={session.user.image}
-                      alt={session.user.name ?? 'User'}
-                      referrerPolicy="no-referrer"
-                      style={{
-                        width: '22px',
-                        height: '22px',
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        flexShrink: 0,
-                      }}
-                    />
-                  ) : (
+            <AbacusDisplayDropdown
+              triggerStyle={{
+                borderRadius: '10px 0 8px 0',
+                borderTop: 'none',
+                borderLeft: 'none',
+                boxShadow: 'none',
+                flexShrink: 0,
+              }}
+            />
+            <div
+              data-element="account-section"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 6px',
+              }}
+            >
+              {sessionStatus === 'authenticated' && session?.user ? (
+                <DropdownMenu.Item asChild>
+                  <Link
+                    href="/settings"
+                    data-action="preferences"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '2px 6px',
+                      borderRadius: '6px',
+                      textDecoration: 'none',
+                      transition: 'background 0.2s ease',
+                      minWidth: 0,
+                      maxWidth: '100%',
+                    }}
+                    title="Preferences"
+                  >
+                    {session.user.image ? (
+                      <img
+                        src={session.user.image}
+                        alt={session.user.name ?? 'User'}
+                        referrerPolicy="no-referrer"
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          flexShrink: 0,
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: 'rgba(139, 92, 246, 0.8)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '9px',
+                          fontWeight: 600,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {(session.user.name ?? session.user.email ?? '?')[0].toUpperCase()}
+                      </div>
+                    )}
                     <div
                       style={{
-                        width: '22px',
-                        height: '22px',
-                        borderRadius: '50%',
-                        background: 'rgba(139, 92, 246, 0.8)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        flexShrink: 0,
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        minWidth: 0,
                       }}
                     >
-                      {(session.user.name ?? session.user.email ?? '?')[0].toUpperCase()}
+                      {session.user.name || session.user.email}
                     </div>
-                  )}
-                  <div
-                    style={{
-                      fontSize: '12px',
-                      fontWeight: 500,
-                      color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      minWidth: 0,
-                    }}
-                  >
-                    {session.user.name || session.user.email}
-                  </div>
+                  </Link>
+                </DropdownMenu.Item>
+              ) : sessionStatus !== 'loading' ? (
+                <Link
+                  href="/auth/signin"
+                  data-action="sign-in"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    background: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)',
+                    color: isDark ? 'rgba(196, 181, 253, 1)' : 'rgba(109, 40, 217, 1)',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  Sign In
                 </Link>
-              </DropdownMenu.Item>
-            ) : sessionStatus !== 'loading' ? (
-              <Link
-                href="/auth/signin"
-                data-action="sign-in"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '6px 10px',
-                  borderRadius: '8px',
-                  background: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)',
-                  color: isDark ? 'rgba(196, 181, 253, 1)' : 'rgba(109, 40, 217, 1)',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  textDecoration: 'none',
-                  transition: 'all 0.2s ease',
-                  alignSelf: 'flex-start',
-                }}
-              >
-                Sign In
-              </Link>
-            ) : null}
+              ) : null}
+            </div>
+            <ThemeToggle
+              style={{
+                borderRadius: '0 10px 0 8px',
+                borderTop: 'none',
+                borderRight: 'none',
+                boxShadow: 'none',
+                flexShrink: 0,
+              }}
+            />
           </div>
 
           <DropdownMenu.Separator style={separatorStyle} />
@@ -680,6 +712,7 @@ function MenuContent({
           {renderNavLink('/practice', '📚', 'Practice')}
           {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
           {renderNavLink('/games', '🎮', 'Games')}
+          {renderNavLink('/toys', '🧸', 'Toys')}
           {renderNavLink('/guide', '📖', 'Guide')}
           {renderNavLink('/blog', '📝', 'Blog')}
 
@@ -1336,6 +1369,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const router = useRouter()
   const isArcadePage = pathname?.startsWith('/arcade')
   const isVisionTrainingPage = pathname?.startsWith('/vision-training')
+  const isToysPage = pathname?.startsWith('/toys/')
   const isHomePage = pathname === '/'
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
   const { open: openDeploymentInfo } = useDeploymentInfo()
@@ -1355,7 +1389,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   // Arcade pages and vision training pages use minimal nav with hamburger + centered content
   // This allows them to display their custom navSlot (game context, model selector, etc.)
   const actualVariant =
-    variant === 'full' && (isArcadePage || isVisionTrainingPage) ? 'minimal' : variant
+    variant === 'full' && (isArcadePage || isVisionTrainingPage || isToysPage) ? 'minimal' : variant
 
   // Mini nav for games/arcade (both fullscreen and non-fullscreen)
   if (actualVariant === 'minimal') {

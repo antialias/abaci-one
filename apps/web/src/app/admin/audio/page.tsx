@@ -1292,6 +1292,27 @@ export default function AdminAudioPage() {
                         const clipsWithoutSay = collectedClips.filter(
                           (c) => !c.say || Object.keys(c.say).length === 0
                         )
+
+                        // Group clips by their text content
+                        const getClipText = (clip: (typeof collectedClips)[0]) =>
+                          clip.say ? Object.values(clip.say)[0] ?? null : null
+                        const groups: {
+                          text: string | null
+                          clips: typeof collectedClips
+                        }[] = []
+                        const groupMap = new Map<string, typeof collectedClips>()
+                        for (const clip of collectedClips) {
+                          const text = getClipText(clip)
+                          const key = text ?? `__no_say__${clip.id}`
+                          let group = groupMap.get(key)
+                          if (!group) {
+                            group = []
+                            groupMap.set(key, group)
+                            groups.push({ text, clips: group })
+                          }
+                          group.push(clip)
+                        }
+
                         return (
                           <>
                             {clipsWithoutSay.length > 0 && (
@@ -1350,6 +1371,7 @@ export default function AdminAudioPage() {
                               </div>
                             )}
                             <table
+                              data-element="cc-grouped-table"
                               className={css({
                                 width: '100%',
                                 borderCollapse: 'collapse',
@@ -1358,226 +1380,273 @@ export default function AdminAudioPage() {
                             >
                               <thead>
                                 <tr>
-                                  {[
-                                    'Status',
-                                    'Clip ID',
-                                    'Text',
-                                    'Tone',
-                                    'Plays',
-                                    'Play',
-                                    'Actions',
-                                  ].map((header, idx) => (
-                                    <th
-                                      key={header}
-                                      className={css({
-                                        textAlign:
-                                          idx === 1 || idx === 2 || idx === 3 ? 'left' : 'center',
-                                        padding: '6px 8px',
-                                        color: '#8b949e',
-                                        borderBottom: '1px solid #30363d',
-                                        fontWeight: '500',
-                                        backgroundColor: '#161b22',
-                                        width:
-                                          idx === 0 || idx === 5
-                                            ? '50px'
-                                            : idx === 6
-                                              ? '90px'
-                                              : undefined,
-                                      })}
-                                    >
-                                      {header}
-                                    </th>
-                                  ))}
+                                  {['Status', 'Tone', 'Clip ID', 'Plays', 'Play', 'Actions'].map(
+                                    (header, idx) => (
+                                      <th
+                                        key={header}
+                                        className={css({
+                                          textAlign:
+                                            idx === 1 || idx === 2 ? 'left' : 'center',
+                                          padding: '6px 8px',
+                                          color: '#8b949e',
+                                          borderBottom: '1px solid #30363d',
+                                          fontWeight: '500',
+                                          backgroundColor: '#161b22',
+                                          width:
+                                            idx === 0 || idx === 4
+                                              ? '50px'
+                                              : idx === 5
+                                                ? '90px'
+                                                : undefined,
+                                        })}
+                                      >
+                                        {header}
+                                      </th>
+                                    )
+                                  )}
                                 </tr>
                               </thead>
                               <tbody>
-                                {collectedClips.map((clip) => {
-                                  const isGenerated = !!ccGeneratedFor[clip.id]
+                                {groups.map((group, groupIdx) => {
+                                  const groupGenerated = group.clips.filter(
+                                    (c) => !!ccGeneratedFor[c.id]
+                                  ).length
+                                  const allGenerated = groupGenerated === group.clips.length
                                   return (
-                                    <tr key={clip.id}>
-                                      <td
-                                        className={css({
-                                          padding: '6px 8px',
-                                          borderBottom: '1px solid #21262d',
-                                          textAlign: 'center',
-                                        })}
-                                      >
-                                        <span
-                                          title={
-                                            isGenerated
-                                              ? `Generated for ${ccGenVoice}`
-                                              : 'Not generated'
-                                          }
+                                    <React.Fragment key={groupIdx}>
+                                      {/* Group header row */}
+                                      <tr data-element="cc-group-header">
+                                        <td
+                                          colSpan={6}
                                           className={css({
-                                            display: 'inline-block',
-                                            width: '8px',
-                                            height: '8px',
-                                            borderRadius: '50%',
-                                            backgroundColor: isGenerated ? '#3fb950' : '#484f58',
+                                            padding: '10px 8px 6px',
+                                            borderBottom: '1px solid #30363d',
+                                            backgroundColor: '#0d1117',
                                           })}
-                                        />
-                                      </td>
-                                      <td
-                                        className={css({
-                                          padding: '6px 8px',
-                                          borderBottom: '1px solid #21262d',
-                                          color: '#f0f6fc',
-                                          fontFamily: 'monospace',
-                                          fontSize: '12px',
-                                        })}
-                                      >
-                                        {clip.id}
-                                        {isHashClipId(clip.id) && (
-                                          <span
-                                            data-element="hash-badge"
-                                            title="Content-addressed clip ID (auto-generated from text + tone)"
+                                        >
+                                          <div
                                             className={css({
-                                              marginLeft: '6px',
-                                              fontSize: '10px',
-                                              padding: '1px 5px',
-                                              borderRadius: '8px',
-                                              backgroundColor: '#8b949e22',
-                                              color: '#8b949e',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '8px',
                                             })}
                                           >
-                                            hash
-                                          </span>
-                                        )}
-                                      </td>
-                                      <td
-                                        className={css({
-                                          padding: '6px 8px',
-                                          borderBottom: '1px solid #21262d',
-                                          fontSize: '12px',
-                                          maxWidth: '200px',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          whiteSpace: 'nowrap',
-                                        })}
-                                        title={
-                                          clip.say
-                                            ? JSON.stringify(clip.say)
-                                            : `No say text — clip ID "${clip.id}" will be read aloud verbatim`
-                                        }
-                                      >
-                                        {(() => {
-                                          const sayText = clip.say
-                                            ? Object.values(clip.say)[0]
-                                            : undefined
-                                          if (sayText)
-                                            return (
-                                              <span className={css({ color: '#c9d1d9' })}>
-                                                {sayText}
+                                            {group.text ? (
+                                              <span
+                                                className={css({
+                                                  color: '#f0f6fc',
+                                                  fontWeight: '600',
+                                                  fontSize: '13px',
+                                                })}
+                                              >
+                                                &ldquo;{group.text}&rdquo;
                                               </span>
-                                            )
-                                          return (
+                                            ) : (
+                                              <span
+                                                className={css({
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: '4px',
+                                                })}
+                                              >
+                                                <span
+                                                  className={css({
+                                                    color: '#d29922',
+                                                    fontSize: '13px',
+                                                  })}
+                                                >
+                                                  &#9888;
+                                                </span>
+                                                <span
+                                                  className={css({
+                                                    color: '#d29922',
+                                                    fontStyle: 'italic',
+                                                    fontSize: '13px',
+                                                  })}
+                                                >
+                                                  &quot;{group.clips[0].id}&quot; (no say text)
+                                                </span>
+                                              </span>
+                                            )}
                                             <span
                                               className={css({
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
+                                                color: '#8b949e',
+                                                fontSize: '11px',
+                                              })}
+                                            >
+                                              {group.clips.length} tone
+                                              {group.clips.length !== 1 ? 's' : ''}
+                                            </span>
+                                            <span
+                                              className={css({
+                                                display: 'inline-block',
+                                                width: '6px',
+                                                height: '6px',
+                                                borderRadius: '50%',
+                                                backgroundColor: allGenerated
+                                                  ? '#3fb950'
+                                                  : groupGenerated > 0
+                                                    ? '#d29922'
+                                                    : '#484f58',
+                                                flexShrink: 0,
+                                              })}
+                                              title={`${groupGenerated}/${group.clips.length} generated`}
+                                            />
+                                          </div>
+                                        </td>
+                                      </tr>
+                                      {/* Individual tone rows */}
+                                      {group.clips.map((clip) => {
+                                        const isGenerated = !!ccGeneratedFor[clip.id]
+                                        return (
+                                          <tr key={clip.id} data-element="cc-clip-row">
+                                            <td
+                                              className={css({
+                                                padding: '6px 8px',
+                                                borderBottom: '1px solid #21262d',
+                                                textAlign: 'center',
                                               })}
                                             >
                                               <span
+                                                title={
+                                                  isGenerated
+                                                    ? `Generated for ${ccGenVoice}`
+                                                    : 'Not generated'
+                                                }
                                                 className={css({
-                                                  color: '#d29922',
-                                                  fontSize: '13px',
+                                                  display: 'inline-block',
+                                                  width: '8px',
+                                                  height: '8px',
+                                                  borderRadius: '50%',
+                                                  backgroundColor: isGenerated
+                                                    ? '#3fb950'
+                                                    : '#484f58',
                                                 })}
-                                                title="Missing say text — clip ID will be spoken as-is"
-                                              >
-                                                &#9888;
-                                              </span>
-                                              <span
+                                              />
+                                            </td>
+                                            <td
+                                              className={css({
+                                                padding: '6px 8px',
+                                                borderBottom: '1px solid #21262d',
+                                                fontSize: '12px',
+                                                color: '#c9d1d9',
+                                                maxWidth: '200px',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                              })}
+                                              title={clip.tone}
+                                            >
+                                              {clip.tone}
+                                            </td>
+                                            <td
+                                              className={css({
+                                                padding: '6px 8px',
+                                                borderBottom: '1px solid #21262d',
+                                                color: '#8b949e',
+                                                fontFamily: 'monospace',
+                                                fontSize: '11px',
+                                              })}
+                                            >
+                                              {clip.id}
+                                              {isHashClipId(clip.id) && (
+                                                <span
+                                                  data-element="hash-badge"
+                                                  title="Content-addressed clip ID (auto-generated from text + tone)"
+                                                  className={css({
+                                                    marginLeft: '6px',
+                                                    fontSize: '10px',
+                                                    padding: '1px 5px',
+                                                    borderRadius: '8px',
+                                                    backgroundColor: '#8b949e22',
+                                                    color: '#8b949e',
+                                                  })}
+                                                >
+                                                  hash
+                                                </span>
+                                              )}
+                                            </td>
+                                            <td
+                                              className={css({
+                                                padding: '6px 8px',
+                                                borderBottom: '1px solid #21262d',
+                                                textAlign: 'center',
+                                                fontFamily: 'monospace',
+                                                color:
+                                                  clip.playCount > 0 ? '#3fb950' : '#8b949e',
+                                              })}
+                                            >
+                                              {clip.playCount}
+                                            </td>
+                                            <td
+                                              className={css({
+                                                padding: '6px 8px',
+                                                borderBottom: '1px solid #21262d',
+                                                textAlign: 'center',
+                                              })}
+                                            >
+                                              <button
+                                                data-action="play-cc-clip"
+                                                onClick={() => handleCcPlayClip(clip.id)}
+                                                disabled={!isGenerated}
                                                 className={css({
-                                                  color: '#d29922',
-                                                  fontStyle: 'italic',
+                                                  background: 'none',
+                                                  border: 'none',
+                                                  color:
+                                                    ccPlayingClipId === clip.id
+                                                      ? '#58a6ff'
+                                                      : '#c9d1d9',
+                                                  cursor: isGenerated
+                                                    ? 'pointer'
+                                                    : 'not-allowed',
+                                                  fontSize: '16px',
+                                                  opacity: isGenerated ? 1 : 0.3,
+                                                })}
+                                                title={
+                                                  isGenerated ? 'Play clip' : 'Not generated yet'
+                                                }
+                                              >
+                                                {ccPlayingClipId === clip.id
+                                                  ? '\u23F8'
+                                                  : '\u25B6'}
+                                              </button>
+                                            </td>
+                                            <td
+                                              className={css({
+                                                padding: '6px 8px',
+                                                borderBottom: '1px solid #21262d',
+                                                textAlign: 'center',
+                                              })}
+                                            >
+                                              <button
+                                                data-action="generate-cc-clip"
+                                                onClick={() => handleCcGenerate([clip.id])}
+                                                disabled={isCcGenerating}
+                                                className={css({
+                                                  fontSize: '11px',
+                                                  backgroundColor: isGenerated
+                                                    ? 'transparent'
+                                                    : '#238636',
+                                                  color: isGenerated ? '#d29922' : '#fff',
+                                                  border: isGenerated
+                                                    ? '1px solid #d29922'
+                                                    : 'none',
+                                                  borderRadius: '6px',
+                                                  padding: '2px 8px',
+                                                  cursor: 'pointer',
+                                                  '&:disabled': {
+                                                    opacity: 0.5,
+                                                    cursor: 'not-allowed',
+                                                  },
                                                 })}
                                               >
-                                                &quot;{clip.id}&quot;
-                                              </span>
-                                            </span>
-                                          )
-                                        })()}
-                                      </td>
-                                      <td
-                                        className={css({
-                                          padding: '6px 8px',
-                                          borderBottom: '1px solid #21262d',
-                                          fontSize: '11px',
-                                          color: '#8b949e',
-                                          maxWidth: '200px',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          whiteSpace: 'nowrap',
-                                        })}
-                                        title={clip.tone}
-                                      >
-                                        {clip.tone}
-                                      </td>
-                                      <td
-                                        className={css({
-                                          padding: '6px 8px',
-                                          borderBottom: '1px solid #21262d',
-                                          textAlign: 'center',
-                                          fontFamily: 'monospace',
-                                          color: clip.playCount > 0 ? '#3fb950' : '#8b949e',
-                                        })}
-                                      >
-                                        {clip.playCount}
-                                      </td>
-                                      <td
-                                        className={css({
-                                          padding: '6px 8px',
-                                          borderBottom: '1px solid #21262d',
-                                          textAlign: 'center',
-                                        })}
-                                      >
-                                        <button
-                                          data-action="play-cc-clip"
-                                          onClick={() => handleCcPlayClip(clip.id)}
-                                          disabled={!isGenerated}
-                                          className={css({
-                                            background: 'none',
-                                            border: 'none',
-                                            color:
-                                              ccPlayingClipId === clip.id ? '#58a6ff' : '#c9d1d9',
-                                            cursor: isGenerated ? 'pointer' : 'not-allowed',
-                                            fontSize: '16px',
-                                            opacity: isGenerated ? 1 : 0.3,
-                                          })}
-                                          title={isGenerated ? 'Play clip' : 'Not generated yet'}
-                                        >
-                                          {ccPlayingClipId === clip.id ? '\u23F8' : '\u25B6'}
-                                        </button>
-                                      </td>
-                                      <td
-                                        className={css({
-                                          padding: '6px 8px',
-                                          borderBottom: '1px solid #21262d',
-                                          textAlign: 'center',
-                                        })}
-                                      >
-                                        <button
-                                          data-action="generate-cc-clip"
-                                          onClick={() => handleCcGenerate([clip.id])}
-                                          disabled={isCcGenerating}
-                                          className={css({
-                                            fontSize: '11px',
-                                            backgroundColor: isGenerated
-                                              ? 'transparent'
-                                              : '#238636',
-                                            color: isGenerated ? '#d29922' : '#fff',
-                                            border: isGenerated ? '1px solid #d29922' : 'none',
-                                            borderRadius: '6px',
-                                            padding: '2px 8px',
-                                            cursor: 'pointer',
-                                            '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
-                                          })}
-                                        >
-                                          {isGenerated ? 'Regen' : 'Generate'}
-                                        </button>
-                                      </td>
-                                    </tr>
+                                                {isGenerated ? 'Regen' : 'Generate'}
+                                              </button>
+                                            </td>
+                                          </tr>
+                                        )
+                                      })}
+                                    </React.Fragment>
                                   )
                                 })}
                               </tbody>
