@@ -87,7 +87,9 @@ export function renderNumberLine(
   cssHeight: number,
   isDark: boolean,
   thresholds: TickThresholds = DEFAULT_TICK_THRESHOLDS,
-  zoomVelocity = 0
+  zoomVelocity = 0,
+  zoomHue = 0,
+  zoomFocalX = 0.5
 ): void {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
@@ -95,19 +97,18 @@ export function renderNumberLine(
   // Clear
   ctx.clearRect(0, 0, cssWidth, cssHeight)
 
-  // Zoom velocity background wash
+  // Zoom velocity background wash — hue and focal point are pre-smoothed by caller
   if (Math.abs(zoomVelocity) > 0.001) {
     const intensity = Math.min(Math.abs(zoomVelocity) * 3, 0.35)
-    // Zoom in → cool indigo/cyan, zoom out → warm amber/coral
-    const hue = zoomVelocity > 0 ? 220 : 25
     const sat = 80
     const lum = isDark ? 30 : 70
+    const focalPx = zoomFocalX * cssWidth
     const gradient = ctx.createRadialGradient(
-      cssWidth / 2, centerY, 0,
-      cssWidth / 2, centerY, cssWidth * 0.7
+      focalPx, centerY, 0,
+      focalPx, centerY, cssWidth * 0.7
     )
-    gradient.addColorStop(0, `hsla(${hue}, ${sat}%, ${lum}%, ${intensity})`)
-    gradient.addColorStop(1, `hsla(${hue}, ${sat}%, ${lum}%, 0)`)
+    gradient.addColorStop(0, `hsla(${zoomHue}, ${sat}%, ${lum}%, ${intensity})`)
+    gradient.addColorStop(1, `hsla(${zoomHue}, ${sat}%, ${lum}%, 0)`)
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, cssWidth, cssHeight)
   }

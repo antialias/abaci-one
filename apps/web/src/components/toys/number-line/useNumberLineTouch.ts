@@ -6,8 +6,8 @@ interface UseNumberLineTouchOptions {
   stateRef: React.MutableRefObject<NumberLineState>
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   onStateChange: () => void
-  /** Called with the instantaneous zoom velocity (log-ratio of PPU change). Positive = zoom in. */
-  onZoomVelocity?: (velocity: number) => void
+  /** Called with instantaneous zoom velocity and focal point (0-1 fraction of canvas width). */
+  onZoomVelocity?: (velocity: number, focalX: number) => void
 }
 
 // Zoom limits — 1e14 allows viewing down to ~femto-scale (power -15)
@@ -116,9 +116,10 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
         stateRef.current = state
         onStateChange()
 
-        // Report zoom velocity for pinch
+        // Report zoom velocity for pinch (focal point = midpoint of two fingers)
         if (state.pixelsPerUnit !== oldPPU) {
-          onZoomVelocity?.(Math.log(state.pixelsPerUnit / oldPPU))
+          const midX = (screen1 + screen2) / 2
+          onZoomVelocity?.(Math.log(state.pixelsPerUnit / oldPPU), midX / canvasWidth)
         }
       } else if (e.touches.length === 1 && dragAnchorRef.current !== null) {
         // Single finger drag
@@ -206,8 +207,8 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       stateRef.current = state
       onStateChange()
 
-      // Report zoom velocity as log-ratio (positive = zooming in)
-      onZoomVelocity?.(Math.log(newPPU / oldPPU))
+      // Report zoom velocity and focal point
+      onZoomVelocity?.(Math.log(newPPU / oldPPU), x / canvasWidth)
     }
 
     // Attach listeners
